@@ -84,7 +84,7 @@ export default function AboutSettings({ version }: { version: string }) {
   return (
     <div className="about-page">
       <section className="about-hero" aria-labelledby="about-title">
-        <img className="about-character" src="/rinari-about-hero.png" alt="Rinari" width={1672} height={941} />
+        <img className="about-character" src="/rinari-about-hero-v2.png" alt="Rinari" width={1672} height={941} />
         <div className="about-hero-content">
           <span className="about-eyebrow"><Sparkles size={13} aria-hidden="true" /> {t('settings.about.eyebrow')}</span>
           <h2 id="about-title">Rinari<span>Agent<span className="about-title-dot">.</span></span></h2>

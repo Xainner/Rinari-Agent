@@ -1,0 +1,9 @@
+# Rinari artwork
+
+Generated with the built-in image generation tool using the user-supplied `rinari.png` as the authoritative character reference. New scenes and poses; no product screenshots. Previous assets are retained.
+
+## ../../public/rinari-about-hero-v2.png
+
+```text
+Use case: ads-marketing. Contemporary premium editorial developer brand illustration. Image 1 is the authoritative EXACT Rinari character identity, not a pose reference. Preserve face, violet eyes, long near-black purple-highlighted hair, luminous violet cat-ear headphones, purple pixel alien and X hair clips, black star choker, oversized black jacket with purple lining and pixel embroidery, black outfit and purple straps. Same detailed anime rendering. Dynamic non-frontal pose, not looking at viewer, no pinup, no generic space wallpaper, no watermark, no fake product UI. Asset: Rinari Agent Settings About hero background, landscape 16:9, ideally 1664x936. NO TEXT anywhere. This will sit beneath real HTML text, so the LEFT 52% must remain very dark quiet near-black aubergine #130b20 negative space, especially between y20% and y85%, without bright objects or character overlaps. RIGHT 48%: Rinari in an active three-quarter SIDE PROFILE, waist-up, leaning slightly toward and reaching with one hand to a suspended small translucent violet architectural panel near right edge, gaze toward panel not viewer. Hair flowing backward within right half, recognizable headphone ears and accessories entirely in frame with top margin. Sculptural graphite folds, restrained lavender refractions and gentle diagonal depth in right background, linking to modern Rinari Agent editorial campaign. Dynamic, clever, refined creative composition, not a static front-facing portrait, no typography, no labels, no UI screenshots. Keep all important character details in right half.
+```

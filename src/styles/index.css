@@ -64,6 +64,8 @@
   --danger: #ef4444;
   --warning: #f59e0b;
   --success: #22c55e;
+  --access-workspace: #4ade80;
+  --access-full: #fb7c52;
   --nebula-gradient: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 52%, #e879f9 100%);
   color-scheme: dark;
 }
@@ -85,6 +87,8 @@ html[data-theme='light'] {
   --danger: #dc2626;
   --warning: #d97706;
   --success: #16a34a;
+  --access-workspace: #15803d;
+  --access-full: #c2410c;
   color-scheme: light;
 }
 

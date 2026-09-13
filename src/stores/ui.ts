@@ -20,6 +20,8 @@ export type SettingsSection =
   | 'appearance'
   | 'providers'
   | 'models'
+  | 'vision'
+  | 'context'
   | 'agents'
   | 'soul'
   | 'mcp'

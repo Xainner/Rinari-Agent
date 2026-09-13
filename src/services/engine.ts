@@ -617,8 +617,15 @@ export const engineApi = {
     ),
   attachmentPrepare: (session_id: string, attachments: AttachmentInput[]) =>
     invoke<{ attachments: PreparedAttachmentResult[] }>('attachment_prepare', { session_id, attachments }),
-  attachmentPreview: (uri: string, max_bytes?: number) =>
-    invoke<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null }),
+  attachmentPreview: (uri: string, max_bytes?: number, max_dimension?: number) =>
+    invoke<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null, max_dimension: max_dimension ?? null }),
+  visionSettingsGet: () => invoke<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
+  contextSettingsGet: () => invoke<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
+  contextCompact: (sessionId: string) => invoke('context_compact', { sessionId }),
+  contextStatus: (modelId: string) => invoke<import('../types/protocol.generated').ContextStatus>('context_status', { modelId }),
+  contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => invoke<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
+  visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => invoke<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
+  sessionImageSupport: (session_id: string | null, model_id?: string) => invoke<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),
   attachmentPrepareStart: (session_id: string, attachments: AttachmentInput[]) =>
     invoke<Record<string, unknown>>('attachment_prepare_start', { session_id, attachments }),
   attachmentPrepareGet: (job_id: string) =>
@@ -670,7 +677,6 @@ export const engineApi = {
     message: string,
     reasoningEffort?: string | null,
     attachments: Array<AttachmentInput | AttachmentRef> = [],
-    allowUnconfirmedVision = false,
   ) => {
     // Fail-fast con texto inconfundible: si esto salta, el bug está en la
     // UI (nunca debería invocar sin sesión); si salta el mensaje del
@@ -686,7 +692,6 @@ export const engineApi = {
       // engine protocol is snake_case. Normalize at this boundary so an
       // imported document can never arrive as a display-only reference.
       attachments: attachmentInputs(attachments),
-      allow_unconfirmed_vision: allowUnconfirmedVision,
     })
   },
   cancelTurn: (sessionId: string) =>

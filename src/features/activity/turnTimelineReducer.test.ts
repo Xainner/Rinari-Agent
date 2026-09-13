@@ -6,6 +6,27 @@ const NOW = 1_700_000_000_000
 const event = (name: string, payload: Record<string, unknown>) => engineEventAction({ type: 'event', event: name, payload }, NOW)!
 
 describe('narrative activity timeline', () => {
+  it('updates one compaction identity and preserves failure', () => {
+    const ids = { turn_id: 'compact', session_id: 'session', compaction_id: 'operation' }
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
+    state = turnTimelineReducer(state, event('governor.compact', { ...ids, status: 'started', activity_seq: 1 }))
+    state = turnTimelineReducer(state, event('governor.compact', { ...ids, status: 'failed', activity_seq: 2 }))
+    expect(state.timelines.compact.items).toHaveLength(1)
+    expect(state.timelines.compact.items[0]).toMatchObject({ type: 'context', status: 'failed' })
+  })
+  it('does not resurrect a completed turn when its agent reports a late failure', () => {
+    let state = createInitialTimelineState()
+    const ids = { turn_id: 't1', session_id: 's1' }
+    state = turnTimelineReducer(state, event('turn.started', ids))
+    state = turnTimelineReducer(state, event('agent.started', { ...ids, agent_id: 'a1' }))
+    state = turnTimelineReducer(state, event('turn.completed', ids))
+    state = turnTimelineReducer(state, event('agent.failed', { ...ids, agent_id: 'a1' }))
+    expect(state.timelines.t1.status).toBe('completed')
+    expect(state.busySessions.has('s1')).toBe(false)
+    state = turnTimelineReducer(state, event('turn.started', { turn_id: 't2', session_id: 's1' }))
+    state = turnTimelineReducer(state, event('agent.failed', { ...ids, agent_id: 'a1' }))
+    expect(state.busySessions.has('s1')).toBe(true)
+  })
   it('retains the mode of the turn independently of later session changes', () => {
     let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 'plan', session_id: 's1', mode: 'plan' }))
     state = turnTimelineReducer(state, event('turn.completed', { turn_id: 'plan', session_id: 's1' }))
@@ -126,4 +147,22 @@ it('keeps child commands and answers inside one agent card through live updates 
   }] })
   expect(restored.timelines.t.items.filter(item => item.type === 'agent')).toEqual(state.timelines.t.items)
   expect(restored.timelines.t.items.filter(item => item.type === 'model')).toMatchObject([{ content: 'Parent answer' }])
+})
+
+
+it('merges visual analysis without inventing tool calls and restores history', () => {
+  const payload = { session_id: 's1', turn_id: 'v1', vision_id: 'image-query', activity_seq: 1,
+    route: 'dedicated', model_id: 'visual', question: '¿Qué ves?',
+    images: [{ uri: 'artifact://s1/media/a.png', name: 'a.png', path: 'a.png', width: 30, height: 20 }] }
+  let state = turnTimelineReducer(createInitialTimelineState(), event('vision.started', payload))
+  state = turnTimelineReducer(state, event('vision.completed', { ...payload, analysis: 'Una imagen', cached: false }))
+  state = turnTimelineReducer(state, event('vision.completed', { ...payload, analysis: 'Una imagen', cached: false }))
+  expect(state.timelines.v1.items).toHaveLength(1)
+  expect(state.timelines.v1.items[0]).toMatchObject({ type: 'vision', status: 'completed', analysis: 'Una imagen' })
+  expect(state.timelines.v1.items.filter(item => item.type === 'tool')).toHaveLength(0)
+  const restored = turnTimelineReducer(createInitialTimelineState(), { type: 'timeline/loaded', sessionId: 's1', turns: [{
+    turn_id: 'v1', session_id: 's1', status: 'completed', started_at: '2026-09-12T00:00:00Z',
+    items: [{ ...payload, event: 'vision.completed', analysis: 'Una imagen' }],
+  } as never] })
+  expect(restored.timelines.v1.items[0]).toMatchObject({ type: 'vision', analysis: 'Una imagen' })
 })

@@ -21,7 +21,7 @@ interface ChatViewProps {
   sessionId: string
   isStreaming: boolean
   engineReady: boolean
-  onSend: (text: string, attachments?: AttachmentRef[], allowUnconfirmedVision?: boolean) => Promise<boolean>
+  onSend: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   onStop: () => void

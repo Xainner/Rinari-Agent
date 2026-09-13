@@ -381,6 +381,8 @@ export const en: Record<I18nKey, string> = {
   'settings.nav.general': 'General',
   'settings.nav.appearance': 'Appearance',
   'settings.nav.connection': 'Connection',
+  'settings.nav.vision': 'Vision and images',
+  'settings.nav.context': 'Context',
   'settings.nav.models': 'Models',
   'settings.nav.reasoning': 'Reasoning',
   'settings.nav.profiles': 'Profiles',

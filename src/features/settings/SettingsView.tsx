@@ -1,3 +1,5 @@
+import VisionSettings from '../../components/settings/VisionSettings'
+import ContextSettings from '../../components/settings/ContextSettings'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import type { ModelSummary, ProviderSummary } from '../../services/engine'
@@ -48,6 +50,8 @@ export default function SettingsView({
       {section === 'providers' && (
         <ProvidersView providers={providers} onChanged={onCatalogChanged} />
       )}
+      {section === 'vision' && <VisionSettings models={models} providers={providers} />}
+      {section === 'context' && <ContextSettings models={models} providers={providers} />}
       {section === 'models' && (
         <ModelsView
           providers={providers}
@@ -75,7 +79,7 @@ export default function SettingsView({
       {section === 'terminal' && <TerminalView />}
       {section === 'advanced' && <AdvancedSettings />}
       {section === 'about' && <AboutSettings version={appVersion} />}
-      {!['general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
+      {!['context', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
         <SoonSettings />
       )}
     </SettingsShell>

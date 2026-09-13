@@ -26,6 +26,8 @@ const NAV: Array<{ id: SettingsSection; icon: typeof Info }> = [
   { id: 'appearance', icon: Palette },
   { id: 'providers', icon: Plug },
   { id: 'models', icon: Cpu },
+  { id: 'vision', icon: Sparkles },
+  { id: 'context', icon: Layers },
   { id: 'agents', icon: Bot },
   { id: 'soul', icon: Sparkles },
   { id: 'mcp', icon: Boxes },

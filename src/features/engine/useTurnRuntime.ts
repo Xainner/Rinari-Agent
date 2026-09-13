@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { toast } from 'sonner'
-import { commandMessage, engineApi, onEngineEvent, type EngineEventMsg } from '../../services/engine'
+import { commandMessage, engineApi, isCommandError, onEngineEvent, type EngineEventMsg } from '../../services/engine'
 import {
   TRIGGERS_SESSION_REFRESH,
   createInitialTimelineState,
@@ -60,6 +60,17 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     try {
       await engineApi.cancelTurn(sessionId)
     } catch (error) {
+      if (isCommandError(error) && error.code === 'NO_ACTIVE_TURN') {
+        try {
+          const result = await engineApi.sessionTimeline(sessionId)
+          dispatch({ type: 'timeline/loaded', sessionId, turns: result.turns })
+          await restoreSnapshot()
+          return
+        } catch (recoveryError) {
+          toast.error(commandMessage(recoveryError))
+          return
+        }
+      }
       toast.error(commandMessage(error))
       void restoreSnapshot()
     }

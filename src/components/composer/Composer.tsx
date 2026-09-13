@@ -4,16 +4,22 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
 import { useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
-import { engineApi, type ModelSummary } from '../../services/engine'
+import { engineApi, commandMessage, type ModelSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
+const permissionColors = {
+  'read-only': 'var(--text-muted)',
+  workspace: 'var(--access-workspace)',
+  'full-access': 'var(--access-full)',
+} as const
+
 interface ComposerProps {
   placement: ComposerPlacement
-  onSend: (text: string, attachments?: AttachmentRef[], allowUnconfirmedVision?: boolean) => Promise<boolean>
+  onSend: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   sessionId?: string
@@ -78,7 +84,6 @@ export default function Composer({
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [reasoningOpen, setReasoningOpen] = useState(false)
-  const [allowUnconfirmedVision, setAllowUnconfirmedVision] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
@@ -104,21 +109,26 @@ export default function Composer({
   const switchDraftSession = useComposerStore((s) => s.switchSession)
   const [fileMatches, setFileMatches] = useState<Array<{ path: string; relative_path: string; name: string }>>([])
   const mention = text.match(/(?:^|\s)@([^\s]*)$/)?.[1] ?? null
-  const visionCapability = activeModel?.capabilities?.vision ?? models.find((model) => model.alias === activeAlias)?.capabilities?.vision
+  const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
+  const [visionRevision, setVisionRevision] = useState(0)
+  useEffect(() => { const refresh = () => setVisionRevision(n => n + 1); window.addEventListener('rinari-vision-changed', refresh); return () => window.removeEventListener('rinari-vision-changed', refresh) }, [])
   const imageAttachments = attachments.filter((file) => file.kind === 'image' || file.mime_type?.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name))
   const visualAttachments = attachments.filter((file) =>
     (file.images?.length ?? 0) > 0
     || (file.kind === 'pdf' && (file.visualPages?.length ?? 0) > 0)
     || (imageAttachments.includes(file) && file.ocr !== true),
   )
-  const visionUnavailable = visualAttachments.length > 0 && visionCapability === false
-  const visionUnknown = visualAttachments.length > 0 && visionCapability == null && !allowUnconfirmedVision
+  const visionModelId = activeModel?.id ?? models.find(model => model.alias === activeAlias)?.id
+  const visionRouteKey = `${sessionId || 'draft'}:${visionModelId || activeAlias}`
+  const visionUnavailable = visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && !visionRoute.available
 
   useEffect(() => {
-    // A capability decision belongs to the selected model. Never carry an
-    // explicit confirmation to a different model.
-    setAllowUnconfirmedVision(false)
-  }, [activeAlias])
+    let cancelled = false
+    if (sessionId || visionModelId) void engineApi.sessionImageSupport(sessionId ?? null, visionModelId).then(support => {
+      if (!cancelled && support.model_id === visionModelId) setVisionRoute({ key: visionRouteKey, available: support.available, reason: support.reason, destination: `${support.destination_provider} / ${support.destination_model ?? support.destination_model_id}` })
+    }).catch(error => { if (!cancelled) setVisionRoute({ key: visionRouteKey, available: false, reason: commandMessage(error), destination: '' }) })
+    return () => { cancelled = true }
+  }, [sessionId, activeAlias, attachments.length, visionRouteKey, visionModelId, visionRevision])
 
   useEffect(() => {
     switchDraftSession(sessionId || 'draft')
@@ -167,14 +177,14 @@ export default function Composer({
     const content = initial.text
     const submissionSessionKey = initial.sessionKey
     const attachmentIds = attachments.map((item) => item.id)
-    if (isStreaming || isSubmitting || visionUnavailable || visionUnknown || attachments.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && attachments.length === 0)) return
+    if (isStreaming || isSubmitting || visionUnavailable || attachments.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && attachments.length === 0)) return
     initial.clear()
     autosize()
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
       const outgoing = attachments
-      const ok = await onSend(content.trim() || 'Revisa los archivos adjuntos.', outgoing, allowUnconfirmedVision)
+      const ok = await onSend(content.trim() || 'Revisa los archivos adjuntos.', outgoing)
       if (ok) removeAttachmentsById(attachmentIds)
       if (!ok) {
         restoreSubmission(submissionSessionKey, attachmentIds, content)
@@ -333,7 +343,7 @@ export default function Composer({
                 </button>
                 {file.ocr && <span className="rounded bg-[var(--accent-2)]/10 px-1 text-[10px] text-[var(--accent-2)]">OCR</span>}
                 {file.warning && <span title={file.warning} className="text-amber-300">⚠</span>}
-                {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">Páginas (ej. 1-3,5)<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateStoredAttachment(file.path, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">Páginas visuales (máx. 4)<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateStoredAttachment(file.path, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0).slice(0, 4) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">Repreparar PDF</button></div></details>}
+                {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">Páginas (ej. 1-3,5)<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateStoredAttachment(file.path, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">Páginas visuales<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateStoredAttachment(file.path, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">Repreparar PDF</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={`Cancelar preparación de ${file.name}`} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
                 {file.status === 'error' && <><span title={file.error} className="text-red-400">{file.error || 'Error'}</span><button type="button" aria-label={`Reintentar ${file.name}`} onClick={() => void prepareOne(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><RefreshCw size={11} /></button></>}
                 <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => removeStoredAttachment(file.path)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><X size={11} /></button>
@@ -342,10 +352,9 @@ export default function Composer({
           </div>
         )}
         {attachmentNotice && <div className="mb-2 rounded-lg border border-red-400/30 bg-red-400/5 px-2.5 py-2 text-[11px] text-red-300">{attachmentNotice}</div>}
-        {visionUnavailable && <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-2.5 py-2 text-[11px] text-amber-200">Este modelo no declara visión. Usa OCR para enviar solo texto extraído o cambia de modelo.</div>}
-        {visionUnknown && <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-2.5 py-2 text-[11px] text-amber-200">La capacidad de visión de este modelo es desconocida. Elige OCR, cambia de modelo o confirma explícitamente el envío visual.</div>}
-        {allowUnconfirmedVision && visualAttachments.length > 0 && <div className="mb-2 flex items-center gap-2 rounded-lg border border-[var(--accent-2)]/30 bg-[var(--accent-2)]/5 px-2.5 py-2 text-[11px] text-[var(--text-muted)]"><span className="flex-1">Se enviará contenido visual aunque el modelo no haya declarado visión.</span><button type="button" onClick={() => setAllowUnconfirmedVision(false)} className="rounded px-1.5 py-0.5 hover:bg-[var(--bg-hover)]">Cancelar confirmación</button></div>}
-        {(visionUnavailable || visionUnknown) && imageAttachments.some((file) => !file.ocr) && <div className="mb-2 flex flex-wrap gap-1.5"><button type="button" onClick={useOcrForImages} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]">Usar OCR para estas imágenes</button>{visionUnknown && <button type="button" onClick={() => setAllowUnconfirmedVision(true)} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]">Confirmar envío visual</button>}</div>}
+        {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-amber-400/30 p-2 text-xs">{visionRoute?.reason}</div>}
+        {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">Visión: {visionRoute.destination}</p>}
+        {imageAttachments.some(file => !file.ocr) && <button type="button" onClick={useOcrForImages} className="mb-2 text-[11px] text-[var(--text-muted)]">Usar OCR para estas imágenes</button>}
         {fileMatches.length > 0 && (
           <div className="absolute right-2 bottom-full left-2 z-30 mb-2 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl">
             {fileMatches.map((file) => (
@@ -500,7 +509,7 @@ export default function Composer({
           </Popover>
           <Popover open={permissionOpen} onOpenChange={setPermissionOpen}>
             <PopoverTrigger asChild>
-              <button type="button" disabled={isStreaming} title="Permisos de este chat" className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] disabled:opacity-40">
+              <button type="button" disabled={isStreaming} title="Permisos de este chat" style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-current/25 bg-[var(--bg-subtle)] px-3 py-1.5 text-xs transition-colors hover:border-current disabled:opacity-40">
                 <Shield size={13} />
                 <span>{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? 'Lectura · Acceso completo' : permissionProfile === 'workspace' ? 'Lectura · Workspace' : 'Solo lectura') : effectivePermissionProfile === 'read-only' ? 'Solo lectura' : effectivePermissionProfile === 'full-access' ? 'Acceso completo' : 'Workspace'}</span>
               </button>
@@ -513,8 +522,8 @@ export default function Composer({
                 ['full-access', 'Acceso completo', 'Permite mutaciones locales externas. Credenciales, trabajo previo y Git remoto siguen protegidos.'],
               ] as const).map(([value, label, description]) => (
                 <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? 'Actualiza Rinari Engine para usar acceso completo con garantías v2.' : undefined} onClick={() => { setPermissionOpen(false); onPermissionChange(value) }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
-                  <span className="min-w-0 flex-1"><span className="block text-[13px] text-[var(--text)]">{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? (value === 'full-access' ? 'Lee carpetas externas sin pedir permiso. Las credenciales siguen protegidas.' : value === 'workspace' ? 'Lee el proyecto y pide permiso para leer carpetas externas.' : 'Lee únicamente la carpeta de esta sesión.') : description}</span></span>
-                  {permissionProfile === value && <Check size={14} className="mt-0.5 text-[var(--accent-2)]" />}
+                  <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? (value === 'full-access' ? 'Lee carpetas externas sin pedir permiso. Las credenciales siguen protegidas.' : value === 'workspace' ? 'Lee el proyecto y pide permiso para leer carpetas externas.' : 'Lee únicamente la carpeta de esta sesión.') : description}</span></span>
+                  {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
                 </button>
               ))}
             </PopoverContent>
@@ -577,7 +586,7 @@ export default function Composer({
             <button
               type="button"
               onClick={() => void handleSend()}
-              disabled={!canSend || isSubmitting || visionUnavailable || visionUnknown || attachments.some((item) => item.status === 'preparing' || item.status === 'error')}
+              disabled={!canSend || isSubmitting || visionUnavailable || attachments.some((item) => item.status === 'preparing' || item.status === 'error')}
               aria-label={t('composer.send')}
               title={t('composer.send')}
               className="flex size-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:hover:brightness-100"

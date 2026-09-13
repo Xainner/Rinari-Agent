@@ -1,7 +1,7 @@
 import type { Language } from '../../types'
 import type { ToolTimelineItem } from './types'
 
-export type ToolCategory = 'read' | 'search' | 'list' | 'edit' | 'test' | 'git' | 'command'
+export type ToolCategory = 'image' | 'read' | 'search' | 'list' | 'edit' | 'test' | 'git' | 'command'
 
 function details(item: ToolTimelineItem): Record<string, unknown> {
   try {
@@ -18,6 +18,7 @@ function basename(value: unknown): string {
 
 export function toolCategory(tool: string): ToolCategory {
   const value = tool.toLowerCase()
+  if (value === 'fs.read_image') return 'image'
   if (value.includes('search') || value.includes('grep') || value.includes('find')) return 'search'
   if (value.includes('list') || value.includes('glob')) return 'list'
   if (value.includes('read') || value.includes('open')) return 'read'
@@ -29,9 +30,26 @@ export function toolCategory(tool: string): ToolCategory {
 
 export function formatTool(item: ToolTimelineItem, lang: Language): string {
   const args = details(item)
+  if (item.tool.startsWith('agent.')) {
+    const action = item.tool.slice('agent.'.length)
+    const labels: Record<string, [string, string]> = {
+      spawn: ['Lanzó un subagente', 'Started a subagent'],
+      wait: ['Esperó al subagente', 'Waited for subagent'],
+      result: ['Consultó el resultado del subagente', 'Read subagent result'],
+      status: ['Consultó el estado del subagente', 'Checked subagent status'],
+      message: ['Envió instrucciones al subagente', 'Sent instructions to subagent'],
+      cancel: ['Solicitó detener al subagente', 'Requested subagent cancellation'],
+      synthesize: ['Revisó resultados de subagentes', 'Reviewed subagent results'],
+    }
+    return labels[action]?.[lang === 'es' ? 0 : 1] ?? item.tool
+  }
   const target = basename(args.path ?? args.file ?? args.cwd)
   const query = String(args.query ?? args.pattern ?? '').trim()
   const category = toolCategory(item.tool)
+  if (category === 'image') {
+    if (item.status === 'failed' || item.status === 'cancelled') return lang === 'es' ? 'No pudo ver la imagen' : 'Could not view image'
+    return lang === 'es' ? (item.status === 'completed' ? 'Cargó una imagen' : 'Cargando una imagen…') : (item.status === 'completed' ? 'Loaded an image' : 'Loading an image…')
+  }
   if (lang === 'en') {
     if (category === 'read') return `Read ${target || 'a file'}`
     if (category === 'search') return query ? `Searched for “${query}”` : 'Searched the project'

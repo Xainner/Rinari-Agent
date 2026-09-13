@@ -241,6 +241,7 @@ impl EngineSupervisor {
             "interactive_questions_v1",
             "web_preview_v1",
             "plan_read_scope_v1",
+            "persistent_context_compaction_v1",
         ]
         .iter()
         .any(|cap| hello.capabilities.get(*cap) != Some(&true))
@@ -894,9 +895,13 @@ impl EngineSupervisor {
         &self,
         uri: &str,
         max_bytes: Option<u32>,
+        max_dimension: Option<u32>,
     ) -> Result<Value, CommandError> {
         let mut params = serde_json::Map::new();
         params.insert("uri".to_string(), Value::String(uri.to_string()));
+        if let Some(dimension) = max_dimension {
+            params.insert("max_dimension".to_string(), Value::Number(dimension.into()));
+        }
         if let Some(max_bytes) = max_bytes {
             params.insert("max_bytes".to_string(), Value::Number(max_bytes.into()));
         }
@@ -1282,8 +1287,11 @@ mod tests {
     fn packaged_engine_browser_catalog_roundtrip() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let (program, _) = sidecar_command(root).expect("package the engine first");
+        let image_path = std::env::temp_dir().join(format!("rinari-image-bridge-{}.png", std::process::id()));
         let code = concat!(
             "import os,runpy,sys,tempfile\n",
+            "from PIL import Image\n",
+            "Image.new('RGB',(1800,1000),'purple').save(sys.argv[1])\n",
             "with tempfile.TemporaryDirectory(prefix='rinari-agent-browser-bridge-') as home:\n",
             " os.environ['RINARI_HOME']=home\n",
             " os.environ['RINARI_KEYRING']='0'\n",
@@ -1292,7 +1300,7 @@ mod tests {
         );
         let supervisor = EngineSupervisor::new();
         supervisor
-            .start_with(&program, &["-c".into(), code.into()], None)
+            .start_with(&program, &["-c".into(), code.into(), image_path.to_string_lossy().into_owned()], None)
             .expect("real packaged engine handshake");
         let result = supervisor.request(Method::ToolList, None);
         let agents = supervisor
@@ -1317,6 +1325,19 @@ mod tests {
                 Some(serde_json::json!({"chat": true})),
             )
             .expect("temporary session");
+        let visual = supervisor.request(Method::VisionSettingsSet, Some(serde_json::json!({
+            "mode": "conversation", "model_id": null, "confirm_unknown": false,
+            "execution": {"max_concurrency": 8, "providers": {}, "models": {},
+                "timeouts": {"first_byte": 240, "idle": 90, "total": 1200}}
+        }))).expect("visual settings bridge");
+        assert_eq!(visual["mode"], "conversation");
+        assert_eq!(visual["execution"]["timeouts"]["first_byte"], 240);
+        let restored_visual = supervisor.request(Method::VisionSettingsGet, None).expect("visual settings persisted");
+        assert_eq!(restored_visual, visual);
+        let support = supervisor.request(Method::SessionImageSupport, Some(serde_json::json!({
+            "session_id": created["session"]["id"]
+        }))).expect("visual route support");
+        assert_eq!(support["route"], "conversation");
         let frame = supervisor
             .request(
                 Method::BrowserViewGet,
@@ -1331,10 +1352,20 @@ mod tests {
             )
             .expect("process panel bridge");
         assert!(processes["processes"].as_array().unwrap().is_empty());
+        let imported = supervisor.request(Method::ArtifactReceiveImage, Some(serde_json::json!({
+            "session_id": created["session"]["id"], "path": image_path.to_string_lossy()
+        }))).expect("image import through packaged engine");
+        let uri = imported["attachment"]["uri"].as_str().expect("image artifact reference");
+        std::fs::remove_file(&image_path).expect("remove original image");
+        let preview = supervisor.attachment_preview(uri, Some(524288), Some(2048))
+            .expect("large image preview through Rust bridge");
+        assert_eq!(preview["width"], 1800);
+        assert!(preview["data_url"].as_str().unwrap().starts_with("data:image/jpeg;base64,"));
         supervisor.shutdown();
         let tools = result.expect("real tool catalog");
         let rows = tools["tools"].as_array().expect("tool rows");
         for name in [
+            "fs.read_image",
             "browser.launch",
             "browser.connect",
             "browser.status",

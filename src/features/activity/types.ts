@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision'
   activitySeq: number
   occurredAt: number
 }
@@ -43,7 +43,8 @@ export interface ToolTimelineItem extends TimelineItemBase {
 }
 
 export interface ToolPresentation {
-  kind: 'command' | 'tool'
+  kind: 'command' | 'tool' | 'image'
+  image?: import('../../types/protocol.generated').ViewedImage
   tool?: string
   status?: 'success' | 'failed' | 'running'
   stderr_warning?: boolean
@@ -103,8 +104,12 @@ export interface AgentTimelineItem extends TimelineItemBase {
 }
 
 export interface ContextTimelineItem extends TimelineItemBase {
-  type: 'context'
-  status: 'running' | 'completed' | 'skipped'
+  sessionId?: string
+  error?: string
+  reason?: string
+  contextDetails?: Record<string, unknown>
+    type: 'context'
+    status: 'running' | 'completed' | 'skipped' | 'failed' | 'cancelled'
   pressure?: number
 }
 
@@ -127,7 +132,26 @@ export interface QuestionTimelineItem extends TimelineItemBase {
   request: import('../../services/desktop').QuestionRequest
 }
 
+export interface VisionTimelineItem extends TimelineItemBase {
+  generation?: Record<string, unknown>
+  origin?: string
+  messageRef?: string
+  toolCallId?: string
+  type: 'vision'
+  status: 'preparing' | 'queued' | 'running' | 'partial' | 'completed' | 'failed' | 'cancelled'
+  route: string
+  modelId: string
+  providerName: string
+  modelName: string
+  question: string
+  analysis: string
+  error?: string
+  images: import('../../types/protocol.generated').ViewedImage[]
+  cached: boolean
+}
+
 export type TimelineItem =
+  | VisionTimelineItem
   | QuestionTimelineItem
   | ModelTimelineItem
   | ToolTimelineItem
@@ -149,6 +173,7 @@ export interface TurnTimeline {
   userMessage: string
   items: TimelineItem[]
   stopReason?: TurnStopReason
+  errorDetails?: Record<string, unknown>
   error?: string
 }
 

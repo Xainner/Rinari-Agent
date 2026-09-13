@@ -81,7 +81,7 @@ export function useEngineSession() {
   }
 
   /** Envía: crea sesión si no hay activa, añade el mensaje y abre el turno. */
-  async function send(text: string, attachments: AttachmentRef[] = [], allowUnconfirmedVision = false): Promise<boolean> {
+  async function send(text: string, attachments: AttachmentRef[] = []): Promise<boolean> {
     const trimmed = text.trim()
     const currentId = sessions.activeSession
     const busy = currentId !== '' && runtime.busySessions.has(currentId)
@@ -117,7 +117,6 @@ export function useEngineSession() {
         trimmed,
         reasoningEffort === 'off' ? null : reasoningEffort,
         preparedAttachments,
-        allowUnconfirmedVision,
       )
       runtime.dispatch({ type: 'turn/ack', turnId: started.turn_id, sessionId, now: Date.now() })
       return true

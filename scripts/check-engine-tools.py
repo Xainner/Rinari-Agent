@@ -78,9 +78,14 @@ def main():
     for name in manifest["required_capabilities"]:
         assert info["capabilities"].get(name) is True, f"Missing capability: {name}"
     rows = replies["tools"]["result"]["tools"]
-    assert len(rows) == 105 and len({row["name"] for row in rows}) == 105
+    from rinari.tools.catalog import builtin_catalog
+
+    expected = set(builtin_catalog().names())
+    names = {row["name"] for row in rows}
+    assert len(rows) == len(names), "Duplicate tool names"
+    assert names == expected, f"Tool catalog mismatch: missing={expected - names}, extra={names - expected}"
     assert all(row.get("input_schema") and row.get("output_schema") for row in rows)
-    print("Packaged engine: 105 unique tools, input/output contracts and required capabilities OK")
+    print(f"Packaged engine: {len(names)} unique tools, input/output contracts and required capabilities OK")
     check_ocr(python)
 
 

@@ -67,6 +67,7 @@ function defaultTimeline(turnId: string, sessionId: string, now: number): TurnTi
 }
 
 function itemId(event: string, payload: Record<string, unknown>): string {
+  if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
   if (event.startsWith('question.')) return `question:${payload.request_id}`
   if (event.startsWith('agent.') && payload.agent_id) return `agent:${payload.agent_id}`
@@ -75,7 +76,7 @@ function itemId(event: string, payload: Record<string, unknown>): string {
   if (payload.approval_id) return `approval:${payload.approval_id}`
   if (payload.agent_id) return `agent:${payload.agent_id}`
   if (event.startsWith('verification.')) return 'verification:completion-gate'
-  if (event === 'governor.compact') return `context:${payload.activity_seq ?? 0}`
+  if (event === 'governor.compact') return `context:${payload.compaction_id ?? payload.activity_seq ?? 0}`
   return `system:${payload.activity_seq ?? event}`
 }
 
@@ -91,9 +92,14 @@ function errorMessage(value: unknown): string | undefined {
 function presentation(value: unknown): ToolPresentation | undefined {
   if (!value || typeof value !== 'object') return undefined
   const raw = value as Record<string, unknown>
-  const kind = raw.kind === 'command' ? 'command' : 'tool'
+  const kind = raw.kind === 'command' ? 'command' : raw.kind === 'image' ? 'image' : 'tool'
+  const image = raw.image && typeof raw.image === 'object' ? raw.image as Record<string, unknown> : undefined
   return {
     kind,
+    image: image && typeof image.uri === 'string' && image.uri.startsWith('artifact://')
+      ? { uri: image.uri, name: text(image.name), path: text(image.path),
+          width: Number(image.width) || 0, height: Number(image.height) || 0 }
+      : undefined,
     tool: text(raw.tool) || undefined,
     status: raw.status === 'failed' || raw.status === 'running' ? raw.status : 'success',
     stderr_warning: raw.stderr_warning === true,
@@ -156,6 +162,22 @@ function mergeEventItem(
           : prior?.outputKind,
       model: text(payload.model) || prior?.model,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
+    }
+  }
+  if (event.startsWith('vision.')) {
+    const prior = current?.type === 'vision' ? current : undefined
+    return { id, type: 'vision', activitySeq, occurredAt,
+      generation: payload.generation && typeof payload.generation === 'object' ? payload.generation as Record<string, unknown> : prior?.generation,
+      origin: text(payload.origin) || prior?.origin, messageRef: text(payload.message_ref) || prior?.messageRef, toolCallId: text(payload.tool_call_id) || prior?.toolCallId,
+      status: event.endsWith('partial') ? 'partial' : event.endsWith('queued') ? 'queued' : event.endsWith('preparing') ? 'preparing' : event.endsWith('completed') ? 'completed' : event.endsWith('failed') ? 'failed' : event.endsWith('cancelled') ? 'cancelled' : 'running',
+      route: text(payload.route) || prior?.route || '', modelId: text(payload.model_id) || prior?.modelId || '',
+      providerName: text(payload.provider_name) || prior?.providerName || '', modelName: text(payload.model_name) || prior?.modelName || '',
+      question: text(payload.question) || prior?.question || '', analysis: text(payload.analysis) || prior?.analysis || '',
+      error: errorMessage(payload.error), cached: payload.cached === true,
+      images: Array.isArray(payload.images) ? payload.images.flatMap(image => {
+        const parsed = presentation({ kind: 'image', image })?.image
+        return parsed ? [parsed] : []
+      }) : prior?.images || [],
     }
   }
   if (event.startsWith('tool.')) {
@@ -303,10 +325,14 @@ function mergeEventItem(
     return {
       id,
       type: 'context',
+      sessionId: text(payload.session_id) || undefined,
+      error: text(payload.error) || undefined,
+      reason: text(payload.reason) || undefined,
+      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source },
       activitySeq,
       occurredAt,
       status:
-        payload.status === 'completed' ? 'completed' : payload.status === 'skipped' ? 'skipped' : 'running',
+        payload.status === 'failed' ? 'failed' : payload.status === 'cancelled' ? 'cancelled' : payload.status === 'completed' ? 'completed' : payload.status === 'skipped' ? 'skipped' : 'running',
       pressure: number(payload.pressure),
     }
   }
@@ -370,6 +396,9 @@ function normalizePersistedTurn(turn: TimelineTurn): TurnTimeline {
     startedAt: parseTime(turn.started_at, 0),
     completedAt: turn.completed_at ? parseTime(turn.completed_at, 0) : undefined,
     userMessage: turn.user_message,
+    error: errorMessage(turn.terminal?.error),
+    errorDetails: turn.terminal?.error && typeof turn.terminal.error === 'object'
+      ? (turn.terminal.error as { details?: Record<string, unknown> }).details : undefined,
     items: [],
   }
   for (const item of turn.items) {
@@ -427,6 +456,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
           status: incomingTerminal ? incoming.status : current.status,
           completedAt: incomingTerminal ? incoming.completedAt : current.completedAt,
           error: incomingTerminal ? incoming.error : current.error,
+          errorDetails: incomingTerminal ? incoming.errorDetails : current.errorDetails,
           stopReason: incomingTerminal ? incoming.stopReason : current.stopReason,
           items: incoming.items,
         }
@@ -440,7 +470,12 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
         timelines[incoming.turnId] = merged
       }
     }
-    return { ...state, timelines }
+    const busySessions = new Set(state.busySessions)
+    for (const row of action.turns) {
+      if (!Object.values(timelines).some((turn) => turn.sessionId === row.session_id &&
+        ['running', 'approval', 'cancelling'].includes(turn.status))) busySessions.delete(row.session_id)
+    }
+    return { ...state, timelines, busySessions }
   }
   if (action.type === 'turn/ack') {
     const current = state.timelines[action.turnId] ?? defaultTimeline(action.turnId, action.sessionId, action.now)
@@ -510,7 +545,9 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       let timeline = next.timelines[turnId] ?? defaultTimeline(turnId, sessionId, action.now)
       timeline = {
         ...timeline,
-        status: turn.status === 'cancelling' ? 'cancelling' : 'running',
+        status: terminalStatus(`turn.${turn.status}`) ??
+          (['completed', 'failed', 'cancelled', 'stopped'].includes(timeline.status)
+            ? timeline.status : turn.status === 'cancelling' ? 'cancelling' : 'running'),
         mode: text(turn.mode) || timeline.mode,
         startedAt: parseTime(turn.started_at, timeline.startedAt),
       }
@@ -523,7 +560,9 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       next = {
         ...next,
         timelines: { ...next.timelines, [turnId]: timeline },
-        busySessions: busyCopy(next.busySessions, sessionId, true),
+        busySessions: busyCopy(next.busySessions, sessionId,
+          Object.values({ ...next.timelines, [turnId]: timeline }).some((value) =>
+            value.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(value.status))),
       }
     }
     return next
@@ -559,6 +598,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
         status: terminal,
         completedAt: parseTime(payload.occurred_at, action.now),
         error: event === 'turn.failed' ? errorMessage(payload.error) : timeline.error,
+        errorDetails: event === 'turn.failed' && payload.error && typeof payload.error === 'object' ? (payload.error as { details?: Record<string, unknown> }).details : timeline.errorDetails,
         stopReason: event === 'turn.stopped'
           ? {
               code: text(payload.reason) || 'stopped',
@@ -568,7 +608,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       }
     } else {
       timeline = mergeIntoTimeline(timeline, event, payload, action.now)
-      if (event === 'approval.requested') timeline = { ...timeline, status: 'approval' }
+      if (event === 'approval.requested' && ['running', 'approval'].includes(timeline.status)) timeline = { ...timeline, status: 'approval' }
       if ((event === 'approval.resolved' || event === 'approval.expired') && timeline.status === 'approval') {
         timeline = { ...timeline, status: 'running' }
       }
@@ -591,11 +631,12 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
     : event === 'approval.resolved' || event === 'approval.expired'
       ? state.approvals.filter((item) => item.approval_id !== text(payload.approval_id))
       : state.approvals
-  const terminal = terminalStatus(event)
   return {
     ...state,
     timelines: { ...state.timelines, [turnId]: timeline },
-    busySessions: terminal ? busyCopy(state.busySessions, sessionId, false) : busyCopy(state.busySessions, sessionId, true),
+    busySessions: busyCopy(state.busySessions, sessionId,
+      Object.values({ ...state.timelines, [turnId]: timeline }).some((turn) =>
+        turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))),
     approvals,
   }
 }
@@ -606,6 +647,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('turn.') ||
     event.event.startsWith('model.') ||
     event.event.startsWith('tool.') ||
+    event.event.startsWith('vision.') ||
     event.event.startsWith('question.') ||
     event.event.startsWith('approval.') ||
     event.event.startsWith('governor.') ||

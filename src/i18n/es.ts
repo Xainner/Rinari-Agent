@@ -395,6 +395,8 @@ export const es = {
   'settings.nav.general': 'General',
   'settings.nav.appearance': 'Apariencia',
   'settings.nav.connection': 'Conexión',
+  'settings.nav.vision': 'Visión e imágenes',
+  'settings.nav.context': 'Contexto',
   'settings.nav.models': 'Modelos',
   'settings.nav.reasoning': 'Razonamiento',
   'settings.nav.profiles': 'Perfiles',

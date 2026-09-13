@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/rinari-agent-hero.png" alt="Rinari Agent — Your AI workspace. Your workflow." width="100%" />
+<img src="docs/assets/rinari-agent-hero-v2.png" alt="Rinari moving through a sculptural glass workspace — Your ideas. In motion." width="100%" />
 
 # Rinari Agent
 
@@ -168,7 +168,7 @@ Found a bug or a workflow that needs attention? [Open an issue](https://github.c
 
 <div align="center">
 
-<img src="docs/assets/rinari-agent-closing.png" alt="Rinari at her desk — Make room for your next idea." width="100%" />
+<img src="docs/assets/rinari-agent-closing-v2.png" alt="Rinari walking toward a luminous doorway — Build what comes next." width="100%" />
 
 **Bring the idea. Keep sight of the work.**
 

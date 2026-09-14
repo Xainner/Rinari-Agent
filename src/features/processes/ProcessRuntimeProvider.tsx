@@ -71,6 +71,7 @@ export interface SessionSnapshot {
   freshness: ConnectionFreshness
   ordered: ProcessPresentation[]
   selectedId: string | null
+  pinnedId: string | null
   selectedOutput: ProcessOutput | null
   selectedMissing: boolean
   listError: string | null
@@ -86,6 +87,7 @@ function emptySnapshot(freshness: ConnectionFreshness): SessionSnapshot {
     freshness,
     ordered: [],
     selectedId: null,
+    pinnedId: null,
     selectedOutput: null,
     selectedMissing: false,
     listError: null,
@@ -487,6 +489,7 @@ export function ProcessRuntimeProvider({
       freshness: rt.freshness,
       ordered,
       selectedId: rt.selectedId,
+      pinnedId: rt.pinnedId,
       selectedOutput,
       selectedMissing: rt.selectedMissing,
       listError: rt.listError,

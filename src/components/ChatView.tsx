@@ -11,6 +11,7 @@ import Composer from './composer/Composer'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
+import ProcessesDock from '../features/processes/ProcessesDock'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
 import ScrollToBottom from './chat/ScrollToBottom'
@@ -46,6 +47,7 @@ interface ChatViewProps {
   permissionProfilesV2: boolean
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
+  processesOpenSignal?: number
 }
 
 export default function ChatView({
@@ -78,6 +80,7 @@ export default function ChatView({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
+  processesOpenSignal = 0,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -214,6 +217,7 @@ export default function ChatView({
           />
         </>
     ) : undefined}>
+      {sessionId !== '' && <ProcessesDock sessionId={sessionId} openSignal={processesOpenSignal} />}
       <Questions key={sessionId} sessionId={sessionId} />
       {composer}
     </HomeWelcome>

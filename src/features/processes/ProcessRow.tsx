@@ -1,0 +1,149 @@
+import { useState } from 'react'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { ExternalLink, Square } from 'lucide-react'
+import { useI18n } from '../../i18n'
+import {
+  deriveStatusKey,
+  elapsedMsSinceStarted,
+  formatElapsedShort,
+  kindLabel,
+  resourceTitle,
+  type ProcessPresentation,
+  type StopOperation,
+} from './processesModel'
+
+function statusColor(key: ReturnType<typeof deriveStatusKey>): string {
+  switch (key) {
+    case 'running':
+      return 'var(--success)'
+    case 'finished_error':
+      return 'var(--danger)'
+    case 'unverified':
+    case 'unknown':
+      return 'var(--warning)'
+    default:
+      return 'var(--text-subtle)'
+  }
+}
+
+function isHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
+    if (parsed.username !== '' || parsed.password !== '') return false
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Fila compacta de un recurso. El disclosure y las acciones son botones
+ * hermanos: nunca se anida Detener/Abrir dentro de otro button.
+ */
+export default function ProcessRow({
+  presentation,
+  detailId,
+  expanded,
+  stopState,
+  now,
+  onToggle,
+  onStop,
+}: {
+  presentation: ProcessPresentation
+  detailId: string
+  expanded: boolean
+  stopState: StopOperation
+  now: number
+  onToggle: () => void
+  onStop: () => void
+}) {
+  const { t } = useI18n()
+  const [urlError, setUrlError] = useState('')
+  const { resource } = presentation
+  const name = resourceTitle(resource)
+  const statusKey = deriveStatusKey(resource)
+  const statusLabel =
+    statusKey === 'running'
+      ? t('processes.running')
+      : statusKey === 'finished_ok'
+        ? t('processes.finishedOk')
+        : statusKey === 'finished_error'
+          ? t('processes.finishedError', { code: resource.exit_code ?? 0 })
+          : statusKey === 'stop_confirmed'
+            ? t('processes.stopConfirmed')
+            : statusKey === 'external'
+              ? t('processes.external')
+              : statusKey === 'no_owned_process'
+                ? t('processes.noOwnedProcess')
+                : statusKey === 'unverified'
+                  ? t('processes.unverified')
+                  : t('processes.unknownState')
+  const elapsed = resource.running ? elapsedMsSinceStarted(resource.started_at, now) : null
+  const stopping = stopState.state === 'requesting' || stopState.state === 'reconciling'
+  const validUrl = typeof resource.url === 'string' && isHttpUrl(resource.url) ? resource.url : null
+
+  return (
+    <li className="processes-row" data-resource-id={resource.id}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={detailId}
+        onClick={onToggle}
+        aria-label={t(expanded ? 'processes.hideOutput' : 'processes.viewOutput', { name })}
+        className="processes-row-main"
+      >
+        <span aria-hidden="true" className="processes-dot" style={{ background: statusColor(statusKey) }} />
+        <span className="processes-row-text">
+          <span className="processes-row-name" title={resource.command}>
+            {name}
+          </span>
+          <span className="processes-row-meta">
+            {statusLabel}
+            {elapsed != null && ` · ${formatElapsedShort(elapsed)}`}
+            {resource.pid != null && ` · PID ${resource.pid}`}
+            {resource.kind !== 'process' && ` · ${kindLabel(resource.kind)}`}
+          </span>
+        </span>
+        <span aria-hidden="true" className={`processes-chevron${expanded ? ' open' : ''}`}>
+          ▾
+        </span>
+      </button>
+      <span className="processes-row-actions">
+        {validUrl && (
+          <button
+            type="button"
+            aria-label={t('processes.openUrl', { url: validUrl })}
+            title={validUrl}
+            onClick={() => {
+              setUrlError('')
+              void openUrl(validUrl).catch((reason: unknown) =>
+                setUrlError(reason instanceof Error ? reason.message : String(reason)),
+              )
+            }}
+            className="processes-action"
+          >
+            <ExternalLink size={13} />
+          </button>
+        )}
+        {resource.can_stop && (
+          <button
+            type="button"
+            aria-label={t('processes.stop', { name })}
+            disabled={stopping}
+            onClick={onStop}
+            className="processes-action processes-action-stop"
+          >
+            <Square size={11} />
+            {stopping ? t('processes.stopping') : t('processes.stopShort')}
+          </button>
+        )}
+      </span>
+      {urlError && (
+        <p role="alert" className="processes-row-error">
+          {urlError}
+        </p>
+      )}
+    </li>
+  )
+}

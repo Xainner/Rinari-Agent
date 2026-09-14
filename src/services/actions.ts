@@ -10,6 +10,7 @@ export type DesktopAction =
   | 'sidebar'
   | 'files'
   | 'commands'
+  | 'processes'
   | 'undo'
   | 'redo'
 export function dispatchAction(action: DesktopAction) {

@@ -348,6 +348,7 @@ function App() {
             onStop={() => void session.cancelTurn()}
             onOpenProviders={() => goSettings('providers')}
             models={session.models}
+            providers={session.providers}
             activeAlias={session.activeModel?.alias ?? null}
             activeModel={session.activeModel}
             onUseModel={(model) => void session.useModel(model)}

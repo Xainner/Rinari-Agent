@@ -9,7 +9,8 @@ export function Section({
   desc,
   children,
 }: {
-  title: string
+  /** Acepta nodos para poder anteponer el logo del proveedor al título. */
+  title: ReactNode
   desc?: string
   children: ReactNode
 }) {

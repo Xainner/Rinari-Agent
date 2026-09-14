@@ -4,10 +4,12 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
 import { useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
-import { engineApi, commandMessage, type ModelSummary } from '../../services/engine'
+import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
+import { brandForProvider } from '../../lib/providerBrand'
+import ProviderLogo from '../ProviderLogo'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -26,6 +28,8 @@ interface ComposerProps {
   isStreaming: boolean
   onStop: () => void
   models: ModelSummary[]
+  /** Catálogo de proveedores para resolver el logo por alias/endpoint. */
+  providers?: ProviderSummary[]
   activeAlias: string | null
   activeModel?: ModelSummary | null
   onUseModel: (model: ModelSummary) => void
@@ -59,6 +63,7 @@ export default function Composer({
   isStreaming,
   onStop,
   models,
+  providers,
   activeAlias,
   activeModel,
   onUseModel,
@@ -93,7 +98,12 @@ export default function Composer({
   useEffect(() => {
     if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
-  const providers = [...new Set(models.map(model => model.provider ?? 'Otros'))]
+  const providerGroups = [...new Set(models.map(model => model.provider ?? 'Otros'))]
+  const providerEndpoint = (alias: string | null | undefined) =>
+    providers?.find((provider) => provider.alias === alias)?.endpoint ?? null
+  const activeProvider =
+    (activeModel ?? models.find((model) => model.alias === activeAlias))?.provider ?? activeAlias
+  const activeBrand = brandForProvider({ alias: activeProvider, endpoint: providerEndpoint(activeProvider) })
   const normalizedModelQuery = modelQuery.trim().toLowerCase()
   const matchingModels = normalizedModelQuery
     ? models.filter((model) => [model.alias, model.provider, model.provider_model_id].filter(Boolean).join(' ').toLowerCase().includes(normalizedModelQuery))
@@ -443,7 +453,11 @@ export default function Composer({
                 title={t('composer.chooseModel')}
                 className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] disabled:opacity-40"
               >
-                <Box size={13} aria-hidden="true" className="shrink-0" />
+                {activeBrand ? (
+                  <ProviderLogo brand={activeBrand} size={14} />
+                ) : (
+                  <Box size={13} aria-hidden="true" className="shrink-0" />
+                )}
                 <span className="truncate">{activeAlias ?? t('composer.noModel')}</span>
               </button>
             </PopoverTrigger>
@@ -471,8 +485,13 @@ export default function Composer({
                   </button>
                 )}
                 {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">No se encontraron modelos.</p>}
-                {providers.filter(provider => matchingModels.some(model => (model.provider ?? 'Otros') === provider)).map(provider => <section key={provider} aria-label={provider}>
-                  <h3 className="px-2.5 pt-3 pb-1 text-[11px] font-semibold text-[var(--text-subtle)]">{provider}</h3>
+                {providerGroups.filter(provider => matchingModels.some(model => (model.provider ?? 'Otros') === provider)).map(provider => <section key={provider} aria-label={provider}>
+                  <h3 className="flex items-center gap-1.5 px-2.5 pt-3 pb-1 text-[11px] font-semibold text-[var(--text-subtle)]">
+                    <span className="flex size-3.5 shrink-0 items-center justify-center">
+                      <ProviderLogo alias={provider} endpoint={providerEndpoint(provider)} size={13} />
+                    </span>
+                    {provider}
+                  </h3>
                   {matchingModels.filter(model => (model.provider ?? 'Otros') === provider).map((model) => (
                   <button
                     key={model.id}

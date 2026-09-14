@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Pin, PinOff, Square, X } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { ArrowLeft, Copy, ExternalLink, MessageSquarePlus, Pin, PinOff, Square, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
+import { copyText } from '../../lib/clipboard'
 import {
   deriveStatusKey,
   isExternalPreview,
@@ -10,6 +12,9 @@ import {
   type ProcessPresentation,
   type StopOperation,
 } from './processesModel'
+import { isHttpUrl } from './ProcessRow'
+import ProcessLogView from './ProcessLogView'
+import ProcessQueryDialog from './ProcessQueryDialog'
 import type { ProcessOutput } from '../../types/protocol.generated'
 
 type Filter = 'active' | 'attention' | 'finished' | 'external' | 'all'
@@ -54,6 +59,7 @@ function matches(presentation: ProcessPresentation, filter: Filter): boolean {
  * salida snapshot. Crece hacia arriba en el flujo, nunca tapa el composer.
  */
 export default function ProcessInspector({
+  sessionId,
   ordered,
   defaultFilter = 'all',
   selectedId,
@@ -63,13 +69,16 @@ export default function ProcessInspector({
   stopById,
   listTruncated,
   pinnedId,
+  logPaused,
+  onLogPausedChange,
   onSelect,
-  onStop,
+  onStopRequest,
   onAcknowledge,
   onDismiss,
   onPin,
   onClose,
 }: {
+  sessionId: string
   ordered: ProcessPresentation[]
   defaultFilter?: Filter
   selectedId: string | null
@@ -79,8 +88,10 @@ export default function ProcessInspector({
   stopById: Map<string, StopOperation>
   listTruncated: boolean
   pinnedId: string | null
+  logPaused: boolean
+  onLogPausedChange: (paused: boolean) => void
   onSelect: (id: string | null) => void
-  onStop: (id: string) => void
+  onStopRequest: (id: string) => void
   onAcknowledge: (id: string) => void
   onDismiss: (id: string) => void
   onPin: (id: string | null) => void
@@ -203,12 +214,15 @@ export default function ProcessInspector({
             </p>
           ) : (
             <ProcessDetail
+              sessionId={sessionId}
               presentation={selected}
               output={selectedOutput}
               readError={readError}
               stopState={stopById.get(selected.resource.id) ?? { state: 'idle' }}
               pinned={pinnedId === selected.resource.id}
-              onStop={() => onStop(selected.resource.id)}
+              logPaused={logPaused}
+              onLogPausedChange={onLogPausedChange}
+              onStopRequest={() => onStopRequest(selected.resource.id)}
               onAcknowledge={() => onAcknowledge(selected.resource.id)}
               onDismiss={() => onDismiss(selected.resource.id)}
               onPin={() => onPin(pinnedId === selected.resource.id ? null : selected.resource.id)}
@@ -220,35 +234,68 @@ export default function ProcessInspector({
   )
 }
 
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const { t } = useI18n()
+  const [done, setDone] = useState(false)
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={() => {
+        void copyText(text).then((ok) => {
+          if (ok) {
+            setDone(true)
+            window.setTimeout(() => setDone(false), 2000)
+          }
+        })
+      }}
+      className="processes-action"
+    >
+      <Copy size={13} />
+      {done ? t('processes.copied') : label}
+    </button>
+  )
+}
+
 function ProcessDetail({
+  sessionId,
   presentation,
   output,
   readError,
   stopState,
   pinned,
-  onStop,
+  logPaused,
+  onLogPausedChange,
+  onStopRequest,
   onAcknowledge,
   onDismiss,
   onPin,
 }: {
+  sessionId: string
   presentation: ProcessPresentation
   output: ProcessOutput | null
   readError: string | null
   stopState: StopOperation
   pinned: boolean
-  onStop: () => void
+  logPaused: boolean
+  onLogPausedChange: (paused: boolean) => void
+  onStopRequest: () => void
   onAcknowledge: () => void
   onDismiss: () => void
   onPin: () => void
 }) {
   const { t } = useI18n()
+  const [showTech, setShowTech] = useState(false)
+  const [queryOpen, setQueryOpen] = useState(false)
+  const [urlError, setUrlError] = useState('')
   const { resource } = presentation
   const name = resourceTitle(resource)
   const statusKey = deriveStatusKey(resource)
   const stopping = stopState.state === 'requesting' || stopState.state === 'reconciling'
   const failure = isFailureStatus(resource, false) && !presentation.attentionAcknowledged
-  const canDismiss =
-    !resource.running && !presentation.dismissedFromStrip && !failure
+  const canDismiss = !resource.running && !presentation.dismissedFromStrip && !failure
+  const validUrl = typeof resource.url === 'string' && isHttpUrl(resource.url) ? resource.url : null
 
   return (
     <div>
@@ -269,7 +316,7 @@ function ProcessDetail({
             <button
               type="button"
               disabled={stopping}
-              onClick={onStop}
+              onClick={onStopRequest}
               aria-label={t('processes.stop', { name })}
               className="processes-action processes-action-stop"
             >
@@ -279,6 +326,12 @@ function ProcessDetail({
           )}
         </span>
       </div>
+      {(stopState.state === 'failed' || stopState.state === 'uncertain') && (
+        <p role="alert" className="processes-error">
+          {stopState.state === 'failed' ? t('processes.stillActive') : t('processes.stopUncertain')}
+          {stopState.message ? ` · ${stopState.message}` : ''}
+        </p>
+      )}
       <dl className="processes-meta">
         <div>
           <dt>{t('processes.command')}</dt>
@@ -288,7 +341,56 @@ function ProcessDetail({
           <dt>{t('processes.workdir')}</dt>
           <dd className="processes-mono">{resource.cwd}</dd>
         </div>
+        {validUrl && (
+          <div>
+            <dt>URL</dt>
+            <dd>
+              <button
+                type="button"
+                onClick={() => {
+                  setUrlError('')
+                  void openUrl(validUrl).catch((reason: unknown) =>
+                    setUrlError(reason instanceof Error ? reason.message : String(reason)),
+                  )
+                }}
+                className="processes-link"
+              >
+                <ExternalLink size={12} /> {validUrl}
+              </button>
+              {urlError && (
+                <p role="alert" className="processes-error">
+                  {urlError}
+                </p>
+              )}
+            </dd>
+          </div>
+        )}
       </dl>
+      <div className="processes-detail-tools">
+        <CopyButton text={resource.command} label={t('processes.copyCommand')} />
+        <CopyButton text={resource.cwd} label={t('processes.copyPath')} />
+        <button type="button" onClick={() => setShowTech((value) => !value)} aria-expanded={showTech} className="processes-action">
+          {t('processes.techDetails')}
+        </button>
+        <button type="button" onClick={() => setQueryOpen(true)} className="processes-action">
+          <MessageSquarePlus size={13} />
+          {t('processes.askAbout')}
+        </button>
+      </div>
+      {showTech && (
+        <dl className="processes-meta processes-tech">
+          <div>
+            <dt>ID</dt>
+            <dd className="processes-mono">{resource.id}</dd>
+          </div>
+          {resource.pid != null && (
+            <div>
+              <dt>PID</dt>
+              <dd className="processes-mono">{resource.pid}</dd>
+            </div>
+          )}
+        </dl>
+      )}
       {!resource.can_stop && resource.running && <p className="processes-note">{t('processes.cannotStop')}</p>}
       {failure && (
         <button type="button" onClick={onAcknowledge} className="processes-link">
@@ -305,22 +407,16 @@ function ProcessDetail({
           {readError}
         </p>
       )}
-      <div className="processes-output">
-        {output ? (
-          <>
-            <pre className="processes-pre">{output.stdout || (!output.stderr ? '—' : '')}</pre>
-            {output.stderr && (
-              <>
-                <p className="processes-stderr-label">stderr</p>
-                <pre className="processes-pre processes-stderr">{output.stderr}</pre>
-              </>
-            )}
-            {output.truncated && <p className="processes-note">{t('processes.outputPartial')}</p>}
-          </>
-        ) : (
-          !readError && <p className="processes-empty">{t('processes.loading')}</p>
-        )}
-      </div>
+      {readError == null && <ProcessLogView output={output} paused={logPaused} onPausedChange={onLogPausedChange} />}
+      {queryOpen && (
+        <ProcessQueryDialog
+          sessionId={sessionId}
+          resource={resource}
+          output={output}
+          open={queryOpen}
+          onClose={() => setQueryOpen(false)}
+        />
+      )}
     </div>
   )
 }

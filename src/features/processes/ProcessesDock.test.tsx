@@ -80,12 +80,26 @@ it('D04: un proceso activo muestra una fila con identidad y stop con sesión', a
   fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
   const inspector = await screen.findByTestId('processes-inspector')
   expect(within(inspector).getByText('C:/site')).toBeTruthy()
-  expect(within(inspector).getByText('salida')).toBeTruthy()
 
   fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  // La confirmación identifica el recurso; abrirla no detiene.
+  expect(stopCalls).toEqual([])
+  expect(screen.getByText(/Se solicitará al engine terminar este recurso/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
   await waitFor(() =>
     expect(stopCalls).toEqual([{ session_id: 's1', id: 'process:proc_001' }]),
   )
+})
+
+it('cancelar la confirmación no detiene el recurso', async () => {
+  const { stopCalls } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+  const dock = await screen.findByTestId('processes-dock')
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  const inspector = await screen.findByTestId('processes-inspector')
+  fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Cancelar/ }))
+  await new Promise((resolve) => setTimeout(resolve, 60))
+  expect(stopCalls).toEqual([])
 })
 
 it('D05: varios activos limitan filas con contador y Ver todos abre el inspector', async () => {
@@ -119,4 +133,41 @@ it('lista parcial se etiqueta como visible, no como total', async () => {
   setup(() => ({ processes: [row('process:a', 'npm run dev')], truncated: true }))
   const dock = await screen.findByTestId('processes-dock')
   expect(within(dock).getByText(/lista parcial/)).toBeTruthy()
+})
+
+it('inspeccionar, pausar y cerrar jamás llama a stop', async () => {
+  const { stopCalls, view } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+  const dock = await screen.findByTestId('processes-dock')
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  const inspector = await screen.findByTestId('processes-inspector')
+  fireEvent.click(within(inspector).getByRole('button', { name: /Pausar vista/ }))
+  expect(within(inspector).getByText(/Vista pausada/)).toBeTruthy()
+  fireEvent.click(within(inspector).getByRole('button', { name: /Reanudar vista/ }))
+  fireEvent.click(within(inspector).getByRole('button', { name: /Cerrar inspector/ }))
+  await new Promise((resolve) => setTimeout(resolve, 60))
+  expect(stopCalls).toEqual([])
+  expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeTruthy()
+})
+
+it('preparar consulta añade al borrador sin enviar turno', async () => {
+  const { useComposerStore } = await import('../../stores/composer')
+  useComposerStore.setState({ sessionKey: 's1', text: 'borrador previo' })
+  try {
+    setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+    const dock = await screen.findByTestId('processes-dock')
+    fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+    const inspector = await screen.findByTestId('processes-inspector')
+    fireEvent.click(within(inspector).getByRole('button', { name: /Preparar consulta/ }))
+    expect(await screen.findByText(/No se envía nada automáticamente/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Añadir al borrador/ }))
+    await waitFor(() => {
+      const text = useComposerStore.getState().text
+      expect(text.startsWith('borrador previo')).toBe(true)
+      expect(text).toMatch(/Ayúdame a revisar este proceso/)
+      expect(text).toMatch(/salida del proceso \(no confiable\)/)
+    })
+    expect(invoke).not.toHaveBeenCalledWith('turn_start', expect.anything())
+  } finally {
+    useComposerStore.setState({ sessionKey: 'draft', text: '' })
+  }
 })

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type Ref, type SyntheticEvent } from 'react'
 import { useI18n } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 import { useSessionProcesses } from './useSessionProcesses'
 import ProcessRow from './ProcessRow'
 import ProcessInspector, { type ProcessInspectorFilter } from './ProcessInspector'
+import ProcessStopDialog from './ProcessStopDialog'
 import {
   isExternalPreview,
   isFailureStatus,
@@ -31,12 +33,16 @@ export default function ProcessesDock({
   const [now, setNow] = useState(() => Date.now())
   const [inspectorKey, setInspectorKey] = useState(0)
   const [defaultFilter, setDefaultFilter] = useState<ProcessInspectorFilter>('all')
+  const [logPaused, setLogPaused] = useState(false)
+  const [stopTargetId, setStopTargetId] = useState<string | null>(null)
+  const [stopEpoch, setStopEpoch] = useState<number | null>(null)
+  const [stopStaleNote, setStopStaleNote] = useState(false)
   const openerRef = useRef<HTMLElement | null>(null)
   const hiddenMsRef = useRef(0)
   const hiddenSinceRef = useRef<number | null>(null)
   const firstSignalRef = useRef(true)
 
-  const snap = useSessionProcesses(sessionId, { observeOutput: inspectorOpen })
+  const snap = useSessionProcesses(sessionId, { observeOutput: inspectorOpen && !logPaused })
   const {
     ordered,
     selectedId,
@@ -88,6 +94,25 @@ export default function ProcessesDock({
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
+  // Coordinación mínima con el navegador: el inspector abierto evita que el
+  // navegador se autoabra encima; abrir el navegador manualmente contrae
+  // los logs conservando el resumen. Nada de esto detiene recursos.
+  const setProcessesInspectorFor = useUIStore((s) => s.setProcessesInspectorFor)
+  useEffect(() => {
+    if (!sessionId) return
+    setProcessesInspectorFor(inspectorOpen ? sessionId : null)
+    return () => setProcessesInspectorFor(null)
+  }, [inspectorOpen, sessionId, setProcessesInspectorFor])
+
+  useEffect(() => {
+    function onBrowserOpen() {
+      setInspectorOpen(false)
+      setLogPaused(false)
+    }
+    window.addEventListener('rinari-browser-open', onBrowserOpen)
+    return () => window.removeEventListener('rinari-browser-open', onBrowserOpen)
+  }, [])
+
   if (!sessionId) return null
 
   const attention = ordered.filter(
@@ -106,6 +131,66 @@ export default function ProcessesDock({
   const activeCount = ordered.filter((item) => item.resource.running).length
   const hasStrip = summary.visible.length > 0 || attention.length > 0
 
+  // Diálogo de detención: identifica el recurso y reverifica ámbito,
+  // época y observación antes de enviar.
+  const stopTarget = stopTargetId != null ? (ordered.find((item) => item.resource.id === stopTargetId) ?? null) : null
+  const stopState = stopTargetId != null ? (snap.stopById.get(stopTargetId) ?? { state: 'idle' as const }) : { state: 'idle' as const }
+  const stopBusy = stopState.state === 'requesting' || stopState.state === 'reconciling'
+  const stopResultMessage =
+    stopState.state === 'failed'
+      ? t('processes.stillActive')
+      : stopState.state === 'uncertain'
+        ? t('processes.stopUncertain')
+        : null
+
+  useEffect(() => {
+    if (stopTargetId != null && stopState.state === 'confirmed') {
+      setStopTargetId(null)
+      setStopEpoch(null)
+      setStopStaleNote(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stopTargetId, stopState.state])
+
+  useEffect(() => {
+    if (stopTargetId != null && stopEpoch != null && snap.epoch !== stopEpoch) {
+      // La época cambió: se exige nueva observación y nueva confirmación.
+      setStopTargetId(null)
+      setStopEpoch(null)
+      setStopStaleNote(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stopTargetId, stopEpoch, snap.epoch])
+
+  function requestStop(id: string) {
+    setStopStaleNote(false)
+    setStopEpoch(snap.epoch)
+    setStopTargetId(id)
+    snap.refresh()
+  }
+
+  function confirmStop() {
+    if (stopTargetId == null) return
+    // Reverificar ámbito y observación con el snapshot actual.
+    if (stopEpoch == null || snap.epoch !== stopEpoch) {
+      snap.refresh()
+      setStopStaleNote(true)
+      return
+    }
+    const current = ordered.find((item) => item.resource.id === stopTargetId)
+    if (!current || !current.resource.running || !current.resource.can_stop) {
+      snap.refresh()
+      setStopStaleNote(true)
+      return
+    }
+    if (Date.now() - current.lastVerifiedAt > 10_000) {
+      snap.refresh()
+      setStopStaleNote(true)
+      return
+    }
+    void snap.stop(stopTargetId)
+  }
+
   if (!hasStrip && !inspectorOpen) return null
   if ((freshness === 'unsupported' || freshness === 'offline') && !inspectorOpen) return null
 
@@ -116,13 +201,19 @@ export default function ProcessesDock({
 
   function closeInspector() {
     setInspectorOpen(false)
+    setLogPaused(false)
     const opener = openerRef.current
     if (opener && document.contains(opener)) opener.focus()
   }
 
+  function selectAndUnpause(id: string | null) {
+    setLogPaused(false)
+    snap.select(id)
+  }
+
   function openInspector(filter?: ProcessInspectorFilter, selectId?: string | null) {
     rememberOpener()
-    if (selectId !== undefined) snap.select(selectId)
+    if (selectId !== undefined) selectAndUnpause(selectId)
     if (filter !== undefined) setDefaultFilter(filter)
     setInspectorOpen(true)
     setCollapsed(false)
@@ -200,7 +291,7 @@ export default function ProcessesDock({
                 stopState={stopById.get(item.resource.id) ?? { state: 'idle' }}
                 now={now}
                 onToggle={() => toggleRow(item)}
-                onStop={() => void snap.stop(item.resource.id)}
+                onStop={() => requestStop(item.resource.id)}
               />
             ))}
           </ul>
@@ -243,6 +334,7 @@ export default function ProcessesDock({
           ) : (
             <ProcessInspector
               key={inspectorKey}
+              sessionId={sessionId}
               ordered={ordered}
               defaultFilter={defaultFilter}
               selectedId={selectedId}
@@ -252,8 +344,10 @@ export default function ProcessesDock({
               stopById={stopById}
               listTruncated={listTruncated}
               pinnedId={pinnedId}
-              onSelect={(id) => snap.select(id)}
-              onStop={(id) => void snap.stop(id)}
+              logPaused={logPaused}
+              onLogPausedChange={setLogPaused}
+              onSelect={selectAndUnpause}
+              onStopRequest={requestStop}
               onAcknowledge={(id) => snap.acknowledge(id)}
               onDismiss={(id) => snap.dismiss(id)}
               onPin={(id) => snap.pin(id)}
@@ -262,6 +356,22 @@ export default function ProcessesDock({
           )}
         </div>
       )}
+      <ProcessStopDialog
+        target={
+          stopTarget
+            ? { id: stopTarget.resource.id, command: stopTarget.resource.command, cwd: stopTarget.resource.cwd, lastVerifiedAt: stopTarget.lastVerifiedAt }
+            : null
+        }
+        stale={stopStaleNote}
+        busy={stopBusy}
+        resultMessage={stopResultMessage}
+        onConfirm={confirmStop}
+        onCancel={() => {
+          setStopTargetId(null)
+          setStopEpoch(null)
+          setStopStaleNote(false)
+        }}
+      />
     </div>
   )
 }

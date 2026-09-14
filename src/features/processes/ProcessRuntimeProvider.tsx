@@ -436,6 +436,12 @@ export function ProcessRuntimeProvider({
       })
       getRuntime(sessionId)
       ensurePolling(sessionId)
+      if (wantsOutput && prev.outputCount === 0) {
+        // Al suscribir salida (selección o reanudación) se lee una vez
+        // sin esperar el siguiente intervalo.
+        const rt = sessionsRef.current.get(sessionId)
+        if (rt && rt.selectedId) void readSelected(sessionId, rt.seq)
+      }
       return () => {
         const current = observersRef.current.get(sessionId)
         if (!current) return
@@ -453,7 +459,7 @@ export function ProcessRuntimeProvider({
         }
       }
     },
-    [clearTimer, ensurePolling, getRuntime],
+    [clearTimer, ensurePolling, getRuntime, readSelected],
   )
 
   const getSnapshot = useCallback((sessionId: string): SessionSnapshot => {

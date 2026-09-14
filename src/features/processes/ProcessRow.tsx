@@ -26,7 +26,7 @@ function statusColor(key: ReturnType<typeof deriveStatusKey>): string {
   }
 }
 
-function isHttpUrl(url: string): boolean {
+export function isHttpUrl(url: string): boolean {
   try {
     const parsed = new URL(url)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false

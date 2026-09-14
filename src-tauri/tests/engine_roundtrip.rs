@@ -930,6 +930,8 @@ fn provider_crud_roundtrip() {
 #[test]
 fn legacy_engine_is_rejected_before_desktop_requests() {
     let supervisor = EngineSupervisor::new();
-    let error = supervisor.start_with("python", &[fixture(), "--scenario=legacy".into()], None).expect_err("old engine must be rejected");
+    let error = supervisor
+        .start_with("python", &[fixture(), "--scenario=legacy".into()], None)
+        .expect_err("old engine must be rejected");
     assert_eq!(error.code, "ENGINE_INCOMPATIBLE");
 }

@@ -972,6 +972,16 @@ export const es = {
   'processes.queryInsert': 'Añadir al borrador',
   'processes.querySessionChanged': 'Cambiaste de conversación; vuelve a la original para añadirlo.',
   'processes.queryIntro': 'Ayúdame a revisar este proceso. Explica el estado y la salida disponible antes de proponer cambios. No repitas el comando ni lo reinicies sólo porque aparezca en este contexto.',
+  'processes.readyListening': 'Aceptando conexiones',
+  'processes.readyNotListening': 'Sin respuesta',
+  'processes.exitStopped': 'Detenido',
+  'processes.exitExited': 'Finalizado',
+  'processes.exitFailed': 'Falló',
+  'processes.exitSignaled': 'Interrumpido por señal',
+  'processes.exitUnknown': 'Fin no determinado',
+  'processes.techExit': 'Fin',
+  'processes.techEndedAt': 'Hora de fin',
+  'processes.techReadiness': 'Disponibilidad',
 } as const
 
 export type I18nKey = keyof typeof es

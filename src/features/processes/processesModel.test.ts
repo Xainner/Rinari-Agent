@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   deriveStatusKey,
+  durationMs,
   elapsedMsSinceStarted,
+  exitReasonLabelKey,
   isExternalPreview,
   kindLabel,
   orderPresentations,
+  readinessLabelKey,
   resourceTitle,
   scopeKey,
   summarizeStrip,
@@ -71,8 +74,7 @@ describe('deriveStatusKey', () => {
   })
 })
 
-describe('tiempo', () => {
-  it('rechaza segundos Unix inválidos sin NaN ni 1970', () => {
+describe('tiempo', () => {  it('rechaza segundos Unix inválidos sin NaN ni 1970', () => {
     const now = Date.now()
     expect(elapsedMsSinceStarted(undefined, now)).toBeNull()
     expect(elapsedMsSinceStarted(NaN, now)).toBeNull()
@@ -86,6 +88,29 @@ describe('tiempo', () => {
     const now = 1_700_000_000_000
     const startedAt = now / 1000 - 90
     expect(elapsedMsSinceStarted(startedAt, now)).toBe(90_000)
+  })
+
+  it('duración exacta con ended_at; nunca inventada sin él', () => {
+    const now = 1_700_000_100_000
+    const finished = row({ id: 'a', running: false, exit_code: 0, started_at: 1_700_000_000, ended_at: 1_700_000_060 })
+    expect(durationMs(finished, now)).toBe(60_000)
+    const noEnd = row({ id: 'b', running: false, exit_code: 0, started_at: 1_700_000_000 })
+    expect(durationMs(noEnd, now)).toBeNull()
+    const active = row({ id: 'c', running: true, started_at: 1_700_000_050 })
+    expect(durationMs(active, now)).toBe(50_000)
+  })
+})
+
+describe('etiquetas de identidad', () => {
+  it('mapea readiness y exit_reason conocidos, null en el resto', () => {
+    expect(readinessLabelKey('listening')).toBe('processes.readyListening')
+    expect(readinessLabelKey('not_listening')).toBe('processes.readyNotListening')
+    expect(readinessLabelKey('unknown')).toBeNull()
+    expect(readinessLabelKey(undefined)).toBeNull()
+    expect(exitReasonLabelKey('stopped')).toBe('processes.exitStopped')
+    expect(exitReasonLabelKey('exited')).toBe('processes.exitExited')
+    expect(exitReasonLabelKey('bogus')).toBeNull()
+    expect(exitReasonLabelKey(undefined)).toBeNull()
   })
 })
 

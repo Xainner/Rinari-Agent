@@ -26,7 +26,8 @@
   ],
   "optional_capabilities": [
     "permission_profiles_v2",
-    "turn_changeset_v1"
+    "turn_changeset_v1",
+    "process_identity_v1"
   ],
   "development_build": true
 }

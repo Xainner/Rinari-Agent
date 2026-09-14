@@ -249,6 +249,7 @@ function App() {
         epoch={session.connectionEpoch ?? 0}
         engineReady={session.ready}
         hasCapability={session.processesCapability === true}
+        hasIdentity={session.processesIdentityCapability === true}
       >
       <AppShell
         banner={degradedDetail !== null && (

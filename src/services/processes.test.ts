@@ -28,6 +28,48 @@ describe('processesApi', () => {
     vi.mocked(invoke).mockResolvedValueOnce({ processes: [{ id: '', running: true }] })
     await expect(processesApi.list('s1')).rejects.toThrow(/malformada/)
   })
+
+  it('acepta campos de identidad y los reenvía como precondiciones', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      processes: [
+        {
+          id: 'process:proc_001',
+          kind: 'process',
+          command: 'npm run dev',
+          cwd: 'C:/s',
+          running: false,
+          can_stop: false,
+          exit_code: 0,
+          generation: 4,
+          ended_at: 1700000100,
+          exit_reason: 'exited',
+          readiness: 'unknown',
+          readiness_checked_at: null,
+        },
+      ],
+      truncated: false,
+      total: 1,
+      next_cursor: null,
+      engine_instance_id: 'boot-9',
+    })
+    const listed = await processesApi.list('s1')
+    expect(listed.total).toBe(1)
+    expect(listed.engine_instance_id).toBe('boot-9')
+    expect(listed.processes[0]?.generation).toBe(4)
+    expect(listed.processes[0]?.exit_reason).toBe('exited')
+
+    vi.mocked(invoke).mockResolvedValueOnce({ id: 'process:proc_001', running: false })
+    await processesApi.stop('s1', 'process:proc_001', {
+      engine_instance_id: 'boot-9',
+      generation: 4,
+    })
+    expect(invoke).toHaveBeenCalledWith('workspace_process_stop', {
+      session_id: 's1',
+      id: 'process:proc_001',
+      engine_instance_id: 'boot-9',
+      generation: 4,
+    })
+  })
 })
 
 describe('validadores', () => {

@@ -5,9 +5,11 @@ import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
 import {
   deriveStatusKey,
+  exitReasonLabelKey,
   isExternalPreview,
   isFailureStatus,
   kindLabel,
+  readinessLabelKey,
   resourceTitle,
   type ProcessPresentation,
   type StopOperation,
@@ -389,6 +391,35 @@ function ProcessDetail({
               <dd className="processes-mono">{resource.pid}</dd>
             </div>
           )}
+          {(() => {
+            const exitKey = exitReasonLabelKey(resource.exit_reason)
+            const readyKey = readinessLabelKey(resource.readiness)
+            if (exitKey == null && readyKey == null && resource.ended_at == null) return null
+            return (
+              <>
+                {exitKey != null && (
+                  <div>
+                    <dt>{t('processes.techExit')}</dt>
+                    <dd>{t(exitKey)}</dd>
+                  </div>
+                )}
+                {resource.ended_at != null && (
+                  <div>
+                    <dt>{t('processes.techEndedAt')}</dt>
+                    <dd className="processes-mono">
+                      {new Date(resource.ended_at * 1000).toLocaleString()}
+                    </dd>
+                  </div>
+                )}
+                {readyKey != null && (
+                  <div>
+                    <dt>{t('processes.techReadiness')}</dt>
+                    <dd>{t(readyKey)}</dd>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </dl>
       )}
       {!resource.can_stop && resource.running && <p className="processes-note">{t('processes.cannotStop')}</p>}

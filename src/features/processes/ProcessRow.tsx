@@ -6,9 +6,11 @@ import { useI18n } from '../../i18n'
 import { useProcessesMotion, PROCESSES_DURATION } from './processMotion'
 import {
   deriveStatusKey,
+  durationMs,
   elapsedMsSinceStarted,
   formatElapsedShort,
   kindLabel,
+  readinessLabelKey,
   resourceTitle,
   type ProcessPresentation,
   type StopOperation,
@@ -83,6 +85,8 @@ export default function ProcessRow({
                   ? t('processes.unverified')
                   : t('processes.unknownState')
   const elapsed = resource.running ? elapsedMsSinceStarted(resource.started_at, now) : null
+  const finishedSpan = !resource.running ? durationMs(resource, now) : null
+  const readinessKey = readinessLabelKey(resource.readiness)
   const stopping = stopState.state === 'requesting' || stopState.state === 'reconciling'
   const validUrl = typeof resource.url === 'string' && isHttpUrl(resource.url) ? resource.url : null
 
@@ -112,6 +116,8 @@ export default function ProcessRow({
           <span className="processes-row-meta">
             {statusLabel}
             {elapsed != null && ` · ${formatElapsedShort(elapsed)}`}
+            {finishedSpan != null && ` · ${formatElapsedShort(finishedSpan)}`}
+            {readinessKey != null && ` · ${t(readinessKey)}`}
             {resource.pid != null && ` · PID ${resource.pid}`}
             {resource.kind !== 'process' && ` · ${kindLabel(resource.kind)}`}
           </span>

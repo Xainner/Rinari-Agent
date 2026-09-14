@@ -35,7 +35,7 @@ function setup(listImpl: (sessionId: string) => unknown, openSignal = 0) {
   })
   const view = render(
     <I18nProvider lang="es">
-      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true}>
+      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
         <ProcessesDock sessionId="s1" openSignal={openSignal} />
       </ProcessRuntimeProvider>
     </I18nProvider>,
@@ -57,7 +57,7 @@ it('D03: apertura manual sin recursos muestra inspector vacío cerrable', async 
   await waitFor(() => expect(invoke).toHaveBeenCalled())
   view.rerender(
     <I18nProvider lang="es">
-      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true}>
+      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
         <ProcessesDock sessionId="s1" openSignal={1} />
       </ProcessRuntimeProvider>
     </I18nProvider>,

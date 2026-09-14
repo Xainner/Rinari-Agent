@@ -35,7 +35,7 @@ it('aísla sesiones y comparte un solo poller por sesión', async () => {
   })
 
   render(
-    <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true}>
+    <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
       <Probe sessionId="A" />
       <Probe sessionId="A" observeOutput={true} />
       <Probe sessionId="B" />
@@ -57,7 +57,7 @@ it('aísla sesiones y comparte un solo poller por sesión', async () => {
 it('no llama al engine sin capability', async () => {
   vi.mocked(invoke).mockResolvedValue({ processes: [], truncated: false })
   render(
-    <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={false}>
+    <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={false} hasIdentity={false}>
       <Probe sessionId="A" />
     </ProcessRuntimeProvider>,
   )

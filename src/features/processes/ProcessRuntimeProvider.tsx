@@ -57,6 +57,7 @@ interface ProcessesRuntimeContextValue {
   epoch: number
   engineReady: boolean
   hasCapability: boolean
+  hasIdentity: boolean
   subscribe: (sessionId: string, wantsOutput: boolean) => () => void
   getSnapshot: (sessionId: string) => SessionSnapshot
   select: (sessionId: string, id: string | null) => void
@@ -121,21 +122,56 @@ export function ProcessRuntimeProvider({
   epoch,
   engineReady,
   hasCapability,
+  hasIdentity,
   children,
 }: {
   epoch: number
   engineReady: boolean
   hasCapability: boolean
+  hasIdentity: boolean
   children: ReactNode
 }) {
   const [version, setVersion] = useState(0)
   const sessionsRef = useRef(new Map<string, SessionRuntime>())
   const observersRef = useRef(new Map<string, ObserverCounts>())
-  const propsRef = useRef({ epoch, engineReady, hasCapability })
-  propsRef.current = { epoch, engineReady, hasCapability }
+  const propsRef = useRef({ epoch, engineReady, hasCapability, hasIdentity })
+  propsRef.current = { epoch, engineReady, hasCapability, hasIdentity }
+  // Identidad fuerte del engine (process_identity_v1): se aprende de las
+  // respuestas. Si cambia sin que la época local lo haya visto, el engine
+  // se reinició de forma invisible: se invalida todo el ámbito anterior.
+  const instanceRef = useRef<string | null>(null)
   const pollRef = useRef<(sessionId: string) => Promise<void>>(async () => {})
+  const ensureRef = useRef<(sessionId: string) => void>(() => {})
 
   const bump = useCallback(() => setVersion((v) => v + 1), [])
+
+  const resetForRestart = useCallback(() => {
+    for (const rt of sessionsRef.current.values()) {
+      if (rt.timer) clearTimeout(rt.timer)
+    }
+    sessionsRef.current.clear()
+    bump()
+    for (const sessionId of observersRef.current.keys()) {
+      ensureRef.current(sessionId)
+    }
+  }, [])
+
+  const noteInstanceId = useCallback(
+    (instanceId: string | undefined) => {
+      if (typeof instanceId !== 'string' || instanceId === '') return
+      if (instanceRef.current === null) {
+        instanceRef.current = instanceId
+        return
+      }
+      if (instanceRef.current !== instanceId) {
+        // Reinicio invisible para la época local: nueva observación y
+        // nueva confirmación; nada pendiente se reproduce.
+        instanceRef.current = instanceId
+        resetForRestart()
+      }
+    },
+    [resetForRestart],
+  )
 
   const getRuntime = useCallback((sessionId: string): SessionRuntime => {
     let rt = sessionsRef.current.get(sessionId)
@@ -234,6 +270,7 @@ export function ProcessRuntimeProvider({
       if (expectedSeq < rt.invalidBeforeSeq || expectedSeq < rt.appliedSeq) return
       try {
         const output = await processesApi.read(sessionId, selectedId)
+        noteInstanceId(output.engine_instance_id)
         const current = sessionsRef.current.get(sessionId)
         if (!current || current.epoch !== propsRef.current.epoch) return
         if (current.selectedId !== selectedId) return
@@ -265,7 +302,7 @@ export function ProcessRuntimeProvider({
         bump()
       }
     },
-    [bump, storeOutput],
+    [bump, noteInstanceId, storeOutput],
   )
 
   const pollSession = useCallback(
@@ -305,6 +342,10 @@ export function ProcessRuntimeProvider({
         if (!current || current !== scopeRt || current.epoch !== scopeEpoch) return
         if (seq < current.invalidBeforeSeq || seq < current.appliedSeq) return
         current.appliedSeq = seq
+        noteInstanceId(result.engine_instance_id)
+        // Un reinicio invisible limpia el mapa: este vuelo es huérfano y
+        // no debe tocar al ámbito nuevo (ni su secuencia).
+        if (sessionsRef.current.get(sessionId) !== scopeRt) return
         const now = Date.now()
         const seen = new Set<string>()
         const nextOrder: string[] = []
@@ -386,7 +427,7 @@ export function ProcessRuntimeProvider({
         bump()
       } finally {
         const current = sessionsRef.current.get(sessionId)
-        if (current && current.epoch === propsRef.current.epoch) {
+        if (current && current === scopeRt && current.epoch === propsRef.current.epoch) {
           current.activeList = false
           if (current.pendingList) {
             current.pendingList = false
@@ -403,7 +444,7 @@ export function ProcessRuntimeProvider({
         }
       }
     },
-    [bump, getRuntime, readSelected, scheduleNext],
+    [bump, getRuntime, noteInstanceId, readSelected, scheduleNext],
   )
 
   pollRef.current = pollSession
@@ -425,6 +466,8 @@ export function ProcessRuntimeProvider({
     },
     [bump, getRuntime],
   )
+
+  ensureRef.current = ensurePolling
 
   const subscribe = useCallback(
     (sessionId: string, wantsOutput: boolean) => {
@@ -550,8 +593,18 @@ export function ProcessRuntimeProvider({
       const requestId = `${scopeEpoch}:${sessionId}:${id}:${Date.now()}`
       rt.stopById.set(id, { state: 'requesting', requestId })
       bump()
+      // Precondiciones de process_identity_v1 cuando el engine las
+      // soporta y la observación las trae; el engine las valida antes
+      // de actuar y responde STALE_RESOURCE si cambiaron.
+      const generation = snapshot.resource.generation
+      const preconditions =
+        propsRef.current.hasIdentity &&
+        instanceRef.current !== null &&
+        typeof generation === 'number'
+          ? { engine_instance_id: instanceRef.current, generation }
+          : undefined
       try {
-        const result = await processesApi.stop(sessionId, id)
+        const result = await processesApi.stop(sessionId, id, preconditions)
         const current = sessionsRef.current.get(sessionId)
         if (!current || current.epoch !== scopeEpoch) return
         if (current.stopById.get(id)?.state !== 'requesting') return
@@ -586,10 +639,14 @@ export function ProcessRuntimeProvider({
       } catch (err) {
         const current = sessionsRef.current.get(sessionId)
         if (!current || current.epoch !== scopeEpoch) return
+        const message = err instanceof Error ? err.message : String(err)
+        // STALE_RESOURCE es definitivo (la observación caducó), no
+        // incierto: se muestra y se reconcilia con estado fresco.
+        const stale = /STALE_RESOURCE/.test(message)
         current.stopById.set(id, {
-          state: 'uncertain',
+          state: stale ? 'failed' : 'uncertain',
           requestId,
-          message: err instanceof Error ? err.message : String(err),
+          message,
         })
         bump()
         // Resultado incierto: reconciliar con una lectura antes de reintentar.
@@ -641,6 +698,8 @@ export function ProcessRuntimeProvider({
   useEffect(() => {
     if (prevEpochRef.current === epoch) return
     prevEpochRef.current = epoch
+    // La identidad aprendida pertenece al ámbito anterior.
+    instanceRef.current = null
     for (const rt of sessionsRef.current.values()) {
       if (rt.timer) clearTimeout(rt.timer)
     }
@@ -707,6 +766,7 @@ export function ProcessRuntimeProvider({
       epoch,
       engineReady,
       hasCapability,
+      hasIdentity,
       subscribe,
       getSnapshot,
       select,
@@ -716,7 +776,7 @@ export function ProcessRuntimeProvider({
       dismiss,
       pin,
     }),
-    [version, epoch, engineReady, hasCapability, subscribe, getSnapshot, select, refresh, stop, acknowledge, dismiss, pin],
+    [version, epoch, engineReady, hasCapability, hasIdentity, subscribe, getSnapshot, select, refresh, stop, acknowledge, dismiss, pin],
   )
 
   return <ProcessesRuntimeContext.Provider value={value}>{children}</ProcessesRuntimeContext.Provider>

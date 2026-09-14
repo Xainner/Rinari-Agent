@@ -52,11 +52,17 @@ autoabre encima; abrir el navegador manualmente contrae los logs
 conservando el resumen.
 
 Preparación (`readiness`) no se deduce: `En ejecución` no significa
-servidor listo y una URL asociada no implica disponibilidad. La salida
-es parcial por diseño y el historial es lo que el engine aún conserva,
-sin durabilidad garantizada tras reinicios. Sin identidad fuerte de
-instancia, tras un reinicio se exige nueva observación y confirmación;
-nunca se reutiliza un ID para actuar sobre un recurso nuevo.
+servidor listo y una URL asociada no implica disponibilidad. Cuando el
+engine ofrece `process_identity_v1`, las filas traen generación,
+`ended_at`, motivo de fin y sondas locales de puerto (`listening` es
+sólo TCP aceptado, no app lista); sin esa capability, la duración
+exacta y la disponibilidad no se afirman. La salida es parcial por
+diseño y el historial es lo que el engine aún conserva, sin
+durabilidad garantizada tras reinicios. Con identidad fuerte, un
+`engine_instance_id` distinto invalida el ámbito sin reproducir
+acciones pendientes; sin ella, ante continuidad incierta se exige
+nueva observación y confirmación; nunca se reutiliza un ID para
+actuar sobre un recurso nuevo.
 
 Protocolo: `workspace.process.list`, `workspace.process.read`,
 `workspace.process.stop`; capability `desktop_processes_v1`. Los IDs

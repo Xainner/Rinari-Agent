@@ -79,7 +79,9 @@ impl EngineTransport {
     ) -> Result<(Self, Hello), TransportError> {
         let mut command = Command::new(program);
         command.args(args);
-        command.env("PYTHONUTF8", "1").env("PYTHONIOENCODING", "utf-8");
+        command
+            .env("PYTHONUTF8", "1")
+            .env("PYTHONIOENCODING", "utf-8");
         if let Some(dir) = cwd {
             command.current_dir(dir);
         }

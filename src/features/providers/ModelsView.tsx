@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n'
 import type { ProviderSummary } from '../../services/engine'
 import { Section } from '../../components/settings/parts'
+import ProviderLogo from '../../components/ProviderLogo'
 import ModelCatalog from './ModelCatalog'
 
 /** Ajustes > Modelos: catálogo por proveedor (descubrir, guardar con alias, usar). */
@@ -35,7 +36,15 @@ export default function ModelsView({
   return (
     <div className="space-y-4">
       {providers.map((provider) => (
-        <Section key={provider.id} title={provider.alias}>
+        <Section
+          key={provider.id}
+          title={
+            <span className="flex items-center gap-2.5">
+              <ProviderLogo alias={provider.alias} endpoint={provider.endpoint} size={22} />
+              <span>{provider.alias}</span>
+            </span>
+          }
+        >
           <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />
         </Section>
       ))}

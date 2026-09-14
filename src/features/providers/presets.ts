@@ -1,4 +1,5 @@
 import type { I18nKey } from '../../i18n'
+import type { ProviderBrandId } from '../../lib/providerBrand'
 
 export type ProviderAuth = 'api-key' | 'none'
 
@@ -9,9 +10,14 @@ export interface ProviderPreset {
   provider_type: 'openai' | 'anthropic' | 'custom'
   endpoint: string
   auth: ProviderAuth
+  /** Marca con asset en public/logos; ausente cuando no existe logo. */
+  brand?: ProviderBrandId
 }
 
-/** Presets de alta. Gemini/OpenRouter/entornos propios entran por `custom`. */
+/**
+ * Presets de alta. Todo lo OpenAI-compatible entra por `custom` con su endpoint
+ * base: el engine le agrega `/chat/completions` y `/models` (sin barra final).
+ */
 export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: 'openai',
@@ -20,6 +26,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     provider_type: 'openai',
     endpoint: 'https://api.openai.com/v1',
     auth: 'api-key',
+    brand: 'openai',
   },
   {
     id: 'anthropic',
@@ -28,6 +35,61 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     provider_type: 'anthropic',
     endpoint: '',
     auth: 'api-key',
+    brand: 'anthropic',
+  },
+  {
+    id: 'opencode-zen',
+    nameKey: 'providers.presetOpenCodeZen',
+    descKey: 'providers.presetOpenCodeZenDesc',
+    provider_type: 'custom',
+    endpoint: 'https://opencode.ai/zen/v1',
+    auth: 'api-key',
+    brand: 'opencode',
+  },
+  {
+    id: 'opencode-go',
+    nameKey: 'providers.presetOpenCodeGo',
+    descKey: 'providers.presetOpenCodeGoDesc',
+    provider_type: 'custom',
+    endpoint: 'https://opencode.ai/zen/go/v1',
+    auth: 'api-key',
+    brand: 'opencode',
+  },
+  {
+    id: 'xai',
+    nameKey: 'providers.presetXAI',
+    descKey: 'providers.presetXAIDesc',
+    provider_type: 'custom',
+    endpoint: 'https://api.x.ai/v1',
+    auth: 'api-key',
+    brand: 'xai',
+  },
+  {
+    id: 'deepseek',
+    nameKey: 'providers.presetDeepSeek',
+    descKey: 'providers.presetDeepSeekDesc',
+    provider_type: 'custom',
+    endpoint: 'https://api.deepseek.com/v1',
+    auth: 'api-key',
+    brand: 'deepseek',
+  },
+  {
+    id: 'gemini',
+    nameKey: 'providers.presetGemini',
+    descKey: 'providers.presetGeminiDesc',
+    provider_type: 'custom',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    auth: 'api-key',
+    brand: 'gemini',
+  },
+  {
+    id: 'mistral',
+    nameKey: 'providers.presetMistral',
+    descKey: 'providers.presetMistralDesc',
+    provider_type: 'custom',
+    endpoint: 'https://api.mistral.ai/v1',
+    auth: 'api-key',
+    brand: 'mistral',
   },
   {
     id: 'ollama',

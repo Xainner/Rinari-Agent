@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Box, Eye, EyeOff } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../components/settings/parts'
+import { brandForProvider, providerBrand } from '../../lib/providerBrand'
+import ProviderLogo from '../../components/ProviderLogo'
 import { PROVIDER_PRESETS, type ProviderPreset } from './presets'
 
 export interface ProviderFormData {
@@ -41,6 +43,11 @@ export default function ProviderForm({
 }) {
   const { t } = useI18n()
   const [showSecret, setShowSecret] = useState(false)
+  // El logo se resuelve con los datos reales del formulario (válido también en
+  // edición, donde el preset queda neutro); el preset solo aporta su marca.
+  const brand =
+    brandForProvider({ alias: form.alias, endpoint: form.endpoint }) ??
+    (allowPresetChange ? providerBrand(form.preset.brand) : null)
 
   return (
     <div className="space-y-4">
@@ -49,28 +56,45 @@ export default function ProviderForm({
           <label className={labelClass} htmlFor="provider-preset">
             {t('providers.type')}
           </label>
-          <select
-            id="provider-preset"
-            value={form.preset.id}
-            onChange={(e) => {
-              const preset =
-                PROVIDER_PRESETS.find((p) => p.id === e.target.value) ?? PROVIDER_PRESETS[0]
-              setForm({
-                ...form,
-                preset,
-                alias: form.alias === form.preset.id ? preset.id : form.alias,
-                endpoint: preset.endpoint,
-                auth: preset.auth,
-              })
-            }}
-            className={inputClass}
-          >
-            {PROVIDER_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {t(p.nameKey)} — {t(p.descKey)}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]">
+              {brand ? (
+                <ProviderLogo brand={brand} size={24} />
+              ) : (
+                <Box size={18} aria-hidden="true" className="text-[var(--text-subtle)]" />
+              )}
+            </span>
+            <select
+              id="provider-preset"
+              value={form.preset.id}
+              onChange={(e) => {
+                const preset =
+                  PROVIDER_PRESETS.find((p) => p.id === e.target.value) ?? PROVIDER_PRESETS[0]
+                setForm({
+                  ...form,
+                  preset,
+                  alias: form.alias === form.preset.id ? preset.id : form.alias,
+                  endpoint: preset.endpoint,
+                  auth: preset.auth,
+                })
+              }}
+              className={`${inputClass} flex-1`}
+            >
+              {PROVIDER_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {t(p.nameKey)} — {t(p.descKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {form.preset.id !== 'custom' && form.endpoint.trim() !== '' && (
+            <p
+              className="mt-1.5 truncate font-mono text-[11px] text-[var(--text-subtle)]"
+              title={form.endpoint}
+            >
+              {form.endpoint}
+            </p>
+          )}
         </div>
       )}
 

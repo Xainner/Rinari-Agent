@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
-import type { ModelSummary } from '../../services/engine'
+import type { ModelSummary, ProviderSummary } from '../../services/engine'
 import Composer from './Composer'
 
 afterEach(cleanup)
@@ -38,4 +38,24 @@ it('allows changing read scope in PLAN while showing immutable execution', async
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Workspace/ }))
   expect(onPermissionChange).toHaveBeenCalledWith('workspace')
   expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+it('pinta el logo del proveedor en el modelo activo y en cada grupo', async () => {
+  const models = [
+    { id: 'a', alias: 'DeepSeek V4', provider: 'opencode-go', provider_model_id: 'deepseek-v4-flash' },
+    { id: 'b', alias: 'Local Qwen', provider: 'xAInner', provider_model_id: 'qwen3.8' },
+  ] as ModelSummary[]
+  const providers = [
+    { id: 'p1', alias: 'opencode-go', endpoint: 'https://opencode.ai/zen/go/v1' },
+    { id: 'p2', alias: 'xAInner', endpoint: 'https://api.xainner.com/v1' },
+  ] as ProviderSummary[]
+  render(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={models} providers={providers} activeAlias="DeepSeek V4" activeModel={models[0]} onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+  const user = userEvent.setup()
+  const trigger = screen.getByRole('button', { name: 'DeepSeek V4' })
+  expect(trigger.querySelector('img')?.getAttribute('src')).toBe('/logos/opencode.png')
+  await user.click(trigger)
+  expect(
+    screen.getByRole('heading', { name: 'opencode-go' }).querySelector('img')?.getAttribute('src'),
+  ).toBe('/logos/opencode.png')
+  expect(screen.getByRole('heading', { name: 'xAInner' }).querySelector('img')).toBeNull()
 })

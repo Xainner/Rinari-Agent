@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
-import type { ModelSummary } from '../services/engine'
+import type { ModelSummary, ProviderSummary } from '../services/engine'
 import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
 import TurnTimelineView from '../features/activity/TurnTimelineView'
@@ -28,6 +28,8 @@ interface ChatViewProps {
   onImplementPlan?: () => Promise<boolean>
   onOpenProviders: () => void
   models: ModelSummary[]
+  /** Catálogo de proveedores: el composer resuelve el logo por alias/endpoint. */
+  providers: ProviderSummary[]
   activeAlias: string | null
   activeModel?: ModelSummary | null
   onUseModel: (model: ModelSummary) => void
@@ -65,6 +67,7 @@ export default function ChatView({
   onImplementPlan,
   onOpenProviders,
   models,
+  providers,
   activeAlias,
   activeModel,
   onUseModel,
@@ -164,6 +167,7 @@ export default function ChatView({
       isStreaming={isStreaming}
       onStop={onStop}
       models={models}
+      providers={providers}
       activeAlias={activeAlias}
       activeModel={activeModel}
       onUseModel={onUseModel}

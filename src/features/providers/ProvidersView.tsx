@@ -8,6 +8,7 @@ import {
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
+import ProviderLogo from '../../components/ProviderLogo'
 import {
   Dialog,
   DialogContent,
@@ -190,7 +191,15 @@ export default function ProvidersView({
         const h = health[provider.alias]
         const isOpen = expanded === provider.alias
         return (
-          <Section key={provider.id} title={`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}>
+          <Section
+            key={provider.id}
+            title={
+              <span className="flex items-center gap-2.5">
+                <ProviderLogo alias={provider.alias} endpoint={provider.endpoint} size={22} />
+                <span>{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
+              </span>
+            }
+          >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-subtle)]">
               <span className="font-mono">{provider.type}</span>
               {provider.endpoint && <span className="truncate font-mono">{provider.endpoint}</span>}

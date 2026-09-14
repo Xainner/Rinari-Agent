@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type Ref, type SyntheticEvent } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { useSessionProcesses } from './useSessionProcesses'
 import ProcessRow from './ProcessRow'
 import ProcessInspector, { type ProcessInspectorFilter } from './ProcessInspector'
 import ProcessStopDialog from './ProcessStopDialog'
+import { PROCESSES_DURATION, useProcessesMotion } from './processMotion'
 import {
   isExternalPreview,
   isFailureStatus,
@@ -26,6 +28,7 @@ export default function ProcessesDock({
   openSignal: number
 }) {
   const { t } = useI18n()
+  const motionApi = useProcessesMotion()
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -38,6 +41,9 @@ export default function ProcessesDock({
   const [stopEpoch, setStopEpoch] = useState<number | null>(null)
   const [stopStaleNote, setStopStaleNote] = useState(false)
   const openerRef = useRef<HTMLElement | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [announcement, setAnnouncement] = useState('')
+  const lastAnnouncedRef = useRef('')
   const hiddenMsRef = useRef(0)
   const hiddenSinceRef = useRef<number | null>(null)
   const firstSignalRef = useRef(true)
@@ -130,6 +136,23 @@ export default function ProcessesDock({
   const summary = summarizeStrip(relevant, { listTruncated })
   const activeCount = ordered.filter((item) => item.resource.running).length
   const hasStrip = summary.visible.length > 0 || attention.length > 0
+
+  // Anuncio único por cambio relevante; nunca cada poll ni cada segundo.
+  useEffect(() => {
+    const next =
+      attention.length > 0
+        ? t(attention.length === 1 ? 'processes.needsAttention' : 'processes.needsAttentionPlural', {
+            n: attention.length,
+          })
+        : activeCount > 0
+          ? `${t('processes.section')} · ${activeCount} ${t('processes.active')}`
+          : ''
+    if (next !== lastAnnouncedRef.current) {
+      lastAnnouncedRef.current = next
+      setAnnouncement(next)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attention.length, activeCount])
 
   // Diálogo de detención: identifica el recurso y reverifica ámbito,
   // época y observación antes de enviar.
@@ -234,10 +257,35 @@ export default function ProcessesDock({
     return target?.closest('[data-resource-id]')?.getAttribute('data-resource-id') ?? null
   }
 
+  function handleDockKeyDown(event: React.KeyboardEvent) {
+    if (event.key !== 'Escape') return
+    const target = event.target instanceof HTMLElement ? event.target : null
+    // Escape cierra el inspector sólo si el foco está dentro de él y no hay
+    // un diálogo modal abierto (Radix gestiona el suyo). Nunca detiene.
+    if (!target || !rootRef.current?.contains(target)) return
+    if (target.closest('[role="dialog"]')) return
+    if (inspectorOpen) {
+      event.stopPropagation()
+      closeInspector()
+    }
+  }
+
   return (
-    <div className="processes-dock" data-testid="processes-dock">
-      {hasStrip && !collapsed && (
-        <section aria-label={t('processes.section')} className="processes-strip">
+    <div ref={rootRef} className="processes-dock" data-testid="processes-dock" onKeyDown={handleDockKeyDown}>
+      <span role="status" className="processes-sr-only">
+        {announcement}
+      </span>
+      <AnimatePresence initial={false}>
+        {hasStrip && !collapsed && (
+          <motion.section
+            key="strip"
+            aria-label={t('processes.section')}
+            className="processes-strip"
+            initial={{ opacity: 0, y: motionApi.enterY(6) }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
+          >
           {summary.showHeader && (
             <div className="processes-strip-head">
               <span className="processes-strip-title">
@@ -282,18 +330,20 @@ export default function ProcessesDock({
             }}
             onBlur={() => setFocusedId(null)}
           >
-            {summary.visible.map((item) => (
-              <ProcessRow
-                key={item.resource.id}
-                presentation={item}
-                detailId="processes-inspector"
-                expanded={inspectorOpen && selectedId === item.resource.id}
-                stopState={stopById.get(item.resource.id) ?? { state: 'idle' }}
-                now={now}
-                onToggle={() => toggleRow(item)}
-                onStop={() => requestStop(item.resource.id)}
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {summary.visible.map((item) => (
+                <ProcessRow
+                  key={item.resource.id}
+                  presentation={item}
+                  detailId="processes-inspector"
+                  expanded={inspectorOpen && selectedId === item.resource.id}
+                  stopState={stopById.get(item.resource.id) ?? { state: 'idle' }}
+                  now={now}
+                  onToggle={() => toggleRow(item)}
+                  onStop={() => requestStop(item.resource.id)}
+                />
+              ))}
+            </AnimatePresence>
           </ul>
           {summary.hiddenCount > 0 && !inspectorOpen && (
             <button type="button" onClick={() => openInspector('all')} className="processes-link">
@@ -308,8 +358,9 @@ export default function ProcessesDock({
               {listError}
             </p>
           )}
-        </section>
-      )}
+          </motion.section>
+        )}
+      </AnimatePresence>
       {hasStrip && collapsed && !inspectorOpen && (
         <button
           type="button"
@@ -320,8 +371,16 @@ export default function ProcessesDock({
           {t('processes.section')} · {activeCount} {t('processes.active')}
         </button>
       )}
+      <AnimatePresence initial={false}>
       {inspectorOpen && (
-        <div id="processes-inspector">
+        <motion.div
+          key="inspector"
+          id="processes-inspector"
+          initial={{ opacity: 0, y: motionApi.enterY(-8) }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={motionApi.transition(PROCESSES_DURATION.inspector)}
+        >
           {(freshness === 'unsupported' || freshness === 'offline') && ordered.length === 0 ? (
             <div className="processes-inspector">
               <p className="processes-empty">
@@ -354,8 +413,9 @@ export default function ProcessesDock({
               onClose={closeInspector}
             />
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
       <ProcessStopDialog
         target={
           stopTarget

@@ -122,8 +122,9 @@ it('fallo observado conserva aviso hasta Marcar como visto', async () => {
     truncated: false,
   }))
   const dock = await screen.findByTestId('processes-dock')
-  expect(within(dock).getByText(/requiere atención/)).toBeTruthy()
-  fireEvent.click(within(dock).getByText(/requiere atención/))
+  const attentionButton = within(dock).getByRole('button', { name: /requiere atención/ })
+  expect(attentionButton).toBeTruthy()
+  fireEvent.click(attentionButton)
   const inspector = await screen.findByTestId('processes-inspector')
   fireEvent.click(within(inspector).getByRole('button', { name: /Marcar como visto/ }))
   await waitFor(() => expect(screen.queryByText(/requiere atención/)).toBeNull())

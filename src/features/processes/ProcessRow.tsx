@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink, Square } from 'lucide-react'
 import { useI18n } from '../../i18n'
+import { useProcessesMotion, PROCESSES_DURATION } from './processMotion'
 import {
   deriveStatusKey,
   elapsedMsSinceStarted,
@@ -60,6 +62,7 @@ export default function ProcessRow({
 }) {
   const { t } = useI18n()
   const [urlError, setUrlError] = useState('')
+  const motionApi = useProcessesMotion()
   const { resource } = presentation
   const name = resourceTitle(resource)
   const statusKey = deriveStatusKey(resource)
@@ -84,7 +87,15 @@ export default function ProcessRow({
   const validUrl = typeof resource.url === 'string' && isHttpUrl(resource.url) ? resource.url : null
 
   return (
-    <li className="processes-row" data-resource-id={resource.id}>
+    <motion.li
+      className="processes-row"
+      data-resource-id={resource.id}
+      layout="position"
+      initial={{ opacity: 0, y: motionApi.enterY(6) }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={motionApi.transition(PROCESSES_DURATION.rowEnter)}
+    >
       <button
         type="button"
         aria-expanded={expanded}
@@ -144,6 +155,6 @@ export default function ProcessRow({
           {urlError}
         </p>
       )}
-    </li>
+    </motion.li>
   )
 }

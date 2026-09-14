@@ -6,7 +6,8 @@
 //! cancel terminality, approval roundtrip, crash surfacing). Explicit binary
 //! paths are used (`start_with`), so tests stay parallel-safe: no process
 //! env is mutated.
-use std::sync::{Arc, Mutex};
+use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use rinari_agent_lib::engine::{methods::Method, protocol::EngineEvent, EngineSupervisor};
@@ -16,6 +17,31 @@ fn fixture() -> String {
         "{}/tests/fixtures/fake_engine.py",
         env!("CARGO_MANIFEST_DIR")
     )
+}
+
+/// Interprete del fixture. Los runners de CI exponen `python3` y no `python`
+/// (macOS y la mayoria de Linux); Windows usa `python`. Se resuelve una vez.
+fn python() -> &'static str {
+    static PYTHON: OnceLock<String> = OnceLock::new();
+    PYTHON.get_or_init(|| {
+        for candidate in ["python3", "python"] {
+            if let Ok(output) = Command::new(candidate)
+                .arg("--version")
+                .stdin(Stdio::null())
+                .output()
+            {
+                let text = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                if output.status.success() && text.contains("Python") {
+                    return candidate.to_string();
+                }
+            }
+        }
+        panic!("no Python interpreter found for the engine fixture (tried: python3, python)");
+    })
 }
 
 struct Harness {
@@ -32,7 +58,7 @@ fn start_fake(scenario: &str) -> Harness {
     }));
     let status = supervisor
         .start_with(
-            "python",
+            python(),
             &[fixture(), format!("--scenario={scenario}")],
             None,
         )
@@ -930,6 +956,8 @@ fn provider_crud_roundtrip() {
 #[test]
 fn legacy_engine_is_rejected_before_desktop_requests() {
     let supervisor = EngineSupervisor::new();
-    let error = supervisor.start_with("python", &[fixture(), "--scenario=legacy".into()], None).expect_err("old engine must be rejected");
+    let error = supervisor
+        .start_with(python(), &[fixture(), "--scenario=legacy".into()], None)
+        .expect_err("old engine must be rejected");
     assert_eq!(error.code, "ENGINE_INCOMPATIBLE");
 }

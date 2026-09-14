@@ -1287,7 +1287,8 @@ mod tests {
     fn packaged_engine_browser_catalog_roundtrip() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let (program, _) = sidecar_command(root).expect("package the engine first");
-        let image_path = std::env::temp_dir().join(format!("rinari-image-bridge-{}.png", std::process::id()));
+        let image_path =
+            std::env::temp_dir().join(format!("rinari-image-bridge-{}.png", std::process::id()));
         let code = concat!(
             "import os,runpy,sys,tempfile\n",
             "from PIL import Image\n",
@@ -1300,7 +1301,15 @@ mod tests {
         );
         let supervisor = EngineSupervisor::new();
         supervisor
-            .start_with(&program, &["-c".into(), code.into(), image_path.to_string_lossy().into_owned()], None)
+            .start_with(
+                &program,
+                &[
+                    "-c".into(),
+                    code.into(),
+                    image_path.to_string_lossy().into_owned(),
+                ],
+                None,
+            )
             .expect("real packaged engine handshake");
         let result = supervisor.request(Method::ToolList, None);
         let agents = supervisor
@@ -1325,18 +1334,30 @@ mod tests {
                 Some(serde_json::json!({"chat": true})),
             )
             .expect("temporary session");
-        let visual = supervisor.request(Method::VisionSettingsSet, Some(serde_json::json!({
-            "mode": "conversation", "model_id": null, "confirm_unknown": false,
-            "execution": {"max_concurrency": 8, "providers": {}, "models": {},
-                "timeouts": {"first_byte": 240, "idle": 90, "total": 1200}}
-        }))).expect("visual settings bridge");
+        let visual = supervisor
+            .request(
+                Method::VisionSettingsSet,
+                Some(serde_json::json!({
+                    "mode": "conversation", "model_id": null, "confirm_unknown": false,
+                    "execution": {"max_concurrency": 8, "providers": {}, "models": {},
+                        "timeouts": {"first_byte": 240, "idle": 90, "total": 1200}}
+                })),
+            )
+            .expect("visual settings bridge");
         assert_eq!(visual["mode"], "conversation");
         assert_eq!(visual["execution"]["timeouts"]["first_byte"], 240);
-        let restored_visual = supervisor.request(Method::VisionSettingsGet, None).expect("visual settings persisted");
+        let restored_visual = supervisor
+            .request(Method::VisionSettingsGet, None)
+            .expect("visual settings persisted");
         assert_eq!(restored_visual, visual);
-        let support = supervisor.request(Method::SessionImageSupport, Some(serde_json::json!({
-            "session_id": created["session"]["id"]
-        }))).expect("visual route support");
+        let support = supervisor
+            .request(
+                Method::SessionImageSupport,
+                Some(serde_json::json!({
+                    "session_id": created["session"]["id"]
+                })),
+            )
+            .expect("visual route support");
         assert_eq!(support["route"], "conversation");
         let frame = supervisor
             .request(
@@ -1352,15 +1373,26 @@ mod tests {
             )
             .expect("process panel bridge");
         assert!(processes["processes"].as_array().unwrap().is_empty());
-        let imported = supervisor.request(Method::ArtifactReceiveImage, Some(serde_json::json!({
-            "session_id": created["session"]["id"], "path": image_path.to_string_lossy()
-        }))).expect("image import through packaged engine");
-        let uri = imported["attachment"]["uri"].as_str().expect("image artifact reference");
+        let imported = supervisor
+            .request(
+                Method::ArtifactReceiveImage,
+                Some(serde_json::json!({
+                    "session_id": created["session"]["id"], "path": image_path.to_string_lossy()
+                })),
+            )
+            .expect("image import through packaged engine");
+        let uri = imported["attachment"]["uri"]
+            .as_str()
+            .expect("image artifact reference");
         std::fs::remove_file(&image_path).expect("remove original image");
-        let preview = supervisor.attachment_preview(uri, Some(524288), Some(2048))
+        let preview = supervisor
+            .attachment_preview(uri, Some(524288), Some(2048))
             .expect("large image preview through Rust bridge");
         assert_eq!(preview["width"], 1800);
-        assert!(preview["data_url"].as_str().unwrap().starts_with("data:image/jpeg;base64,"));
+        assert!(preview["data_url"]
+            .as_str()
+            .unwrap()
+            .starts_with("data:image/jpeg;base64,"));
         supervisor.shutdown();
         let tools = result.expect("real tool catalog");
         let rows = tools["tools"].as_array().expect("tool rows");

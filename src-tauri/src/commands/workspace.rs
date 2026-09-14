@@ -11,10 +11,13 @@ pub(crate) async fn session_image_support(
     session_id: Option<String>,
     model_id: Option<String>,
 ) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(
-        rinari_agent_lib::engine::methods::Method::SessionImageSupport,
-        Some(serde_json::json!({"session_id": session_id, "model_id": model_id})),
-    )).await
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::SessionImageSupport,
+            Some(serde_json::json!({"session_id": session_id, "model_id": model_id})),
+        )
+    })
+    .await
 }
 
 #[tauri::command]
@@ -227,26 +230,78 @@ pub(crate) async fn usage_get(
 }
 
 #[tauri::command]
-pub(crate) async fn vision_settings_get(supervisor: State<'_, EngineSupervisor>) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(rinari_agent_lib::engine::methods::Method::VisionSettingsGet, None)).await
+pub(crate) async fn vision_settings_get(
+    supervisor: State<'_, EngineSupervisor>,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::VisionSettingsGet,
+            None,
+        )
+    })
+    .await
 }
 #[tauri::command]
-pub(crate) async fn context_settings_get(supervisor: State<'_, EngineSupervisor>) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(rinari_agent_lib::engine::methods::Method::ContextSettingsGet, None)).await
+pub(crate) async fn context_settings_get(
+    supervisor: State<'_, EngineSupervisor>,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::ContextSettingsGet,
+            None,
+        )
+    })
+    .await
 }
 #[tauri::command]
-pub(crate) async fn context_compact(supervisor: State<'_, EngineSupervisor>, session_id: String) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(rinari_agent_lib::engine::methods::Method::ContextCompact, Some(serde_json::json!({"session_id":session_id})))).await
+pub(crate) async fn context_compact(
+    supervisor: State<'_, EngineSupervisor>,
+    session_id: String,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::ContextCompact,
+            Some(serde_json::json!({"session_id":session_id})),
+        )
+    })
+    .await
 }
 #[tauri::command]
-pub(crate) async fn context_status(supervisor: State<'_, EngineSupervisor>, model_id: String) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(rinari_agent_lib::engine::methods::Method::ContextStatus, Some(serde_json::json!({"model_id":model_id})))).await
+pub(crate) async fn context_status(
+    supervisor: State<'_, EngineSupervisor>,
+    model_id: String,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::ContextStatus,
+            Some(serde_json::json!({"model_id":model_id})),
+        )
+    })
+    .await
 }
 #[tauri::command]
-pub(crate) async fn context_settings_set(supervisor: State<'_, EngineSupervisor>, settings: serde_json::Value) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(rinari_agent_lib::engine::methods::Method::ContextSettingsSet, Some(settings))).await
+pub(crate) async fn context_settings_set(
+    supervisor: State<'_, EngineSupervisor>,
+    settings: serde_json::Value,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::ContextSettingsSet,
+            Some(settings),
+        )
+    })
+    .await
 }
 #[tauri::command]
-pub(crate) async fn vision_settings_set(supervisor: State<'_, EngineSupervisor>, settings: serde_json::Value) -> Result<serde_json::Value, CommandError> {
-    run_engine(supervisor, move |engine| engine.request(rinari_agent_lib::engine::methods::Method::VisionSettingsSet, Some(settings))).await
+pub(crate) async fn vision_settings_set(
+    supervisor: State<'_, EngineSupervisor>,
+    settings: serde_json::Value,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.request(
+            rinari_agent_lib::engine::methods::Method::VisionSettingsSet,
+            Some(settings),
+        )
+    })
+    .await
 }

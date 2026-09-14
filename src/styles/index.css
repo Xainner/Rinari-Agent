@@ -425,3 +425,17 @@ input[type='password']::-ms-reveal,
 input[type='password']::-ms-clear {
   display: none;
 }
+
+
+/* Logos de proveedor con variante por tema (marcas monocromas).
+   En tema oscuro se ve la tinta clara y en tema claro la oscura; ambas
+   variantes existen en el DOM y el tema resuelto elige cual se muestra. */
+.provider-logo-light {
+  display: none;
+}
+[data-theme='light'] .provider-logo-dark {
+  display: none;
+}
+[data-theme='light'] .provider-logo-light {
+  display: block;
+}

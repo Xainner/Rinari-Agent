@@ -756,8 +756,6 @@ export const en: Record<I18nKey, string> = {
   'providers.presetOpenAIDesc': 'Official OpenAI API',
   'providers.presetAnthropic': 'Anthropic',
   'providers.presetAnthropicDesc': 'Official Anthropic API',
-  'providers.presetOpenCodeZen': 'OpenCode Zen',
-  'providers.presetOpenCodeZenDesc': 'OpenCode gateway: GPT, Claude, Gemini and open source',
   'providers.presetOpenCodeGo': 'OpenCode Go',
   'providers.presetOpenCodeGoDesc': 'OpenCode subscription for open source models',
   'providers.presetXAI': 'xAI',

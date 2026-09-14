@@ -774,8 +774,6 @@ export const es = {
   'providers.presetOpenAIDesc': 'API oficial de OpenAI',
   'providers.presetAnthropic': 'Anthropic',
   'providers.presetAnthropicDesc': 'API oficial de Anthropic',
-  'providers.presetOpenCodeZen': 'OpenCode Zen',
-  'providers.presetOpenCodeZenDesc': 'Gateway de OpenCode: GPT, Claude, Gemini y open source',
   'providers.presetOpenCodeGo': 'OpenCode Go',
   'providers.presetOpenCodeGoDesc': 'Suscripción de OpenCode para modelos open source',
   'providers.presetXAI': 'xAI',

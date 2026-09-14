@@ -17,6 +17,12 @@ export interface ProviderPreset {
 /**
  * Presets de alta. Todo lo OpenAI-compatible entra por `custom` con su endpoint
  * base: el engine le agrega `/chat/completions` y `/models` (sin barra final).
+ *
+ * OpenCode Zen queda fuera a propósito: su catálogo reparte los modelos entre
+ * /chat/completions, /responses (GPT, Grok) y /messages (Claude, Qwen), y el
+ * engine (dad9a5c) solo auto-routea cuatro IDs a responses. Se reintroduce
+ * cuando exista el enrutamiento por modelo en el engine; la UI no duplica esa
+ * decisión.
  */
 export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
@@ -36,15 +42,6 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     endpoint: '',
     auth: 'api-key',
     brand: 'anthropic',
-  },
-  {
-    id: 'opencode-zen',
-    nameKey: 'providers.presetOpenCodeZen',
-    descKey: 'providers.presetOpenCodeZenDesc',
-    provider_type: 'custom',
-    endpoint: 'https://opencode.ai/zen/v1',
-    auth: 'api-key',
-    brand: 'opencode',
   },
   {
     id: 'opencode-go',

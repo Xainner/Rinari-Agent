@@ -19,18 +19,25 @@ export interface ProviderBrand {
   id: ProviderBrandId
   /** Nombre legible de la marca (title del logo). */
   label: string
-  /** Asset servido desde public/logos. */
+  /** Asset para el tema oscuro (servido desde public/logos). */
   src: string
+  /** Variante para el tema claro; solo en marcas monocromas. */
+  srcLight?: string
 }
 
 export const PROVIDER_BRANDS: Record<ProviderBrandId, ProviderBrand> = {
   openai: { id: 'openai', label: 'OpenAI', src: '/logos/openai.png' },
   anthropic: { id: 'anthropic', label: 'Anthropic', src: '/logos/claude.png' },
-  opencode: { id: 'opencode', label: 'OpenCode', src: '/logos/opencode.png' },
+  opencode: {
+    id: 'opencode',
+    label: 'OpenCode',
+    src: '/logos/opencode.png',
+    srcLight: '/logos/opencode-light.png',
+  },
   deepseek: { id: 'deepseek', label: 'DeepSeek', src: '/logos/deepseek.png' },
   gemini: { id: 'gemini', label: 'Google Gemini', src: '/logos/gemini.png' },
   mistral: { id: 'mistral', label: 'Mistral', src: '/logos/mistral.png' },
-  xai: { id: 'xai', label: 'xAI', src: '/logos/xai.png' },
+  xai: { id: 'xai', label: 'xAI', src: '/logos/xai.png', srcLight: '/logos/xai-light.png' },
 }
 
 export function providerBrand(id: ProviderBrandId | null | undefined): ProviderBrand | null {

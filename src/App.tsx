@@ -12,6 +12,7 @@ import AppShell from './components/app-shell/AppShell'
 import FileWorkspace from './features/files/FileWorkspace'
 import BrowserPanel from './features/browser/BrowserPanel'
 import ProcessesPanel from './features/processes/ProcessesPanel'
+import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
 import ChatHeader from './components/app-shell/ChatHeader'
@@ -237,6 +238,11 @@ function App() {
   return (
     <I18nProvider lang={lang}>
       <DesktopContextMenu />
+      <ProcessRuntimeProvider
+        epoch={session.connectionEpoch ?? 0}
+        engineReady={session.ready}
+        hasCapability={session.processesCapability === true}
+      >
       <AppShell
         banner={degradedDetail !== null && (
           <div
@@ -478,6 +484,7 @@ function App() {
         lang={lang}
         onLanguageChange={setLang}
       />
+      </ProcessRuntimeProvider>
     </I18nProvider>
   )
 }

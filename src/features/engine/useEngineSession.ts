@@ -194,6 +194,8 @@ export function useEngineSession() {
 
   return {
     status: connection.status,
+    connectionEpoch: connection.epoch,
+    processesCapability: connection.status?.capabilities.desktop_processes_v1 === true,
     sessions: sessions.sessions,
     activeSession: sessions.activeSession,
     setActiveSession: sessions.setActiveSession,

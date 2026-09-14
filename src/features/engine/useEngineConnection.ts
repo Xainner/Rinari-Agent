@@ -9,6 +9,10 @@ import { commandMessage, engineApi, type EngineStatus } from '../../services/eng
  */
 export function useEngineConnection() {
   const [status, setStatus] = useState<EngineStatus | null>(null)
+  // Época local del runtime: cambia cuando se inicia/reinicia el engine o se
+  // pierde la certeza de continuidad. No cambia por render ni por poll.
+  // Invalida snapshots, selecciones y respuestas en vuelo del ámbito anterior.
+  const [epoch, setEpoch] = useState(0)
 
   const refreshStatus = useCallback(async (): Promise<void> => {
     try {
@@ -22,6 +26,7 @@ export function useEngineConnection() {
     try {
       const next = await engineApi.start()
       setStatus(next)
+      if (next?.state === 'ready') setEpoch((value) => value + 1)
       return next
     } catch (err) {
       toast.error(commandMessage(err))
@@ -34,6 +39,7 @@ export function useEngineConnection() {
     try {
       const next = await engineApi.restart()
       setStatus(next)
+      if (next?.state === 'ready') setEpoch((value) => value + 1)
       return next
     } catch (err) {
       toast.error(commandMessage(err))
@@ -53,6 +59,7 @@ export function useEngineConnection() {
   return {
     status,
     ready: status?.state === 'ready',
+    epoch,
     refreshStatus,
     start,
     restart,

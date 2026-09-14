@@ -22,10 +22,28 @@ import sys
 import threading
 import time
 
+def _manifest_capabilities():
+    """Capacidades que el manifest declara para un engine real.
+
+    El supervisor exige las mismas que `engine-manifest.json`; derivarlas evita
+    que este fixture quede desactualizado cada vez que el gate crece.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    manifest_path = _Path(__file__).resolve().parents[3] / "engine-manifest.json"
+    try:
+        manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+    except OSError:
+        return {}
+    keys = list(manifest.get("required_capabilities", []))
+    keys += list(manifest.get("optional_capabilities", []))
+    return {key: True for key in keys}
+
+
+_MANIFEST_CAPABILITIES = _manifest_capabilities()
+
 CAPABILITIES = {
-    "tool_contracts_v1": True,
-    "interactive_questions_v1": True,
-    "desktop_workspace_v1": True, "web_preview_v1": True, "plan_read_scope_v1": True,
     "chat": True,
     "projects": True,
     "browser": True,
@@ -39,6 +57,8 @@ CAPABILITIES = {
     "activity_timeline_v1": True,
     "permission_profiles_v2": True,
     "turn_changeset_v1": True,
+    # Gate del supervisor = capacidades del manifest (requeridas + opcionales).
+    **_MANIFEST_CAPABILITIES,
 }
 
 DECISIONS = ["allow_once", "allow_session", "deny"]

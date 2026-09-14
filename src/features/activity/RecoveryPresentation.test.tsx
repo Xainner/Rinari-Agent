@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import TurnTimelineView from './TurnTimelineView'
@@ -23,8 +23,7 @@ it('restores failed turn diagnostics and continues only on explicit click', () =
   expect(screen.queryByText(/private partial text/)).toBeNull()
   expect(screen.getByText('Diagnóstico de la interrupción').closest('details')?.open).toBe(false)
   expect(onContinue).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
-  expect(onContinue).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('button', { name: 'Continuar' })).toBeNull()
 })
 
 it('retains live failure diagnostics when a stale running snapshot arrives', () => {

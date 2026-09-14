@@ -43,6 +43,7 @@ export interface ToolTimelineItem extends TimelineItemBase {
 }
 
 export interface ToolPresentation {
+  file_paths?: string[]
   kind: 'command' | 'tool' | 'image'
   image?: import('../../types/protocol.generated').ViewedImage
   tool?: string

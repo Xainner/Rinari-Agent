@@ -82,3 +82,19 @@ export function sortProjects(projects: ProjectSummary[]): ProjectSummary[] {
     || (right.last_opened_at ?? '').localeCompare(left.last_opened_at ?? ''),
   )
 }
+
+/** Calendar boundaries use local time, including daylight-saving changes. */
+export function groupRecentChats(sessions: SessionSummary[], now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime()
+  const week = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime()
+  const groups: { key: 'today' | 'yesterday' | 'week' | 'older'; sessions: SessionSummary[] }[] = [
+    { key: 'today', sessions: [] }, { key: 'yesterday', sessions: [] }, { key: 'week', sessions: [] }, { key: 'older', sessions: [] },
+  ]
+  const date = (session: SessionSummary) => Date.parse(session.last_active_at || session.updated_at) || 0
+  for (const session of [...sessions].sort((a, b) => date(b) - date(a))) {
+    const time = date(session)
+    groups[time >= today ? 0 : time >= yesterday ? 1 : time >= week ? 2 : 3].sessions.push(session)
+  }
+  return groups.filter(group => group.sessions.length > 0)
+}

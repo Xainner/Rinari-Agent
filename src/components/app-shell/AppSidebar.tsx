@@ -4,7 +4,6 @@ import {
   Archive,
   ArchiveRestore,
   ChevronDown,
-  Command,
   Copy,
   Cpu,
   FolderGit2,
@@ -12,8 +11,8 @@ import {
   MessageSquare,
   LoaderCircle,
   MoreHorizontal,
-  PanelLeftClose,
   PanelLeftOpen,
+  PanelLeftClose,
   Plus,
   GitFork,
   Pencil,
@@ -22,7 +21,7 @@ import {
 } from 'lucide-react'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
-import { buildWorkspaceModel, projectDisplayName } from '../../features/projects/workspaceModel'
+import { buildWorkspaceModel, projectDisplayName, groupRecentChats } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -138,6 +137,7 @@ export function AppSidebar({
   const { t } = useI18n()
   // El mismo nodo vive en el aside desktop y en el drawer móvil: en el
   // drawer siempre se muestra expandido.
+  const newChatShortcut = useUIStore(s => s.shortcutBindings.newChat)
   const mobileOpen = useUIStore((s) => s.sidebarOpen)
   const rail = collapsed && !mobileOpen
   const [showClosed, setShowClosed] = useState(false)
@@ -182,14 +182,14 @@ export function AppSidebar({
         <div
           className={cn(
             'flex w-full items-center gap-1 rounded-xl pr-1 pl-2.5 transition-colors',
-            active ? 'bg-[var(--bg-hover)]' : 'hover:bg-[var(--bg-hover)]/60',
+            active ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-hover)]/60',
           )}
         >
           <button
             type="button"
             onClick={() => onSelectSession(session.id)}
             aria-current={active ? 'page' : undefined}
-            className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left"
+            className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left"
           >
             {active && (
               <span
@@ -303,48 +303,34 @@ export function AppSidebar({
   }
 
   return (
-    <div className="flex h-full w-full flex-col gap-4 overflow-hidden px-3 pt-4 pb-3 lg:w-64">
+    <div className="concept-sidebar flex h-full w-full flex-col gap-4 overflow-hidden px-3 pt-3 pb-0">
       <div className="shrink-0 space-y-1">
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={onNewChat}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[var(--bg-hover)] px-3 py-2 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-active)]"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[var(--bg-active)] px-3 py-3 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-active)]"
         >
           <Plus size={15} aria-hidden="true" />
-          <span className="truncate">{t('sidebar.newChat')}</span>
+          <span className="truncate">{t('sidebar.newChat')}</span><kbd className="ml-auto whitespace-nowrap text-[11px] font-normal text-[var(--text-subtle)]">{newChatShortcut.replaceAll('+', ' + ')}</kbd>
         </button>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          aria-label={t('shell.collapse')}
-          title={t('shell.collapse')}
-          className="hidden shrink-0 rounded-xl p-2 text-[var(--text-subtle)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] lg:block"
-        >
-          <PanelLeftClose size={15} />
-        </button>
+
       </div>
-        <button
-          type="button"
-          onClick={onSearch}
-          aria-label={t('sidebar.commands')}
-          className="flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-        >
-          <Command size={15} aria-hidden="true" className="shrink-0 text-[var(--text-subtle)]" />
-          <span className="min-w-0 flex-1 truncate">{t('sidebar.commands')}</span>
-        </button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5">
-        <label className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5 transition-colors focus-within:border-[var(--border-strong)]">
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5 transition-colors focus-within:border-[var(--border-strong)]">
           <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
           <input
+            aria-label={t('sidebar.searchWorkspace')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('sidebar.searchWorkspace')}
             className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
           />
-        </label>
+        <button type="button" onClick={onToggleCollapse} aria-label={t('shell.collapse')} title={t('shell.collapse')} className="hidden rounded-lg p-1 text-[var(--text-subtle)] hover:text-[var(--text)] lg:block"><PanelLeftClose size={15} /></button>
+        </div>
+      <div className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5">
+
         <section aria-label={t('sidebar.projects')}>
           <div className="mb-1 flex items-center justify-between pl-2">
             <p className="text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
@@ -363,7 +349,7 @@ export function AppSidebar({
           {model.sections.length === 0 && (
             <p className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.noProjects')}</p>
           )}
-          <ul className="space-y-2.5">
+          <ul className="space-y-1.5">
             {model.sections.map(({ project, sessions: items }) => (
               <li key={project.id} className="group/project" onContextMenu={e => { if (!e.defaultPrevented) { e.preventDefault(); setProjectMenu(project.id) } }}>
                 <div className="flex items-center">
@@ -374,10 +360,11 @@ export function AppSidebar({
                   title={project.root}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-[var(--bg-hover)]/60"
                 >
-                  <ChevronDown size={13} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${collapsedProjects.has(project.id) && !query ? '-rotate-90' : ''}`} />
+                  <FolderGit2 size={14} aria-hidden="true" className="shrink-0 text-[var(--accent)]" />
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--text)]">
                     {project.name || projectDisplayName(project.root)}
                   </span>
+                  {project.pinned && <Pin size={11} className="text-[var(--text-subtle)]" />}
                   {items.length > 0 && (
                     <span className="shrink-0 rounded-md border border-[var(--border)] px-1 font-mono text-[10px] text-[var(--text-subtle)]">
                       {items.length}
@@ -393,7 +380,7 @@ export function AppSidebar({
                   setQuery('')
                   setCollapsedProjects(current => { const next = new Set(current); next.delete(project.id); return next })
                   onNewProjectChat(project.id)
-                }} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)]"><Plus size={14} /></button>}
+                }} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 hover:bg-[var(--bg-hover)]"><Plus size={14} /></button>}
                 <DropdownMenu open={projectMenu === project.id} onOpenChange={open => setProjectMenu(open ? project.id : null)}>
                   <DropdownMenuTrigger asChild>
                     <button type="button" aria-label={t('project.options')} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100">
@@ -461,7 +448,10 @@ export function AppSidebar({
             </button>
           </div>
           <ul className="space-y-0.5">
-            {model.chats.map((session) => row(session))}
+            {groupRecentChats(model.chats).map(group => <li key={group.key} className="mt-2">
+              <details open><summary className="cursor-pointer px-1 pb-2 text-[11px] text-[var(--text-subtle)]">{t(`home.${group.key}`)}</summary>
+              <ul className="space-y-0.5">{group.sessions.map(session => row(session))}</ul></details>
+            </li>)}
             {model.chats.length === 0 && (
               <li className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.emptyChats')}</li>
             )}

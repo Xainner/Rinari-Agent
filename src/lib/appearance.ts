@@ -38,9 +38,9 @@ export function storeAccent(accent: Accent): void {
 }
 
 /** Aplica el preset al <html> (también lo usa el boot inline). */
-export function applyAccent(accent: Accent): void {
+export function applyAccent(_accent: Accent): void {
   if (typeof document === 'undefined') return
-  document.documentElement.dataset.accent = accent
+  document.documentElement.dataset.accent = 'nebula'
 }
 
 export function getStoredReduceMotion(): boolean {

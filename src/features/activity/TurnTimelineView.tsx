@@ -47,7 +47,7 @@ interface Props {
   user?: ChatMessage
   now: number
   onResolveApproval: (id: string, decision: string) => void
-  onContinue: () => void
+  onContinue?: () => void
   planActions?: ReactNode
 }
 
@@ -99,9 +99,11 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
   const { lang } = useI18n()
   const category = toolCategory(items[0].tool)
   const Icon = ICONS[category]
+  const files = new Set(items.flatMap(item => item.presentation?.file_paths ?? []))
+  const fileCount = files.size ? ` · ${files.size} ${lang === 'es' ? 'archivos' : 'files'}` : ''
   const label = lang === 'es'
-    ? category === 'read' ? `Leyó ${items.length} archivos` : category === 'search' ? `Hizo ${items.length} búsquedas` : category === 'command' ? `Ejecutó ${items.length} comandos` : `Listó archivos ${items.length} veces`
-    : category === 'read' ? `Read ${items.length} files` : category === 'search' ? `Ran ${items.length} searches` : category === 'command' ? `Ran ${items.length} commands` : `Listed files ${items.length} times`
+    ? category === 'read' ? `${items.length} lecturas${fileCount}` : category === 'search' ? `Hizo ${items.length} búsquedas` : category === 'command' ? `Ejecutó ${items.length} comandos` : `Listó archivos ${items.length} veces`
+    : category === 'read' ? `${items.length} reads${fileCount}` : category === 'search' ? `Ran ${items.length} searches` : category === 'command' ? `Ran ${items.length} commands` : `Listed files ${items.length} times`
   return (
     <details className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50">
@@ -476,7 +478,7 @@ function VisualProgress({ items, status, onResolveApproval }: {
   </>
 }
 
-export default function TurnTimelineView({ timeline, user, now, onResolveApproval, onContinue, planActions }: Props) {
+export default function TurnTimelineView({ timeline, user, now, onResolveApproval, planActions }: Props) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
   const changeSets = timeline.items.filter((item) => item.type === 'changeset')
@@ -521,9 +523,8 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
       {final?.type === 'model' && (timeline.mode === 'plan' ? <section aria-label="Plan propuesto" className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"><div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />Plan propuesto</div><Markdown>{final.content}</Markdown>{planActions}</section> : <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />)}
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={['running', 'approval', 'cancelling'].includes(timeline.status)} />)}
       {showSummary && <div className="flex items-center gap-2 text-[10px] text-[var(--text-subtle)]"><span>{elapsed(duration)}</span><span>·</span><span>{significant.length} {lang === 'es' ? 'acciones' : 'actions'}</span><span>·</span><span>{statusLabel}</span></div>}
-      {timeline.status === 'failed' && timeline.errorDetails?.history_preserved === true && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'El trabajo previo está conservado. Al continuar se recuperará el contexto; las acciones de resultado desconocido requieren comprobar su estado.' : 'Previous work is preserved. Continuing restores context; unknown action outcomes require checking their state.'}</p>}
+      {timeline.status === 'failed' && timeline.errorDetails?.history_preserved === true && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'El trabajo previo está conservado. Puedes enviar un nuevo mensaje; las acciones de resultado desconocido requieren comprobar su estado.' : 'Previous work is preserved. You can send a new message; unknown action outcomes require checking their state.'}</p>}
       {timeline.status === 'failed' && timeline.errorDetails && <details className="text-xs text-[var(--text-subtle)]"><summary>{lang === 'es' ? 'Diagnóstico de la interrupción' : 'Interruption diagnostics'}</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{JSON.stringify(Object.fromEntries(Object.entries(timeline.errorDetails).filter(([key]) => key !== 'partial_text')), null, 2)}</pre></details>}
-      {(timeline.status === 'stopped' || (timeline.status === 'failed' && timeline.errorDetails?.history_preserved === true)) && <button type="button" onClick={onContinue} className="text-xs text-[var(--accent-2)] hover:underline">{lang === 'es' ? 'Continuar' : 'Continue'}</button>}
     </div>
   )
 }

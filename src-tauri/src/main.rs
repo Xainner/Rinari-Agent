@@ -28,6 +28,13 @@ pub fn run() {
     }
     tauri::Builder::default()
         .menu(menu::build)
+        .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                window.hide_menu()?;
+            }
+            Ok(())
+        })
         .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())

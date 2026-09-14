@@ -9,7 +9,7 @@ import Composer from './Composer'
 afterEach(cleanup)
 it('groups models by provider and closes each selector immediately on selection', async () => {
   const onUseModel = vi.fn(), onPermissionChange = vi.fn(), onReasoningChange = vi.fn()
-  const models = [{ id: 'a', alias: 'Alpha', provider: 'Local', provider_model_id: 'alpha' }, { id: 'b', alias: 'Beta', provider: 'Remote', provider_model_id: 'beta' }] as ModelSummary[]
+  const models = [{ provider_id: 'local', availability: 'available', settings: {}, active: true, id: 'a', alias: 'Alpha', provider: 'Local', provider_model_id: 'alpha', capabilities: { reasoning_effort: true } }, { provider_id: 'remote', capabilities: null, availability: 'available', settings: {}, active: false, id: 'b', alias: 'Beta', provider: 'Remote', provider_model_id: 'beta' }] as ModelSummary[]
   render(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={models} activeAlias="Alpha" onUseModel={onUseModel} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={onReasoningChange} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={onPermissionChange} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Alpha' }))
@@ -58,4 +58,23 @@ it('pinta el logo del proveedor en el modelo activo y en cada grupo', async () =
     screen.getByRole('heading', { name: 'opencode-go' }).querySelector('img')?.getAttribute('src'),
   ).toBe('/logos/opencode.png')
   expect(screen.getByRole('heading', { name: 'xAInner' }).querySelector('img')).toBeNull()
+})
+
+it('collapses providers, remembers their state and reveals matching models during search', async () => {
+  const models = [{id:'a',alias:'Alpha',provider:'Local',provider_model_id:'alpha'}, {id:'b',alias:'Beta',provider:'Remote',provider_model_id:'beta'}] as ModelSummary[]
+  render(<I18nProvider lang="es"><Composer placement="centered" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={models} activeAlias="Alpha" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async()=>({root:'/',files:[]})} /></I18nProvider>)
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', {name:'Alpha'}))
+  await user.click(screen.getByRole('button', {name:'Remote'}))
+  expect(screen.getByRole('button', {name:'Remote'}).getAttribute('aria-expanded')).toBe('false')
+  expect(screen.queryByRole('button', {name:/Beta/})).toBeNull()
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', {name:'Alpha'}))
+  expect(screen.queryByRole('button', {name:/Beta/})).toBeNull()
+  await user.type(screen.getByPlaceholderText('Buscar modelos…'), 'Beta')
+  expect(screen.getByRole('button', {name:/Beta/})).toBeTruthy()
+  await user.clear(screen.getByPlaceholderText('Buscar modelos…'))
+  expect(screen.queryByRole('button', {name:/Beta/})).toBeNull()
+  await user.click(screen.getByRole('button', {name:'Remote'}))
+  expect(screen.getByRole('button', {name:/Beta/})).toBeTruthy()
 })

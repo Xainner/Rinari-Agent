@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import {
   commandMessage,
   engineApi,
+  isCommandError,
   type ProviderHealth,
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
@@ -30,13 +31,34 @@ interface WizardDraft {
   createdAuth: string | null
 }
 
+/** Campos borrables del formulario: nunca persisten credenciales (plan seccion 4). */
+const DRAFT_SAFE_FIELDS: readonly (keyof ProviderFormData)[] = [
+  'preset',
+  'alias',
+  'endpoint',
+  'auth',
+  'credentialSource',
+  'account_hint',
+]
+
+function sanitizeDraftForm(form: ProviderFormData): ProviderFormData {
+  const clean = {} as ProviderFormData
+  for (const key of DRAFT_SAFE_FIELDS) {
+    // @ts-expect-error: asignación controlada desde la lista segura.
+    clean[key] = form[key]
+  }
+  clean.secret = ''
+  clean.secret_env = ''
+  return clean
+}
+
 export function loadWizardDraft(storage: Pick<Storage, 'getItem'> = localStorage): WizardDraft | null {
   try {
     const raw = storage.getItem(WIZARD_DRAFT_KEY)
     if (!raw) return null
     const draft = JSON.parse(raw) as WizardDraft
     if (!['preset', 'fields', 'testing', 'models'].includes(draft.step) || !draft.form) return null
-    return { ...draft, form: { ...draft.form, secret: '' } }
+    return { ...draft, form: sanitizeDraftForm(draft.form) }
   } catch {
     return null
   }
@@ -46,7 +68,7 @@ export function saveWizardDraft(
   draft: WizardDraft,
   storage: Pick<Storage, 'setItem'> = localStorage,
 ): void {
-  const safe = { ...draft, form: { ...draft.form, secret: '' } }
+  const safe = { ...draft, form: sanitizeDraftForm(draft.form) }
   storage.setItem(WIZARD_DRAFT_KEY, JSON.stringify(safe))
 }
 
@@ -100,6 +122,13 @@ export default function ProviderWizard({
     setCreatedAuth(form.auth)
   }
 
+  function credentialSourceFields(): { secret?: string; secret_env?: string } {
+    if (form.auth !== 'api-key') return {}
+    return form.credentialSource === 'env'
+      ? { secret_env: form.secret_env }
+      : { secret: form.secret }
+  }
+
   async function createProvider(): Promise<string | null> {
     const alias = form.alias.trim()
     const preset = form.preset
@@ -115,17 +144,27 @@ export default function ProviderWizard({
         endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
         account_hint:
           form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
-        secret: form.secret === '' ? undefined : form.secret,
-        secret_env: form.secret_env === '' ? undefined : form.secret_env,
+        ...credentialSourceFields(),
       })
     } catch (err) {
-      // Adoptar en conflicto: otra corrida (StrictMode) o un huérfano ganó
-      // la carrera por el alias. Solo se muestra error si nadie lo tiene.
-      const list = await engineApi.providerList().catch(() => null)
-      if (!list?.providers.some((p) => p.alias === alias)) {
-        setError(commandMessage(err))
-        return null
+      // Adoptar SOLO en el conflicto de identidad concreto: otra corrida
+      // (StrictMode) o un huérfano ganó la carrera por el alias. Los demás
+      // errores de validación/persistencia se muestran tal cual (plan
+      // sección 4); adoptar ante ellos ocultaría fallos reales.
+      const conflict =
+        isCommandError(err) && err.code === 'CONFLICT' &&
+        typeof err.message === 'string' &&
+        err.message.toLowerCase().includes('alias already exists')
+      if (conflict) {
+        const list = await engineApi.providerList().catch(() => null)
+        if (list?.providers.some((p) => p.alias === alias)) {
+          trackPersisted(alias)
+          toast.success(t('wizard.saved'))
+          return alias
+        }
       }
+      setError(commandMessage(err))
+      return null
     }
     trackPersisted(alias)
     toast.success(t('wizard.saved'))
@@ -140,8 +179,7 @@ export default function ProviderWizard({
         endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
         account_hint:
           form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
-        secret: form.secret === '' ? undefined : form.secret,
-        secret_env: form.secret_env === '' ? undefined : form.secret_env,
+        ...credentialSourceFields(),
       })
     } catch (err) {
       setError(commandMessage(err))

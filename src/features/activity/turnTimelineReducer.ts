@@ -96,6 +96,7 @@ function presentation(value: unknown): ToolPresentation | undefined {
   const image = raw.image && typeof raw.image === 'object' ? raw.image as Record<string, unknown> : undefined
   return {
     kind,
+    file_paths: Array.isArray(raw.file_paths) ? raw.file_paths.filter((path): path is string => typeof path === 'string') : undefined,
     image: image && typeof image.uri === 'string' && image.uri.startsWith('artifact://')
       ? { uri: image.uri, name: text(image.name), path: text(image.path),
           width: Number(image.width) || 0, height: Number(image.height) || 0 }

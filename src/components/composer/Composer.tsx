@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
-import { ArrowUp, Box, Brain, Check, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Box, Brain, Check, ChevronDown, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
 import { useComposerStore } from '../../stores/composer'
@@ -84,6 +84,7 @@ export default function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set())
   const [modelOpen, setModelOpen] = useState(false)
   const [modelQuery, setModelQuery] = useState('')
   const [attachmentOpen, setAttachmentOpen] = useState(false)
@@ -341,8 +342,8 @@ export default function Composer({
   }
 
   return (
-    <div className="relative">
-      <div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="rounded-[26px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
+    <div className="composer-root relative">
+      <div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
@@ -399,7 +400,8 @@ export default function Composer({
           }}
           className="composer-textarea block max-h-[240px] min-h-13 w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] focus:outline-none focus-visible:outline-none"
         />
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="composer-toolbar">
+          <div className="composer-tools">
           <Popover open={attachmentOpen} onOpenChange={setAttachmentOpen}>
             <PopoverTrigger asChild>
               <button type="button" disabled={isStreaming} aria-label="Adjuntar archivos" title="Añadir al mensaje" className="flex size-8 cursor-pointer items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:opacity-40">
@@ -418,10 +420,32 @@ export default function Composer({
               </button>
             </PopoverContent>
           </Popover>
+          <Popover open={permissionOpen} onOpenChange={setPermissionOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" disabled={isStreaming} title="Permisos de este chat" style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-current/25 bg-[var(--bg-subtle)] p-2 text-xs transition-colors hover:border-current disabled:opacity-40">
+                <Shield size={13} />
+                <span className="sr-only">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? 'Lectura · Acceso completo' : permissionProfile === 'workspace' ? 'Lectura · Workspace' : 'Solo lectura') : effectivePermissionProfile === 'read-only' ? 'Solo lectura' : effectivePermissionProfile === 'full-access' ? 'Acceso completo' : 'Workspace'}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-1.5">
+              {sessionMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">PLAN y REVIEW no modifican archivos ni ejecutan comandos. Estos permisos definen qué carpetas pueden leer.</p>}
+              {([
+                ['read-only', 'Solo lectura', 'No inicia shell ni procesos y no modifica archivos.'],
+                ['workspace', 'Workspace', 'Trabaja dentro del proyecto; pide permiso ante una mutación externa detectable.'],
+                ['full-access', 'Acceso completo', 'Permite mutaciones locales externas. Credenciales, trabajo previo y Git remoto siguen protegidos.'],
+              ] as const).map(([value, label, description]) => (
+                <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? 'Actualiza Rinari Engine para usar acceso completo con garantías v2.' : undefined} onClick={() => { setPermissionOpen(false); onPermissionChange(value) }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
+                  <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? (value === 'full-access' ? 'Lee carpetas externas sin pedir permiso. Las credenciales siguen protegidas.' : value === 'workspace' ? 'Lee el proyecto y pide permiso para leer carpetas externas.' : 'Lee únicamente la carpeta de esta sesión.') : description}</span></span>
+                  {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+          </div>
           <div
             role="group"
             aria-label={t('mode.change')}
-            className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] p-0.5"
+            className="composer-modes inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] p-0.5"
           >
             {MODES.map((mode) => {
               const current = (sessionMode ?? 'build').toLowerCase()
@@ -445,6 +469,7 @@ export default function Composer({
               )
             })}
           </div>
+          <div className="composer-model-controls">
           <Popover open={modelOpen} onOpenChange={(open) => { setModelOpen(open); if (open) { setModelQuery(''); onDiscoverModels() } }}>
             <PopoverTrigger asChild>
               <button
@@ -486,13 +511,16 @@ export default function Composer({
                 )}
                 {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">No se encontraron modelos.</p>}
                 {providerGroups.filter(provider => matchingModels.some(model => (model.provider ?? 'Otros') === provider)).map(provider => <section key={provider} aria-label={provider}>
-                  <h3 className="flex items-center gap-1.5 px-2.5 pt-3 pb-1 text-[11px] font-semibold text-[var(--text-subtle)]">
+                  <h3 className="text-[11px] font-semibold text-[var(--text-subtle)]">
+                    <button type="button" aria-expanded={Boolean(modelQuery.trim()) || !collapsedProviders.has(provider)} onClick={() => setCollapsedProviders(current => { const next = new Set(current); if (next.has(provider)) next.delete(provider); else next.add(provider); return next })} disabled={Boolean(modelQuery.trim())} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default">
                     <span className="flex size-3.5 shrink-0 items-center justify-center">
                       <ProviderLogo alias={provider} endpoint={providerEndpoint(provider)} size={13} />
                     </span>
-                    {provider}
+                    <span className="flex-1">{provider}</span>
+                    <ChevronDown size={13} aria-hidden="true" className={`transition-transform ${!modelQuery.trim() && collapsedProviders.has(provider) ? '-rotate-90' : ''}`} />
+                    </button>
                   </h3>
-                  {matchingModels.filter(model => (model.provider ?? 'Otros') === provider).map((model) => (
+                  {(Boolean(modelQuery.trim()) || !collapsedProviders.has(provider)) && matchingModels.filter(model => (model.provider ?? 'Otros') === provider).map((model) => (
                   <button
                     key={model.id}
                     type="button"
@@ -524,27 +552,6 @@ export default function Composer({
                   </button>
                 </div>
               )}
-            </PopoverContent>
-          </Popover>
-          <Popover open={permissionOpen} onOpenChange={setPermissionOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" disabled={isStreaming} title="Permisos de este chat" style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-current/25 bg-[var(--bg-subtle)] px-3 py-1.5 text-xs transition-colors hover:border-current disabled:opacity-40">
-                <Shield size={13} />
-                <span>{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? 'Lectura · Acceso completo' : permissionProfile === 'workspace' ? 'Lectura · Workspace' : 'Solo lectura') : effectivePermissionProfile === 'read-only' ? 'Solo lectura' : effectivePermissionProfile === 'full-access' ? 'Acceso completo' : 'Workspace'}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-1.5">
-              {sessionMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">PLAN y REVIEW no modifican archivos ni ejecutan comandos. Estos permisos definen qué carpetas pueden leer.</p>}
-              {([
-                ['read-only', 'Solo lectura', 'No inicia shell ni procesos y no modifica archivos.'],
-                ['workspace', 'Workspace', 'Trabaja dentro del proyecto; pide permiso ante una mutación externa detectable.'],
-                ['full-access', 'Acceso completo', 'Permite mutaciones locales externas. Credenciales, trabajo previo y Git remoto siguen protegidos.'],
-              ] as const).map(([value, label, description]) => (
-                <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? 'Actualiza Rinari Engine para usar acceso completo con garantías v2.' : undefined} onClick={() => { setPermissionOpen(false); onPermissionChange(value) }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
-                  <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? (value === 'full-access' ? 'Lee carpetas externas sin pedir permiso. Las credenciales siguen protegidas.' : value === 'workspace' ? 'Lee el proyecto y pide permiso para leer carpetas externas.' : 'Lee únicamente la carpeta de esta sesión.') : description}</span></span>
-                  {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
-                </button>
-              ))}
             </PopoverContent>
           </Popover>
           <Popover open={reasoningOpen} onOpenChange={setReasoningOpen}>
@@ -590,7 +597,7 @@ export default function Composer({
               <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{t('thinking.compatibility')}</p>
             </PopoverContent>
           </Popover>
-          <span className="flex-1" />
+
           {isStreaming ? (
             <button
               type="button"
@@ -613,6 +620,7 @@ export default function Composer({
               <ArrowUp size={17} aria-hidden="true" />
             </button>
           )}
+          </div>
         </div>
       </div>
       <p className="mt-1.5 px-1 text-center text-[11px] text-[var(--text-subtle)]">

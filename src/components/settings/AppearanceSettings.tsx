@@ -11,9 +11,9 @@ const THEMES: Theme[] = ['system', 'light', 'dark']
 /** Settings > Apariencia (§20): tema, acento, densidad (fase 2), motion. Inmediato. */
 export default function AppearanceSettings() {
   const { t } = useI18n()
-  const theme = useUIStore((s) => s.theme)
+  const theme: Theme = 'dark'
   const setTheme = useUIStore((s) => s.setTheme)
-  const accent = useUIStore((s) => s.accent)
+  const accent = 'nebula'
   const setAccent = useUIStore((s) => s.setAccent)
   const reduceMotion = useUIStore((s) => s.reduceMotion)
   const setReduceMotion = useUIStore((s) => s.setReduceMotion)
@@ -27,6 +27,7 @@ export default function AppearanceSettings() {
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-[var(--text-muted)]">{t('home.fixedTheme')}</p>
       <Section title={t('settings.appearance.theme')}>
         <div
           role="group"
@@ -35,6 +36,7 @@ export default function AppearanceSettings() {
         >
           {THEMES.map((th) => (
             <button
+              disabled
               key={th}
               type="button"
               onClick={() => setTheme(th)}
@@ -61,6 +63,7 @@ export default function AppearanceSettings() {
             const active = accent === a
             return (
               <button
+                disabled
                 key={a}
                 type="button"
                 onClick={() => setAccent(a)}

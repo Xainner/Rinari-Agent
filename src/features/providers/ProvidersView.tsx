@@ -63,6 +63,7 @@ export default function ProvidersView({
       alias: provider.alias,
       endpoint: provider.endpoint ?? '',
       auth: provider.auth_method === 'none' ? 'none' : 'api-key',
+      credentialSource: 'literal',
       secret: '',
       secret_env: '',
       account_hint: provider.account_hint ?? '',
@@ -90,8 +91,10 @@ export default function ProvidersView({
           auth_method: form.auth,
           endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
           account_hint: form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
-          secret: form.secret === '' ? undefined : form.secret,
-          secret_env: form.secret_env === '' ? undefined : form.secret_env,
+          // Solo viaja el campo de la fuente activa; el incompatible queda vacío.
+          ...(form.credentialSource === 'env'
+            ? { secret_env: form.secret_env === '' ? undefined : form.secret_env }
+            : { secret: form.secret === '' ? undefined : form.secret }),
         })
         toast.success(t('wizard.saved'))
       } else if (dialog?.mode === 'edit') {
@@ -108,8 +111,13 @@ export default function ProvidersView({
         if (form.account_hint !== (dialog.provider.account_hint ?? '')) {
           patch.account_hint = form.account_hint
         }
-        if (form.secret !== '') patch.secret = form.secret
-        if (form.secret_env !== '') patch.secret_env = form.secret_env
+        // Solo el campo de la fuente activa puede rotar la credencial;
+        // el incompatible nunca se envía.
+        if (form.credentialSource === 'env' && form.secret_env !== '') {
+          patch.secret_env = form.secret_env
+        } else if (form.credentialSource === 'literal' && form.secret !== '') {
+          patch.secret = form.secret
+        }
         if (Object.keys(patch).length === 0) {
           setDialog(null)
           return

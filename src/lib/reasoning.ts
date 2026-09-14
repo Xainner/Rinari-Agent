@@ -6,5 +6,6 @@ export function supportsEffort(capabilities: Record<string, unknown> | null | un
   if (capabilities?.reasoning === false || capabilities?.reasoning_effort === false) return false
   const reasoning = capabilities?.reasoning
   const levels = capabilities?.reasoning_levels ?? (typeof reasoning === 'object' && reasoning !== null ? (reasoning as Record<string, unknown>).supported_efforts : undefined)
-  return !Array.isArray(levels) || levels.includes(level)
+  if (Array.isArray(levels)) return levels.includes(level)
+  return capabilities?.reasoning_effort === true || reasoning === true
 }

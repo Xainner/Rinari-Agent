@@ -177,3 +177,38 @@ Found a bug or a workflow that needs attention? [Open an issue](https://github.c
 <sub>Rinari character illustrations are brand artwork, not application screenshots.</sub>
 
 </div>
+
+
+## Inicio y apariencia de Rinari Agent
+
+El shell utiliza una paleta oscura violeta fija, la barra de ventana nativa del sistema y
+un sidebar con conversaciones agrupadas por fecha local. Los temas y acentos previos
+se conservan en las preferencias, pero sus selectores están deshabilitados durante
+esta etapa del rediseño. La preferencia de movimiento reducido sigue disponible.
+
+La sesión vacía muestra la ilustración de `public/brand/home.png` y un composer
+compartido con las conversaciones activas: adjuntos y permisos a la izquierda,
+PLAN / BUILD / REVIEW en el centro, y modelo, razonamiento y envío a la derecha.
+Los recursos originales proceden del concept proporcionado para Rinari Agent.
+
+Las cuatro sugerencias usan un catálogo local, sin llamadas a modelos. Priorizan
+archivos adjuntos, cambios de Git conocidos y proyecto abierto; «Otras ideas» recorre
+las alternativas aplicables. Elegir una tarjeta prepara un borrador editable sin
+enviarlo ni cambiar el modo o los permisos. Mientras hay texto, las tarjetas quedan
+estables y deshabilitadas para proteger el borrador. La preferencia de ocultarlas
+continúa funcionando.
+
+La ventana nueva solicita 1440 × 900; se conserva la restauración de ventana existente
+y se limita su tamaño y posición al área de trabajo del monitor, considerando el
+marco nativo. No hay una segunda barra de ventana dibujada en React.
+
+El inicio se centra verticalmente en el espacio disponible, con una ilustración
+más grande y un composer de hasta 1080 px. Al enviar el primer mensaje, la misma
+instancia del composer se desplaza suavemente hacia abajo mientras el inicio se
+desvanece. Se respeta el movimiento reducido del sistema y de las preferencias.
+
+Los grupos de proveedores del selector de modelos se pueden contraer y expandir.
+Al buscar, los grupos coincidentes se muestran expandidos; al limpiar la búsqueda,
+recuperan su estado anterior. El icono de aplicación se genera con
+`npm run tauri -- icon src-tauri/icons/source/app-icon.png`, a partir del nuevo
+`icon.png` del concept.

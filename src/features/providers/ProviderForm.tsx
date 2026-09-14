@@ -11,6 +11,7 @@ export interface ProviderFormData {
   alias: string
   endpoint: string
   auth: 'api-key' | 'none'
+  credentialSource: 'literal' | 'env'
   secret: string
   secret_env: string
   account_hint: string
@@ -23,6 +24,7 @@ export function initialForm(presetId = 'openai', alias = ''): ProviderFormData {
     alias: alias || preset.id,
     endpoint: preset.endpoint,
     auth: preset.auth,
+    credentialSource: 'literal',
     secret: '',
     secret_env: '',
     account_hint: '',
@@ -152,44 +154,76 @@ export default function ProviderForm({
       {form.auth === 'api-key' && (
         <>
           <div>
-            <label className={labelClass} htmlFor="provider-secret">
-              {t('providers.authKey')}
-            </label>
+            <span className={labelClass}>{t('providers.credentialSource')}</span>
             <div className="flex gap-2">
+              {(['literal', 'env'] as const).map((source) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() =>
+                    setForm({ ...form, secret: '', secret_env: '' , credentialSource: source})
+                  }
+                  aria-pressed={form.credentialSource === source}
+                  className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition-all ${
+                    form.credentialSource === source
+                      ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]'
+                      : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {source === 'literal'
+                    ? t('providers.sourceLiteral')
+                    : t('providers.sourceEnv')}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-[var(--text-subtle)]">
+              {form.credentialSource === 'literal'
+                ? t('providers.sourceLiteralHint')
+                : t('providers.sourceEnvHint')}
+            </p>
+          </div>
+          {form.credentialSource === 'literal' ? (
+            <div>
+              <label className={labelClass} htmlFor="provider-secret">
+                {t('providers.authKey')}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="provider-secret"
+                  type={showSecret ? 'text' : 'password'}
+                  value={form.secret}
+                  onChange={(e) => setForm({ ...form, secret: e.target.value })}
+                  placeholder={isEdit ? t('apikey.stored') : t('providers.keyPlaceholder')}
+                  className={inputClass}
+                  autoComplete="new-password"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((s) => !s)}
+                  aria-label={showSecret ? t('apikey.hide') : t('apikey.show')}
+                  className="flex shrink-0 items-center rounded-xl border border-[var(--border)] px-3 text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                >
+                  {showSecret ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className={labelClass} htmlFor="provider-secret-env">
+                {t('providers.authEnv')}
+              </label>
               <input
-                id="provider-secret"
-                type={showSecret ? 'text' : 'password'}
-                value={form.secret}
-                onChange={(e) => setForm({ ...form, secret: e.target.value })}
-                placeholder={isEdit ? t('apikey.stored') : t('providers.keyPlaceholder')}
+                id="provider-secret-env"
+                value={form.secret_env}
+                onChange={(e) => setForm({ ...form, secret_env: e.target.value })}
+                placeholder={t('providers.keyEnvPlaceholder')}
                 className={inputClass}
-                autoComplete="new-password"
+                autoComplete="off"
                 spellCheck={false}
               />
-              <button
-                type="button"
-                onClick={() => setShowSecret((s) => !s)}
-                aria-label={showSecret ? t('apikey.hide') : t('apikey.show')}
-                className="flex shrink-0 items-center rounded-xl border border-[var(--border)] px-3 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-              >
-                {showSecret ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
             </div>
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="provider-secret-env">
-              {t('providers.authEnv')}
-            </label>
-            <input
-              id="provider-secret-env"
-              value={form.secret_env}
-              onChange={(e) => setForm({ ...form, secret_env: e.target.value })}
-              placeholder={t('providers.keyEnvPlaceholder')}
-              className={inputClass}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
+          )}
         </>
       )}
 

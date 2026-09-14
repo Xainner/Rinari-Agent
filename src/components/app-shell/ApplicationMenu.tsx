@@ -1,4 +1,4 @@
-import { ChevronUp, Settings2 } from 'lucide-react'
+import { MoreVertical } from 'lucide-react'
 import { dispatchAction, type DesktopAction } from '../../services/actions'
 import {
   DropdownMenu,
@@ -20,15 +20,12 @@ export default function ApplicationMenu({ collapsed = false }: { collapsed?: boo
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Menú de Rinari Agent"
-          className="flex w-full items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-3 text-sm hover:bg-[var(--bg-hover)]"
+          className="relative flex w-full items-center justify-center gap-2 rounded-lg px-2 py-3 text-sm hover:bg-[var(--bg-hover)]"
         >
-          <Settings2 size={16} />
           {!collapsed && (
-            <>
-              <span className="flex-1 text-left font-semibold">Rinari Agent</span>
-              <ChevronUp size={14} />
-            </>
+            <span className="w-full text-center text-xs tracking-wide text-[var(--text-muted)]">Code · Create · Explore</span>
           )}
+          <MoreVertical size={16} className={collapsed ? undefined : "absolute right-1"} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="w-60">

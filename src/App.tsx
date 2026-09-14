@@ -304,7 +304,7 @@ function App() {
           />
         }
         header={
-          view === 'chat' ? (
+          view === 'chat' && (session.messages.length > 0 || Object.values(session.timelines).some(turn => turn.sessionId === session.activeSession)) ? (
             <ChatHeader
               title={activeTitle}
               kind={activeRecord?.kind ?? null}
@@ -337,6 +337,7 @@ function App() {
       >
         {view === 'chat' && (
           <FileWorkspace sessionId={session.activeSession}><ChatView
+            homeContext={{ projectName: activeProject?.name ?? session.activeProjectRoot, changedFiles: session.activeGitStatus?.status.available ? session.activeGitStatus.status.files.length : null }}
             messages={session.messages}
             sessionId={session.activeSession}
             isStreaming={session.busy}

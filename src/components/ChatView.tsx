@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
 import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
 import TurnTimelineView from '../features/activity/TurnTimelineView'
-import { useI18n, type I18nKey } from '../i18n'
-import { useComposerStore } from '../stores/composer'
+import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
-import Logo from './Logo'
+import HomeWelcome from '../features/home/HomeWelcome'
+import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
 import ScrollToBottom from './chat/ScrollToBottom'
 
 interface ChatViewProps {
+  homeContext?: Omit<HomeContext, 'attachmentCount'>
   messages: ChatMessage[]
   sessionId: string
   isStreaming: boolean
@@ -48,14 +48,8 @@ interface ChatViewProps {
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
 }
 
-const SUGGESTIONS: I18nKey[] = [
-  'chat.suggestion1',
-  'chat.suggestion2',
-  'chat.suggestion3',
-  'chat.suggestion4',
-]
-
 export default function ChatView({
+  homeContext = { projectName: null, changedFiles: null },
   messages,
   sessionId,
   isStreaming,
@@ -87,7 +81,6 @@ export default function ChatView({
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
-  const showSuggestions = useUIStore((s) => s.showSuggestions)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const followRef = useRef(true)
@@ -99,15 +92,6 @@ export default function ChatView({
   const [dismissedPlans, setDismissedPlans] = useState<Set<string>>(() => new Set())
   const latestTurn = Object.values(timelines).filter(turn => turn.sessionId === sessionId).sort((a, b) => b.startedAt - a.startedAt)[0]
   const pendingPlan = sessionMode === 'plan' && latestTurn?.mode === 'plan' && latestTurn.status === 'completed' && latestTurn.items.some(item => item.type === 'model' && item.outputKind === 'final' && item.content) && !dismissedPlans.has(latestTurn.turnId) && !isStreaming
-  const hasDraft = useComposerStore((s) => s.text.trim().length > 0)
-  const setDraft = useComposerStore((s) => s.setText)
-
-  // Continuar tras un stop de emergencia: turno nuevo en la misma sesión.
-  // Solo pre-rellena el borrador; el usuario decide y envía.
-  const handleContinue = useCallback(() => {
-    setDraft(t('turn.continueDraft'))
-  }, [setDraft, t])
-
   const stream = useMemo(
     () => buildChatStream(messages, timelines, sessionId),
     [messages, timelines, sessionId],
@@ -186,61 +170,9 @@ export default function ChatView({
   )
 
   return (
-    <div className="relative flex h-full flex-col">
-      {empty ? (
-        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="flex w-full max-w-2xl flex-col items-center"
-            style={{ marginTop: '-6vh' }}
-          >
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute rounded-full blur-3xl"
-              style={{
-                width: 320,
-                height: 200,
-                background: 'radial-gradient(closest-side, rgba(139,92,246,0.16), transparent)',
-              }}
-            />
-            <Logo size={96} radius="rounded-3xl" className="relative" />
-            <h2 className="relative mt-4 text-center text-3xl font-bold tracking-tight text-[var(--text)]">
-              {t('chat.emptyTitle')}
-            </h2>
-            <p className="relative mt-1.5 text-center text-sm text-[var(--text-muted)]">
-              {engineReady ? t('chat.emptySubtitle') : t('chat.connecting')}
-            </p>
-            <motion.div
-              layout
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-              className="relative mt-6 w-full"
-            >
-              <Questions key={sessionId} sessionId={sessionId} />
-              {composer}
-            </motion.div>
-            {showSuggestions && (
-              <div
-                className={`mt-4 flex flex-wrap justify-center gap-2 transition-opacity duration-200 ${hasDraft ? 'pointer-events-none opacity-30' : 'opacity-100'}`}
-              >
-                {SUGGESTIONS.map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => void onSend(t(k))}
-                    className="h-11 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-4 text-[13px] text-[var(--text-muted)] transition-all hover:border-[var(--accent)]/40 hover:text-[var(--text)] active:scale-[0.98]"
-                  >
-                    {t(k)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        </div>
-      ) : (
+    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty} transcript={!empty ? (
         <>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
             {historyNote?.hasMore && (
               <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">
                 {t('history.hasMore', { n: historyNote.total })}
@@ -260,7 +192,6 @@ export default function ChatView({
                       user={row.user}
                       now={now}
                       onResolveApproval={onResolveApproval}
-                      onContinue={handleContinue}
                       planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3 text-sm"><span className="flex-1">¿Implementar este plan?</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="rounded-lg px-3 py-2 hover:bg-[var(--bg-hover)]">Ahora no</button><button type="button" disabled={planStarting} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white disabled:opacity-50" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? 'Iniciando…' : 'Implementar plan'}</button></div> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}
@@ -269,17 +200,6 @@ export default function ChatView({
               )}
             </Virtualizer>
             </div>
-          </div>
-          <div className="shrink-0 border-t border-[var(--border)] px-4 pt-3 pb-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-              className="mx-auto max-w-3xl"
-            >
-              <Questions key={sessionId} sessionId={sessionId} />
-              {composer}
-            </motion.div>
           </div>
           <ScrollToBottom
             visible={!atBottom && stream.length > 0}
@@ -293,7 +213,9 @@ export default function ChatView({
             }}
           />
         </>
-      )}
-    </div>
+    ) : undefined}>
+      <Questions key={sessionId} sessionId={sessionId} />
+      {composer}
+    </HomeWelcome>
   )
 }

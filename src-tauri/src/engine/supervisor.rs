@@ -242,6 +242,7 @@ impl EngineSupervisor {
             "web_preview_v1",
             "plan_read_scope_v1",
             "persistent_context_compaction_v1",
+            "recoverable_tool_results_v1",
         ]
         .iter()
         .any(|cap| hello.capabilities.get(*cap) != Some(&true))

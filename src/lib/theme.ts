@@ -30,13 +30,8 @@ export function resolveTheme(theme: Theme, systemDark: boolean): ResolvedTheme {
 }
 
 /** Aplica el tema al <html> antes de pintar (también lo usa el boot inline). */
-export function applyTheme(theme: Theme): ResolvedTheme {
-  const systemDark =
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  const resolved = resolveTheme(theme, systemDark)
-  document.documentElement.dataset.theme = resolved
-  document.documentElement.style.colorScheme = resolved
-  return resolved
+export function applyTheme(_theme: Theme): ResolvedTheme {
+  document.documentElement.dataset.theme = 'dark'
+  document.documentElement.style.colorScheme = 'dark'
+  return 'dark'
 }

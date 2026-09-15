@@ -2,32 +2,28 @@ import type { ReactNode } from 'react'
 import { Drawer } from 'vaul'
 import { useUIStore } from '../../stores/ui'
 import { useWindowBounds } from '../../hooks/useWindowBounds'
-import { PanelLeftOpen } from 'lucide-react'
-import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 
 interface AppShellProps {
   sidebar: ReactNode
-  header: ReactNode
+  /** Barra superior persistente (`AppStatusBar`): visible en home, conversación, Boards y auxiliares. */
+  topbar: ReactNode
   children: ReactNode
   banner?: ReactNode
 }
 
 /**
  * Shell: sidebar 278px desktop / rail 72px colapsado / Sheet móvil,
- * header contextual de 52px y contenido centrado.
+ * barra superior persistente y contenido.
  */
-export default function AppShell({ sidebar, header, children, banner }: AppShellProps) {
+export default function AppShell({ sidebar, topbar, children, banner }: AppShellProps) {
   useWindowBounds()
-  const { t } = useI18n()
   const mobileOpen = useUIStore((s) => s.sidebarOpen)
   const setMobileOpen = useUIStore((s) => s.setSidebarOpen)
   const collapsed = useUIStore((s) => s.sidebarCollapsed)
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-[var(--bg-app)] text-[var(--text)]">
-
-      <button type="button" onClick={() => setMobileOpen(true)} aria-label={t('chat.openMenu')} className="absolute left-3 top-3 z-20 rounded-lg bg-[var(--bg-sidebar)] p-2 text-[var(--text-muted)] lg:hidden"><PanelLeftOpen size={17} /></button>
       <div className="flex min-h-0 flex-1">
         <aside
           className={cn(
@@ -52,7 +48,7 @@ export default function AppShell({ sidebar, header, children, banner }: AppShell
         </Drawer.Root>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {header}
+          {topbar}
           {banner}
           <main className="relative min-h-0 flex-1 overflow-hidden">{children}</main>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
-import { ArrowUp, Box, Brain, Check, ChevronDown, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Brain, Check, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
 import { selectDraft, useComposerStore } from '../../stores/composer'
@@ -8,8 +8,7 @@ import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } fr
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
-import { brandForProvider } from '../../lib/providerBrand'
-import ProviderLogo from '../ProviderLogo'
+import ModelPicker from './ModelPicker'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -105,9 +104,6 @@ export default function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set())
-  const [modelOpen, setModelOpen] = useState(false)
-  const [modelQuery, setModelQuery] = useState('')
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [reasoningOpen, setReasoningOpen] = useState(false)
@@ -120,16 +116,6 @@ export default function Composer({
   useEffect(() => {
     if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
-  const providerGroups = [...new Set(models.map(model => model.provider ?? 'Otros'))]
-  const providerEndpoint = (alias: string | null | undefined) =>
-    providers?.find((provider) => provider.alias === alias)?.endpoint ?? null
-  const activeProvider =
-    (activeModel ?? models.find((model) => model.alias === activeAlias))?.provider ?? activeAlias
-  const activeBrand = brandForProvider({ alias: activeProvider, endpoint: providerEndpoint(activeProvider) })
-  const normalizedModelQuery = modelQuery.trim().toLowerCase()
-  const matchingModels = normalizedModelQuery
-    ? models.filter((model) => [model.alias, model.provider, model.provider_model_id].filter(Boolean).join(' ').toLowerCase().includes(normalizedModelQuery))
-    : models
   const attachments = draft.attachments
   const addAttachmentFor = useComposerStore((s) => s.addAttachmentFor)
   const updateAttachmentFor = useComposerStore((s) => s.updateAttachmentFor)
@@ -503,90 +489,16 @@ export default function Composer({
             })}
           </div>
           <div className="composer-model-controls">
-          <Popover open={modelOpen} onOpenChange={(open) => { setModelOpen(open); if (open) { setModelQuery(''); onDiscoverModels() } }}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                disabled={isStreaming}
-                title={t('composer.chooseModel')}
-                className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] disabled:opacity-40"
-              >
-                {activeBrand ? (
-                  <ProviderLogo brand={activeBrand} size={14} />
-                ) : (
-                  <Box size={13} aria-hidden="true" className="shrink-0" />
-                )}
-                <span className="truncate">{activeAlias ?? t('composer.noModel')}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="flex min-h-0 w-64 flex-col overflow-hidden p-1.5"
-              style={{
-                maxHeight: 'min(32rem, var(--radix-popover-content-available-height))',
-              }}
-            >
-              <div className="shrink-0 border-b border-[var(--border)] p-1.5">
-                <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 focus-within:border-[var(--border-strong)]">
-                  <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
-                  <input autoFocus value={modelQuery} onChange={(event) => setModelQuery(event.target.value)} placeholder={t('composer.searchModels')} className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]" />
-                </label>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
-                {models.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { setModelOpen(false); onOpenProviders() }}
-                    className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-                  >
-                    {t('composer.noModelsSetup')}
-                  </button>
-                )}
-                {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">No se encontraron modelos.</p>}
-                {providerGroups.filter(provider => matchingModels.some(model => (model.provider ?? 'Otros') === provider)).map(provider => <section key={provider} aria-label={provider}>
-                  <h3 className="text-[11px] font-semibold text-[var(--text-subtle)]">
-                    <button type="button" aria-expanded={Boolean(modelQuery.trim()) || !collapsedProviders.has(provider)} onClick={() => setCollapsedProviders(current => { const next = new Set(current); if (next.has(provider)) next.delete(provider); else next.add(provider); return next })} disabled={Boolean(modelQuery.trim())} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default">
-                    <span className="flex size-3.5 shrink-0 items-center justify-center">
-                      <ProviderLogo alias={provider} endpoint={providerEndpoint(provider)} size={13} />
-                    </span>
-                    <span className="flex-1">{provider}</span>
-                    <ChevronDown size={13} aria-hidden="true" className={`transition-transform ${!modelQuery.trim() && collapsedProviders.has(provider) ? '-rotate-90' : ''}`} />
-                    </button>
-                  </h3>
-                  {(Boolean(modelQuery.trim()) || !collapsedProviders.has(provider)) && matchingModels.filter(model => (model.provider ?? 'Otros') === provider).map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => { setModelOpen(false); onUseModel(model) }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium text-[var(--text)]">
-                        {model.alias}
-                      </span>
-                      <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]">
-                        {model.provider ?? ''} · {model.provider_model_id}
-                      </span>
-                    </span>
-                    {model.active && (
-                      <Check size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
-                    )}
-                  </button>
-                ))}</section>)}
-              </div>
-              {models.length > 0 && (
-                <div className="shrink-0 border-t border-[var(--border)] pt-1">
-                  <button
-                    type="button"
-                    onClick={() => { setModelOpen(false); onOpenProviders() }}
-                    className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-                  >
-                    {t('composer.manageModels')}
-                  </button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
+          <ModelPicker
+            models={models}
+            providers={providers}
+            activeAlias={activeAlias}
+            activeModel={activeModel}
+            onUseModel={onUseModel}
+            onDiscoverModels={onDiscoverModels}
+            onOpenProviders={onOpenProviders}
+            disabled={isStreaming}
+          />
           <Popover open={reasoningOpen} onOpenChange={setReasoningOpen}>
             <PopoverTrigger asChild>
               <button

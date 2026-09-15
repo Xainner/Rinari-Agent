@@ -526,3 +526,53 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 @container welcome (max-width: 460px) { .home-card-grid { grid-template-columns: 1fr; } }
 
 .conversation-layout .home-suggestions { pointer-events: none; }
+
+/* -- App status bar (Normal / Boards) ------------------------------------- */
+.app-topbar { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+.app-topbar-leading { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0; }
+.app-topbar-context { display: flex; align-items: center; min-width: 0; flex: 1 1 0; font-size: 13px; color: var(--text-muted); }
+.app-topbar-center { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.app-topbar-trailing { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; flex: 1 1 0; font-size: 11px; color: var(--text-subtle); white-space: nowrap; }
+.app-topbar-summary { overflow: hidden; text-overflow: ellipsis; }
+.app-topbar-icon { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); padding: 7px; color: var(--text-muted); transition: background-color 120ms, color 120ms; }
+.app-topbar-icon:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+.view-switcher { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-elevated); }
+.view-switcher-button { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 14px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; color: var(--text-muted); transition: background-color 120ms, color 120ms; }
+.view-switcher-button:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
+.view-switcher-button.is-active { color: #fff; background: linear-gradient(180deg, #b466ff, #8425ef); box-shadow: 0 0 14px #982eff33; }
+.view-switcher-button:disabled { opacity: 0.5; cursor: default; }
+.view-switcher-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--warning); color: #1a1207; font-size: 10px; font-weight: 700; }
+@media (max-width: 900px) {
+  .app-topbar-trailing .app-topbar-summary { display: none; }
+  .app-topbar-context { display: none; }
+}
+@media (max-width: 640px) {
+  .app-topbar-trailing .app-topbar-engine { display: none; }
+}
+
+/* -- Boards canvas & empty state ------------------------------------------ */
+.board-canvas { display: flex; height: 100%; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+.board-empty { display: flex; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px 24px; text-align: center; }
+.board-empty-art img { width: 96px; height: 96px; object-fit: contain; opacity: 0.9; }
+.board-empty h1 { font-size: 22px; font-weight: 600; color: var(--text); }
+.board-empty p { max-width: 520px; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+.board-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
+.board-empty-primary, .board-empty-secondary { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px; border-radius: var(--radius-control); font-size: 13px; font-weight: 600; transition: filter 120ms, background-color 120ms; }
+.board-empty-primary { color: #fff; background: var(--accent); }
+.board-empty-primary:hover { filter: brightness(1.1); }
+.board-empty-secondary { color: var(--text); border: 1px solid var(--border-strong); background: var(--bg-elevated); }
+.board-empty-secondary:hover { background: var(--bg-hover); }
+@media (prefers-reduced-motion: reduce) { .view-switcher-button, .app-topbar-icon { transition: none; } }
+
+/* -- HomeWelcome variant=pane (empty pane inside a board) ----------------- */
+.home-welcome.variant-pane { padding: 16px 16px 0; container-type: inline-size; }
+.variant-pane .home-art { height: clamp(96px, 22cqw, 180px); }
+.variant-pane .home-greeting { margin-top: -6px; }
+.variant-pane .home-greeting h1 { font-size: clamp(17px, 4cqw, 22px); }
+.variant-pane .home-greeting p { font-size: 12px; }
+.variant-pane .home-composer { margin-top: 10px; }
+.variant-pane .home-suggestions { margin-top: 14px; }
+.variant-pane .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.variant-pane .home-card { min-height: 60px; padding: 9px; }
+.variant-pane .home-card-icon { width: 34px; height: 34px; }
+@container (max-width: 520px) { .variant-pane .home-card-grid { grid-template-columns: 1fr; } }

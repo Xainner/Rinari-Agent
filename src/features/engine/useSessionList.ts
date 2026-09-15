@@ -5,6 +5,7 @@ import { translate } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
+import { partitionSessions } from './sessionVisibility'
 
 /**
  * SessionController: lista de sesiones, sesión activa, historial persistente
@@ -33,10 +34,15 @@ export function useSessionList(options: {
   const refreshSessions = useCallback(async (): Promise<void> => {
     try {
       const result = await engineApi.sessions(undefined, true)
-      const normalized = result.sessions.filter((item) => item.state === 'active')
+      // El engine expone estados de runtime (active/interrupted/stopped): solo
+      // closed/archived se ocultan. Filtrar por `active` hacía que una sesión
+      // interrumpida (p. ej. timeout de provider) desapareciera del sidebar al
+      // refrescar, como ocurre tras un cambio de modelo.
+      const { visible, closed, archived } = partitionSessions(result.sessions)
+      const normalized = visible
       setSessions(normalized)
-      setClosedSessions(result.sessions.filter((item) => item.state === 'closed'))
-      setArchivedSessions(result.sessions.filter((item) => item.state === 'archived'))
+      setClosedSessions(closed)
+      setArchivedSessions(archived)
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current

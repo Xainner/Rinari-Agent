@@ -212,6 +212,15 @@ export function AppSidebar({
             >
               {sessionLabel(session, t('sidebar.newChat'))}
             </span>
+            {session.state !== 'active' && (
+              <span
+                role="img"
+                aria-label={t('sidebar.sessionInterrupted')}
+                title={t('sidebar.sessionInterrupted')}
+                data-testid="session-interrupted-dot"
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+              />
+            )}
           </button>
           <DropdownMenu open={sessionMenu === session.id} onOpenChange={open => setSessionMenu(open ? session.id : null)}>
             <DropdownMenuTrigger asChild>

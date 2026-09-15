@@ -319,6 +319,7 @@ impl EngineSupervisor {
         let timeout = match method {
             Method::ProjectStatus => Duration::from_secs(5),
             Method::SessionList
+            | Method::SessionGet
             | Method::SessionCreate
             | Method::SessionOpen
             | Method::SessionRename
@@ -532,6 +533,10 @@ impl EngineSupervisor {
             Method::SessionTurnCancel,
             Some(json!({"session_id": session_id})),
         )
+    }
+
+    pub fn session_get(&self, reference: &str) -> Result<Value, CommandError> {
+        self.request(Method::SessionGet, Some(json!({"ref": reference})))
     }
 
     pub fn session_open(&self, reference: &str) -> Result<Value, CommandError> {

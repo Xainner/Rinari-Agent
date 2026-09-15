@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Code2, Route, Lightbulb, FileCode2, RefreshCw } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { useComposerStore } from '../../stores/composer'
+import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { applicableSuggestions, suggestionPage, type HomeContext } from './suggestions'
 const icons = { code: Code2, plan: Route, concept: Lightbulb, file: FileCode2 }
@@ -10,8 +10,10 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
   sessionId: string; context: Omit<HomeContext, 'attachmentCount'>; engineReady: boolean; children: ReactNode; conversationActive?: boolean; transcript?: ReactNode
 }) {
   const { t } = useI18n()
-  const text = useComposerStore(s => s.text)
-  const attachmentCount = useComposerStore(s => s.attachments.length)
+  const draftKey = sessionId || 'draft'
+  const draft = useComposerStore(selectDraft(draftKey))
+  const text = draft.text
+  const attachmentCount = draft.attachments.length
   const showSuggestions = useUIStore(s => s.showSuggestions)
   const systemReducedMotion = useReducedMotion()
   const reducedMotion = useUIStore(s => s.reduceMotion) || systemReducedMotion
@@ -38,8 +40,9 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
         <div className="home-card-grid">{suggestionPage(selection.items, selection.offset).map(item => {
           const Icon = icons[item.icon]
           return <button key={item.id} className="home-card" disabled={hasDraft} onClick={() => {
-            if (useComposerStore.getState().text.trim()) return
-            useComposerStore.getState().setText(t(item.prompt))
+            const store = useComposerStore.getState()
+            if (store.getDraft(draftKey).text.trim()) return
+            store.setTextFor(draftKey, t(item.prompt))
             container.current?.querySelector('textarea')?.focus()
           }}><span className="home-card-icon"><Icon size={20} /></span><span><strong>{t(item.title)}</strong><small>{t(item.description)}</small></span></button>
         })}</div>

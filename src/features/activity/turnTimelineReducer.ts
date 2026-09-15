@@ -49,6 +49,8 @@ function number(value: unknown): number | undefined {
 }
 
 function busyCopy(current: Set<string>, sessionId: string, busy: boolean): Set<string> {
+  // Same membership → same Set: selectors on busySessions must not repaint per token.
+  if (current.has(sessionId) === busy) return current
   const next = new Set(current)
   if (busy) next.add(sessionId)
   else next.delete(sessionId)

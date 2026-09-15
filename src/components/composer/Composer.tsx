@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from
 import { ArrowUp, Box, Brain, Check, ChevronDown, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
-import { useComposerStore } from '../../stores/composer'
+import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
@@ -25,6 +25,22 @@ interface ComposerProps {
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   sessionId?: string
+  /**
+   * Clave del borrador. Por defecto `sessionId` o `'draft'` antes de que exista
+   * sesión. Cada instancia lee y escribe únicamente esta clave.
+   */
+  draftKey?: string
+  /**
+   * Instancia de la vista Normal: mantiene sincronizado el espejo legacy del
+   * store (`switchSession`) para los consumidores que aún lo usan. Los
+   * Composers de un board pasan `false`.
+   */
+  primary?: boolean
+  /**
+   * Único destinatario de `rinari:focus-composer` y del autofocus al cambiar
+   * de disposición. En un board solo el panel enfocado lo recibe.
+   */
+  acceptsGlobalFocus?: boolean
   isStreaming: boolean
   onStop: () => void
   models: ModelSummary[]
@@ -60,6 +76,9 @@ export default function Composer({
   onPrepareAttachments,
   onCancelAttachmentPreparation,
   sessionId,
+  draftKey: explicitDraftKey,
+  primary = true,
+  acceptsGlobalFocus = true,
   isStreaming,
   onStop,
   models,
@@ -80,7 +99,9 @@ export default function Composer({
   onSearchFiles,
 }: ComposerProps) {
   const { t } = useI18n()
-  const text = useComposerStore((s) => s.text)
+  const draftKey = explicitDraftKey ?? (sessionId || 'draft')
+  const draft = useComposerStore(selectDraft(draftKey))
+  const text = draft.text
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -109,15 +130,17 @@ export default function Composer({
   const matchingModels = normalizedModelQuery
     ? models.filter((model) => [model.alias, model.provider, model.provider_model_id].filter(Boolean).join(' ').toLowerCase().includes(normalizedModelQuery))
     : models
-  const attachments = useComposerStore((s) => s.attachments)
-  const addStoredAttachment = useComposerStore((s) => s.addAttachment)
-  const updateStoredAttachment = useComposerStore((s) => s.updateAttachment)
-  const removeStoredAttachment = useComposerStore((s) => s.removeAttachment)
+  const attachments = draft.attachments
+  const addAttachmentFor = useComposerStore((s) => s.addAttachmentFor)
+  const updateAttachmentFor = useComposerStore((s) => s.updateAttachmentFor)
+  const removeAttachmentFor = useComposerStore((s) => s.removeAttachmentFor)
+  const setTextFor = useComposerStore((s) => s.setTextFor)
   const updateAttachmentById = useComposerStore((s) => s.updateAttachmentById)
   const replaceAttachmentById = useComposerStore((s) => s.replaceAttachmentById)
   const removeAttachmentsById = useComposerStore((s) => s.removeAttachmentsById)
   const restoreSubmission = useComposerStore((s) => s.restoreSubmission)
   const switchDraftSession = useComposerStore((s) => s.switchSession)
+  const setText = (value: string) => setTextFor(draftKey, value)
   const [fileMatches, setFileMatches] = useState<Array<{ path: string; relative_path: string; name: string }>>([])
   const mention = text.match(/(?:^|\s)@([^\s]*)$/)?.[1] ?? null
   const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
@@ -142,8 +165,10 @@ export default function Composer({
   }, [sessionId, activeAlias, attachments.length, visionRouteKey, visionModelId, visionRevision])
 
   useEffect(() => {
-    switchDraftSession(sessionId || 'draft')
-  }, [sessionId, switchDraftSession])
+    // Only the Normal instance moves the legacy mirror; a board pane must not
+    // redirect wrappers that other components still call without a key.
+    if (primary) switchDraftSession(draftKey)
+  }, [draftKey, primary, switchDraftSession])
 
   useEffect(() => {
     if (mention === null) {
@@ -165,16 +190,21 @@ export default function Composer({
   }, [mention, onSearchFiles])
 
   useEffect(() => {
-    function focus() {
+    if (!acceptsGlobalFocus) return
+    function focus(event: Event) {
+      // A typed request names its session; a legacy event without detail
+      // goes to whichever instance currently accepts global focus.
+      const wanted = (event as CustomEvent<{ sessionId?: string } | undefined>).detail?.sessionId
+      if (wanted && sessionId && wanted !== sessionId) return
       textareaRef.current?.focus()
     }
     window.addEventListener('rinari:focus-composer', focus)
     return () => window.removeEventListener('rinari:focus-composer', focus)
-  }, [])
+  }, [acceptsGlobalFocus, sessionId])
 
   useEffect(() => {
-    textareaRef.current?.focus()
-  }, [placement])
+    if (acceptsGlobalFocus) textareaRef.current?.focus()
+  }, [placement, acceptsGlobalFocus])
 
   function autosize() {
     const el = textareaRef.current
@@ -184,17 +214,20 @@ export default function Composer({
   }
 
   async function handleSend() {
-    const initial = useComposerStore.getState()
-    const content = initial.text
-    const submissionSessionKey = initial.sessionKey
-    const attachmentIds = attachments.map((item) => item.id)
-    if (isStreaming || isSubmitting || visionUnavailable || attachments.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && attachments.length === 0)) return
-    initial.clear()
+    // Capture identity and content before any await: focus or view changes
+    // during the request must not redirect the outcome to another draft.
+    const submissionSessionKey = draftKey
+    const store = useComposerStore.getState()
+    const current = store.getDraft(submissionSessionKey)
+    const content = current.text
+    const outgoing = current.attachments
+    const attachmentIds = outgoing.map((item) => item.id)
+    if (isStreaming || isSubmitting || visionUnavailable || outgoing.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && outgoing.length === 0)) return
+    store.clearFor(submissionSessionKey)
     autosize()
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
-      const outgoing = attachments
       const ok = await onSend(content.trim() || 'Revisa los archivos adjuntos.', outgoing)
       if (ok) removeAttachmentsById(attachmentIds)
       if (!ok) {
@@ -236,7 +269,7 @@ export default function Composer({
     const pending = onPrepareAttachments
       ? { ...item, status: 'preparing' as const, error: undefined }
       : item
-    addStoredAttachment(pending)
+    addAttachmentFor(draftKey, pending)
     if (onPrepareAttachments) void prepareOne(pending)
   }
 
@@ -327,7 +360,7 @@ export default function Composer({
   function beginWorkspaceAttachment() {
     setAttachmentOpen(false)
     const next = text.match(/(?:^|\s)@[^\s]*$/) ? text : `${text}${text && !text.endsWith(' ') ? ' ' : ''}@`
-    useComposerStore.getState().setText(next)
+    setText(next)
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
       autosize()
@@ -336,7 +369,7 @@ export default function Composer({
 
   function chooseWorkspaceFile(file: { path: string; relative_path: string; name: string }) {
     addAttachment({ id: `att_${Date.now().toString(36)}_${file.path}`, path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
-    useComposerStore.getState().setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
+    setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
     setFileMatches([])
     requestAnimationFrame(autosize)
   }
@@ -354,10 +387,10 @@ export default function Composer({
                 </button>
                 {file.ocr && <span className="rounded bg-[var(--accent-2)]/10 px-1 text-[10px] text-[var(--accent-2)]">OCR</span>}
                 {file.warning && <span title={file.warning} className="text-amber-300">⚠</span>}
-                {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">Páginas (ej. 1-3,5)<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateStoredAttachment(file.path, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">Páginas visuales<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateStoredAttachment(file.path, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">Repreparar PDF</button></div></details>}
+                {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">Páginas (ej. 1-3,5)<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">Páginas visuales<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">Repreparar PDF</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={`Cancelar preparación de ${file.name}`} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
                 {file.status === 'error' && <><span title={file.error} className="text-red-400">{file.error || 'Error'}</span><button type="button" aria-label={`Reintentar ${file.name}`} onClick={() => void prepareOne(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><RefreshCw size={11} /></button></>}
-                <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => removeStoredAttachment(file.path)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><X size={11} /></button>
+                <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => removeAttachmentFor(draftKey, file.id)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><X size={11} /></button>
               </span>
             ))}
           </div>
@@ -382,7 +415,7 @@ export default function Composer({
           aria-label={t('composer.message')}
           placeholder={isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
           onChange={(e) => {
-            useComposerStore.getState().setText(e.target.value)
+            setText(e.target.value)
             autosize()
           }}
           onPaste={handlePaste}

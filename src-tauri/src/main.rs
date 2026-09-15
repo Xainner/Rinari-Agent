@@ -75,6 +75,7 @@ pub fn run() {
             commands::engine::initial_open_request,
             commands::sessions::session_list,
             commands::sessions::session_open,
+            commands::sessions::session_get,
             commands::sessions::session_rename,
             commands::sessions::session_archive,
             commands::sessions::session_restore,

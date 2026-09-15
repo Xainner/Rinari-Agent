@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
 import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
+import { selectLatestTurn } from '../features/engine/sessionSelectors'
 import TurnTimelineView from '../features/activity/TurnTimelineView'
 import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
@@ -46,9 +47,13 @@ interface ChatViewProps {
   permissionProfilesV2: boolean
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
+  /** Instancia Normal del Composer (espejo legacy del borrador). Los paneles pasan `false`. */
+  composerPrimary?: boolean
+  /** Solo el panel enfocado recibe foco global/autofocus. */
+  composerAcceptsGlobalFocus?: boolean
 }
 
-export default function ChatView({
+function ChatView({
   homeContext = { projectName: null, changedFiles: null },
   messages,
   sessionId,
@@ -78,6 +83,8 @@ export default function ChatView({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
+  composerPrimary = true,
+  composerAcceptsGlobalFocus = true,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -90,7 +97,7 @@ export default function ChatView({
   const [planStarting, setPlanStarting] = useState(false)
   const planStartingRef = useRef(false)
   const [dismissedPlans, setDismissedPlans] = useState<Set<string>>(() => new Set())
-  const latestTurn = Object.values(timelines).filter(turn => turn.sessionId === sessionId).sort((a, b) => b.startedAt - a.startedAt)[0]
+  const latestTurn = selectLatestTurn({ timelines }, sessionId) ?? undefined
   const pendingPlan = sessionMode === 'plan' && latestTurn?.mode === 'plan' && latestTurn.status === 'completed' && latestTurn.items.some(item => item.type === 'model' && item.outputKind === 'final' && item.content) && !dismissedPlans.has(latestTurn.turnId) && !isStreaming
   const stream = useMemo(
     () => buildChatStream(messages, timelines, sessionId),
@@ -148,6 +155,8 @@ export default function ChatView({
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
       sessionId={sessionId}
+      primary={composerPrimary}
+      acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}
       onStop={onStop}
       models={models}
@@ -219,3 +228,6 @@ export default function ChatView({
     </HomeWelcome>
   )
 }
+
+/** Memoizado: cada instancia solo repinta cuando cambian sus props (su sesión). */
+export default memo(ChatView)

@@ -63,3 +63,35 @@ it('restores failed submission text in the draft that still owns its attachment'
   expect(useComposerStore.getState().text).toBe('other')
   expect(useComposerStore.getState().draftsBySession['session-a'].text).toBe('inspect')
 })
+
+it('writes another key without touching the legacy mirror, and the mirror key in sync', () => {
+  useComposerStore.getState().setTextFor('session-b', 'hello b')
+  let state = useComposerStore.getState()
+  expect(state.text).toBe('inspect')
+  expect(state.draftsBySession['session-b'].text).toBe('hello b')
+
+  useComposerStore.getState().setTextFor('session-a', 'hello a')
+  state = useComposerStore.getState()
+  expect(state.text).toBe('hello a')
+  expect(state.draftsBySession['session-a'].text).toBe('hello a')
+  expect(state.getDraft('session-b').text).toBe('hello b')
+})
+
+it('keeps untouched drafts by reference when an attachment finishes elsewhere', () => {
+  const before = useComposerStore.getState().draftsBySession['session-b']
+  useComposerStore.getState().removeAttachmentsById([pending.id])
+  const after = useComposerStore.getState().draftsBySession['session-b']
+  expect(after).toBe(before)
+  expect(useComposerStore.getState().draftsBySession['session-a'].attachments).toEqual([])
+})
+
+it('adds, updates and removes attachments by id on an explicit key', () => {
+  const store = useComposerStore.getState()
+  store.addAttachmentFor('session-b', { ...pending, id: 'b-1', path: 'C:/b.pdf', name: 'b.pdf' })
+  store.updateAttachmentFor('session-b', 'b-1', { status: 'ready' })
+  expect(useComposerStore.getState().getDraft('session-b').attachments[0]).toMatchObject({ id: 'b-1', status: 'ready' })
+  // Still on the mirror: session-a untouched.
+  expect(useComposerStore.getState().attachments).toEqual([pending])
+  useComposerStore.getState().removeAttachmentFor('session-b', 'b-1')
+  expect(useComposerStore.getState().getDraft('session-b').attachments).toEqual([])
+})

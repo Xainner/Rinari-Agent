@@ -428,6 +428,9 @@ export const engineApi = {
       "session_open",
       { reference },
     ),
+  /** Fila autoritativa de una sesión (cualquier estado); no la reabre ni la reconcilia. */
+  sessionGet: (reference: string) =>
+    invoke<{ session: SessionSummary }>('session_get', { reference }),
   renameSession: (reference: string, title: string) =>
     invoke<{ session: SessionSummary }>('session_rename', { reference, title }),
   archiveSession: (reference: string) =>

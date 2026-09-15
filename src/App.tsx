@@ -8,14 +8,15 @@ import { engineApi } from './services/engine'
 import { checkForUpdates, installUpdateAndRelaunch } from './services/updates'
 import { useUIStore } from './stores/ui'
 import { useEngineSession } from './features/engine/useEngineSession'
+import { EngineProvider } from './features/engine/EngineContext'
+import { useSessionHasContent } from './features/engine/sessionSelectors'
+import SingleSessionView from './features/engine/SingleSessionView'
 import AppShell from './components/app-shell/AppShell'
-import FileWorkspace from './features/files/FileWorkspace'
 import BrowserPanel from './features/browser/BrowserPanel'
 import ProcessesPanel from './features/processes/ProcessesPanel'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
 import ChatHeader from './components/app-shell/ChatHeader'
-import ChatView from './components/ChatView'
 import CommandPalette from './components/CommandPalette'
 import EngineConsole from './features/engine/EngineConsole'
 import SettingsView from './features/settings/SettingsView'
@@ -48,8 +49,9 @@ function App() {
   const shortcutBindings = useUIStore((s) => s.shortcutBindings)
 
   const session = useEngineSession()
-  const activeRecord =
-    session.sessions.find((s) => s.id === session.activeSession) ?? null
+  const activeRecord = session.sessionsById[session.activeSession] ?? null
+  // Booleano estable: decide si hay header sin suscribirse a cada token.
+  const activeHasContent = useSessionHasContent(session.runtime, session.activeSession)
   const activeTitle = activeRecord?.title ?? null
   const activeProject = activeRecord?.project_id
     ? session.projects.find((project) => project.id === activeRecord.project_id) ?? null
@@ -236,6 +238,7 @@ function App() {
 
   return (
     <I18nProvider lang={lang}>
+      <EngineProvider session={session}>
       <DesktopContextMenu />
       <AppShell
         banner={degradedDetail !== null && (
@@ -304,7 +307,7 @@ function App() {
           />
         }
         header={
-          view === 'chat' && (session.messages.length > 0 || Object.values(session.timelines).some(turn => turn.sessionId === session.activeSession)) ? (
+          view === 'chat' && activeHasContent ? (
             <ChatHeader
               title={activeTitle}
               kind={activeRecord?.kind ?? null}
@@ -335,43 +338,7 @@ function App() {
           )
         }
       >
-        {view === 'chat' && (
-          <FileWorkspace sessionId={session.activeSession}><ChatView
-            homeContext={{ projectName: activeProject?.name ?? session.activeProjectRoot, changedFiles: session.activeGitStatus?.status.available ? session.activeGitStatus.status.files.length : null }}
-            messages={session.messages}
-            sessionId={session.activeSession}
-            isStreaming={session.busy}
-            engineReady={session.ready}
-            onSend={session.send}
-            onPrepareAttachments={session.prepareAttachments}
-            onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
-            onImplementPlan={session.implementPlan}
-            onStop={() => void session.cancelTurn()}
-            onOpenProviders={() => goSettings('providers')}
-            models={session.models}
-            providers={session.providers}
-            activeAlias={session.activeModel?.alias ?? null}
-            activeModel={session.activeModel}
-            onUseModel={(model) => void session.useModel(model)}
-            onDiscoverModels={() => void session.discoverCatalog()}
-            sessionMode={activeRecord?.mode ?? null}
-            onModeChange={(mode) => void session.setMode(mode)}
-            reasoningEffort={session.reasoningEffort}
-            onReasoningChange={session.setReasoningEffort}
-            timelines={session.timelines}
-            onResolveApproval={(id, decision) => void session.resolveApproval(id, decision)}
-            permissionProfile={activeRecord?.permission_profile ?? 'workspace'}
-            effectivePermissionProfile={activeRecord?.effective_permission_profile ?? 'workspace'}
-            permissionProfilesV2={session.status?.capabilities.permission_profiles_v2 === true}
-            onPermissionChange={(profile) => void session.setPermission(profile)}
-            onSearchFiles={session.searchFiles}
-            historyNote={
-              session.activeSession !== ''
-                ? (session.historyInfo[session.activeSession] ?? null)
-                : null
-            }
-          /></FileWorkspace>
-        )}
+        {view === 'chat' && <SingleSessionView onOpenProviders={() => goSettings('providers')} />}
         {view === 'engine' && <EngineConsole session={session} />}
         {view === 'workspace' && (
           <WorkspaceView session={activeRecord} onBack={goChat} />
@@ -478,6 +445,7 @@ function App() {
         lang={lang}
         onLanguageChange={setLang}
       />
+      </EngineProvider>
     </I18nProvider>
   )
 }

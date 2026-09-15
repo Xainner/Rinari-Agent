@@ -940,7 +940,7 @@ export const es = {
   'processes.unsupported': 'Procesos no disponibles en este motor.',
   'processes.offline': 'Motor no disponible. Se conserva la última observación.',
   'processes.stopTitle': '¿Detener «{name}»?',
-  'processes.stopDesc': 'Carpeta: {cwd}. Se solicitará al engine terminar este recurso. Esto no cancela la conversación ni revierte los cambios que ya realizó.',
+  'processes.stopDesc': 'Carpeta: {cwd}. Voy a detener este proceso. Tu conversación sigue igual y no se pierde nada de lo ya hecho.',
   'processes.stopStale': 'El estado puede estar obsoleto; se actualizó antes de confirmar.',
   'processes.stopConfirm': 'Detener',
   'processes.stopCancel': 'Cancelar',

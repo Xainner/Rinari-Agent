@@ -146,7 +146,7 @@ it('D04: un proceso activo muestra una fila con identidad y stop con sesión', a
   fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
   // La confirmación identifica el recurso; abrirla no detiene.
   expect(stopCalls).toEqual([])
-  expect(screen.getByText(/Se solicitará al engine terminar este recurso/)).toBeTruthy()
+  expect(screen.getByText(/Voy a detener este proceso/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
   await waitFor(() =>
     expect(stopCalls).toEqual([{ session_id: 's1', id: 'process:proc_001' }]),

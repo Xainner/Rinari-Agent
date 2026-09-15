@@ -923,7 +923,7 @@ export const en: Record<I18nKey, string> = {
   'processes.unsupported': 'Processes unavailable on this engine.',
   'processes.offline': 'Engine unavailable. Keeping the last observation.',
   'processes.stopTitle': 'Stop “{name}”?',
-  'processes.stopDesc': 'Folder: {cwd}. The engine will be asked to terminate this resource. This does not cancel the conversation or revert changes already made.',
+  'processes.stopDesc': 'Folder: {cwd}. I’ll stop this process. Your conversation stays as is and nothing already done is lost.',
   'processes.stopStale': 'State may be outdated; it was refreshed before confirming.',
   'processes.stopConfirm': 'Stop',
   'processes.stopCancel': 'Cancel',

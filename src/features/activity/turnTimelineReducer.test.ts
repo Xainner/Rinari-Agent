@@ -166,3 +166,28 @@ it('merges visual analysis without inventing tool calls and restores history', (
   } as never] })
   expect(restored.timelines.v1.items[0]).toMatchObject({ type: 'vision', analysis: 'Una imagen' })
 })
+
+describe('peer provenance', () => {
+  const origin = { kind: 'peer' as const, source_session_id: 'ses_a', source_label: 'Proyecto A', hop: 1, message_id: 'msg_1' }
+  it('keeps the origin of a peer-started turn and exposes it to the chat stream', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 'ses_b', message: '¿qué cambió?', origin }))
+    expect(state.timelines.t1.origin).toMatchObject({ kind: 'peer', source_session_id: 'ses_a' })
+    state = turnTimelineReducer(state, event('turn.completed', { turn_id: 't1', session_id: 'ses_b' }))
+    expect(state.timelines.t1.origin?.kind).toBe('peer')
+    const rows = buildChatStream([], state.timelines, 'ses_b')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].kind === 'timeline' && rows[0].timeline.origin?.source_label).toBe('Proyecto A')
+  })
+  it('restores the origin from a persisted timeline turn and ignores malformed values', () => {
+    const state = turnTimelineReducer(createInitialTimelineState(), {
+      type: 'timeline/loaded',
+      sessionId: 'ses_b',
+      turns: [
+        { turn_id: 't1', session_id: 'ses_b', turn_index: 1, status: 'completed', started_at: '2026-09-15T10:00:00Z', completed_at: '2026-09-15T10:00:05Z', user_message: 'hola', items: [], final_response: 'ok', origin },
+        { turn_id: 't2', session_id: 'ses_b', turn_index: 2, status: 'completed', started_at: '2026-09-15T10:01:00Z', completed_at: null, user_message: 'propio', items: [], final_response: '', origin: { kind: 'bogus' } as never },
+      ],
+    })
+    expect(state.timelines.t1.origin?.kind).toBe('peer')
+    expect(state.timelines.t2.origin).toBeUndefined()
+  })
+})

@@ -25,6 +25,7 @@ import type { ChatMessage } from '../../types'
 import Markdown from '../../components/Markdown'
 import { FileLink } from '../files/FileWorkspace'
 import MessageBubble from '../../components/MessageBubble'
+import { usePeerNavigation } from '../board/PeerNavigationContext'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,7 +122,8 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
 }
 
 function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, { type: 'model' }>; onResolveApproval: (id: string, decision: string) => void }) {
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
+  const peerNavigation = usePeerNavigation()
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <details className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
@@ -169,7 +171,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     return (
       <div className="my-2 border-l-2 border-amber-400/50 py-1 pl-3 text-[13px]">
         <div className="flex items-center gap-2 text-[var(--text)]"><ShieldAlert size={14} className="text-amber-400" />{item.description || item.capability}<span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">{item.risk}</span></div>
-        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.target}</div>}
+        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</div>}
         {(pending || resolving) ? (
           <div className="mt-2 flex flex-wrap gap-2">
             <ApprovalActions item={item} disabled={resolving} onResolve={onResolveApproval} />
@@ -505,7 +507,7 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
     : timeline.status
   return (
     <div className="space-y-3">
-      {user ? <MessageBubble message={user} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId }} /> : null}
+      {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       <div className="space-y-1 pl-0.5">
         {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'model' ? (
           <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown></div>

@@ -17,6 +17,7 @@ import {
 } from '../../components/ui/alert-dialog'
 import { useEngineCommands, useEngineData, useRuntimeStore } from '../engine/EngineContext'
 import { useUIStore } from '../../stores/ui'
+import { projectDisplayName } from '../projects/workspaceModel'
 import {
   PANE_MAX_WIDTH,
   PANE_MIN_WIDTH,
@@ -27,6 +28,9 @@ import {
 import AddPaneDialog from './AddPaneDialog'
 import BoardEmptyState from './BoardEmptyState'
 import SessionPane from './SessionPane'
+import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
+import { usePeerGroup } from './usePeerGroup'
+import { usePeerNotifications } from './usePeerNotifications'
 
 export interface BoardActions {
   addPane: () => void
@@ -79,6 +83,8 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const focusPane = useBoardStore((state) => state.focusPane)
   const reconcile = useBoardStore((state) => state.reconcileResolvedSessions)
   const persistError = useBoardStore((state) => state.persistError)
+  const boardId = useBoardStore((state) => state.boardId)
+  const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [closing, setClosing] = useState<{ paneId: string; sessionId: string } | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -182,7 +188,42 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
 
   const currentSessionOnBoard = data.activeSession !== '' && panes.some((pane) => pane.sessionId === data.activeSession)
 
+  // -- mensajería entre paneles (session_peer_messaging_v1) ------------------
+  const peerMessaging = data.status?.capabilities.session_peer_messaging_v1 === true
+  const peerLabelFor = useCallback((sessionId: string): string | null => {
+    if (!panes.some((pane) => pane.sessionId === sessionId)) return null
+    const record = data.sessionsById[sessionId]
+    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
+  }, [panes, data.sessionsById, t])
+  const focusSessionPane = useCallback((sessionId: string): boolean => {
+    const pane = useBoardStore.getState().panes.find((item) => item.sessionId === sessionId)
+    if (!pane) return false
+    focusPane(pane.paneId)
+    return true
+  }, [focusPane])
+  const peerNavigation = useMemo<PeerNavigation>(
+    () => ({ labelFor: peerLabelFor, focusSession: focusSessionPane }),
+    [peerLabelFor, focusSessionPane],
+  )
+  usePeerGroup({
+    boardId,
+    panes,
+    sessionsById: data.sessionsById,
+    messagingEnabled,
+    supported: peerMessaging,
+    engineReady: data.ready && data.sessionsLoaded,
+    engineGeneration,
+  })
+  const focusedSessionId = panes.find((pane) => pane.paneId === focusedPaneId)?.sessionId ?? null
+  usePeerNotifications({
+    supported: peerMessaging,
+    labelFor: peerLabelFor,
+    focusedSessionId,
+    focusSession: focusSessionPane,
+  })
+
   return (
+    <PeerNavigationProvider value={peerNavigation}>
     <div className="board-root">
       {persistError && (
         <div role="alert" className="board-banner">{t('board.persistError')}</div>
@@ -210,6 +251,8 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
                     onRemove={removePane}
                     onRemoveAndClose={(paneId, sessionId) => setClosing({ paneId, sessionId })}
                     onOpenProviders={() => goSettings('providers')}
+                    peerMessaging={peerMessaging}
+                    peerLabelFor={peerLabelFor}
                   />
                   {!pane.collapsed && <PaneResizer pane={pane} />}
                 </Fragment>
@@ -240,5 +283,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </PeerNavigationProvider>
   )
 }

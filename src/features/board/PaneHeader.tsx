@@ -5,6 +5,7 @@ import {
   ExternalLink,
   GitBranch,
   LoaderCircle,
+  MessageSquareShare,
   MoreHorizontal,
   PanelRight,
   ShieldAlert,
@@ -15,8 +16,10 @@ import type { ModelSummary, ProviderSummary } from '../../services/engine'
 import ModelPicker from '../../components/composer/ModelPicker'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
@@ -43,6 +46,16 @@ export interface PaneHeaderProps {
   onMoveRight: () => void
   onRemove: () => void
   onRemoveAndClose: () => void
+  /** Mensajería entre paneles; `undefined` cuando el Engine no la anuncia. */
+  peers?: {
+    boardEnabled: boolean
+    receive: boolean
+    send: boolean
+    onReceiveChange: (value: boolean) => void
+    onSendChange: (value: boolean) => void
+    onForward: () => void
+    canForward: boolean
+  }
 }
 
 /**
@@ -67,6 +80,7 @@ function PaneHeader({
   onMoveRight,
   onRemove,
   onRemoveAndClose,
+  peers,
 }: PaneHeaderProps) {
   const { t } = useI18n()
   const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, activeModel } = session
@@ -75,6 +89,15 @@ function PaneHeader({
   const git = gitStatus?.status.available ? gitStatus.status : null
   const interventions = approvals.length + pendingQuestions
   const mode = (record?.mode ?? 'build').toLowerCase()
+  const peerState = !peers ? null
+    : !peers.boardEnabled ? 'off'
+      : peers.receive && peers.send ? 'on'
+        : peers.receive ? 'receiveOnly'
+          : peers.send ? 'sendOnly' : 'off'
+  const peerLabel = peerState === 'on' ? t('board.peers.enabled')
+    : peerState === 'receiveOnly' ? t('board.peers.receiveOnly')
+      : peerState === 'sendOnly' ? t('board.peers.sendOnly')
+        : peers && !peers.boardEnabled ? t('board.peers.disabledBoard') : t('board.peers.off')
 
   return (
     <header className={cn('pane-header', focused && 'is-focused')} data-testid="pane-header">
@@ -136,6 +159,18 @@ function PaneHeader({
             {interventions}
           </span>
         )}
+        {peers && (
+          <span
+            role="status"
+            data-testid="pane-peer-state"
+            data-state={peerState ?? 'off'}
+            aria-label={peerLabel}
+            title={peerLabel}
+            className={cn('pane-header-peer', peerState === 'on' && 'is-on', peerState === 'off' && 'is-off')}
+          >
+            <MessageSquareShare size={13} aria-hidden="true" />
+          </span>
+        )}
         <button
           type="button"
           aria-pressed={workspaceVisible}
@@ -155,6 +190,29 @@ function PaneHeader({
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem onSelect={onOpenSingle}><ExternalLink size={13} /> {t('board.pane.openSingle')}</DropdownMenuItem>
             <DropdownMenuItem onSelect={onToggleWorkspace}><PanelRight size={13} /> {t('board.pane.toggleWorkspace')}</DropdownMenuItem>
+            {peers && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[11px] font-normal text-[var(--text-subtle)]">{t('board.peers.menu')}</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={peers.receive}
+                  disabled={!peers.boardEnabled}
+                  onCheckedChange={(value) => peers.onReceiveChange(value === true)}
+                >
+                  {t('board.peers.receive')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={peers.send}
+                  disabled={!peers.boardEnabled}
+                  onCheckedChange={(value) => peers.onSendChange(value === true)}
+                >
+                  {t('board.peers.send')}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuItem disabled={!peers.canForward} onSelect={peers.onForward}>
+                  <MessageSquareShare size={13} /> {t('board.peers.sendTo')}
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={!canMoveLeft} onSelect={onMoveLeft}><ArrowLeftRight size={13} /> {t('board.pane.moveLeft')}</DropdownMenuItem>
             <DropdownMenuItem disabled={!canMoveRight} onSelect={onMoveRight}><ArrowLeftRight size={13} /> {t('board.pane.moveRight')}</DropdownMenuItem>

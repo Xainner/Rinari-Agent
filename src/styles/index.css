@@ -586,6 +586,10 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .session-pane-body { position: relative; display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; }
 .session-pane-chat { display: flex; flex: 1 1 0; min-width: 0; min-height: 0; flex-direction: column; }
 .session-pane-chat > * { flex: 1 1 auto; min-height: 0; }
+.session-pane-chat > .queue-bar { flex: 0 0 auto; }
+.pane-header-peer { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border-radius: var(--radius-control); color: var(--text-subtle); }
+.pane-header-peer.is-on { color: var(--accent-2); }
+.pane-header-peer.is-off { opacity: 0.55; }
 .board-pane-resizer { background: var(--bg-subtle); }
 .board-add-column { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: center; width: 160px; padding: 16px 12px; }
 .board-add-button { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 18px 10px; border: 1px dashed var(--border-strong); border-radius: var(--radius-surface); color: var(--text-muted); font-size: 12px; font-weight: 600; transition: border-color 120ms, color 120ms, background-color 120ms; }

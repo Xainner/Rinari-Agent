@@ -1,7 +1,8 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
+import QueueBar from '../../components/chat/QueueBar'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
@@ -16,6 +17,7 @@ import {
 import { cn } from '../../lib/utils'
 import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
+import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
 import { usePaneSession } from './usePaneSession'
 
 const HANDLE_WIDTH = 6
@@ -31,6 +33,10 @@ export interface SessionPaneProps {
   onRemove: (paneId: string) => void
   onRemoveAndClose: (paneId: string, sessionId: string) => void
   onOpenProviders: () => void
+  /** `session_peer_messaging_v1` anunciada por el Engine. */
+  peerMessaging: boolean
+  /** Etiqueta de cada sesión del board (para el diálogo de reenvío). */
+  peerLabelFor: (sessionId: string) => string | null
 }
 
 /**
@@ -49,6 +55,8 @@ function SessionPane({
   onRemove,
   onRemoveAndClose,
   onOpenProviders,
+  peerMessaging,
+  peerLabelFor,
 }: SessionPaneProps) {
   const { t } = useI18n()
   const commands = useEngineCommands()
@@ -61,6 +69,39 @@ function SessionPane({
   const movePane = useBoardStore((state) => state.movePane)
   const panes = useBoardStore((state) => state.panes)
   const paneError = useBoardStore((state) => state.paneErrors[pane.paneId])
+  const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
+  const setPeerFlags = useBoardStore((state) => state.setPeerFlags)
+  const [forwardOpen, setForwardOpen] = useState(false)
+  const forwardTargets = useMemo<PeerForwardTarget[]>(
+    () => panes
+      .filter((item) => item.sessionId !== pane.sessionId)
+      .map((item) => ({ sessionId: item.sessionId, label: peerLabelFor(item.sessionId) ?? item.sessionId })),
+    [panes, pane.sessionId, peerLabelFor],
+  )
+  const lastTurn = useMemo(() => {
+    let latest: (typeof session.timelines)[string] | null = null
+    for (const turn of Object.values(session.timelines)) {
+      if (turn.sessionId !== pane.sessionId) continue
+      if (!latest || turn.startedAt >= latest.startedAt) latest = turn
+    }
+    return latest
+  }, [session.timelines, pane.sessionId])
+  const lastResponse = useMemo(() => {
+    if (!lastTurn) return null
+    const final = [...lastTurn.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
+    return final && final.type === 'model' && final.content ? final.content : null
+  }, [lastTurn])
+  const peers = peerMessaging
+    ? {
+        boardEnabled: messagingEnabled,
+        receive: pane.peerReceive,
+        send: pane.peerSend,
+        onReceiveChange: (value: boolean) => setPeerFlags(pane.paneId, { peerReceive: value }),
+        onSendChange: (value: boolean) => setPeerFlags(pane.paneId, { peerSend: value }),
+        onForward: () => setForwardOpen(true),
+        canForward: forwardTargets.length > 0,
+      }
+    : undefined
 
   // Geometría real del panel: decide si el dock cabe al lado o va en drawer.
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -132,7 +173,18 @@ function SessionPane({
         onMoveRight={() => movePane(pane.paneId, index + 1)}
         onRemove={() => onRemove(pane.paneId)}
         onRemoveAndClose={() => onRemoveAndClose(pane.paneId, pane.sessionId)}
+        peers={peers}
       />
+      {peerMessaging && (
+        <PeerForwardDialog
+          open={forwardOpen}
+          onOpenChange={setForwardOpen}
+          sourceSessionId={pane.sessionId}
+          sourceTurnId={lastTurn?.turnId ?? null}
+          lastResponse={lastResponse}
+          targets={forwardTargets}
+        />
+      )}
       {paneError && (
         <div role="alert" className="pane-notice">
           <span className="min-w-0 flex-1 truncate">{paneError}</span>
@@ -195,6 +247,7 @@ function SessionPane({
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
             />
+            <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} />
           </div>
           {pane.workspaceVisible && (
             <>

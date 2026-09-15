@@ -89,3 +89,35 @@ Project headers collapse their sessions. Composer selectors close upon selection
 - Las preguntas pendientes tienen un controlador compartido por sesión
   (`usePendingQuestions`): una carga y una suscripción también cuando el header
   del panel muestra el badge.
+
+# Boards: mensajería entre paneles (`session_peer_messaging_v1`)
+
+- Los paneles de un board forman un **grupo de pares** que el Agent registra en
+  el motor (`session.peer_group.set`, idempotente por `boardId`, con
+  `expected_revision`). Cada cambio de paneles o de los toggles «Recibir» /
+  «Enviar» del menú del panel re-registra el grupo; un `CONFLICT` relee la
+  revisión y reintenta una vez. Si el motor no anuncia la capability, no hay
+  controles ni llamadas.
+- El agente de un panel puede usar `session.peers` y `session.send`. El envío
+  pide **aprobación por destino** (`session.message`, `binding_mode = "exact"`)
+  y el diálogo de aprobación muestra la etiqueta del panel destino.
+- El mensaje llega al otro panel como un turno con `origin.kind = "peer"`. La
+  burbuja se pinta a la izquierda con «De «X»», el número de salto y el aviso
+  de **dato no confiable**; «Ir al panel» enfoca el origen. El motor impide en
+  ese turno escribir archivos, ejecutar comandos, mutar el navegador, red con
+  efectos, MCP, git y subagentes; el usuario convierte el mensaje en tarea
+  propia con «Enviar al panel…» (reenvío manual, `origin.kind = "user"` con
+  `quoted_source`, sin techo ni aprobación).
+- La cola del panel (`QueueBar`) lista las entradas tipadas: origen, estado
+  (`queued`/`paused`/`uncertain`), cancelar una entrega y **Reanudar** tras un
+  Stop (`session.queue.resume`). Un mensaje para un panel no enfocado muestra
+  un toast con «Ir al panel»; una entrega en pausa avisa también.
+- Ajustes › General › «Mensajería entre paneles» desactiva el grupo completo
+  (`enabled = false`) sin borrarlo; se persiste en `rinari.board.v1`.
+- Límites del motor: 32 000 caracteres, 5 envíos por turno, 3 saltos y 20
+  entregas por cadena. No es un canal de coordinación autónoma sostenida.
+
+Validación: `src/features/board/usePeerGroup.test.tsx`,
+`src/features/board/BoardView.peers.test.tsx`, `src/components/MessageBubble.test.tsx`
+y los casos de procedencia en `turnTimelineReducer.test.ts`. Regeneración del
+protocolo: `RINARI_ENGINE_SCHEMA=<ruta a Rinari-CLI/src/rinari/engine_protocol/schema/v1.json> npm run protocol:generate`.

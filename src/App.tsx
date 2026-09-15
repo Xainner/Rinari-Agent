@@ -11,7 +11,7 @@ import { useEngineSession } from './features/engine/useEngineSession'
 import AppShell from './components/app-shell/AppShell'
 import FileWorkspace from './features/files/FileWorkspace'
 import BrowserPanel from './features/browser/BrowserPanel'
-import ProcessesPanel from './features/processes/ProcessesPanel'
+import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
 import ChatHeader from './components/app-shell/ChatHeader'
@@ -155,6 +155,8 @@ function App() {
   // Alta guiada: motor listo, catálogo sano y sin proveedores → wizard una vez.
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardSnoozed, setWizardSnoozed] = useState(false)
+  // Solicitud explícita de abrir el inspector de procesos de la sesión activa.
+  const [processesSignal, setProcessesSignal] = useState(0)
   useEffect(() => {
     if (
       session.ready &&
@@ -197,6 +199,12 @@ function App() {
         case 'sidebar': toggleSidebarCollapsed(); break
         case 'files': window.dispatchEvent(new Event('rinari-files-toggle')); break
         case 'commands': setPaletteOpen(true); break
+        case 'processes':
+          if (session.activeSession) {
+            goChat()
+            setProcessesSignal((value) => value + 1)
+          }
+          break
         case 'undo': case 'redo': document.execCommand(action); break
         case 'updates': void checkForUpdates().then(found => {
           if (!found) { toast.success('Rinari Agent está actualizado.'); return }
@@ -237,6 +245,12 @@ function App() {
   return (
     <I18nProvider lang={lang}>
       <DesktopContextMenu />
+      <ProcessRuntimeProvider
+        epoch={session.connectionEpoch ?? 0}
+        engineReady={session.ready}
+        hasCapability={session.processesCapability === true}
+        hasIdentity={session.processesIdentityCapability === true}
+      >
       <AppShell
         banner={degradedDetail !== null && (
           <div
@@ -355,6 +369,7 @@ function App() {
             onUseModel={(model) => void session.useModel(model)}
             onDiscoverModels={() => void session.discoverCatalog()}
             sessionMode={activeRecord?.mode ?? null}
+            historyLoading={session.historyLoading}
             onModeChange={(mode) => void session.setMode(mode)}
             reasoningEffort={session.reasoningEffort}
             onReasoningChange={session.setReasoningEffort}
@@ -365,6 +380,7 @@ function App() {
             permissionProfilesV2={session.status?.capabilities.permission_profiles_v2 === true}
             onPermissionChange={(profile) => void session.setPermission(profile)}
             onSearchFiles={session.searchFiles}
+            processesOpenSignal={processesSignal}
             historyNote={
               session.activeSession !== ''
                 ? (session.historyInfo[session.activeSession] ?? null)
@@ -444,7 +460,6 @@ function App() {
         )}
       </AppShell>
 
-      {view === 'chat' && session.activeSession && <ProcessesPanel key={`processes:${session.activeSession}`} sessionId={session.activeSession} />}
       {view === 'chat' && session.activeSession && <BrowserPanel key={session.activeSession} sessionId={session.activeSession} />}
 
       <ProviderWizard
@@ -472,12 +487,15 @@ function App() {
         onOpenSettings={(section) => goSettings(section)}
         onOpenEngine={goEngine}
         onOpenWorkspace={goWorkspace}
+        onOpenProcesses={() => dispatchAction('processes')}
+        processesAvailable={session.activeSession !== ''}
         onEngineRestart={() => void session.restartEngine()}
         theme={theme}
         onThemeChange={setTheme}
         lang={lang}
         onLanguageChange={setLang}
       />
+      </ProcessRuntimeProvider>
     </I18nProvider>
   )
 }

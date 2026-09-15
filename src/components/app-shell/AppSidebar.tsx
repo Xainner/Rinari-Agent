@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Archive,
@@ -153,6 +153,68 @@ export function AppSidebar({
   const [cascade, setCascade] = useState(false)
 
   const model = useMemo(() => buildWorkspaceModel(sessions, projects, query), [sessions, projects, query])
+  // Transición al cambiar de conversación activa: solo entre chats
+  // sueltos dentro de la vista de chat. La barrita de la fila es un
+  // elemento persistente que funde opacidad y escala; el resaltado ya
+  // cruzaba por transition-colors. Cualquier cambio que toque proyecto
+  // (sesión de proyecto o vista fuera del chat) corta las transiciones
+  // con una clase, sin remontar nada.
+  const view = useUIStore((s) => s.view)
+  const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p] as const)), [projects])
+  const projectsByRoot = useMemo(() => new Map(projects.map((p) => [p.root, p] as const)), [projects])
+  // Mismo criterio que el modelo del workspace: fuera de secciones de
+  // proyecto solo quedan las sueltas.
+  function resolveProjectId(session: SessionSummary): string | null {
+    if (session.project_id && projectsById.has(session.project_id)) return session.project_id
+    if (session.project_root && projectsByRoot.has(session.project_root)) {
+      return projectsByRoot.get(session.project_root)!.id
+    }
+    return null
+  }
+  function isLooseChat(session: SessionSummary | null | undefined): session is SessionSummary {
+    return session != null && !(session.kind === 'PROJECT' && resolveProjectId(session) !== null)
+  }
+  const prevActiveIdRef = useRef(activeId)
+  const prevViewRef = useRef(view)
+  const animatedSwitch =
+    prevViewRef.current === 'chat' &&
+    view === 'chat' &&
+    isLooseChat(sessions.find((s) => s.id === prevActiveIdRef.current)) &&
+    isLooseChat(sessions.find((s) => s.id === activeId))
+  useEffect(() => {
+    prevActiveIdRef.current = activeId
+    prevViewRef.current = view
+  })
+  // Viajero vertical de la seccion de sueltas: una sola barrita que se
+  // desliza entre filas como el pill de modo, con medidas reales y escritura
+  // imperativa en layout effect (sin estado: asi transiciona desde lo ya
+  // pintado). Solo viaja entre sueltas en vista chat; ante proyecto,
+  // busqueda o grupos plegados se oculta y mandan los resaltados.
+  const travelerRef = useRef<HTMLSpanElement>(null)
+  const travelerRowRefs = useRef(new Map<string, HTMLLIElement>())
+  const chatsSectionRef = useRef<HTMLElement>(null)
+  const placeTraveler = useCallback(() => {
+    const bar = travelerRef.current
+    if (!bar) return
+    const row = travelerRowRefs.current.get(activeId) ?? null
+    if (!row || row.offsetParent === null || !animatedSwitch) {
+      bar.style.opacity = '0'
+      return
+    }
+    bar.style.transform = 'translateY(' + row.offsetTop + 'px)'
+    bar.style.height = row.offsetHeight + 'px'
+    bar.style.opacity = '1'
+  }, [activeId, animatedSwitch])
+  useLayoutEffect(() => {
+    placeTraveler()
+  })
+  useEffect(() => {
+    const section = chatsSectionRef.current
+    if (!section || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => placeTraveler())
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [placeTraveler])
   const archivedProjectResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     if (!needle) return archivedProjects
@@ -174,11 +236,11 @@ export function AppSidebar({
     setCascade(false)
   }
 
-  const row = (session: SessionSummary, opts?: { closed?: boolean }) => {
+  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     return (
-      <li key={session.id} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
+      <li key={session.id} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
           className={cn(
             'flex w-full items-center gap-1 rounded-xl pr-1 pl-2.5 transition-colors',
@@ -191,10 +253,14 @@ export function AppSidebar({
             aria-current={active ? 'page' : undefined}
             className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left"
           >
-            {active && (
+            {!opts?.travel && (
               <span
                 aria-hidden="true"
-                className="absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-[var(--accent)]"
+                data-testid="session-rail"
+                className={cn(
+                  'absolute top-2 bottom-2 left-0 w-0.5 origin-center rounded-full bg-[var(--accent)] transition-all duration-200',
+                  active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0',
+                )}
               />
             )}
             {working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
@@ -329,7 +395,7 @@ export function AppSidebar({
           />
         <button type="button" onClick={onToggleCollapse} aria-label={t('shell.collapse')} title={t('shell.collapse')} className="hidden rounded-lg p-1 text-[var(--text-subtle)] hover:text-[var(--text)] lg:block"><PanelLeftClose size={15} /></button>
         </div>
-      <div className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5">
+      <div className={cn('sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
 
         <section aria-label={t('sidebar.projects')}>
           <div className="mb-1 flex items-center justify-between pl-2">
@@ -432,7 +498,7 @@ export function AppSidebar({
           </section>
         )}
 
-        <section aria-label={t('sidebar.chats')}>
+        <section aria-label={t('sidebar.chats')} ref={chatsSectionRef} className="relative">
           <div className="mb-1 flex items-center justify-between px-2">
             <p className="text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
               {t('sidebar.chats')}
@@ -450,12 +516,19 @@ export function AppSidebar({
           <ul className="space-y-0.5">
             {groupRecentChats(model.chats).map(group => <li key={group.key} className="mt-2">
               <details open><summary className="cursor-pointer px-1 pb-2 text-[11px] text-[var(--text-subtle)]">{t(`home.${group.key}`)}</summary>
-              <ul className="space-y-0.5">{group.sessions.map(session => row(session))}</ul></details>
+              <ul className="space-y-0.5">{group.sessions.map(session => row(session, { travel: true }))}</ul></details>
             </li>)}
             {model.chats.length === 0 && (
               <li className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.emptyChats')}</li>
             )}
-          </ul>
+            </ul>
+            <span
+              aria-hidden="true"
+              data-testid="sessions-traveler"
+              ref={travelerRef}
+              className="absolute top-0 left-0 w-0.5 rounded-full bg-[var(--accent)] opacity-0"
+              style={{ transition: 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), height 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease' }}
+            />
         </section>
 
         {archivedSessionResults.length > 0 && (

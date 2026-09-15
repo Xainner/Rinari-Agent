@@ -186,6 +186,8 @@ export function useEngineSession() {
 
   const messages =
     sessions.activeSession !== '' ? (runtime.threads[sessions.activeSession] ?? []) : []
+  const historyLoading =
+    sessions.activeSession !== '' ? (sessions.historyPending[sessions.activeSession] ?? false) : false
   const busy = sessions.activeSession !== '' && runtime.busySessions.has(sessions.activeSession)
   const activeGitStatus = activeProjectRoot ? (projects.statusByRoot[activeProjectRoot] ?? null) : null
   const activeGitError = activeProjectRoot
@@ -194,6 +196,9 @@ export function useEngineSession() {
 
   return {
     status: connection.status,
+    connectionEpoch: connection.epoch,
+    processesCapability: connection.status?.capabilities.desktop_processes_v1 === true,
+    processesIdentityCapability: connection.status?.capabilities.process_identity_v1 === true,
     sessions: sessions.sessions,
     activeSession: sessions.activeSession,
     setActiveSession: sessions.setActiveSession,
@@ -247,6 +252,7 @@ export function useEngineSession() {
     setPermission: sessions.setPermission,
     searchFiles: sessions.searchFiles,
     historyInfo: sessions.historyInfo,
+    historyLoading,
     closedSessions: sessions.closedSessions,
     archivedSessions: sessions.archivedSessions,
     closeSession: sessions.closeSession,

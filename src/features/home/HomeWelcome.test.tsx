@@ -49,3 +49,17 @@ it('preserves the same composer DOM and focus when entering the conversation', a
   rerender(content(false))
   expect(screen.getByRole('textbox', {name:'Composer persistente'})).toBe(composer)
 })
+
+it('switching sessions remounts the conversation view so the enter transition replays', () => {
+  // La clave replica a ChatView: cada sesión remonta la vista.
+  const view = (id: string) => <I18nProvider lang="es"><HomeWelcome key={id} sessionId={id} context={{projectName:null,changedFiles:null}} engineReady conversationActive transcript={<p>Chat {id}</p>}><textarea aria-label="Ancla" /></HomeWelcome></I18nProvider>
+  const rendered = render(view('a'))
+  const composerA = screen.getByRole('textbox', {name:'Ancla'})
+  expect(screen.getByText('Chat a')).toBeTruthy()
+  rendered.rerender(view('b'))
+  expect(screen.getByText('Chat b')).toBeTruthy()
+  expect(screen.queryByText('Chat a')).toBeNull()
+  // Al cambiar la clave remonta: el composer es nuevo y la animación de
+  // entrada (transcript + composer) vuelve a ejecutarse.
+  expect(screen.getByRole('textbox', {name:'Ancla'})).not.toBe(composerA)
+})

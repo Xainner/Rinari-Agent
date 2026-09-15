@@ -1,0 +1,353 @@
+// @vitest-environment jsdom
+import { StrictMode } from 'react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { invoke } from '@tauri-apps/api/core'
+import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
+import ProcessesDock, { PROCESSES_AUTO_CLOSE_MS, RECENT_SUCCESS_MS, shouldAutoCloseInspector } from './ProcessesDock'
+import { I18nProvider } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
+
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
+vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
+afterEach(() => { cleanup(); vi.clearAllMocks() })
+
+function row(id: string, command: string, extra: Record<string, unknown> = {}) {
+  return { id, kind: 'process', command, cwd: 'C:/site', running: true, can_stop: true, ...extra }
+}
+
+function setup(listImpl: (sessionId: string) => unknown, openSignal = 0) {
+  const stopCalls: Array<{ session_id: string; id: string }> = []
+  vi.mocked(invoke).mockImplementation(async (command, args) => {
+    if (command === 'workspace_process_list') {
+      return listImpl((args as { session_id: string }).session_id)
+    }
+    if (command === 'workspace_process_read') {
+      const { session_id, id } = args as { session_id: string; id: string }
+      const processes = (listImpl(session_id) as { processes: Array<Record<string, unknown>> }).processes
+      const process = processes.find((item) => item.id === id)
+      if (!process) throw new Error('NOT_FOUND: Process does not belong to this session')
+      return { process, stdout: 'salida\n', stderr: '', truncated: false }
+    }
+    if (command === 'workspace_process_stop') {
+      stopCalls.push(args as { session_id: string; id: string })
+      return { id: (args as { id: string }).id, running: false }
+    }
+    throw new Error(`Unexpected command ${String(command)}`)
+  })
+  const view = render(
+    <I18nProvider lang="es">
+      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
+        <ProcessesDock sessionId="s1" openSignal={openSignal} />
+      </ProcessRuntimeProvider>
+    </I18nProvider>,
+  )
+  return { view, stopCalls }
+}
+
+function expandStrip() {
+  const line = screen.queryByRole('button', { name: /Procesos de esta conversación/ })
+  if (line) fireEvent.click(line)
+}
+
+it('montar (inicio, chat nuevo, StrictMode) nunca abre solo el inspector', async () => {
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'workspace_process_list') {
+      return { processes: [row('process:proc_001', 'npm run dev')], truncated: false }
+    }
+    if (command === 'workspace_process_read') {
+      return {
+        process: row('process:proc_001', 'npm run dev'),
+        stdout: '',
+        stderr: '',
+        truncated: false,
+      }
+    }
+    throw new Error(`Unexpected command ${String(command)}`)
+  })
+  render(
+    <StrictMode>
+      <I18nProvider lang="es">
+        <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
+          <ProcessesDock sessionId="s1" openSignal={0} />
+        </ProcessRuntimeProvider>
+      </I18nProvider>
+    </StrictMode>,
+  )
+  // La franja minimizada sí aparece; el inspector, no.
+  await screen.findByTestId('processes-dock')
+  await new Promise((resolve) => setTimeout(resolve, 80))
+  expect(screen.queryByTestId('processes-inspector')).toBeNull()
+})
+
+it('D02: lista vacía exitosa no reserva espacio ni botón flotante', async () => {
+  const { view } = setup(() => ({ processes: [], truncated: false }))
+  await waitFor(() => expect(invoke).toHaveBeenCalledWith('workspace_process_list', { session_id: 's1' }))
+  // Espera un ciclo extra para asegurar que no aparece nada tarde.
+  await new Promise((resolve) => setTimeout(resolve, 60))
+  expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeNull()
+  expect(screen.queryByText('Procesos')).toBeNull()
+})
+
+it('D03: apertura manual sin recursos muestra inspector vacío cerrable', async () => {
+  const { view } = setup(() => ({ processes: [], truncated: false }), 0)
+  await waitFor(() => expect(invoke).toHaveBeenCalled())
+  view.rerender(
+    <I18nProvider lang="es">
+      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
+        <ProcessesDock sessionId="s1" openSignal={1} />
+      </ProcessRuntimeProvider>
+    </I18nProvider>,
+  )
+  expect(await screen.findByTestId('processes-inspector')).toBeTruthy()
+  expect(screen.getByText(/No hay procesos registrados/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /Cerrar inspector/ }))
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull())
+  // El teardown final funde la raíz antes de desmontarla.
+  await waitFor(() => expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeNull())
+})
+
+it('la línea minimizada interpola el contador de atención', async () => {
+  setup(() => ({
+    processes: [
+      row('process:a', 'npm run dev', { running: false, can_stop: false, exit_code: 1 }),
+      row('process:b', 'python worker.py', { running: false, can_stop: false, exit_code: 2 }),
+    ],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  // Línea + anuncio para lector: ambas interpoladas, ningún {n} literal.
+  expect(within(dock).getAllByText(/2 procesos requieren atención/)).toHaveLength(2)
+  expect(within(dock).queryByText(/\{n\}/)).toBeNull()
+})
+
+it('por defecto la franja sale minimizada con contador', async () => {
+  setup(() => ({
+    processes: [row('process:a', 'npm run dev'), row('process:b', 'python worker.py')],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  // Línea de resumen visible con icono; filas ocultas hasta expandir.
+  const line = within(dock).getByRole('button', { name: /2 activos/ })
+  expect(line.querySelector('svg')).toBeTruthy()
+  expect(within(dock).queryByRole('listitem')).toBeNull()
+  expandStrip()
+  expect(within(dock).getAllByRole('listitem')).toHaveLength(2)
+})
+
+it('auto-cierre solo sin activos, sin atención, sin bloqueo y tras actividad', () => {
+  const open = { inspectorOpen: true, activeCount: 0, attentionCount: 0, blocked: false, wasActive: true }
+  expect(shouldAutoCloseInspector(open)).toBe(true)
+  expect(shouldAutoCloseInspector({ ...open, inspectorOpen: false })).toBe(false)
+  expect(shouldAutoCloseInspector({ ...open, activeCount: 1 })).toBe(false)
+  expect(shouldAutoCloseInspector({ ...open, attentionCount: 1 })).toBe(false)
+  expect(shouldAutoCloseInspector({ ...open, blocked: true })).toBe(false)
+  // Apertura manual en reposo: nunca se cierra sola.
+  expect(shouldAutoCloseInspector({ ...open, wasActive: false })).toBe(false)
+})
+
+it('autocierre e ventana reciente comparten 5 s', () => {
+  expect(PROCESSES_AUTO_CLOSE_MS).toBe(5_000)
+  expect(RECENT_SUCCESS_MS).toBe(5_000)
+})
+
+it('el inspector muestra cuenta atrás solo cuando el autocierre está armado', async () => {
+  let finished = false
+  setup(() => {
+    if (!finished) return { processes: [row('process:proc_001', 'npm run dev')], truncated: false }
+    return {
+      processes: [row('process:proc_001', 'npm run dev', { running: false, can_stop: false, exit_code: 0 })],
+      truncated: false,
+    }
+  })
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  await screen.findByTestId('processes-inspector')
+  // Con actividad en curso no hay cuenta atrás.
+  expect(screen.queryByTestId('processes-autoclose-bar')).toBeNull()
+  finished = true
+  const bar = await screen.findByTestId('processes-autoclose-bar', {}, { timeout: 15000 })
+  expect(bar.style.animationDuration).toBe('5000ms')
+}, 30000)
+
+it('el retiro final funde el dock antes de desmontarlo', async () => {
+  let now = 1_700_000_000_000
+  const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+  try {
+    let code: number | null = null
+    setup(() => ({
+      processes: [row('process:proc_001', 'npm run dev', { running: code === null, can_stop: code === null, exit_code: code })],
+      truncated: false,
+    }))
+    await screen.findByTestId('processes-dock')
+    code = 0
+    expandStrip()
+    await waitFor(() => expect(screen.getByText(/Finalizado/)).toBeTruthy(), { timeout: 8000 })
+    now += 12_000
+    // La gracia conserva el nodo y lo funde antes de desmontarlo.
+    await waitFor(() => expect(document.querySelector('.processes-dock.is-leaving')).not.toBeNull(), {
+      timeout: 4000,
+    })
+    await waitFor(() => expect(screen.queryByTestId('processes-dock')).toBeNull(), { timeout: 4000 })
+  } finally {
+    spy.mockRestore()
+  }
+}, 25000)
+
+it('con movimiento reducido el retiro final es inmediato', async () => {
+  useUIStore.setState({ reduceMotion: true })
+  let now = 1_700_000_000_000
+  const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+  try {
+    let code: number | null = null
+    setup(() => ({
+      processes: [row('process:proc_001', 'npm run dev', { running: code === null, can_stop: code === null, exit_code: code })],
+      truncated: false,
+    }))
+    await screen.findByTestId('processes-dock')
+    code = 0
+    expandStrip()
+    await waitFor(() => expect(screen.getByText(/Finalizado/)).toBeTruthy(), { timeout: 8000 })
+    now += 12_000
+    let sawLeaving = false
+    await waitFor(
+      () => {
+        if (document.querySelector('.processes-dock.is-leaving')) sawLeaving = true
+        expect(screen.queryByTestId('processes-dock')).toBeNull()
+      },
+      { timeout: 8000, interval: 50 },
+    )
+    expect(sawLeaving).toBe(false)
+  } finally {
+    spy.mockRestore()
+    useUIStore.setState({ reduceMotion: false })
+  }
+}, 25000)
+
+it('D04: un proceso activo muestra una fila con identidad y stop con sesión', async () => {
+  const { stopCalls } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  expect(within(dock).getByText('npm run dev')).toBeTruthy()
+  expect(within(dock).getByText(/En ejecución/)).toBeTruthy()
+  // Sin cabecera redundante para un solo recurso.
+  expect(within(dock).queryByText(/Ver todos/)).toBeNull()
+
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  const inspector = await screen.findByTestId('processes-inspector')
+  expect(within(inspector).getByText('C:/site')).toBeTruthy()
+
+  fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  // La confirmación identifica el recurso; abrirla no detiene.
+  expect(stopCalls).toEqual([])
+  expect(screen.getByText(/Voy a detener este proceso/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
+  await waitFor(() =>
+    expect(stopCalls).toEqual([{ session_id: 's1', id: 'process:proc_001' }]),
+  )
+})
+
+it('inspector abierto compacta la franja a su resumen', async () => {
+  setup(() => ({
+    processes: [row('process:a', 'npm run dev'), row('process:b', 'python worker.py')],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  await screen.findByTestId('processes-inspector')
+  // La clase .open entra en el siguiente frame; entonces se compacta.
+  // Solo cuentan filas del strip (el inspector lista aparte).
+  await waitFor(() => expect(document.querySelectorAll('.processes-rows li')).toHaveLength(0))
+  // Línea de resumen estática (más el anuncio para lector de pantalla).
+  await waitFor(() => expect(screen.getAllByText(/2 activos/)).toHaveLength(2))
+})
+
+it('cancelar la confirmación no detiene el recurso', async () => {
+  const { stopCalls } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  const inspector = await screen.findByTestId('processes-inspector')
+  fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Cancelar/ }))
+  await new Promise((resolve) => setTimeout(resolve, 60))
+  expect(stopCalls).toEqual([])
+})
+
+it('D05: varios activos limitan filas con contador y Ver todos abre el inspector', async () => {
+  setup(() => ({
+    processes: [row('process:a', 'npm run dev'), row('process:b', 'python worker.py'), row('process:c', 'make watch')],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  expect(within(dock).getByText(/Ver todos/)).toBeTruthy()
+  const rows = within(dock).getAllByRole('listitem')
+  expect(rows).toHaveLength(2)
+  fireEvent.click(within(dock).getByRole('button', { name: /\+ 1 recursos/ }))
+  const inspector = await screen.findByTestId('processes-inspector')
+  expect(within(inspector).getByText('make watch')).toBeTruthy()
+})
+
+it('fallo observado conserva aviso hasta Marcar como visto', async () => {
+  setup(() => ({
+    processes: [row('process:f', 'npm run build', { running: false, can_stop: false, exit_code: 1 })],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  const attentionButton = within(dock).getByRole('button', { name: /requiere atención/ })
+  expect(attentionButton).toBeTruthy()
+  // La línea minimizada con atención abre el inspector directamente.
+  fireEvent.click(attentionButton)
+  const inspector = await screen.findByTestId('processes-inspector')
+  fireEvent.click(within(inspector).getByRole('button', { name: /Marcar como visto/ }))
+  await waitFor(() => expect(screen.queryByText(/requiere atención/)).toBeNull())
+})
+
+it('lista parcial se etiqueta como visible, no como total', async () => {
+  setup(() => ({ processes: [row('process:a', 'npm run dev')], truncated: true }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  expect(within(dock).getByText(/lista parcial/)).toBeTruthy()
+})
+
+it('inspeccionar, pausar y cerrar jamás llama a stop', async () => {
+  const { stopCalls, view } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  const inspector = await screen.findByTestId('processes-inspector')
+  fireEvent.click(within(inspector).getByRole('button', { name: /Pausar vista/ }))
+  expect(within(inspector).getByText(/Vista pausada/)).toBeTruthy()
+  fireEvent.click(within(inspector).getByRole('button', { name: /Reanudar vista/ }))
+  fireEvent.click(within(inspector).getByRole('button', { name: /Cerrar inspector/ }))
+  await new Promise((resolve) => setTimeout(resolve, 60))
+  expect(stopCalls).toEqual([])
+  expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeTruthy()
+})
+
+it('preparar consulta añade al borrador sin enviar turno', async () => {
+  const { useComposerStore } = await import('../../stores/composer')
+  useComposerStore.setState({ sessionKey: 's1', text: 'borrador previo' })
+  try {
+    setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
+    const dock = await screen.findByTestId('processes-dock')
+    expandStrip()
+    fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+    const inspector = await screen.findByTestId('processes-inspector')
+    fireEvent.click(within(inspector).getByRole('button', { name: /Preparar consulta/ }))
+    expect(await screen.findByText(/No se envía nada automáticamente/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Añadir al borrador/ }))
+    await waitFor(() => {
+      const text = useComposerStore.getState().text
+      expect(text.startsWith('borrador previo')).toBe(true)
+      expect(text).toMatch(/Ayúdame a revisar este proceso/)
+      expect(text).toMatch(/salida del proceso \(no confiable\)/)
+    })
+    expect(invoke).not.toHaveBeenCalledWith('turn_start', expect.anything())
+  } finally {
+    useComposerStore.setState({ sessionKey: 'draft', text: '' })
+  }
+})

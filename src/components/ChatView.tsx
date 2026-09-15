@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
@@ -11,6 +11,7 @@ import Composer from './composer/Composer'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
+import ProcessesDock from '../features/processes/ProcessesDock'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
 import ScrollToBottom from './chat/ScrollToBottom'
@@ -46,6 +47,10 @@ interface ChatViewProps {
   permissionProfilesV2: boolean
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
+  processesOpenSignal?: number
+  /** Historial de la sesión activa aún cargando: se muestra esqueleto
+   * de conversación en vez del home transitorio. */
+  historyLoading?: boolean
 }
 
 export default function ChatView({
@@ -78,6 +83,8 @@ export default function ChatView({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
+  processesOpenSignal = 0,
+  historyLoading = false,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -97,6 +104,10 @@ export default function ChatView({
     [messages, timelines, sessionId],
   )
   const empty = stream.length === 0
+  // Historial en curso sin contenido aún: esqueleto de conversación en
+  // vez del home transitorio (el destello al cambiar de sesión). Sin
+  // engine no hay carga en curso: se muestra el home como antes.
+  const loadingHistory = historyLoading && empty && engineReady
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
 
   useEffect(() => {
@@ -117,6 +128,13 @@ export default function ChatView({
     setAtBottom(true)
   }, [sessionId])
 
+  // Al cambiar de sesión, dejar el scroll al fondo antes de pintar: sin
+  // esto se destella la mitad de la lista.
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current
+    if (scroller) scroller.scrollTop = scroller.scrollHeight
+  }, [sessionId])
+
   useEffect(() => {
     const content = contentRef.current
     if (!content || !autoFollow) return
@@ -133,6 +151,30 @@ export default function ChatView({
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
   }, [empty, autoFollow, sessionId])
 
+  // El dock de procesos vive en la zona inferior y su inspector expande
+  // esa zona, encogiendo el transcript. Si el usuario ya estaba abajo,
+  // acompañar el fondo para que el último texto no quede tapado; si
+  // estaba leyendo arriba, conservar su posición sin saltos.
+  useEffect(() => {
+    const scroller = scrollRef.current
+    if (!scroller || !autoFollow) return
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      if (!followRef.current) return
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const el = scrollRef.current
+        if (el && followRef.current) {
+          el.scrollTop = el.scrollHeight
+          if (stream.length > 0) virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
+        }
+      })
+    })
+    observer.observe(scroller)
+    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFollow, sessionId, empty, stream.length])
+
   useEffect(() => {
     // Autoscroll inteligente: solo sigue si el usuario ya estaba abajo
     // y la preferencia está activa.
@@ -143,7 +185,7 @@ export default function ChatView({
 
   const composer = (
     <Composer
-      placement={empty ? 'centered' : 'bottom'}
+      placement={empty && !loadingHistory ? 'centered' : 'bottom'}
       onSend={onSend}
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
@@ -170,8 +212,8 @@ export default function ChatView({
   )
 
   return (
-    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty} transcript={!empty ? (
-        <>
+    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty || loadingHistory} transcript={!empty ? (
+        <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
             {historyNote?.hasMore && (
               <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">
@@ -212,8 +254,18 @@ export default function ChatView({
               }
             }}
           />
-        </>
+        </div>
+    ) : loadingHistory ? (
+        <div key={sessionId + ':loading'} aria-busy="true" data-testid="chat-loading" className="flex min-h-full flex-col">
+          {[72, 100, 86, 94].map((width, group) => (
+            <div key={group} className="mx-auto w-full max-w-3xl space-y-2 px-4 pt-6">
+              <div className="h-3 rounded bg-[var(--bg-active)] motion-safe:animate-pulse" style={{ width: width + '%' }} />
+              <div className="h-3 rounded bg-[var(--bg-active)] motion-safe:animate-pulse" style={{ width: Math.max(40, width - 25) + '%' }} />
+            </div>
+          ))}
+        </div>
     ) : undefined}>
+      {sessionId !== '' && <ProcessesDock sessionId={sessionId} openSignal={processesOpenSignal} />}
       <Questions key={sessionId} sessionId={sessionId} />
       {composer}
     </HomeWelcome>

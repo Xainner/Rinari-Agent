@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { ModelSummary, ProviderSummary } from '../../services/engine'
 import Composer from './Composer'
+import { useUIStore } from '../../stores/ui'
 
 afterEach(cleanup)
 it('groups models by provider and closes each selector immediately on selection', async () => {
@@ -77,4 +78,75 @@ it('collapses providers, remembers their state and reveals matching models durin
   expect(screen.queryByRole('button', {name:/Beta/})).toBeNull()
   await user.click(screen.getByRole('button', {name:'Remote'}))
   expect(screen.getByRole('button', {name:/Beta/})).toBeTruthy()
+})
+it('la pill de modo sigue al modo activo', () => {
+  const view = render(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+  // Un único indicador a nivel del grupo; el seleccionado se marca con aria-pressed.
+  expect(screen.getAllByTestId('mode-pill')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'BUILD' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('button', { name: 'PLAN' }).getAttribute('aria-pressed')).toBe('false')
+  view.rerender(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="plan" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+  expect(screen.getAllByTestId('mode-pill')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'PLAN' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('button', { name: 'BUILD' }).getAttribute('aria-pressed')).toBe('false')
+})
+
+function mockButtonGeometry(button: HTMLElement, left: number, width: number) {
+  Object.defineProperty(button, 'offsetLeft', { value: left, configurable: true })
+  Object.defineProperty(button, 'offsetWidth', { value: width, configurable: true })
+}
+
+function renderComposerForPill(sessionMode: string) {
+  return render(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode={sessionMode} onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+}
+
+function rerenderComposerForPill(view: ReturnType<typeof render>, sessionMode: string) {
+  view.rerender(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode={sessionMode} onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+}
+
+it('la pill viaja al modo pedido con clic', () => {
+  const view = renderComposerForPill('build')
+  mockButtonGeometry(screen.getByRole('button', { name: 'PLAN' }), 2, 52)
+  mockButtonGeometry(screen.getByRole('button', { name: 'BUILD' }), 56, 60)
+  mockButtonGeometry(screen.getByRole('button', { name: 'REVIEW' }), 118, 64)
+  fireEvent.click(screen.getByRole('button', { name: 'REVIEW' }))
+  rerenderComposerForPill(view, 'review')
+  const pill = screen.getByTestId('mode-pill')
+  expect(pill.style.transform).toBe('translateX(118px)')
+  expect(pill.style.width).toBe('64px')
+  expect(pill.style.transition).toContain('transform')
+})
+
+it('un cambio que llega solo se coloca sin viajar (fantasma)', () => {
+  // Nueva conversación que muestra el modo anterior y corrige a build:
+  // sin clic no hay viaje, solo aparece colocada.
+  const view = renderComposerForPill('plan')
+  mockButtonGeometry(screen.getByRole('button', { name: 'PLAN' }), 2, 52)
+  mockButtonGeometry(screen.getByRole('button', { name: 'BUILD' }), 56, 60)
+  mockButtonGeometry(screen.getByRole('button', { name: 'REVIEW' }), 118, 64)
+  rerenderComposerForPill(view, 'build')
+  const pill = screen.getByTestId('mode-pill')
+  expect(pill.style.transform).toBe('translateX(56px)')
+  expect(pill.style.width).toBe('60px')
+  expect(pill.style.transition).toBe('none')
+})
+
+it('la pill aparece ya colocada al montar', () => {
+  // La colocación es imperativa en layout effect (antes del primer
+  // pintado): al montar ya está en su sitio, sin viaje fantasma. En
+  // jsdom las medidas son 0, así que se afirma la escritura sincrónica.
+  renderComposerForPill('build')
+  const pill = screen.getByTestId('mode-pill')
+  expect(pill.style.transform).toBe('translateX(0px)')
+  expect(pill.style.width).toBe('0px')
+})
+
+it('la pill salta sin transición con movimiento reducido', () => {
+  useUIStore.setState({ reduceMotion: true })
+  try {
+    renderComposerForPill('plan')
+    expect(screen.getByTestId('mode-pill').style.transition).toBe('none')
+  } finally {
+    useUIStore.setState({ reduceMotion: false })
+  }
 })

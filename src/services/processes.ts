@@ -7,6 +7,8 @@ export interface ProcessListResult {
   total?: number
   next_cursor?: string | null
   engine_instance_id?: string
+  /** Filas omitidas por formato inválido (cuarentena, no fallo total). */
+  invalid?: number
 }
 
 export interface ProcessStopResult {
@@ -70,6 +72,17 @@ export function isProcessListResult(value: unknown): value is ProcessListResult 
   return (value.processes as unknown[]).every(isManagedProcess)
 }
 
+/** Validez del sobre sin exigir cada fila: permite cuarentena parcial. */
+export function isProcessListEnvelope(value: unknown): value is ProcessListResult {
+  if (!isRecord(value)) return false
+  if (!Array.isArray(value.processes)) return false
+  if (typeof value.truncated !== 'boolean') return false
+  if (!isOptionalCount(value.total)) return false
+  if (!isOptionalCursor(value.next_cursor)) return false
+  if (!isOptionalString(value.engine_instance_id)) return false
+  return true
+}
+
 export function isProcessOutput(value: unknown): value is ProcessOutput {
   if (!isRecord(value)) return false
   if (!isManagedProcess(value.process)) return false
@@ -124,8 +137,10 @@ export const processesApi = {
       ...(opts.cursor !== undefined ? { cursor: opts.cursor } : {}),
       ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
     })
-    if (!isProcessListResult(raw)) throw new Error('processes: respuesta list malformada')
-    return raw
+    if (!isProcessListEnvelope(raw)) throw new Error('processes: respuesta list malformada')
+    // Cuarentena por fila: una fila corrupta no oculta las válidas.
+    const processes = (raw.processes as unknown[]).filter(isManagedProcess)
+    return { ...raw, processes, invalid: raw.processes.length - processes.length }
   },
 
   async read(sessionId: string, id: string): Promise<ProcessReadResult> {

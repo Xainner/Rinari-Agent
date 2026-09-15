@@ -11,6 +11,7 @@ import {
   resourceTitle,
   sameResource,
   scopeKey,
+  statusTextKey,
   summarizeStrip,
   type ProcessPresentation,
 } from './processesModel'
@@ -113,8 +114,31 @@ describe('igualdad de presentación', () => {
   })
 })
 
-describe('etiquetas de identidad', () => {
-  it('mapea readiness y exit_reason conocidos, null en el resto', () => {
+describe('estado sin propiedad y mapa de etiquetas', () => {
+  it('sin proceso gestionado no inventa código ni control', () => {
+    const orphan = row({ id: 'a', running: false, exit_code: null, can_stop: false })
+    expect(deriveStatusKey(orphan)).toBe('no_owned_process')
+  })
+
+  it('statusTextKey cubre los ocho estados', () => {
+    expect(statusTextKey('running')).toBe('processes.running')
+    expect(statusTextKey('finished_ok')).toBe('processes.finishedOk')
+    expect(statusTextKey('finished_error')).toBe('processes.finishedError')
+    expect(statusTextKey('stop_confirmed')).toBe('processes.stopConfirmed')
+    expect(statusTextKey('no_owned_process')).toBe('processes.noOwnedProcess')
+    expect(statusTextKey('external')).toBe('processes.external')
+    expect(statusTextKey('unknown')).toBe('processes.unknownState')
+    expect(statusTextKey('unverified')).toBe('processes.unverified')
+  })
+
+  it('exitReasonLabelKey cubre falló, señal y desconocido', () => {
+    expect(exitReasonLabelKey('failed')).toBe('processes.exitFailed')
+    expect(exitReasonLabelKey('signaled')).toBe('processes.exitSignaled')
+    expect(exitReasonLabelKey('unknown')).toBe('processes.exitUnknown')
+  })
+})
+
+describe('etiquetas de identidad', () => {  it('mapea readiness y exit_reason conocidos, null en el resto', () => {
     expect(readinessLabelKey('listening')).toBe('processes.readyListening')
     expect(readinessLabelKey('not_listening')).toBe('processes.readyNotListening')
     expect(readinessLabelKey('unknown')).toBeNull()

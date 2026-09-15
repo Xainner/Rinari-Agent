@@ -24,9 +24,19 @@ describe('processesApi', () => {
     expect(invoke).toHaveBeenCalledWith('workspace_process_read', { session_id: 's1', id: 'process:proc_001' })
   })
 
-  it('rechaza respuestas malformadas en vez de actualizar la UI', async () => {
-    vi.mocked(invoke).mockResolvedValueOnce({ processes: [{ id: '', running: true }] })
+  it('rechaza sobres malformados y pone en cuarentena filas sueltas', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({ processes: 'no-array', truncated: false })
     await expect(processesApi.list('s1')).rejects.toThrow(/malformada/)
+    vi.mocked(invoke).mockResolvedValueOnce({
+      processes: [
+        { id: 'process:ok', kind: 'process', command: 'npm run dev', cwd: 'C:/s', running: true, can_stop: true },
+        { id: '', running: true },
+      ],
+      truncated: false,
+    })
+    const listed = await processesApi.list('s1')
+    expect(listed.processes.map((row) => row.id)).toEqual(['process:ok'])
+    expect(listed.invalid).toBe(1)
   })
 
   it('acepta nulos explícitos del engine en filas activas', async () => {

@@ -257,13 +257,13 @@ it('T-5: fallo de listado visible con Reintentar y recuperación', async () => {
       </ProcessRuntimeProvider>
     </I18nProvider>,
   )
-  expect(await screen.findByText('timeout')).toBeTruthy()
+  expect(await screen.findAllByText('timeout')).not.toHaveLength(0)
   fail = false
   fireEvent.click(screen.getByRole('button', { name: /Reintentar/ }))
   await screen.findByTestId('processes-dock')
-  // Fila en franja e inspector; el error desaparece.
+  // Fila en franja e inspector; el error desaparece (también del anuncio SR).
   await waitFor(() => expect(screen.getAllByText('npm run dev')).toHaveLength(2))
-  await waitFor(() => expect(screen.queryByText('timeout')).toBeNull())
+  await waitFor(() => expect(screen.queryAllByText('timeout')).toHaveLength(0))
 })
 
 it('T-7: pausar congela lecturas; reanudar lee de inmediato', async () => {
@@ -425,8 +425,7 @@ it('T-13: URLs no http(s) o con credenciales no ofrecen Abrir', async () => {
   expect(await screen.findByText('nope')).toBeTruthy()
 })
 
-it('E-2: fallo de copia en detalle avisa en vez de callar', async () => {
-  const { copyText } = await import('../../lib/clipboard')
+it('E-2: fallo de copia en detalle avisa en vez de callar', async () => {  const { copyText } = await import('../../lib/clipboard')
   vi.mocked(copyText).mockResolvedValueOnce(false)
   vi.mocked(invoke).mockImplementation(async (command) => {
     if (command === 'workspace_process_list') {
@@ -441,4 +440,23 @@ it('E-2: fallo de copia en detalle avisa en vez de callar', async () => {
   const inspector = await openInspectorOnFirstRow()
   fireEvent.click(within(inspector).getByRole('button', { name: /Copiar comando/ }))
   expect(await screen.findByText(/No se pudo copiar/)).toBeTruthy()
+})
+
+it('V2E-1: una fila corrupta no oculta las válidas y se avisa', async () => {
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'workspace_process_list') {
+      return {
+        processes: [
+          activeRow('process:ok', 'npm run dev'),
+          { id: '', kind: 'process', command: 'x', cwd: 'C:/s', running: true, can_stop: true },
+        ],
+        truncated: false,
+      }
+    }
+    throw new Error(`Unexpected ${String(command)}`)
+  })
+  renderDock()
+  const dock = await screen.findByTestId('processes-dock')
+  expect(within(dock).getByText('npm run dev')).toBeTruthy()
+  expect(within(dock).getByText(/omitidos por formato inválido/)).toBeTruthy()
 })

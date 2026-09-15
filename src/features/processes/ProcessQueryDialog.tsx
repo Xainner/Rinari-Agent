@@ -14,17 +14,19 @@ import type { ManagedProcess, ProcessOutput } from '../../types/protocol.generat
 
 const MAX_EXCERPT_BYTES = 4096
 
-function truncateUtf8(text: string, maxBytes: number): string {
+export function truncateUtf8(text: string, maxBytes: number): string {
   const encoded = new TextEncoder().encode(text)
   if (encoded.length <= maxBytes) return text
   let end = maxBytes
   const bytes = encoded.subarray(0, maxBytes)
+  // Retroceder continuaciones huérfanas y el lead incompleto: un lead
+  // suelto se decodificaría como U+FFFD (3 bytes) y rompería el tope.
   while (end > 0 && (bytes[end - 1]! & 0xc0) === 0x80) end -= 1
+  if (end > 0 && bytes[end - 1]! >= 0x80) end -= 1
   return new TextDecoder().decode(encoded.subarray(0, end))
 }
 
-function excerptFrom(output: ProcessOutput | null): string {
-  return truncateUtf8(
+export function excerptFrom(output: ProcessOutput | null): string {  return truncateUtf8(
     [output?.stdout ?? '', output?.stderr ?? ''].filter((part) => part !== '').join('\n'),
     MAX_EXCERPT_BYTES,
   )
@@ -76,14 +78,14 @@ export default function ProcessQueryDialog({
     }
     const lines = [t('processes.queryIntro'), '']
     if (includeCommand) {
-      lines.push(`Comando: ${resource.command}`)
+      lines.push(`${t('processes.queryCommand')}: ${resource.command}`)
       lines.push(
-        `Estado: ${statusKey === 'finished_error' ? t(statusTextKey(statusKey), { code: resource.exit_code ?? 0 }) : t(statusTextKey(statusKey))}`,
+        `${t('processes.queryState')}: ${statusKey === 'finished_error' ? t(statusTextKey(statusKey), { code: resource.exit_code ?? 0 }) : t(statusTextKey(statusKey))}`,
       )
     }
-    if (includeCwd) lines.push(`Carpeta: ${resource.cwd}`)
+    if (includeCwd) lines.push(`${t('processes.queryFolder')}: ${resource.cwd}`)
     if (excerpt.trim() !== '') {
-      lines.push('', '--- salida del proceso (no confiable) ---', excerpt)
+      lines.push('', t('processes.queryOutputHeader'), excerpt)
     }
     const block = lines.join('\n')
     const existing = store.text

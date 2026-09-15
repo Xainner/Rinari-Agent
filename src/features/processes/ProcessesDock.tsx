@@ -62,6 +62,7 @@ export default function ProcessesDock({
     readError,
     stopById,
     listTruncated,
+    listInvalid,
     freshness,
   } = snap
 
@@ -122,6 +123,16 @@ export default function ProcessesDock({
     return () => window.removeEventListener('rinari-browser-open', onBrowserOpen)
   }, [])
 
+  const online = freshness !== 'offline'
+  const confirmedIds = useMemo(
+    () => new Set(snap.confirmedIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snap.confirmedIds.join('|')],
+  )
+
+  // Sin sesión no hay nada que observar. Después de todos los hooks: el
+  // sessionId es estable por montaje (key por sesión) pero el orden de
+  // hooks nunca debe depender de un return condicional.
   if (!sessionId) return null
 
   const attention = ordered.filter(
@@ -136,32 +147,30 @@ export default function ProcessesDock({
     if (hoveredId === item.resource.id || focusedId === item.resource.id) return true
     return now - item.completionObservedAt - hiddenMsRef.current < RECENT_SUCCESS_MS
   })
-  const online = freshness !== 'offline'
-  const confirmedIds = useMemo(
-    () => new Set(snap.confirmedIds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [snap.confirmedIds.join('|')],
-  )
   const summary = summarizeStrip(relevant, { listTruncated })
   const activeCount = ordered.filter((item) => item.resource.running).length
   const hasStrip = summary.visible.length > 0 || attention.length > 0
 
   // Anuncio único por cambio relevante; nunca cada poll ni cada segundo.
+  // Incluye errores de listado para lectores de pantalla: visualmente la
+  // franja sigue silenciosa hasta apertura explícita.
   useEffect(() => {
     const next =
-      attention.length > 0
-        ? t(attention.length === 1 ? 'processes.needsAttention' : 'processes.needsAttentionPlural', {
-            n: attention.length,
-          })
-        : activeCount > 0
-          ? `${t('processes.section')} · ${activeCount} ${t('processes.active')}`
-          : ''
+      listError !== null
+        ? listError
+        : attention.length > 0
+          ? t(attention.length === 1 ? 'processes.needsAttention' : 'processes.needsAttentionPlural', {
+              n: attention.length,
+            })
+          : activeCount > 0
+            ? `${t('processes.section')} · ${activeCount} ${t('processes.active')}`
+            : ''
     if (next !== lastAnnouncedRef.current) {
       lastAnnouncedRef.current = next
       setAnnouncement(next)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attention.length, activeCount])
+  }, [listError, attention.length, activeCount])
 
   // Diálogo de detención: identifica el recurso y reverifica ámbito,
   // época y observación antes de enviar.
@@ -366,6 +375,9 @@ export default function ProcessesDock({
           )}
           {listTruncated && (
             <p className="processes-note">{t('processes.partialList', { n: ordered.length })}</p>
+          )}
+          {listInvalid > 0 && (
+            <p className="processes-note">{t('processes.invalidRows', { n: listInvalid })}</p>
           )}
           {listError && (
             <p role="alert" className="processes-error">

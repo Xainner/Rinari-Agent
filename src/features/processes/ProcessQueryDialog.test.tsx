@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it } from 'vitest'
-import ProcessQueryDialog from './ProcessQueryDialog'
+import ProcessQueryDialog, { excerptFrom, truncateUtf8 } from './ProcessQueryDialog'
 import { useComposerStore } from '../../stores/composer'
 import { I18nProvider } from '../../i18n'
 import type { ManagedProcess } from '../../types/protocol.generated'
@@ -97,4 +97,49 @@ it('V2-2: el extracto se rellena al llegar la salida y respeta edición', () => 
     </I18nProvider>,
   )
   expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('mi nota')
+})
+
+it('fallo real interpola el código y la carpeta es opcional', () => {
+  const failed = { ...stoppedPreview, running: false, can_stop: false, exit_code: 3 }
+  setup(failed, { output: { stdout: 'boom', stderr: '' } })
+  fireEvent.click(screen.getByRole('checkbox', { name: /Incluir carpeta/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Añadir al borrador/ }))
+  const text = useComposerStore.getState().text
+  expect(text).toMatch(/Finalizado · código 3/)
+  expect(text).toMatch(/Carpeta: C:\/site/)
+  expect(text).toMatch(/Comando:/)
+})
+
+it('localiza las etiquetas en inglés', () => {  useComposerStore.setState({ sessionKey: 's9', text: '' })
+  render(
+    <I18nProvider lang="en">
+      <ProcessQueryDialog
+        sessionId="s9"
+        resource={stoppedPreview}
+        output={null}
+        online={true}
+        stopConfirmed={true}
+        open={true}
+        onClose={() => {}}
+      />
+    </I18nProvider>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: /Add to draft/ }))
+  const text = useComposerStore.getState().text
+  expect(text).toMatch(/Command:/)
+  expect(text).toMatch(/State:/)
+  expect(text).not.toMatch(/Comando:/)
+})
+
+it('excerptFrom une stderr y truncateUtf8 respeta UTF-8', () => {
+  const output = { process: stoppedPreview, stdout: 'out', stderr: 'err', truncated: false }
+  expect(excerptFrom(output)).toBe('out\nerr')
+  expect(excerptFrom(null)).toBe('')
+  const big = 'x'.repeat(5000)
+  const cut = truncateUtf8(big, 4096)
+  expect(new TextEncoder().encode(cut).length).toBeLessThanOrEqual(4096)
+  // Sin partir secuencias multibyte ni superar el tope con reemplazos.
+  const emoji = 'a'.repeat(4094) + '😀'
+  expect(truncateUtf8(emoji, 4096)).toBe('a'.repeat(4094))
+  expect(new TextEncoder().encode(truncateUtf8(emoji, 4096)).length).toBeLessThanOrEqual(4096)
 })

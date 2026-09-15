@@ -38,6 +38,7 @@ interface SessionRuntime {
   confirmedDetached: Map<string, ConfirmedDetached>
   listError: string | null
   listTruncated: boolean
+  listInvalid: number
   selectedMissing: boolean
   readErrorById: Map<string, string>
   stopById: Map<string, StopOperation>
@@ -91,6 +92,7 @@ export interface SessionSnapshot {
   readError: string | null
   stopById: Map<string, StopOperation>
   listTruncated: boolean
+  listInvalid: number
 }
 
 export const ProcessesRuntimeContext = createContext<ProcessesRuntimeContextValue | null>(null)
@@ -108,6 +110,7 @@ function emptySnapshot(freshness: ConnectionFreshness): SessionSnapshot {
     readError: null,
     stopById: new Map(),
     listTruncated: false,
+    listInvalid: 0,
   }
 }
 
@@ -196,6 +199,7 @@ export function ProcessRuntimeProvider({
         confirmedDetached: new Map(),
         listError: null,
         listTruncated: false,
+        listInvalid: 0,
         selectedMissing: false,
         readErrorById: new Map(),
         stopById: new Map(),
@@ -411,6 +415,7 @@ export function ProcessRuntimeProvider({
         }
         current.engineOrder = nextOrder
         current.listTruncated = result.truncated
+        current.listInvalid = result.invalid ?? 0
         current.listError = null
         current.backoffStep = 0
         current.freshness = 'fresh'
@@ -435,6 +440,7 @@ export function ProcessRuntimeProvider({
         if (seq < current.invalidBeforeSeq || seq < current.appliedSeq) return
         current.appliedSeq = seq
         current.listError = err instanceof Error ? err.message : String(err)
+        current.listInvalid = 0
         current.freshness = 'stale'
         current.backoffStep = Math.min(current.backoffStep + 1, BACKOFF_STEPS.length - 1)
         bump()
@@ -558,6 +564,7 @@ export function ProcessRuntimeProvider({
       readError: rt.selectedId ? (rt.readErrorById.get(rt.selectedId) ?? null) : null,
       stopById: new Map(rt.stopById),
       listTruncated: rt.listTruncated,
+      listInvalid: rt.listInvalid,
     }
   }, [])
 

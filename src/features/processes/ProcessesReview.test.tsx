@@ -466,8 +466,7 @@ it('V2E-1: una fila corrupta no oculta las válidas y se avisa', async () => {  
   expect(within(dock).getByText(/omitidos por formato inválido/)).toBeTruthy()
 })
 
-it('sonda: el cierre del inspector anima la salida (no desaparece en seco)', async () => {
-  vi.mocked(invoke).mockImplementation(async (command) => {
+it('sonda: el cierre del inspector anima la salida (no desaparece en seco)', async () => {  vi.mocked(invoke).mockImplementation(async (command) => {
     if (command === 'workspace_process_list') {
       return { processes: [activeRow('process:proc_001', 'npm run dev')], truncated: false }
     }
@@ -483,3 +482,26 @@ it('sonda: el cierre del inspector anima la salida (no desaparece en seco)', asy
   expect(screen.queryByTestId('processes-inspector')).not.toBeNull()
   await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 3000 })
 })
+
+it('auto-cierra el inspector 10s después de quedarse sin activos', async () => {
+  let finished = false
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'workspace_process_list') {
+      if (!finished) return { processes: [activeRow('process:proc_001', 'npm run dev')], truncated: false }
+      return {
+        processes: [activeRow('process:proc_001', 'npm run dev', { running: false, can_stop: false, exit_code: 0 })],
+        truncated: false,
+      }
+    }
+    if (command === 'workspace_process_stop') return { id: 'process:proc_001', running: false }
+    throw new Error(`Unexpected ${String(command)}`)
+  })
+  renderDock()
+  await openInspectorOnFirstRow()
+  expect(await screen.findByTestId('processes-inspector')).toBeTruthy()
+  finished = true
+  // Termina, pasan 10 s sin interacción ni fallos: se cierra del todo.
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 18000 })
+  // La franja reciente sigue visible hasta su ventana de 12 s.
+  expect(screen.queryByTestId('processes-dock')).toBeTruthy()
+}, 25000)

@@ -524,7 +524,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
  * scroll interno antes que expulsar al composer o dejar sin transcript.
  * En pantallas normales no tiene efecto. */
 .conversation-composer { max-height: calc(100dvh - 200px); overflow-y: auto; overscroll-behavior: contain; }
-.conversation-transcript { min-height: 96px; }
+.conversation-transcript { min-height: 140px; }
 .home-composer { position: relative; z-index: 2; }
 .home-welcome { container-type: inline-size; container-name: welcome; }
 @container welcome (max-width: 900px) { .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -538,7 +538,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .processes-dock { container-type: inline-size; margin-bottom: 8px; }
 .processes-strip { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); padding: 4px 8px; }
 .processes-strip-head { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; font-size: 12px; color: var(--text-muted); }
-.processes-strip-title { font-weight: 600; }
+.processes-strip-title { font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
 .processes-rows { list-style: none; margin: 0; padding: 0; }
 .processes-row { display: flex; align-items: center; gap: 4px; min-height: 40px; padding: 2px 0; }
 .processes-row + .processes-row { border-top: 1px solid var(--border); }
@@ -561,14 +561,15 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .processes-attention, .processes-collapsed-line { display: block; width: 100%; text-align: left; font-size: 12px; color: var(--warning); padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); }
 .processes-collapsed-line { color: var(--text-muted); }
 .processes-collapsed-line.attention { color: var(--warning); border-color: var(--warning); }
-.processes-collapsed-static { cursor: default; }
+.processes-collapsed-static { cursor: default; display: flex; align-items: center; gap: 8px; }
+button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; }
 .processes-link { font-size: 12px; color: var(--accent-2); padding: 6px 4px; text-decoration: underline; text-underline-offset: 2px; }
 .processes-note { font-size: 12px; color: var(--text-subtle); padding: 2px 4px 6px; }
 .processes-error { font-size: 12px; color: var(--warning); padding: 2px 4px 6px; }
 .processes-empty { font-size: 12px; color: var(--text-muted); padding: 12px 8px; }
 .processes-collapse { margin-left: auto; color: var(--text-subtle); padding: 4px 8px; border-radius: 8px; }
 .processes-collapse:hover { background: var(--bg-hover); color: var(--text); }
-.processes-inspector { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elevated); max-height: min(300px, 32dvh); overflow-y: auto; overscroll-behavior: contain; }
+.processes-inspector { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elevated); max-height: min(280px, 30dvh); overflow-y: auto; overscroll-behavior: contain; }
 /* Inspector con apertura/cierre deterministas por CSS (grid 0fr↔1fr):
  * ambas direcciones animan sin depender del ciclo de salida de JS. */
 .processes-inspector-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; margin-top: 0; transition: grid-template-rows .22s cubic-bezier(.22, 1, .36, 1), opacity .18s ease, margin-top .22s cubic-bezier(.22, 1, .36, 1); }

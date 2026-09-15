@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Ref, type SyntheticEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { SquareTerminal } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { useSessionProcesses } from './useSessionProcesses'
@@ -15,6 +16,20 @@ import {
 } from './processesModel'
 
 const RECENT_SUCCESS_MS = 12_000
+export const PROCESSES_AUTO_CLOSE_MS = 10_000
+
+export function shouldAutoCloseInspector(opts: {
+  inspectorOpen: boolean
+  activeCount: number
+  attentionCount: number
+  blocked: boolean
+  wasActive: boolean
+}): boolean {
+  if (!opts.inspectorOpen) return false
+  if (opts.activeCount > 0 || opts.attentionCount > 0) return false
+  if (opts.blocked || !opts.wasActive) return false
+  return true
+}
 
 /**
  * Franja contextual + inspector inline encima del composer.
@@ -48,6 +63,10 @@ export default function ProcessesDock({
   const openerRef = useRef<HTMLElement | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | null>(null)
+  const autoCloseTimer = useRef<number | null>(null)
+  // Solo se auto-cierra lo que estaba abierto durante actividad: una
+  // apertura manual en reposo nunca se cierra sola.
+  const wasActiveRef = useRef(false)
   // Última señal atendida: sólo un CAMBIO abre el inspector. Un flag de
   // "primera vez" se rompería con el remontaje de StrictMode y abriría
   // el inspector al iniciar o al crear un chat.
@@ -129,11 +148,11 @@ export default function ProcessesDock({
     return () => window.removeEventListener('rinari-browser-open', onBrowserOpen)
   }, [])
 
-  // Al desmontar no se detiene nada, pero sí se cancela el temporizador
-  // de cierre pendiente.
+  // Al desmontar no se detiene nada, pero sí se cancelan temporizadores.
   useEffect(
     () => () => {
       if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+      if (autoCloseTimer.current !== null) window.clearTimeout(autoCloseTimer.current)
     },
     [],
   )
@@ -187,6 +206,50 @@ export default function ProcessesDock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listError, attention.length, activeCount])
 
+  // Cierre automático: si el inspector estaba abierto durante actividad
+  // y ya no hay activos ni nada que requiera atención, se cierra del todo
+  // a los 10 s. No cierra con interacción en curso, vista pausada,
+  // diálogos abiertos ni aperturas manuales en reposo.
+  const autoCloseBlocked =
+    hoveredId !== null || focusedId !== null || logPaused || stopTargetId !== null
+  useEffect(() => {
+    if (autoCloseTimer.current !== null) {
+      window.clearTimeout(autoCloseTimer.current)
+      autoCloseTimer.current = null
+    }
+    if (!inspectorOpen) {
+      wasActiveRef.current = false
+      return
+    }
+    if (activeCount > 0 || attention.length > 0) {
+      wasActiveRef.current = true
+      return
+    }
+    if (
+      !shouldAutoCloseInspector({
+        inspectorOpen,
+        activeCount,
+        attentionCount: attention.length,
+        blocked: autoCloseBlocked,
+        wasActive: wasActiveRef.current,
+      })
+    ) {
+      return
+    }
+    autoCloseTimer.current = window.setTimeout(() => {
+      autoCloseTimer.current = null
+      // Un modal (confirmación de stop, consulta) bloquea el cierre.
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      closeInspector()
+    }, PROCESSES_AUTO_CLOSE_MS)
+    return () => {
+      if (autoCloseTimer.current !== null) {
+        window.clearTimeout(autoCloseTimer.current)
+        autoCloseTimer.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspectorOpen, activeCount, attention.length, autoCloseBlocked])
   // Diálogo de detención: identifica el recurso y reverifica ámbito,
   // época y observación antes de enviar.
   const stopTarget = stopTargetId != null ? (ordered.find((item) => item.resource.id === stopTargetId) ?? null) : null
@@ -261,6 +324,7 @@ export default function ProcessesDock({
   function closeInspector() {
     setInspectorOpen(false)
     setLogPaused(false)
+    wasActiveRef.current = false
     const opener = openerRef.current
     if (opener && document.contains(opener)) opener.focus({ preventScroll: true })
     if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
@@ -343,6 +407,7 @@ export default function ProcessesDock({
           {summary.showHeader && (
             <div className="processes-strip-head">
               <span className="processes-strip-title">
+                <SquareTerminal size={14} aria-hidden="true" />
                 {t('processes.section')} · {activeCount} {t('processes.active')}
               </span>
               {attention.length === 0 && (
@@ -426,6 +491,7 @@ export default function ProcessesDock({
               aria-label={t('processes.section')}
               className={`processes-collapsed-line processes-collapsed-static${attention.length > 0 ? ' attention' : ''}`}
             >
+              <SquareTerminal size={14} aria-hidden="true" />
               {t('processes.section')} · {activeCount} {t('processes.active')}
               {attention.length > 0 && (
                 <>
@@ -458,6 +524,7 @@ export default function ProcessesDock({
                   : ''
               }`}
             >
+              <SquareTerminal size={14} aria-hidden="true" />
               {t('processes.section')} · {activeCount} {t('processes.active')}
               {attention.length > 0 && (
                 <>

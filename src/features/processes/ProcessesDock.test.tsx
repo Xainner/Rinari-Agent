@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, expect, it, vi } from 'vitest'
 import { invoke } from '@tauri-apps/api/core'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
-import ProcessesDock from './ProcessesDock'
+import ProcessesDock, { shouldAutoCloseInspector } from './ProcessesDock'
 import { I18nProvider } from '../../i18n'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
@@ -111,11 +111,23 @@ it('por defecto la franja sale minimizada con contador', async () => {
     truncated: false,
   }))
   const dock = await screen.findByTestId('processes-dock')
-  // Línea de resumen visible; filas ocultas hasta expandir.
-  expect(within(dock).getByRole('button', { name: /2 activos/ })).toBeTruthy()
+  // Línea de resumen visible con icono; filas ocultas hasta expandir.
+  const line = within(dock).getByRole('button', { name: /2 activos/ })
+  expect(line.querySelector('svg')).toBeTruthy()
   expect(within(dock).queryByRole('listitem')).toBeNull()
   expandStrip()
   expect(within(dock).getAllByRole('listitem')).toHaveLength(2)
+})
+
+it('auto-cierre solo sin activos, sin atención, sin bloqueo y tras actividad', () => {
+  const open = { inspectorOpen: true, activeCount: 0, attentionCount: 0, blocked: false, wasActive: true }
+  expect(shouldAutoCloseInspector(open)).toBe(true)
+  expect(shouldAutoCloseInspector({ ...open, inspectorOpen: false })).toBe(false)
+  expect(shouldAutoCloseInspector({ ...open, activeCount: 1 })).toBe(false)
+  expect(shouldAutoCloseInspector({ ...open, attentionCount: 1 })).toBe(false)
+  expect(shouldAutoCloseInspector({ ...open, blocked: true })).toBe(false)
+  // Apertura manual en reposo: nunca se cierra sola.
+  expect(shouldAutoCloseInspector({ ...open, wasActive: false })).toBe(false)
 })
 
 it('D04: un proceso activo muestra una fila con identidad y stop con sesión', async () => {

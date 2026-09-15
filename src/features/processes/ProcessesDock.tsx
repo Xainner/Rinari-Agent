@@ -170,7 +170,9 @@ export default function ProcessesDock({
   if (!sessionId) return null
 
   const attention = ordered.filter(
-    (item) => isFailureStatus(item.resource, false) && !item.attentionAcknowledged,
+    (item) =>
+      isFailureStatus(item.resource, confirmedIds.has(item.resource.id)) &&
+      !item.attentionAcknowledged,
   )
   const relevant = ordered.filter((item) => {
     if (item.dismissedFromStrip) return false

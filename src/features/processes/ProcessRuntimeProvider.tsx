@@ -540,6 +540,14 @@ export function ProcessRuntimeProvider({
     const liveDetached = [...rt.confirmedDetached.entries()].filter(
       ([, detached]) => !rt.resources.has(detached.presentation.resource.id),
     )
+    const confirmed = new Set(liveDetached.map(([id]) => id))
+    // Stops confirmados cuyo recurso aún lista el engine: también cuentan,
+    // salvo que haya vuelto a ejecutarse (id reutilizado tras reinicio).
+    for (const [id, op] of rt.stopById) {
+      if (op.state !== 'confirmed') continue
+      const live = rt.resources.get(id)
+      if (!live || !live.resource.running) confirmed.add(id)
+    }
     const items = rt.engineOrder
       .map((id) => rt.resources.get(id))
       .filter((item): item is ProcessPresentation => Boolean(item))
@@ -557,7 +565,7 @@ export function ProcessRuntimeProvider({
       ordered,
       selectedId: rt.selectedId,
       pinnedId: rt.pinnedId,
-      confirmedIds: liveDetached.map(([id]) => id),
+      confirmedIds: [...confirmed],
       selectedOutput,
       selectedMissing: rt.selectedMissing,
       listError: rt.listError,
@@ -698,7 +706,9 @@ export function ProcessRuntimeProvider({
       const item = rt.resources.get(id)
       if (!item) return
       if (item.resource.running) return
-      if (isFailureStatus(item.resource, false) && !item.attentionAcknowledged) return
+      const stopOp = rt.stopById.get(id)
+      const confirmed = stopOp?.state === 'confirmed' || rt.confirmedDetached.has(id)
+      if (isFailureStatus(item.resource, confirmed) && !item.attentionAcknowledged) return
       item.dismissedFromStrip = true
       bump()
     },

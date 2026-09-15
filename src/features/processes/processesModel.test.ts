@@ -5,6 +5,7 @@ import {
   elapsedMsSinceStarted,
   exitReasonLabelKey,
   isExternalPreview,
+  isFailureStatus,
   kindLabel,
   orderPresentations,
   readinessLabelKey,
@@ -103,8 +104,7 @@ describe('tiempo', () => {  it('rechaza segundos Unix inválidos sin NaN ni 1970
   })
 })
 
-describe('igualdad de presentación', () => {
-  it('detecta cambios en readiness, pid y motivo de fin', () => {
+describe('igualdad de presentación', () => {  it('detecta cambios en readiness, pid y motivo de fin', () => {
     const a = row({ id: 'a', running: true, readiness: 'unknown' })
     expect(sameResource(a, { ...a })).toBe(true)
     expect(sameResource(a, { ...a, readiness: 'listening' })).toBe(false)
@@ -114,8 +114,7 @@ describe('igualdad de presentación', () => {
   })
 })
 
-describe('estado sin propiedad y mapa de etiquetas', () => {
-  it('sin proceso gestionado no inventa código ni control', () => {
+describe('estado sin propiedad y mapa de etiquetas', () => {  it('sin proceso gestionado no inventa código ni control', () => {
     const orphan = row({ id: 'a', running: false, exit_code: null, can_stop: false })
     expect(deriveStatusKey(orphan)).toBe('no_owned_process')
   })
@@ -210,5 +209,14 @@ describe('etiquetas', () => {
     expect(kindLabel('pty')).toBe('Terminal')
     expect(kindLabel('preview')).toBe('Vista previa')
     expect(resourceTitle(row({ id: 'a', kind: 'pty', command: 'pwsh' }))).toBe('pwsh')
+  })
+})
+
+describe('detención propia no es fallo', () => {
+  it('stopped nunca requiere atención aunque el código sea distinto de cero', () => {
+    const stopped = row({ id: 'a', running: false, can_stop: false, exit_code: 137, exit_reason: 'stopped' })
+    expect(isFailureStatus(stopped, false)).toBe(false)
+    const crashed = row({ id: 'b', running: false, can_stop: false, exit_code: 1 })
+    expect(isFailureStatus(crashed, false)).toBe(true)
   })
 })

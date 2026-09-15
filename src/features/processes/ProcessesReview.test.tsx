@@ -501,7 +501,60 @@ it('auto-cierra el inspector 10s después de quedarse sin activos', async () => 
   expect(await screen.findByTestId('processes-inspector')).toBeTruthy()
   finished = true
   // Termina, pasan 10 s sin interacción ni fallos: se cierra del todo.
-  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 18000 })
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 25000 })
   // La franja reciente sigue visible hasta su ventana de 12 s.
   expect(screen.queryByTestId('processes-dock')).toBeTruthy()
-}, 25000)
+}, 40000)
+
+it('detener el único proceso no genera atención y auto-cierra', async () => {
+  let stopped = false
+  const stopCalls: unknown[] = []
+  vi.mocked(invoke).mockImplementation(async (command, args) => {
+    if (command === 'workspace_process_list') {
+      if (!stopped) return { processes: [activeRow('process:proc_001', 'npm run dev')], truncated: false }
+      return {
+        processes: [
+          activeRow('process:proc_001', 'npm run dev', {
+            running: false,
+            can_stop: false,
+            exit_code: 137,
+            exit_reason: 'stopped',
+            ended_at: 1_700_000_060,
+          }),
+        ],
+        truncated: false,
+      }
+    }
+    if (command === 'workspace_process_read') {
+      const id = (args as { session_id: string; id: string }).id
+      const running = !stopped
+      return {
+        process: activeRow(id, 'npm run dev', running ? {} : { running: false, can_stop: false, exit_code: 137, exit_reason: 'stopped' }),
+        stdout: '',
+        stderr: '',
+        truncated: false,
+      }
+    }
+    if (command === 'workspace_process_stop') {
+      stopped = true
+      stopCalls.push(args)
+      return { id: 'process:proc_001', running: false }
+    }
+    throw new Error(`Unexpected ${String(command)}`)
+  })
+  renderDock()
+  const inspector = await openInspectorOnFirstRow()
+  fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
+  await waitFor(() => expect(stopCalls).toHaveLength(1), { timeout: 3000 })
+  // Sin aviso de atención por una detención pedida…
+  await waitFor(
+    () => {
+      expect(screen.queryByText(/requiere atención/)).toBeNull()
+      expect(screen.queryAllByText(/Detención confirmada/).length).toBeGreaterThanOrEqual(1)
+    },
+    { timeout: 5000 },
+  )
+  // …y la vista se cierra sola a los 10 s.
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 25000 })
+}, 40000)

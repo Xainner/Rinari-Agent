@@ -96,3 +96,25 @@ it('T-16: el navegador no se autoabre sobre el inspector', async () => {
   )
   expect(await screen.findByText(/Vista en vivo/)).toBeTruthy()
 })
+
+it('el navegador se repliega si el inspector toma la zona', async () => {
+  vi.mocked(invoke).mockResolvedValue({
+    state: 'connected',
+    instance: 'i1',
+    target_id: 't1',
+    url: 'http://127.0.0.1:8080/',
+    error: null,
+    pages: [],
+    image: null,
+  })
+  useUIStore.setState({ processesInspectorFor: null })
+  render(
+    <I18nProvider lang="es">
+      <BrowserPanel sessionId="s1" />
+    </I18nProvider>,
+  )
+  await screen.findByText(/Vista en vivo/)
+  useUIStore.setState({ processesInspectorFor: 's1' })
+  await waitFor(() => expect(screen.queryByText(/Vista en vivo/)).toBeNull())
+  expect(screen.getByText('Navegador')).toBeTruthy()
+})

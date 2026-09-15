@@ -535,7 +535,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 /* Procesos integrados en la conversación (§3-§4 del plan de Procesos).
  * La franja hereda el ancho del composer; el inspector crece hacia arriba
  * sin tapar el input. Sin sombras fuertes ni animaciones permanentes. */
-.processes-dock { container-type: inline-size; margin-bottom: 8px; }
+.processes-dock { container-type: inline-size; margin-bottom: 8px; max-height: 460px; max-height: min(460px, 48dvh); overflow-y: auto; overscroll-behavior: contain; }
 .processes-strip { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); padding: 4px 8px; }
 .processes-strip-head { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; font-size: 12px; color: var(--text-muted); }
 .processes-strip-title { font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }

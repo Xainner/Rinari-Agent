@@ -13,6 +13,12 @@ export default function BrowserPanel({ sessionId }: { sessionId: string }) {
   const [visible, setVisible] = useState(false)
   const [target, setTarget] = useState('')
   const [error, setError] = useState('')
+  const processesInspectorFor = useUIStore((s) => s.processesInspectorFor)
+  // Prioridad visual simétrica: si el inspector de procesos toma la zona,
+  // el navegador se repliega a su acceso sin cerrar su instancia.
+  useEffect(() => {
+    if (processesInspectorFor === sessionId) setVisible(false)
+  }, [processesInspectorFor, sessionId])
   useEffect(() => {
     let stopped = false
     let timer: ReturnType<typeof setTimeout>

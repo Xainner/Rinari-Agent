@@ -42,13 +42,13 @@ function filterKey(filter: Filter): 'processes.filterActive' | 'processes.filter
   }
 }
 
-function matches(presentation: ProcessPresentation, filter: Filter): boolean {
+function matches(presentation: ProcessPresentation, filter: Filter, stopConfirmed: (id: string) => boolean): boolean {
   const { resource } = presentation
   switch (filter) {
     case 'active':
       return resource.running
     case 'attention':
-      return isFailureStatus(resource, false) && !presentation.attentionAcknowledged
+      return isFailureStatus(resource, stopConfirmed(resource.id)) && !presentation.attentionAcknowledged
     case 'finished':
       return !resource.running && !isExternalPreview(resource)
     case 'external':
@@ -133,7 +133,7 @@ export default function ProcessInspector({
     if (!narrow) setDetailOnly(false)
   }, [narrow])
 
-  const visible = ordered.filter((item) => matches(item, filter))
+  const visible = ordered.filter((item) => matches(item, filter, (id) => confirmedIds.has(id)))
   const selected = ordered.find((item) => item.resource.id === selectedId) ?? null
   const showDetail = selectedId != null
 

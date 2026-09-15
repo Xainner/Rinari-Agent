@@ -523,7 +523,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 /* Presupuesto vertical (§4.5): en alturas extremas la zona inferior hace
  * scroll interno antes que expulsar al composer o dejar sin transcript.
  * En pantallas normales no tiene efecto. */
-.conversation-composer { max-height: calc(100dvh - 200px); overflow-y: auto; overscroll-behavior: contain; }
+.conversation-composer { max-height: 720px; max-height: calc(100dvh - 200px); overflow-y: auto; overscroll-behavior: contain; }
 .conversation-transcript { min-height: 140px; }
 .home-composer { position: relative; z-index: 2; }
 .home-welcome { container-type: inline-size; container-name: welcome; }
@@ -569,11 +569,11 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .processes-empty { font-size: 12px; color: var(--text-muted); padding: 12px 8px; }
 .processes-collapse { margin-left: auto; color: var(--text-subtle); padding: 4px 8px; border-radius: 8px; }
 .processes-collapse:hover { background: var(--bg-hover); color: var(--text); }
-.processes-inspector { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elevated); max-height: min(280px, 30dvh); overflow-y: auto; overscroll-behavior: contain; }
+.processes-inspector { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elevated); max-height: 280px; max-height: min(280px, 30dvh); overflow-y: auto; overscroll-behavior: contain; }
 /* Inspector con apertura/cierre deterministas por CSS (grid 0fr↔1fr):
  * ambas direcciones animan sin depender del ciclo de salida de JS. */
 .processes-inspector-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; margin-top: 0; transition: grid-template-rows .22s cubic-bezier(.22, 1, .36, 1), opacity .18s ease, margin-top .22s cubic-bezier(.22, 1, .36, 1); }
-.processes-inspector-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-top: 8px; }
+.processes-inspector-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-top: 8px; max-height: 300px; max-height: min(300px, 32dvh); }
 .processes-inspector-clip { overflow: hidden; min-height: 0; }
 .processes-inspector-bar { position: sticky; top: 0; display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); z-index: 1; overflow-x: auto; }
 .processes-filter { font-size: 12px; color: var(--text-muted); padding: 6px 10px; border-radius: 8px; white-space: nowrap; }

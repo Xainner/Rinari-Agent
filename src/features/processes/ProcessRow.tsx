@@ -12,6 +12,7 @@ import {
   kindLabel,
   readinessLabelKey,
   resourceTitle,
+  statusTextKey,
   type ProcessPresentation,
   type StopOperation,
 } from './processesModel'
@@ -72,22 +73,10 @@ export default function ProcessRow({
   const { resource } = presentation
   const name = resourceTitle(resource)
   const statusKey = deriveStatusKey(resource, { online, stopConfirmed })
-  const statusLabel =
-    statusKey === 'running'
-      ? t('processes.running')
-      : statusKey === 'finished_ok'
-        ? t('processes.finishedOk')
-        : statusKey === 'finished_error'
-          ? t('processes.finishedError', { code: resource.exit_code ?? 0 })
-          : statusKey === 'stop_confirmed'
-            ? t('processes.stopConfirmed')
-            : statusKey === 'external'
-              ? t('processes.external')
-              : statusKey === 'no_owned_process'
-                ? t('processes.noOwnedProcess')
-                : statusKey === 'unverified'
-                  ? t('processes.unverified')
-                  : t('processes.unknownState')
+  const statusLabel = t(
+    statusTextKey(statusKey),
+    statusKey === 'finished_error' ? { code: resource.exit_code ?? 0 } : undefined,
+  )
   const elapsed = resource.running ? elapsedMsSinceStarted(resource.started_at, now) : null
   const finishedSpan = !resource.running ? durationMs(resource, now) : null
   const readinessKey = readinessLabelKey(resource.readiness)

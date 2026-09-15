@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 } from '../../components/ui/dialog'
 import { useI18n } from '../../i18n'
 import { useComposerStore } from '../../stores/composer'
+import { deriveStatusKey, statusTextKey } from './processesModel'
 import type { ManagedProcess, ProcessOutput } from '../../types/protocol.generated'
 
 const MAX_EXCERPT_BYTES = 4096
@@ -22,6 +23,13 @@ function truncateUtf8(text: string, maxBytes: number): string {
   return new TextDecoder().decode(encoded.subarray(0, end))
 }
 
+function excerptFrom(output: ProcessOutput | null): string {
+  return truncateUtf8(
+    [output?.stdout ?? '', output?.stderr ?? ''].filter((part) => part !== '').join('\n'),
+    MAX_EXCERPT_BYTES,
+  )
+}
+
 /**
  * Previsualización de contexto para pedir ayuda sobre un proceso.
  * Nunca dispara un turno: sólo inserta texto editable en el borrador
@@ -31,25 +39,34 @@ export default function ProcessQueryDialog({
   sessionId,
   resource,
   output,
+  online,
+  stopConfirmed,
   open,
   onClose,
 }: {
   sessionId: string
   resource: ManagedProcess
   output: ProcessOutput | null
+  online: boolean
+  stopConfirmed: boolean
   open: boolean
   onClose: () => void
 }) {
   const { t } = useI18n()
   const [includeCommand, setIncludeCommand] = useState(true)
   const [includeCwd, setIncludeCwd] = useState(false)
-  const [excerpt, setExcerpt] = useState(() =>
-    truncateUtf8(
-      [output?.stdout ?? '', output?.stderr ?? ''].filter((part) => part !== '').join('\n'),
-      MAX_EXCERPT_BYTES,
-    ),
-  )
+  const [excerpt, setExcerpt] = useState(() => excerptFrom(output))
+  // La salida puede llegar después de abrir: rellenar una sola vez si el
+  // usuario aún no editó. Nunca sobrescribir su texto.
+  const editedRef = useRef(false)
+  useEffect(() => {
+    if (!editedRef.current && excerpt === '' && output !== null) {
+      setExcerpt(excerptFrom(output))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [output])
   const [sessionChanged, setSessionChanged] = useState(false)
+  const statusKey = deriveStatusKey(resource, { online, stopConfirmed })
 
   function addToDraft() {
     const store = useComposerStore.getState()
@@ -61,7 +78,7 @@ export default function ProcessQueryDialog({
     if (includeCommand) {
       lines.push(`Comando: ${resource.command}`)
       lines.push(
-        `Estado: ${resource.running ? t('processes.running') : t('processes.finishedError', { code: resource.exit_code ?? 0 })}`,
+        `Estado: ${statusKey === 'finished_error' ? t(statusTextKey(statusKey), { code: resource.exit_code ?? 0 }) : t(statusTextKey(statusKey))}`,
       )
     }
     if (includeCwd) lines.push(`Carpeta: ${resource.cwd}`)
@@ -96,7 +113,10 @@ export default function ProcessQueryDialog({
           {t('processes.queryOutput')}
           <textarea
             value={excerpt}
-            onChange={(event) => setExcerpt(truncateUtf8(event.target.value, MAX_EXCERPT_BYTES))}
+            onChange={(event) => {
+              editedRef.current = true
+              setExcerpt(truncateUtf8(event.target.value, MAX_EXCERPT_BYTES))
+            }}
             rows={6}
             className="processes-textarea"
           />

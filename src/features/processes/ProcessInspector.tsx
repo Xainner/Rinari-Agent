@@ -11,6 +11,7 @@ import {
   kindLabel,
   readinessLabelKey,
   resourceTitle,
+  statusTextKey,
   type ConnectionFreshness,
   type ProcessPresentation,
   type StopOperation,
@@ -199,6 +200,10 @@ export default function ProcessInspector({
                   online,
                   stopConfirmed: confirmedIds.has(id),
                 })
+                const itemLabel =
+                  itemStatus === 'finished_error'
+                    ? t(statusTextKey(itemStatus), { code: item.resource.exit_code ?? 0 })
+                    : t(statusTextKey(itemStatus))
                 return (
                   <li key={id}>
                     <button
@@ -211,17 +216,7 @@ export default function ProcessInspector({
                         {resourceTitle(item.resource)}
                       </span>
                       <span className="processes-row-meta">
-                        {itemStatus === 'running'
-                          ? t('processes.running')
-                          : itemStatus === 'finished_ok'
-                            ? t('processes.finishedOk')
-                            : itemStatus === 'finished_error'
-                              ? t('processes.finishedError', { code: item.resource.exit_code ?? 0 })
-                              : itemStatus === 'stop_confirmed'
-                                ? t('processes.stopConfirmed')
-                                : itemStatus === 'unverified'
-                                  ? t('processes.unverified')
-                                  : t('processes.external')}
+                        {itemLabel}
                         {pinnedId === id && ` · ${t('processes.pinned')}`}
                       </span>
                     </button>
@@ -495,6 +490,8 @@ function ProcessDetail({
           sessionId={sessionId}
           resource={resource}
           output={output}
+          online={online}
+          stopConfirmed={stopConfirmed}
           open={queryOpen}
           onClose={() => setQueryOpen(false)}
         />

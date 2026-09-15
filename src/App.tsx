@@ -8,6 +8,7 @@ import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
 import { checkForUpdates, installUpdateAndRelaunch } from './services/updates'
 import { useUIStore } from './stores/ui'
+import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
@@ -192,6 +193,31 @@ function App() {
   const desktopActionRef = useRef<(action: DesktopAction) => void>(() => {})
   /** Acciones del board (alta/baja de paneles); las registra BoardView cuando existe. */
   const boardActionsRef = useRef<{ addPane: () => void; removePane: () => void }>({ addPane: () => {}, removePane: () => {} })
+  const boardPanes = useBoardStore((s) => s.panes)
+  const boardFocusedPaneId = useBoardStore((s) => s.focusedPaneId)
+  const boardAddPane = useBoardStore((s) => s.addPane)
+  const boardFocusPane = useBoardStore((s) => s.focusPane)
+  const boardSessionIds = useMemo(() => new Set(boardPanes.map((pane) => pane.sessionId)), [boardPanes])
+  const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
+  // Overlays (navegador, procesos): solo la sesión de trabajo enfocada y expandida.
+  const overlaySessionId = view === 'chat' ? session.activeSession : view === 'board' && focusedBoardPane && !focusedBoardPane.collapsed ? focusedBoardPane.sessionId : ''
+  /** Elegir una sesión desde sidebar/paleta: en Boards enfoca o añade su panel; en Normal la selecciona. */
+  const chooseSession = (id: string) => {
+    if (view === 'board') {
+      const existing = useBoardStore.getState().paneForSession(id)
+      if (existing) boardFocusPane(existing.paneId)
+      else boardAddPane(id, { focus: true })
+      return
+    }
+    void session.selectSession(id)
+    goChat()
+  }
+  const openInBoard = (id: string) => {
+    const existing = useBoardStore.getState().paneForSession(id)
+    if (existing) boardFocusPane(existing.paneId)
+    else boardAddPane(id, { focus: true })
+    goBoard()
+  }
 
   useEffect(() => {
     const handle = (action: DesktopAction) => {
@@ -302,12 +328,11 @@ function App() {
             archivedSessions={session.archivedSessions}
             projects={session.projects}
             archivedProjects={session.archivedProjects}
-            activeId={session.activeSession}
+            activeId={view === 'board' ? (focusedBoardPane?.sessionId ?? '') : session.activeSession}
             busySessionIds={session.busySessionIds}
-            onSelectSession={(id) => {
-              void session.selectSession(id)
-              goChat()
-            }}
+            boardSessionIds={boardSessionIds}
+            onOpenInBoard={openInBoard}
+            onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
             onCloseSession={(id) => void session.closeSession(id)}
             onRenameSession={(id, title) => void session.renameSession(id, title)}
@@ -369,7 +394,7 @@ function App() {
         {view === 'chat' && <SingleSessionView onOpenProviders={() => goSettings('providers')} />}
         {view === 'board' && (
           <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
-            <BoardView />
+            <BoardView actionsRef={boardActionsRef} />
           </Suspense>
         )}
         {view === 'engine' && <EngineConsole session={session} />}
@@ -444,8 +469,8 @@ function App() {
         )}
       </AppShell>
 
-      {view === 'chat' && session.activeSession && <ProcessesPanel key={`processes:${session.activeSession}`} sessionId={session.activeSession} />}
-      {view === 'chat' && session.activeSession && <BrowserPanel key={session.activeSession} sessionId={session.activeSession} />}
+      {overlaySessionId && <ProcessesPanel key={`processes:${overlaySessionId}`} sessionId={overlaySessionId} />}
+      {overlaySessionId && <BrowserPanel key={overlaySessionId} sessionId={overlaySessionId} />}
 
       <ProviderWizard
         open={wizardOpen}
@@ -463,12 +488,10 @@ function App() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         sessions={session.sessions}
-        activeId={session.activeSession || null}
-        onSelectSession={(id) => {
-          void session.selectSession(id)
-          goChat()
-        }}
+        activeId={(view === 'board' ? focusedBoardPane?.sessionId : session.activeSession) || null}
+        onSelectSession={chooseSession}
         onNewSession={() => dispatchAction('new-chat')}
+        onNewPane={() => { goBoard(); boardActionsRef.current.addPane() }}
         onOpenSettings={(section) => goSettings(section)}
         onOpenEngine={goEngine}
         onOpenWorkspace={goWorkspace}

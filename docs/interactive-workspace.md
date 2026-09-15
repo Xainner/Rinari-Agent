@@ -56,3 +56,36 @@ Project headers collapse their sessions. Composer selectors close upon selection
   borrador y el razonamiento de la siguiente petición se guarda por sesión
   (`rinari.sessionUi.v1`). La vista Normal (`SingleSessionView`) y los paneles
   del board consumen las mismas primitivas (`sendTo`, `useModelFor`, `setModeFor`…).
+
+# Boards: paneles, restauración y dock
+
+- Un board persistido (`rinari.board.v1`, schema interno 2) con N paneles en
+  columnas con scroll horizontal. Cada panel referencia exactamente una sesión;
+  una misma sesión no se añade dos veces (un segundo intento la enfoca). Se
+  persisten orden, anchos, dock, foco, límite suave y preferencias deseadas;
+  nunca busy, grants, mensajes ni resultados. Un layout de una versión futura no
+  se reescribe. Las escrituras se agrupan (250 ms) y se vuelcan al ocultar la
+  ventana.
+- «Añadir panel» ofrece chat general, proyecto registrado, carpeta nueva y
+  sesiones existentes. Siempre crea con `session.create {project_id}` sin
+  activar la sesión Normal; una carpeta nueva se registra con `project.add`.
+  Nunca se usa `project.open`, que reutiliza la sesión activa del root. Repetir
+  una raíz ya presente pide confirmación y marca ambos paneles como «Proyecto
+  compartido»: el aviso no aísla las escrituras.
+- Al entrar en Boards las sesiones se resuelven de forma autoritativa por id
+  (`session.get` solo para las que no están en el listado reciente) y de una en
+  una contra el motor. Se retiran únicamente las confirmadas cerradas,
+  archivadas o eliminadas, con aviso; un error temporal conserva el panel con
+  «Reintentar». Cerrar una sesión desde el sidebar se refleja por el mismo
+  reconcile.
+- Cada panel monta su propio `Composer` (clave de borrador = sesión, sin tocar
+  el espejo de Normal), `FileWorkspaceProvider` y dock derecho compartido con
+  superficies **Workspace** (tabs desplazables con etiqueta de alcance Proyecto /
+  Sesión) y **Archivo**; los enlaces de archivo activan Archivo en ese dock. Si
+  el chat no conserva 480 px, el dock pasa a drawer dentro del panel.
+- Quitar un panel conserva sesión, turno y borrador; «Quitar y cerrar sesión»
+  espera la confirmación del motor y no retira el panel ante un error. Los
+  overlays de navegador y procesos se montan solo para el panel enfocado.
+- Las preguntas pendientes tienen un controlador compartido por sesión
+  (`usePendingQuestions`): una carga y una suscripción también cuando el header
+  del panel muestra el badge.

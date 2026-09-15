@@ -576,3 +576,50 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .variant-pane .home-card { min-height: 60px; padding: 9px; }
 .variant-pane .home-card-icon { width: 34px; height: 34px; }
 @container (max-width: 520px) { .variant-pane .home-card-grid { grid-template-columns: 1fr; } }
+
+/* -- Boards: panes, header, dock ------------------------------------------- */
+.board-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.board-banner { flex-shrink: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--warning) 12%, transparent); font-size: 12px; color: var(--text); }
+.board-canvas { display: flex; flex: 1 1 auto; align-items: stretch; min-height: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-gutter: stable; }
+.session-pane { display: flex; flex-direction: column; flex: 0 0 auto; min-width: 0; max-width: 100%; height: 100%; border-right: 1px solid var(--border); border-top: 2px solid transparent; background: var(--bg-app); }
+.session-pane.is-focused { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+.session-pane-body { position: relative; display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.session-pane-chat { display: flex; flex: 1 1 0; min-width: 0; min-height: 0; flex-direction: column; }
+.session-pane-chat > * { flex: 1 1 auto; min-height: 0; }
+.board-pane-resizer { background: var(--bg-subtle); }
+.board-add-column { display: flex; flex: 0 0 auto; align-items: flex-start; justify-content: center; width: 160px; padding: 16px 12px; }
+.board-add-button { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 18px 10px; border: 1px dashed var(--border-strong); border-radius: var(--radius-surface); color: var(--text-muted); font-size: 12px; font-weight: 600; transition: border-color 120ms, color 120ms, background-color 120ms; }
+.board-add-button:hover { border-color: var(--accent); color: var(--text); background: var(--bg-hover); }
+.pane-header { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+.pane-header-identity { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 0; }
+.pane-header-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--text); }
+.pane-header-project { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 220px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.pane-header-shared { flex-shrink: 0; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent); border-radius: 6px; font-size: 10px; color: var(--warning); white-space: nowrap; }
+.pane-header-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pane-header-modes { display: inline-flex; align-items: center; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-elevated); }
+.pane-header-mode { padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--text-muted); }
+.pane-header-mode.is-active { color: #fff; background: linear-gradient(180deg, #b466ff, #8425ef); }
+.pane-header-mode:disabled { opacity: 0.5; }
+.pane-header-busy { display: inline-flex; color: var(--accent-2); }
+.pane-header-badge { display: inline-flex; align-items: center; gap: 3px; min-height: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); font-size: 11px; font-weight: 700; }
+.pane-header-icon { display: inline-flex; align-items: center; justify-content: center; padding: 6px; border-radius: var(--radius-control); color: var(--text-muted); transition: background-color 120ms, color 120ms; }
+.pane-header-icon:hover { background: var(--bg-hover); color: var(--text); }
+.pane-header-icon.is-active { color: var(--accent-2); }
+.pane-notice { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); font-size: 12px; color: var(--text-muted); }
+.pane-notice-action { flex-shrink: 0; padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); font-size: 11px; color: var(--text); }
+.pane-notice-action:hover { background: var(--bg-hover); }
+.pane-dock { display: flex; flex: 0 0 auto; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--border); background: var(--bg-app); }
+.pane-dock-drawer { position: absolute; inset: 0 0 0 auto; z-index: 20; width: min(92%, 420px); box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45); }
+.pane-dock-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+.pane-dock-tab { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: var(--radius-control); font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.pane-dock-tab:hover { color: var(--text); background: var(--bg-hover); }
+.pane-dock-tab.is-active { color: var(--text); background: var(--bg-active); }
+.pane-dock-count { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--bg-hover); font-size: 10px; }
+.pane-dock-body { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; flex-direction: column; overflow: hidden; }
+.pane-dock-body > * { flex: 1 1 auto; min-height: 0; }
+.workspace-tabs-compact::-webkit-scrollbar { height: 4px; }
+.add-pane-heading { padding: 8px 12px 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle); }
+.add-pane-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: var(--radius-control); text-align: left; transition: background-color 120ms; }
+.add-pane-row:hover:not(:disabled) { background: var(--bg-hover); }
+.add-pane-row:disabled { opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) { .board-canvas { scroll-behavior: auto; } .board-add-button, .pane-header-icon, .add-pane-row { transition: none; } }

@@ -51,6 +51,8 @@ interface ChatViewProps {
   composerPrimary?: boolean
   /** Solo el panel enfocado recibe foco global/autofocus. */
   composerAcceptsGlobalFocus?: boolean
+  /** `pane`: home reducido dentro de un panel del board. */
+  homeVariant?: 'home' | 'pane'
 }
 
 function ChatView({
@@ -85,6 +87,7 @@ function ChatView({
   onSearchFiles,
   composerPrimary = true,
   composerAcceptsGlobalFocus = true,
+  homeVariant = 'home',
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -179,7 +182,7 @@ function ChatView({
   )
 
   return (
-    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty} transcript={!empty ? (
+    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty} variant={homeVariant} transcript={!empty ? (
         <>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
             {historyNote?.hasMore && (

@@ -4,6 +4,7 @@ import {
   Archive,
   ArchiveRestore,
   ChevronDown,
+  Columns3,
   Copy,
   Cpu,
   FolderGit2,
@@ -65,6 +66,10 @@ export interface AppSidebarProps {
   archivedProjects: ProjectSummary[]
   activeId: string
   busySessionIds?: ReadonlySet<string>
+  /** Sesiones presentes en el board (marca visual). */
+  boardSessionIds?: ReadonlySet<string>
+  /** Añade la sesión al board (o la enfoca) y va a Boards. */
+  onOpenInBoard?: (id: string) => void
   onSelectSession: (id: string) => void
   /** Ir al home del proyecto (vista workspace). */
   onOpenProject: (root: string) => void
@@ -122,6 +127,8 @@ export function AppSidebar({
   archivedProjects,
   activeId,
   busySessionIds,
+  boardSessionIds,
+  onOpenInBoard,
   onSelectSession,
   onOpenProject,
   onCloseSession,
@@ -177,6 +184,7 @@ export function AppSidebar({
   const row = (session: SessionSummary, opts?: { closed?: boolean }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
+    const onBoard = boardSessionIds?.has(session.id) === true
     return (
       <li key={session.id} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
@@ -212,6 +220,7 @@ export function AppSidebar({
             >
               {sessionLabel(session, t('sidebar.newChat'))}
             </span>
+            {onBoard && <span role="img" aria-label={t('sidebar.onBoard')} title={t('sidebar.onBoard')} className="shrink-0 text-[var(--text-subtle)]"><Columns3 size={12} aria-hidden="true" /></span>}
           </button>
           <DropdownMenu open={sessionMenu === session.id} onOpenChange={open => setSessionMenu(open ? session.id : null)}>
             <DropdownMenuTrigger asChild>
@@ -249,6 +258,9 @@ export function AppSidebar({
                     <DropdownMenuItem disabled={session.kind === 'CHAT'} onSelect={() => onMoveSession(session.id, null)}>Espacio general</DropdownMenuItem>
                     {projects.filter(project => !project.archived).map(project => <DropdownMenuItem key={project.id} disabled={project.id === session.project_id} onSelect={() => onMoveSession(session.id, project.id)}>{project.name || projectDisplayName(project.root)}</DropdownMenuItem>)}
                   </DropdownMenuSubContent></DropdownMenuSub>}
+                  {onOpenInBoard && <DropdownMenuItem onSelect={() => onOpenInBoard(session.id)}>
+                    <Columns3 size={13} /> {t('sidebar.openInBoard')}
+                  </DropdownMenuItem>}
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
                     <GitFork size={13} /> {t('sidebar.fork')}
                   </DropdownMenuItem>

@@ -1,6 +1,7 @@
 import type { Language } from '../../types'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
+import { useBoardStore } from '../../stores/board'
 import { inputClass, Row, Section } from './parts'
 import { Switch } from '../ui/switch'
 
@@ -21,6 +22,8 @@ export default function GeneralSettings({
   const setShowSuggestions = useUIStore((s) => s.setShowSuggestions)
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
+  const softLimit = useBoardStore((s) => s.softLimit)
+  const setSoftLimit = useBoardStore((s) => s.setSoftLimit)
 
   return (
     <div className="space-y-6">
@@ -83,6 +86,24 @@ export default function GeneralSettings({
               checked={sidebarCollapsed}
               onCheckedChange={setSidebarCollapsed}
               aria-label={t('settings.general.rememberSidebar')}
+            />
+          }
+        />
+      </Section>
+
+      <Section title={t('settings.general.board.title')}>
+        <Row
+          title={t('settings.general.board.softLimit')}
+          desc={t('settings.general.board.softLimitHint')}
+          control={
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={softLimit}
+              onChange={(event) => setSoftLimit(Number(event.target.value))}
+              aria-label={t('settings.general.board.softLimit')}
+              className={`${inputClass} w-24`}
             />
           }
         />

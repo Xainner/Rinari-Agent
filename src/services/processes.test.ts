@@ -61,6 +61,19 @@ describe('processesApi', () => {
     expect(listed.processes[0]?.running).toBe(true)
   })
 
+  it('reenvía cursor y límite solo cuando se piden', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({ processes: [], truncated: false })
+    await processesApi.list('s1')
+    expect(invoke).toHaveBeenCalledWith('workspace_process_list', { session_id: 's1' })
+    vi.mocked(invoke).mockResolvedValueOnce({ processes: [], truncated: true, total: 3, next_cursor: 'o2' })
+    await processesApi.list('s1', { cursor: 'o0', limit: 2 })
+    expect(invoke).toHaveBeenCalledWith('workspace_process_list', {
+      session_id: 's1',
+      cursor: 'o0',
+      limit: 2,
+    })
+  })
+
   it('acepta campos de identidad y los reenvía como precondiciones', async () => {
     vi.mocked(invoke).mockResolvedValueOnce({
       processes: [

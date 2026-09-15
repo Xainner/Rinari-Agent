@@ -51,6 +51,8 @@ export default function ProcessRow({
   expanded,
   stopState,
   now,
+  online = true,
+  stopConfirmed = false,
   onToggle,
   onStop,
 }: {
@@ -59,6 +61,8 @@ export default function ProcessRow({
   expanded: boolean
   stopState: StopOperation
   now: number
+  online?: boolean
+  stopConfirmed?: boolean
   onToggle: () => void
   onStop: () => void
 }) {
@@ -67,7 +71,7 @@ export default function ProcessRow({
   const motionApi = useProcessesMotion()
   const { resource } = presentation
   const name = resourceTitle(resource)
-  const statusKey = deriveStatusKey(resource)
+  const statusKey = deriveStatusKey(resource, { online, stopConfirmed })
   const statusLabel =
     statusKey === 'running'
       ? t('processes.running')

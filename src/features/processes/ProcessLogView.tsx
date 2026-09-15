@@ -21,8 +21,17 @@ export function normalizeLogText(text: string): string {
   )
 }
 
-function highlightMatches(text: string, query: string): ReactNode {
-  if (query === '') return text
+/** FNV-1a de 32 bits: barato para detectar cambios de igual longitud. */
+export function hashText(text: string): number {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+function highlightMatches(text: string, query: string): ReactNode {  if (query === '') return text
   const lower = text.toLowerCase()
   const needle = query.toLowerCase()
   const parts: ReactNode[] = []
@@ -70,7 +79,8 @@ export default function ProcessLogView({
 
   const stdout = useMemo(() => normalizeLogText(shown?.stdout ?? ''), [shown?.stdout])
   const stderr = useMemo(() => normalizeLogText(shown?.stderr ?? ''), [shown?.stderr])
-  const signature = `${stdout.length}:${stderr.length}:${shown?.truncated === true}`
+  // La longitud sola pierde updates del mismo tamaño (contadores, spinners).
+  const signature = `${hashText(stdout)}:${hashText(stderr)}:${shown?.truncated === true}`
 
   const searching = query !== ''
   const matchCount = useMemo(() => {

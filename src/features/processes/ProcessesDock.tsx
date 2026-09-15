@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Ref, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type Ref, type SyntheticEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
@@ -136,6 +136,12 @@ export default function ProcessesDock({
     if (hoveredId === item.resource.id || focusedId === item.resource.id) return true
     return now - item.completionObservedAt - hiddenMsRef.current < RECENT_SUCCESS_MS
   })
+  const online = freshness !== 'offline'
+  const confirmedIds = useMemo(
+    () => new Set(snap.confirmedIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snap.confirmedIds.join('|')],
+  )
   const summary = summarizeStrip(relevant, { listTruncated })
   const activeCount = ordered.filter((item) => item.resource.running).length
   const hasStrip = summary.visible.length > 0 || attention.length > 0
@@ -197,13 +203,16 @@ export default function ProcessesDock({
 
   function confirmStop() {
     if (stopTargetId == null) return
-    // Reverificar ámbito y observación con el snapshot actual.
+    // Reverificar ámbito y observación con un snapshot fresco del momento
+    // del clic, no con el render (el bump es condicional y lastVerifiedAt
+    // puede estar congelado en el snapshot memoizado).
     if (stopEpoch == null || snap.epoch !== stopEpoch) {
       snap.refresh()
       setStopStaleNote(true)
       return
     }
-    const current = ordered.find((item) => item.resource.id === stopTargetId)
+    const live = snap.readFresh()
+    const current = live.ordered.find((item) => item.resource.id === stopTargetId)
     if (!current || !current.resource.running || !current.resource.can_stop) {
       snap.refresh()
       setStopStaleNote(true)
@@ -342,6 +351,8 @@ export default function ProcessesDock({
                   expanded={inspectorOpen && selectedId === item.resource.id}
                   stopState={stopById.get(item.resource.id) ?? { state: 'idle' }}
                   now={now}
+                  online={online}
+                  stopConfirmed={confirmedIds.has(item.resource.id)}
                   onToggle={() => toggleRow(item)}
                   onStop={() => requestStop(item.resource.id)}
                 />
@@ -413,6 +424,8 @@ export default function ProcessesDock({
               freshness={freshness}
               listError={listError}
               pinnedId={pinnedId}
+              online={online}
+              confirmedIds={confirmedIds}
               logPaused={logPaused}
               onLogPausedChange={setLogPaused}
               onSelect={selectAndUnpause}

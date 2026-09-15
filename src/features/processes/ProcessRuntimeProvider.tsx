@@ -3,6 +3,7 @@ import { processesApi } from '../../services/processes'
 import {
   isFailureStatus,
   orderPresentations,
+  sameResource,
   type ConnectionFreshness,
   type ProcessPresentation,
   type StopOperation,
@@ -12,6 +13,10 @@ import type { ProcessOutput } from '../../types/protocol.generated'
 const ACTIVE_POLL_MS = 1500
 const IDLE_POLL_MS = 5000
 const BACKOFF_STEPS = [3000, 6000, 12000, 15000]
+// Fila local breve tras stop confirmado: expira aunque el engine nunca
+// la re-liste. Se poda en el ciclo de poll (no en getSnapshot, que sólo
+// corre con bump y dejaría fantasmas sin re-render).
+const DETACHED_TTL_MS = 60_000
 const MAX_OUTPUT_ENTRIES = 4
 const MAX_OUTPUT_CHARS = 2_000_000
 
@@ -30,7 +35,7 @@ interface SessionRuntime {
   engineOrder: string[]
   selectedId: string | null
   pinnedId: string | null
-  confirmedDetached: Map<string, ProcessPresentation>
+  confirmedDetached: Map<string, ConfirmedDetached>
   listError: string | null
   listTruncated: boolean
   selectedMissing: boolean
@@ -45,6 +50,11 @@ interface SessionRuntime {
   backoffStep: number
   timer: ReturnType<typeof setTimeout> | null
   lastPollAt: number
+}
+
+interface ConfirmedDetached {
+  presentation: ProcessPresentation
+  confirmedAt: number
 }
 
 interface ObserverCounts {
@@ -73,6 +83,8 @@ export interface SessionSnapshot {
   ordered: ProcessPresentation[]
   selectedId: string | null
   pinnedId: string | null
+  /** Ids con detención confirmada pero fuera del registro vivo. */
+  confirmedIds: string[]
   selectedOutput: ProcessOutput | null
   selectedMissing: boolean
   listError: string | null
@@ -89,6 +101,7 @@ function emptySnapshot(freshness: ConnectionFreshness): SessionSnapshot {
     ordered: [],
     selectedId: null,
     pinnedId: null,
+    confirmedIds: [],
     selectedOutput: null,
     selectedMissing: false,
     listError: null,
@@ -108,13 +121,7 @@ function sameOutput(a: ProcessOutput | undefined, b: ProcessOutput): boolean {
     a.stdout === b.stdout &&
     a.stderr === b.stderr &&
     a.truncated === b.truncated &&
-    a.process.running === b.process.running &&
-    a.process.can_stop === b.process.can_stop &&
-    (a.process.exit_code ?? null) === (b.process.exit_code ?? null) &&
-    a.process.command === b.process.command &&
-    a.process.cwd === b.process.cwd &&
-    (a.process.url ?? null) === (b.process.url ?? null) &&
-    (a.process.pid ?? null) === (b.process.pid ?? null)
+    sameResource(a.process, b.process)
   )
 }
 
@@ -223,8 +230,18 @@ export function ProcessRuntimeProvider({
     }, delayMs)
   }, [])
 
-  const pruneOutputs = useCallback((rt: SessionRuntime) => {
-    let total = 0
+  const pruneExpiredDetached = useCallback((rt: SessionRuntime, now: number): boolean => {
+    let removed = false
+    for (const [id, detached] of rt.confirmedDetached) {
+      if (now - detached.confirmedAt >= DETACHED_TTL_MS) {
+        rt.confirmedDetached.delete(id)
+        removed = true
+      }
+    }
+    return removed
+  }, [])
+
+  const pruneOutputs = useCallback((rt: SessionRuntime) => {    let total = 0
     for (const cached of rt.outputs.values()) total += cached.chars
     while (rt.outputs.size > MAX_OUTPUT_ENTRIES || total > MAX_OUTPUT_CHARS) {
       let oldestKey: string | null = null
@@ -369,12 +386,7 @@ export function ProcessRuntimeProvider({
             const completionObservedAt =
               prev.completionObservedAt ??
               (current.initialized && wasRunning && !row.running ? now : undefined)
-            const changed =
-              prev.resource.running !== row.running ||
-              (prev.resource.exit_code ?? null) !== (row.exit_code ?? null) ||
-              prev.resource.can_stop !== row.can_stop ||
-              prev.resource.command !== row.command ||
-              (prev.resource.url ?? null) !== (row.url ?? null)
+            const changed = !sameResource(prev.resource, row)
             if (changed) contentChanged = true
             current.resources.set(row.id, {
               resource: row,
@@ -404,6 +416,7 @@ export function ProcessRuntimeProvider({
         current.freshness = 'fresh'
         current.lastPollAt = now
         current.initialized = true
+        if (pruneExpiredDetached(current, now)) contentChanged = true
         current.selectedMissing =
           current.selectedId != null && !result.truncated && !seen.has(current.selectedId)
         if (contentChanged) bump()
@@ -444,7 +457,7 @@ export function ProcessRuntimeProvider({
         }
       }
     },
-    [bump, getRuntime, noteInstanceId, readSelected, scheduleNext],
+    [bump, getRuntime, noteInstanceId, pruneExpiredDetached, readSelected, scheduleNext],
   )
 
   pollRef.current = pollSession
@@ -518,14 +531,13 @@ export function ProcessRuntimeProvider({
       if (!props.hasCapability) return emptySnapshot('unsupported')
       return emptySnapshot('loading')
     }
+    const liveDetached = [...rt.confirmedDetached.entries()].filter(
+      ([, detached]) => !rt.resources.has(detached.presentation.resource.id),
+    )
     const items = rt.engineOrder
       .map((id) => rt.resources.get(id))
       .filter((item): item is ProcessPresentation => Boolean(item))
-      .concat(
-        [...rt.confirmedDetached.values()].filter(
-          (detached) => !rt.resources.has(detached.resource.id),
-        ),
-      )
+      .concat(liveDetached.map(([, detached]) => detached.presentation))
     const ordered = orderPresentations(
       items.map((presentation) => ({
         presentation,
@@ -539,6 +551,7 @@ export function ProcessRuntimeProvider({
       ordered,
       selectedId: rt.selectedId,
       pinnedId: rt.pinnedId,
+      confirmedIds: liveDetached.map(([id]) => id),
       selectedOutput,
       selectedMissing: rt.selectedMissing,
       listError: rt.listError,
@@ -623,12 +636,15 @@ export function ProcessRuntimeProvider({
         // anterior no devuelva el recurso a activo.
         const confirmedAt = Date.now()
         current.confirmedDetached.set(id, {
-          resource: { ...snapshot.resource, running: false },
-          firstObservedAt: snapshot.firstObservedAt,
-          lastVerifiedAt: confirmedAt,
-          completionObservedAt: confirmedAt,
-          dismissedFromStrip: false,
-          attentionAcknowledged: true,
+          presentation: {
+            resource: { ...snapshot.resource, running: false, can_stop: false },
+            firstObservedAt: snapshot.firstObservedAt,
+            lastVerifiedAt: confirmedAt,
+            completionObservedAt: confirmedAt,
+            dismissedFromStrip: false,
+            attentionAcknowledged: true,
+          },
+          confirmedAt,
         })
         bump()
         refresh(sessionId)

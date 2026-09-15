@@ -9,6 +9,7 @@ import {
   orderPresentations,
   readinessLabelKey,
   resourceTitle,
+  sameResource,
   scopeKey,
   summarizeStrip,
   type ProcessPresentation,
@@ -98,6 +99,17 @@ describe('tiempo', () => {  it('rechaza segundos Unix inválidos sin NaN ni 1970
     expect(durationMs(noEnd, now)).toBeNull()
     const active = row({ id: 'c', running: true, started_at: 1_700_000_050 })
     expect(durationMs(active, now)).toBe(50_000)
+  })
+})
+
+describe('igualdad de presentación', () => {
+  it('detecta cambios en readiness, pid y motivo de fin', () => {
+    const a = row({ id: 'a', running: true, readiness: 'unknown' })
+    expect(sameResource(a, { ...a })).toBe(true)
+    expect(sameResource(a, { ...a, readiness: 'listening' })).toBe(false)
+    expect(sameResource(a, { ...a, pid: 123 })).toBe(false)
+    expect(sameResource(a, { ...a, exit_reason: 'stopped', running: false })).toBe(false)
+    expect(sameResource(a, { ...a, command: 'otro' })).toBe(false)
   })
 })
 

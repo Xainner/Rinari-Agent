@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from 'react'
+import { useCallback, useContext, useEffect, useMemo } from 'react'
 import { ProcessesRuntimeContext } from './ProcessRuntimeProvider'
 
 /**
@@ -23,6 +23,13 @@ export function useSessionProcesses(sessionId: string, opts: { observeOutput?: b
     return subscribe(sessionId, observeOutput)
   }, [subscribe, sessionId, observeOutput])
 
+  // Lectura fresca fuera del snapshot memoizado: para decisiones en el
+  // momento del clic (p. ej. confirmar stop) sin depender del último bump.
+  const readFresh = useCallback(
+    () => getSnapshot(sessionId),
+    [getSnapshot, sessionId],
+  )
+
   return useMemo(
     () => {
       const snapshot = getSnapshot(sessionId)
@@ -31,6 +38,7 @@ export function useSessionProcesses(sessionId: string, opts: { observeOutput?: b
         epoch,
         engineReady,
         hasCapability,
+        readFresh,
         select: (id: string | null) => select(sessionId, id),
         refresh: () => refresh(sessionId),
         stop: (id: string) => stop(sessionId, id),
@@ -40,7 +48,7 @@ export function useSessionProcesses(sessionId: string, opts: { observeOutput?: b
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getSnapshot, sessionId, version, epoch, engineReady, hasCapability, select, refresh, stop, acknowledge, dismiss, pin],
+    [getSnapshot, sessionId, version, epoch, engineReady, hasCapability, readFresh, select, refresh, stop, acknowledge, dismiss, pin],
   )
 }
 

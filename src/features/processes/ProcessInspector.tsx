@@ -74,6 +74,8 @@ export default function ProcessInspector({
   freshness,
   listError,
   pinnedId,
+  online,
+  confirmedIds,
   logPaused,
   onLogPausedChange,
   onSelect,
@@ -96,6 +98,8 @@ export default function ProcessInspector({
   freshness: ConnectionFreshness
   listError: string | null
   pinnedId: string | null
+  online: boolean
+  confirmedIds: ReadonlySet<string>
   logPaused: boolean
   onLogPausedChange: (paused: boolean) => void
   onSelect: (id: string | null) => void
@@ -191,6 +195,10 @@ export default function ProcessInspector({
               {visible.map((item) => {
                 const id = item.resource.id
                 const active = id === selectedId
+                const itemStatus = deriveStatusKey(item.resource, {
+                  online,
+                  stopConfirmed: confirmedIds.has(id),
+                })
                 return (
                   <li key={id}>
                     <button
@@ -203,11 +211,17 @@ export default function ProcessInspector({
                         {resourceTitle(item.resource)}
                       </span>
                       <span className="processes-row-meta">
-                        {item.resource.running
+                        {itemStatus === 'running'
                           ? t('processes.running')
-                          : typeof item.resource.exit_code === 'number'
-                            ? t('processes.finishedError', { code: item.resource.exit_code })
-                            : t('processes.external')}
+                          : itemStatus === 'finished_ok'
+                            ? t('processes.finishedOk')
+                            : itemStatus === 'finished_error'
+                              ? t('processes.finishedError', { code: item.resource.exit_code ?? 0 })
+                              : itemStatus === 'stop_confirmed'
+                                ? t('processes.stopConfirmed')
+                                : itemStatus === 'unverified'
+                                  ? t('processes.unverified')
+                                  : t('processes.external')}
                         {pinnedId === id && ` · ${t('processes.pinned')}`}
                       </span>
                     </button>
@@ -240,6 +254,8 @@ export default function ProcessInspector({
               readError={readError}
               stopState={stopById.get(selected.resource.id) ?? { state: 'idle' }}
               pinned={pinnedId === selected.resource.id}
+              online={online}
+              stopConfirmed={confirmedIds.has(selected.resource.id)}
               logPaused={logPaused}
               onLogPausedChange={onLogPausedChange}
               onStopRequest={() => onStopRequest(selected.resource.id)}
@@ -257,24 +273,35 @@ export default function ProcessInspector({
 function CopyButton({ text, label }: { text: string; label: string }) {
   const { t } = useI18n()
   const [done, setDone] = useState(false)
+  const [failed, setFailed] = useState(false)
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={() => {
-        void copyText(text).then((ok) => {
-          if (ok) {
-            setDone(true)
-            window.setTimeout(() => setDone(false), 2000)
-          }
-        })
-      }}
-      className="processes-action"
-    >
-      <Copy size={13} />
-      {done ? t('processes.copied') : label}
-    </button>
+    <span className="processes-copy-wrap">
+      <button
+        type="button"
+        title={label}
+        aria-label={label}
+        onClick={() => {
+          setFailed(false)
+          void copyText(text).then((ok) => {
+            if (ok) {
+              setDone(true)
+              window.setTimeout(() => setDone(false), 2000)
+            } else {
+              setFailed(true)
+            }
+          })
+        }}
+        className="processes-action"
+      >
+        <Copy size={13} />
+        {done ? t('processes.copied') : label}
+      </button>
+      {failed && (
+        <span role="alert" className="processes-error">
+          {t('processes.logCopyFailed')}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -285,6 +312,8 @@ function ProcessDetail({
   readError,
   stopState,
   pinned,
+  online,
+  stopConfirmed,
   logPaused,
   onLogPausedChange,
   onStopRequest,
@@ -298,6 +327,8 @@ function ProcessDetail({
   readError: string | null
   stopState: StopOperation
   pinned: boolean
+  online: boolean
+  stopConfirmed: boolean
   logPaused: boolean
   onLogPausedChange: (paused: boolean) => void
   onStopRequest: () => void
@@ -311,7 +342,7 @@ function ProcessDetail({
   const [urlError, setUrlError] = useState('')
   const { resource } = presentation
   const name = resourceTitle(resource)
-  const statusKey = deriveStatusKey(resource)
+  const statusKey = deriveStatusKey(resource, { online, stopConfirmed })
   const stopping = stopState.state === 'requesting' || stopState.state === 'reconciling'
   const failure = isFailureStatus(resource, false) && !presentation.attentionAcknowledged
   const canDismiss = !resource.running && !presentation.dismissedFromStrip && !failure
@@ -326,7 +357,9 @@ function ProcessDetail({
         <span className="processes-row-meta">
           {kindLabel(resource.kind)}
           {resource.pid != null && ` · PID ${resource.pid}`}
-          {statusKey === 'running' ? ` · ${t('processes.running')}` : ''}
+          {statusKey === 'running' && ` · ${t('processes.running')}`}
+          {statusKey === 'stop_confirmed' && ` · ${t('processes.stopConfirmed')}`}
+          {statusKey === 'unverified' && ` · ${t('processes.unverified')}`}
         </span>
         <span className="processes-detail-actions">
           <button type="button" onClick={onPin} aria-pressed={pinned} title={t(pinned ? 'processes.unpin' : 'processes.pin')} className="processes-action">

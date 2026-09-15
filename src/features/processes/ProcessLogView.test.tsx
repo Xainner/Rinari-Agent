@@ -70,3 +70,30 @@ it('pausar congela el texto mostrado', () => {
   expect(view.container.textContent).not.toMatch(/nuevo contenido/)
   expect(view.getByText(/Vista pausada/)).toBeTruthy()
 })
+
+it('avisa de cambios con el mismo tamaño', () => {
+  const view = render(
+    <I18nProvider lang="es">
+      <ProcessLogView output={base} paused={false} onPausedChange={() => {}} />
+    </I18nProvider>,
+  )
+  // Buscar detiene el seguimiento; un update del mismo tamaño debe avisar.
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'uno' } })
+  view.rerender(
+    <I18nProvider lang="es">
+      <ProcessLogView
+        output={{ ...base, stdout: 'línea una\nlínea dos\n' }}
+        paused={false}
+        onPausedChange={() => {}}
+      />
+    </I18nProvider>,
+  )
+  expect(view.getByText(/Hay cambios/)).toBeTruthy()
+})
+
+it('copiar con clipboard denegado muestra error', async () => {
+  vi.mocked(copyText).mockResolvedValueOnce(false)
+  setup()
+  fireEvent.click(screen.getByRole('button', { name: /Copiar salida visible/ }))
+  expect(await screen.findByText(/No se pudo copiar/)).toBeTruthy()
+})

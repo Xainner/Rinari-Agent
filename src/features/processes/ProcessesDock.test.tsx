@@ -105,6 +105,20 @@ it('D03: apertura manual sin recursos muestra inspector vacío cerrable', async 
   expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeNull()
 })
 
+it('la línea minimizada interpola el contador de atención', async () => {
+  setup(() => ({
+    processes: [
+      row('process:a', 'npm run dev', { running: false, can_stop: false, exit_code: 1 }),
+      row('process:b', 'python worker.py', { running: false, can_stop: false, exit_code: 2 }),
+    ],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  // Línea + anuncio para lector: ambas interpoladas, ningún {n} literal.
+  expect(within(dock).getAllByText(/2 procesos requieren atención/)).toHaveLength(2)
+  expect(within(dock).queryByText(/\{n\}/)).toBeNull()
+})
+
 it('por defecto la franja sale minimizada con contador', async () => {
   setup(() => ({
     processes: [row('process:a', 'npm run dev'), row('process:b', 'python worker.py')],

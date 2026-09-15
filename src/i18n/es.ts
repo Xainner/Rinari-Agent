@@ -134,6 +134,7 @@ export const es = {
   'sidebar.chats': 'Conversaciones',
   'sidebar.newGeneralChat': 'Nueva conversación sin proyecto',
   'sidebar.sessionWorking': 'Sesión en curso',
+  'sidebar.sessionInterrupted': 'Sesión interrumpida, se puede reanudar',
   'sidebar.projectWorking': 'Proyecto con sesiones en curso',
   'sidebar.noChats': 'Aún no hay conversaciones.\nEmpieza una abajo.',
   'sidebar.profile': 'Perfil',

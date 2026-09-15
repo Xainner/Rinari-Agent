@@ -195,3 +195,18 @@ it('removes the work indicator when engine activity ends without changing select
   expect(screen.queryByRole('status')).toBeNull()
   expect(screen.getByText('Research').closest('button')?.getAttribute('aria-current')).toBe('page')
 })
+
+describe('interrupted sessions', () => {
+  it('marks interrupted sessions as resumable instead of hiding them', () => {
+    const interrupted = session('resumable', 'Timed out chat')
+    ;(interrupted as unknown as { state: string }).state = 'interrupted'
+    renderSidebar({ sessions: [interrupted, session('chat', 'Research')], activeId: 'chat' })
+    const dot = screen.getByTestId('session-interrupted-dot')
+    expect(dot.getAttribute('title')).toBe('Sesión interrumpida, se puede reanudar')
+  })
+
+  it('shows no interrupted marker for active sessions', () => {
+    renderSidebar()
+    expect(screen.queryByTestId('session-interrupted-dot')).toBeNull()
+  })
+})

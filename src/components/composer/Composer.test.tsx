@@ -78,3 +78,12 @@ it('collapses providers, remembers their state and reveals matching models durin
   await user.click(screen.getByRole('button', {name:'Remote'}))
   expect(screen.getByRole('button', {name:/Beta/})).toBeTruthy()
 })
+it('la pill de modo sigue al modo activo', () => {
+  const view = render(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+  expect(screen.getByRole('button', { name: 'BUILD' }).querySelector('[data-testid="mode-pill"]')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'PLAN' }).querySelector('[data-testid="mode-pill"]')).toBeNull()
+  expect(screen.getAllByTestId('mode-pill')).toHaveLength(1)
+  view.rerender(<I18nProvider lang="es"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false} onStop={vi.fn()} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="plan" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
+  expect(screen.getByRole('button', { name: 'PLAN' }).querySelector('[data-testid="mode-pill"]')).toBeTruthy()
+  expect(screen.getAllByTestId('mode-pill')).toHaveLength(1)
+})

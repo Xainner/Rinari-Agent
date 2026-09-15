@@ -475,7 +475,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .composer-model-controls > button:last-child { flex-shrink: 0; }
 .composer-model-controls > button:first-child { max-width: 175px; }
 .composer-modes { justify-self: center; }
-.composer-modes button[aria-pressed='true'] { background: linear-gradient(180deg, #b466ff, #8425ef); box-shadow: 0 0 14px #982eff33; }
+.composer-modes button[aria-pressed='true'] { box-shadow: 0 0 14px #982eff33; }
 @container (max-width: 730px) {
   .composer-toolbar { grid-template-columns: 1fr auto; gap: 10px; }
   .composer-modes { grid-column: 2; grid-row: 1; justify-self: end; }
@@ -560,13 +560,20 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .processes-row-error { font-size: 12px; color: var(--warning); padding: 0 6px 6px; }
 .processes-attention, .processes-collapsed-line { display: block; width: 100%; text-align: left; font-size: 12px; color: var(--warning); padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); }
 .processes-collapsed-line { color: var(--text-muted); }
+.processes-collapsed-line.attention { color: var(--warning); border-color: var(--warning); }
+.processes-collapsed-static { cursor: default; }
 .processes-link { font-size: 12px; color: var(--accent-2); padding: 6px 4px; text-decoration: underline; text-underline-offset: 2px; }
 .processes-note { font-size: 12px; color: var(--text-subtle); padding: 2px 4px 6px; }
 .processes-error { font-size: 12px; color: var(--warning); padding: 2px 4px 6px; }
 .processes-empty { font-size: 12px; color: var(--text-muted); padding: 12px 8px; }
 .processes-collapse { margin-left: auto; color: var(--text-subtle); padding: 4px 8px; border-radius: 8px; }
 .processes-collapse:hover { background: var(--bg-hover); color: var(--text); }
-.processes-inspector { margin-top: 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elevated); max-height: min(320px, 35dvh); overflow-y: auto; overscroll-behavior: contain; }
+.processes-inspector { border: 1px solid var(--border); border-radius: 14px; background: var(--bg-elevated); max-height: min(300px, 32dvh); overflow-y: auto; overscroll-behavior: contain; }
+/* Inspector con apertura/cierre deterministas por CSS (grid 0fr↔1fr):
+ * ambas direcciones animan sin depender del ciclo de salida de JS. */
+.processes-inspector-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; margin-top: 0; transition: grid-template-rows .22s cubic-bezier(.22, 1, .36, 1), opacity .18s ease, margin-top .22s cubic-bezier(.22, 1, .36, 1); }
+.processes-inspector-wrap.open { grid-template-rows: 1fr; opacity: 1; margin-top: 8px; }
+.processes-inspector-clip { overflow: hidden; min-height: 0; }
 .processes-inspector-bar { position: sticky; top: 0; display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); z-index: 1; overflow-x: auto; }
 .processes-filter { font-size: 12px; color: var(--text-muted); padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
 .processes-filter:hover { background: var(--bg-hover); color: var(--text); }
@@ -613,4 +620,5 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 }
 @media (prefers-reduced-motion: reduce) {
   .processes-chevron { transition: none; }
+  .processes-inspector-wrap { transition: none; }
 }

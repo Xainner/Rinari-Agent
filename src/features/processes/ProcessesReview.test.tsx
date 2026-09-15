@@ -52,7 +52,9 @@ function mockClock(start: number) {
 
 async function openInspectorOnFirstRow() {
   const dock = await screen.findByTestId('processes-dock')
-  const toggle = within(dock).getByRole('button', { name: /Ver salida/ })
+  const expand = within(dock).queryByRole('button', { name: /Procesos de esta conversación/ })
+  if (expand) fireEvent.click(expand)
+  const toggle = within(await screen.findByTestId('processes-dock')).getByRole('button', { name: /Ver salida/ })
   fireEvent.click(toggle)
   return screen.findByTestId('processes-inspector')
 }
@@ -103,9 +105,8 @@ it('X-5: sin conexión muestra Estado sin verificar en vez de En ejecución', as
     throw new Error(`Unexpected ${String(command)}`)
   })
   const view = renderDock({ engineReady: true })
-  const dock = await screen.findByTestId('processes-dock')
-  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida/ }))
-  await screen.findByTestId('processes-inspector')
+  await screen.findByTestId('processes-dock')
+  await openInspectorOnFirstRow()
   view.rerender(
     <I18nProvider lang="es">
       <ProcessRuntimeProvider epoch={1} engineReady={false} hasCapability={true} hasIdentity={false}>
@@ -183,6 +184,7 @@ it('X-2: un cambio solo de readiness actualiza la fila', async () => {
   })
   renderDock()
   await screen.findByTestId('processes-dock')
+  fireEvent.click(screen.getByRole('button', { name: /Procesos de esta conversación/ }))
   expect(screen.queryByText(/Aceptando conexiones/)).toBeNull()
   readiness = 'listening'
   await waitFor(() => expect(screen.getByText(/Aceptando conexiones/)).toBeTruthy(), { timeout: 5000 })
@@ -261,8 +263,8 @@ it('T-5: fallo de listado visible con Reintentar y recuperación', async () => {
   fail = false
   fireEvent.click(screen.getByRole('button', { name: /Reintentar/ }))
   await screen.findByTestId('processes-dock')
-  // Fila en franja e inspector; el error desaparece (también del anuncio SR).
-  await waitFor(() => expect(screen.getAllByText('npm run dev')).toHaveLength(2))
+  // Fila en el inspector (la franja sigue minimizada); el error desaparece.
+  await waitFor(() => expect(screen.getAllByText('npm run dev')).toHaveLength(1))
   await waitFor(() => expect(screen.queryAllByText('timeout')).toHaveLength(0))
 })
 
@@ -307,6 +309,7 @@ it('T-8: éxito reciente expira y ocultar de la franja funciona', async () => {
     await screen.findByTestId('processes-dock')
     // Termina con éxito en vivo: visible como reciente…
     code = 0
+    fireEvent.click(screen.getByRole('button', { name: /Procesos de esta conversación/ }))
     await waitFor(() => expect(screen.getByText(/Finalizado/)).toBeTruthy(), { timeout: 5000 })
     // …y se retira tras 12 s visibles.
     clock.advance(20_000)
@@ -335,7 +338,8 @@ it('T-9: lista parcial no declara desaparecido al seleccionado', async () => {
   renderDock()
   const dock = await screen.findByTestId('processes-dock')
   // Seleccionar b y abrir inspector antes del truncamiento.
-  const toggles = within(dock).getAllByRole('button', { name: /Ver salida/ })
+  fireEvent.click(within(dock).getByRole('button', { name: /Procesos de esta conversación/ }))
+  const toggles = within(await screen.findByTestId('processes-dock')).getAllByRole('button', { name: /Ver salida/ })
   fireEvent.click(toggles[1]!)
   const inspector = await screen.findByTestId('processes-inspector')
   expect(within(inspector).getByText('salida-b')).toBeTruthy()
@@ -413,7 +417,8 @@ it('T-13: URLs no http(s) o con credenciales no ofrecen Abrir', async () => {
   })
   renderDock()
   const dock = await screen.findByTestId('processes-dock')
-  const openButtons = within(dock).queryAllByRole('button', { name: /Abrir/ })
+  fireEvent.click(within(dock).getByRole('button', { name: /Procesos de esta conversación/ }))
+  const openButtons = within(await screen.findByTestId('processes-dock')).queryAllByRole('button', { name: /Abrir/ })
   // Solo la fila válida expone Abrir (más el inspector si se abre).
   expect(openButtons).toHaveLength(1)
   fireEvent.click(openButtons[0]!)
@@ -442,8 +447,7 @@ it('E-2: fallo de copia en detalle avisa en vez de callar', async () => {  const
   expect(await screen.findByText(/No se pudo copiar/)).toBeTruthy()
 })
 
-it('V2E-1: una fila corrupta no oculta las válidas y se avisa', async () => {
-  vi.mocked(invoke).mockImplementation(async (command) => {
+it('V2E-1: una fila corrupta no oculta las válidas y se avisa', async () => {  vi.mocked(invoke).mockImplementation(async (command) => {
     if (command === 'workspace_process_list') {
       return {
         processes: [
@@ -457,6 +461,25 @@ it('V2E-1: una fila corrupta no oculta las válidas y se avisa', async () => {
   })
   renderDock()
   const dock = await screen.findByTestId('processes-dock')
+  fireEvent.click(within(dock).getByRole('button', { name: /Procesos de esta conversación/ }))
   expect(within(dock).getByText('npm run dev')).toBeTruthy()
   expect(within(dock).getByText(/omitidos por formato inválido/)).toBeTruthy()
+})
+
+it('sonda: el cierre del inspector anima la salida (no desaparece en seco)', async () => {
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'workspace_process_list') {
+      return { processes: [activeRow('process:proc_001', 'npm run dev')], truncated: false }
+    }
+    if (command === 'workspace_process_read') {
+      return { process: activeRow('process:proc_001', 'npm run dev'), stdout: '', stderr: '', truncated: false }
+    }
+    throw new Error(`Unexpected ${String(command)}`)
+  })
+  renderDock()
+  const inspector = await openInspectorOnFirstRow()
+  fireEvent.click(within(inspector).getByRole('button', { name: /Cerrar inspector/ }))
+  // Si la salida anima, el inspector sigue montado un instante tras cerrar.
+  expect(screen.queryByTestId('processes-inspector')).not.toBeNull()
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 3000 })
 })

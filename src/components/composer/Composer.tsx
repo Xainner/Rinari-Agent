@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowUp, Box, Brain, Check, ChevronDown, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
@@ -81,6 +82,12 @@ export default function Composer({
 }: ComposerProps) {
   const { t } = useI18n()
   const text = useComposerStore((s) => s.text)
+  const appReduceMotion = useUIStore((s) => s.reduceMotion)
+  const systemReducedMotion = useReducedMotion()
+  const pillTransition =
+    appReduceMotion || systemReducedMotion
+      ? { duration: 0 }
+      : { duration: 0.22, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -458,13 +465,20 @@ export default function Composer({
                   onClick={() => onModeChange(mode)}
                   aria-pressed={selected}
                   title={t(`mode.${mode}` as 'mode.plan')}
-                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] tracking-wide transition-all disabled:opacity-40 ${
-                    selected
-                      ? 'bg-[var(--accent)] font-bold text-white'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                  className={`relative rounded-full px-2.5 py-1 font-mono text-[10px] tracking-wide transition-colors disabled:opacity-40 ${
+                    selected ? 'font-bold text-white' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                   }`}
                 >
-                  {t(`mode.${mode}` as 'mode.plan')}
+                  {selected && (
+                    <motion.span
+                      layoutId="composer-mode-pill"
+                      aria-hidden="true"
+                      data-testid="mode-pill"
+                      className="absolute inset-0 rounded-full bg-[var(--accent)]"
+                      transition={pillTransition}
+                    />
+                  )}
+                  <span className="relative">{t(`mode.${mode}` as 'mode.plan')}</span>
                 </button>
               )
             })}

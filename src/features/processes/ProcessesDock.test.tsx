@@ -44,6 +44,11 @@ function setup(listImpl: (sessionId: string) => unknown, openSignal = 0) {
   return { view, stopCalls }
 }
 
+function expandStrip() {
+  const line = screen.queryByRole('button', { name: /Procesos de esta conversación/ })
+  if (line) fireEvent.click(line)
+}
+
 it('montar (inicio, chat nuevo, StrictMode) nunca abre solo el inspector', async () => {
   vi.mocked(invoke).mockImplementation(async (command) => {
     if (command === 'workspace_process_list') {
@@ -100,9 +105,23 @@ it('D03: apertura manual sin recursos muestra inspector vacío cerrable', async 
   expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeNull()
 })
 
+it('por defecto la franja sale minimizada con contador', async () => {
+  setup(() => ({
+    processes: [row('process:a', 'npm run dev'), row('process:b', 'python worker.py')],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  // Línea de resumen visible; filas ocultas hasta expandir.
+  expect(within(dock).getByRole('button', { name: /2 activos/ })).toBeTruthy()
+  expect(within(dock).queryByRole('listitem')).toBeNull()
+  expandStrip()
+  expect(within(dock).getAllByRole('listitem')).toHaveLength(2)
+})
+
 it('D04: un proceso activo muestra una fila con identidad y stop con sesión', async () => {
   const { stopCalls } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
   const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
   expect(within(dock).getByText('npm run dev')).toBeTruthy()
   expect(within(dock).getByText(/En ejecución/)).toBeTruthy()
   // Sin cabecera redundante para un solo recurso.
@@ -122,9 +141,26 @@ it('D04: un proceso activo muestra una fila con identidad y stop con sesión', a
   )
 })
 
+it('inspector abierto compacta la franja a su resumen', async () => {
+  setup(() => ({
+    processes: [row('process:a', 'npm run dev'), row('process:b', 'python worker.py')],
+    truncated: false,
+  }))
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  await screen.findByTestId('processes-inspector')
+  // La clase .open entra en el siguiente frame; entonces se compacta.
+  // Solo cuentan filas del strip (el inspector lista aparte).
+  await waitFor(() => expect(document.querySelectorAll('.processes-rows li')).toHaveLength(0))
+  // Línea de resumen estática (más el anuncio para lector de pantalla).
+  await waitFor(() => expect(screen.getAllByText(/2 activos/)).toHaveLength(2))
+})
+
 it('cancelar la confirmación no detiene el recurso', async () => {
   const { stopCalls } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
   const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
   fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
   const inspector = await screen.findByTestId('processes-inspector')
   fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
@@ -139,6 +175,7 @@ it('D05: varios activos limitan filas con contador y Ver todos abre el inspector
     truncated: false,
   }))
   const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
   expect(within(dock).getByText(/Ver todos/)).toBeTruthy()
   const rows = within(dock).getAllByRole('listitem')
   expect(rows).toHaveLength(2)
@@ -155,6 +192,7 @@ it('fallo observado conserva aviso hasta Marcar como visto', async () => {
   const dock = await screen.findByTestId('processes-dock')
   const attentionButton = within(dock).getByRole('button', { name: /requiere atención/ })
   expect(attentionButton).toBeTruthy()
+  // La línea minimizada con atención abre el inspector directamente.
   fireEvent.click(attentionButton)
   const inspector = await screen.findByTestId('processes-inspector')
   fireEvent.click(within(inspector).getByRole('button', { name: /Marcar como visto/ }))
@@ -164,12 +202,14 @@ it('fallo observado conserva aviso hasta Marcar como visto', async () => {
 it('lista parcial se etiqueta como visible, no como total', async () => {
   setup(() => ({ processes: [row('process:a', 'npm run dev')], truncated: true }))
   const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
   expect(within(dock).getByText(/lista parcial/)).toBeTruthy()
 })
 
 it('inspeccionar, pausar y cerrar jamás llama a stop', async () => {
   const { stopCalls, view } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
   const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
   fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
   const inspector = await screen.findByTestId('processes-inspector')
   fireEvent.click(within(inspector).getByRole('button', { name: /Pausar vista/ }))
@@ -187,6 +227,7 @@ it('preparar consulta añade al borrador sin enviar turno', async () => {
   try {
     setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))
     const dock = await screen.findByTestId('processes-dock')
+    expandStrip()
     fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
     const inspector = await screen.findByTestId('processes-inspector')
     fireEvent.click(within(inspector).getByRole('button', { name: /Preparar consulta/ }))

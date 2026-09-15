@@ -30,7 +30,12 @@ export default function ProcessesDock({
   const { t } = useI18n()
   const motionApi = useProcessesMotion()
   const [inspectorOpen, setInspectorOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  // Montaje separado de visibilidad: al cerrar, el contenedor persiste lo
+  // que dura la transición CSS y se desmonta después. Así el cierre anima
+  // siempre, sin depender del ciclo de salida de la librería.
+  const [inspectorMounted, setInspectorMounted] = useState(false)
+  // Minimizado por defecto: las filas aparecen solo si el usuario expande.
+  const [collapsed, setCollapsed] = useState(true)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
@@ -42,6 +47,7 @@ export default function ProcessesDock({
   const [stopStaleNote, setStopStaleNote] = useState(false)
   const openerRef = useRef<HTMLElement | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<number | null>(null)
   // Última señal atendida: sólo un CAMBIO abre el inspector. Un flag de
   // "primera vez" se rompería con el remontaje de StrictMode y abriría
   // el inspector al iniciar o al crear un chat.
@@ -51,7 +57,7 @@ export default function ProcessesDock({
   const hiddenMsRef = useRef(0)
   const hiddenSinceRef = useRef<number | null>(null)
 
-  const snap = useSessionProcesses(sessionId, { observeOutput: inspectorOpen && !logPaused })
+  const snap = useSessionProcesses(sessionId, { observeOutput: inspectorMounted && !logPaused })
   const {
     ordered,
     selectedId,
@@ -122,6 +128,15 @@ export default function ProcessesDock({
     window.addEventListener('rinari-browser-open', onBrowserOpen)
     return () => window.removeEventListener('rinari-browser-open', onBrowserOpen)
   }, [])
+
+  // Al desmontar no se detiene nada, pero sí se cancela el temporizador
+  // de cierre pendiente.
+  useEffect(
+    () => () => {
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    },
+    [],
+  )
 
   const online = freshness !== 'offline'
   const confirmedIds = useMemo(
@@ -235,8 +250,8 @@ export default function ProcessesDock({
     void snap.stop(stopTargetId)
   }
 
-  if (!hasStrip && !inspectorOpen) return null
-  if ((freshness === 'unsupported' || freshness === 'offline') && !inspectorOpen) return null
+  if (!hasStrip && !inspectorMounted) return null
+  if ((freshness === 'unsupported' || freshness === 'offline') && !inspectorMounted) return null
 
   function rememberOpener(element?: HTMLElement | null) {
     const target = element ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
@@ -247,7 +262,16 @@ export default function ProcessesDock({
     setInspectorOpen(false)
     setLogPaused(false)
     const opener = openerRef.current
-    if (opener && document.contains(opener)) opener.focus()
+    if (opener && document.contains(opener)) opener.focus({ preventScroll: true })
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    // Desmontar cuando termine la transición de cierre, no antes.
+    closeTimer.current = window.setTimeout(
+      () => {
+        closeTimer.current = null
+        setInspectorMounted(false)
+      },
+      motionApi.reducedMotion ? 0 : 260,
+    )
   }
 
   function selectAndUnpause(id: string | null) {
@@ -257,10 +281,20 @@ export default function ProcessesDock({
 
   function openInspector(filter?: ProcessInspectorFilter, selectId?: string | null) {
     rememberOpener()
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
     if (selectId !== undefined) selectAndUnpause(selectId)
     if (filter !== undefined) setDefaultFilter(filter)
-    setInspectorOpen(true)
-    setCollapsed(false)
+    setInspectorMounted(true)
+    // La clase .open entra en el siguiente frame para que la transición
+    // CSS de apertura se ejecute.
+    const raf =
+      typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame(() => setInspectorOpen(true))
+        : (window.setTimeout(() => setInspectorOpen(true), 0) as unknown as number)
+    void raf
     setInspectorKey((value) => value + 1)
   }
 
@@ -297,14 +331,13 @@ export default function ProcessesDock({
         {announcement}
       </span>
       <AnimatePresence initial={false}>
-        {hasStrip && !collapsed && (
+        {hasStrip && !collapsed && !inspectorOpen && (
           <motion.section
             key="strip"
             aria-label={t('processes.section')}
             className="processes-strip"
             initial={{ opacity: 0, y: motionApi.enterY(6) }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: motionApi.enterY(6) }}
             transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
           >
           {summary.showHeader && (
@@ -386,32 +419,64 @@ export default function ProcessesDock({
           )}
           </motion.section>
         )}
-        {hasStrip && collapsed && !inspectorOpen && (
-        <motion.button
-          key="collapsed"
-          type="button"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
-          onClick={() => setCollapsed(false)}
-          className="processes-collapsed-line"
-          aria-label={t('processes.section')}
-        >
-          {t('processes.section')} · {activeCount} {t('processes.active')}
-        </motion.button>
+        {hasStrip && (collapsed || inspectorOpen) && (
+          inspectorOpen ? (
+            <div
+              key="collapsed"
+              aria-label={t('processes.section')}
+              className={`processes-collapsed-line processes-collapsed-static${attention.length > 0 ? ' attention' : ''}`}
+            >
+              {t('processes.section')} · {activeCount} {t('processes.active')}
+              {attention.length > 0 && (
+                <>
+                  {' · '}
+                  {t(attention.length === 1 ? 'processes.needsAttention' : 'processes.needsAttentionPlural', {
+                    n: attention.length,
+                  })}
+                </>
+              )}
+            </div>
+          ) : (
+            <motion.button
+              key="collapsed"
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
+              onClick={() => {
+                if (attention.length > 0) {
+                  openInspector('attention', attention[0]?.resource.id ?? null)
+                } else {
+                  rememberOpener()
+                  setCollapsed(false)
+                }
+              }}
+              className={`processes-collapsed-line${attention.length > 0 ? ' attention' : ''}`}
+              aria-label={`${t('processes.section')} · ${activeCount} ${t('processes.active')}${
+                attention.length > 0
+                  ? ` · ${t(attention.length === 1 ? 'processes.needsAttention' : 'processes.needsAttentionPlural', { n: attention.length })}`
+                  : ''
+              }`}
+            >
+              {t('processes.section')} · {activeCount} {t('processes.active')}
+              {attention.length > 0 && (
+                <>
+                  {' · '}
+                  {t(attention.length === 1 ? 'processes.needsAttention' : 'processes.needsAttentionPlural', {
+                    n: attention.length,
+                  })}
+                </>
+              )}
+            </motion.button>
+          )
         )}
       </AnimatePresence>
-      <AnimatePresence initial={false}>
-      {inspectorOpen && (
-        <motion.div
-          key="inspector"
+      {inspectorMounted && (
+        <div
           id="processes-inspector"
-          initial={{ opacity: 0, y: motionApi.enterY(-8) }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: motionApi.enterY(8) }}
-          transition={motionApi.transition(PROCESSES_DURATION.inspector)}
+          className={`processes-inspector-wrap${inspectorOpen ? ' open' : ''}`}
         >
+          <div className="processes-inspector-clip">
           {(freshness === 'unsupported' || freshness === 'offline') && ordered.length === 0 ? (
             <div className="processes-inspector">
               <p className="processes-empty">
@@ -449,9 +514,9 @@ export default function ProcessesDock({
               onClose={closeInspector}
             />
           )}
-        </motion.div>
+          </div>
+        </div>
       )}
-      </AnimatePresence>
       <ProcessStopDialog
         target={
           stopTarget

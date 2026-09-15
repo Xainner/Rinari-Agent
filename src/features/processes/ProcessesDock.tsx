@@ -42,11 +42,14 @@ export default function ProcessesDock({
   const [stopStaleNote, setStopStaleNote] = useState(false)
   const openerRef = useRef<HTMLElement | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  // Última señal atendida: sólo un CAMBIO abre el inspector. Un flag de
+  // "primera vez" se rompería con el remontaje de StrictMode y abriría
+  // el inspector al iniciar o al crear un chat.
+  const prevSignalRef = useRef(openSignal)
   const [announcement, setAnnouncement] = useState('')
   const lastAnnouncedRef = useRef('')
   const hiddenMsRef = useRef(0)
   const hiddenSinceRef = useRef<number | null>(null)
-  const firstSignalRef = useRef(true)
 
   const snap = useSessionProcesses(sessionId, { observeOutput: inspectorOpen && !logPaused })
   const {
@@ -63,11 +66,11 @@ export default function ProcessesDock({
   } = snap
 
   // Apertura explícita desde la paleta (funciona incluso sin franja visible).
+  // Sólo un cambio de señal abre: montar (inicio, chat nuevo, StrictMode)
+  // nunca abre solo.
   useEffect(() => {
-    if (firstSignalRef.current) {
-      firstSignalRef.current = false
-      return
-    }
+    if (prevSignalRef.current === openSignal) return
+    prevSignalRef.current = openSignal
     openInspector('all')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openSignal])
@@ -283,7 +286,7 @@ export default function ProcessesDock({
             className="processes-strip"
             initial={{ opacity: 0, y: motionApi.enterY(6) }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, y: motionApi.enterY(6) }}
             transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
           >
           {summary.showHeader && (
@@ -383,7 +386,7 @@ export default function ProcessesDock({
           id="processes-inspector"
           initial={{ opacity: 0, y: motionApi.enterY(-8) }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
+          exit={{ opacity: 0, y: motionApi.enterY(8) }}
           transition={motionApi.transition(PROCESSES_DURATION.inspector)}
         >
           {(freshness === 'unsupported' || freshness === 'offline') && ordered.length === 0 ? (

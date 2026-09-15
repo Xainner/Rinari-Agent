@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { invoke } from '@tauri-apps/api/core'
@@ -42,6 +43,36 @@ function setup(listImpl: (sessionId: string) => unknown, openSignal = 0) {
   )
   return { view, stopCalls }
 }
+
+it('montar (inicio, chat nuevo, StrictMode) nunca abre solo el inspector', async () => {
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'workspace_process_list') {
+      return { processes: [row('process:proc_001', 'npm run dev')], truncated: false }
+    }
+    if (command === 'workspace_process_read') {
+      return {
+        process: row('process:proc_001', 'npm run dev'),
+        stdout: '',
+        stderr: '',
+        truncated: false,
+      }
+    }
+    throw new Error(`Unexpected command ${String(command)}`)
+  })
+  render(
+    <StrictMode>
+      <I18nProvider lang="es">
+        <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
+          <ProcessesDock sessionId="s1" openSignal={0} />
+        </ProcessRuntimeProvider>
+      </I18nProvider>
+    </StrictMode>,
+  )
+  // La franja minimizada sí aparece; el inspector, no.
+  await screen.findByTestId('processes-dock')
+  await new Promise((resolve) => setTimeout(resolve, 80))
+  expect(screen.queryByTestId('processes-inspector')).toBeNull()
+})
 
 it('D02: lista vacía exitosa no reserva espacio ni botón flotante', async () => {
   const { view } = setup(() => ({ processes: [], truncated: false }))

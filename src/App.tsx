@@ -369,6 +369,7 @@ function App() {
             onUseModel={(model) => void session.useModel(model)}
             onDiscoverModels={() => void session.discoverCatalog()}
             sessionMode={activeRecord?.mode ?? null}
+            historyLoading={session.historyLoading}
             onModeChange={(mode) => void session.setMode(mode)}
             reasoningEffort={session.reasoningEffort}
             onReasoningChange={session.setReasoningEffort}

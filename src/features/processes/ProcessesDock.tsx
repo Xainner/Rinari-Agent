@@ -15,8 +15,8 @@ import {
   type ProcessPresentation,
 } from './processesModel'
 
-const RECENT_SUCCESS_MS = 12_000
-export const PROCESSES_AUTO_CLOSE_MS = 10_000
+export const RECENT_SUCCESS_MS = 5_000
+export const PROCESSES_AUTO_CLOSE_MS = 5_000
 
 export function shouldAutoCloseInspector(opts: {
   inspectorOpen: boolean
@@ -64,6 +64,11 @@ export default function ProcessesDock({
   const rootRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | null>(null)
   const autoCloseTimer = useRef<number | null>(null)
+  const leaveTimer = useRef<number | null>(null)
+  // Gracia de salida del teardown final: al retirarse lo último visible,
+  // la raíz persiste lo que dura el fundido y se desmonta después.
+  const [leaving, setLeaving] = useState(false)
+  const wasVisibleRef = useRef(false)
   // Solo se auto-cierra lo que estaba abierto durante actividad: una
   // apertura manual en reposo nunca se cierra sola.
   const wasActiveRef = useRef(false)
@@ -153,6 +158,7 @@ export default function ProcessesDock({
     () => () => {
       if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
       if (autoCloseTimer.current !== null) window.clearTimeout(autoCloseTimer.current)
+      if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current)
     },
     [],
   )
@@ -210,10 +216,26 @@ export default function ProcessesDock({
 
   // Cierre automático: si el inspector estaba abierto durante actividad
   // y ya no hay activos ni nada que requiera atención, se cierra del todo
-  // a los 10 s. No cierra con interacción en curso, vista pausada,
-  // diálogos abiertos ni aperturas manuales en reposo.
+  // a los 5 s. No cierra con interacción en curso, vista pausada,
+  // diálogos abiertos ni aperturas manuales en reposo. La interacción
+  // pausa el temporizador y lo rearma al liberarse.
   const autoCloseBlocked =
     hoveredId !== null || focusedId !== null || logPaused || stopTargetId !== null
+  // Elegibilidad vigente para reintentos: el callback del temporizador
+  // puede ejecutarse después de que el snapshot del efecto quede viejo
+  // (p. ej. diálogo de consulta abierto). Revalidar evita cerrar con
+  // actividad nueva y evita abandonar el cierre para siempre.
+  const autoCloseEligibleRef = useRef(false)
+  // Armado visible del autocierre: coincide con el temporizador y alimenta
+  // la barra de cuenta atrás del inspector.
+  const autoCloseArmed = shouldAutoCloseInspector({
+    inspectorOpen,
+    activeCount,
+    attentionCount: attention.length,
+    blocked: autoCloseBlocked,
+    wasActive: wasActiveRef.current,
+  })
+  autoCloseEligibleRef.current = autoCloseArmed
   useEffect(() => {
     if (autoCloseTimer.current !== null) {
       window.clearTimeout(autoCloseTimer.current)
@@ -238,11 +260,23 @@ export default function ProcessesDock({
     ) {
       return
     }
+    function attemptClose(): void {
+      // Un modal (confirmación de stop, consulta) pausa el cierre: se
+      // reintenta en 1 s en vez de abandonar el autocierre para siempre.
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
+        autoCloseTimer.current = window.setTimeout(() => {
+          autoCloseTimer.current = null
+          if (!autoCloseEligibleRef.current) return
+          attemptClose()
+        }, 1000)
+        return
+      }
+      if (!autoCloseEligibleRef.current) return
+      closeInspector()
+    }
     autoCloseTimer.current = window.setTimeout(() => {
       autoCloseTimer.current = null
-      // Un modal (confirmación de stop, consulta) bloquea el cierre.
-      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
-      closeInspector()
+      attemptClose()
     }, PROCESSES_AUTO_CLOSE_MS)
     return () => {
       if (autoCloseTimer.current !== null) {
@@ -315,8 +349,41 @@ export default function ProcessesDock({
     void snap.stop(stopTargetId)
   }
 
-  if (!hasStrip && !inspectorMounted) return null
-  if ((freshness === 'unsupported' || freshness === 'offline') && !inspectorMounted) return null
+  const shouldRenderNull =
+    (!hasStrip || freshness === 'unsupported' || freshness === 'offline') && !inspectorMounted
+
+  // Fundido de salida del teardown final (ver CSS .is-leaving): la raíz
+  // persiste ~260ms tras retirarse lo último visible para que el fundido
+  // se vea; con movimiento reducido el retiro es inmediato.
+  useEffect(() => {
+    if (!shouldRenderNull) {
+      wasVisibleRef.current = true
+      if (leaveTimer.current !== null) {
+        window.clearTimeout(leaveTimer.current)
+        leaveTimer.current = null
+      }
+      if (leaving) setLeaving(false)
+      return
+    }
+    if (!wasVisibleRef.current || motionApi.reducedMotion) return
+    if (leaveTimer.current !== null) return
+    if (!leaving) setLeaving(true)
+    leaveTimer.current = window.setTimeout(() => {
+      leaveTimer.current = null
+      wasVisibleRef.current = false
+      setLeaving(false)
+    }, 260)
+  }, [shouldRenderNull, leaving, motionApi.reducedMotion])
+
+  // Entrar a la gracia en el mismo commit que retira lo último visible:
+  // así se conserva el nodo DOM y el fundido CSS sí se ve. Sin esto, el
+  // render de expiración desmontaría el nodo y la gracia reinsertaría
+  // otro ya invisible.
+  const enterLeaving =
+    shouldRenderNull && !leaving && wasVisibleRef.current && !motionApi.reducedMotion
+  const renderLeaving = leaving || enterLeaving
+
+  if (shouldRenderNull && !renderLeaving) return null
 
   function rememberOpener(element?: HTMLElement | null) {
     const target = element ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
@@ -326,6 +393,8 @@ export default function ProcessesDock({
   function closeInspector() {
     setInspectorOpen(false)
     setLogPaused(false)
+    setHoveredId(null)
+    setFocusedId(null)
     wasActiveRef.current = false
     const opener = openerRef.current
     if (opener && document.contains(opener)) opener.focus({ preventScroll: true })
@@ -347,6 +416,10 @@ export default function ProcessesDock({
 
   function openInspector(filter?: ProcessInspectorFilter, selectId?: string | null) {
     rememberOpener()
+    // La franja se oculta con el inspector abierto: limpiar hover/foco
+    // evita que un id atascado bloquee el autocierre para siempre.
+    setHoveredId(null)
+    setFocusedId(null)
     if (closeTimer.current !== null) {
       window.clearTimeout(closeTimer.current)
       closeTimer.current = null
@@ -392,7 +465,18 @@ export default function ProcessesDock({
   }
 
   return (
-    <div ref={rootRef} className="processes-dock" data-testid="processes-dock" onKeyDown={handleDockKeyDown}>
+    <div
+      ref={rootRef}
+      className={`processes-dock${renderLeaving ? ' is-leaving' : ''}`}
+      data-testid="processes-dock"
+      onKeyDown={handleDockKeyDown}
+      onMouseLeave={() => setHoveredId(null)}
+      onBlur={(event) => {
+        const next = event.relatedTarget as HTMLElement | null
+        if (next && event.currentTarget.contains(next)) return
+        setFocusedId(null)
+      }}
+    >
       <span role="status" className="processes-sr-only">
         {announcement}
       </span>
@@ -445,11 +529,16 @@ export default function ProcessesDock({
             onMouseOut={(event) => {
               if (resourceIdFromEvent(event) != null) setHoveredId(null)
             }}
+            onMouseLeave={() => setHoveredId(null)}
             onFocus={(event) => {
               const id = resourceIdFromEvent(event)
               if (id != null) setFocusedId(id)
             }}
-            onBlur={() => setFocusedId(null)}
+            onBlur={(event) => {
+              const next = event.relatedTarget as HTMLElement | null
+              if (next && event.currentTarget.contains(next)) return
+              setFocusedId(null)
+            }}
           >
             <AnimatePresence initial={false}>
               {summary.visible.map((item) => (
@@ -488,10 +577,13 @@ export default function ProcessesDock({
         )}
         {hasStrip && (collapsed || inspectorOpen) && (
           inspectorOpen ? (
-            <div
+            <motion.div
               key="collapsed"
               aria-label={t('processes.section')}
               className={`processes-collapsed-line processes-collapsed-static${attention.length > 0 ? ' attention' : ''}`}
+              initial={false}
+              exit={{ opacity: 0 }}
+              transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
             >
               <SquareTerminal size={14} aria-hidden="true" />
               {t('processes.section')} · {activeCount} {t('processes.active')}
@@ -503,7 +595,7 @@ export default function ProcessesDock({
                   })}
                 </>
               )}
-            </div>
+            </motion.div>
           ) : (
             <motion.button
               key="collapsed"
@@ -546,6 +638,15 @@ export default function ProcessesDock({
           className={`processes-inspector-wrap${inspectorOpen ? ' open' : ''}`}
         >
           <div className="processes-inspector-clip">
+          {autoCloseArmed && !motionApi.reducedMotion && (
+            <div className="processes-autoclose-track" aria-hidden="true">
+              <div
+                className="processes-autoclose-bar"
+                data-testid="processes-autoclose-bar"
+                style={{ animationDuration: `${PROCESSES_AUTO_CLOSE_MS}ms` }}
+              />
+            </div>
+          )}
           {(freshness === 'unsupported' || freshness === 'offline') && ordered.length === 0 ? (
             <div className="processes-inspector">
               <p className="processes-empty">

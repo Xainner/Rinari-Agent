@@ -29,6 +29,19 @@ export function useSessionList(options: {
   const [historyInfo, setHistoryInfo] = useState<Record<string, { total: number; hasMore: boolean }>>({})
   /** Sesiones con historial ya cargado o hilo vivo (no recargar encima). */
   const historyLoaded = useRef(new Set<string>())
+  /** Cargas de historial en curso por sesión (estado: la UI distingue
+   * "cargando" de "vacía" y no muestra el home de forma transitoria). */
+  const [historyPending, setHistoryPending] = useState<Record<string, boolean>>({})
+  /** Activa sesión marcando carga pendiente en el mismo tick cuando su
+   * historial no está cargado: así el primer pintado ya muestra
+   * esqueleto y nunca el home transitorio. Único cuello de botella
+   * para cambios de sesión (ver select/restore/fork/create). */
+  const activate = useCallback((id: string) => {
+    if (id !== '' && !historyLoaded.current.has(id)) {
+      setHistoryPending((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
+    }
+    setActiveSession(id)
+  }, [])
 
   const refreshSessions = useCallback(async (): Promise<void> => {
     try {
@@ -54,6 +67,7 @@ export function useSessionList(options: {
     async (id: string): Promise<void> => {
       if (historyLoaded.current.has(id)) return
       historyLoaded.current.add(id)
+      setHistoryPending((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
       try {
         const [history, timeline] = await Promise.all([
           engineApi.sessionHistory(id),
@@ -70,6 +84,13 @@ export function useSessionList(options: {
       } catch (err) {
         historyLoaded.current.delete(id)
         toast.error(commandMessage(err))
+      } finally {
+        setHistoryPending((prev) => {
+          if (!prev[id]) return prev
+          const next = { ...prev }
+          delete next[id]
+          return next
+        })
       }
     },
     [dispatch, timelineEnabled],
@@ -84,7 +105,7 @@ export function useSessionList(options: {
   const selectSession = useCallback(
     async (id: string): Promise<void> => {
       const previous = activeSession
-      setActiveSession(id)
+      activate(id)
       try {
         const opened = await engineApi.openSession(id)
         for (const warning of new Set(opened.warnings ?? [])) {
@@ -101,12 +122,18 @@ export function useSessionList(options: {
         }
       } catch (err) {
         setActiveSession(previous)
+        setHistoryPending((prev) => {
+          if (!prev[id]) return prev
+          const next = { ...prev }
+          delete next[id]
+          return next
+        })
         toast.error(commandMessage(err))
         return
       }
       await loadSessionHistory(id)
     },
-    [activeSession, loadSessionHistory],
+    [activeSession, activate, loadSessionHistory],
   )
 
   const createSession = useCallback(async (projectId?: string): Promise<string | null> => {
@@ -120,14 +147,14 @@ export function useSessionList(options: {
       })
       setSessions((current) => [result.session, ...current.filter((item) => item.id !== result.session.id)])
       historyLoaded.current.add(result.session.id)
-      setActiveSession(result.session.id)
+      activate(result.session.id)
       void refreshSessions()
       return result.session.id
     } catch (err) {
       toast.error(commandMessage(err))
       return null
     }
-  }, [refreshSessions])
+  }, [activate, refreshSessions])
 
   /** Cierra: oculta del listado; volver a abrirla la restaura. */
   const closeSession = useCallback(
@@ -164,23 +191,23 @@ export function useSessionList(options: {
     try {
       const result = await engineApi.restoreSession(id)
       await refreshSessions()
-      setActiveSession(result.session.id)
+      activate(result.session.id)
     } catch (err) {
       toast.error(commandMessage(err))
     }
-  }, [refreshSessions])
+  }, [activate, refreshSessions])
 
   const forkSession = useCallback(async (id: string): Promise<string | null> => {
     try {
       const result = await engineApi.forkSession(id)
       await refreshSessions()
-      setActiveSession(result.session.id)
+      activate(result.session.id)
       return result.session.id
     } catch (err) {
       toast.error(commandMessage(err))
       return null
     }
-  }, [refreshSessions])
+  }, [activate, refreshSessions])
 
   /** Eliminación permanente con cascada explícita del engine. */
   const deleteSession = useCallback(
@@ -244,6 +271,7 @@ export function useSessionList(options: {
     refreshSessions,
     loadSessionHistory,
     selectSession,
+    historyPending,
     createSession,
     closeSession,
     renameSession,

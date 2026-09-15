@@ -466,6 +466,13 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .concept-sidebar > button:last-of-type { border-top: 1px solid var(--border); border-radius: 0; }
 .concept-sidebar .sidebar-scroll > section > ul { margin-top: 7px; }
 .concept-sidebar .sidebar-scroll > section > ul > li { font-size: 13px; }
+/* Cambio que toca proyecto: las transiciones del listado se cortan para
+ * un salto instantáneo (las animaciones de carga siguen girando). */
+.sidebar-switch-instant *,
+.sidebar-switch-instant *::before,
+.sidebar-switch-instant *::after {
+  transition: none !important;
+}
 .composer-root { container-type: inline-size; }
 .composer-surface { background: linear-gradient(115deg, #14111f, #111019); border-color: var(--border-strong); }
 .composer-toolbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-top: 8px; }
@@ -476,6 +483,10 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .composer-model-controls > button:first-child { max-width: 175px; }
 .composer-modes { justify-self: center; }
 .composer-modes button[aria-pressed='true'] { box-shadow: 0 0 14px #982eff33; }
+.composer-mode-pill { will-change: transform, width; }
+@media (prefers-reduced-motion: reduce) {
+  .composer-mode-pill { transition: none !important; }
+}
 @container (max-width: 730px) {
   .composer-toolbar { grid-template-columns: 1fr auto; gap: 10px; }
   .composer-modes { grid-column: 2; grid-row: 1; justify-self: end; }
@@ -519,6 +530,11 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .conversation-layout { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .conversation-main { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; }
 .conversation-transcript { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* Entrada del contenido de la conversación: animación CSS atada al
+ * montaje (clave por sesión/estado), así juega siempre sobre el
+ * contenido ya insertado. El esqueleto de carga aparece directo. */
+.conversation-enter { animation: conversation-enter-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes conversation-enter-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .conversation-composer { position: relative; flex-shrink: 0; width: min(100% - 32px, 1080px); margin: 0 auto; padding: 12px 0 16px; z-index: 2; }
 /* Presupuesto vertical (§4.5): en alturas extremas la zona inferior hace
  * scroll interno antes que expulsar al composer o dejar sin transcript.
@@ -535,7 +551,11 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 /* Procesos integrados en la conversación (§3-§4 del plan de Procesos).
  * La franja hereda el ancho del composer; el inspector crece hacia arriba
  * sin tapar el input. Sin sombras fuertes ni animaciones permanentes. */
-.processes-dock { container-type: inline-size; margin-bottom: 8px; max-height: 460px; max-height: min(460px, 48dvh); overflow-y: auto; overscroll-behavior: contain; }
+.processes-dock { container-type: inline-size; position: static; margin-bottom: 8px; max-height: 460px; max-height: min(460px, 48dvh); overflow-y: auto; overscroll-behavior: contain; }
+.conversation-composer .processes-dock { flex-shrink: 0; }
+/* Fundido de salida del teardown final: la raíz persiste ~260ms tras
+ * retirarse lo último visible para que el fundido se vea completo. */
+.processes-dock.is-leaving { opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .18s ease, transform .22s cubic-bezier(.22, 1, .36, 1); }
 .processes-strip { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); padding: 4px 8px; }
 .processes-strip-head { display: flex; align-items: center; gap: 8px; padding: 4px 4px 2px; font-size: 12px; color: var(--text-muted); }
 .processes-strip-title { font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
@@ -581,6 +601,13 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .processes-filter.active { background: var(--bg-active); color: var(--text); }
 .processes-inspector-close { margin-left: auto; padding: 6px; border-radius: 8px; color: var(--text-muted); flex-shrink: 0; }
 .processes-inspector-close:hover { background: var(--bg-hover); color: var(--text); }
+/* Cuenta atrás del autocierre: la barra se encoge durante la ventana de
+ * autocierre y comparte su duración por estilo en línea. Se pausa con
+ * hover igual que el temporizador y desaparece con movimiento reducido. */
+.processes-autoclose-track { height: 2px; border-radius: 2px; overflow: hidden; margin: 6px 8px 0; background: var(--bg-hover); }
+.processes-autoclose-bar { height: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation-name: processes-autoclose-shrink; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes processes-autoclose-shrink { from { transform: scaleX(1); opacity: 1; } to { transform: scaleX(0); opacity: 0.35; } }
+.processes-dock:hover .processes-autoclose-bar { animation-play-state: paused; }
 .processes-inspector-list { padding: 6px; }
 .processes-inspector-list ul { list-style: none; margin: 0; padding: 0; }
 .processes-pick { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 8px; border-radius: 10px; }
@@ -622,4 +649,6 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 @media (prefers-reduced-motion: reduce) {
   .processes-chevron { transition: none; }
   .processes-inspector-wrap { transition: none; }
+  .processes-autoclose-bar { animation: none; }
+  .processes-dock.is-leaving { transition: none; }
 }

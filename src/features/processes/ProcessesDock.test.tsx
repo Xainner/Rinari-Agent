@@ -4,8 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, expect, it, vi } from 'vitest'
 import { invoke } from '@tauri-apps/api/core'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
-import ProcessesDock, { shouldAutoCloseInspector } from './ProcessesDock'
+import ProcessesDock, { PROCESSES_AUTO_CLOSE_MS, RECENT_SUCCESS_MS, shouldAutoCloseInspector } from './ProcessesDock'
 import { I18nProvider } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
@@ -102,7 +103,8 @@ it('D03: apertura manual sin recursos muestra inspector vacío cerrable', async 
   expect(screen.getByText(/No hay procesos registrados/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /Cerrar inspector/ }))
   await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull())
-  expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeNull()
+  // El teardown final funde la raíz antes de desmontarla.
+  await waitFor(() => expect(view.container.querySelector('[data-testid="processes-dock"]')).toBeNull())
 })
 
 it('la línea minimizada interpola el contador de atención', async () => {
@@ -143,6 +145,85 @@ it('auto-cierre solo sin activos, sin atención, sin bloqueo y tras actividad', 
   // Apertura manual en reposo: nunca se cierra sola.
   expect(shouldAutoCloseInspector({ ...open, wasActive: false })).toBe(false)
 })
+
+it('autocierre e ventana reciente comparten 5 s', () => {
+  expect(PROCESSES_AUTO_CLOSE_MS).toBe(5_000)
+  expect(RECENT_SUCCESS_MS).toBe(5_000)
+})
+
+it('el inspector muestra cuenta atrás solo cuando el autocierre está armado', async () => {
+  let finished = false
+  setup(() => {
+    if (!finished) return { processes: [row('process:proc_001', 'npm run dev')], truncated: false }
+    return {
+      processes: [row('process:proc_001', 'npm run dev', { running: false, can_stop: false, exit_code: 0 })],
+      truncated: false,
+    }
+  })
+  const dock = await screen.findByTestId('processes-dock')
+  expandStrip()
+  fireEvent.click(within(dock).getByRole('button', { name: /Ver salida de npm run dev/ }))
+  await screen.findByTestId('processes-inspector')
+  // Con actividad en curso no hay cuenta atrás.
+  expect(screen.queryByTestId('processes-autoclose-bar')).toBeNull()
+  finished = true
+  const bar = await screen.findByTestId('processes-autoclose-bar', {}, { timeout: 15000 })
+  expect(bar.style.animationDuration).toBe('5000ms')
+}, 30000)
+
+it('el retiro final funde el dock antes de desmontarlo', async () => {
+  let now = 1_700_000_000_000
+  const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+  try {
+    let code: number | null = null
+    setup(() => ({
+      processes: [row('process:proc_001', 'npm run dev', { running: code === null, can_stop: code === null, exit_code: code })],
+      truncated: false,
+    }))
+    await screen.findByTestId('processes-dock')
+    code = 0
+    expandStrip()
+    await waitFor(() => expect(screen.getByText(/Finalizado/)).toBeTruthy(), { timeout: 8000 })
+    now += 12_000
+    // La gracia conserva el nodo y lo funde antes de desmontarlo.
+    await waitFor(() => expect(document.querySelector('.processes-dock.is-leaving')).not.toBeNull(), {
+      timeout: 4000,
+    })
+    await waitFor(() => expect(screen.queryByTestId('processes-dock')).toBeNull(), { timeout: 4000 })
+  } finally {
+    spy.mockRestore()
+  }
+}, 25000)
+
+it('con movimiento reducido el retiro final es inmediato', async () => {
+  useUIStore.setState({ reduceMotion: true })
+  let now = 1_700_000_000_000
+  const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+  try {
+    let code: number | null = null
+    setup(() => ({
+      processes: [row('process:proc_001', 'npm run dev', { running: code === null, can_stop: code === null, exit_code: code })],
+      truncated: false,
+    }))
+    await screen.findByTestId('processes-dock')
+    code = 0
+    expandStrip()
+    await waitFor(() => expect(screen.getByText(/Finalizado/)).toBeTruthy(), { timeout: 8000 })
+    now += 12_000
+    let sawLeaving = false
+    await waitFor(
+      () => {
+        if (document.querySelector('.processes-dock.is-leaving')) sawLeaving = true
+        expect(screen.queryByTestId('processes-dock')).toBeNull()
+      },
+      { timeout: 8000, interval: 50 },
+    )
+    expect(sawLeaving).toBe(false)
+  } finally {
+    spy.mockRestore()
+    useUIStore.setState({ reduceMotion: false })
+  }
+}, 25000)
 
 it('D04: un proceso activo muestra una fila con identidad y stop con sesión', async () => {
   const { stopCalls } = setup(() => ({ processes: [row('process:proc_001', 'npm run dev')], truncated: false }))

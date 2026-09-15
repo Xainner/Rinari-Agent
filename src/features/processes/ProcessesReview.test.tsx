@@ -311,8 +311,8 @@ it('T-8: éxito reciente expira y ocultar de la franja funciona', async () => {
     code = 0
     fireEvent.click(screen.getByRole('button', { name: /Procesos de esta conversación/ }))
     await waitFor(() => expect(screen.getByText(/Finalizado/)).toBeTruthy(), { timeout: 5000 })
-    // …y se retira tras 12 s visibles.
-    clock.advance(20_000)
+    // …y se retira tras 5 s visibles.
+    clock.advance(12_000)
     await waitFor(() => expect(screen.queryByTestId('processes-dock')).toBeNull(), { timeout: 4000 })
   } finally {
     clock.restore()
@@ -483,7 +483,7 @@ it('sonda: el cierre del inspector anima la salida (no desaparece en seco)', asy
   await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 3000 })
 })
 
-it('auto-cierra el inspector 10s después de quedarse sin activos', async () => {
+it('auto-cierra el inspector 5s después de quedarse sin activos', async () => {
   let finished = false
   vi.mocked(invoke).mockImplementation(async (command) => {
     if (command === 'workspace_process_list') {
@@ -500,11 +500,11 @@ it('auto-cierra el inspector 10s después de quedarse sin activos', async () => 
   await openInspectorOnFirstRow()
   expect(await screen.findByTestId('processes-inspector')).toBeTruthy()
   finished = true
-  // Termina, pasan 10 s sin interacción ni fallos: se cierra del todo.
-  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 25000 })
-  // La franja reciente sigue visible hasta su ventana de 12 s.
-  expect(screen.queryByTestId('processes-dock')).toBeTruthy()
-}, 40000)
+  // Termina, pasan 5 s sin interacción ni fallos: se cierra del todo.
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 15000 })
+  // La franja reciente comparte la ventana de 5 s y también se retira.
+  await waitFor(() => expect(screen.queryByTestId('processes-dock')).toBeNull(), { timeout: 15000 })
+}, 25000)
 
 it('detener el único proceso no genera atención y auto-cierra', async () => {
   let stopped = false
@@ -555,6 +555,6 @@ it('detener el único proceso no genera atención y auto-cierra', async () => {
     },
     { timeout: 5000 },
   )
-  // …y la vista se cierra sola a los 10 s.
-  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 25000 })
-}, 40000)
+  // …y la vista se cierra sola a los 5 s.
+  await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 15000 })
+}, 25000)

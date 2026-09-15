@@ -97,7 +97,7 @@ export default function ProcessRow({
       layout="position"
       initial={{ opacity: 0, y: motionApi.enterY(6) }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
+      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
       transition={motionApi.transition(PROCESSES_DURATION.rowEnter)}
     >
       <button

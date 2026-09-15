@@ -281,10 +281,11 @@ export default function ProcessesDock({
             key="strip"
             aria-label={t('processes.section')}
             className="processes-strip"
-            initial={{ opacity: 0, y: motionApi.enterY(6) }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
             transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
+            style={{ overflow: 'hidden' }}
           >
           {summary.showHeader && (
             <div className="processes-strip-head">
@@ -360,26 +361,32 @@ export default function ProcessesDock({
           )}
           </motion.section>
         )}
-      </AnimatePresence>
-      {hasStrip && collapsed && !inspectorOpen && (
-        <button
+        {hasStrip && collapsed && !inspectorOpen && (
+        <motion.button
+          key="collapsed"
           type="button"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={motionApi.transition(PROCESSES_DURATION.stripEnter)}
           onClick={() => setCollapsed(false)}
           className="processes-collapsed-line"
           aria-label={t('processes.section')}
         >
           {t('processes.section')} · {activeCount} {t('processes.active')}
-        </button>
-      )}
+        </motion.button>
+        )}
+      </AnimatePresence>
       <AnimatePresence initial={false}>
       {inspectorOpen && (
         <motion.div
           key="inspector"
           id="processes-inspector"
-          initial={{ opacity: 0, y: motionApi.enterY(-8) }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
           transition={motionApi.transition(PROCESSES_DURATION.inspector)}
+          style={{ overflow: 'hidden' }}
         >
           {(freshness === 'unsupported' || freshness === 'offline') && ordered.length === 0 ? (
             <div className="processes-inspector">

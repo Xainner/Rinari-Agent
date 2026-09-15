@@ -918,6 +918,7 @@ export const en: Record<I18nKey, string> = {
   'processes.pinned': 'pinned',
   'processes.loading': 'Loading output…',
   'processes.outputPartial': 'Partial output',
+  'processes.retry': 'Retry',
   'processes.unsupported': 'Processes unavailable on this engine.',
   'processes.offline': 'Engine unavailable. Keeping the last observation.',
   'processes.stopTitle': 'Stop “{name}”?',

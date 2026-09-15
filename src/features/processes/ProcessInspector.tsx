@@ -11,6 +11,7 @@ import {
   kindLabel,
   readinessLabelKey,
   resourceTitle,
+  type ConnectionFreshness,
   type ProcessPresentation,
   type StopOperation,
 } from './processesModel'
@@ -70,6 +71,8 @@ export default function ProcessInspector({
   readError,
   stopById,
   listTruncated,
+  freshness,
+  listError,
   pinnedId,
   logPaused,
   onLogPausedChange,
@@ -78,6 +81,7 @@ export default function ProcessInspector({
   onAcknowledge,
   onDismiss,
   onPin,
+  onRefresh,
   onClose,
 }: {
   sessionId: string
@@ -89,6 +93,8 @@ export default function ProcessInspector({
   readError: string | null
   stopById: Map<string, StopOperation>
   listTruncated: boolean
+  freshness: ConnectionFreshness
+  listError: string | null
   pinnedId: string | null
   logPaused: boolean
   onLogPausedChange: (paused: boolean) => void
@@ -97,6 +103,7 @@ export default function ProcessInspector({
   onAcknowledge: (id: string) => void
   onDismiss: (id: string) => void
   onPin: (id: string | null) => void
+  onRefresh: () => void
   onClose: () => void
 }) {
   const { t } = useI18n()
@@ -167,7 +174,18 @@ export default function ProcessInspector({
       {(!narrow || !detailOnly) && (
         <div className="processes-inspector-list">
           {visible.length === 0 ? (
-            <p className="processes-empty">{ordered.length === 0 ? t('processes.empty') : t('processes.noResults')}</p>
+            freshness === 'loading' ? (
+              <p role="status" className="processes-empty">{t('processes.loading')}</p>
+            ) : listError ? (
+              <div className="processes-empty">
+                <p role="alert" className="processes-error">{listError}</p>
+                <button type="button" onClick={onRefresh} className="processes-link">
+                  {t('processes.retry')}
+                </button>
+              </div>
+            ) : (
+              <p className="processes-empty">{ordered.length === 0 ? t('processes.empty') : t('processes.noResults')}</p>
+            )
           ) : (
             <ul>
               {visible.map((item) => {

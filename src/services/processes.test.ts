@@ -29,6 +29,38 @@ describe('processesApi', () => {
     await expect(processesApi.list('s1')).rejects.toThrow(/malformada/)
   })
 
+  it('acepta nulos explícitos del engine en filas activas', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      processes: [
+        {
+          id: 'process:proc_001',
+          kind: 'process',
+          command: 'python -m http.server 8080',
+          cwd: 'C:/site',
+          running: true,
+          can_stop: true,
+          pid: 9640,
+          started_at: 1750000000,
+          exit_code: null,
+          ended_at: null,
+          exit_reason: null,
+          generation: 1,
+          engine_instance_id: 'boot-1',
+          readiness: 'unknown',
+          readiness_checked_at: null,
+          url: null,
+        },
+      ],
+      truncated: false,
+      total: 1,
+      next_cursor: null,
+      engine_instance_id: 'boot-1',
+    })
+    const listed = await processesApi.list('s1')
+    expect(listed.processes).toHaveLength(1)
+    expect(listed.processes[0]?.running).toBe(true)
+  })
+
   it('acepta campos de identidad y los reenvía como precondiciones', async () => {
     vi.mocked(invoke).mockResolvedValueOnce({
       processes: [

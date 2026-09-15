@@ -402,6 +402,8 @@ export default function ProcessesDock({
               readError={readError}
               stopById={stopById}
               listTruncated={listTruncated}
+              freshness={freshness}
+              listError={listError}
               pinnedId={pinnedId}
               logPaused={logPaused}
               onLogPausedChange={setLogPaused}
@@ -410,6 +412,7 @@ export default function ProcessesDock({
               onAcknowledge={(id) => snap.acknowledge(id)}
               onDismiss={(id) => snap.dismiss(id)}
               onPin={(id) => snap.pin(id)}
+              onRefresh={() => snap.refresh()}
               onClose={closeInspector}
             />
           )}

@@ -936,6 +936,7 @@ export const es = {
   'processes.pinned': 'fijado',
   'processes.loading': 'Cargando salida…',
   'processes.outputPartial': 'Salida parcial',
+  'processes.retry': 'Reintentar',
   'processes.unsupported': 'Procesos no disponibles en este motor.',
   'processes.offline': 'Motor no disponible. Se conserva la última observación.',
   'processes.stopTitle': '¿Detener «{name}»?',

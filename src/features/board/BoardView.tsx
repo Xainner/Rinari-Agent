@@ -27,6 +27,7 @@ import {
 } from '../../stores/board'
 import AddPaneDialog from './AddPaneDialog'
 import BoardEmptyState from './BoardEmptyState'
+import BoardToolbar from './BoardToolbar'
 import SessionPane from './SessionPane'
 import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
 import { usePeerGroup } from './usePeerGroup'
@@ -238,6 +239,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
       {attentionPersistError && (
         <div role="status" className="board-banner">{t('board.attention.notPersisted')}</div>
       )}
+      {panes.length > 0 && <BoardToolbar onAddPane={openAddDialog} />}
       <div ref={canvasRef} className="board-canvas" role="region" aria-label={t('board.title')}>
         {panes.length === 0 ? (
           <BoardEmptyState

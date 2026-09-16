@@ -150,3 +150,31 @@ protocolo: `RINARI_ENGINE_SCHEMA=<ruta a Rinari-CLI/src/rinari/engine_protocol/s
 
 Validación: `src/stores/boardAttention.test.ts`, `sessionSelectors.test.ts`
 (§ pane status), `BoardActivityController.test.tsx`, `BoardView.status.test.tsx`.
+
+# Boards: colapso de paneles, tiras y modo foco
+
+- Colapsar (`Ctrl+Alt+[`, botón del header o menú) convierte el panel en una
+  **tira de 48 px** (`CollapsedPaneStrip`) que conserva estado confirmado,
+  título, logo del proveedor y badges independientes (intervención, resultados
+  sin leer, mensajes de pares). No se montan chat, composer ni workspace; el
+  runtime sigue vivo y el borrador se conserva en su clave. El resizer exterior
+  solo actúa sobre paneles expandidos.
+- Colapsar es presentación: nunca cancela turnos, cierra sesiones, revoca el
+  grupo de pares ni marca leído. El foco pasa al vecino expandido más cercano
+  (derecha, luego izquierda); sin vecinos, el foco queda vacío y es válido.
+- `Ctrl+Alt+]` expande el enfocado; sin foco, el último expandido o la primera
+  tira. Los atajos son configurables (Ajustes › Atajos) y no tienen acelerador
+  nativo duplicado.
+- Toolbar del board: conteos por **sesión** (trabajando / te necesitan / con
+  resultados sin leer), «Colapsar todo», «Expandir todo», «Colapsar terminados»
+  (solo `done`/`idle`/`cancelled`, sin pendientes, con disponibilidad
+  confirmada y nunca el enfocado; deshabilitado en modo foco), «Modo foco»
+  (snapshot de la composición, un único panel expandido; el alta durante el
+  modo enfoca el nuevo; colapsar el foco a mano sale del modo sin restaurar)
+  y «Marcar todos los resultados como leídos». Las mismas acciones existen en
+  la paleta de comandos (`Boards: …`).
+- Los estados que usa la toolbar y `collapseFinished` salen de la caché
+  efímera `boardStatus` publicada por `BoardActivityController`, nunca de un
+  mapa inventado por el componente.
+
+Validación: `src/stores/board.test.ts` (§7.6), `BoardView.collapse.test.tsx`.

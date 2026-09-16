@@ -147,3 +147,125 @@ describe('board layout store', () => {
     expect(useBoardStore.getState().panes).toEqual([])
   })
 })
+
+describe('collapse and focus mode (§7.6)', () => {
+  function threePanes() {
+    const store = useBoardStore.getState()
+    const a = store.addPane('ses_a').paneId
+    const b = store.addPane('ses_b').paneId
+    const c = store.addPane('ses_c').paneId
+    return { a, b, c }
+  }
+  const collapsedIds = () => useBoardStore.getState().panes.filter((pane) => pane.collapsed).map((pane) => pane.paneId)
+
+  it('collapsing the focused pane moves focus to the nearest expanded neighbour and keeps its width', () => {
+    const { a, b, c } = threePanes()
+    const store = useBoardStore.getState()
+    store.setPaneWidth(b, 900)
+    store.focusPane(b)
+    store.setCollapsed(b, true)
+    const state = useBoardStore.getState()
+    expect(collapsedIds()).toEqual([b])
+    expect(state.focusedPaneId).toBe(c)
+    expect(state.lastExpandedPaneId).toBe(b)
+    expect(state.panes.find((pane) => pane.paneId === b)?.width).toBe(900)
+    store.setCollapsed(c, true)
+    expect(useBoardStore.getState().focusedPaneId).toBe(a)
+    store.setCollapsed(a, true)
+    expect(useBoardStore.getState().focusedPaneId).toBeNull()
+  })
+
+  it('expandPane restores without stealing focus outside focus mode and focuses inside it', () => {
+    const { a, b } = threePanes()
+    const store = useBoardStore.getState()
+    store.focusPane(a)
+    store.setCollapsed(b, true)
+    store.expandPane(b)
+    expect(useBoardStore.getState().focusedPaneId).toBe(a)
+    expect(collapsedIds()).toEqual([])
+    store.setFocusMode(true)
+    expect(collapsedIds().sort()).toEqual([b, useBoardStore.getState().panes[2].paneId].sort())
+    store.expandPane(b)
+    expect(useBoardStore.getState().focusedPaneId).toBe(b)
+    expect(collapsedIds()).not.toContain(b)
+    expect(collapsedIds()).toContain(a)
+  })
+
+  it('collapseAll / expandAll leave focus mode and keep a usable cursor', () => {
+    const { a, b } = threePanes()
+    const store = useBoardStore.getState()
+    store.focusPane(b)
+    store.setFocusMode(true)
+    store.collapseAll()
+    let state = useBoardStore.getState()
+    expect(state.focusMode).toBe(false)
+    expect(state.focusModeSnapshot).toBeNull()
+    expect(state.focusedPaneId).toBeNull()
+    expect(state.lastExpandedPaneId).toBe(b)
+    expect(collapsedIds()).toHaveLength(3)
+    store.expandAll()
+    state = useBoardStore.getState()
+    expect(collapsedIds()).toEqual([])
+    expect(state.focusedPaneId).toBe(b)
+    store.collapseAll()
+    useBoardStore.setState({ lastExpandedPaneId: null })
+    store.expandAll()
+    expect(useBoardStore.getState().focusedPaneId).toBe(a)
+  })
+
+  it('focus mode snapshots the composition, restores it on exit and forgets removed panes', () => {
+    const { a, b, c } = threePanes()
+    const store = useBoardStore.getState()
+    store.setCollapsed(c, true)
+    store.focusPane(a)
+    store.setFocusMode(true)
+    let state = useBoardStore.getState()
+    expect(state.focusModeSnapshot).toEqual({ [a]: false, [b]: false, [c]: true })
+    expect(collapsedIds().sort()).toEqual([b, c].sort())
+    // Adding during focus mode: the new pane is focused and expanded, others collapse.
+    const d = store.addPane('ses_d').paneId
+    state = useBoardStore.getState()
+    expect(state.focusedPaneId).toBe(d)
+    expect(collapsedIds().sort()).toEqual([a, b, c].sort())
+    expect(state.focusModeSnapshot?.[d]).toBe(false)
+    store.removePane(d)
+    state = useBoardStore.getState()
+    expect(state.focusModeSnapshot?.[d]).toBeUndefined()
+    expect(state.focusedPaneId).not.toBeNull()
+    expect(collapsedIds()).not.toContain(state.focusedPaneId)
+    store.setFocusMode(false)
+    state = useBoardStore.getState()
+    expect(state.focusMode).toBe(false)
+    expect(collapsedIds()).toEqual([c])
+  })
+
+  it('collapsing the focused pane by hand during focus mode leaves the mode without restoring', () => {
+    const { a } = threePanes()
+    const store = useBoardStore.getState()
+    store.focusPane(a)
+    store.setFocusMode(true)
+    store.setCollapsed(a, true)
+    const state = useBoardStore.getState()
+    expect(state.focusMode).toBe(false)
+    expect(state.focusModeSnapshot).toBeNull()
+    expect(collapsedIds()).toHaveLength(3)
+    expect(state.focusedPaneId).toBeNull()
+  })
+
+  it('collapseFinished only folds unfocused, ready, intervention-free done/idle/cancelled panes', () => {
+    const { a, b, c } = threePanes()
+    const store = useBoardStore.getState()
+    store.focusPane(a)
+    const count = store.collapseFinished({
+      [a]: { kind: 'done', pendingInterventions: 0, availabilityReady: true },
+      [b]: { kind: 'done', pendingInterventions: 0, availabilityReady: true },
+      [c]: { kind: 'failed', pendingInterventions: 0, availabilityReady: true },
+    })
+    expect(count).toBe(1)
+    expect(collapsedIds()).toEqual([b])
+    expect(store.collapseFinished({ [c]: { kind: 'idle', pendingInterventions: 1, availabilityReady: true } })).toBe(0)
+    expect(store.collapseFinished({ [c]: { kind: 'idle', pendingInterventions: 0, availabilityReady: false } })).toBe(0)
+    store.setFocusMode(true)
+    expect(store.collapseFinished({ [c]: { kind: 'idle', pendingInterventions: 0, availabilityReady: true } })).toBe(0)
+  })
+})

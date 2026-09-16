@@ -1,9 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { useEngineData, useRuntimeStore } from '../engine/EngineContext'
-import { terminalOutcomeOf, type TerminalOutcome } from '../engine/sessionSelectors'
+import {
+  derivePaneStatus,
+  samePaneStatus,
+  selectSessionApprovals,
+  selectSessionTimelines,
+  terminalOutcomeOf,
+  type PaneStatus,
+  type TerminalOutcome,
+} from '../engine/sessionSelectors'
 import type { TurnTimeline } from '../activity/types'
 import { useBoardStore } from '../../stores/board'
-import { useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
+import { unreadPeerCount, unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
+import { useBoardStatusStore } from '../../stores/boardStatus'
+import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 
 const ACTIVE = new Set(['running', 'approval', 'cancelling'])
 
@@ -92,6 +102,45 @@ export default function BoardActivityController() {
     scan()
     return store.subscribe(scan)
   }, [store, memberIds, data.historyInfo, data.engineGeneration])
+
+  // -- estado derivado central por panel (toolbar, barra superior, título) ----
+  const memberKey = members.map((pane) => `${pane.paneId}:${pane.sessionId}`).join('|')
+  useEffect(() => {
+    const panes = memberKey ? memberKey.split('|').map((item) => { const [paneId, sessionId] = item.split(':'); return { paneId, sessionId } }) : []
+    const sessionIds = [...new Set(panes.map((pane) => pane.sessionId))]
+    const publish = () => {
+      const runtime = store.getState()
+      const attention = useBoardAttentionStore.getState().sessions
+      const previous = useBoardStatusStore.getState().byPane
+      const next: Record<string, PaneStatus> = {}
+      let changed = Object.keys(previous).length !== panes.length
+      for (const pane of panes) {
+        const receipts = attention[pane.sessionId]
+        const status = derivePaneStatus({
+          sessionId: pane.sessionId,
+          timelines: selectSessionTimelines(runtime, pane.sessionId),
+          pendingApprovals: selectSessionApprovals(runtime, pane.sessionId).length,
+          pendingQuestions: getPendingQuestions(pane.sessionId).length,
+          unreadResultCount: unreadResultCount(receipts),
+          unreadPeerCount: unreadPeerCount(receipts),
+          availability: !data.ready ? 'disconnected' : data.sessionsById[pane.sessionId] ? 'ready' : 'loading',
+        })
+        const before = previous[pane.paneId] ?? null
+        if (samePaneStatus(before, status)) next[pane.paneId] = before as PaneStatus
+        else { next[pane.paneId] = status; changed = true }
+      }
+      if (changed) useBoardStatusStore.getState().publish(next)
+    }
+    publish()
+    const unsubscribers = [
+      store.subscribe(publish),
+      useBoardAttentionStore.subscribe(publish),
+      ...sessionIds.map((sessionId) => subscribePendingQuestions(sessionId, publish)),
+    ]
+    return () => {
+      for (const stop of unsubscribers) stop()
+    }
+  }, [store, memberKey, data.ready, data.sessionsById])
 
   return null
 }

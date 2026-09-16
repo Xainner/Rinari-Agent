@@ -135,6 +135,13 @@ export default function CommandPalette({
                   {t('cmd.addPane')}
                 </Command.Item>
               )}
+              {([
+                ['collapse-all-panes', t('cmd.collapseAllPanes')],
+                ['expand-all-panes', t('cmd.expandAllPanes')],
+                ['collapse-finished-panes', t('cmd.collapseFinishedPanes')],
+                ['toggle-focus-mode', t('cmd.toggleFocusMode')],
+                ['mark-all-board-results-read', t('cmd.markAllBoardResultsRead')],
+              ] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['view-normal', t('nav.normal')], ['view-boards', t('nav.boards')]] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['open-folder', 'Abrir carpeta'], ['files', 'Panel de archivos'], ['sidebar', 'Barra lateral'], ['updates', 'Buscar actualizaciones'], ['about', 'Acerca de Rinari Agent']] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               <Command.Item

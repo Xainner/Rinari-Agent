@@ -79,6 +79,18 @@ function subscribe(sessionId: string, listener: () => void): () => void {
   }
 }
 
+/**
+ * Acceso sin hook para controladores (board): mantiene viva la colección de
+ * esa sesión mientras haya un suscriptor y devuelve la lista actual.
+ */
+export function subscribePendingQuestions(sessionId: string, listener: () => void): () => void {
+  return subscribe(sessionId, listener)
+}
+
+export function getPendingQuestions(sessionId: string): QuestionRequest[] {
+  return entries.get(sessionId)?.requests ?? EMPTY
+}
+
 /** Preguntas pendientes de una sesión (referencia estable entre renders). */
 export function usePendingQuestions(sessionId: string): QuestionRequest[] {
   // Identidad estable por sesión: React solo se resuscribe al cambiar de sesión.

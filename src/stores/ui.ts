@@ -39,7 +39,7 @@ export type SettingsSection =
   | 'advanced'
   | 'about'
 
-export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards'
+export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards' | 'collapsePane' | 'expandPane'
 export type ShortcutBindings = Record<ShortcutAction, string>
 
 export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
@@ -48,6 +48,9 @@ export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
   settings: 'Ctrl+,',
   sidebar: 'Ctrl+B',
   boards: 'Ctrl+Shift+B',
+  // Colapso/expansión del panel enfocado en Boards; sin acelerador nativo.
+  collapsePane: 'Ctrl+Alt+[',
+  expandPane: 'Ctrl+Alt+]',
 }
 
 function readBool(key: string, fallback: boolean): boolean {

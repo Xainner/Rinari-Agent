@@ -15,6 +15,7 @@ import {
   type BoardPane,
 } from '../../stores/board'
 import { cn } from '../../lib/utils'
+import CollapsedPaneStrip from './CollapsedPaneStrip'
 import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
 import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
@@ -68,6 +69,8 @@ function SessionPane({
   const setDockTab = useBoardStore((state) => state.setDockTab)
   const setWorkspaceTab = useBoardStore((state) => state.setWorkspaceTab)
   const movePane = useBoardStore((state) => state.movePane)
+  const setCollapsed = useBoardStore((state) => state.setCollapsed)
+  const expandPane = useBoardStore((state) => state.expandPane)
   const panes = useBoardStore((state) => state.panes)
   const paneError = useBoardStore((state) => state.paneErrors[pane.paneId])
   const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
@@ -148,6 +151,21 @@ function SessionPane({
   const title = session.record?.title || t('sidebar.newChat')
   const availability = session.availability
 
+  if (pane.collapsed) {
+    // Tira: sin chat, composer ni workspace montados; el runtime sigue vivo.
+    return (
+      <CollapsedPaneStrip
+        paneId={pane.paneId}
+        session={session}
+        focused={focused}
+        providers={data.providers}
+        onExpand={() => expandPane(pane.paneId, { focus: true })}
+        onOpenSingle={() => onOpenSingle(pane.sessionId)}
+        onRemove={() => onRemove(pane.paneId)}
+      />
+    )
+  }
+
   return (
     <section
       aria-label={title}
@@ -177,6 +195,7 @@ function SessionPane({
         onMoveRight={() => movePane(pane.paneId, index + 1)}
         onRemove={() => onRemove(pane.paneId)}
         onRemoveAndClose={() => onRemoveAndClose(pane.paneId, pane.sessionId)}
+        onCollapse={() => setCollapsed(pane.paneId, true)}
         peers={peers}
       />
       {peerMessaging && (

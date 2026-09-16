@@ -14,6 +14,15 @@ import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
 import SingleSessionView from './features/engine/SingleSessionView'
 import BoardActivityController from './features/board/BoardActivityController'
+import {
+  collapseAllPanes,
+  collapseFinishedPanes,
+  collapseFocusedPane,
+  expandAllPanes,
+  expandPaneShortcut,
+  markAllBoardResultsRead,
+  toggleFocusMode,
+} from './features/board/boardCommands'
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import BrowserPanel from './features/browser/BrowserPanel'
@@ -189,6 +198,9 @@ function App() {
     if (action === 'sidebar') toggleSidebarCollapsed()
     if (action === 'boards') toggleBoards()
     if (action === 'newChat') dispatchAction('new-chat')
+    // Colapso/expansión solo actúan en Boards; en otras vistas no hacen nada.
+    if (action === 'collapsePane') dispatchAction('collapse-pane')
+    if (action === 'expandPane') dispatchAction('expand-pane')
   })
 
   const desktopActionRef = useRef<(action: DesktopAction) => void>(() => {})
@@ -231,6 +243,19 @@ function App() {
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break
         case 'toggle-boards': toggleBoards(); break
+        case 'collapse-pane': if (view === 'board') collapseFocusedPane(); break
+        case 'expand-pane': if (view === 'board') expandPaneShortcut(); break
+        case 'collapse-all-panes': collapseAllPanes(); break
+        case 'expand-all-panes': expandAllPanes(); break
+        case 'collapse-finished-panes': {
+          const result = collapseFinishedPanes()
+          if (result.outcome === 'focus-mode') toast.info(translate(lang, 'board.toolbar.collapseFinishedFocusMode'))
+          else if (result.outcome === 'nothing') toast.info(translate(lang, 'board.toolbar.nothingToCollapse'))
+          else toast.success(translate(lang, 'board.toolbar.collapsedFinished', { n: result.count }))
+          break
+        }
+        case 'toggle-focus-mode': goBoard(); toggleFocusMode(); break
+        case 'mark-all-board-results-read': markAllBoardResultsRead(); break
         case 'open-folder': void openFolderDialog({ directory: true }).then(path => { if (typeof path === 'string') void handleOpenProjectPath(path).then(ok => ok && goChat()) }); break
         case 'close-session': {
           // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.

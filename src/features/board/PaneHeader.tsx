@@ -2,6 +2,7 @@ import { memo } from 'react'
 import {
   ArrowLeftRight,
   CheckCheck,
+  ChevronsLeft,
   CircleHelp,
   ExternalLink,
   GitBranch,
@@ -62,6 +63,7 @@ export interface PaneHeaderProps {
   onMoveRight: () => void
   onRemove: () => void
   onRemoveAndClose: () => void
+  onCollapse: () => void
   /** Mensajería entre paneles; `undefined` cuando el Engine no la anuncia. */
   peers?: {
     boardEnabled: boolean
@@ -96,6 +98,7 @@ function PaneHeader({
   onMoveRight,
   onRemove,
   onRemoveAndClose,
+  onCollapse,
   peers,
 }: PaneHeaderProps) {
   const { t } = useI18n()
@@ -208,6 +211,15 @@ function PaneHeader({
             <MessageSquareShare size={13} aria-hidden="true" />
           </span>
         )}
+        <button
+          type="button"
+          aria-label={t('board.pane.collapse')}
+          title={t('board.pane.collapse')}
+          onClick={onCollapse}
+          className="pane-header-icon"
+        >
+          <ChevronsLeft size={15} />
+        </button>
         <button
           type="button"
           aria-pressed={workspaceVisible}

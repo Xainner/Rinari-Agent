@@ -17,6 +17,15 @@ export type DesktopAction =
   | 'view-normal'
   | 'view-boards'
   | 'toggle-boards'
+  // Boards: colapso, modo foco y lectura masiva. Destino estable: el store
+  // del board; tarjetas, menú y paleta despachan lo mismo.
+  | 'collapse-pane'
+  | 'expand-pane'
+  | 'collapse-all-panes'
+  | 'expand-all-panes'
+  | 'collapse-finished-panes'
+  | 'toggle-focus-mode'
+  | 'mark-all-board-results-read'
 
 export function dispatchAction(action: DesktopAction) {
   window.dispatchEvent(new CustomEvent('rinari-action', { detail: action }))

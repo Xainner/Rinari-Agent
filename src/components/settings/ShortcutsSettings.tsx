@@ -4,17 +4,20 @@ import { useI18n } from '../../i18n'
 import { useUIStore, type ShortcutAction } from '../../stores/ui'
 import { Section } from './parts'
 
-const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.boards' }> = [
+const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.boards' | 'settings.shortcuts.collapsePane' | 'settings.shortcuts.expandPane' }> = [
   { id: 'newChat', label: 'settings.shortcuts.new' },
   { id: 'palette', label: 'settings.shortcuts.palette' },
   { id: 'settings', label: 'settings.shortcuts.settings' },
   { id: 'sidebar', label: 'settings.shortcuts.sidebar' },
   { id: 'boards', label: 'settings.shortcuts.boards' },
+  { id: 'collapsePane', label: 'settings.shortcuts.collapsePane' },
+  { id: 'expandPane', label: 'settings.shortcuts.expandPane' },
 ]
 
 function shortcutFromEvent(event: KeyboardEvent<HTMLButtonElement>): string | null {
   if (event.key === 'Escape') return null
   const key = event.key.length === 1 ? event.key.toUpperCase() : event.key === ',' ? ',' : null
+  // Alt solo (sin Ctrl/Meta) sigue siendo válido para colapso/expansión.
   if (!key || (!event.ctrlKey && !event.metaKey && !event.altKey)) return null
   return `${event.ctrlKey || event.metaKey ? 'Ctrl+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''}${key}`
 }

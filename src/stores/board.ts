@@ -93,6 +93,18 @@ interface BoardState extends PersistedBoard {
   setSoftLimit: (limit: number) => void
   setPeerFlags: (paneId: string, flags: Partial<Pick<BoardPane, 'peerReceive' | 'peerSend'>>) => void
   setMessagingEnabled: (enabled: boolean) => void
+  // -- colapso y modo foco (§7.6): presentación, nunca la vida de la sesión --
+  setCollapsed: (paneId: string, collapsed: boolean) => void
+  /** Expande sin robar foco (fuera de modo foco); en modo foco equivale a enfocar. */
+  expandPane: (paneId: string, options?: { focus?: boolean }) => void
+  collapseAll: () => void
+  expandAll: () => void
+  /**
+   * Colapsa los paneles no enfocados cuyo estado es `done`, `idle` o `cancelled`
+   * según la instantánea que aporta el controlador. Deshabilitado en modo foco.
+   */
+  collapseFinished: (statusByPane: Record<string, CollapsibleStatus>) => number
+  setFocusMode: (enabled: boolean) => void
   setNotifications: (patch: Partial<BoardNotificationPrefs>) => void
   reconcileResolvedSessions: (resolved: Record<string, SessionResolution>) => ReconcileOutcome
   hasSession: (sessionId: string) => boolean
@@ -102,6 +114,14 @@ interface BoardState extends PersistedBoard {
 }
 
 const DEFAULT_NOTIFICATIONS: BoardNotificationPrefs = { toasts: true, system: false, needsYou: true, systemDetails: false }
+
+/** Instantánea mínima que `collapseFinished` acepta del controlador. */
+export interface CollapsibleStatus {
+  kind: string
+  pendingInterventions: number
+  availabilityReady: boolean
+}
+const COLLAPSIBLE_KINDS = new Set(['done', 'idle', 'cancelled'])
 
 function newId(prefix: string): string {
   const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -283,6 +303,19 @@ export function nearestExpandedNeighbor(
   return null
 }
 
+/** Vecino más cercano en el orden del board, colapsado o no. */
+function nearestNeighbor(panes: BoardPane[], paneId: string): string | null {
+  const index = panes.findIndex((pane) => pane.paneId === paneId)
+  if (index < 0) return panes[0]?.paneId ?? null
+  for (let offset = 1; offset < panes.length; offset += 1) {
+    const right = panes[index + offset]
+    if (right) return right.paneId
+    const left = panes[index - offset]
+    if (left) return left.paneId
+  }
+  return null
+}
+
 export const useBoardStore = create<BoardState>((set, get) => ({
   ...loadBoard(),
   paneErrors: {},
@@ -333,7 +366,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const panes = state.panes.filter((pane) => pane.paneId !== paneId)
     let focusedPaneId = state.focusedPaneId
     if (focusedPaneId === paneId) {
-      focusedPaneId = nearestExpandedNeighbor(state.panes, paneId)
+      // En modo foco el resto está colapsado por diseño: el vecino más cercano
+      // (derecha, luego izquierda) pasa a ser el foco y se expande abajo.
+      focusedPaneId = state.focusMode
+        ? nearestExpandedNeighbor(state.panes, paneId, () => true) ?? nearestNeighbor(state.panes, paneId)
+        : nearestExpandedNeighbor(state.panes, paneId)
       if (focusedPaneId === paneId) focusedPaneId = null
     }
     if (focusedPaneId && !panes.some((pane) => pane.paneId === focusedPaneId)) focusedPaneId = null
@@ -406,6 +443,100 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   })),
   setMessagingEnabled: (enabled) => set({ messagingEnabled: enabled }),
   setNotifications: (patch) => set((state) => ({ notifications: { ...state.notifications, ...patch } })),
+
+  setCollapsed: (paneId, collapsed) => set((state) => {
+    const pane = state.panes.find((item) => item.paneId === paneId)
+    if (!pane || pane.collapsed === collapsed) return state
+    if (!collapsed) {
+      if (state.focusMode) {
+        // En modo foco solo queda expandido uno: expandir es enfocar.
+        return {
+          panes: state.panes.map((item) => ({ ...item, collapsed: item.paneId !== paneId })),
+          focusedPaneId: paneId,
+          lastExpandedPaneId: paneId,
+        }
+      }
+      return { panes: state.panes.map((item) => (item.paneId === paneId ? { ...item, collapsed: false } : item)) }
+    }
+    // Colapsar: el ancho preferido se conserva; el foco pasa al vecino expandido.
+    const panes = state.panes.map((item) => (item.paneId === paneId ? { ...item, collapsed: true } : item))
+    let focusedPaneId = state.focusedPaneId
+    if (focusedPaneId === paneId) focusedPaneId = nearestExpandedNeighbor(panes, paneId)
+    const next: Partial<BoardState> = { panes, focusedPaneId, lastExpandedPaneId: paneId }
+    if (state.focusMode && state.focusedPaneId === paneId) {
+      // Colapsar el foco a mano sale del modo sin restaurar el snapshot: nada se
+      // expande por sorpresa; puede quedar todo colapsado.
+      return { ...next, focusMode: false, focusModeSnapshot: null }
+    }
+    return next
+  }),
+
+  expandPane: (paneId, options = {}) => {
+    const state = get()
+    if (!state.panes.some((item) => item.paneId === paneId)) return
+    if (state.focusMode || options.focus) {
+      get().focusPane(paneId)
+      return
+    }
+    get().setCollapsed(paneId, false)
+  },
+
+  collapseAll: () => set((state) => {
+    if (state.panes.length === 0 && !state.focusMode) return state
+    const cursor = state.focusedPaneId ?? state.lastExpandedPaneId ?? state.panes[0]?.paneId ?? null
+    return {
+      panes: state.panes.map((pane) => (pane.collapsed ? pane : { ...pane, collapsed: true })),
+      focusedPaneId: null,
+      lastExpandedPaneId: cursor,
+      focusMode: false,
+      focusModeSnapshot: null,
+    }
+  }),
+
+  expandAll: () => set((state) => {
+    const panes = state.panes.map((pane) => (pane.collapsed ? { ...pane, collapsed: false } : pane))
+    const focusedPaneId = state.focusedPaneId && panes.some((pane) => pane.paneId === state.focusedPaneId)
+      ? state.focusedPaneId
+      : panes.some((pane) => pane.paneId === state.lastExpandedPaneId) ? state.lastExpandedPaneId : panes[0]?.paneId ?? null
+    return { panes, focusedPaneId, focusMode: false, focusModeSnapshot: null }
+  }),
+
+  collapseFinished: (statusByPane) => {
+    const state = get()
+    if (state.focusMode) return 0
+    const targets = state.panes.filter((pane) => {
+      if (pane.collapsed || pane.paneId === state.focusedPaneId) return false
+      const status = statusByPane[pane.paneId]
+      return Boolean(status) && COLLAPSIBLE_KINDS.has(status.kind) && status.pendingInterventions === 0 && status.availabilityReady
+    })
+    if (targets.length === 0) return 0
+    const ids = new Set(targets.map((pane) => pane.paneId))
+    set({ panes: state.panes.map((pane) => (ids.has(pane.paneId) ? { ...pane, collapsed: true } : pane)) })
+    return targets.length
+  },
+
+  setFocusMode: (enabled) => set((state) => {
+    if (enabled === state.focusMode) return state
+    if (enabled) {
+      const snapshot = Object.fromEntries(state.panes.map((pane) => [pane.paneId, pane.collapsed]))
+      const focus = state.focusedPaneId && state.panes.some((pane) => pane.paneId === state.focusedPaneId)
+        ? state.focusedPaneId
+        : state.panes.some((pane) => pane.paneId === state.lastExpandedPaneId) ? state.lastExpandedPaneId : state.panes[0]?.paneId ?? null
+      return {
+        focusMode: true,
+        focusModeSnapshot: snapshot,
+        focusedPaneId: focus,
+        lastExpandedPaneId: focus ?? state.lastExpandedPaneId,
+        panes: state.panes.map((pane) => ({ ...pane, collapsed: focus !== null && pane.paneId !== focus })),
+      }
+    }
+    const snapshot = state.focusModeSnapshot ?? {}
+    const panes = state.panes.map((pane) => ({ ...pane, collapsed: pane.paneId in snapshot ? snapshot[pane.paneId] : false }))
+    let focusedPaneId = state.focusedPaneId
+    const focused = panes.find((pane) => pane.paneId === focusedPaneId)
+    if (!focused || focused.collapsed) focusedPaneId = focusedPaneId ? nearestExpandedNeighbor(panes, focusedPaneId) : null
+    return { focusMode: false, focusModeSnapshot: null, panes, focusedPaneId }
+  }),
 
   reconcileResolvedSessions: (resolved) => {
     const outcome: ReconcileOutcome = { removed: [], unresolved: [] }

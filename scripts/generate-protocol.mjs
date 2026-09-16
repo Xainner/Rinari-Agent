@@ -17,8 +17,14 @@ if (existsSync(localSchema)) {
     localIsPinned = false
   }
 }
+// The schema digest is part of the generated output and `--check` compares
+// text byte-for-byte. A Windows checkout with core.autocrlf turns the LF blob
+// into CRLF, so both the source and the existing outputs are normalized to LF
+// before hashing/comparing; otherwise CI on Linux reports the files as stale.
+const normalizeEol = (text) => text.replace(/\r\n/g, '\n')
+
 const schemaSource = process.env.RINARI_ENGINE_SCHEMA
-const schemaText = schemaSource
+const rawSchemaText = schemaSource
   ? readFileSync(resolve(schemaSource), 'utf8')
   : localIsPinned
     ? readFileSync(localSchema, 'utf8')
@@ -28,6 +34,7 @@ const schemaText = schemaSource
         if (!response.ok) throw new Error(`Could not fetch pinned protocol schema (${response.status}).`)
         return response.text()
       })
+const schemaText = normalizeEol(rawSchemaText)
 
 const schema = JSON.parse(schemaText)
 const digest = createHash('sha256').update(schemaText).digest('hex')
@@ -106,7 +113,7 @@ const outputs = [
 const check = process.argv.includes('--check')
 for (const [path, content] of outputs) {
   if (check) {
-    if (!existsSync(path) || readFileSync(path, 'utf8') !== content) {
+    if (!existsSync(path) || normalizeEol(readFileSync(path, 'utf8')) !== content) {
       throw new Error(`${path} is stale. Run npm run protocol:generate.`)
     }
   } else {

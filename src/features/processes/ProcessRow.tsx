@@ -9,7 +9,7 @@ import {
   durationMs,
   elapsedMsSinceStarted,
   formatElapsedShort,
-  kindLabel,
+  kindLabelKey,
   readinessLabelKey,
   resourceTitle,
   statusTextKey,
@@ -71,7 +71,7 @@ export default function ProcessRow({
   const [urlError, setUrlError] = useState('')
   const motionApi = useProcessesMotion()
   const { resource } = presentation
-  const name = resourceTitle(resource)
+  const name = resourceTitle(resource) ?? t('processes.untitled')
   const statusKey = deriveStatusKey(resource, { online, stopConfirmed })
   const statusLabel = t(
     statusTextKey(statusKey),
@@ -112,7 +112,7 @@ export default function ProcessRow({
             {finishedSpan != null && ` · ${formatElapsedShort(finishedSpan)}`}
             {readinessKey != null && ` · ${t(readinessKey)}`}
             {resource.pid != null && ` · PID ${resource.pid}`}
-            {resource.kind !== 'process' && ` · ${kindLabel(resource.kind)}`}
+            {resource.kind !== 'process' && ` · ${t(kindLabelKey(resource.kind))}`}
           </span>
         </span>
         <span aria-hidden="true" className={`processes-chevron${expanded ? ' open' : ''}`}>

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
-import ProcessesDock from './ProcessesDock'
+import ProcessesDock, { RECENT_SUCCESS_MS } from './ProcessesDock'
 import { useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { I18nProvider } from '../../i18n'
@@ -48,6 +48,13 @@ function mockClock(start: number) {
     },
     restore: () => spy.mockRestore(),
   }
+}
+
+async function expandDock() {
+  const dock = await screen.findByTestId('processes-dock')
+  const expand = within(dock).queryByRole('button', { name: /Procesos de esta conversación/ })
+  if (expand) fireEvent.click(expand)
+  return screen.findByTestId('processes-dock')
 }
 
 async function openInspectorOnFirstRow() {
@@ -190,8 +197,9 @@ it('X-2: un cambio solo de readiness actualiza la fila', async () => {
   await waitFor(() => expect(screen.getByText(/Aceptando conexiones/)).toBeTruthy(), { timeout: 5000 })
 }, 10000)
 
-it('T-2: stop con STALE_RESOURCE falla con mensaje; error genérico es incierto', async () => {
+it('T-2: STALE_RESOURCE no es "sigue activo"; el error genérico es incierto', async () => {
   let mode: 'stale' | 'generic' = 'stale'
+  let stops = 0
   vi.mocked(invoke).mockImplementation(async (command) => {
     if (command === 'workspace_process_list') {
       return { processes: [activeRow('process:proc_001', 'npm run dev')], truncated: false }
@@ -200,6 +208,7 @@ it('T-2: stop con STALE_RESOURCE falla con mensaje; error genérico es incierto'
       return { process: activeRow('process:proc_001', 'npm run dev'), stdout: '', stderr: '', truncated: false }
     }
     if (command === 'workspace_process_stop') {
+      stops += 1
       throw new Error(mode === 'stale' ? 'STALE_RESOURCE: generation mismatch' : 'timeout')
     }
     throw new Error(`Unexpected ${String(command)}`)
@@ -207,12 +216,52 @@ it('T-2: stop con STALE_RESOURCE falla con mensaje; error genérico es incierto'
   renderDock()
   const inspector = await openInspectorOnFirstRow()
   fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  const listsBeforeStop = vi.mocked(invoke).mock.calls.filter(
+    ([command]) => command === 'workspace_process_list',
+  ).length
   fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
-  expect(await screen.findByText(/STALE_RESOURCE/)).toBeTruthy()
+
+  // Mensaje propio de identidad obsoleta, en el diálogo y en el detalle.
+  await waitFor(() =>
+    expect(screen.getAllByText(/El recurso cambi. desde que fue observado/).length).toBeGreaterThan(0),
+  )
+  // No se afirma que el proceso siga activo: es otra cosa, y el error crudo
+  // del engine nunca se le muestra al usuario.
+  expect(screen.queryByText(/El proceso sigue activo/)).toBeNull()
+  expect(screen.queryByText(/STALE_RESOURCE/)).toBeNull()
+  // Se reconcilia con una observación nueva y no se reintenta solo.
+  await waitFor(() =>
+    expect(
+      vi.mocked(invoke).mock.calls.filter(([command]) => command === 'workspace_process_list').length,
+    ).toBeGreaterThan(listsBeforeStop),
+  )
+  expect(stops).toBe(1)
+
   mode = 'generic'
   fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
   // El aviso aparece en el diálogo y en el detalle (mismo stopState).
   await waitFor(() => expect(screen.getAllByText(/No se pudo confirmar/)).toHaveLength(2))
+  expect(screen.queryByText(/timeout/)).toBeNull()
+  expect(stops).toBe(2)
+})
+
+it('T-2b: el engine que reporta el recurso vivo sí dice "sigue activo"', async () => {
+  vi.mocked(invoke).mockImplementation(async (command) => {
+    if (command === 'workspace_process_list') {
+      return { processes: [activeRow('process:proc_001', 'npm run dev')], truncated: false }
+    }
+    if (command === 'workspace_process_read') {
+      return { process: activeRow('process:proc_001', 'npm run dev'), stdout: '', stderr: '', truncated: false }
+    }
+    if (command === 'workspace_process_stop') return { id: 'process:proc_001', running: true }
+    throw new Error(`Unexpected ${String(command)}`)
+  })
+  renderDock()
+  const inspector = await openInspectorOnFirstRow()
+  fireEvent.click(within(inspector).getByRole('button', { name: /Detener npm run dev/ }))
+  fireEvent.click(screen.getByRole('button', { name: /^Detener$/ }))
+  await waitFor(() => expect(screen.getAllByText(/El proceso sigue activo/).length).toBeGreaterThan(0))
+  expect(screen.queryByText(/El recurso cambi. desde que fue observado/)).toBeNull()
 })
 
 it('T-3: un cambio de época cierra el diálogo pendiente', async () => {
@@ -558,3 +607,79 @@ it('detener el único proceso no genera atención y auto-cierra', async () => {
   // …y la vista se cierra sola a los 5 s.
   await waitFor(() => expect(screen.queryByTestId('processes-inspector')).toBeNull(), { timeout: 15000 })
 }, 25000)
+
+
+// -- regresiones de esta integración ---------------------------------------
+
+it('R-1: el tiempo oculto no alarga la ventana de un recurso terminado después', async () => {
+  const clock = mockClock(1_700_000_000_000)
+  try {
+    let running = true
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === 'workspace_process_list') {
+        return {
+          processes: [
+            { ...activeRow('process:proc_001', 'npm run build'), running, can_stop: running, exit_code: running ? null : 0 },
+          ],
+          truncated: false,
+        }
+      }
+      if (command === 'workspace_process_read') {
+        return { process: activeRow('process:proc_001', 'npm run build'), stdout: '', stderr: '', truncated: false }
+      }
+      throw new Error(`Unexpected ${String(command)}`)
+    })
+    renderDock()
+    await expandDock()
+    await screen.findByText(/npm run build/)
+
+    // La ventana se oculta un buen rato ANTES de que el proceso termine: ese
+    // tiempo no pertenece a este recurso y no debe alargar su permanencia.
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    clock.advance(600_000)
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false })
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    running = false
+    await waitFor(() => expect(screen.queryByText(/En ejecución/)).toBeNull(), { timeout: 5000 })
+
+    // Pasada la ventana de éxito reciente, la fila se retira: antes se quedaba
+    // los 10 minutos ocultos más los 5 s.
+    clock.advance(RECENT_SUCCESS_MS + 1_000)
+    await waitFor(() => expect(screen.queryByText(/npm run build/)).toBeNull(), { timeout: 5000 })
+  } finally {
+    clock.restore()
+  }
+})
+
+it('R-2: el mismo dock apuntado a otra sesión no mezcla snapshots', async () => {
+  // ChatView remonta el dock con key por sesión, pero el aislamiento no puede
+  // depender de eso: aun sin remontar, un cambio de sessionId sólo muestra
+  // los recursos de la sesión nueva, con el mismo ID opaco reutilizado.
+  vi.mocked(invoke).mockImplementation(async (command, args) => {
+    const sessionId = (args as { session_id?: string } | undefined)?.session_id
+    const label = sessionId === 's1' ? 'npm run dev' : 'cargo watch'
+    if (command === 'workspace_process_list') {
+      return { processes: [activeRow('process:proc_001', label)], truncated: false }
+    }
+    if (command === 'workspace_process_read') {
+      return { process: activeRow('process:proc_001', label), stdout: '', stderr: '', truncated: false }
+    }
+    throw new Error(`Unexpected ${String(command)}`)
+  })
+  const tree = (sessionId: string) => (
+    <I18nProvider lang="es">
+      <ProcessRuntimeProvider epoch={1} engineReady={true} hasCapability={true} hasIdentity={false}>
+        <ProcessesDock sessionId={sessionId} openSignal={0} />
+      </ProcessRuntimeProvider>
+    </I18nProvider>
+  )
+  const view = render(tree('s1'))
+  await expandDock()
+  await screen.findByText(/npm run dev/)
+
+  view.rerender(tree('s2'))
+  await screen.findByText(/cargo watch/)
+  expect(screen.queryByText(/npm run dev/)).toBeNull()
+})

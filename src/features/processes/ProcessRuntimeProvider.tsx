@@ -5,6 +5,7 @@ import {
   orderPresentations,
   sameResource,
   type ConnectionFreshness,
+  type ReadFailure,
   type ProcessPresentation,
   type StopOperation,
 } from './processesModel'
@@ -17,6 +18,11 @@ const BACKOFF_STEPS = [3000, 6000, 12000, 15000]
 // la re-liste. Se poda en el ciclo de poll (no en getSnapshot, que sólo
 // corre con bump y dejaría fantasmas sin re-render).
 const DETACHED_TTL_MS = 60_000
+// Absence in a partial list is never read as completion, so a permanently
+// truncated listing (more resources than the engine page size) would grow
+// `resources` without bound. The cap evicts the least recently verified
+// finished rows; it asserts nothing about how they ended.
+const MAX_TRACKED_RESOURCES = 400
 const MAX_OUTPUT_ENTRIES = 4
 const MAX_OUTPUT_CHARS = 2_000_000
 
@@ -40,7 +46,7 @@ interface SessionRuntime {
   listTruncated: boolean
   listInvalid: number
   selectedMissing: boolean
-  readErrorById: Map<string, string>
+  readErrorById: Map<string, ReadFailure>
   stopById: Map<string, StopOperation>
   outputs: Map<string, CachedOutput>
   seq: number
@@ -89,7 +95,7 @@ export interface SessionSnapshot {
   selectedOutput: ProcessOutput | null
   selectedMissing: boolean
   listError: string | null
-  readError: string | null
+  readError: ReadFailure | null
   stopById: Map<string, StopOperation>
   listTruncated: boolean
   listInvalid: number
@@ -164,7 +170,7 @@ export function ProcessRuntimeProvider({
     for (const sessionId of observersRef.current.keys()) {
       ensureRef.current(sessionId)
     }
-  }, [])
+  }, [bump])
 
   const noteInstanceId = useCallback(
     (instanceId: string | undefined) => {
@@ -245,7 +251,8 @@ export function ProcessRuntimeProvider({
     return removed
   }, [])
 
-  const pruneOutputs = useCallback((rt: SessionRuntime) => {    let total = 0
+  const pruneOutputs = useCallback((rt: SessionRuntime) => {
+    let total = 0
     for (const cached of rt.outputs.values()) total += cached.chars
     while (rt.outputs.size > MAX_OUTPUT_ENTRIES || total > MAX_OUTPUT_CHARS) {
       let oldestKey: string | null = null
@@ -316,9 +323,10 @@ export function ProcessRuntimeProvider({
         const message = err instanceof Error ? err.message : String(err)
         if (/NOT_FOUND/.test(message)) {
           current.selectedMissing = true
-          current.readErrorById.set(selectedId, 'Ya no está disponible')
+          // Stored as a key: the runtime has no locale, the view does.
+          current.readErrorById.set(selectedId, { key: 'processes.readGone' })
         } else {
-          current.readErrorById.set(selectedId, message)
+          current.readErrorById.set(selectedId, { raw: message })
         }
         bump()
       }
@@ -411,6 +419,24 @@ export function ProcessRuntimeProvider({
           }
           for (const id of [...current.confirmedDetached.keys()]) {
             if (seen.has(id)) current.confirmedDetached.delete(id)
+          }
+        }
+        if (result.truncated && current.resources.size > MAX_TRACKED_RESOURCES) {
+          const evictable = [...current.resources.entries()]
+            .filter(
+              ([id, item]) =>
+                !item.resource.running &&
+                !seen.has(id) &&
+                id !== current.selectedId &&
+                id !== current.pinnedId,
+            )
+            .sort((a, b) => a[1].lastVerifiedAt - b[1].lastVerifiedAt)
+          for (const [id] of evictable.slice(
+            0,
+            current.resources.size - MAX_TRACKED_RESOURCES,
+          )) {
+            current.resources.delete(id)
+            contentChanged = true
           }
         }
         current.engineOrder = nextOrder
@@ -640,7 +666,10 @@ export function ProcessRuntimeProvider({
           current.stopById.set(id, {
             state: 'failed',
             requestId,
-            message: 'El proceso sigue activo',
+            // The engine reported the resource as still running: that is the
+            // `stillActive` case, not a stale-identity rejection.
+            reason: 'still_running',
+            message: '',
           })
           bump()
           return
@@ -677,6 +706,9 @@ export function ProcessRuntimeProvider({
         current.stopById.set(id, {
           state: stale ? 'failed' : 'uncertain',
           requestId,
+          // STALE_RESOURCE is a distinct outcome, not "still active": the
+          // observation expired, so the view must say so and re-observe.
+          reason: stale ? 'stale_resource' : 'unknown',
           message,
         })
         bump()

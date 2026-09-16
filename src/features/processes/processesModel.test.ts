@@ -6,12 +6,12 @@ import {
   exitReasonLabelKey,
   isExternalPreview,
   isFailureStatus,
-  kindLabel,
+  kindLabelKey,
   orderPresentations,
   readinessLabelKey,
   resourceTitle,
   sameResource,
-  scopeKey,
+  stopResultKey,
   statusTextKey,
   summarizeStrip,
   type ProcessPresentation,
@@ -39,17 +39,6 @@ function presentation(resource: ManagedProcess, extra: Partial<ProcessPresentati
     ...extra,
   }
 }
-
-describe('scopeKey', () => {
-  it('aísla el mismo ID entre sesiones y épocas', () => {
-    expect(scopeKey(1, 'A', 'process:proc_001')).not.toBe(scopeKey(1, 'B', 'process:proc_001'))
-    expect(scopeKey(1, 'A', 'process:proc_001')).not.toBe(scopeKey(2, 'A', 'process:proc_001'))
-  })
-
-  it('trata el ID como opaco', () => {
-    expect(scopeKey(1, 'A', 'process:proc_001')).not.toBe(scopeKey(1, 'A', 'proc_001'))
-  })
-})
 
 describe('deriveStatusKey', () => {
   it('activo nunca es listo ni saludable', () => {
@@ -206,9 +195,49 @@ describe('franja', () => {
 
 describe('etiquetas', () => {
   it('no usa LLM y distingue PTY/preview', () => {
-    expect(kindLabel('pty')).toBe('Terminal')
-    expect(kindLabel('preview')).toBe('Vista previa')
+    expect(kindLabelKey('pty')).toBe('processes.kindPty')
+    expect(kindLabelKey('preview')).toBe('processes.kindPreview')
+    expect(kindLabelKey('process')).toBe('processes.kindProcess')
     expect(resourceTitle(row({ id: 'a', kind: 'pty', command: 'pwsh' }))).toBe('pwsh')
+  })
+
+  it('sin comando no inventa texto: la vista traduce el tipo', () => {
+    expect(resourceTitle(row({ id: 'a', kind: 'preview', command: '' }))).toBeNull()
+    expect(resourceTitle(row({ id: 'b', kind: 'pty', command: '   ' }))).toBeNull()
+  })
+})
+
+describe('stopResultKey', () => {
+  it('STALE_RESOURCE no se anuncia como "sigue activo"', () => {
+    expect(
+      stopResultKey({ state: 'failed', requestId: 'r', reason: 'stale_resource', message: '' }),
+    ).toBe('processes.stopStaleResource')
+  })
+
+  it('el engine que reporta el recurso vivo sí es "sigue activo"', () => {
+    expect(
+      stopResultKey({ state: 'failed', requestId: 'r', reason: 'still_running', message: '' }),
+    ).toBe('processes.stillActive')
+  })
+
+  it('un error no clasificado queda incierto y nunca muestra el crudo', () => {
+    expect(
+      stopResultKey({ state: 'uncertain', requestId: 'r', reason: 'unknown', message: 'timeout' }),
+    ).toBe('processes.stopUncertain')
+    expect(stopResultKey({ state: 'idle' })).toBeNull()
+    expect(stopResultKey({ state: 'confirmed', requestId: 'r' })).toBeNull()
+  })
+})
+
+describe('orden', () => {
+  it('una preview externa se ordena después de un terminado corriente', () => {
+    const finished = presentation(row({ id: 'fin', running: false, exit_code: 0 }))
+    const external = presentation(row({ id: 'ext', kind: 'preview', running: false }))
+    const ordered = orderPresentations([
+      { presentation: external, selected: false, pinned: false },
+      { presentation: finished, selected: false, pinned: false },
+    ])
+    expect(ordered.map((item) => item.resource.id)).toEqual(['fin', 'ext'])
   })
 })
 

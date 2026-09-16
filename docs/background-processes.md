@@ -31,7 +31,7 @@ directamente.
 
 La franja muestra como máximo dos filas más un contador; el resto vive
 en el inspector con filtros (activos, requieren atención, terminados,
-externos, todos). Los éxitos recientes se retiran a los 12 segundos de
+externos, todos). Los éxitos recientes se retiran a los 5 segundos de
 tiempo visible; los fallos se conservan hasta marcarlos como vistos.
 La lista del engine está limitada a 100 recursos y se etiqueta como
 parcial cuando se trunca.

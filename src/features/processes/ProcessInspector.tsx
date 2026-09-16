@@ -8,7 +8,9 @@ import {
   exitReasonLabelKey,
   isExternalPreview,
   isFailureStatus,
-  kindLabel,
+  kindLabelKey,
+  stopResultKey,
+  type ReadFailure,
   readinessLabelKey,
   resourceTitle,
   statusTextKey,
@@ -93,7 +95,7 @@ export default function ProcessInspector({
   selectedId: string | null
   selectedOutput: ProcessOutput | null
   selectedMissing: boolean
-  readError: string | null
+  readError: ReadFailure | null
   stopById: Map<string, StopOperation>
   listTruncated: boolean
   freshness: ConnectionFreshness
@@ -213,7 +215,7 @@ export default function ProcessInspector({
                       className={`processes-pick${active ? ' active' : ''}`}
                     >
                       <span className="processes-row-name" title={item.resource.command}>
-                        {resourceTitle(item.resource)}
+                        {resourceTitle(item.resource) ?? t('processes.untitled')}
                       </span>
                       <span className="processes-row-meta">
                         {itemLabel}
@@ -319,7 +321,7 @@ function ProcessDetail({
   sessionId: string
   presentation: ProcessPresentation
   output: ProcessOutput | null
-  readError: string | null
+  readError: ReadFailure | null
   stopState: StopOperation
   pinned: boolean
   online: boolean
@@ -336,7 +338,7 @@ function ProcessDetail({
   const [queryOpen, setQueryOpen] = useState(false)
   const [urlError, setUrlError] = useState('')
   const { resource } = presentation
-  const name = resourceTitle(resource)
+  const name = resourceTitle(resource) ?? t('processes.untitled')
   const statusKey = deriveStatusKey(resource, { online, stopConfirmed })
   const stopping = stopState.state === 'requesting' || stopState.state === 'reconciling'
   const failure = isFailureStatus(resource, false) && !presentation.attentionAcknowledged
@@ -350,7 +352,7 @@ function ProcessDetail({
           {name}
         </strong>
         <span className="processes-row-meta">
-          {kindLabel(resource.kind)}
+          {t(kindLabelKey(resource.kind))}
           {resource.pid != null && ` · PID ${resource.pid}`}
           {statusKey === 'running' && ` · ${t('processes.running')}`}
           {statusKey === 'stop_confirmed' && ` · ${t('processes.stopConfirmed')}`}
@@ -374,10 +376,9 @@ function ProcessDetail({
           )}
         </span>
       </div>
-      {(stopState.state === 'failed' || stopState.state === 'uncertain') && (
+      {stopResultKey(stopState) !== null && (
         <p role="alert" className="processes-error">
-          {stopState.state === 'failed' ? t('processes.stillActive') : t('processes.stopUncertain')}
-          {stopState.message ? ` · ${stopState.message}` : ''}
+          {t(stopResultKey(stopState)!)}
         </p>
       )}
       <dl className="processes-meta">
@@ -479,9 +480,9 @@ function ProcessDetail({
           {t('processes.dismiss')}
         </button>
       )}
-      {readError && (
+      {readError != null && (
         <p role="alert" className="processes-error">
-          {readError}
+          {'key' in readError ? t(readError.key) : readError.raw}
         </p>
       )}
       {readError == null && <ProcessLogView output={output} paused={logPaused} onPausedChange={onLogPausedChange} />}

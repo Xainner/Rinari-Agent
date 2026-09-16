@@ -11,6 +11,7 @@ import { PROCESSES_DURATION, useProcessesMotion } from './processMotion'
 import {
   isExternalPreview,
   isFailureStatus,
+  stopResultKey,
   summarizeStrip,
   type ProcessPresentation,
 } from './processesModel'
@@ -79,6 +80,8 @@ export default function ProcessesDock({
   const [announcement, setAnnouncement] = useState('')
   const lastAnnouncedRef = useRef('')
   const hiddenMsRef = useRef(0)
+  /** Tiempo oculto acumulado en el instante en que cada recurso terminó. */
+  const hiddenAtCompletionRef = useRef(new Map<string, number>())
   const hiddenSinceRef = useRef<number | null>(null)
 
   const snap = useSessionProcesses(sessionId, { observeOutput: inspectorMounted && !logPaused })
@@ -105,6 +108,22 @@ export default function ProcessesDock({
     openInspector('all')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openSignal])
+
+  // Sello del acumulador de oculto por recurso terminado, y poda de los
+  // que el engine ya no lista.
+  useEffect(() => {
+    const stamps = hiddenAtCompletionRef.current
+    const live = new Set<string>()
+    for (const item of ordered) {
+      live.add(item.resource.id)
+      if (item.completionObservedAt != null && !stamps.has(item.resource.id)) {
+        stamps.set(item.resource.id, hiddenMsRef.current)
+      }
+    }
+    for (const id of [...stamps.keys()]) {
+      if (!live.has(id)) stamps.delete(id)
+    }
+  }, [ordered])
 
   // Reloj local de 1 Hz sólo mientras haya tiempos o recientes visibles.
   const needsClock =
@@ -170,11 +189,6 @@ export default function ProcessesDock({
     [snap.confirmedIds.join('|')],
   )
 
-  // Sin sesión no hay nada que observar. Después de todos los hooks: el
-  // sessionId es estable por montaje (key por sesión) pero el orden de
-  // hooks nunca debe depender de un return condicional.
-  if (!sessionId) return null
-
   const attention = ordered.filter(
     (item) =>
       isFailureStatus(item.resource, confirmedIds.has(item.resource.id)) &&
@@ -187,7 +201,9 @@ export default function ProcessesDock({
     if (item.completionObservedAt == null) return false
     if (item.resource.id === selectedId && inspectorOpen) return true
     if (hoveredId === item.resource.id || focusedId === item.resource.id) return true
-    return now - item.completionObservedAt - hiddenMsRef.current < RECENT_SUCCESS_MS
+    const hiddenAtCompletion = hiddenAtCompletionRef.current.get(item.resource.id) ?? 0
+    const hiddenSince = hiddenMsRef.current - hiddenAtCompletion
+    return now - item.completionObservedAt - hiddenSince < RECENT_SUCCESS_MS
   })
   const summary = summarizeStrip(relevant, { listTruncated })
   const activeCount = ordered.filter((item) => item.resource.running).length
@@ -291,12 +307,8 @@ export default function ProcessesDock({
   const stopTarget = stopTargetId != null ? (ordered.find((item) => item.resource.id === stopTargetId) ?? null) : null
   const stopState = stopTargetId != null ? (snap.stopById.get(stopTargetId) ?? { state: 'idle' as const }) : { state: 'idle' as const }
   const stopBusy = stopState.state === 'requesting' || stopState.state === 'reconciling'
-  const stopResultMessage =
-    stopState.state === 'failed'
-      ? t('processes.stillActive')
-      : stopState.state === 'uncertain'
-        ? t('processes.stopUncertain')
-        : null
+  const stopResultMessageKey = stopResultKey(stopState)
+  const stopResultMessage = stopResultMessageKey !== null ? t(stopResultMessageKey) : null
 
   useEffect(() => {
     if (stopTargetId != null && stopState.state === 'confirmed') {

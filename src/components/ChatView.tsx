@@ -265,7 +265,9 @@ export default function ChatView({
           ))}
         </div>
     ) : undefined}>
-      {sessionId !== '' && <ProcessesDock sessionId={sessionId} openSignal={processesOpenSignal} />}
+      {sessionId !== '' && (
+        <ProcessesDock key={sessionId} sessionId={sessionId} openSignal={processesOpenSignal} />
+      )}
       <Questions key={sessionId} sessionId={sessionId} />
       {composer}
     </HomeWelcome>

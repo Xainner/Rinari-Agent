@@ -5,6 +5,7 @@ import { translate } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
+import { partitionSessions } from './sessionVisibility'
 
 /**
  * SessionController: lista de sesiones, sesión activa, historial persistente
@@ -29,24 +30,34 @@ export function useSessionList(options: {
   const [historyInfo, setHistoryInfo] = useState<Record<string, { total: number; hasMore: boolean }>>({})
   /** Sesiones con historial ya cargado o hilo vivo (no recargar encima). */
   const historyLoaded = useRef(new Set<string>())
+  /** Un refresco obsoleto que resuelve tarde no debe sobrescribir uno más nuevo. */
+  const refreshSeq = useRef(0)
 
   const refreshSessions = useCallback(async (): Promise<void> => {
+    const seq = ++refreshSeq.current
     try {
       const result = await engineApi.sessions(undefined, true)
-      const normalized = result.sessions.filter((item) => item.state === 'active')
+      if (refreshSeq.current !== seq) return
+      // El engine expone estados de runtime (active/interrupted/stopped): solo
+      // closed/archived se ocultan. Filtrar por `active` hacía que una sesión
+      // interrumpida (p. ej. timeout de provider) desapareciera del sidebar al
+      // refrescar, como ocurre tras un cambio de modelo.
+      const { visible, closed, archived } = partitionSessions(result.sessions)
+      const normalized = visible
       setSessions(normalized)
-      setClosedSessions(result.sessions.filter((item) => item.state === 'closed'))
-      setArchivedSessions(result.sessions.filter((item) => item.state === 'archived'))
+      setClosedSessions(closed)
+      setArchivedSessions(archived)
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current
         return normalized[0]?.id ?? ''
       })
     } catch (err) {
+      if (refreshSeq.current !== seq) return
       setSessionsError(commandMessage(err))
       toast.error(commandMessage(err))
     } finally {
-      setSessionsLoaded(true)
+      if (refreshSeq.current === seq) setSessionsLoaded(true)
     }
   }, [])
 
@@ -87,6 +98,27 @@ export function useSessionList(options: {
       setActiveSession(id)
       try {
         const opened = await engineApi.openSession(id)
+
+        // La respuesta del engine es autoritativa: no inventar state: 'active'.
+        setSessions((current) => {
+          const exists = current.some((item) => item.id === opened.session.id)
+          const next = exists
+            ? current.map((item) =>
+                item.id === opened.session.id ? opened.session : item,
+              )
+            : [opened.session, ...current]
+
+          return partitionSessions(next).visible
+        })
+
+        // session.open reanuda/restaura la sesión; evitar duplicados en las bandejas.
+        setClosedSessions((current) =>
+          current.filter((item) => item.id !== opened.session.id),
+        )
+        setArchivedSessions((current) =>
+          current.filter((item) => item.id !== opened.session.id),
+        )
+
         for (const warning of new Set(opened.warnings ?? [])) {
           // Working-tree drift is normal project state and already appears in
           // the Git surface. Do not present it as an application error.

@@ -1,0 +1,15 @@
+# Deterministic line endings: generated protocol files embed a schema digest
+# and CI compares them byte-for-byte on Linux.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

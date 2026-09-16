@@ -195,3 +195,49 @@ it('removes the work indicator when engine activity ends without changing select
   expect(screen.queryByRole('status')).toBeNull()
   expect(screen.getByText('Research').closest('button')?.getAttribute('aria-current')).toBe('page')
 })
+
+describe('interrupted sessions', () => {
+  it('marks interrupted sessions as resumable instead of hiding them', () => {
+    renderSidebar({
+      sessions: [session('resumable', 'Timed out chat', null, 'interrupted'), session('chat', 'Research')],
+      activeId: 'chat',
+    })
+    const dot = screen.getByTestId('session-interrupted-dot')
+    expect(dot.getAttribute('title')).toBe('Sesión interrumpida, se puede reanudar')
+  })
+
+  it('marks stopped sessions the same way', () => {
+    renderSidebar({ sessions: [session('halted', 'Stopped chat', null, 'stopped')] })
+    expect(screen.getByTestId('session-interrupted-dot')).toBeTruthy()
+  })
+
+  it('removes the marker when the session resumes without starting another turn', () => {
+    const props = renderSidebar({
+      sessions: [session('resumable', 'Timed out chat', null, 'interrupted')],
+      activeId: 'resumable',
+    })
+    expect(screen.getByTestId('session-interrupted-dot')).toBeTruthy()
+    cleanup()
+    render(
+      <I18nProvider lang="es">
+        <AppSidebar {...props} sessions={[session('resumable', 'Timed out chat', null, 'active')]} />
+      </I18nProvider>,
+    )
+    expect(screen.queryByTestId('session-interrupted-dot')).toBeNull()
+  })
+
+  it('shows no runtime marker for closed or archived sessions', () => {
+    renderSidebar({
+      sessions: [
+        session('closed', 'Closed draft', null, 'closed'),
+        session('archived', 'Archived work', null, 'archived'),
+      ],
+    })
+    expect(screen.queryByTestId('session-interrupted-dot')).toBeNull()
+  })
+
+  it('shows no interrupted marker for active sessions', () => {
+    renderSidebar()
+    expect(screen.queryByTestId('session-interrupted-dot')).toBeNull()
+  })
+})

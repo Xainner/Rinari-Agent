@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useReducedMotion } from 'framer-motion'
 import { ArrowUp, Box, Brain, Check, ChevronDown, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
@@ -81,6 +82,49 @@ export default function Composer({
 }: ComposerProps) {
   const { t } = useI18n()
   const text = useComposerStore((s) => s.text)
+  const appReduceMotion = useUIStore((s) => s.reduceMotion)
+  const systemReducedMotion = useReducedMotion()
+  // Indicador deslizante del modo: una sola pieza a nivel del grupo,
+  // posicionada con medidas reales (sin layoutId). La medición absorbe
+  // el padding del grupo porque los botones cuelgan de él.
+  const reducePillMotion = appReduceMotion || Boolean(systemReducedMotion)
+  const pillDuration = reducePillMotion ? 0 : 0.22
+  const currentMode = (sessionMode ?? 'build').toLowerCase()
+  // Modo pedido con clic en este grupo: solo ese cambio viaja. Un cambio
+  // que llega solo (conversación nueva que corrige plan anterior a build,
+  // sincronización del engine) se coloca sin animar: es el viaje fantasma.
+  // Guardar el pedido en ref (no estado) evita un render extra que
+  // cortaría la animación en pleno vuelo.
+  const userModeRef = useRef<string | null>(null)
+  const pillArmed = userModeRef.current === currentMode && pillDuration !== 0
+  const modesGroupRef = useRef<HTMLDivElement>(null)
+  const modeButtonRefs = useRef(new Map<string, HTMLButtonElement>())
+  const pillRef = useRef<HTMLSpanElement>(null)
+  // Colocación imperativa en layout effect, sin pasar por estado: la
+  // escritura llega en el mismo commit y el navegador transiciona desde
+  // lo ya pintado. Con estado React, la medición se aplicaría antes del
+  // primer pintado del cambio y el viaje nunca se vería. Al montar, la
+  // primera escritura ocurre antes del primer pintado: la pill aparece
+  // ya colocada, sin viaje fantasma (conversación nueva).
+  const placePill = useCallback(() => {
+    const pill = pillRef.current
+    const button = modeButtonRefs.current.get(currentMode)
+    if (!pill || !button) return
+    pill.style.width = button.offsetWidth + 'px'
+    pill.style.transform = 'translateX(' + button.offsetLeft + 'px)'
+  }, [currentMode])
+  // Recolocar tras cada render (cambio de modo o de idioma) y ante
+  // cambios de tamaño (zoom, carga de fuentes, contenedor).
+  useLayoutEffect(() => {
+    placePill()
+  })
+  useEffect(() => {
+    const group = modesGroupRef.current
+    if (!group || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => placePill())
+    observer.observe(group)
+    return () => observer.disconnect()
+  }, [placePill])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -443,28 +487,45 @@ export default function Composer({
           </Popover>
           </div>
           <div
+            ref={modesGroupRef}
             role="group"
             aria-label={t('mode.change')}
-            className="composer-modes inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] p-0.5"
+            className="composer-modes relative inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] p-0.5"
           >
+            <span
+              aria-hidden="true"
+              data-testid="mode-pill"
+              ref={pillRef}
+              className="composer-mode-pill absolute top-0.5 bottom-0.5 left-0 rounded-full bg-[var(--accent)]"
+              style={{
+                transition:
+                  pillArmed
+                    ? 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), width 0.22s cubic-bezier(0.22, 1, 0.36, 1)'
+                    : 'none',
+              }}
+            />
             {MODES.map((mode) => {
-              const current = (sessionMode ?? 'build').toLowerCase()
-              const selected = current === mode
+              const selected = currentMode === mode
               return (
                 <button
                   key={mode}
                   type="button"
+                  ref={(element) => {
+                    if (element) modeButtonRefs.current.set(mode, element)
+                    else modeButtonRefs.current.delete(mode)
+                  }}
                   disabled={sessionMode === null || isStreaming}
-                  onClick={() => onModeChange(mode)}
+                  onClick={() => {
+                    userModeRef.current = mode
+                    onModeChange(mode)
+                  }}
                   aria-pressed={selected}
                   title={t(`mode.${mode}` as 'mode.plan')}
-                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] tracking-wide transition-all disabled:opacity-40 ${
-                    selected
-                      ? 'bg-[var(--accent)] font-bold text-white'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                  className={`relative rounded-full px-2.5 py-1 font-mono text-[10px] tracking-wide transition-colors disabled:opacity-40 ${
+                    selected ? 'font-bold text-white' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                   }`}
                 >
-                  {t(`mode.${mode}` as 'mode.plan')}
+                  <span className="relative">{t(`mode.${mode}` as 'mode.plan')}</span>
                 </button>
               )
             })}

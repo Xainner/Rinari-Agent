@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import { AppSidebar, type AppSidebarProps } from './AppSidebar'
+import { useUIStore } from '../../stores/ui'
 
 const now = '2026-09-09T00:00:00Z'
 afterEach(cleanup)
@@ -175,6 +176,124 @@ it('reveals project sessions and clears search when creating from a collapsed pr
   expect((search as HTMLInputElement).value).toBe('')
   expect(screen.getByText('Fix governor')).toBeTruthy()
   expect(props.onNewProjectChat).toHaveBeenCalledWith('project')
+})
+
+describe('transición al cambiar de conversación', () => {
+  function renderSwitchable(activeId: string) {
+    const props: AppSidebarProps = {
+      collapsed: false,
+      onToggleCollapse: vi.fn(),
+      onSearch: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onOpenEngine: vi.fn(),
+      onOpenProjectHome: null,
+      onNewChat: vi.fn(),
+      onOpenFolder: vi.fn(),
+      sessions: [session('chat-a', 'Research'), session('chat-b', 'Notes'), session('project-session', 'Fix governor', 'project')],
+      closedSessions: [],
+      archivedSessions: [],
+      projects: [project('project', 'Rinari CLI')],
+      archivedProjects: [],
+      activeId,
+      onSelectSession: vi.fn(),
+      onOpenProject: vi.fn(),
+      onCloseSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      onArchiveSession: vi.fn(),
+      onRestoreSession: vi.fn(),
+      onForkSession: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onUpdateProject: vi.fn(),
+      onArchiveProject: vi.fn(),
+      approvals: [],
+    }
+    const view = render(<I18nProvider lang="es"><AppSidebar {...props} /></I18nProvider>)
+    return { view, props }
+  }
+
+  function rerenderSwitchable(view: ReturnType<typeof render>, activeId: string) {
+    view.rerender(
+      <I18nProvider lang="es"><AppSidebar
+        collapsed={false}
+        onToggleCollapse={vi.fn()}
+        onSearch={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenEngine={vi.fn()}
+        onOpenProjectHome={null}
+        onNewChat={vi.fn()}
+        onOpenFolder={vi.fn()}
+        sessions={[session('chat-a', 'Research'), session('chat-b', 'Notes'), session('project-session', 'Fix governor', 'project')]}
+        closedSessions={[]}
+        archivedSessions={[]}
+        projects={[project('project', 'Rinari CLI')]}
+        archivedProjects={[]}
+        activeId={activeId}
+        onSelectSession={vi.fn()}
+        onOpenProject={vi.fn()}
+        onCloseSession={vi.fn()}
+        onRenameSession={vi.fn()}
+        onArchiveSession={vi.fn()}
+        onRestoreSession={vi.fn()}
+        onForkSession={vi.fn()}
+        onDeleteSession={vi.fn()}
+        onUpdateProject={vi.fn()}
+        onArchiveProject={vi.fn()}
+        approvals={[]}
+      /></I18nProvider>,
+    )
+  }
+
+  function railOf(title: string): string {
+    const row = screen.getByRole('button', { name: title }).closest('li')
+    return row?.querySelector('[data-testid="session-rail"]')?.className ?? ''
+  }
+  function mockRowGeometry(title: string, top: number, height: number) {
+    const row = screen.getByRole('button', { name: title }).closest('li') as HTMLElement;
+    Object.defineProperty(row, 'offsetTop', { value: top, configurable: true });
+    Object.defineProperty(row, 'offsetHeight', { value: height, configurable: true });
+    Object.defineProperty(row, 'offsetParent', { value: document.body, configurable: true });
+  }
+  function traveler(): HTMLElement {
+    return screen.getByTestId('sessions-traveler');
+  }
+  it('el viajero marca la suelta activa y las filas sueltas no llevan riel propio', () => {
+    const { view } = renderSwitchable('chat-a');
+    mockRowGeometry('Research', 40, 32);
+    mockRowGeometry('Notes', 76, 32);
+    rerenderSwitchable(view, 'chat-a');
+    expect(traveler().style.transform).toBe('translateY(40px)');
+    expect(traveler().style.height).toBe('32px');
+    expect(traveler().style.opacity).toBe('1');
+    expect(railOf('Research')).toBe('');
+    expect(railOf('Notes')).toBe('');
+  });
+  it('entre sueltas el viajero viaja sin corte', () => {
+    const { view } = renderSwitchable('chat-a');
+    mockRowGeometry('Research', 40, 32);
+    mockRowGeometry('Notes', 76, 32);
+    rerenderSwitchable(view, 'chat-b');
+    expect(document.querySelector('.sidebar-switch-instant')).toBeNull();
+    expect(traveler().style.transform).toBe('translateY(76px)');
+    expect(traveler().style.opacity).toBe('1');
+  });
+  it('hacia sesion de proyecto oculta el viajero y corta transiciones', () => {
+    const { view } = renderSwitchable('chat-a');
+    rerenderSwitchable(view, 'project-session');
+    expect(document.querySelector('.sidebar-scroll.sidebar-switch-instant')).not.toBeNull();
+    expect(traveler().style.opacity).toBe('0');
+    expect(railOf('Fix governor')).toContain('opacity-100');
+  });
+
+
+  it('fuera de la vista chat corta las transiciones', () => {
+    useUIStore.setState({ view: 'workspace' })
+    try {
+      renderSwitchable('chat-a')
+      expect(document.querySelector('.sidebar-scroll.sidebar-switch-instant')).not.toBeNull()
+    } finally {
+      useUIStore.setState({ view: 'chat' })
+    }
+  })
 })
 
 it('shows work in an unselected session and its collapsed project', async () => {

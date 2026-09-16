@@ -109,6 +109,9 @@ interface UIState {
   shortcutBindings: ShortcutBindings
   /** Home del proyecto abierto (root). Solo con view 'project'. */
   projectRoot: string | null
+  /** Sesión con inspector de procesos abierto; el navegador no se autoabre encima. */
+  processesInspectorFor: string | null
+  setProcessesInspectorFor: (sessionId: string | null) => void
   goChat: () => void
   goEngine: () => void
   goWorkspace: () => void
@@ -158,6 +161,8 @@ export const useUIStore = create<UIState>((set) => ({
   showTechnicalActivityNames:
     typeof window === 'undefined' ? false : readBool('rinari.showTechnicalActivityNames', false),
   shortcutBindings: typeof window === 'undefined' ? DEFAULT_SHORTCUT_BINDINGS : readShortcutBindings(),
+  processesInspectorFor: null,
+  setProcessesInspectorFor: (processesInspectorFor) => set({ processesInspectorFor }),
   goChat: () => set({ view: 'chat', sidebarOpen: false, projectRoot: null }),
   goEngine: () => set({ view: 'engine', sidebarOpen: false, projectRoot: null }),
   goWorkspace: () => set({ view: 'workspace', sidebarOpen: false, projectRoot: null }),

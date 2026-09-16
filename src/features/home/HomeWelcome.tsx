@@ -25,14 +25,14 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
   }, [signature, selection.signature, hasDraft, context, attachmentCount])
   return <div className={conversationActive ? "conversation-layout" : "home-welcome"} ref={container}>
     <div className={conversationActive ? "conversation-main" : "home-main"}>
-      {conversationActive && <motion.div className="conversation-transcript" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.24, delay: reducedMotion ? 0 : 0.12 }}>{transcript}</motion.div>}
+      {conversationActive && <motion.div className="conversation-transcript" initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reducedMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}>{transcript}</motion.div>}
       <AnimatePresence initial={false} mode="popLayout">
       {!conversationActive && <motion.div key="hero" className="home-hero" exit={{ opacity: 0, y: reducedMotion ? 0 : -14 }} transition={{ duration: reducedMotion ? 0 : 0.22 }}>
       <div className="home-art" aria-hidden="true"><img src="/brand/home.png" alt="" draggable={false} /></div>
       <div className="home-greeting"><h1>{t('home.title')}</h1><p>{t('home.subtitle')}</p></div>
       </motion.div>}
       </AnimatePresence>
-      <motion.div key="composer" layout="position" layoutDependency={conversationActive} transition={{ layout: { duration, ease: [0.22, 1, 0.36, 1] } }} className={conversationActive ? "conversation-composer" : "home-composer"}>{children}</motion.div>
+      <motion.div key="composer" layout="position" layoutDependency={conversationActive} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ layout: { duration, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: reducedMotion ? 0 : 0.18 } }} className={conversationActive ? "conversation-composer" : "home-composer"}>{children}</motion.div>
       <AnimatePresence initial={false} mode="popLayout">
       {!conversationActive && showSuggestions && <motion.section key="suggestions" exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.14 }} className="home-suggestions" aria-label={t('home.suggestions')}>
         <div className="home-card-grid">{suggestionPage(selection.items, selection.offset).map(item => {

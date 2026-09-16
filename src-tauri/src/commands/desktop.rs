@@ -147,11 +147,29 @@ pub(crate) async fn workspace_process_list(
     supervisor: State<'_, EngineSupervisor>,
     session_id: String,
     id: Option<String>,
+    cursor: Option<String>,
+    limit: Option<i64>,
 ) -> Result<serde_json::Value, CommandError> {
     super::run_engine(supervisor, move |engine| {
+        // Optional params are omitted when absent: the engine rejects
+        // explicit nulls for typed params such as `limit`.
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "session_id".to_string(),
+            serde_json::Value::String(session_id),
+        );
+        if let Some(value) = id {
+            params.insert("id".to_string(), serde_json::Value::String(value));
+        }
+        if let Some(value) = cursor {
+            params.insert("cursor".to_string(), serde_json::Value::String(value));
+        }
+        if let Some(value) = limit {
+            params.insert("limit".to_string(), serde_json::Value::Number(value.into()));
+        }
         engine.request(
             Method::WorkspaceProcessList,
-            Some(serde_json::json!({"session_id": session_id, "id": id})),
+            Some(serde_json::Value::Object(params)),
         )
     })
     .await
@@ -177,11 +195,35 @@ pub(crate) async fn workspace_process_stop(
     supervisor: State<'_, EngineSupervisor>,
     session_id: String,
     id: Option<String>,
+    engine_instance_id: Option<String>,
+    generation: Option<i64>,
 ) -> Result<serde_json::Value, CommandError> {
     super::run_engine(supervisor, move |engine| {
+        // process_identity_v1 preconditions; omitted when absent so old
+        // engines keep working without them.
+        let mut params = serde_json::Map::new();
+        params.insert(
+            "session_id".to_string(),
+            serde_json::Value::String(session_id),
+        );
+        if let Some(value) = id {
+            params.insert("id".to_string(), serde_json::Value::String(value));
+        }
+        if let Some(value) = engine_instance_id {
+            params.insert(
+                "engine_instance_id".to_string(),
+                serde_json::Value::String(value),
+            );
+        }
+        if let Some(value) = generation {
+            params.insert(
+                "generation".to_string(),
+                serde_json::Value::Number(value.into()),
+            );
+        }
         engine.request(
             Method::WorkspaceProcessStop,
-            Some(serde_json::json!({"session_id": session_id, "id": id})),
+            Some(serde_json::Value::Object(params)),
         )
     })
     .await

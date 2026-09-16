@@ -10,6 +10,7 @@ import {
   Moon,
   Plus,
   Settings2,
+  SquareTerminal,
   Sun,
 } from 'lucide-react'
 import type { SessionSummary } from '../services/engine'
@@ -29,6 +30,8 @@ interface CommandPaletteProps {
   onOpenSettings: (section?: SettingsSection) => void
   onOpenEngine: () => void
   onOpenWorkspace: () => void
+  onOpenProcesses: () => void
+  processesAvailable: boolean
   onEngineRestart: () => void
   theme: Theme
   onThemeChange: (theme: Theme) => void
@@ -49,6 +52,8 @@ export default function CommandPalette({
   onOpenSettings,
   onOpenEngine,
   onOpenWorkspace,
+  onOpenProcesses,
+  processesAvailable,
   onEngineRestart,
   theme,
   onThemeChange,
@@ -150,6 +155,15 @@ export default function CommandPalette({
               >
                 <GitBranch />
                 {t('nav.workspace')}
+              </Command.Item>
+              <Command.Item
+                value={t('processes.openProcesses')}
+                disabled={!processesAvailable}
+                onSelect={() => run(onOpenProcesses)}
+                className={itemClass}
+              >
+                <SquareTerminal />
+                {t(processesAvailable ? 'processes.openProcesses' : 'processes.noSession')}
               </Command.Item>
               <Command.Item
                 value={t('nav.settings')}

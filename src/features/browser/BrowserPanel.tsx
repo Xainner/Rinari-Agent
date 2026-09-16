@@ -5,12 +5,20 @@ import { Globe, X } from 'lucide-react'
 
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
 
+import { useUIStore } from '../../stores/ui'
+
 /** A view of the engine's CDP page, not a second web runtime. */
 export default function BrowserPanel({ sessionId }: { sessionId: string }) {
   const [frame, setFrame] = useState<BrowserFrame | null>(null)
   const [visible, setVisible] = useState(false)
   const [target, setTarget] = useState('')
   const [error, setError] = useState('')
+  const processesInspectorFor = useUIStore((s) => s.processesInspectorFor)
+  // Prioridad visual simétrica: si el inspector de procesos toma la zona,
+  // el navegador se repliega a su acceso sin cerrar su instancia.
+  useEffect(() => {
+    if (processesInspectorFor === sessionId) setVisible(false)
+  }, [processesInspectorFor, sessionId])
   useEffect(() => {
     let stopped = false
     let timer: ReturnType<typeof setTimeout>
@@ -24,7 +32,12 @@ export default function BrowserPanel({ sessionId }: { sessionId: string }) {
         setError(next.error ?? '')
         if (next.state === 'connected' && next.instance && (!connected || next.instance !== instance)) {
           instance = next.instance
-          setVisible(true)
+          // No robar el espacio al inspector de procesos: con inspector
+          // abierto en esta sesión no hay autoapertura; el acceso sigue
+          // disponible y abrirlo manualmente contrae los logs.
+          if (useUIStore.getState().processesInspectorFor !== sessionId) {
+            setVisible(true)
+          }
         }
         connected = next.state === 'connected'
       } catch (reason) {
@@ -41,7 +54,7 @@ export default function BrowserPanel({ sessionId }: { sessionId: string }) {
     return () => { stopped = true; clearTimeout(timer) }
   }, [sessionId, target])
 
-  if (!visible) return frame?.instance ? <button className="fixed right-5 top-16 z-30 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-2 text-xs text-[var(--text)]" onClick={() => setVisible(true)}><Globe size={15} />Navegador</button> : null
+  if (!visible) return frame?.instance ? <button className="fixed right-5 top-16 z-30 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-2 text-xs text-[var(--text)]" onClick={() => { setVisible(true); window.dispatchEvent(new Event('rinari-browser-open')) }}><Globe size={15} />Navegador</button> : null
   return <aside aria-label="Navegador de Rinari" className="fixed bottom-5 right-5 top-16 z-40 flex w-[min(720px,80vw)] min-w-72 resize-x flex-col overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl">
     <header className="flex items-center gap-2 border-b border-[var(--border)] p-3 text-sm text-[var(--text)]">
       <Globe size={16} /><strong>Navegador</strong>

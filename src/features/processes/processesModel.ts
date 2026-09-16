@@ -1,0 +1,297 @@
+import type { ManagedProcess } from '../../types/protocol.generated'
+import type { I18nKey } from '../../i18n'
+
+export interface ProcessScope {
+  sessionId: string
+  connectionEpoch: number
+}
+
+export type ConnectionFreshness = 'loading' | 'fresh' | 'stale' | 'offline' | 'unsupported'
+
+/**
+ * Por qué terminó un stop sin confirmación. `stale_resource` no es "sigue
+ * activo": la observación caducó y hay que volver a observar antes de
+ * cualquier reintento, que además nunca es automático.
+ */
+export type StopFailureReason = 'still_running' | 'stale_resource' | 'unknown'
+
+export type StopOperation =
+  | { state: 'idle' }
+  | { state: 'confirming'; requestId: string }
+  | { state: 'requesting'; requestId: string }
+  | { state: 'reconciling'; requestId: string }
+  | { state: 'confirmed'; requestId: string }
+  | { state: 'uncertain'; requestId: string; reason: StopFailureReason; message: string }
+  | { state: 'failed'; requestId: string; reason: StopFailureReason; message: string }
+
+/** Texto de un fallo de stop. Nunca expone el error crudo del engine. */
+export function stopResultKey(stop: StopOperation): I18nKey | null {
+  if (stop.state === 'failed') {
+    return stop.reason === 'stale_resource'
+      ? 'processes.stopStaleResource'
+      : 'processes.stillActive'
+  }
+  if (stop.state === 'uncertain') return 'processes.stopUncertain'
+  return null
+}
+
+/** Error de lectura: clave traducible o mensaje del engine sin traducir. */
+export type ReadFailure = { key: I18nKey } | { raw: string }
+
+export interface ProcessPresentation {
+  /** Snapshot informado por el engine. Nunca se inventa estado local. */
+  resource: ManagedProcess
+  /** Sólo observación local: primera vez visto en este ámbito. */
+  firstObservedAt: number
+  /** Sólo frescura: última verificación contra el engine. */
+  lastVerifiedAt: number
+  /** Observación de finalización; no sustituye un ended_at del engine. */
+  completionObservedAt?: number
+  dismissedFromStrip: boolean
+  attentionAcknowledged: boolean
+}
+
+export type ProcessStatusKey =
+  | 'running'
+  | 'finished_ok'
+  | 'finished_error'
+  | 'stop_confirmed'
+  | 'no_owned_process'
+  | 'external'
+  | 'unknown'
+  | 'unverified'
+
+/** Igualdad de presentación: todo campo visible del recurso. */
+export function sameResource(a: ManagedProcess, b: ManagedProcess): boolean {
+  return (
+    a.id === b.id &&
+    a.kind === b.kind &&
+    a.command === b.command &&
+    a.cwd === b.cwd &&
+    (a.url ?? null) === (b.url ?? null) &&
+    a.running === b.running &&
+    a.can_stop === b.can_stop &&
+    (a.pid ?? null) === (b.pid ?? null) &&
+    (a.started_at ?? null) === (b.started_at ?? null) &&
+    (a.exit_code ?? null) === (b.exit_code ?? null) &&
+    (a.ended_at ?? null) === (b.ended_at ?? null) &&
+    (a.exit_reason ?? null) === (b.exit_reason ?? null) &&
+    (a.generation ?? null) === (b.generation ?? null) &&
+    (a.readiness ?? null) === (b.readiness ?? null) &&
+    (a.readiness_checked_at ?? null) === (b.readiness_checked_at ?? null)
+  )
+}
+
+export function kindLabelKey(kind: string): I18nKey {
+  if (kind === 'pty') return 'processes.kindPty'
+  if (kind === 'preview') return 'processes.kindPreview'
+  if (kind === 'process') return 'processes.kindProcess'
+  return 'processes.kindOther'
+}
+
+/**
+ * Título legible sin ocultar identidad; sin LLM ni suposiciones de framework.
+ * Sin comando no hay texto propio del recurso: devuelve la clave de su tipo
+ * para que la capa de vista lo traduzca.
+ */
+export function resourceTitle(resource: ManagedProcess): string | null {
+  const command = resource.command.trim()
+  if (command === '') return null
+  return command.split('\n')[0]!.slice(0, 120)
+}
+
+export function isExternalPreview(resource: ManagedProcess): boolean {
+  return resource.kind === 'preview' && !resource.running && resource.exit_code == null
+}
+
+/** Clave i18n para el estado: una sola fuente para fila, inspector y consulta. */
+export function statusTextKey(status: ProcessStatusKey): I18nKey {
+  switch (status) {
+    case 'running':
+      return 'processes.running'
+    case 'finished_ok':
+      return 'processes.finishedOk'
+    case 'finished_error':
+      return 'processes.finishedError'
+    case 'stop_confirmed':
+      return 'processes.stopConfirmed'
+    case 'no_owned_process':
+      return 'processes.noOwnedProcess'
+    case 'external':
+      return 'processes.external'
+    case 'unknown':
+      return 'processes.unknownState'
+    case 'unverified':
+      return 'processes.unverified'
+  }
+}
+
+/**
+ * Estado fiel según §6.4. `online=false` (desconexión) nunca se
+ * representa como finalizado: se marca sin verificar.
+ */
+export function deriveStatusKey(
+  resource: ManagedProcess,
+  opts: { stopConfirmed?: boolean; online?: boolean } = {},
+): ProcessStatusKey {
+  if (opts.online === false) return 'unverified'
+  if (opts.stopConfirmed === true) return 'stop_confirmed'
+  if (resource.running) return 'running'
+  if (resource.kind === 'preview' && resource.exit_code == null) {
+    // Preview externa o estática sin propiedad: no afirmar control.
+    return 'external'
+  }
+  if (typeof resource.exit_code === 'number') {
+    return resource.exit_code === 0 ? 'finished_ok' : 'finished_error'
+  }
+  if (resource.kind !== 'process' && resource.kind !== 'pty' && resource.kind !== 'preview') {
+    return 'unknown'
+  }
+  return 'no_owned_process'
+}
+
+export function isFailureStatus(resource: ManagedProcess, stopConfirmed: boolean): boolean {
+  if (stopConfirmed) return false
+  if (resource.running) return false
+  // Detenido a petición (kill/stop/terminate): fin esperado, no fallo.
+  if (resource.exit_reason === 'stopped') return false
+  if (typeof resource.exit_code === 'number' && resource.exit_code !== 0) return true
+  return false
+}
+
+/**
+ * Segundos Unix (time.time) → ms transcurridos, o null si no es
+ * válido. Nunca NaN, negativo ni contador desde 1970.
+ */
+export function elapsedMsSinceStarted(startedAtSec: unknown, nowMs: number): number | null {
+  if (typeof startedAtSec !== 'number' || !Number.isFinite(startedAtSec)) return null
+  if (!Number.isFinite(nowMs)) return null
+  // time.time() en segundos: descartar ms, valores absurdos y época Unix.
+  if (startedAtSec < 1_000_000_000) return null
+  if (startedAtSec > nowMs / 1000 + 5) return null
+  const elapsed = nowMs - startedAtSec * 1000
+  if (!Number.isFinite(elapsed) || elapsed < 0) return null
+  return elapsed
+}
+
+export function formatElapsedShort(elapsedMs: number): string {
+  const seconds = Math.floor(elapsedMs / 1000)
+  if (seconds < 60) return `${seconds} s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  return `${hours} h`
+}
+
+/**
+ * Duración exacta cuando el engine informa ended_at (§18.2); tiempo
+ * activo en caso contrario. Nunca se calcula con la hora actual para
+ * un terminado sin ended_at.
+ */
+export function durationMs(resource: ManagedProcess, nowMs: number): number | null {
+  if (resource.running) return elapsedMsSinceStarted(resource.started_at, nowMs)
+  const { started_at, ended_at } = resource
+  if (typeof started_at !== 'number' || typeof ended_at !== 'number') return null
+  if (!Number.isFinite(started_at) || !Number.isFinite(ended_at)) return null
+  if (started_at < 1_000_000_000) return null
+  const duration = ended_at * 1000 - started_at * 1000
+  if (!Number.isFinite(duration) || duration < 0) return null
+  return duration
+}
+
+export function readinessLabelKey(
+  readiness: string | null | undefined,
+): 'processes.readyListening' | 'processes.readyNotListening' | null {
+  if (readiness === 'listening') return 'processes.readyListening'
+  if (readiness === 'not_listening') return 'processes.readyNotListening'
+  return null
+}
+
+export function exitReasonLabelKey(
+  exitReason: string | null | undefined,
+):
+  | 'processes.exitStopped'
+  | 'processes.exitExited'
+  | 'processes.exitFailed'
+  | 'processes.exitSignaled'
+  | 'processes.exitUnknown'
+  | null {
+  switch (exitReason) {
+    case 'stopped':
+      return 'processes.exitStopped'
+    case 'exited':
+      return 'processes.exitExited'
+    case 'failed':
+      return 'processes.exitFailed'
+    case 'signaled':
+      return 'processes.exitSignaled'
+    case 'unknown':
+      return 'processes.exitUnknown'
+    default:
+      return null
+  }
+}
+
+export interface OrderableProcess {
+  presentation: ProcessPresentation
+  selected: boolean
+  pinned: boolean
+}
+
+/**
+ * Orden estable §5.4: fijado > atención no reconocida > activos >
+ * terminados recientes > externos. Dentro del grupo se conserva el
+ * orden de entrada; nunca se reordena por tick de reloj o salida.
+ */
+export function orderPresentations(items: OrderableProcess[]): ProcessPresentation[] {
+  const decorated = items.map((item, index) => ({ item, index }))
+  decorated.sort((a, b) => {
+    const rankA = rank(a.item)
+    const rankB = rank(b.item)
+    if (rankA !== rankB) return rankA - rankB
+    return a.index - b.index
+  })
+  return decorated.map((entry) => entry.item.presentation)
+}
+
+function rank(item: OrderableProcess): number {
+  const { presentation, selected, pinned } = item
+  if (pinned || selected) return 0
+  const failure = isFailureStatus(presentation.resource, false)
+  if (failure && !presentation.attentionAcknowledged) return 1
+  if (presentation.resource.running) return 2
+  if (presentation.completionObservedAt != null && !presentation.dismissedFromStrip) return 3
+  // Not running past this point, so the external check has to come before the
+  // generic finished rank or it can never be reached.
+  if (isExternalPreview(presentation.resource)) return 4
+  return 3
+}
+
+export interface StripSummary {
+  visible: ProcessPresentation[]
+  hiddenCount: number
+  showHeader: boolean
+  partialList: boolean
+}
+
+/**
+ * Política de filas §5.3: 1 recurso → una fila sin cabecera;
+ * varios → cabecera + hasta 2 filas + contador. No crece indefinido.
+ */
+export function summarizeStrip(
+  ordered: ProcessPresentation[],
+  opts: { listTruncated: boolean },
+): StripSummary {
+  const relevant = ordered.filter((item) => !item.dismissedFromStrip)
+  if (relevant.length === 0) return { visible: [], hiddenCount: 0, showHeader: false, partialList: opts.listTruncated }
+  if (relevant.length === 1) {
+    return { visible: relevant, hiddenCount: 0, showHeader: false, partialList: opts.listTruncated }
+  }
+  const visible = relevant.slice(0, 2)
+  return {
+    visible,
+    hiddenCount: relevant.length - visible.length,
+    showHeader: true,
+    partialList: opts.listTruncated,
+  }
+}

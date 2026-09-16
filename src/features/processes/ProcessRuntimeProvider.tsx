@@ -475,16 +475,26 @@ export function ProcessRuntimeProvider({
         if (current && current === scopeRt && current.epoch === propsRef.current.epoch) {
           current.activeList = false
           if (current.pendingList) {
+            // Encadena el listado pedido mientras éste volaba; será ese poll
+            // el que programe el siguiente intervalo. Salir con `return`
+            // desde el finally se tragaría una excepción del catch.
             current.pendingList = false
             void pollRef.current(sessionId)
-            return
-          }
-          const obs = observersRef.current.get(sessionId)
-          if (obs && obs.count > 0 && propsRef.current.engineReady && propsRef.current.hasCapability) {
-            const hasRunning = [...current.resources.values()].some((item) => item.resource.running)
-            const base = hasRunning ? ACTIVE_POLL_MS : IDLE_POLL_MS
-            const delay = current.listError ? (BACKOFF_STEPS[current.backoffStep] ?? base) : base
-            scheduleNext(current, delay)
+          } else {
+            const obs = observersRef.current.get(sessionId)
+            if (
+              obs &&
+              obs.count > 0 &&
+              propsRef.current.engineReady &&
+              propsRef.current.hasCapability
+            ) {
+              const hasRunning = [...current.resources.values()].some(
+                (item) => item.resource.running,
+              )
+              const base = hasRunning ? ACTIVE_POLL_MS : IDLE_POLL_MS
+              const delay = current.listError ? (BACKOFF_STEPS[current.backoffStep] ?? base) : base
+              scheduleNext(current, delay)
+            }
           }
         }
       }

@@ -172,7 +172,6 @@ export default function ChatView({
     })
     observer.observe(scroller)
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFollow, sessionId, empty, stream.length])
 
   useEffect(() => {

@@ -316,7 +316,6 @@ export default function ProcessesDock({
       setStopEpoch(null)
       setStopStaleNote(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopTargetId, stopState.state])
 
   useEffect(() => {
@@ -326,7 +325,6 @@ export default function ProcessesDock({
       setStopEpoch(null)
       setStopStaleNote(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopTargetId, stopEpoch, snap.epoch])
 
   function requestStop(id: string) {

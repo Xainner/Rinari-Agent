@@ -45,6 +45,31 @@ documentado; lo demás no se presenta como terminado.
 
 ## Deuda vigente
 
+### Boards y mensajería entre paneles (2026-09-15)
+
+- **Anclas de scroll al colapsar** — `OPEN`. Al expandir una tira el chat
+  vuelve al final (auto-follow); no se conserva el punto de lectura previo.
+  Falta guardar `rowId/turnId + offset` en `sessionUi.ts` antes de desmontar.
+- **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`
+  (dependencia nueva con autorización). El adaptador `services/notifications.ts`
+  declara `canSend=false`; el ajuste aparece como no disponible. La activación
+  por clic en desktop no está verificada y no debe anunciarse.
+- **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`. El
+  Engine no serializa dos sesiones sobre el mismo root; el board solo avisa.
+- **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"
+  del runtime; tras un arranque en frío el sidebar no sabe si una sesión no
+  abierta está ocupada hasta que llega un evento.
+- **Aprobación antes de la comprobación de pares** — `OPEN` (Engine). Un
+  `session.send` a un panel que no recibe pide consentimiento y luego falla
+  con `PEER_RECEIVE_DISABLED`. Sería mejor validar la membresía antes de
+  preguntar.
+- **Perfil de lectura por instalación** — `OPEN`. Los recibos se indexan por
+  `rinari.profile.v1` (id local aleatorio); si el Agent apunta a otro home de
+  Engine con la misma instalación, los recibos se comparten.
+- **Compilación Rust en Windows con Smart App Control** — `OPEN`. `cargo
+  clippy/test` no ejecutan en esa máquina (os error 4551); solo `cargo fmt`.
+  CI cubre clippy y test.
+
 - **Timeline narrativa (archivo 4)** — `OPEN`. La actividad cronológica
   persistida, correlación completa de llamadas y presentación narrativa se
   implementarán en el siguiente ciclo; no se adelantaron dentro de 1–3.

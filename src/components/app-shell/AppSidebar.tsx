@@ -212,7 +212,7 @@ export function AppSidebar({
             >
               {sessionLabel(session, t('sidebar.newChat'))}
             </span>
-            {session.state !== 'active' && (
+            {(session.state === 'interrupted' || session.state === 'stopped') && (
               <span
                 role="img"
                 aria-label={t('sidebar.sessionInterrupted')}

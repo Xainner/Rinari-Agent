@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
 import type { SessionSummary } from '../../services/engine'
 
-function session(id: string, state: SessionSummary['state'] | string): SessionSummary {
+function session(id: string, state: SessionSummary['state']): SessionSummary {
   return {
     id,
     kind: 'CHAT',
     title: id,
     mode: 'build',
-    state: state as SessionSummary['state'],
+    state,
     updated_at: '2026-09-15T00:00:00.000Z',
     project_id: null,
     project_root: null,

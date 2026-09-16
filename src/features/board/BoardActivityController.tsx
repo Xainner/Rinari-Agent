@@ -14,6 +14,15 @@ import { useBoardStore } from '../../stores/board'
 import { unreadPeerCount, unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
 import { useBoardStatusStore } from '../../stores/boardStatus'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
+import { selectAttentionCounts } from '../../stores/boardStatus'
+import { useUIStore } from '../../stores/ui'
+import { useWindowAttention } from '../../hooks/useWindowAttention'
+import { useWindowTitle } from '../../hooks/useWindowTitle'
+import { projectDisplayName } from '../projects/workspaceModel'
+import { useI18n } from '../../i18n'
+import { useBoardNotifications } from './useBoardNotifications'
+import { usePeerNotifications } from './usePeerNotifications'
+import { useCallback } from 'react'
 
 const ACTIVE = new Set(['running', 'approval', 'cancelling'])
 
@@ -141,6 +150,55 @@ export default function BoardActivityController() {
       for (const stop of unsubscribers) stop()
     }
   }, [store, memberKey, data.ready, data.sessionsById])
+
+  // -- avisos, título de ventana y lectura de mensajes de pares -----------------
+  const { t } = useI18n()
+  const labelFor = useCallback((sessionId: string): string | null => {
+    if (!useBoardStore.getState().panes.some((pane) => pane.sessionId === sessionId)) return null
+    const record = data.sessionsById[sessionId]
+    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
+  }, [data.sessionsById, t])
+  const focusSession = useCallback((sessionId: string): boolean => {
+    const pane = useBoardStore.getState().panes.find((item) => item.sessionId === sessionId)
+    if (!pane) return false
+    useUIStore.getState().goBoard()
+    useBoardStore.getState().expandPane(pane.paneId, { focus: true })
+    return true
+  }, [])
+  const view = useUIStore((state) => state.view)
+  const focusedPaneId = useBoardStore((state) => state.focusedPaneId)
+  const focusedPane = members.find((pane) => pane.paneId === focusedPaneId) ?? null
+  const focusedSessionId = view === 'board' && focusedPane && !focusedPane.collapsed ? focusedPane.sessionId : null
+  useBoardNotifications({
+    runtime: store,
+    labelFor,
+    activeSessionId: data.activeSession,
+    systemPermission: 'unsupported',
+    memberKey,
+  })
+  usePeerNotifications({
+    supported: data.status?.capabilities.session_peer_messaging_v1 === true,
+    labelFor,
+    focusedSessionId,
+    focusSession,
+  })
+  const counts = useBoardStatusStore(selectAttentionCounts)
+  useWindowTitle(counts.attentionPaneCount)
+
+  // Mensajes de pares: se reconocen al atender el panel (expandido, enfocado,
+  // ventana con foco) durante un instante; abrir un resultado no los marca.
+  const attention = useWindowAttention()
+  const attendedSession = attention.attended
+    ? (view === 'board' ? focusedSessionId : view === 'chat' ? data.activeSession || null : null)
+    : null
+  const attendedPeerIds = useBoardAttentionStore((state) => (attendedSession ? state.sessions[attendedSession]?.unreadPeerMessageIds : undefined))
+  useEffect(() => {
+    if (!attendedSession || !attendedPeerIds || attendedPeerIds.length === 0) return
+    const timer = window.setTimeout(() => {
+      useBoardAttentionStore.getState().markPeerMessagesSeen(attendedSession, attendedPeerIds)
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [attendedSession, attendedPeerIds])
 
   return null
 }

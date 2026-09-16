@@ -31,7 +31,6 @@ import BoardToolbar from './BoardToolbar'
 import SessionPane from './SessionPane'
 import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
 import { usePeerGroup } from './usePeerGroup'
-import { usePeerNotifications } from './usePeerNotifications'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export interface BoardActions {
@@ -221,13 +220,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     supported: peerMessaging,
     engineReady: data.ready && data.sessionsLoaded,
     engineGeneration,
-  })
-  const focusedSessionId = panes.find((pane) => pane.paneId === focusedPaneId)?.sessionId ?? null
-  usePeerNotifications({
-    supported: peerMessaging,
-    labelFor: peerLabelFor,
-    focusedSessionId,
-    focusSession: focusSessionPane,
   })
 
   return (

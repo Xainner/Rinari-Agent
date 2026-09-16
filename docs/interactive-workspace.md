@@ -178,3 +178,41 @@ Validación: `src/stores/boardAttention.test.ts`, `sessionSelectors.test.ts`
   mapa inventado por el componente.
 
 Validación: `src/stores/board.test.ts` (§7.6), `BoardView.collapse.test.tsx`.
+
+# Boards: tarjetas de resultado, avisos y título de ventana
+
+- Cada turno terminado muestra en Boards una **tarjeta de resultado**
+  (`ResultSummaryCard`) tras su bloque final/error: outcome (finalizado /
+  falló / detenido / cancelado), vista previa del texto final (140 caracteres,
+  sin Markdown), archivos cambiados **de ese turno** (changeset del timeline),
+  duración con ambos tiempos y modelo ejecutor solo si la llamada lo registró.
+  Lo que falta se omite («sin datos»); nunca se rellena desde el modelo actual
+  ni desde `git status`. Acciones: «Revisar cambios» (dock de cambios del
+  panel), «Marcar como leído» y «Preparar reintento» (recupera la entrada
+  correlacionada con ese turno, la deja en el compositor y nunca envía; un
+  borrador existente pide confirmación; un turno de origen peer exige intención
+  explícita). En Normal no hay tarjeta; la lectura sí es compartida.
+- Avisos (`useBoardNotifications`, en `BoardActivityController`): detección
+  por ids con dedupe at-most-once (la clave se reclama en el recibo antes de
+  avisar), agrupación de ráfagas en 500 ms («N paneles finalizaron»),
+  supresión cuando el usuario ya atiende esa sesión, e intervenciones por id
+  de aprobación/pregunta. Historial, remount y reconexión no producen avisos.
+  «Ir al panel» usa `revealBoardAttention`: comprueba pertenencia, va a
+  Boards, expande/enfoca y muestra el turno; la lectura solo se aplica cuando
+  el bloque queda visible. Política pura en `services/notificationPolicy.ts`.
+- Canales: header/tira siempre; barra superior con contador de **sesiones**
+  (unión, no suma) y lista de pendientes (`BoardAttentionMenu`) visible en
+  Normal/Ajustes; sidebar con señal por sesión (intervención › fallo ›
+  resultado sin leer); título nativo `(<N>) Rinari Agent` con un único
+  escritor (`useWindowTitle`, permiso `core:window:allow-set-title`).
+- Notificaciones del sistema: el adaptador declara `canSend=false` porque este
+  build no incluye `tauri-plugin-notification` (dependencia nueva, PR aparte
+  con autorización). El ajuste aparece como «no disponible»; la política
+  nunca elige ese canal. No se declara activación por clic sin backend
+  validado.
+- Ajustes › General › Avisos del board: emergentes, intervención,
+  notificaciones del sistema (y detalles), persistidos en `rinari.board.v1`.
+
+Validación: `services/notificationPolicy.test.ts`,
+`features/board/useBoardNotifications.test.tsx`, `ResultSummaryCard.test.tsx`,
+`hooks/useWindowTitle.test.ts`.

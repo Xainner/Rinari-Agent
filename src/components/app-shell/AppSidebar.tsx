@@ -68,6 +68,8 @@ export interface AppSidebarProps {
   busySessionIds?: ReadonlySet<string>
   /** Sesiones presentes en el board (marca visual). */
   boardSessionIds?: ReadonlySet<string>
+  /** Señal de atención por sesión del board (intervención › fallo › resultado sin leer). */
+  boardSignalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
   /** Añade la sesión al board (o la enfoca) y va a Boards. */
   onOpenInBoard?: (id: string) => void
   onSelectSession: (id: string) => void
@@ -128,6 +130,7 @@ export function AppSidebar({
   activeId,
   busySessionIds,
   boardSessionIds,
+  boardSignalBySession,
   onOpenInBoard,
   onSelectSession,
   onOpenProject,
@@ -185,6 +188,8 @@ export function AppSidebar({
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
+    const signal = boardSignalBySession?.[session.id] ?? null
+    const signalLabel = signal === 'needs_you' ? t('sidebar.sessionNeedsYou') : signal === 'failed' ? t('sidebar.sessionFailed') : signal === 'unread' ? t('sidebar.sessionUnread') : null
     return (
       <li key={session.id} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
@@ -220,6 +225,9 @@ export function AppSidebar({
             >
               {sessionLabel(session, t('sidebar.newChat'))}
             </span>
+            {signal && signalLabel && (
+              <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal={signal} data-testid="sidebar-signal" />
+            )}
             {onBoard && <span role="img" aria-label={t('sidebar.onBoard')} title={t('sidebar.onBoard')} className="shrink-0 text-[var(--text-subtle)]"><Columns3 size={12} aria-hidden="true" /></span>}
           </button>
           <DropdownMenu open={sessionMenu === session.id} onOpenChange={open => setSessionMenu(open ? session.id : null)}>

@@ -83,3 +83,31 @@ export function markAllBoardResultsRead(): number {
   if (total > 0) useBoardAttentionStore.getState().markAllBoardResultsSeen(snapshot)
   return total
 }
+
+export interface BoardAttentionTarget {
+  sessionId: string
+  turnId?: string
+  requestId?: string
+}
+
+export const REVEAL_TURN_EVENT = 'rinari:reveal-turn'
+
+/**
+ * Acción tipada de un aviso interno: comprobar pertenencia, ir a Boards,
+ * expandir/enfocar el panel y pedir al transcript que muestre el turno. La
+ * lectura solo se aplica cuando el bloque queda visible (regla de §8.6), no
+ * por pulsar el aviso. Devuelve `false` si la sesión ya no está en el board.
+ */
+export function revealBoardAttention(target: BoardAttentionTarget, navigate: { goBoard: () => void }): boolean {
+  const board = useBoardStore.getState()
+  const pane = board.panes.find((item) => item.sessionId === target.sessionId)
+  if (!pane) return false
+  navigate.goBoard()
+  board.expandPane(pane.paneId, { focus: true })
+  if (target.turnId) {
+    const detail = { sessionId: target.sessionId, turnId: target.turnId, requestId: target.requestId }
+    // Tras el repintado del panel (puede venir de una tira).
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent(REVEAL_TURN_EVENT, { detail })), 0)
+  }
+  return true
+}

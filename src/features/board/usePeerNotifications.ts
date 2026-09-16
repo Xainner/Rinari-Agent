@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { onEngineEvent, type PeerMessage } from '../../services/engine'
+import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export interface UsePeerNotificationsOptions {
   supported: boolean
@@ -37,6 +38,8 @@ export function usePeerNotifications(options: UsePeerNotificationsOptions): void
       const from = (message.from_session_id && label(message.from_session_id)) || message.origin?.source_label || t('board.peers.unknown')
       const target = message.to_session_id
       if (event.event === 'session.peer.message' && message.origin?.kind === 'peer') {
+        // Reconocimiento propio de los mensajes de pares (independiente de los resultados).
+        useBoardAttentionStore.getState().observePeerMessage(target, message.message_id)
         if (focused === target) return
         toast(t('board.peers.toast', { from, to }), {
           id: `peer-${message.message_id}`,

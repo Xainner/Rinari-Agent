@@ -19,6 +19,8 @@ import CollapsedPaneStrip from './CollapsedPaneStrip'
 import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
 import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
+import ResultSummaryCard from './ResultSummaryCard'
+import type { TurnTimeline } from '../activity/types'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
 
@@ -96,6 +98,17 @@ function SessionPane({
     return final && final.type === 'model' && final.content ? final.content : null
   }, [lastTurn])
   const readTracking = useMemo(() => ({ sessionId: pane.sessionId, visible: !pane.collapsed }), [pane.sessionId, pane.collapsed])
+  // «Revisar cambios»: dock de workspace en la pestaña de cambios (rotulada por proyecto).
+  const reviewChanges = useCallback(() => {
+    setDockTab(pane.paneId, 'workspace')
+    setWorkspaceTab(pane.paneId, 'changes')
+    setWorkspaceVisible(pane.paneId, true)
+  }, [pane.paneId, setDockTab, setWorkspaceTab, setWorkspaceVisible])
+  const messagesRef = useRef(session.messages)
+  messagesRef.current = session.messages
+  const renderResult = useCallback((timeline: TurnTimeline) => (
+    <ResultSummaryCard sessionId={pane.sessionId} timeline={timeline} messages={messagesRef.current} onReviewChanges={reviewChanges} />
+  ), [pane.sessionId, reviewChanges])
   const peers = peerMessaging
     ? {
         boardEnabled: messagingEnabled,
@@ -270,6 +283,7 @@ function SessionPane({
               historyNote={data.historyInfo[pane.sessionId] ?? null}
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
+              renderResult={renderResult}
             />
             <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} />
           </div>

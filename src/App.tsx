@@ -14,6 +14,9 @@ import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
 import SingleSessionView from './features/engine/SingleSessionView'
 import BoardActivityController from './features/board/BoardActivityController'
+import BoardAttentionMenu from './features/board/BoardAttentionMenu'
+import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
+import { projectDisplayName } from './features/projects/workspaceModel'
 import {
   collapseAllPanes,
   collapseFinishedPanes,
@@ -211,6 +214,23 @@ function App() {
   const boardAddPane = useBoardStore((s) => s.addPane)
   const boardFocusPane = useBoardStore((s) => s.focusPane)
   const boardSessionIds = useMemo(() => new Set(boardPanes.map((pane) => pane.sessionId)), [boardPanes])
+  const boardCounts = useBoardStatusStore(selectAttentionCounts)
+  const boardStatusByPane = useBoardStatusStore((s) => s.byPane)
+  /** Señal por sesión para el sidebar: categorías distinguibles, no un punto genérico. */
+  const boardSignalBySession = useMemo(() => {
+    const out: Record<string, 'needs_you' | 'failed' | 'unread'> = {}
+    for (const status of Object.values(boardStatusByPane)) {
+      const current = out[status.sessionId]
+      if (status.kind === 'needs_you') out[status.sessionId] = 'needs_you'
+      else if (status.kind === 'failed' && current !== 'needs_you') out[status.sessionId] = 'failed'
+      else if (status.unreadResultCount > 0 && !current) out[status.sessionId] = 'unread'
+    }
+    return out
+  }, [boardStatusByPane])
+  const boardLabelFor = (id: string) => {
+    const record = session.sessionsById[id]
+    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
+  }
   const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
   // Overlays (navegador, procesos): solo la sesión de trabajo enfocada y expandida.
   const overlaySessionId = view === 'chat' ? session.activeSession : view === 'board' && focusedBoardPane && !focusedBoardPane.collapsed ? focusedBoardPane.sessionId : ''
@@ -358,6 +378,7 @@ function App() {
             activeId={view === 'board' ? (focusedBoardPane?.sessionId ?? '') : session.activeSession}
             busySessionIds={session.busySessionIds}
             boardSessionIds={boardSessionIds}
+            boardSignalBySession={boardSignalBySession}
             onOpenInBoard={openInBoard}
             onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
@@ -412,6 +433,8 @@ function App() {
             engineState={session.status?.state ?? null}
             workingCount={session.busySessionIds.size}
             attentionCount={attentionSessionCount}
+            boardAttentionCount={boardCounts.attentionPaneCount}
+            attentionMenu={<BoardAttentionMenu labelFor={boardLabelFor} goBoard={goBoard} disabled={!session.ready} />}
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onExpandSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}

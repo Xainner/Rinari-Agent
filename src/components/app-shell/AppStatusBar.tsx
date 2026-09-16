@@ -23,6 +23,8 @@ interface AppStatusBarProps {
   sidebarCollapsed: boolean
   /** Durante el splash la barra puede pintarse con controles deshabilitados. */
   disabled?: boolean
+  /** Lista de pendientes del board (menú accesible), junto al resumen. */
+  attentionMenu?: ReactNode
 }
 
 /**
@@ -43,6 +45,7 @@ export default function AppStatusBar({
   onExpandSidebar,
   sidebarCollapsed,
   disabled = false,
+  attentionMenu,
 }: AppStatusBarProps) {
   const { t } = useI18n()
   const engineLabel =
@@ -94,6 +97,7 @@ export default function AppStatusBar({
         {summary.length > 0 && (
           <span className="app-topbar-summary">{summary.join(' · ')}</span>
         )}
+        {attentionMenu}
       </div>
     </header>
   )

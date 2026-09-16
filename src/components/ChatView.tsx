@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
@@ -14,6 +14,7 @@ import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
+import { REVEAL_TURN_EVENT } from '../features/board/boardCommands'
 import ScrollToBottom from './chat/ScrollToBottom'
 
 interface ChatViewProps {
@@ -53,6 +54,11 @@ interface ChatViewProps {
   composerAcceptsGlobalFocus?: boolean
   /** `pane`: home reducido dentro de un panel del board. */
   homeVariant?: 'home' | 'pane'
+  /**
+   * Render por turno terminado (tarjeta de resultado en Boards). Ausente por
+   * defecto: la vista Normal conserva su presentación.
+   */
+  renderResult?: (timeline: TurnTimeline) => ReactNode
 }
 
 function ChatView({
@@ -88,6 +94,7 @@ function ChatView({
   composerPrimary = true,
   composerAcceptsGlobalFocus = true,
   homeVariant = 'home',
+  renderResult,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -126,6 +133,22 @@ function ChatView({
     followRef.current = true
     setAtBottom(true)
   }, [sessionId])
+
+  // «Ir al resultado» desde un aviso: mostrar el turno sin marcarlo leído (eso
+  // solo ocurre cuando su bloque queda visible).
+  useEffect(() => {
+    function onReveal(event: Event) {
+      const detail = (event as CustomEvent<{ sessionId: string; turnId: string }>).detail
+      if (!detail || detail.sessionId !== sessionId) return
+      const index = stream.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === detail.turnId : row.message.turnId === detail.turnId)
+      if (index < 0) return
+      followRef.current = false
+      setAtBottom(false)
+      virtRef.current?.scrollToIndex(index, { align: 'start' })
+    }
+    window.addEventListener(REVEAL_TURN_EVENT, onReveal)
+    return () => window.removeEventListener(REVEAL_TURN_EVENT, onReveal)
+  }, [sessionId, stream])
 
   useEffect(() => {
     const content = contentRef.current
@@ -204,6 +227,7 @@ function ChatView({
                       user={row.user}
                       now={now}
                       onResolveApproval={onResolveApproval}
+                      result={renderResult?.(row.timeline)}
                       planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3 text-sm"><span className="flex-1">¿Implementar este plan?</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="rounded-lg px-3 py-2 hover:bg-[var(--bg-hover)]">Ahora no</button><button type="button" disabled={planStarting} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white disabled:opacity-50" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? 'Iniciando…' : 'Implementar plan'}</button></div> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}

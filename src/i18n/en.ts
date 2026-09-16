@@ -131,6 +131,7 @@ export const en: Record<I18nKey, string> = {
   'sidebar.chats': 'Conversations',
   'sidebar.newGeneralChat': 'New conversation without a project',
   'sidebar.sessionWorking': 'Session in progress',
+  'sidebar.sessionInterrupted': 'Interrupted session, can resume',
   'sidebar.projectWorking': 'Project with sessions in progress',
   'sidebar.noChats': 'No conversations yet.\nStart one below.',
   'sidebar.profile': 'Profile',

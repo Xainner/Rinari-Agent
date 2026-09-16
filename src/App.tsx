@@ -13,6 +13,7 @@ import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
 import SingleSessionView from './features/engine/SingleSessionView'
+import BoardActivityController from './features/board/BoardActivityController'
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import BrowserPanel from './features/browser/BrowserPanel'
@@ -283,6 +284,7 @@ function App() {
   return (
     <I18nProvider lang={lang}>
       <EngineProvider session={session}>
+      <BoardActivityController />
       <DesktopContextMenu />
       <AppShell
         banner={degradedDetail !== null && (

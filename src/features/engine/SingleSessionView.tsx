@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import ChatView from '../../components/ChatView'
+import { ReadTrackingContext } from '../board/useResultVisibility'
 import FileWorkspace from '../files/FileWorkspace'
 import { useEngineCommands, useEngineData, useRuntimeStore } from './EngineContext'
 import { useSessionBusy, useSessionThread, useSessionTimelines } from './sessionSelectors'
@@ -34,6 +35,7 @@ export default function SingleSessionView({ onOpenProviders }: { onOpenProviders
   const gitStatus = projectRoot ? (data.projectStatusByRoot[projectRoot] ?? null) : null
 
   return (
+    <ReadTrackingContext.Provider value={sessionId ? { sessionId, visible: true } : null}>
     <FileWorkspace sessionId={sessionId}>
       <ChatView
         homeContext={{
@@ -70,5 +72,6 @@ export default function SingleSessionView({ onOpenProviders }: { onOpenProviders
         historyNote={sessionId !== '' ? (data.historyInfo[sessionId] ?? null) : null}
       />
     </FileWorkspace>
+    </ReadTrackingContext.Provider>
   )
 }

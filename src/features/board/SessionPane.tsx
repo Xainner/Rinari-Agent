@@ -19,6 +19,7 @@ import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
 import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
 import { usePaneSession } from './usePaneSession'
+import { ReadTrackingContext } from './useResultVisibility'
 
 const HANDLE_WIDTH = 6
 
@@ -91,6 +92,7 @@ function SessionPane({
     const final = [...lastTurn.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
     return final && final.type === 'model' && final.content ? final.content : null
   }, [lastTurn])
+  const readTracking = useMemo(() => ({ sessionId: pane.sessionId, visible: !pane.collapsed }), [pane.sessionId, pane.collapsed])
   const peers = peerMessaging
     ? {
         boardEnabled: messagingEnabled,
@@ -151,6 +153,8 @@ function SessionPane({
       aria-label={title}
       data-pane-id={pane.paneId}
       data-focused={focused || undefined}
+      data-status={session.status.kind}
+      data-unread={session.status.unreadResultCount > 0 || undefined}
       className={cn('session-pane', focused && 'is-focused')}
       style={{ width: pane.width }}
       onPointerDownCapture={focus}
@@ -209,6 +213,7 @@ function SessionPane({
       )}
       <div ref={bodyRef} className="session-pane-body">
         <FileWorkspaceProvider sessionId={pane.sessionId} onOpen={revealFile}>
+          <ReadTrackingContext.Provider value={readTracking}>
           <div className="session-pane-chat">
             <ChatView
               homeContext={{
@@ -249,6 +254,7 @@ function SessionPane({
             />
             <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} />
           </div>
+          </ReadTrackingContext.Provider>
           {pane.workspaceVisible && (
             <>
               {dockLayout === 'docked' && (

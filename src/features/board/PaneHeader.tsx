@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import {
   ArrowLeftRight,
+  CheckCheck,
   CircleHelp,
   ExternalLink,
   GitBranch,
@@ -26,8 +27,23 @@ import {
 import { projectDisplayName } from '../projects/workspaceModel'
 import { cn } from '../../lib/utils'
 import type { PaneSession } from './usePaneSession'
+import type { PaneStatusKind } from '../engine/sessionSelectors'
+import type { I18nKey } from '../../i18n/es'
 
 const MODES = ['plan', 'build', 'review'] as const
+
+export const STATUS_LABEL_KEY = {
+  working: 'board.status.working',
+  needs_you: 'board.status.needsYou',
+  done: 'board.status.done',
+  failed: 'board.status.failed',
+  idle: 'board.status.idle',
+  cancelling: 'board.status.cancelling',
+  cancelled: 'board.status.cancelled',
+  stopped: 'board.status.stopped',
+  loading: 'board.status.loading',
+  unavailable: 'board.status.unavailable',
+} satisfies Record<PaneStatusKind, I18nKey>
 
 export interface PaneHeaderProps {
   session: PaneSession
@@ -83,7 +99,8 @@ function PaneHeader({
   peers,
 }: PaneHeaderProps) {
   const { t } = useI18n()
-  const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, activeModel } = session
+  const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, activeModel, status } = session
+  const statusLabel = t(STATUS_LABEL_KEY[status.kind])
   const title = record?.title || t('sidebar.newChat')
   const projectName = project?.name ?? projectRoot
   const git = gitStatus?.status.available ? gitStatus.status : null
@@ -119,6 +136,26 @@ function PaneHeader({
         )}
         {sharedRoot && (
           <span className="pane-header-shared" title={t('board.pane.projectSharedHint')}>{t('board.pane.projectShared')}</span>
+        )}
+        <span
+          role="status"
+          data-testid="pane-status"
+          data-kind={status.kind}
+          className="pane-header-status"
+          title={status.error ?? status.stopReason?.message ?? statusLabel}
+        >
+          <span className="pane-header-status-dot" aria-hidden="true" />
+          {statusLabel}
+        </span>
+        {status.unreadResultCount > 0 && (
+          <span
+            className="pane-header-new"
+            data-testid="pane-unread"
+            aria-label={t('board.status.unreadCount', { n: status.unreadResultCount })}
+            title={t('board.status.unreadCount', { n: status.unreadResultCount })}
+          >
+            {t('board.status.new')}{status.unreadResultCount > 1 ? ` · ${status.unreadResultCount}` : ''}
+          </span>
         )}
       </div>
       <div className="pane-header-controls">
@@ -189,6 +226,7 @@ function PaneHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem onSelect={onOpenSingle}><ExternalLink size={13} /> {t('board.pane.openSingle')}</DropdownMenuItem>
+            <DropdownMenuItem disabled={status.unreadResultCount === 0} onSelect={session.markAllSeen}><CheckCheck size={13} /> {t('board.pane.markRead')}</DropdownMenuItem>
             <DropdownMenuItem onSelect={onToggleWorkspace}><PanelRight size={13} /> {t('board.pane.toggleWorkspace')}</DropdownMenuItem>
             {peers && (
               <>

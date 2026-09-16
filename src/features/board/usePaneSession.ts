@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AttachmentRef, ChatMessage, PendingApproval } from '../../types'
 import type { ModelSummary, ProjectSummary, ProjectStatus, SessionSummary } from '../../services/engine'
 import type { ReasoningEffort } from '../../lib/reasoning'
 import type { TurnTimeline } from '../activity/types'
 import { useEngineCommands, useEngineData, useRuntimeStore } from '../engine/EngineContext'
 import {
+  derivePaneStatus,
+  samePaneStatus,
   selectSessionModel,
   useSessionApprovals,
   useSessionBusy,
   useSessionThread,
   useSessionTimelines,
+  type PaneAvailabilityState,
+  type PaneStatus,
 } from '../engine/sessionSelectors'
+import { unreadPeerCount, unreadResultCount, unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
 import { useProjectRootWatch } from '../projects/useProjectRootWatch'
 import { usePendingQuestions } from '../questions/usePendingQuestions'
 import { selectReasoning, useSessionUiStore } from '../../stores/sessionUi'
@@ -36,6 +41,13 @@ export interface PaneSession {
   gitStatus: ProjectStatus | null
   gitError: string | null
   availability: PaneAvailability
+  /** Estado derivado (§8.5): actividad, último resultado, lectura y disponibilidad. */
+  status: PaneStatus
+  /** Ids de turnos con resultado sin leer, en el orden del registro. */
+  unreadTurnIds: string[]
+  markSeen: (turnId: string) => void
+  /** Marca como leídos los resultados conocidos al pulsar; nunca turnos futuros. */
+  markAllSeen: () => void
   reasoningEffort: ReasoningEffort
   setReasoningEffort: (effort: ReasoningEffort) => void
   send: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
@@ -136,6 +148,35 @@ export function usePaneSession(sessionId: string): PaneSession {
   )
   const retryPreparation = useCallback(() => setAttempt((value) => value + 1), [])
 
+  // -- estado derivado y lectura -------------------------------------------
+  const attention = useBoardAttentionStore((state) => state.sessions[sessionId])
+  const markTurnSeen = useBoardAttentionStore((state) => state.markTurnSeen)
+  const markSessionResultsSeen = useBoardAttentionStore((state) => state.markSessionResultsSeen)
+  const unread = useMemo(() => unreadTurnIds(attention), [attention])
+  const availabilityState: PaneAvailabilityState = !data.ready
+    ? 'disconnected'
+    : availability.state === 'loading' ? 'loading' : availability.state === 'ready' ? 'ready' : 'error'
+  const previousStatus = useRef<PaneStatus | null>(null)
+  const status = useMemo(() => {
+    const next = derivePaneStatus({
+      sessionId,
+      timelines,
+      pendingApprovals: approvals.length,
+      pendingQuestions: questions.length,
+      unreadResultCount: unreadResultCount(attention),
+      unreadPeerCount: unreadPeerCount(attention),
+      availability: availabilityState,
+    })
+    if (samePaneStatus(previousStatus.current, next)) return previousStatus.current as PaneStatus
+    previousStatus.current = next
+    return next
+  }, [sessionId, timelines, approvals.length, questions.length, attention, availabilityState])
+  const markSeen = useCallback((turnId: string) => markTurnSeen(sessionId, turnId), [markTurnSeen, sessionId])
+  const markAllSeen = useCallback(() => {
+    const ids = unreadTurnIds(useBoardAttentionStore.getState().sessions[sessionId])
+    if (ids.length > 0) markSessionResultsSeen(sessionId, ids)
+  }, [markSessionResultsSeen, sessionId])
+
   return useMemo<PaneSession>(() => ({
     sessionId,
     record,
@@ -150,6 +191,10 @@ export function usePaneSession(sessionId: string): PaneSession {
     gitStatus,
     gitError,
     availability,
+    status,
+    unreadTurnIds: unread,
+    markSeen,
+    markAllSeen,
     reasoningEffort,
     setReasoningEffort,
     send,
@@ -165,7 +210,7 @@ export function usePaneSession(sessionId: string): PaneSession {
     retryPreparation,
   }), [
     sessionId, record, project, projectRoot, messages, timelines, busy, approvals, questions.length,
-    activeModel, gitStatus, gitError, availability, reasoningEffort, setReasoningEffort,
+    activeModel, gitStatus, gitError, availability, status, unread, markSeen, markAllSeen, reasoningEffort, setReasoningEffort,
     send, stop, setMode, setPermission, useModel, searchFiles, prepareAttachments,
     cancelAttachmentPreparation, implementPlan, resolveApproval, retryPreparation,
   ])

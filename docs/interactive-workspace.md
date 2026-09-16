@@ -121,3 +121,32 @@ Validación: `src/features/board/usePeerGroup.test.tsx`,
 `src/features/board/BoardView.peers.test.tsx`, `src/components/MessageBubble.test.tsx`
 y los casos de procedencia en `turnTimelineReducer.test.ts`. Regeneración del
 protocolo: `RINARI_ENGINE_SCHEMA=<ruta a Rinari-CLI/src/rinari/engine_protocol/schema/v1.json> npm run protocol:generate`.
+
+# Boards: estado por panel y resultados sin leer
+
+- Cada panel deriva un estado (`selectors: derivePaneStatus`) con precedencia
+  fija: `loading`/`unavailable` › `cancelling` › `needs_you` (aprobaciones o
+  preguntas pendientes) › `working` › `failed` / `stopped` / `done` /
+  `cancelled` › `idle`. El header lo muestra como píldora con texto e icono; el
+  color no afirma calidad del código, solo el estado del turno.
+- "No leído" es una dimensión independiente: `working + NEW` coexisten. Vive en
+  `src/stores/boardAttention.ts` (`rinari.board.attention.v1`, por perfil local
+  y sesión) como recibos por turno (`baseline` / `unread` / `seen`) sin
+  contenido. Reglas: el historial que ya terminó al añadir la sesión es
+  baseline; un terminal en vivo (completed/failed/stopped) queda `unread`;
+  cancelar a mano no genera resultado; un turno activo rastreado que termina
+  mientras el cliente no miraba queda `unread` al reconectar.
+- `BoardActivityController` (montado una vez en `App`, fuera de `BoardView`)
+  sigue a las sesiones del board en Normal, Boards y Ajustes y traduce las
+  transiciones del runtime a recibos. No abre otro stream de eventos.
+- Lectura automática (`useResultVisibility`): solo con la superficie visible
+  (panel expandido o Normal con esa sesión), ventana con foco, sin modal encima
+  y el bloque final en viewport durante 500 ms. Leer en Normal actualiza el
+  mismo recibo que Boards. "Marcar resultados como leídos" (menú del panel)
+  afecta a los ids conocidos al pulsar, nunca a turnos futuros ni a
+  aprobaciones/preguntas.
+- Si el almacenamiento no está disponible, los recibos siguen en memoria y el
+  board avisa «lectura no persistida».
+
+Validación: `src/stores/boardAttention.test.ts`, `sessionSelectors.test.ts`
+(§ pane status), `BoardActivityController.test.tsx`, `BoardView.status.test.tsx`.

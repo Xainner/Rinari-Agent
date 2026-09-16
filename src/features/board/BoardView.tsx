@@ -31,6 +31,7 @@ import SessionPane from './SessionPane'
 import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
 import { usePeerGroup } from './usePeerGroup'
 import { usePeerNotifications } from './usePeerNotifications'
+import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export interface BoardActions {
   addPane: () => void
@@ -83,6 +84,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const focusPane = useBoardStore((state) => state.focusPane)
   const reconcile = useBoardStore((state) => state.reconcileResolvedSessions)
   const persistError = useBoardStore((state) => state.persistError)
+  const attentionPersistError = useBoardAttentionStore((state) => state.persistError)
   const boardId = useBoardStore((state) => state.boardId)
   const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -141,6 +143,11 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
       }
       if (cancelled) return
       const outcome = reconcile(resolved)
+      // Solo la eliminación autoritativa limpia los recibos de lectura; quitar
+      // un panel del layout los conserva.
+      for (const removed of outcome.removed) {
+        if (removed.status === 'not_found') useBoardAttentionStore.getState().forgetSession(removed.sessionId)
+      }
       if (outcome.removed.length > 0) {
         toast.info(t('board.panesDropped', { n: outcome.removed.length }), { id: 'board-panes-dropped' })
       }
@@ -227,6 +234,9 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     <div className="board-root">
       {persistError && (
         <div role="alert" className="board-banner">{t('board.persistError')}</div>
+      )}
+      {attentionPersistError && (
+        <div role="status" className="board-banner">{t('board.attention.notPersisted')}</div>
       )}
       <div ref={canvasRef} className="board-canvas" role="region" aria-label={t('board.title')}>
         {panes.length === 0 ? (

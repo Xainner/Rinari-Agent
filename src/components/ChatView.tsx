@@ -9,6 +9,7 @@ import TurnTimelineView from '../features/activity/TurnTimelineView'
 import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
+import type { PaneMentionTarget } from './composer/paneMention'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
@@ -59,6 +60,9 @@ interface ChatViewProps {
    * defecto: la vista Normal conserva su presentación.
    */
   renderResult?: (timeline: TurnTimeline) => ReactNode
+  /** Paneles a los que se puede escribir con `@Panel mensaje` (solo Boards). */
+  mentionTargets?: readonly PaneMentionTarget[]
+  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
 }
 
 function ChatView({
@@ -95,6 +99,8 @@ function ChatView({
   composerAcceptsGlobalFocus = true,
   homeVariant = 'home',
   renderResult,
+  mentionTargets,
+  onSendToTarget,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -201,6 +207,8 @@ function ChatView({
       permissionProfilesV2={permissionProfilesV2}
       onPermissionChange={onPermissionChange}
       onSearchFiles={onSearchFiles}
+      mentionTargets={mentionTargets}
+      onSendToTarget={onSendToTarget}
     />
   )
 

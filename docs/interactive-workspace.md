@@ -108,6 +108,15 @@ Project headers collapse their sessions. Composer selectors close upon selection
   efectos, MCP, git y subagentes; el usuario convierte el mensaje en tarea
   propia con «Enviar al panel…» (reenvío manual, `origin.kind = "user"` con
   `quoted_source`, sin techo ni aprobación).
+- **`@Panel mensaje` desde el compositor**: al escribir `@` al inicio del
+  mensaje aparece la lista de paneles del board (filtrada por lo tecleado;
+  ↑/↓, Enter/Tab para elegir, Esc para descartar). Con `@Docs revisá el
+  README` el texto va **directo al panel «Docs»** como reenvío manual
+  (`origin.kind = "user"`, cita del panel origen, sin aprobación ni techo) y
+  no inicia un turno en el panel actual. Solo cuenta la mención al inicio y
+  solo si coincide con la etiqueta de un panel (la más larga gana); cualquier
+  otra `@` sigue siendo una referencia de archivo del workspace. Un `@Panel` a
+  secas no se envía; los adjuntos se quedan en el borrador.
 - La cola del panel (`QueueBar`) lista las entradas tipadas: origen, estado
   (`queued`/`paused`/`uncertain`), cancelar una entrega y **Reanudar** tras un
   Stop (`session.queue.resume`). Un mensaje para un panel no enfocado muestra

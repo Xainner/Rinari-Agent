@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
-import { ArrowUp, Brain, Check, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Brain, Check, Columns3, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
 import { selectDraft, useComposerStore } from '../../stores/composer'
@@ -9,6 +9,7 @@ import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -59,6 +60,13 @@ interface ComposerProps {
   permissionProfilesV2: boolean
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
+  /**
+   * Paneles del board a los que se puede escribir con `@Panel mensaje`. Solo
+   * en Boards; sin lista no hay autocompletado ni envío directo.
+   */
+  mentionTargets?: readonly PaneMentionTarget[]
+  /** Envía `text` al panel `targetId` como tarea del usuario (reenvío manual). */
+  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
 }
 
 const MODES = ['plan', 'build', 'review'] as const
@@ -96,6 +104,8 @@ export default function Composer({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
+  mentionTargets,
+  onSendToTarget,
 }: ComposerProps) {
   const { t } = useI18n()
   const draftKey = explicitDraftKey ?? (sessionId || 'draft')
@@ -129,6 +139,15 @@ export default function Composer({
   const setText = (value: string) => setTextFor(draftKey, value)
   const [fileMatches, setFileMatches] = useState<Array<{ path: string; relative_path: string; name: string }>>([])
   const mention = text.match(/(?:^|\s)@([^\s]*)$/)?.[1] ?? null
+  // Mensaje directo a otro panel: `@Panel texto` al inicio del mensaje.
+  const paneTargets = mentionTargets ?? []
+  const paneQuery = paneTargets.length > 0 ? paneMentionQuery(text) : null
+  const paneMatches = paneQuery !== null ? matchPaneTargets(paneQuery, paneTargets) : []
+  const paneMention = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(text, paneTargets) : null
+  const [paneHighlight, setPaneHighlight] = useState(0)
+  useEffect(() => {
+    setPaneHighlight(0)
+  }, [paneQuery])
   const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
   const [visionRevision, setVisionRevision] = useState(0)
   useEffect(() => { const refresh = () => setVisionRevision(n => n + 1); window.addEventListener('rinari-vision-changed', refresh); return () => window.removeEventListener('rinari-vision-changed', refresh) }, [])
@@ -209,6 +228,28 @@ export default function Composer({
     const outgoing = current.attachments
     const attachmentIds = outgoing.map((item) => item.id)
     if (isStreaming || isSubmitting || visionUnavailable || outgoing.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && outgoing.length === 0)) return
+    const direct = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(content, paneTargets) : null
+    if (direct && onSendToTarget) {
+      // Mensaje directo a otro panel: solo texto; los adjuntos se quedan en el borrador.
+      if (!direct.message) return
+      setTextFor(submissionSessionKey, '')
+      autosize()
+      textareaRef.current?.focus()
+      setIsSubmitting(true)
+      try {
+        const ok = await onSendToTarget(direct.target.id, direct.message)
+        if (!ok) {
+          setTextFor(submissionSessionKey, content)
+          requestAnimationFrame(autosize)
+        }
+      } catch {
+        setTextFor(submissionSessionKey, content)
+        requestAnimationFrame(autosize)
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
     store.clearFor(submissionSessionKey)
     autosize()
     textareaRef.current?.focus()
@@ -228,7 +269,7 @@ export default function Composer({
     }
   }
 
-  const canSend = !!text.trim() || attachments.length > 0
+  const canSend = paneMention ? paneMention.message.length > 0 : (!!text.trim() || attachments.length > 0)
 
   async function prepareOne(item: AttachmentRef) {
     if (!onPrepareAttachments) return
@@ -353,6 +394,15 @@ export default function Composer({
     })
   }
 
+  function choosePaneTarget(target: PaneMentionTarget) {
+    setText(`@${target.label} `)
+    setFileMatches([])
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+      autosize()
+    })
+  }
+
   function chooseWorkspaceFile(file: { path: string; relative_path: string; name: string }) {
     addAttachment({ id: `att_${Date.now().toString(36)}_${file.path}`, path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
     setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
@@ -385,8 +435,33 @@ export default function Composer({
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-amber-400/30 p-2 text-xs">{visionRoute?.reason}</div>}
         {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">Visión: {visionRoute.destination}</p>}
         {imageAttachments.some(file => !file.ocr) && <button type="button" onClick={useOcrForImages} className="mb-2 text-[11px] text-[var(--text-muted)]">Usar OCR para estas imágenes</button>}
-        {fileMatches.length > 0 && (
+        {paneMention && (
+          <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--accent-2)]" data-testid="pane-mention-chip">
+            <MessageSquareShare size={12} aria-hidden="true" />
+            <span>{t('composer.paneMention.direct', { label: paneMention.target.label })}</span>
+            <span className="text-[var(--text-subtle)]">· {paneMention.message ? t('composer.paneMention.hint') : t('composer.paneMention.empty')}</span>
+          </div>
+        )}
+        {(paneMatches.length > 0 || fileMatches.length > 0) && (
           <div className="absolute right-2 bottom-full left-2 z-30 mb-2 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl">
+            {paneMatches.length > 0 && (
+              <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">
+                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.paneMention.heading')}</p>
+                {paneMatches.map((target, index) => (
+                  <button
+                    key={target.id}
+                    type="button"
+                    role="option"
+                    aria-selected={index === paneHighlight}
+                    onMouseEnter={() => setPaneHighlight(index)}
+                    onClick={() => choosePaneTarget(target)}
+                    className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${index === paneHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
+                  >
+                    <Columns3 size={13} /><span className="truncate">{target.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {fileMatches.map((file) => (
               <button key={file.path} type="button" onClick={() => chooseWorkspaceFile(file)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
                 <FileText size={13} /><span className="truncate">{file.relative_path}</span>
@@ -406,6 +481,12 @@ export default function Composer({
           }}
           onPaste={handlePaste}
           onKeyDown={(e) => {
+            if (paneMatches.length > 0 && !e.nativeEvent.isComposing) {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setPaneHighlight((index) => (index + 1) % paneMatches.length); return }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setPaneHighlight((index) => (index - 1 + paneMatches.length) % paneMatches.length); return }
+              if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); choosePaneTarget(paneMatches[paneHighlight] ?? paneMatches[0]); return }
+              if (e.key === 'Escape') { e.preventDefault(); setText(text.replace(/^@/, '')); return }
+            }
             const sendWithEnter = useUIStore.getState().enterToSend
             const mod = e.ctrlKey || e.metaKey
             if (

@@ -20,6 +20,9 @@ import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
 import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
 import ResultSummaryCard from './ResultSummaryCard'
+import { toast } from 'sonner'
+import { commandMessage, engineApi } from '../../services/engine'
+import type { PaneMentionTarget } from '../../components/composer/paneMention'
 import type { TurnTimeline } from '../activity/types'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
@@ -106,6 +109,27 @@ function SessionPane({
   }, [pane.paneId, setDockTab, setWorkspaceTab, setWorkspaceVisible])
   const messagesRef = useRef(session.messages)
   messagesRef.current = session.messages
+  // `@Panel mensaje` desde el compositor: reenvío manual (origen `user`, con cita).
+  const mentionTargets = useMemo<PaneMentionTarget[] | undefined>(
+    () => (peerMessaging && forwardTargets.length > 0 ? forwardTargets.map((item) => ({ id: item.sessionId, label: item.label })) : undefined),
+    [peerMessaging, forwardTargets],
+  )
+  const sendToTarget = useCallback(async (targetId: string, text: string) => {
+    const target = forwardTargets.find((item) => item.sessionId === targetId)
+    try {
+      await engineApi.peerMessageForward({
+        target_session_id: targetId,
+        message: text,
+        source_session_id: pane.sessionId,
+        quoted_source: { session_id: pane.sessionId },
+      })
+      toast.success(t('composer.paneMention.sent', { label: target?.label ?? targetId }))
+      return true
+    } catch (error) {
+      toast.error(commandMessage(error))
+      return false
+    }
+  }, [forwardTargets, pane.sessionId, t])
   const renderResult = useCallback((timeline: TurnTimeline) => (
     <ResultSummaryCard sessionId={pane.sessionId} timeline={timeline} messages={messagesRef.current} onReviewChanges={reviewChanges} />
   ), [pane.sessionId, reviewChanges])
@@ -284,6 +308,8 @@ function SessionPane({
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
               renderResult={renderResult}
+              mentionTargets={mentionTargets}
+              onSendToTarget={peerMessaging ? sendToTarget : undefined}
             />
             <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} />
           </div>

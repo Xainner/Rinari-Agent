@@ -106,3 +106,36 @@ it('forwards a message to another pane as the user (no consent, quoted source)',
   })))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Enviar mensaje a otro panel' })).toBeNull())
 })
+
+it('sends "@Docs message" from pane A composer straight to pane B as a user forward', async () => {
+  useBoardStore.getState().addPane('ses_a')
+  useBoardStore.getState().addPane('ses_b')
+  render(<BoardHarness engine={peerEngine({ session_peer_messaging_v1: true })}><BoardView /></BoardHarness>)
+  const paneA = await screen.findByRole('region', { name: 'Backend API' })
+  const user = userEvent.setup()
+  const textarea = within(paneA).getByRole('textbox', { name: 'Mensaje' })
+  await user.type(textarea, '@Do')
+  const list = await within(paneA).findByRole('listbox', { name: 'Paneles' })
+  await user.click(within(list).getByRole('option', { name: 'Docs' }))
+  await user.type(textarea, 'revisá el README')
+  await user.click(within(paneA).getByRole('button', { name: 'Enviar mensaje' }))
+  await waitFor(() => expect(invoke).toHaveBeenCalledWith('peer_message_forward', expect.objectContaining({
+    target_session_id: 'ses_b',
+    message: 'revisá el README',
+    source_session_id: 'ses_a',
+    quoted_source: { session_id: 'ses_a' },
+  })))
+  // Never a normal turn on pane A.
+  expect(invoke).not.toHaveBeenCalledWith('turn_start', expect.anything())
+})
+
+it('does not offer pane mentions when the engine lacks the capability', async () => {
+  useBoardStore.getState().addPane('ses_a')
+  useBoardStore.getState().addPane('ses_b')
+  render(<BoardHarness engine={peerEngine({})}><BoardView /></BoardHarness>)
+  const paneA = await screen.findByRole('region', { name: 'Backend API' })
+  const user = userEvent.setup()
+  await user.type(within(paneA).getByRole('textbox', { name: 'Mensaje' }), '@Do')
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  expect(within(paneA).queryByRole('listbox', { name: 'Paneles' })).toBeNull()
+})

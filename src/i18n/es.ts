@@ -1047,6 +1047,7 @@ export const es = {
   'board.dock.close': 'Cerrar dock',
   'board.pane.menu': 'Opciones del panel',
   'board.pane.openSingle': 'Abrir en vista única',
+  'board.pane.configureComposer': 'Configurar siguiente mensaje',
   'board.pane.toggleWorkspace': 'Mostrar u ocultar dock',
   'board.pane.moveLeft': 'Mover a la izquierda',
   'board.pane.moveRight': 'Mover a la derecha',

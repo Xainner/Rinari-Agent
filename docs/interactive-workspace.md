@@ -78,6 +78,15 @@ Project headers collapse their sessions. Composer selectors close upon selection
   archivadas o eliminadas, con aviso; un error temporal conserva el panel con
   «Reintentar». Cerrar una sesión desde el sidebar se refleja por el mismo
   reconcile.
+- **Un solo lugar editable por sesión.** Modelo, modo (PLAN/BUILD/REVIEW),
+  razonamiento y permisos de la siguiente petición se editan únicamente en el
+  `Composer` de esa sesión, en Normal y en Boards. El header del panel muestra
+  identidad, rama, estado, no leídos, peer, colapsar, dock y menú; su acción
+  «Configurar siguiente mensaje» enfoca el Composer existente (petición tipada
+  `rinari:focus-composer` con `sessionId`) en vez de abrir otro editor. La barra
+  superior no expone selectores de modelo ni de modo. El guard de sesión
+  ocupada aplica igual en ambas vistas y un cambio nunca reescribe la
+  atribución de un turno ya iniciado.
 - Cada panel monta su propio `Composer` (clave de borrador = sesión, sin tocar
   el espejo de Normal), `FileWorkspaceProvider` y dock derecho compartido con
   superficies **Workspace** (tabs desplazables con etiqueta de alcance Proyecto /

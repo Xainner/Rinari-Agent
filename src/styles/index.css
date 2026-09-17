@@ -804,10 +804,6 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .pane-header-project { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 220px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 .pane-header-shared { flex-shrink: 0; padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent); border-radius: 6px; font-size: 10px; color: var(--warning); white-space: nowrap; }
 .pane-header-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.pane-header-modes { display: inline-flex; align-items: center; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-elevated); }
-.pane-header-mode { padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--text-muted); }
-.pane-header-mode.is-active { color: #fff; background: linear-gradient(180deg, #b466ff, #8425ef); }
-.pane-header-mode:disabled { opacity: 0.5; }
 .pane-header-busy { display: inline-flex; color: var(--accent-2); }
 .pane-header-badge { display: inline-flex; align-items: center; gap: 3px; min-height: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); font-size: 11px; font-weight: 700; }
 .pane-header-icon { display: inline-flex; align-items: center; justify-content: center; padding: 6px; border-radius: var(--radius-control); color: var(--text-muted); transition: background-color 120ms, color 120ms; }

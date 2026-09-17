@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import {
   ArrowLeftRight,
   CheckCheck,
@@ -11,11 +11,10 @@ import {
   MoreHorizontal,
   PanelRight,
   ShieldAlert,
+  SlidersHorizontal,
   X,
 } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import type { ModelSummary, ProviderSummary } from '../../services/engine'
-import ModelPicker from '../../components/composer/ModelPicker'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,8 +29,6 @@ import { cn } from '../../lib/utils'
 import type { PaneSession } from './usePaneSession'
 import type { PaneStatusKind } from '../engine/sessionSelectors'
 import type { I18nKey } from '../../i18n/es'
-
-const MODES = ['plan', 'build', 'review'] as const
 
 export const STATUS_LABEL_KEY = {
   working: 'board.status.working',
@@ -51,13 +48,12 @@ export interface PaneHeaderProps {
   focused: boolean
   sharedRoot: boolean
   workspaceVisible: boolean
-  models: ModelSummary[]
-  providers: ProviderSummary[]
   canMoveLeft: boolean
   canMoveRight: boolean
-  onOpenProviders: () => void
-  onDiscoverModels: () => void
   onToggleWorkspace: () => void
+  /** Enfoca el Composer del panel: es el único lugar donde se editan modelo,
+   * modo, razonamiento y permisos de la siguiente petición. */
+  onConfigureComposer: () => void
   onOpenSingle: () => void
   onMoveLeft: () => void
   onMoveRight: () => void
@@ -77,22 +73,21 @@ export interface PaneHeaderProps {
 }
 
 /**
- * Header local de un panel: identidad del proyecto/chat, proveedor › modelo,
- * badges de ejecución/intervención y menú de ciclo de vida. Es más compacto
- * que la barra superior y nunca la sustituye.
+ * Header local de un panel: identidad del proyecto/chat, rama, estado, no
+ * leídos, peer, colapsar, dock y menú de ciclo de vida. No edita modelo,
+ * modo, razonamiento ni permisos: eso pertenece al Composer de la sesión
+ * («Configurar siguiente mensaje» lo enfoca). Es más compacto que la barra
+ * superior y nunca la sustituye.
  */
 function PaneHeader({
   session,
   focused,
   sharedRoot,
   workspaceVisible,
-  models,
-  providers,
   canMoveLeft,
   canMoveRight,
-  onOpenProviders,
-  onDiscoverModels,
   onToggleWorkspace,
+  onConfigureComposer,
   onOpenSingle,
   onMoveLeft,
   onMoveRight,
@@ -102,13 +97,16 @@ function PaneHeader({
   peers,
 }: PaneHeaderProps) {
   const { t } = useI18n()
-  const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, activeModel, status } = session
+  const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, status } = session
+  // El menú atrapa el foco mientras está abierto y lo devuelve al disparador
+  // al cerrarse; «Configurar siguiente mensaje» se ejecuta en ese cierre, ya
+  // sin trampa, y cede el foco al Composer en lugar de al botón.
+  const configureOnClose = useRef(false)
   const statusLabel = t(STATUS_LABEL_KEY[status.kind])
   const title = record?.title || t('sidebar.newChat')
   const projectName = project?.name ?? projectRoot
   const git = gitStatus?.status.available ? gitStatus.status : null
   const interventions = approvals.length + pendingQuestions
-  const mode = (record?.mode ?? 'build').toLowerCase()
   const peerState = !peers ? null
     : !peers.boardEnabled ? 'off'
       : peers.receive && peers.send ? 'on'
@@ -162,32 +160,6 @@ function PaneHeader({
         )}
       </div>
       <div className="pane-header-controls">
-        <div role="group" aria-label={t('mode.change')} className="pane-header-modes">
-          {MODES.map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-pressed={mode === item}
-              disabled={!record || busy}
-              onClick={() => session.setMode(item)}
-              className={cn('pane-header-mode', mode === item && 'is-active')}
-            >
-              {t(`mode.${item}` as 'mode.plan')}
-            </button>
-          ))}
-        </div>
-        <ModelPicker
-          models={models}
-          providers={providers}
-          activeAlias={activeModel?.alias ?? null}
-          activeModel={activeModel}
-          missingLabel={record?.model_id ? t('board.pane.modelMissing') : undefined}
-          onUseModel={session.useModel}
-          onDiscoverModels={onDiscoverModels}
-          onOpenProviders={onOpenProviders}
-          disabled={!record}
-          compact
-        />
         {busy && (
           <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')} className="pane-header-busy">
             <LoaderCircle size={14} aria-hidden="true" className="motion-safe:animate-spin" />
@@ -236,7 +208,24 @@ function PaneHeader({
               <MoreHorizontal size={15} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent
+            align="end"
+            className="w-56"
+            onCloseAutoFocus={(event) => {
+              if (!configureOnClose.current) return
+              configureOnClose.current = false
+              event.preventDefault()
+              onConfigureComposer()
+            }}
+          >
+            <DropdownMenuItem
+              disabled={!record}
+              onSelect={() => {
+                configureOnClose.current = true
+              }}
+            >
+              <SlidersHorizontal size={13} /> {t('board.pane.configureComposer')}
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={onOpenSingle}><ExternalLink size={13} /> {t('board.pane.openSingle')}</DropdownMenuItem>
             <DropdownMenuItem disabled={status.unreadResultCount === 0} onSelect={session.markAllSeen}><CheckCheck size={13} /> {t('board.pane.markRead')}</DropdownMenuItem>
             <DropdownMenuItem onSelect={onToggleWorkspace}><PanelRight size={13} /> {t('board.pane.toggleWorkspace')}</DropdownMenuItem>

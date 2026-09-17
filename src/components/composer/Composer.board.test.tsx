@@ -82,9 +82,11 @@ it('delivers the global focus request only to the composer that accepts it', () 
   expect(document.activeElement).toBe(textareaB)
   expect(document.activeElement).not.toBe(textareaA)
 
-  // A typed request for another session is ignored even by the focused instance.
+  // A typed request names its session: it reaches that instance even though it
+  // does not accept global focus, and the focused instance ignores it.
   ;(document.activeElement as HTMLElement | null)?.blur()
   act(() => window.dispatchEvent(new CustomEvent('rinari:focus-composer', { detail: { sessionId: 'ses_a' } })))
+  expect(document.activeElement).toBe(textareaA)
   expect(document.activeElement).not.toBe(textareaB)
 })
 

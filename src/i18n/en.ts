@@ -1030,6 +1030,7 @@ export const en: Record<I18nKey, string> = {
   'board.dock.close': 'Close dock',
   'board.pane.menu': 'Pane options',
   'board.pane.openSingle': 'Open in single view',
+  'board.pane.configureComposer': 'Configure next message',
   'board.pane.toggleWorkspace': 'Show or hide dock',
   'board.pane.moveLeft': 'Move left',
   'board.pane.moveRight': 'Move right',

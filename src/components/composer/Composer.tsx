@@ -10,6 +10,7 @@ import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 
 export type ComposerPlacement = 'centered' | 'bottom'
@@ -239,16 +240,21 @@ export default function Composer({
   }, [mention, onSearchFiles])
 
   useEffect(() => {
-    if (!acceptsGlobalFocus) return
     function focus(event: Event) {
-      // A typed request names its session; a legacy event without detail
-      // goes to whichever instance currently accepts global focus.
+      // A typed request names its session and reaches that instance even when
+      // it is not the one accepting global focus (e.g. the pane header menu
+      // focusing its own composer). A legacy event without detail goes to
+      // whichever instance currently accepts global focus.
       const wanted = (event as CustomEvent<{ sessionId?: string } | undefined>).detail?.sessionId
-      if (wanted && sessionId && wanted !== sessionId) return
+      if (wanted) {
+        if (!sessionId || wanted !== sessionId) return
+      } else if (!acceptsGlobalFocus) {
+        return
+      }
       textareaRef.current?.focus()
     }
-    window.addEventListener('rinari:focus-composer', focus)
-    return () => window.removeEventListener('rinari:focus-composer', focus)
+    window.addEventListener(FOCUS_COMPOSER_EVENT, focus)
+    return () => window.removeEventListener(FOCUS_COMPOSER_EVENT, focus)
   }, [acceptsGlobalFocus, sessionId])
 
   useEffect(() => {

@@ -23,6 +23,7 @@ import ResultSummaryCard from './ResultSummaryCard'
 import { toast } from 'sonner'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { PaneMentionTarget } from '../../components/composer/paneMention'
+import { FOCUS_COMPOSER_EVENT } from '../../components/composer/focusComposer'
 import type { TurnTimeline } from '../activity/types'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
@@ -184,6 +185,14 @@ function SessionPane({
     if (!focused) onFocus(pane.paneId)
   }, [focused, onFocus, pane.paneId])
 
+  // «Configurar siguiente mensaje»: enfoca el Composer existente de esta sesión;
+  // no abre otro editor de estado. La petición tipada nombra la sesión, así que
+  // llega aunque el panel aún no acepte foco global en este mismo tick.
+  const configureComposer = useCallback(() => {
+    onFocus(pane.paneId)
+    window.dispatchEvent(new CustomEvent(FOCUS_COMPOSER_EVENT, { detail: { sessionId: pane.sessionId } }))
+  }, [onFocus, pane.paneId, pane.sessionId])
+
   const index = panes.findIndex((item) => item.paneId === pane.paneId)
   const title = session.record?.title || t('sidebar.newChat')
   const availability = session.availability
@@ -220,13 +229,10 @@ function SessionPane({
         focused={focused}
         sharedRoot={sharedRoot}
         workspaceVisible={pane.workspaceVisible}
-        models={data.models}
-        providers={data.providers}
         canMoveLeft={canMoveLeft}
         canMoveRight={canMoveRight}
-        onOpenProviders={onOpenProviders}
-        onDiscoverModels={() => void commands.discoverCatalog()}
         onToggleWorkspace={() => setWorkspaceVisible(pane.paneId, !pane.workspaceVisible)}
+        onConfigureComposer={configureComposer}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
         onMoveLeft={() => movePane(pane.paneId, index - 1)}
         onMoveRight={() => movePane(pane.paneId, index + 1)}

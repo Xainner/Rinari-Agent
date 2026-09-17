@@ -110,6 +110,29 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
+### Correcciones del PR #9 (2026-09-17)
+
+- **Operaciones del host por `command()`** — `DONE`. `engine_start` y las otras
+  cinco no son métodos del protocolo: el contrato las expone como intenciones
+  (`engine.*`, `handoff.initial`, `files.openExternal`) y `command()` solo
+  acepta comandos respaldados por el Engine. Bajo Electron, arrancar el Engine
+  desde la UI real fallaba (`hostOnly.test.ts`, gate `desktop:parity`).
+- **Traducción que adivinaba semántica** — `DONE`. El generador falla en
+  cerrado: un handler que ramifica o con bindings sin rastrear se marca
+  `manual` y exige adaptador escrito. `mcp_set_enabled(false)` habilitaba
+  (`commandAdapters.test.ts`, TR-01..09). Auditoría: 114 automáticas, 10
+  manuales, 2 passthrough, 6 solo host, **0 sin resolver**.
+- **E2E que saltaba el adaptador** — `DONE`. La sonda vive en el renderer y usa
+  `engineApi`/`desktopApi`, así que recorre `src/services` y `src/platform`.
+- **`desktop:dev` sin IPC** — `DONE`. El origen de confianza es el que se
+  carga de verdad; la CSP tiene modo y la de producción no hereda nada del dev
+  (DEV-01..03).
+- **Handshake fallido dejaba el hijo vivo** — `DONE` (LIFE-01..03, por PID).
+- **Límite de línea NDJSON** — `DONE`. No se aplicaba a una línea ya completa
+  dentro del chunk (NDJSON-01..03).
+- **`npm ci` roto en CI** — `DONE`. Lock regenerado con npm 10 y baseline
+  documentada en `engines` y AGENTS.md.
+
 ### Host Electron (2026-09-17, plan 02, entrega D)
 
 - **Transporte y supervisor** — `DONE`. Portados con sus plazos, códigos y

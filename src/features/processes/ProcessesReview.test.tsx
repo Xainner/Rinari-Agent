@@ -63,7 +63,13 @@ async function openInspectorOnFirstRow() {
   if (expand) fireEvent.click(expand)
   const toggle = within(await screen.findByTestId('processes-dock')).getByRole('button', { name: /Ver salida/ })
   fireEvent.click(toggle)
-  return screen.findByTestId('processes-inspector')
+  const inspector = await screen.findByTestId('processes-inspector')
+  await waitFor(() => {
+    const wrapper = document.getElementById('processes-inspector')
+    expect(wrapper).not.toBeNull()
+    expect(wrapper?.classList.contains('open')).toBe(true)
+  })
+  return inspector
 }
 
 it('X-1: stop se recupera tras observación obsoleta en vez de bloquearse', async () => {

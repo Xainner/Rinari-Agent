@@ -10,7 +10,9 @@
     "tauri": "tauri",
     "test": "vitest run",
     "protocol:generate": "node scripts/generate-protocol.mjs",
-    "protocol:check": "node scripts/generate-protocol.mjs --check"
+    "protocol:check": "node scripts/generate-protocol.mjs --check",
+    "parity:inventory": "node scripts/desktop-parity.mjs",
+    "parity:check": "node scripts/desktop-parity.mjs --check"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.23",

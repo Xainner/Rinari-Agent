@@ -16,6 +16,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run protocol:check
+      # Inventario de paridad desktop (documento 02 §2): si un comando aparece
+      # o cambia de firma sin regenerarlo, el host Electron se construiría
+      # contra una lista incompleta.
+      - run: npm run parity:check
       - run: npm test
       - run: npm run build
 

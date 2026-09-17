@@ -1,0 +1,3268 @@
+{
+  "registered_commands": 130,
+  "handlers_found": 130,
+  "commands": [
+    {
+      "command": "session_move",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "project_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionMove",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "workspace_preview_start",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "turn_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "run_dev",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "dev_url",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspacePreviewStart",
+      "host_effects": [
+        "abre ruta/URL con el opener del sistema"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "browser_view_get",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "target_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "BrowserViewGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/features/browser/useBrowserFrame.ts"
+      ]
+    },
+    {
+      "command": "workspace_process_list",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "cursor",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "Option<i64>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspaceProcessList",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "workspace_process_read",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspaceProcessRead",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "workspace_process_stop",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "engine_instance_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "generation",
+          "type": "Option<i64>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspaceProcessStop",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "workspace_preview_status",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "preview_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspacePreviewStatus",
+      "host_effects": [
+        "abre ruta/URL con el opener del sistema"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "workspace_preview_stop",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "preview_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspacePreviewStop",
+      "host_effects": [
+        "abre ruta/URL con el opener del sistema"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "workspace_file_read",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "turn_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "WorkspaceFileRead",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "workspace_file_open",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "turn_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<(), CommandError>",
+      "engine_method": "SessionMove",
+      "host_effects": [
+        "abre ruta/URL con el opener del sistema"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "question_list",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "QuestionList",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "question_resolve",
+      "module": "desktop",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "request_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "answers",
+          "type": "std::collections::HashMap<String, String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "QuestionResolve",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "engine_status",
+      "module": "engine",
+      "async": false,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "EngineStatus",
+      "engine_method": null,
+      "host_effects": [
+        "emite evento al frontend"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "engine_start",
+      "module": "engine",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<EngineStatus, CommandError>",
+      "engine_method": null,
+      "host_effects": [
+        "emite evento al frontend"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "engine_shutdown",
+      "module": "engine",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<EngineStatus, CommandError>",
+      "engine_method": null,
+      "host_effects": [
+        "emite evento al frontend"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "engine_restart",
+      "module": "engine",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<EngineStatus, CommandError>",
+      "engine_method": null,
+      "host_effects": [
+        "emite evento al frontend"
+      ],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "snapshot_get",
+      "module": "engine",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "initial_open_request",
+      "module": "engine",
+      "async": false,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "OpenRequest",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_list",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "kind",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "include_closed",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "project_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "state",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionFork",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_open",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_get",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_rename",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionFork",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_archive",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionFork",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_restore",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionFork",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_fork",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "title",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionFork",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_history",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionCreate",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_timeline",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "before_turn_index",
+          "type": "Option<u64>",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionCreate",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_mode_set",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "mode",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionCreate",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_create",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "cwd",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "chat",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "title",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "mode",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "permission_profile",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "project_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionCreate",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_model_set",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "model",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_permission_get",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_permission_set",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "permission_profile",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_changes_get",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "turn_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_changes_review",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "turn_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_changes_undo_preview",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "turn_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "paths",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_changes_undo",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "turn_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "paths",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "apply_safe_only",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_events",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "after_seq",
+          "type": "Option<u64>",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_close",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_delete",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "cascade",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionCreate",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_start",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "reasoning_effort",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "attachments",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "allow_unconfirmed_vision",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/features/engine/EngineConsole.tsx",
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_cancel",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "approval_resolve",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "approval_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "decision",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "queue_add",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "queue_list",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "queue_clear",
+      "module": "sessions",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "queue_resume",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "peer_group_set",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "board_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "group_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "expected_revision",
+          "type": "i64",
+          "optional": false
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "members",
+          "type": "Vec<Value>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "peer_group_get",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "board_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "group_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "peer_group_revoke",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "group_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "peer_message_list",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "peer_message_cancel",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "message_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "peer_message_forward",
+      "module": "peers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "target_session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "source_session_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "quoted_source",
+          "type": "Option<Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "task_tree",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "task_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "task_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "verification_latest",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "kinds",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "verification_plan",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "changed_files",
+          "type": "Vec<String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "checkpoint_list",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "checkpoint_show",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "checkpoint_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "checkpoint_restore",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "checkpoint_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "preview",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "allow_mixed",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_changes",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_diff",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "file",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "max_chars",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "workspace_file_search",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "query",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "artifact_list",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "artifact_read",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "uri",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "max_bytes",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "attachment_prepare",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "attachments",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "attachment_preview",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "uri",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "max_bytes",
+          "type": "Option<u32>",
+          "optional": true
+        },
+        {
+          "name": "max_dimension",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_image_support",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "model_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "SessionImageSupport",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "vision_settings_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "context_settings_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "ContextSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "context_compact",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "ContextCompact",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "context_status",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "model_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "ContextStatus",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "context_settings_set",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "settings",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "ContextSettingsSet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "vision_settings_set",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "settings",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsSet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "attachment_prepare_start",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "attachments",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "attachment_prepare_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "job_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "attachment_prepare_cancel",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "job_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "context_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "usage_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": "VisionSettingsGet",
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agent_list",
+      "module": "agents",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agent_config_get",
+      "module": "agents",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "agent",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agent_config_set",
+      "module": "agents",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "agent",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "model",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "fallback",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "enabled",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "clear",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_list",
+      "module": "souls",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_get",
+      "module": "souls",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_create",
+      "module": "souls",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "identity",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "version",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_update",
+      "module": "souls",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "identity",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "version",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_remove",
+      "module": "souls",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_activate",
+      "module": "souls",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_list",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_get",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": []
+    },
+    {
+      "command": "mcp_create",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "command",
+          "type": "Vec<String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_remove",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_set_enabled",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_test",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "plugin_list",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "plugin_set_enabled",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "plugin_diagnostics",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "tool_list",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "policy_get",
+      "module": "ecosystem",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "bundle_list",
+      "module": "workflow",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "bundle_create",
+      "module": "workflow",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "soul_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "mode",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "agents",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "bundle_remove",
+      "module": "workflow",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "bundle_apply",
+      "module": "workflow",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "session_ref",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_list_recent",
+      "module": "projects",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_list",
+      "module": "projects",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "include_archived",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_get",
+      "module": "projects",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_add",
+      "module": "projects",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_update",
+      "module": "projects",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "pinned",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "archived",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_remove",
+      "module": "projects",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "session_policy",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_open",
+      "module": "projects",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_status",
+      "module": "projects",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_intelligence",
+      "module": "projects",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_trust",
+      "module": "projects",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_list",
+      "module": "providers",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_create",
+      "module": "providers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "alias",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider_type",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "auth_method",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "endpoint",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "account_hint",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "secret",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "secret_env",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "settings",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_get",
+      "module": "providers",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_update",
+      "module": "providers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "alias",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "endpoint",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "account_hint",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "secret",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "secret_env",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "settings",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_remove",
+      "module": "providers",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "switch_to",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "keep_credentials",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_test",
+      "module": "providers",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_discover",
+      "module": "providers",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_use",
+      "module": "providers",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_list",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_get",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_add",
+      "module": "models",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "provider",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider_model_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "alias",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "capabilities",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "settings",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_alias",
+      "module": "models",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "new_alias",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_remove",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_use",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_discover",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_discovery_start",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_refresh",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "model_test",
+      "module": "models",
+      "async": true,
+      "rename_all": "camelCase (por defecto)",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "engine_method": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    }
+  ],
+  "handlers_not_registered": [],
+  "registered_without_frontend_caller": [
+    "mcp_get"
+  ],
+  "invoked_but_not_registered": [],
+  "platform_apis": {
+    "@tauri-apps/api/core": {
+      "invoke": [
+        "src/features/board/AddPaneDialog.test.tsx",
+        "src/features/browser/useBrowserFrame.test.tsx",
+        "src/features/browser/useBrowserFrame.ts",
+        "src/features/engine/EngineConsole.tsx",
+        "src/features/engine/useEngineSession.test.tsx",
+        "src/features/processes/ProcessIdentity.test.tsx",
+        "src/features/processes/ProcessRuntimeProvider.test.tsx",
+        "src/features/processes/ProcessesDock.test.tsx",
+        "src/features/processes/ProcessesReview.test.tsx",
+        "src/features/processes/SurfaceCoordination.test.tsx",
+        "src/services/desktop.ts",
+        "src/services/engine.ts",
+        "src/services/processes.test.ts",
+        "src/services/processes.ts",
+        "src/services/sessionBridge.test.ts"
+      ],
+      "isTauri": [
+        "src/components/app-shell/DesktopContextMenu.tsx",
+        "src/hooks/useWindowBounds.ts"
+      ]
+    },
+    "@tauri-apps/api/dpi": {
+      "LogicalPosition": [
+        "src/components/app-shell/DesktopContextMenu.tsx"
+      ]
+    },
+    "@tauri-apps/api/event": {
+      "listen": [
+        "src/App.tsx",
+        "src/services/engine.ts"
+      ],
+      "type UnlistenFn": [
+        "src/services/engine.ts"
+      ]
+    },
+    "@tauri-apps/api/menu": {
+      "Menu": [
+        "src/components/app-shell/DesktopContextMenu.tsx"
+      ],
+      "type MenuOptions": [
+        "src/components/app-shell/DesktopContextMenu.tsx"
+      ]
+    },
+    "@tauri-apps/api/window": {
+      "PhysicalPosition": [
+        "src/hooks/useWindowBounds.ts"
+      ],
+      "PhysicalSize": [
+        "src/hooks/useWindowBounds.ts"
+      ],
+      "currentMonitor": [
+        "src/hooks/useWindowBounds.ts"
+      ],
+      "getCurrentWindow": [
+        "src/hooks/useWindowBounds.ts"
+      ]
+    },
+    "@tauri-apps/plugin-dialog": {
+      "open": [
+        "src/App.tsx",
+        "src/components/composer/Composer.tsx",
+        "src/features/board/AddPaneDialog.test.tsx",
+        "src/features/board/AddPaneDialog.tsx"
+      ]
+    },
+    "@tauri-apps/plugin-opener": {
+      "openUrl": [
+        "src/features/browser/BrowserSurface.tsx",
+        "src/features/files/FileWorkspace.tsx",
+        "src/features/files/HtmlPreview.test.tsx",
+        "src/features/files/HtmlPreview.tsx",
+        "src/features/processes/ProcessInspector.tsx",
+        "src/features/processes/ProcessRow.tsx",
+        "src/features/processes/ProcessesReview.test.tsx"
+      ]
+    },
+    "@tauri-apps/plugin-process": {
+      "relaunch": [
+        "src/services/updates.ts"
+      ]
+    },
+    "@tauri-apps/plugin-updater": {
+      "check": [
+        "src/services/updates.ts"
+      ]
+    }
+  },
+  "frontend_events": [
+    "rinari-engine-event",
+    "rinari-menu-action",
+    "rinari-open-request"
+  ]
+}

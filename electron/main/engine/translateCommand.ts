@@ -13,6 +13,7 @@
  *   llamada sin él cambiaría de significado al portarla.
  */
 
+import { COMMAND_ADAPTERS } from './commandAdapters'
 import { COMMAND_MAP, type CommandTranslation } from './commandMap.generated'
 
 export { COMMAND_MAP }
@@ -27,32 +28,21 @@ export interface EngineCall {
   params?: Record<string, unknown>
 }
 
-/**
- * Comandos cuya construcción de parámetros no es un mapeo de claves y que por
- * tanto se escriben a mano. Cada uno dice por qué: si se generaran, el
- * generador tendría que entender la lógica, y entonces no sería una tabla.
- */
-const EXCEPTIONS: Record<string, (args: Record<string, unknown>) => Record<string, unknown>> = {
-  /**
-   * Precedencia, no unión: el host anterior envía **una** clave, la primera
-   * presente en orden group_id → session_id → board_id. Mandar las tres
-   * cambiaría a qué grupo resuelve el Engine.
-   */
-  peer_group_get: (args) => {
-    for (const key of ['group_id', 'session_id', 'board_id'] as const) {
-      const value = args[key]
-      if (typeof value === 'string' && value) return { [key]: value }
-    }
-    return {}
-  },
-}
-
 export function translateCommand(name: string, args: Record<string, unknown> = {}): EngineCall {
   const translation = COMMAND_MAP[name]
   if (!translation) throw new UnknownCommand(`no protocol method for command ${name}`)
 
-  const exception = EXCEPTIONS[name]
-  if (exception) return { method: translation.method, params: exception(args) }
+  // Marcado como manual: su traducción vive en `commandAdapters.ts`. Si
+  // falta, se falla en vez de mandar una traducción incompleta al Engine.
+  if (translation.manual) {
+    const adapter = COMMAND_ADAPTERS[name]
+    if (!adapter) {
+      throw new UnknownCommand(
+        `${name} needs a manual translation; add it to commandAdapters.ts`,
+      )
+    }
+    return adapter(args)
+  }
 
   // El argumento es el objeto de parámetros entero: envolverlo lo rompería.
   if (translation.passthrough) {

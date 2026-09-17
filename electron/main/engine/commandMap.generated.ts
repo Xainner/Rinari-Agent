@@ -19,6 +19,12 @@ export interface CommandTranslation {
   params: ParamBinding[]
   /** El argumento nombrado **es** el objeto de parámetros, sin envolver. */
   passthrough?: string
+  /**
+   * El handler ramifica o construye sus parámetros con lógica propia: la
+   * traducción se escribe a mano en `commandAdapters.ts` y este mapa solo
+   * dice que existe. Generarla adivinando invertiría la semántica.
+   */
+  manual?: true
 }
 
 export const COMMAND_MAP: Record<string, CommandTranslation> = {
@@ -32,7 +38,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   attachment_prepare_cancel: { method: 'attachment.prepare.cancel', params: [{ key: 'job_id', from: 'job_id', optional: false }] },
   attachment_prepare_get: { method: 'attachment.prepare.get', params: [{ key: 'job_id', from: 'job_id', optional: false }] },
   attachment_prepare_start: { method: 'attachment.prepare.start', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'attachments', from: 'attachments', optional: false }] },
-  attachment_preview: { method: 'attachment.preview', params: [{ key: 'uri', from: 'uri', optional: false }, { key: 'max_dimension', from: null, optional: true }, { key: 'max_bytes', from: 'max_bytes', optional: true }] },
+  attachment_preview: { method: 'attachment.preview', params: [], manual: true },
   browser_view_get: { method: 'browser.view.get', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'target_id', from: 'target_id', optional: false }] },
   bundle_apply: { method: 'profile_bundle.apply', params: [{ key: 'id', from: 'id', optional: false }, { key: 'session_ref', from: 'session_ref', optional: true }] },
   bundle_create: { method: 'profile_bundle.create', params: [{ key: 'id', from: 'id', optional: false }, { key: 'name', from: 'name', optional: false }, { key: 'description', from: 'description', optional: true }, { key: 'soul_id', from: 'soul_id', optional: true }, { key: 'mode', from: 'mode', optional: true }, { key: 'agents', from: 'agents', optional: true }] },
@@ -50,7 +56,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   mcp_get: { method: 'mcp.get', params: [{ key: 'name', from: 'name', optional: false }] },
   mcp_list: { method: 'mcp.list', params: [] },
   mcp_remove: { method: 'mcp.remove', params: [{ key: 'name', from: 'name', optional: false }] },
-  mcp_set_enabled: { method: 'mcp.enable', params: [{ key: 'name', from: 'name', optional: false }] },
+  mcp_set_enabled: { method: 'mcp.enable', params: [], manual: true },
   mcp_test: { method: 'mcp.test', params: [{ key: 'name', from: 'name', optional: false }] },
   model_add: { method: 'model.add', params: [{ key: 'provider', from: 'provider', optional: false }, { key: 'provider_model_id', from: 'provider_model_id', optional: false }, { key: 'alias', from: 'alias', optional: false }, { key: 'capabilities', from: 'capabilities', optional: false }, { key: 'settings', from: 'settings', optional: false }] },
   model_alias: { method: 'model.alias', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'new_alias', from: 'new_alias', optional: false }, { key: 'provider', from: 'provider', optional: false }] },
@@ -62,15 +68,15 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   model_remove: { method: 'model.remove', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'provider', from: 'provider', optional: false }] },
   model_test: { method: 'model.test', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'provider', from: 'provider', optional: false }] },
   model_use: { method: 'model.use', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'provider', from: 'provider', optional: false }] },
-  peer_group_get: { method: 'session.peer_group.get', params: [{ key: 'group_id', from: null, optional: true }, { key: 'session_id', from: null, optional: true }, { key: 'board_id', from: null, optional: true }] },
+  peer_group_get: { method: 'session.peer_group.get', params: [], manual: true },
   peer_group_revoke: { method: 'session.peer_group.revoke', params: [{ key: 'group_id', from: 'group_id', optional: false }] },
   peer_group_set: { method: 'session.peer_group.set', params: [{ key: 'board_id', from: 'board_id', optional: false }, { key: 'expected_revision', from: 'expected_revision', optional: false }, { key: 'enabled', from: 'enabled', optional: false }, { key: 'members', from: 'members', optional: false }, { key: 'group_id', from: 'group_id', optional: true }] },
   peer_message_cancel: { method: 'session.peer_message.cancel', params: [{ key: 'message_id', from: 'message_id', optional: false }] },
-  peer_message_forward: { method: 'session.peer_message.forward', params: [{ key: 'target_session_id', from: 'target_session_id', optional: false }, { key: 'message', from: 'message', optional: false }, { key: 'source_session_id', from: null, optional: true }, { key: 'quoted_source', from: null, optional: true }] },
+  peer_message_forward: { method: 'session.peer_message.forward', params: [], manual: true },
   peer_message_list: { method: 'session.peer_message.list', params: [{ key: 'session_id', from: 'session_id', optional: false }] },
   plugin_diagnostics: { method: 'plugin.diagnostics', params: [] },
   plugin_list: { method: 'plugin.list', params: [] },
-  plugin_set_enabled: { method: 'plugin.enable', params: [{ key: 'name', from: 'name', optional: false }] },
+  plugin_set_enabled: { method: 'plugin.enable', params: [], manual: true },
   policy_get: { method: 'policy.get', params: [] },
   project_add: { method: 'project.add', params: [{ key: 'path', from: 'path', optional: false }, { key: 'name', from: 'name', optional: false }, { key: 'description', from: 'description', optional: false }] },
   project_changes: { method: 'project.changes', params: [{ key: 'path', from: 'path', optional: false }] },
@@ -90,7 +96,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   provider_list: { method: 'provider.list', params: [] },
   provider_remove: { method: 'provider.remove', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'switch_to', from: 'switch_to', optional: false }, { key: 'keep_credentials', from: 'keep_credentials', optional: false, fallback: false }] },
   provider_test: { method: 'provider.test', params: [{ key: 'ref', from: 'reference', optional: false }] },
-  provider_update: { method: 'provider.update', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'alias', from: null, optional: true }, { key: 'endpoint', from: null, optional: true }, { key: 'account_hint', from: null, optional: true }, { key: 'secret', from: null, optional: true }, { key: 'secret_env', from: null, optional: true }, { key: 'settings', from: null, optional: true }] },
+  provider_update: { method: 'provider.update', params: [], manual: true },
   provider_use: { method: 'provider.use', params: [{ key: 'ref', from: 'reference', optional: false }] },
   question_list: { method: 'question.list', params: [{ key: 'session_id', from: 'session_id', optional: false }] },
   question_resolve: { method: 'question.resolve', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'request_id', from: 'request_id', optional: false }, { key: 'status', from: 'status', optional: false }, { key: 'answers', from: 'answers', optional: false }] },
@@ -100,7 +106,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   queue_resume: { method: 'session.queue.resume', params: [{ key: 'session_id', from: 'session_id', optional: false }] },
   session_archive: { method: 'session.archive', params: [{ key: 'ref', from: 'reference', optional: false }] },
   session_close: { method: 'session.close', params: [{ key: 'ref', from: 'reference', optional: false }] },
-  session_create: { method: 'session.create', params: [{ key: 'cwd', from: 'cwd', optional: true }, { key: 'chat', from: 'chat', optional: false, fallback: false }, { key: 'title', from: 'title', optional: true }, { key: 'mode', from: 'mode', optional: true }, { key: 'permission_profile', from: null, optional: true }] },
+  session_create: { method: 'session.create', params: [], manual: true },
   session_delete: { method: 'session.delete', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'cascade', from: 'cascade', optional: false, fallback: false }] },
   session_events: { method: 'session.events', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'after_seq', from: 'after_seq', optional: true }, { key: 'limit', from: 'limit', optional: true }] },
   session_fork: { method: 'session.fork', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'title', from: 'title', optional: false }] },
@@ -116,7 +122,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   session_permission_set: { method: 'session.permission.set', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'permission_profile', from: 'permission_profile', optional: false }] },
   session_rename: { method: 'session.rename', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'title', from: 'title', optional: false }] },
   session_restore: { method: 'session.restore', params: [{ key: 'ref', from: 'reference', optional: false }] },
-  session_timeline: { method: 'session.timeline', params: [{ key: 'ref', from: 'reference', optional: false }, { key: 'before_turn_index', from: null, optional: true }, { key: 'limit', from: 'limit', optional: true }] },
+  session_timeline: { method: 'session.timeline', params: [], manual: true },
   snapshot_get: { method: 'runtime.snapshot.get', params: [] },
   soul_activate: { method: 'soul.activate', params: [{ key: 'id', from: 'id', optional: false }] },
   soul_create: { method: 'soul.create', params: [{ key: 'id', from: 'id', optional: false }, { key: 'name', from: 'name', optional: false }, { key: 'identity', from: 'identity', optional: false }, { key: 'description', from: 'description', optional: false }, { key: 'version', from: 'version', optional: false }] },
@@ -143,7 +149,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   workspace_preview_start: { method: 'workspace.preview.start', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'path', from: 'path', optional: false }, { key: 'turn_id', from: 'turn_id', optional: false }, { key: 'run_dev', from: 'run_dev', optional: false }, { key: 'dev_url', from: 'dev_url', optional: false }] },
   workspace_preview_status: { method: 'workspace.preview.status', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'preview_id', from: 'preview_id', optional: false }] },
   workspace_preview_stop: { method: 'workspace.preview.stop', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'preview_id', from: 'preview_id', optional: false }] },
-  workspace_process_list: { method: 'workspace.process.list', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'id', from: null, optional: true }, { key: 'cursor', from: null, optional: true }, { key: 'limit', from: null, optional: true }] },
+  workspace_process_list: { method: 'workspace.process.list', params: [], manual: true },
   workspace_process_read: { method: 'workspace.process.read', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'id', from: 'id', optional: false }] },
-  workspace_process_stop: { method: 'workspace.process.stop', params: [{ key: 'session_id', from: 'session_id', optional: false }, { key: 'id', from: null, optional: true }, { key: 'engine_instance_id', from: null, optional: true }, { key: 'generation', from: null, optional: true }] },
+  workspace_process_stop: { method: 'workspace.process.stop', params: [], manual: true },
 }

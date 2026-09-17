@@ -20,6 +20,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionMove",
       "engine_method_name": "session.move",
       "engine_params": [
@@ -78,6 +81,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "WorkspacePreviewStart",
       "engine_method_name": "workspace.preview.start",
       "engine_params": [
@@ -139,6 +145,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "BrowserViewGet",
       "engine_method_name": "browser.view.get",
       "engine_params": [
@@ -192,6 +201,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "id",
+        "cursor",
+        "limit"
+      ],
+      "branches": [],
       "engine_method": "WorkspaceProcessList",
       "engine_method_name": "workspace.process.list",
       "engine_params": [
@@ -247,6 +263,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "WorkspaceProcessRead",
       "engine_method_name": "workspace.process.read",
       "engine_params": [
@@ -300,6 +319,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "id",
+        "engine_instance_id",
+        "generation"
+      ],
+      "branches": [],
       "engine_method": "WorkspaceProcessStop",
       "engine_method_name": "workspace.process.stop",
       "engine_params": [
@@ -355,6 +381,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "WorkspacePreviewStatus",
       "engine_method_name": "workspace.preview.status",
       "engine_params": [
@@ -398,6 +427,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "WorkspacePreviewStop",
       "engine_method_name": "workspace.preview.stop",
       "engine_params": [
@@ -446,6 +478,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "WorkspaceFileRead",
       "engine_method_name": "workspace.file.read",
       "engine_params": [
@@ -500,6 +535,9 @@
         }
       ],
       "returns": "Result<(), CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
@@ -526,6 +564,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "QuestionList",
       "engine_method_name": "question.list",
       "engine_params": [
@@ -573,6 +614,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "QuestionResolve",
       "engine_method_name": "question.resolve",
       "engine_params": [
@@ -617,6 +661,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "EngineStatus",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
@@ -635,6 +682,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<EngineStatus, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
@@ -655,6 +705,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<EngineStatus, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
@@ -673,6 +726,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<EngineStatus, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
@@ -693,6 +749,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "RuntimeSnapshotGet",
       "engine_method_name": "runtime.snapshot.get",
       "engine_params": [],
@@ -711,6 +770,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "OpenRequest",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
@@ -750,6 +812,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionList",
       "engine_method_name": "session.list",
       "engine_params": [
@@ -801,6 +866,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionOpen",
       "engine_method_name": "session.open",
       "engine_params": [
@@ -833,6 +901,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionGet",
       "engine_method_name": "session.get",
       "engine_params": [
@@ -870,6 +941,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionRename",
       "engine_method_name": "session.rename",
       "engine_params": [
@@ -908,6 +982,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionArchive",
       "engine_method_name": "session.archive",
       "engine_params": [
@@ -940,6 +1017,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionRestore",
       "engine_method_name": "session.restore",
       "engine_params": [
@@ -977,6 +1057,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionFork",
       "engine_method_name": "session.fork",
       "engine_params": [
@@ -1020,6 +1103,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionHistory",
       "engine_method_name": "session.history",
       "engine_params": [
@@ -1068,6 +1154,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "before_turn_index"
+      ],
+      "branches": [],
       "engine_method": "SessionTimeline",
       "engine_method_name": "session.timeline",
       "engine_params": [
@@ -1117,6 +1208,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionModeSet",
       "engine_method_name": "session.mode.set",
       "engine_params": [
@@ -1180,6 +1274,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "permission_profile"
+      ],
+      "branches": [],
       "engine_method": "SessionCreate",
       "engine_method_name": "session.create",
       "engine_params": [
@@ -1247,6 +1346,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionModelSet",
       "engine_method_name": "session.model.set",
       "engine_params": [
@@ -1291,6 +1393,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionPermissionGet",
       "engine_method_name": "session.permission.get",
       "engine_params": [
@@ -1328,6 +1433,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionPermissionSet",
       "engine_method_name": "session.permission.set",
       "engine_params": [
@@ -1366,6 +1474,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "TurnChangesGet",
       "engine_method_name": "turn.changes.get",
       "engine_params": [
@@ -1403,6 +1514,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "TurnChangesReview",
       "engine_method_name": "turn.changes.review",
       "engine_params": [
@@ -1446,6 +1560,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "TurnChangesUndoPreview",
       "engine_method_name": "turn.changes.undo.preview",
       "engine_params": [
@@ -1494,6 +1611,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "TurnChangesUndo",
       "engine_method_name": "turn.changes.undo",
       "engine_params": [
@@ -1549,6 +1669,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionEvents",
       "engine_method_name": "session.events",
       "engine_params": [
@@ -1593,6 +1716,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionClose",
       "engine_method_name": "session.close",
       "engine_params": [
@@ -1630,6 +1756,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionDelete",
       "engine_method_name": "session.delete",
       "engine_params": [
@@ -1689,6 +1818,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionTurnStart",
       "engine_method_name": "session.turn.start",
       "engine_params": [
@@ -1747,6 +1879,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionTurnCancel",
       "engine_method_name": "session.turn.cancel",
       "engine_params": [
@@ -1784,6 +1919,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ApprovalResolve",
       "engine_method_name": "approval.resolve",
       "engine_params": [
@@ -1827,6 +1965,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionQueueAdd",
       "engine_method_name": "session.queue.add",
       "engine_params": [
@@ -1865,6 +2006,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionQueueList",
       "engine_method_name": "session.queue.list",
       "engine_params": [
@@ -1897,6 +2041,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionQueueClear",
       "engine_method_name": "session.queue.clear",
       "engine_params": [
@@ -1929,6 +2076,9 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionQueueResume",
       "engine_method_name": "session.queue.resume",
       "engine_params": [
@@ -1981,6 +2131,9 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionPeerGroupSet",
       "engine_method_name": "session.peer_group.set",
       "engine_params": [
@@ -2047,6 +2200,13 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "group_id",
+        "session_id",
+        "board_id"
+      ],
+      "branches": [],
       "engine_method": "SessionPeerGroupGet",
       "engine_method_name": "session.peer_group.get",
       "engine_params": [
@@ -2091,6 +2251,9 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionPeerGroupRevoke",
       "engine_method_name": "session.peer_group.revoke",
       "engine_params": [
@@ -2123,6 +2286,9 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionPeerMessageList",
       "engine_method_name": "session.peer_message.list",
       "engine_params": [
@@ -2155,6 +2321,9 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionPeerMessageCancel",
       "engine_method_name": "session.peer_message.cancel",
       "engine_params": [
@@ -2202,6 +2371,12 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "source_session_id",
+        "quoted_source"
+      ],
+      "branches": [],
       "engine_method": "SessionPeerMessageForward",
       "engine_method_name": "session.peer_message.forward",
       "engine_params": [
@@ -2252,6 +2427,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "TaskTree",
       "engine_method_name": "task.tree",
       "engine_params": [
@@ -2289,6 +2467,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "TaskGet",
       "engine_method_name": "task.get",
       "engine_params": [
@@ -2337,6 +2518,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "VerificationLatest",
       "engine_method_name": "verification.latest",
       "engine_params": [
@@ -2386,6 +2570,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "VerificationPlan",
       "engine_method_name": "verification.plan",
       "engine_params": [
@@ -2424,6 +2611,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "CheckpointList",
       "engine_method_name": "checkpoint.list",
       "engine_params": [
@@ -2456,6 +2646,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "CheckpointShow",
       "engine_method_name": "checkpoint.show",
       "engine_params": [
@@ -2503,6 +2696,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "CheckpointRestore",
       "engine_method_name": "checkpoint.restore",
       "engine_params": [
@@ -2553,6 +2749,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectChanges",
       "engine_method_name": "project.changes",
       "engine_params": [
@@ -2595,6 +2794,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectDiff",
       "engine_method_name": "project.diff",
       "engine_params": [
@@ -2649,6 +2851,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "WorkspaceFileSearch",
       "engine_method_name": "workspace.file.search",
       "engine_params": [
@@ -2694,6 +2899,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ArtifactList",
       "engine_method_name": "artifact.list",
       "engine_params": [
@@ -2731,6 +2939,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ArtifactRead",
       "engine_method_name": "artifact.read",
       "engine_params": [
@@ -2774,6 +2985,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AttachmentPrepare",
       "engine_method_name": "attachment.prepare",
       "engine_params": [
@@ -2822,6 +3036,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "max_dimension"
+      ],
+      "branches": [],
       "engine_method": "AttachmentPreview",
       "engine_method_name": "attachment.preview",
       "engine_params": [
@@ -2871,6 +3090,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SessionImageSupport",
       "engine_method_name": "session.image_support",
       "engine_params": [
@@ -2903,6 +3125,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "VisionSettingsGet",
       "engine_method_name": "vision.settings.get",
       "engine_params": [],
@@ -2921,6 +3146,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ContextSettingsGet",
       "engine_method_name": "context.settings.get",
       "engine_params": [],
@@ -2945,6 +3173,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ContextCompact",
       "engine_method_name": "context.compact",
       "engine_params": [
@@ -2977,6 +3208,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ContextStatus",
       "engine_method_name": "context.status",
       "engine_params": [
@@ -3009,6 +3243,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ContextSettingsSet",
       "engine_method_name": "context.settings.set",
       "engine_params": [],
@@ -3033,6 +3270,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "VisionSettingsSet",
       "engine_method_name": "vision.settings.set",
       "engine_params": [],
@@ -3062,6 +3302,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AttachmentPrepareStart",
       "engine_method_name": "attachment.prepare.start",
       "engine_params": [
@@ -3100,6 +3343,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AttachmentPrepareGet",
       "engine_method_name": "attachment.prepare.get",
       "engine_params": [
@@ -3132,6 +3378,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AttachmentPrepareCancel",
       "engine_method_name": "attachment.prepare.cancel",
       "engine_params": [
@@ -3164,6 +3413,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ContextGet",
       "engine_method_name": "context.get",
       "engine_params": [
@@ -3196,6 +3448,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "UsageGet",
       "engine_method_name": "usage.get",
       "engine_params": [
@@ -3222,6 +3477,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AgentList",
       "engine_method_name": "agent.list",
       "engine_params": [],
@@ -3246,6 +3504,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AgentConfigGet",
       "engine_method_name": "agent.config.get",
       "engine_params": [
@@ -3298,6 +3559,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "AgentConfigSet",
       "engine_method_name": "agent.config.set",
       "engine_params": [
@@ -3348,6 +3612,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SoulList",
       "engine_method_name": "soul.list",
       "engine_params": [],
@@ -3372,6 +3639,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SoulGet",
       "engine_method_name": "soul.get",
       "engine_params": [
@@ -3424,6 +3694,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SoulCreate",
       "engine_method_name": "soul.create",
       "engine_params": [
@@ -3500,6 +3773,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SoulUpdate",
       "engine_method_name": "soul.update",
       "engine_params": [
@@ -3556,6 +3832,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SoulRemove",
       "engine_method_name": "soul.remove",
       "engine_params": [
@@ -3588,6 +3867,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "SoulActivate",
       "engine_method_name": "soul.activate",
       "engine_params": [
@@ -3614,6 +3896,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "McpList",
       "engine_method_name": "mcp.list",
       "engine_params": [],
@@ -3638,6 +3923,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "McpGet",
       "engine_method_name": "mcp.get",
       "engine_params": [
@@ -3673,6 +3961,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "McpCreate",
       "engine_method_name": "mcp.create",
       "engine_params": [
@@ -3711,6 +4002,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "McpRemove",
       "engine_method_name": "mcp.remove",
       "engine_params": [
@@ -3748,6 +4042,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [],
+      "branches": [
+        "mcp_enable",
+        "mcp_disable"
+      ],
       "engine_method": "McpEnable",
       "engine_method_name": "mcp.enable",
       "engine_params": [
@@ -3780,6 +4080,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "McpTest",
       "engine_method_name": "mcp.test",
       "engine_params": [
@@ -3806,6 +4109,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "PluginList",
       "engine_method_name": "plugin.list",
       "engine_params": [],
@@ -3835,6 +4141,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [],
+      "branches": [
+        "plugin_enable",
+        "plugin_disable"
+      ],
       "engine_method": "PluginEnable",
       "engine_method_name": "plugin.enable",
       "engine_params": [
@@ -3861,6 +4173,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "PluginDiagnostics",
       "engine_method_name": "plugin.diagnostics",
       "engine_params": [],
@@ -3879,6 +4194,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ToolList",
       "engine_method_name": "tool.list",
       "engine_params": [],
@@ -3897,6 +4215,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "PolicyGet",
       "engine_method_name": "policy.get",
       "engine_params": [],
@@ -3915,6 +4236,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProfileBundleList",
       "engine_method_name": "profile_bundle.list",
       "engine_params": [],
@@ -3964,6 +4288,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProfileBundleCreate",
       "engine_method_name": "profile_bundle.create",
       "engine_params": [
@@ -4026,6 +4353,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProfileBundleRemove",
       "engine_method_name": "profile_bundle.remove",
       "engine_params": [
@@ -4063,6 +4393,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProfileBundleApply",
       "engine_method_name": "profile_bundle.apply",
       "engine_params": [
@@ -4101,6 +4434,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectListRecent",
       "engine_method_name": "project.list_recent",
       "engine_params": [
@@ -4133,6 +4469,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectList",
       "engine_method_name": "project.list",
       "engine_params": [
@@ -4166,6 +4505,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectGet",
       "engine_method_name": "project.get",
       "engine_params": [
@@ -4208,6 +4550,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectAdd",
       "engine_method_name": "project.add",
       "engine_params": [
@@ -4272,6 +4617,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectUpdate",
       "engine_method_name": "project.update",
       "engine_params": [
@@ -4333,6 +4681,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectRemove",
       "engine_method_name": "project.remove",
       "engine_params": [
@@ -4371,6 +4722,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectOpen",
       "engine_method_name": "project.open",
       "engine_params": [
@@ -4403,6 +4757,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectStatus",
       "engine_method_name": "project.status",
       "engine_params": [
@@ -4435,6 +4792,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectIntelligence",
       "engine_method_name": "project.intelligence",
       "engine_params": [
@@ -4467,6 +4827,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProjectTrust",
       "engine_method_name": "project.trust",
       "engine_params": [
@@ -4493,6 +4856,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderList",
       "engine_method_name": "provider.list",
       "engine_params": [],
@@ -4552,6 +4918,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderCreate",
       "engine_method_name": "provider.create",
       "engine_params": [
@@ -4626,6 +4995,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderGet",
       "engine_method_name": "provider.get",
       "engine_params": [
@@ -4688,6 +5060,16 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": true,
+      "unresolved": [
+        "alias",
+        "endpoint",
+        "account_hint",
+        "secret",
+        "secret_env",
+        "settings"
+      ],
+      "branches": [],
       "engine_method": "ProviderUpdate",
       "engine_method_name": "provider.update",
       "engine_params": [
@@ -4766,6 +5148,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderRemove",
       "engine_method_name": "provider.remove",
       "engine_params": [
@@ -4811,6 +5196,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderTest",
       "engine_method_name": "provider.test",
       "engine_params": [
@@ -4837,6 +5225,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderDiscover",
       "engine_method_name": "provider.discover",
       "engine_params": [],
@@ -4861,6 +5252,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ProviderUse",
       "engine_method_name": "provider.use",
       "engine_params": [
@@ -4893,6 +5287,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelList",
       "engine_method_name": "model.list",
       "engine_params": [
@@ -4930,6 +5327,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelGet",
       "engine_method_name": "model.get",
       "engine_params": [
@@ -4988,6 +5388,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelAdd",
       "engine_method_name": "model.add",
       "engine_params": [
@@ -5054,6 +5457,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelAlias",
       "engine_method_name": "model.alias",
       "engine_params": [
@@ -5103,6 +5509,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelRemove",
       "engine_method_name": "model.remove",
       "engine_params": [
@@ -5146,6 +5555,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelUse",
       "engine_method_name": "model.use",
       "engine_params": [
@@ -5184,6 +5596,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelDiscover",
       "engine_method_name": "model.discover",
       "engine_params": [
@@ -5216,6 +5631,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelDiscoveryStart",
       "engine_method_name": "model.discovery.start",
       "engine_params": [
@@ -5248,6 +5666,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelRefresh",
       "engine_method_name": "model.refresh",
       "engine_params": [
@@ -5285,6 +5706,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
       "engine_method": "ModelTest",
       "engine_method_name": "model.test",
       "engine_params": [

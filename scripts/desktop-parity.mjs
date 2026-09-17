@@ -216,6 +216,22 @@ function methodNames() {
   return names
 }
 
+/**
+ * Bindings que el extractor no supo rastrear.
+ *
+ * `from: null` solo es legítimo cuando la clave es un valor fijo del handler.
+ * Si el comando declara un argumento con ese nombre, entonces el origen existe
+ * y no se resolvió: generar la traducción perdería el parámetro en silencio,
+ * que es peor que fallar (documento 02 §4.3, regla fail-closed).
+ */
+function unresolvedBindings(paramMap, commandArgs) {
+  if (!paramMap) return []
+  const args = new Set(commandArgs)
+  return paramMap
+    .filter((entry) => entry.from === null && entry.default === undefined && args.has(entry.key))
+    .map((entry) => entry.key)
+}
+
 /** Argumentos de una llamada, respetando paréntesis anidados. */
 function callArguments(body, openParen) {
   let depth = 0
@@ -295,10 +311,17 @@ function handlers() {
       const direct = /Method::(\w+)/.exec(body)?.[1] ?? null
       // `engine.request(...)` es el despachador genérico, no un wrapper de
       // dominio: casarlo daría el `Method::` de su tabla de plazos.
-      const call = [...body.matchAll(/engine\.(\w+)\s*\(/g)].find(
+      const calls = [...body.matchAll(/engine\.(\w+)\s*\(/g)].filter(
         (entry) => entry[1] !== 'request' && wrappers.has(entry[1]),
       )
+      const call = calls[0]
       const delegated = call ? wrappers.get(call[1]) : undefined
+      // Dos wrappers distintos = el handler ramifica (`mcp_set_enabled` llama
+      // a enable o disable según un bool). Generar el primero invertiría la
+      // semántica en silencio, así que se marca para traducción manual.
+      const branches = [...new Set(calls.map((entry) => entry[1]))]
+      const inlineMethods = [...new Set([...body.matchAll(/Method::(\w+)/g)].map((entry) => entry[1]))]
+      const branching = branches.length > 1 || inlineMethods.length > 1
       const commandArgs = splitArgs(sig[3]).map((arg) => arg.name)
       // Algunos comandos arman los parámetros ellos mismos y le pasan el
       // `Value` ya hecho al wrapper (`provider_create` renombra
@@ -316,6 +339,10 @@ function handlers() {
         rename_all: match[1]?.includes('snake_case') ? 'snake_case' : 'camelCase (por defecto)',
         args: splitArgs(sig[3]),
         returns: (sig[4] ?? '()').trim(),
+        /** El handler ramifica o tiene bindings sin resolver: va a mano. */
+        manual: branching || unresolvedBindings(paramMap, commandArgs).length > 0,
+        unresolved: unresolvedBindings(paramMap, commandArgs),
+        branches: branching ? [...branches, ...inlineMethods] : [],
         engine_method: direct ?? delegated?.method ?? null,
         /** El método tal como viaja por el protocolo, no la variante Rust. */
         engine_method_name: names.get(direct ?? delegated?.method ?? '') ?? null,
@@ -712,11 +739,23 @@ function renderCommandMap(data) {
     '  params: ParamBinding[]',
     '  /** El argumento nombrado **es** el objeto de parámetros, sin envolver. */',
     '  passthrough?: string',
+    '  /**',
+    '   * El handler ramifica o construye sus parámetros con lógica propia: la',
+    '   * traducción se escribe a mano en `commandAdapters.ts` y este mapa solo',
+    '   * dice que existe. Generarla adivinando invertiría la semántica.',
+    '   */',
+    '  manual?: true',
     '}',
     '',
     'export const COMMAND_MAP: Record<string, CommandTranslation> = {',
   ]
   for (const row of rows) {
+    if (row.manual) {
+      lines.push(
+        `  ${row.command}: { method: '${row.engine_method_name}', params: [], manual: true },`,
+      )
+      continue
+    }
     const params = (row.engine_param_map ?? []).map((entry) => {
       const parts = [`key: '${entry.key}'`, `from: ${entry.from ? `'${entry.from}'` : 'null'}`, `optional: ${entry.optional}`]
       if (entry.default !== undefined) {
@@ -751,6 +790,23 @@ const mapPath = join(ROOT, 'electron', 'main', 'engine', 'commandMap.generated.t
  * un componente reintroduce el acoplamiento que la entrega vino a quitar.
  */
 const ADAPTER = 'src/platform/tauri.ts'
+
+/** Auditoría del mapa de comandos, para el informe de la entrega. */
+function auditLine(data) {
+  const withMethod = data.commands.filter((row) => row.engine_method_name)
+  const manual = withMethod.filter((row) => row.manual)
+  const passthrough = withMethod.filter((row) => row.engine_params_passthrough)
+  const hostOnly = data.commands.filter((row) => !row.engine_method_name)
+  const unresolved = data.commands.reduce((total, row) => total + (row.unresolved ?? []).length, 0)
+  return [
+    `comandos: ${data.commands.length}`,
+    `traducción automática: ${withMethod.length - manual.length}`,
+    `traducción manual: ${manual.length}`,
+    `passthrough: ${passthrough.length}`,
+    `solo host: ${hostOnly.length}`,
+    `sin resolver: ${manual.length > 0 ? 0 : unresolved}`,
+  ].join(' | ')
+}
 
 /**
  * Los nombres de canal son un detalle del host, igual que sus imports: en
@@ -804,6 +860,17 @@ if (CHECK) {
     console.error('Consúmelos por `platform()` en vez de importar el host directamente.')
     process.exit(1)
   }
+  // Un binding sin resolver que no esté marcado manual sería una traducción
+  // incompleta viajando al Engine en silencio: es justo lo que la regla
+  // fail-closed existe para impedir (documento 02 §4.3).
+  const leaked = data.commands.filter((row) => (row.unresolved ?? []).length > 0 && !row.manual)
+  if (leaked.length) {
+    console.error('Bindings sin resolver en comandos no marcados como manuales:')
+    for (const row of leaked) console.error(`  ${row.command}: ${row.unresolved.join(', ')}`)
+    process.exit(1)
+  }
+  console.log(auditLine(data))
+
   const channels = channelNamesOutsideAdapter()
   if (channels.length) {
     console.error(`Nombres de canal del host fuera de ${ADAPTER}:`)

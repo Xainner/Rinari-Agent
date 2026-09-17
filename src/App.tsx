@@ -1,8 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { listen } from '@tauri-apps/api/event'
 import { dispatchAction, resolveContextualAction, type DesktopAction } from './services/actions'
 import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
-import { open as openFolderDialog } from '@tauri-apps/plugin-dialog'
+import { platform } from './platform'
 import { toast } from 'sonner'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
@@ -136,12 +135,11 @@ function App() {
         if (request.project || request.session) void handleOpen(request)
       })
       .catch(() => {})
-    void listen<{ project: string | null; session: string | null }>(
-      'rinari-open-request',
-      (wrapper) => void handleOpen(wrapper.payload),
-    ).then((stop) => {
-      unlisten = stop
-    })
+    void platform()
+      .events.onOpenRequest((request) => void handleOpen(request))
+      .then((stop) => {
+        unlisten = stop
+      })
     return () => unlisten?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -283,7 +281,7 @@ function App() {
         }
         case 'toggle-focus-mode': goBoard(); toggleFocusMode(); break
         case 'mark-all-board-results-read': markAllBoardResultsRead(); break
-        case 'open-folder': void openFolderDialog({ directory: true }).then(path => { if (typeof path === 'string') void handleOpenProjectPath(path).then(ok => ok && goChat()) }); break
+        case 'open-folder': void platform().dialog.openFiles({ directory: true }).then(picked => { const path = picked?.[0]; if (path) void handleOpenProjectPath(path).then(ok => ok && goChat()) }); break
         case 'close-session': {
           // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.
           if (resolveContextualAction('close', { view }) === 'remove-pane') { boardActionsRef.current.removePane(); break }
@@ -321,7 +319,7 @@ function App() {
   useEffect(() => {
     const local = (event: Event) => desktopActionRef.current((event as CustomEvent<DesktopAction>).detail)
     window.addEventListener('rinari-action', local)
-    const native = listen<DesktopAction>('rinari-menu-action', event => desktopActionRef.current(event.payload))
+    const native = platform().events.onMenuAction((action) => desktopActionRef.current(action as DesktopAction))
     return () => { window.removeEventListener('rinari-action', local); void native.then(stop => stop()) }
   }, [])
 
@@ -391,7 +389,8 @@ function App() {
             onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(String(error)))}
             onNewChat={() => dispatchAction('new-chat')}
             onOpenFolder={() =>
-              void openFolderDialog({ directory: true }).then((picked) => {
+              void platform().dialog.openFiles({ directory: true }).then((selection) => {
+                const picked = selection?.[0] ?? null
                 if (typeof picked === 'string') void handleOpenProjectPath(picked).then((ok) => ok && goChat())
               })
             }

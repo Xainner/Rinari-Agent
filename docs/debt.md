@@ -88,6 +88,27 @@ documentado; lo demás no se presenta como terminado.
   Control de aplicaciones bloquea `cargo-fmt` (os error 4551); se verificó con
   `rustfmt --check` directo y CI ejecuta `cargo fmt --check`.
 
+### Interfaz de plataforma (2026-09-17, plan 02, entrega C)
+
+- **Inventario de paridad** — `DONE`. `scripts/desktop-parity.mjs` lo genera del
+  código y `parity:check` corre en CI: 130 comandos, 3 eventos y las APIs de
+  `@tauri-apps` usadas directamente. No puede divergir del host.
+- **Imports de Tauri fuera del adaptador** — `DONE` para componentes y
+  servicios: solo `src/platform/tauri.ts` importa `@tauri-apps`, y
+  `parity:check` falla si reaparece uno. La suite quedó verde sin reescribir
+  tests, que es la prueba de que el adaptador conserva el comportamiento.
+- **Tests que montan el host directamente** — `OPEN`. Once archivos de test
+  siguen haciendo `vi.mock('@tauri-apps/…')` en vez de `createTestBridge()`.
+  Funciona porque la implementación Tauri pasa por esos módulos, pero dejará de
+  hacerlo cuando el host por defecto sea Electron (entrega D): entonces hay que
+  migrarlos o dejarán de probar el camino real.
+- **`mcp_get` sin llamador** — `OPEN`. Registrado en `invoke_handler` y expuesto
+  al WebView, pero ningún archivo de `src/` lo invoca. Decidir si se retira
+  antes de portarlo al host nuevo: es superficie que nadie usa.
+- **Validación en ejecución de la allowlist** — `OPEN` por diseño. `DesktopCommand`
+  es una unión de TypeScript: no valida nada en ejecución. La allowlist efectiva
+  y sus validadores son del main de Electron (documento 02 §3.1, entrega D).
+
 ### Boards y mensajería entre paneles (2026-09-15)
 
 - **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`

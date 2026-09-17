@@ -108,19 +108,28 @@ function handlers() {
 // -- frontend ----------------------------------------------------------------
 
 /**
- * Nombres de comando en `invoke(...)`.
+ * Nombres de comando en `platform().command(...)` y en `invoke(...)`.
+ *
+ * Los consumidores pasan por el adaptador (`command`); `invoke` solo queda
+ * dentro de `src/platform/tauri.ts`, pero se sigue reconociendo para que el
+ * inventario no mienta si alguien lo reintroduce.
  *
  * Un regex no basta: el parámetro de tipo anida `<>` (`Record<string, number>`)
  * y puede contener paréntesis (`import('...').VisionSettings`). Se recorre el
  * texto saltando el genérico con un contador de corchetes angulares.
  */
 export function invokedNames(text) {
+  return [...scanCalls(text, 'invoke', false), ...scanCalls(text, 'command', true)]
+}
+
+function scanCalls(text, token, afterDot) {
   const names = []
   let index = 0
-  while ((index = text.indexOf('invoke', index)) !== -1) {
-    let cursor = index + 'invoke'.length
+  while ((index = text.indexOf(token, index)) !== -1) {
+    let cursor = index + token.length
     const before = index > 0 ? text[index - 1] : ' '
-    if (/[\w$.]/.test(before)) {
+    // `command` es método (`.command(`); `invoke` es función suelta.
+    if (afterDot ? before !== '.' : /[\w$.]/.test(before)) {
       index = cursor
       continue
     }
@@ -379,15 +388,70 @@ function render(data) {
   return out.join('\n')
 }
 
+/**
+ * Union cerrada de nombres de comando para `src/platform/contract.ts`.
+ *
+ * El contrato de plataforma sale del inventario, no de una lista escrita a
+ * mano: un comando nuevo sin regenerar no compila en el adaptador. En tiempo
+ * de ejecución no basta —el documento 02 §3.1 recuerda que TypeScript no
+ * sustituye la validación— y esa allowlist vive en el main de Electron
+ * (entrega D).
+ */
+function renderCommandUnion(data) {
+  const names = data.commands.map((row) => row.command).sort()
+  return [
+    '// Generado por `npm run parity:inventory`. No editar a mano.',
+    '// Documento 02 §3.1: la lista de comandos del host es cerrada y sale del',
+    '// inventario de paridad, para que no pueda divergir del código del host.',
+    '',
+    '/** Comandos que el host expone al renderer. */',
+    'export type DesktopCommand =',
+    ...names.map((name) => `  | '${name}'`),
+    '',
+    '/** La misma lista en tiempo de ejecución, para validaciones y tests. */',
+    'export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [',
+    ...names.map((name) => `  '${name}',`),
+    '] as const',
+    '',
+  ].join('\n')
+}
+
 const data = build()
 const json = JSON.stringify(data, null, 2) + '\n'
 const markdown = render(data)
+const union = renderCommandUnion(data)
 const jsonPath = join(OUT_DIR, 'desktop-parity.json')
 const mdPath = join(OUT_DIR, 'desktop-parity.md')
+const unionPath = join(ROOT, 'src', 'platform', 'commands.generated.ts')
+
+/**
+ * Cierre de la entrega C (documento 02 §8): «no queda un import Tauri en
+ * componentes o servicios fuera del adaptador temporal». El adaptador existe
+ * para que cambiar de host sea cambiar de implementación; un import suelto en
+ * un componente reintroduce el acoplamiento que la entrega vino a quitar.
+ */
+const ADAPTER = 'src/platform/tauri.ts'
+
+function tauriImportsOutsideAdapter(data) {
+  const offenders = new Set()
+  for (const names of Object.values(data.platform_apis)) {
+    for (const paths of Object.values(names)) {
+      for (const path of paths) if (path !== ADAPTER) offenders.add(path)
+    }
+  }
+  const all = [...offenders].sort()
+  // El §8 habla de componentes y servicios. Un test que importa el modulo para
+  // afirmar sobre su mock es andamiaje, no acoplamiento del producto: se
+  // informa y se lleva en la deuda, pero no bloquea.
+  return {
+    source: all.filter((path) => !path.includes('.test.')),
+    tests: all.filter((path) => path.includes('.test.')),
+  }
+}
 
 if (CHECK) {
   const stale = []
-  for (const [path, expected] of [[jsonPath, json], [mdPath, markdown]]) {
+  for (const [path, expected] of [[jsonPath, json], [mdPath, markdown], [unionPath, union]]) {
     if (!existsSync(path) || readFileSync(path, 'utf8') !== expected) stale.push(rel(path))
   }
   if (stale.length) {
@@ -395,10 +459,22 @@ if (CHECK) {
     console.error('Ejecuta `npm run parity:inventory` y confirma el resultado.')
     process.exit(1)
   }
+  const leaks = tauriImportsOutsideAdapter(data)
+  if (leaks.source.length) {
+    console.error(`Imports de @tauri-apps en componentes o servicios (documento 02 §8): ${leaks.source.length}`)
+    for (const path of leaks.source) console.error(`  ${path}`)
+    console.error('Consúmelos por `platform()` en vez de importar el host directamente.')
+    process.exit(1)
+  }
+  if (leaks.tests.length) {
+    console.log(`Tests que aún montan el host directamente: ${leaks.tests.length} (deuda declarada, ver docs/debt.md).`)
+  }
   console.log(`Inventario al día: ${data.registered_commands} comandos, ${Object.keys(data.platform_apis).length} módulos de plataforma.`)
 } else {
   mkdirSync(OUT_DIR, { recursive: true })
+  mkdirSync(dirname(unionPath), { recursive: true })
   writeFileSync(jsonPath, json)
   writeFileSync(mdPath, markdown)
+  writeFileSync(unionPath, union)
   console.log(`${rel(jsonPath)} y ${rel(mdPath)}: ${data.registered_commands} comandos, ${data.handlers_not_registered.length} sin registrar, ${data.registered_without_frontend_caller.length} sin llamador.`)
 }

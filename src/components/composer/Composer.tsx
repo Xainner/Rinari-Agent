@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { ArrowUp, Brain, Check, Columns3, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
-import { open } from '@tauri-apps/plugin-dialog'
+import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
@@ -420,8 +420,7 @@ export default function Composer({
   }
 
   async function chooseFiles() {
-    const selected = await open({ multiple: true, directory: false, title: 'Adjuntar archivos' })
-    const paths = typeof selected === 'string' ? [selected] : selected ?? []
+    const paths = (await platform().dialog.openFiles({ multiple: true, directory: false, title: 'Adjuntar archivos' })) ?? []
     for (const path of paths) {
       addAttachment({
         id: `att_${Date.now().toString(36)}_${path}`,

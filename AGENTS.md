@@ -841,6 +841,30 @@ EngineSupervisor
 Engine Protocol
 ```
 
+## Platform adapter: do not import the host directly
+
+The renderer reaches the host only through `src/platform` (`platform()`), never
+through `@tauri-apps/*` — and, once the Electron host lands, never through
+`ipcRenderer` either. `src/platform/tauri.ts` is the single exception and is
+deleted when Tauri goes away.
+
+```text
+component / service
+    ↓
+platform()            src/platform/contract.ts
+    ↓
+tauri.ts | electron.ts | testBridge.ts
+```
+
+`npm run parity:check` fails if a component or service imports the host, and
+regenerates `docs/migration/desktop-parity.md` from the code: adding a
+`#[tauri::command]` without running `npm run parity:inventory` breaks CI. The
+contract exposes intent (`window.clampToWorkArea()`), not host primitives, so
+the Electron implementation is a new file rather than another refactor of the
+consumers.
+
+Tests use `createTestBridge()` instead of mocking the host.
+
 ---
 
 # 9. Desktop stack

@@ -1,21 +1,12 @@
-import { check } from '@tauri-apps/plugin-updater'
-import { relaunch } from '@tauri-apps/plugin-process'
+import { platform, type UpdateAvailable } from '../platform'
 
-export interface UpdateAvailable {
-  version: string
-  body?: string
+export type { UpdateAvailable }
+
+/** Dev (`vite`) o build sin updater: `check()` lanza; se propaga al llamador. */
+export function checkForUpdates(): Promise<UpdateAvailable | null> {
+  return platform().updates.check()
 }
 
-/** Dev (`vite`) o build sin updater: check() lanza; se propaga al llamador. */
-export async function checkForUpdates(): Promise<UpdateAvailable | null> {
-  const update = await check()
-  if (!update) return null
-  return { version: update.version, body: update.body ?? undefined }
-}
-
-export async function installUpdateAndRelaunch(): Promise<void> {
-  const update = await check()
-  if (!update) return
-  await update.downloadAndInstall()
-  await relaunch()
+export function installUpdateAndRelaunch(): Promise<void> {
+  return platform().updates.installAndRelaunch()
 }

@@ -66,21 +66,20 @@ que un inventario hecho solo con métodos del Engine se dejaría fuera.
 
 | Módulo | Símbolo | Archivos |
 |---|---|---|
-| `@tauri-apps/api/core` | `invoke` | `features/board/AddPaneDialog.test.tsx`<br>`features/browser/useBrowserFrame.test.tsx`<br>`features/browser/useBrowserFrame.ts`<br>`features/engine/EngineConsole.tsx`<br>`features/engine/useEngineSession.test.tsx`<br>`features/processes/ProcessIdentity.test.tsx`<br>… y 9 más |
-| `@tauri-apps/api/core` | `isTauri` | `components/app-shell/DesktopContextMenu.tsx`<br>`hooks/useWindowBounds.ts` |
-| `@tauri-apps/api/dpi` | `LogicalPosition` | `components/app-shell/DesktopContextMenu.tsx` |
-| `@tauri-apps/api/event` | `listen` | `App.tsx`<br>`services/engine.ts` |
-| `@tauri-apps/api/event` | `type UnlistenFn` | `services/engine.ts` |
-| `@tauri-apps/api/menu` | `Menu` | `components/app-shell/DesktopContextMenu.tsx` |
-| `@tauri-apps/api/menu` | `type MenuOptions` | `components/app-shell/DesktopContextMenu.tsx` |
-| `@tauri-apps/api/window` | `PhysicalPosition` | `hooks/useWindowBounds.ts` |
-| `@tauri-apps/api/window` | `PhysicalSize` | `hooks/useWindowBounds.ts` |
-| `@tauri-apps/api/window` | `currentMonitor` | `hooks/useWindowBounds.ts` |
-| `@tauri-apps/api/window` | `getCurrentWindow` | `hooks/useWindowBounds.ts` |
-| `@tauri-apps/plugin-dialog` | `open` | `App.tsx`<br>`components/composer/Composer.tsx`<br>`features/board/AddPaneDialog.test.tsx`<br>`features/board/AddPaneDialog.tsx` |
-| `@tauri-apps/plugin-opener` | `openUrl` | `features/browser/BrowserSurface.tsx`<br>`features/files/FileWorkspace.tsx`<br>`features/files/HtmlPreview.test.tsx`<br>`features/files/HtmlPreview.tsx`<br>`features/processes/ProcessInspector.tsx`<br>`features/processes/ProcessRow.tsx`<br>… y 1 más |
-| `@tauri-apps/plugin-process` | `relaunch` | `services/updates.ts` |
-| `@tauri-apps/plugin-updater` | `check` | `services/updates.ts` |
+| `@tauri-apps/api/core` | `invoke` | `features/board/AddPaneDialog.test.tsx`<br>`features/browser/useBrowserFrame.test.tsx`<br>`features/engine/useEngineSession.test.tsx`<br>`features/processes/ProcessIdentity.test.tsx`<br>`features/processes/ProcessRuntimeProvider.test.tsx`<br>`features/processes/ProcessesDock.test.tsx`<br>… y 5 más |
+| `@tauri-apps/api/core` | `isTauri` | `platform/tauri.ts` |
+| `@tauri-apps/api/dpi` | `LogicalPosition` | `platform/tauri.ts` |
+| `@tauri-apps/api/event` | `listen` | `platform/tauri.ts` |
+| `@tauri-apps/api/menu` | `Menu` | `platform/tauri.ts` |
+| `@tauri-apps/api/menu` | `type MenuOptions` | `platform/tauri.ts` |
+| `@tauri-apps/api/window` | `PhysicalPosition` | `platform/tauri.ts` |
+| `@tauri-apps/api/window` | `PhysicalSize` | `platform/tauri.ts` |
+| `@tauri-apps/api/window` | `currentMonitor` | `platform/tauri.ts` |
+| `@tauri-apps/api/window` | `getCurrentWindow` | `platform/tauri.ts` |
+| `@tauri-apps/plugin-dialog` | `open` | `features/board/AddPaneDialog.test.tsx`<br>`platform/tauri.ts` |
+| `@tauri-apps/plugin-opener` | `openUrl` | `features/files/HtmlPreview.test.tsx`<br>`features/processes/ProcessesReview.test.tsx`<br>`platform/tauri.ts` |
+| `@tauri-apps/plugin-process` | `relaunch` | `platform/tauri.ts` |
+| `@tauri-apps/plugin-updater` | `check` | `platform/tauri.ts` |
 
 ## Comandos
 

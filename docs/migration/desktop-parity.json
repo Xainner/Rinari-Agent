@@ -3175,88 +3175,73 @@
       "invoke": [
         "src/features/board/AddPaneDialog.test.tsx",
         "src/features/browser/useBrowserFrame.test.tsx",
-        "src/features/browser/useBrowserFrame.ts",
-        "src/features/engine/EngineConsole.tsx",
         "src/features/engine/useEngineSession.test.tsx",
         "src/features/processes/ProcessIdentity.test.tsx",
         "src/features/processes/ProcessRuntimeProvider.test.tsx",
         "src/features/processes/ProcessesDock.test.tsx",
         "src/features/processes/ProcessesReview.test.tsx",
         "src/features/processes/SurfaceCoordination.test.tsx",
-        "src/services/desktop.ts",
-        "src/services/engine.ts",
+        "src/platform/tauri.ts",
         "src/services/processes.test.ts",
-        "src/services/processes.ts",
         "src/services/sessionBridge.test.ts"
       ],
       "isTauri": [
-        "src/components/app-shell/DesktopContextMenu.tsx",
-        "src/hooks/useWindowBounds.ts"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/api/dpi": {
       "LogicalPosition": [
-        "src/components/app-shell/DesktopContextMenu.tsx"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/api/event": {
       "listen": [
-        "src/App.tsx",
-        "src/services/engine.ts"
-      ],
-      "type UnlistenFn": [
-        "src/services/engine.ts"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/api/menu": {
       "Menu": [
-        "src/components/app-shell/DesktopContextMenu.tsx"
+        "src/platform/tauri.ts"
       ],
       "type MenuOptions": [
-        "src/components/app-shell/DesktopContextMenu.tsx"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/api/window": {
       "PhysicalPosition": [
-        "src/hooks/useWindowBounds.ts"
+        "src/platform/tauri.ts"
       ],
       "PhysicalSize": [
-        "src/hooks/useWindowBounds.ts"
+        "src/platform/tauri.ts"
       ],
       "currentMonitor": [
-        "src/hooks/useWindowBounds.ts"
+        "src/platform/tauri.ts"
       ],
       "getCurrentWindow": [
-        "src/hooks/useWindowBounds.ts"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/plugin-dialog": {
       "open": [
-        "src/App.tsx",
-        "src/components/composer/Composer.tsx",
         "src/features/board/AddPaneDialog.test.tsx",
-        "src/features/board/AddPaneDialog.tsx"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/plugin-opener": {
       "openUrl": [
-        "src/features/browser/BrowserSurface.tsx",
-        "src/features/files/FileWorkspace.tsx",
         "src/features/files/HtmlPreview.test.tsx",
-        "src/features/files/HtmlPreview.tsx",
-        "src/features/processes/ProcessInspector.tsx",
-        "src/features/processes/ProcessRow.tsx",
-        "src/features/processes/ProcessesReview.test.tsx"
+        "src/features/processes/ProcessesReview.test.tsx",
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/plugin-process": {
       "relaunch": [
-        "src/services/updates.ts"
+        "src/platform/tauri.ts"
       ]
     },
     "@tauri-apps/plugin-updater": {
       "check": [
-        "src/services/updates.ts"
+        "src/platform/tauri.ts"
       ]
     }
   },

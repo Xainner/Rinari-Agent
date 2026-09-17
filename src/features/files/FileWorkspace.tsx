@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from 'react'
 import { Copy, ExternalLink, FileText, X } from 'lucide-react'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { toast } from 'sonner'
 import { desktopApi, type FilePreview } from '../../services/desktop'
 import { commandMessage, engineApi } from '../../services/engine'
@@ -17,6 +16,7 @@ import { copyText } from '../../lib/clipboard'
 import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 
+import { platform } from '../../platform'
 type OpenFile = (path: string, turnId?: string) => void
 const FileContext = createContext<OpenFile | null>(null)
 export const FileTurnContext = createContext<string | undefined>(undefined)
@@ -67,7 +67,7 @@ export function FileLink({
           open(target, turnId)
         } else if (/^(https?:|mailto:)/i.test(href)) {
           e.preventDefault()
-          void openUrl(href).catch((error) =>
+          void platform().opener.openUrl(href).catch((error) =>
             toast.error(commandMessage(error)),
           )
         }

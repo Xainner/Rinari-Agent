@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { ArrowLeft, Copy, ExternalLink, MessageSquarePlus, Pin, PinOff, Square, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
@@ -23,6 +22,7 @@ import ProcessLogView from './ProcessLogView'
 import ProcessQueryDialog from './ProcessQueryDialog'
 import type { ProcessOutput } from '../../types/protocol.generated'
 
+import { platform } from '../../platform'
 type Filter = 'active' | 'attention' | 'finished' | 'external' | 'all'
 
 export type ProcessInspectorFilter = Filter
@@ -398,7 +398,7 @@ function ProcessDetail({
                 type="button"
                 onClick={() => {
                   setUrlError('')
-                  void openUrl(validUrl).catch((reason: unknown) =>
+                  void platform().opener.openUrl(validUrl).catch((reason: unknown) =>
                     setUrlError(reason instanceof Error ? reason.message : String(reason)),
                   )
                 }}

@@ -6,6 +6,7 @@ import type {
   WebPreview,
 } from '../types/protocol.generated'
 import { platform } from '../platform'
+
 export type { WebPreview } from '../types/protocol.generated'
 export type { QuestionRequest, FilePreview } from '../types/protocol.generated'
 

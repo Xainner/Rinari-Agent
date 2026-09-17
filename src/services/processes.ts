@@ -1,6 +1,7 @@
 import type { ManagedProcess, ProcessOutput } from '../types/protocol.generated'
 
 import { platform } from '../platform'
+
 export interface ProcessListResult {
   processes: ManagedProcess[]
   truncated: boolean

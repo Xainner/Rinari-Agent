@@ -17,6 +17,7 @@ import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 
 import { platform } from '../../platform'
+
 type OpenFile = (path: string, turnId?: string) => void
 const FileContext = createContext<OpenFile | null>(null)
 export const FileTurnContext = createContext<string | undefined>(undefined)

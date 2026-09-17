@@ -10,6 +10,7 @@ import { commandMessage } from '../../services/engine'
 import { CodeBlock } from '../../components/Markdown'
 
 import { platform } from '../../platform'
+
 export function isolatedPreviewUrl(url: string): boolean {
   try {
     const parsed = new URL(url)

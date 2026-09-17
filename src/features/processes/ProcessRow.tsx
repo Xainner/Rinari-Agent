@@ -17,6 +17,7 @@ import {
 } from './processesModel'
 
 import { platform } from '../../platform'
+
 function statusColor(key: ReturnType<typeof deriveStatusKey>): string {
   switch (key) {
     case 'running':

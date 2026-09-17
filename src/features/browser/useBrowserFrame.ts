@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
 
 import { platform } from '../../platform'
+
 /** Cadencia con la superficie del navegador a la vista (transporte de capturas actual). */
 export const BROWSER_POLL_ACTIVE_MS = 1_500
 

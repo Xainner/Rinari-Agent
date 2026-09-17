@@ -12,6 +12,7 @@ import type {
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
+
 export type EngineState =
   | "stopped"
   | "starting"
@@ -395,8 +396,6 @@ export interface ProjectChanges {
   dirty: boolean;
   files: ChangedFile[];
 }
-
-export const ENGINE_EVENT = "rinari-engine-event";
 
 export function isCommandError(value: unknown): value is CommandError {
   return (

@@ -23,6 +23,7 @@ import ProcessQueryDialog from './ProcessQueryDialog'
 import type { ProcessOutput } from '../../types/protocol.generated'
 
 import { platform } from '../../platform'
+
 type Filter = 'active' | 'attention' | 'finished' | 'external' | 'all'
 
 export type ProcessInspectorFilter = Filter

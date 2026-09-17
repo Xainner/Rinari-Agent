@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
 
 import { platform } from '../../platform'
+
 export interface BrowserSurfaceProps {
   frame: BrowserFrame | null
   error: string

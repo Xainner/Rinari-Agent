@@ -5,6 +5,7 @@ import { Section } from '../../components/settings/parts'
 import type { EngineSession } from './useEngineSession'
 
 import { platform } from '../../platform'
+
 interface LogLine {
   key: number
   text: string

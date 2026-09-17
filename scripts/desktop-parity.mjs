@@ -432,6 +432,24 @@ const unionPath = join(ROOT, 'src', 'platform', 'commands.generated.ts')
  */
 const ADAPTER = 'src/platform/tauri.ts'
 
+/**
+ * Los nombres de canal son un detalle del host, igual que sus imports: en
+ * Electron no significan lo mismo. Fuera del adaptador quedan obsoletos sin
+ * que nadie se entere, así que se comprueban aparte —un string no arrastra un
+ * import que delate la fuga—.
+ */
+function channelNamesOutsideAdapter() {
+  const offenders = []
+  for (const path of frontendFiles()) {
+    if (rel(path) === ADAPTER) continue
+    const text = readFileSync(path, 'utf8')
+    for (const channel of ['rinari-engine-event', 'rinari-menu-action', 'rinari-open-request']) {
+      if (text.includes(channel)) offenders.push(`${rel(path)} (${channel})`)
+    }
+  }
+  return offenders.sort()
+}
+
 function tauriImportsOutsideAdapter(data) {
   const offenders = new Set()
   for (const names of Object.values(data.platform_apis)) {
@@ -464,6 +482,13 @@ if (CHECK) {
     console.error(`Imports de @tauri-apps en componentes o servicios (documento 02 §8): ${leaks.source.length}`)
     for (const path of leaks.source) console.error(`  ${path}`)
     console.error('Consúmelos por `platform()` en vez de importar el host directamente.')
+    process.exit(1)
+  }
+  const channels = channelNamesOutsideAdapter()
+  if (channels.length) {
+    console.error(`Nombres de canal del host fuera de ${ADAPTER}:`)
+    for (const entry of channels) console.error(`  ${entry}`)
+    console.error('Suscríbete por `platform().events.*`; el canal es del adaptador.')
     process.exit(1)
   }
   if (leaks.tests.length) {

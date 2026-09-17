@@ -100,18 +100,29 @@ export function resolveAppUrl(url: string, root: string): Resolution {
 }
 
 /**
- * CSP de producción. Sin `unsafe-eval`, sin JavaScript remoto y sin marcos
- * ajenos; el contenido web no confiable vive fuera de este renderer.
+ * CSP del renderer de confianza.
+ *
+ * En producción solo su propio origen: sin `unsafe-eval`, sin JavaScript
+ * remoto y sin marcos ajenos. En desarrollo se añade **el origen exacto del
+ * dev server y su WebSocket de HMR**, nada más: `script-src *` o
+ * `unsafe-eval` global convertirían el modo dev en la política real, y el
+ * documento 02 §6.1 dice que la configuración de desarrollo no pasa a
+ * producción.
  */
-export function contentSecurityPolicy(): string {
+export function contentSecurityPolicy(devOrigin?: string): string {
+  const self = APP_ORIGIN
+  const dev = devOrigin ? ` ${devOrigin}` : ''
+  // Vite sirve el HMR por WebSocket sobre el mismo host y puerto.
+  const socket = devOrigin ? ` ${devOrigin.replace(/^http/, 'ws')}` : ''
   return [
     "default-src 'none'",
-    `script-src ${APP_ORIGIN}`,
-    `style-src ${APP_ORIGIN} 'unsafe-inline'`,
-    `img-src ${APP_ORIGIN} data: blob:`,
-    `font-src ${APP_ORIGIN} data:`,
-    `media-src ${APP_ORIGIN} data: blob:`,
-    `connect-src ${APP_ORIGIN}`,
+    // El cliente de Vite evalúa módulos en desarrollo; en producción no.
+    `script-src ${self}${dev}${devOrigin ? " 'unsafe-inline'" : ''}`,
+    `style-src ${self}${dev} 'unsafe-inline'`,
+    `img-src ${self}${dev} data: blob:`,
+    `font-src ${self}${dev} data:`,
+    `media-src ${self}${dev} data: blob:`,
+    `connect-src ${self}${dev}${socket}`,
     "object-src 'none'",
     "frame-src 'none'",
     "worker-src 'none'",

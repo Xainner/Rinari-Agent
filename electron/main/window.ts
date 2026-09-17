@@ -18,8 +18,15 @@ export interface WindowDeps {
   preloadPath: string
   /** URL a cargar: el esquema propio en producción, el dev server en desarrollo. */
   startUrl: string
-  /** En desarrollo se permite además el origen del dev server de Vite. */
-  extraAllowedOrigin?: string
+  /**
+   * Origen que el renderer de confianza carga de verdad: `app://rinari` en
+   * producción y el del dev server en desarrollo. Es el mismo con el que se
+   * compara el emisor del IPC, porque autorizar por ventana y cargar otro
+   * origen deja el puente inservible en dev.
+   */
+  trustedOrigin: string
+  /** `development` añade a la CSP lo justo para Vite y su HMR. */
+  cspMode: 'production' | 'development'
   onState: (state: WindowState) => void
   /** Se pide cerrar: el host decide si hay trabajo activo que confirmar. */
   onCloseRequested: (window: BrowserWindow) => void
@@ -69,7 +76,7 @@ function harden(contents: WebContents, allowedOrigins: string[], openExternally:
 }
 
 export function createMainWindow(deps: WindowDeps): BrowserWindow {
-  const allowedOrigins = [APP_ORIGIN, ...(deps.extraAllowedOrigin ? [deps.extraAllowedOrigin] : [])]
+  const allowedOrigins = [...new Set([APP_ORIGIN, deps.trustedOrigin])]
 
   const window = new BrowserWindow({
     width: 1280,
@@ -112,7 +119,9 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [contentSecurityPolicy()],
+        'Content-Security-Policy': [
+          contentSecurityPolicy(deps.cspMode === 'development' ? deps.trustedOrigin : undefined),
+        ],
       },
     })
   })

@@ -110,3 +110,26 @@ describe('CSP de producción', () => {
     expect(csp).not.toContain('tauri')
   })
 })
+
+describe('DEV-03 — la CSP de desarrollo no se hereda en producción', () => {
+  const dev = contentSecurityPolicy('http://localhost:1420')
+
+  it('en desarrollo admite el origen exacto de Vite y su HMR', () => {
+    expect(dev).toContain('http://localhost:1420')
+    expect(dev).toContain('ws://localhost:1420')
+  })
+
+  it('ni siquiera en desarrollo se abre con comodines', () => {
+    // `script-src *` o `unsafe-eval` global convertirían el modo dev en la
+    // política real de la app.
+    expect(dev).not.toContain('*')
+    expect(dev).not.toContain('unsafe-eval')
+  })
+
+  it('la de producción no menciona ningún origen de desarrollo', () => {
+    const prod = contentSecurityPolicy()
+    expect(prod).not.toContain('localhost')
+    expect(prod).not.toContain('ws://')
+    expect(prod).not.toContain('unsafe-inline; ')
+  })
+})

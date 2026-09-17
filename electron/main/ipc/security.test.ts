@@ -77,6 +77,32 @@ describe('validateSender', () => {
   })
 })
 
+describe('DEV-01/DEV-02 — el renderer de desarrollo también está autorizado', () => {
+  const DEV = 'http://localhost:1420'
+
+  it('con el dev server como origen de confianza, su renderer pasa', () => {
+    // El registro se construye con el origen que **se carga**; hacerlo con
+    // `app://rinari` en desarrollo devolvía FORBIDDEN a todo el IPC.
+    const registry = new SenderRegistry(DEV)
+    registry.trust(7)
+    expect(registry.check({ id: 7, isMainFrame: true, url: `${DEV}/index.html` }).allowed).toBe(true)
+  })
+
+  it('otro origen sigue rechazado aunque el host esté en desarrollo', () => {
+    const registry = new SenderRegistry(DEV)
+    registry.trust(7)
+    expect(registry.check({ id: 7, isMainFrame: true, url: 'http://localhost:1421/x' }).allowed).toBe(false)
+    expect(registry.check({ id: 7, isMainFrame: true, url: 'https://ejemplo.invalido/' }).allowed).toBe(false)
+    expect(registry.check({ id: 7, isMainFrame: false, url: `${DEV}/x` }).allowed).toBe(false)
+  })
+
+  it('en producción el dev server no vale', () => {
+    const registry = new SenderRegistry(ORIGIN)
+    registry.trust(7)
+    expect(registry.check({ id: 7, isMainFrame: true, url: `${DEV}/index.html` }).allowed).toBe(false)
+  })
+})
+
 describe('validación de la allowlist (SEC-02)', () => {
   it('acepta un comando del inventario', () => {
     expect(assertCommandName('engine_status')).toBe('engine_status')

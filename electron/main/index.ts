@@ -14,7 +14,7 @@ import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appSche
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
-import { SenderRegistry } from './ipc/validateSender'
+import { SenderRegistry, originOf } from './ipc/validateSender'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
@@ -40,7 +40,14 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null
 let unregisterIpc: (() => void) | null = null
-const registry = new SenderRegistry(APP_ORIGIN)
+/**
+ * Origen del renderer de confianza: el esquema propio en producción y el del
+ * dev server cuando lo hay. El registro del emisor usa **este** valor, no
+ * `APP_ORIGIN` a secas: en desarrollo la página se carga desde Vite y, con la
+ * comparación exacta, todo el IPC respondía FORBIDDEN.
+ */
+const TRUSTED_ORIGIN = DEV_SERVER ? (originOf(DEV_SERVER) ?? APP_ORIGIN) : APP_ORIGIN
+const registry = new SenderRegistry(TRUSTED_ORIGIN)
 const handoff = new HandoffQueue()
 
 function send(channel: string, payload: unknown): void {
@@ -171,7 +178,8 @@ function openWindow(): void {
   mainWindow = createMainWindow({
     preloadPath,
     startUrl,
-    extraAllowedOrigin: DEV_SERVER,
+    trustedOrigin: TRUSTED_ORIGIN,
+    cspMode: isDev ? 'development' : 'production',
     onState: (state) => send(PUSH.windowState, state),
     onCloseRequested: (window) => {
       void confirmClose(window)
@@ -184,11 +192,12 @@ function openWindow(): void {
   // La autorización es del contenido: si navega fuera, se revoca hasta que
   // vuelva a cargarse el origen propio.
   mainWindow.webContents.on('did-navigate', (_event, url) => {
-    if (url.startsWith(APP_ORIGIN) || (DEV_SERVER && url.startsWith(DEV_SERVER))) {
-      registry.trust(mainWindow!.webContents.id)
-    } else {
-      registry.revoke()
-    }
+    // La autorización es del contenido: se conserva solo mientras siga en el
+    // origen de confianza, sea el esquema propio o el dev server.
+    // `originOf` resuelve también el esquema propio, cuyo `URL.origin` es
+    // la cadena "null" por no ser un esquema especial.
+    if (originOf(url) === TRUSTED_ORIGIN) registry.trust(mainWindow!.webContents.id)
+    else registry.revoke()
   })
 
   mainWindow.on('closed', () => {

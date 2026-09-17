@@ -12,8 +12,11 @@ import type {
   DesktopBridge,
   DesktopCommand,
   EngineEventMessage,
+  NotificationSupport,
+  NotificationTarget,
   OpenFilesOptions,
   OpenRequest,
+  SystemNotification,
   Unsubscribe,
   UpdateAvailable,
 } from './contract'
@@ -31,6 +34,11 @@ export interface TestBridge extends DesktopBridge {
   emitOpenRequest(request: OpenRequest): void
   /** Menús mostrados, para comprobar el contenido sin un host nativo. */
   readonly menus: Array<{ items: ContextMenuItem[]; position: { x: number; y: number } }>
+  /** Notificaciones mostradas, para comprobar qué salió y qué no. */
+  readonly sentNotifications: SystemNotification[]
+  notificationSupport: NotificationSupport
+  /** Simula el clic del usuario en una notificación. */
+  activateNotification(target: NotificationTarget): void
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
@@ -44,10 +52,13 @@ export function createTestBridge(): TestBridge {
   const engineListeners = new Set<(event: EngineEventMessage) => void>()
   const menuListeners = new Set<(action: string) => void>()
   const openListeners = new Set<(request: OpenRequest) => void>()
+  const notificationListeners = new Set<(target: NotificationTarget) => void>()
 
   const bridge: TestBridge = {
     calls: [],
     menus: [],
+    sentNotifications: [],
+    notificationSupport: { canSend: true, canActivateTarget: true },
     openedUrls: [],
     nextFileSelection: null,
     update: null,
@@ -105,6 +116,21 @@ export function createTestBridge(): TestBridge {
       },
     },
 
+    notifications: {
+      async support() {
+        return bridge.notificationSupport
+      },
+      async send(notification) {
+        bridge.sentNotifications.push(notification)
+        // Sin soporte no se muestra; decirlo es el contrato.
+        return bridge.notificationSupport.canSend
+      },
+      async onActivated(callback) {
+        notificationListeners.add(callback)
+        return () => notificationListeners.delete(callback)
+      },
+    },
+
     updates: {
       async check() {
         return bridge.update
@@ -123,6 +149,9 @@ export function createTestBridge(): TestBridge {
     emitOpenRequest(request) {
       for (const listener of [...openListeners]) listener(request)
     },
+    activateNotification(target) {
+      for (const listener of [...notificationListeners]) listener(target)
+    },
 
     reset() {
       handlers.clear()
@@ -131,6 +160,9 @@ export function createTestBridge(): TestBridge {
       openListeners.clear()
       bridge.calls.length = 0
       bridge.menus.length = 0
+      bridge.sentNotifications.length = 0
+      bridge.notificationSupport = { canSend: true, canActivateTarget: true }
+      notificationListeners.clear()
       bridge.openedUrls.length = 0
       bridge.nextFileSelection = null
       bridge.update = null

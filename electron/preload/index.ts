@@ -26,8 +26,11 @@ import {
   type BridgeResult,
   type ContextMenuRequest,
   type EngineStatus,
+  type NotificationSupport,
+  type NotificationTarget,
   type OpenFilesRequest,
   type OpenRequest,
+  type SystemNotificationRequest,
   type UpdateAvailable,
   type WindowState,
 } from '../shared/contracts'
@@ -138,6 +141,15 @@ const api = {
         for (const id of ids) menuActions.delete(id)
       }
     },
+  },
+
+  notifications: {
+    support: () => call<NotificationSupport>(CHANNEL.notificationsSupport),
+    /** `false` si no se mostró: por soporte o por deduplicación. */
+    send: (notification: SystemNotificationRequest) => call<boolean>(CHANNEL.notificationsSend, notification),
+    /** Clic en una notificación: solo el destino, nunca una acción. */
+    onActivated: (callback: (target: NotificationTarget) => void) =>
+      subscribe<NotificationTarget>(PUSH.notificationActivated, callback),
   },
 
   updates: {

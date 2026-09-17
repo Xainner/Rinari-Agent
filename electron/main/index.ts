@@ -6,7 +6,7 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, dialog } from 'electron'
+import { app, protocol, BrowserWindow, Menu, dialog } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -16,6 +16,8 @@ import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry } from './ipc/validateSender'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
+import { buildApplicationMenu } from './native/menu'
+import { createNotifications } from './native/notifications'
 import { createContextMenu, createDialogs, createOpener, createUpdates } from './native/services'
 import { clampToWorkArea, createMainWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
@@ -52,6 +54,15 @@ const engine = new EngineSupervisor({
   onStderr: (line) => console.error(`[rinari-engine] ${line}`),
   resourceDir: process.resourcesPath,
   packaged: app.isPackaged,
+})
+
+const notifications = createNotifications({
+  onActivate: (target) => send(PUSH.notificationActivated, target),
+  focusWindow: () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  },
 })
 
 /** Sirve el renderer construido desde el esquema propio. */
@@ -103,6 +114,7 @@ function buildServices(): HostServices {
     dialog: createDialogs(getWindow),
     opener: createOpener(),
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
+    notifications,
     updates: createUpdates(),
     handoff: { initial: () => parseOpenRequest(process.argv, app.isPackaged ? 1 : 2) },
   }
@@ -283,6 +295,13 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     if (!isDev) registerAppScheme(rendererRoot())
+    Menu.setApplicationMenu(
+      buildApplicationMenu({
+        getWindow: () => mainWindow,
+        onAction: (id) => send(PUSH.menuAction, id),
+        onQuit: () => app.quit(),
+      }),
+    )
     unregisterIpc = registerIpc(registry, buildServices())
     handoff.push(parseOpenRequest(process.argv, app.isPackaged ? 1 : 2))
     openWindow()

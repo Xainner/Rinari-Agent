@@ -17,8 +17,11 @@ export type {
   DesktopBridge,
   DesktopCommand,
   EngineEventMessage,
+  NotificationSupport,
+  NotificationTarget,
   OpenFilesOptions,
   OpenRequest,
+  SystemNotification,
   Unsubscribe,
   UpdateAvailable,
 } from './contract'

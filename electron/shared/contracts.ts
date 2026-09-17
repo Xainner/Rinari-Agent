@@ -22,6 +22,8 @@ export const CHANNEL = {
   dialogOpenFiles: 'rinari:dialog.openFiles',
   openerOpenUrl: 'rinari:opener.openUrl',
   contextMenuShow: 'rinari:contextMenu.show',
+  notificationsSupport: 'rinari:notifications.support',
+  notificationsSend: 'rinari:notifications.send',
   updatesCheck: 'rinari:updates.check',
   updatesInstall: 'rinari:updates.installAndRelaunch',
   /** El renderer pide el handoff pendiente del arranque en frío. */
@@ -37,6 +39,8 @@ export const PUSH = {
   windowState: 'rinari:push.windowState',
   /** Una acción del menú contextual nativo volvió al renderer. */
   contextMenuAction: 'rinari:push.contextMenuAction',
+  /** El usuario pulsó una notificación: el renderer resuelve el destino. */
+  notificationActivated: 'rinari:push.notificationActivated',
 } as const
 
 export type RequestChannel = (typeof CHANNEL)[keyof typeof CHANNEL]
@@ -102,6 +106,22 @@ export interface ContextMenuRequest {
   items: ContextMenuItemWire[]
   x: number
   y: number
+}
+
+export interface NotificationSupport {
+  canSend: boolean
+  canActivateTarget: boolean
+}
+
+export interface NotificationTarget {
+  sessionId?: string
+  turnId?: string
+}
+
+export interface SystemNotificationRequest {
+  title: string
+  body: string
+  target?: NotificationTarget
 }
 
 export interface OpenFilesRequest {

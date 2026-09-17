@@ -21,6 +21,7 @@ import {
   type ContextMenuRequest,
   type ContextMenuRole,
   type OpenFilesRequest,
+  type SystemNotificationRequest,
 } from '../../shared/contracts'
 import {
   ValidationError,
@@ -50,6 +51,10 @@ export interface HostServices {
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
+  notifications: {
+    support(): { canSend: boolean; canActivateTarget: boolean }
+    send(notification: SystemNotificationRequest): boolean
+  }
   updates: { check(): Promise<unknown>; installAndRelaunch(): Promise<void> }
   handoff: { initial(): { project: string | null; session: string | null } }
 }
@@ -118,6 +123,28 @@ function assertContextMenu(value: unknown): ContextMenuRequest {
   return { items: parsed, x: assertFiniteNumber(raw.x, 'x'), y: assertFiniteNumber(raw.y, 'y') }
 }
 
+/**
+ * Una notificación acotada: el cuerpo lo compone el renderer y podría llevar
+ * texto del modelo, así que se recorta en vez de dejarlo crecer.
+ */
+function assertNotification(value: unknown): SystemNotificationRequest {
+  if (!value || typeof value !== 'object') throw new ValidationError('notification must be an object')
+  const raw = value as Record<string, unknown>
+  const target = raw.target
+  if (target !== undefined && (typeof target !== 'object' || target === null || Array.isArray(target))) {
+    throw new ValidationError('notification target must be an object')
+  }
+  const entry = (target ?? {}) as Record<string, unknown>
+  return {
+    title: assertString(raw.title, 'title', 120),
+    body: assertString(raw.body, 'body', 400),
+    target: {
+      sessionId: entry.sessionId === undefined ? undefined : assertString(entry.sessionId, 'sessionId', 128),
+      turnId: entry.turnId === undefined ? undefined : assertString(entry.turnId, 'turnId', 128),
+    },
+  }
+}
+
 function assertOpenFiles(value: unknown): OpenFilesRequest {
   if (value === undefined || value === null) return {}
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -164,6 +191,11 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.contextMenuShow,
       guarded(registry, (_event, request) => services.contextMenu.show(assertContextMenu(request))),
+    ],
+    [CHANNEL.notificationsSupport, guarded(registry, () => services.notifications.support())],
+    [
+      CHANNEL.notificationsSend,
+      guarded(registry, (_event, request) => services.notifications.send(assertNotification(request))),
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
     [CHANNEL.updatesInstall, guarded(registry, () => services.updates.installAndRelaunch())],

@@ -120,6 +120,21 @@ export const tauriBridge: DesktopBridge = {
     },
   },
 
+  notifications: {
+    // Este build no incluye `tauri-plugin-notification`: añadirlo es una
+    // dependencia nueva que requiere autorización. Se declara no soportado
+    // para que el ajuste lo muestre ausente y la política nunca lo elija.
+    async support() {
+      return { canSend: false, canActivateTarget: false }
+    },
+    async send() {
+      return false
+    },
+    async onActivated() {
+      return () => {}
+    },
+  },
+
   updates: {
     async check(): Promise<UpdateAvailable | null> {
       const update = await check()

@@ -15,8 +15,11 @@ import type {
   DesktopBridge,
   DesktopCommand,
   EngineEventMessage,
+  NotificationSupport,
+  NotificationTarget,
   OpenFilesOptions,
   OpenRequest,
+  SystemNotification,
   Unsubscribe,
   UpdateAvailable,
 } from './contract'
@@ -42,6 +45,11 @@ interface DesktopHostApi {
   dialog: { openFiles(options?: OpenFilesOptions): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
   contextMenu: { show(items: ContextMenuItem[], position: { x: number; y: number }): Promise<void> }
+  notifications: {
+    support(): Promise<NotificationSupport>
+    send(notification: SystemNotification): Promise<boolean>
+    onActivated(callback: (target: NotificationTarget) => void): Unsubscribe
+  }
   updates: { check(): Promise<UpdateAvailable | null>; installAndRelaunch(): Promise<void> }
   handoff: {
     initial(): Promise<OpenRequest>
@@ -103,6 +111,12 @@ export const electronBridge: DesktopBridge = {
 
   contextMenu: {
     show: (items, position) => required().contextMenu.show(items, position),
+  },
+
+  notifications: {
+    support: () => required().notifications.support(),
+    send: (notification) => required().notifications.send(notification),
+    onActivated: (callback) => ready(required().notifications.onActivated(callback)),
   },
 
   updates: {

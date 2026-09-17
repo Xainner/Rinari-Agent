@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { dispatchAction, resolveContextualAction, type DesktopAction } from './services/actions'
 import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
+import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
@@ -112,6 +113,12 @@ function App() {
     }
     void session.refreshProjects()
   }
+
+  // Lo que el host puede notificar de verdad se pregunta una vez al arrancar;
+  // hasta entonces el ajuste lo muestra como no disponible.
+  useEffect(() => {
+    void refreshNotificationSupport()
+  }, [])
 
   useEffect(() => {
     async function handleOpen(request: { project: string | null; session: string | null }) {

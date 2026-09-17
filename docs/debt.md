@@ -145,18 +145,25 @@ documentado; lo demás no se presenta como terminado.
 - **Trabajo activo al cerrar** — `PARTIAL`. Se pregunta siempre que el Engine
   esté en marcha, que peca de prudente; saber si hay turnos vivos exige
   preguntárselo al Engine y está pendiente.
-- **Menú de aplicación y notificaciones** — `OPEN`. El menú nativo de
-  aplicación (`menu.rs`) y el adaptador de notificaciones del §7 no están
-  portados; el canal `PUSH.menuAction` existe pero nadie lo emite todavía.
+- **Menú de aplicación** — `DONE`. Portado de `menu.rs` con sus entradas,
+  etiquetas y aceleradores; salir y el zoom los resuelve el host y el resto
+  viaja por `PUSH.menuAction`. Normal y Boards siguen sin acelerador nativo a
+  propósito: el atajo lo gestiona el frontend y duplicarlo dispararía la
+  acción dos veces (§5.2).
+- **Notificaciones del sistema** — `DONE` bajo Electron, y cierra la deuda que
+  venía de Boards. `Notification.isSupported()` decide la disponibilidad real,
+  hay deduplicación de 10 s y el clic **solo** enfoca y resuelve el destino:
+  no envía, no reanuda, no aprueba. Bajo Tauri se sigue declarando no
+  soportado, porque este build no incluye `tauri-plugin-notification`.
 - **Empaquetado** — `OPEN`. `electron-builder`, el sidecar del Engine en
   recursos y el instalador NSIS son del documento 04 (entrega G).
 
 ### Boards y mensajería entre paneles (2026-09-15)
 
-- **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`
-  (dependencia nueva con autorización). El adaptador `services/notifications.ts`
-  declara `canSend=false`; el ajuste aparece como no disponible. La activación
-  por clic en desktop no está verificada y no debe anunciarse.
+- **Notificaciones del sistema** — `PARTIAL`. Resueltas en Electron (ver
+  entrega D); bajo Tauri siguen sin canal nativo porque
+  `tauri-plugin-notification` es una dependencia nueva que requiere
+  autorización, y el ajuste lo muestra como no disponible.
 - **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`. El
   Engine no serializa dos sesiones sobre el mismo root; el board solo avisa.
 - **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"

@@ -52,6 +52,24 @@ export type ContextMenuItem =
   /** Acción propia de Rinari; `run` se ejecuta en el renderer. */
   | { kind: 'action'; text: string; run: () => void }
 
+export interface NotificationSupport {
+  canSend: boolean
+  /** Un clic puede llevar a un destino concreto. */
+  canActivateTarget: boolean
+}
+
+export interface NotificationTarget {
+  sessionId?: string
+  turnId?: string
+}
+
+export interface SystemNotification {
+  title: string
+  body: string
+  /** Qué abrir al pulsarla. Es una referencia, no una acción. */
+  target?: NotificationTarget
+}
+
 export interface OpenFilesOptions {
   multiple?: boolean
   directory?: boolean
@@ -97,6 +115,18 @@ export interface DesktopBridge {
   contextMenu: {
     /** Muestra el menú nativo en coordenadas lógicas del renderer. */
     show(items: ContextMenuItem[], position: { x: number; y: number }): Promise<void>
+  }
+
+  notifications: {
+    /**
+     * Lo que el host puede hacer de verdad. Un permiso ausente se reporta
+     * como no disponible, nunca como éxito simulado (documento 02 §7).
+     */
+    support(): Promise<NotificationSupport>
+    /** `false` si no se mostró: por soporte o por deduplicación. */
+    send(notification: SystemNotification): Promise<boolean>
+    /** Clic del usuario: el renderer resuelve el destino y no envía nada. */
+    onActivated(callback: (target: NotificationTarget) => void): Promise<Unsubscribe>
   }
 
   updates: {

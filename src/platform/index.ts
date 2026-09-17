@@ -16,7 +16,11 @@ export type {
   ContextMenuItem,
   DesktopBridge,
   DesktopCommand,
+  EngineBackedCommand,
   EngineEventMessage,
+  EngineState,
+  EngineStatus,
+  HostOnlyCommand,
   NotificationSupport,
   NotificationTarget,
   OpenFilesOptions,
@@ -25,7 +29,7 @@ export type {
   Unsubscribe,
   UpdateAvailable,
 } from './contract'
-export { DESKTOP_COMMANDS } from './contract'
+export { DESKTOP_COMMANDS, ENGINE_BACKED_COMMANDS, HOST_ONLY_COMMANDS } from './contract'
 
 /**
  * Elige el host presente. Electron se detecta por el puente que publica su

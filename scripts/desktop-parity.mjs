@@ -634,6 +634,14 @@ function render(data) {
  */
 function renderCommandUnion(data) {
   const names = data.commands.map((row) => row.command).sort()
+  // Los que no tienen método del protocolo no son llamadas al Engine: son
+  // operaciones del propio host. Mezclarlos en `command()` hace que el
+  // renderer finja que todo es del Engine, y entonces fallan al traducir.
+  const hostOnly = data.commands
+    .filter((row) => !row.engine_method_name)
+    .map((row) => row.command)
+    .sort()
+  const engineBacked = names.filter((name) => !hostOnly.includes(name))
   return [
     '// Generado por `npm run parity:inventory`. No editar a mano.',
     '// Documento 02 §3.1: la lista de comandos del host es cerrada y sale del',
@@ -646,6 +654,25 @@ function renderCommandUnion(data) {
     '/** La misma lista en tiempo de ejecución, para validaciones y tests. */',
     'export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [',
     ...names.map((name) => `  '${name}',`),
+    '] as const',
+    '',
+    '/**',
+    ' * Operaciones del host, no del Engine: ciclo de vida del proceso, handoff',
+    ' * del arranque y las que necesitan un efecto nativo. No se traducen a un',
+    ' * método del protocolo y el contrato las expone como intenciones propias.',
+    ' */',
+    'export type HostOnlyCommand =',
+    ...hostOnly.map((name) => `  | '${name}'`),
+    '',
+    'export const HOST_ONLY_COMMANDS: readonly HostOnlyCommand[] = [',
+    ...hostOnly.map((name) => `  '${name}',`),
+    '] as const',
+    '',
+    '/** Comandos que sí son una llamada al Engine y viajan por `command()`. */',
+    'export type EngineBackedCommand = Exclude<DesktopCommand, HostOnlyCommand>',
+    '',
+    'export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [',
+    ...engineBacked.map((name) => `  '${name}',`),
     '] as const',
     '',
   ].join('\n')

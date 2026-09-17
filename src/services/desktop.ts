@@ -32,8 +32,9 @@ export const desktopApi = {
       session_id,
       preview_id,
     }),
+  /** El Engine valida la ruta y el host la abre; no es un método del Engine. */
   openFile: (session_id: string, path: string, turn_id?: string) =>
-    platform().command<void>('workspace_file_open', { session_id, path, turn_id }),
+    platform().files.openExternal({ session_id, path, turn_id }),
   moveSession: (session_id: string, project_id: string | null) =>
     platform().command<{ session: SessionSummary }>('session_move', {
       session_id,

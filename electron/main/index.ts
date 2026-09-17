@@ -6,12 +6,12 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, dialog } from 'electron'
+import { app, protocol, BrowserWindow, Menu, dialog, shell } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
-import { EngineSupervisor } from './engine/EngineSupervisor'
+import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry } from './ipc/validateSender'
@@ -113,6 +113,25 @@ function buildServices(): HostServices {
     },
     dialog: createDialogs(getWindow),
     opener: createOpener(),
+    files: {
+      /**
+       * Port de `workspace_file_open` (documento 02 §6.2): **primero** el
+       * Engine valida la raíz y la procedencia del turno, y solo se abre la
+       * ruta que devuelve. Nunca `shell.openPath(rutaDelRenderer)`.
+       */
+      async openExternal(request) {
+        const call = translateCommand('workspace_file_read', {
+          session_id: request.session_id,
+          path: request.path,
+          turn_id: request.turn_id,
+        })
+        const preview = (await engine.request(call.method, call.params)) as { path?: unknown }
+        const approved = typeof preview?.path === 'string' ? preview.path : null
+        if (!approved) throw new EngineCommandError('ENGINE_ERROR', 'Engine returned no file path')
+        const failure = await shell.openPath(approved)
+        if (failure) throw new EngineCommandError('HOST_ERROR', failure)
+      },
+    },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
     updates: createUpdates(),
@@ -193,50 +212,10 @@ function openWindow(): void {
 function attachParityProbe(window: BrowserWindow): void {
   window.webContents.on('did-finish-load', () => {
     void window.webContents
-      .executeJavaScript(
-        `(async () => {
-           const api = window.rinariDesktop
-           const out = { started: null, calls: [], turn: null }
-           try { out.started = (await api.engine.start()).state } catch (e) { out.started = 'error: ' + e.message }
-
-           const run = async (name, params) => {
-             try { await api.command(name, params); out.calls.push({ name, ok: true }) }
-             catch (e) { out.calls.push({ name, ok: false, code: e.code, message: e.message }) }
-           }
-           // Un comando por módulo del inventario, solo de lectura.
-           await run('session_list', {})
-           await run('project_list_recent', { limit: 5 })
-           await run('provider_list', {})
-           await run('model_list', {})
-           await run('agent_list', {})
-           await run('soul_list', {})
-           await run('mcp_list', {})
-           await run('tool_list', {})
-           await run('bundle_list', {})
-           await run('policy_get', {})
-           await run('vision_settings_get', {})
-           await run('context_settings_get', {})
-
-           // Un turno de verdad contra un proveedor falso: acepta y falla al
-           // conectar, que es el pipeline entero sin salir de la máquina.
-           try {
-             await api.command('provider_create', {
-               alias: 'falso', provider_type: 'custom',
-               auth_method: 'none', endpoint: 'http://127.0.0.1:9/v1',
-             })
-             await api.command('model_add', { provider: 'falso', provider_model_id: 'fake-1', alias: 'fake' })
-             await api.command('model_use', { reference: 'fake' })
-             const session = await api.command('session_create', { chat: true, title: 'paridad' })
-             const id = session.session?.id ?? session.id
-             const events = []
-             api.engine.onEvent((event) => { if (event.event) events.push(event.event) })
-             await api.command('turn_start', { session_id: id, message: 'hola' })
-             await new Promise((resolve) => setTimeout(resolve, 6000))
-             out.turn = { session: Boolean(id), events: [...new Set(events)] }
-           } catch (e) { out.turn = { error: e.code + ': ' + e.message } }
-           return out
-         })()`,
-      )
+      // La sonda vive en el renderer y usa `engineApi`/`desktopApi`: así
+      // recorre `src/services` y `src/platform`, que es justo el tramo que
+      // una llamada directa a `window.rinariDesktop` se saltaba.
+      .executeJavaScript('window.__rinariParityProbe ? window.__rinariParityProbe() : Promise.resolve({ error: "probe not registered" })')
       .then((report: Record<string, unknown>) => {
         console.log(`RINARI_PARITY ${JSON.stringify(report)}`)
         setTimeout(() => app.exit(0), 100)

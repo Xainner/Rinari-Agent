@@ -28,6 +28,7 @@ import {
   type EngineStatus,
   type NotificationSupport,
   type NotificationTarget,
+  type OpenExternalFileRequest,
   type OpenFilesRequest,
   type OpenRequest,
   type SystemNotificationRequest,
@@ -83,7 +84,7 @@ const api = {
   engine: {
     status: () => call<EngineStatus>(CHANNEL.engineStatus),
     start: () => call<EngineStatus>(CHANNEL.engineStart),
-    shutdown: () => call<void>(CHANNEL.engineShutdown),
+    shutdown: () => call<EngineStatus>(CHANNEL.engineShutdown),
     restart: () => call<EngineStatus>(CHANNEL.engineRestart),
     onEvent: (callback: (event: EngineEventMessage) => void) =>
       subscribe<EngineEventMessage>(PUSH.engineEvent, callback),
@@ -111,6 +112,11 @@ const api = {
 
   opener: {
     openUrl: (url: string) => call<void>(CHANNEL.openerOpenUrl, url),
+  },
+
+  files: {
+    /** El Engine valida raíz y procedencia; el host solo abre lo que aprobó. */
+    openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
   },
 
   contextMenu: {
@@ -167,6 +173,12 @@ const api = {
   menu: {
     onAction: (callback: (action: string) => void) => subscribe<string>(PUSH.menuAction, callback),
   },
+
+  /**
+   * El host corre en modo paridad. Lo decide main por su entorno, no la
+   * página: el renderer solo registra su sonda cuando esto es cierto.
+   */
+  parityMode: process.env.RINARI_PARITY === '1',
 } as const
 
 export type RinariDesktopApi = typeof api

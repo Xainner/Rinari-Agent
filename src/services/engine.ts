@@ -411,10 +411,12 @@ export function commandMessage(error: unknown): string {
 }
 
 export const engineApi = {
-  status: () => platform().command<EngineStatus>("engine_status"),
-  start: () => platform().command<EngineStatus>("engine_start"),
-  shutdown: () => platform().command<EngineStatus>("engine_shutdown"),
-  restart: () => platform().command<EngineStatus>("engine_restart"),
+  // Ciclo de vida del proceso: es del host, no un método del Engine. Pasarlo
+  // por `command()` fallaba al traducir, porque no hay método que traducir.
+  status: () => platform().engine.status(),
+  start: () => platform().engine.start(),
+  shutdown: () => platform().engine.shutdown(),
+  restart: () => platform().engine.restart(),
   sessions: (kind?: string, includeClosed?: boolean, projectId?: string, state?: string) =>
     platform().command<{ sessions: SessionSummary[] }>("session_list", {
       kind: kind ?? null,
@@ -728,8 +730,7 @@ export const engineApi = {
       id,
       session_ref: session_ref ?? null,
     }),
-  initialOpenRequest: () =>
-    platform().command<{ project: string | null; session: string | null }>("initial_open_request"),
+  initialOpenRequest: () => platform().handoff.initial(),
   startTurn: (
     sessionId: string,
     message: string,

@@ -98,11 +98,11 @@ variante del enum.
 
 | Comando | Argumentos | Método del Engine | Plazo | Devuelve | Efectos de host | Llamado desde |
 |---|---|---|---|---|---|---|
-| `engine_restart` | — | — | — | `Result<EngineStatus, CommandError>` | emite evento al frontend | `services/engine.ts` |
-| `engine_shutdown` | — | — | — | `Result<EngineStatus, CommandError>` | — | `services/engine.ts` |
-| `engine_start` | — | — | — | `Result<EngineStatus, CommandError>` | emite evento al frontend | `services/engine.ts` |
-| `engine_status` | — | — | — | `EngineStatus` | — | `services/engine.ts` |
-| `initial_open_request` | — | — | — | `OpenRequest` | — | `services/engine.ts` |
+| `engine_restart` | — | — | — | `Result<EngineStatus, CommandError>` | emite evento al frontend | `platform/tauri.ts` |
+| `engine_shutdown` | — | — | — | `Result<EngineStatus, CommandError>` | — | `platform/tauri.ts` |
+| `engine_start` | — | — | — | `Result<EngineStatus, CommandError>` | emite evento al frontend | `platform/tauri.ts` |
+| `engine_status` | — | — | — | `EngineStatus` | — | `platform/tauri.ts` |
+| `initial_open_request` | — | — | — | `OpenRequest` | — | `platform/tauri.ts` |
 | `snapshot_get` | — | `runtime.snapshot.get` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 
 ### Sesiones y turnos — `commands/sessions.rs` (27)
@@ -188,7 +188,7 @@ variante del enum.
 | `question_list` | `session_id`: `String` | `question.list` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/desktop.ts` |
 | `question_resolve` | `session_id`: `String`<br>`request_id`: `String`<br>`status`: `String`<br>`answers`: `std::collections::HashMap<String, String>` | `question.resolve` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/desktop.ts` |
 | `session_move` | `session_id`: `String`<br>`project_id`: `Option<String>` *(opcional)* | `session.move` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/desktop.ts` |
-| `workspace_file_open` | `session_id`: `String`<br>`path`: `String`<br>`turn_id`: `Option<String>` *(opcional)* | — | — | `Result<(), CommandError>` | abre ruta/URL con el opener del sistema | `services/desktop.ts` |
+| `workspace_file_open` | `session_id`: `String`<br>`path`: `String`<br>`turn_id`: `Option<String>` *(opcional)* | — | — | `Result<(), CommandError>` | abre ruta/URL con el opener del sistema | `platform/tauri.ts` |
 | `workspace_file_read` | `session_id`: `String`<br>`path`: `String`<br>`turn_id`: `Option<String>` *(opcional)* | `workspace.file.read` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/desktop.ts` |
 | `workspace_preview_start` | `session_id`: `String`<br>`path`: `String`<br>`turn_id`: `Option<String>` *(opcional)*<br>`run_dev`: `Option<bool>` *(opcional)*<br>`dev_url`: `Option<String>` *(opcional)* | `workspace.preview.start` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/desktop.ts` |
 | `workspace_preview_status` | `session_id`: `String`<br>`preview_id`: `String` | `workspace.preview.status` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/desktop.ts` |

@@ -21,6 +21,7 @@ export const CHANNEL = {
   windowClampToWorkArea: 'rinari:window.clampToWorkArea',
   dialogOpenFiles: 'rinari:dialog.openFiles',
   openerOpenUrl: 'rinari:opener.openUrl',
+  filesOpenExternal: 'rinari:files.openExternal',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
@@ -122,6 +123,12 @@ export interface SystemNotificationRequest {
   title: string
   body: string
   target?: NotificationTarget
+}
+
+export interface OpenExternalFileRequest {
+  session_id: string
+  path: string
+  turn_id?: string
 }
 
 export interface OpenFilesRequest {

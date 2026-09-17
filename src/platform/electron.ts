@@ -13,7 +13,8 @@
 import type {
   ContextMenuItem,
   DesktopBridge,
-  DesktopCommand,
+  EngineBackedCommand,
+  EngineStatus,
   EngineEventMessage,
   NotificationSupport,
   NotificationTarget,
@@ -27,10 +28,10 @@ import type {
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
 interface DesktopHostApi {
   engine: {
-    status(): Promise<unknown>
-    start(): Promise<unknown>
-    shutdown(): Promise<void>
-    restart(): Promise<unknown>
+    status(): Promise<EngineStatus>
+    start(): Promise<EngineStatus>
+    shutdown(): Promise<EngineStatus>
+    restart(): Promise<EngineStatus>
     onEvent(callback: (event: EngineEventMessage) => void): Unsubscribe
     onStatus(callback: (status: unknown) => void): Unsubscribe
   }
@@ -55,6 +56,7 @@ interface DesktopHostApi {
     initial(): Promise<OpenRequest>
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
+  files: { openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void> }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
 
@@ -87,8 +89,23 @@ async function ready(unsubscribe: Unsubscribe): Promise<Unsubscribe> {
 }
 
 export const electronBridge: DesktopBridge = {
-  command<T>(name: DesktopCommand, args?: Record<string, unknown>): Promise<T> {
+  command<T>(name: EngineBackedCommand, args?: Record<string, unknown>): Promise<T> {
     return required().command<T>(name, args)
+  },
+
+  engine: {
+    status: () => required().engine.status(),
+    start: () => required().engine.start(),
+    shutdown: () => required().engine.shutdown(),
+    restart: () => required().engine.restart(),
+  },
+
+  handoff: {
+    initial: () => required().handoff.initial(),
+  },
+
+  files: {
+    openExternal: (input) => required().files.openExternal(input),
   },
 
   events: {

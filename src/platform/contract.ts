@@ -18,10 +18,20 @@
  *    reescribir los consumidores otra vez.
  */
 
-import type { DesktopCommand } from './commands.generated'
+import type { EngineBackedCommand } from './commands.generated'
+import type { EngineStatus } from './engineStatus'
 
-export type { DesktopCommand } from './commands.generated'
-export { DESKTOP_COMMANDS } from './commands.generated'
+export type {
+  DesktopCommand,
+  EngineBackedCommand,
+  HostOnlyCommand,
+} from './commands.generated'
+export {
+  DESKTOP_COMMANDS,
+  ENGINE_BACKED_COMMANDS,
+  HOST_ONLY_COMMANDS,
+} from './commands.generated'
+export type { EngineStatus, EngineState } from './engineStatus'
 
 /** Cancela una suscripción. Idempotente: llamarla dos veces no es un error. */
 export type Unsubscribe = () => void
@@ -78,11 +88,37 @@ export interface OpenFilesOptions {
 
 export interface DesktopBridge {
   /**
-   * Comando de dominio del host. La lista es cerrada y sale del inventario de
-   * paridad; los argumentos viajan con el mismo contrato de nombres que el
-   * host declara (`rename_all`), así que no se renombran aquí.
+   * Llamada al Engine. Solo acepta comandos **respaldados por el protocolo**:
+   * el ciclo de vida del proceso y el handoff no son métodos del Engine y
+   * tienen su propia sección, porque tratarlos como si lo fueran es
+   * exactamente lo que rompía el host nuevo.
    */
-  command<T>(name: DesktopCommand, args?: Record<string, unknown>): Promise<T>
+  command<T>(name: EngineBackedCommand, args?: Record<string, unknown>): Promise<T>
+
+  /**
+   * Ciclo de vida del proceso del Engine. Es del host: no viaja por el
+   * protocolo, y cada implementación lo resuelve con su propia maquinaria.
+   */
+  engine: {
+    status(): Promise<EngineStatus>
+    start(): Promise<EngineStatus>
+    shutdown(): Promise<EngineStatus>
+    restart(): Promise<EngineStatus>
+  }
+
+  handoff: {
+    /** `rinari desktop [ruta] [--session id]` del arranque en frío. */
+    initial(): Promise<OpenRequest>
+  }
+
+  files: {
+    /**
+     * Abre un archivo del workspace con la aplicación del sistema. La ruta la
+     * valida el Engine (raíz y procedencia del turno) **antes** de abrirla:
+     * no se abre lo que diga el renderer sin pasar por ahí.
+     */
+    openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+  }
 
   events: {
     /** Todos los eventos del Engine, por un único canal. */

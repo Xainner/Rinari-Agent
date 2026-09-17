@@ -24,7 +24,8 @@ import { check } from '@tauri-apps/plugin-updater'
 import type {
   ContextMenuItem,
   DesktopBridge,
-  DesktopCommand,
+  EngineBackedCommand,
+  EngineStatus,
   EngineEventMessage,
   OpenFilesOptions,
   OpenRequest,
@@ -48,8 +49,26 @@ async function subscribe<T>(event: string, callback: (payload: T) => void): Prom
 }
 
 export const tauriBridge: DesktopBridge = {
-  command<T>(name: DesktopCommand, args?: Record<string, unknown>): Promise<T> {
+  command<T>(name: EngineBackedCommand, args?: Record<string, unknown>): Promise<T> {
     return invoke<T>(name, args)
+  },
+
+  // En Tauri el ciclo de vida también son comandos del host, así que la
+  // implementación es directa; lo que cambia es que el contrato ya no los
+  // confunde con métodos del Engine.
+  engine: {
+    status: () => invoke<EngineStatus>('engine_status'),
+    start: () => invoke<EngineStatus>('engine_start'),
+    shutdown: () => invoke<EngineStatus>('engine_shutdown'),
+    restart: () => invoke<EngineStatus>('engine_restart'),
+  },
+
+  handoff: {
+    initial: () => invoke<OpenRequest>('initial_open_request'),
+  },
+
+  files: {
+    openExternal: (input) => invoke<void>('workspace_file_open', input),
   },
 
   events: {

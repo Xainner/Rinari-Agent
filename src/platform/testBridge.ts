@@ -11,6 +11,8 @@ import type {
   ContextMenuItem,
   DesktopBridge,
   DesktopCommand,
+  EngineBackedCommand,
+  EngineStatus,
   EngineEventMessage,
   NotificationSupport,
   NotificationTarget,
@@ -39,6 +41,12 @@ export interface TestBridge extends DesktopBridge {
   notificationSupport: NotificationSupport
   /** Simula el clic del usuario en una notificación. */
   activateNotification(target: NotificationTarget): void
+  /** Operaciones de ciclo de vida pedidas, en orden. */
+  readonly engineCalls: string[]
+  engineStatus: EngineStatus
+  initialHandoff: OpenRequest
+  /** Archivos que se pidió abrir con la aplicación del sistema. */
+  readonly openedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
@@ -56,6 +64,17 @@ export function createTestBridge(): TestBridge {
 
   const bridge: TestBridge = {
     calls: [],
+    engineCalls: [],
+    engineStatus: {
+      state: 'stopped',
+      engine_version: null,
+      protocol_version: null,
+      detail: null,
+      capabilities: {},
+      home_id: null,
+    },
+    initialHandoff: { project: null, session: null },
+    openedFiles: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -68,7 +87,7 @@ export function createTestBridge(): TestBridge {
       handlers.set(name, handler)
     },
 
-    async command<T>(name: DesktopCommand, args: Record<string, unknown> = {}): Promise<T> {
+    async command<T>(name: EngineBackedCommand, args: Record<string, unknown> = {}): Promise<T> {
       bridge.calls.push({ name, args })
       const handler = handlers.get(name)
       if (!handler) {
@@ -77,6 +96,40 @@ export function createTestBridge(): TestBridge {
         )
       }
       return handler(args) as T
+    },
+
+    engine: {
+      async status() {
+        bridge.engineCalls.push('status')
+        return bridge.engineStatus
+      },
+      async start() {
+        bridge.engineCalls.push('start')
+        bridge.engineStatus = { ...bridge.engineStatus, state: 'ready' }
+        return bridge.engineStatus
+      },
+      async shutdown() {
+        bridge.engineCalls.push('shutdown')
+        bridge.engineStatus = { ...bridge.engineStatus, state: 'stopped' }
+        return bridge.engineStatus
+      },
+      async restart() {
+        bridge.engineCalls.push('restart')
+        bridge.engineStatus = { ...bridge.engineStatus, state: 'ready' }
+        return bridge.engineStatus
+      },
+    },
+
+    handoff: {
+      async initial() {
+        return bridge.initialHandoff
+      },
+    },
+
+    files: {
+      async openExternal(input) {
+        bridge.openedFiles.push(input)
+      },
     },
 
     events: {
@@ -159,6 +212,17 @@ export function createTestBridge(): TestBridge {
       menuListeners.clear()
       openListeners.clear()
       bridge.calls.length = 0
+      bridge.engineCalls.length = 0
+      bridge.engineStatus = {
+        state: 'stopped',
+        engine_version: null,
+        protocol_version: null,
+        detail: null,
+        capabilities: {},
+        home_id: null,
+      }
+      bridge.initialHandoff = { project: null, session: null }
+      bridge.openedFiles.length = 0
       bridge.menus.length = 0
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }

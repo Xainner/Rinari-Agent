@@ -20,6 +20,7 @@ import {
   type ContextMenuItemWire,
   type ContextMenuRequest,
   type ContextMenuRole,
+  type OpenExternalFileRequest,
   type OpenFilesRequest,
   type SystemNotificationRequest,
 } from '../../shared/contracts'
@@ -50,6 +51,7 @@ export interface HostServices {
   }
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
+  files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
     support(): { canSend: boolean; canActivateTarget: boolean }
@@ -145,6 +147,17 @@ function assertNotification(value: unknown): SystemNotificationRequest {
   }
 }
 
+/** La ruta no se valida aquí: la valida el Engine antes de abrirla. */
+function assertOpenExternal(value: unknown): OpenExternalFileRequest {
+  if (!value || typeof value !== 'object') throw new ValidationError('request must be an object')
+  const raw = value as Record<string, unknown>
+  return {
+    session_id: assertString(raw.session_id, 'session_id', 128),
+    path: assertString(raw.path, 'path', 4096),
+    turn_id: raw.turn_id === undefined || raw.turn_id === null ? undefined : assertString(raw.turn_id, 'turn_id', 128),
+  }
+}
+
 function assertOpenFiles(value: unknown): OpenFilesRequest {
   if (value === undefined || value === null) return {}
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -187,6 +200,10 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.openerOpenUrl,
       guarded(registry, (_event, url) => services.opener.openUrl(assertOpenableUrl(url))),
+    ],
+    [
+      CHANNEL.filesOpenExternal,
+      guarded(registry, (_event, request) => services.files.openExternal(assertOpenExternal(request))),
     ],
     [
       CHANNEL.contextMenuShow,

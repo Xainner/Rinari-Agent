@@ -197,19 +197,44 @@ Validación: `src/stores/boardAttention.test.ts`, `sessionSelectors.test.ts`
 
 Validación: `src/stores/board.test.ts` (§7.6), `BoardView.collapse.test.tsx`.
 
-# Boards: tarjetas de resultado, avisos y título de ventana
+# Respuesta final canónica, metadatos, lectura y anclas
 
-- Cada turno terminado muestra en Boards una **tarjeta de resultado**
-  (`ResultSummaryCard`) tras su bloque final/error: outcome (finalizado /
-  falló / detenido / cancelado), vista previa del texto final (140 caracteres,
-  sin Markdown), archivos cambiados **de ese turno** (changeset del timeline),
-  duración con ambos tiempos y modelo ejecutor solo si la llamada lo registró.
-  Lo que falta se omite («sin datos»); nunca se rellena desde el modelo actual
-  ni desde `git status`. Acciones: «Revisar cambios» (dock de cambios del
-  panel), «Marcar como leído» y «Preparar reintento» (recupera la entrada
-  correlacionada con ese turno, la deja en el compositor y nunca envía; un
-  borrador existente pide confirmación; un turno de origen peer exige intención
-  explícita). En Normal no hay tarjeta; la lectura sí es compartida.
+- **Una respuesta, una vez.** `TurnTimelineView` es idéntico en Normal y
+  Boards y pinta el cuerpo terminado con `features/activity/TurnResult`: el
+  Markdown completo (código, enlaces, imágenes, copiar) o el plan original del
+  turno con su única acción de implementación, el changeset confirmado
+  (`ChangeSetRow`) y, si falló, el error y su diagnóstico. `completed`,
+  `failed`, `stopped` y `cancelled` conservan su identidad. Cambiar el modo de
+  la sesión no cambia cómo se ve un turno histórico (`timeline.mode`).
+- Debajo, una sola **fila compacta** `TurnMeta` que no repite el cuerpo:
+  estado, duración solo con ambos tiempos válidos, acciones, archivos del
+  changeset **de ese turno**, modelo ejecutor si la llamada lo registró, motivo
+  de Stop, «Nuevo» + «Marcar como leído», «Revisar cambios» y «Preparar
+  reintento» (recupera la entrada correlacionada con ese turno, la deja en el
+  compositor y nunca envía; un borrador existente pide conservar/reemplazar;
+  un turno de origen peer exige intención explícita). La fila sustituye al
+  resumen anterior de duración/acciones y aparece para turnos largos o
+  excepcionales, no leídos o con changeset. Lo que falta se omite; nunca se
+  rellena desde el modelo actual ni desde `git status`.
+- `ResultSummaryCard` queda como tarjeta **resumen** explícita para superficies
+  fuera de la conversación (pendientes, panel colapsado): extracto de 140
+  caracteres, «Ver turno» que enlaza al original, mismo flujo de reintento
+  (`usePrepareRetry`). Ya no se inyecta bajo cada turno expandido
+  (`ChatView` expone `onReviewChanges`, no un `renderResult`).
+- **Lectura**: `useResultVisibility` observa el bloque real de `TurnResult`,
+  no un centinela. Cuenta como visible al menos la mitad del bloque o
+  `RESULT_READ_MIN_VISIBLE_PX` (120 px) de uno más alto, con la superficie
+  visible, la ventana atendida y sin modal, durante 500 ms. Enfocar la sesión,
+  cambiar de vista o mostrar una tarjeta resumida no limpia el badge; la
+  recencia de sesiones no cambia por leer.
+- **Anclas de scroll** (`features/engine/scrollAnchors.ts`, en memoria): al
+  desmontar un transcript (colapsar un panel, cambiar de vista o de sesión) se
+  guarda la fila superior visible con su desplazamiento, o «seguir el final».
+  Al volver, `ChatView` arranca ya en ese modo y restaura con
+  `scrollToIndex(fila, { align: 'start', offset })` cuando la fila existe
+  (virtua reintenta hasta medirla; sin timeouts). Si el usuario estaba al
+  final, sigue el final; si leía arriba, no se le lleva abajo; si la fila ya no
+  existe en un transcript cargado, se vuelve al final.
 - Avisos (`useBoardNotifications`, en `BoardActivityController`): detección
   por ids con dedupe at-most-once (la clave se reclama en el recibo antes de
   avisar), agrupación de ráfagas en 500 ms («N paneles finalizaron»),
@@ -231,6 +256,8 @@ Validación: `src/stores/board.test.ts` (§7.6), `BoardView.collapse.test.tsx`.
 - Ajustes › General › Avisos del board: emergentes, intervención,
   notificaciones del sistema (y detalles), persistidos en `rinari.board.v1`.
 
-Validación: `services/notificationPolicy.test.ts`,
+Validación: `features/activity/TurnResult.test.tsx` (UX-03/04/05),
+`features/board/useResultVisibility.test.tsx` (UX-10, centinela de 1 px),
+`components/ChatView.scroll.test.tsx` (UX-06), `services/notificationPolicy.test.ts`,
 `features/board/useBoardNotifications.test.tsx`, `ResultSummaryCard.test.tsx`,
 `hooks/useWindowTitle.test.ts`.

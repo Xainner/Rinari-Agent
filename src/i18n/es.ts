@@ -1168,6 +1168,7 @@ export const es = {
   'board.result.model': 'Ejecutado por {model}',
   'board.result.modelUnknown': 'Modelo ejecutor: sin datos',
   'board.result.review': 'Revisar cambios',
+  'board.result.reveal': 'Ver turno',
   'board.result.markRead': 'Marcar como leído',
   'board.result.prepareRetry': 'Preparar reintento',
   'board.result.retryPrepared': 'Mensaje copiado al compositor: revisalo y enviá cuando quieras.',

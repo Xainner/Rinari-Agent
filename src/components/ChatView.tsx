@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
@@ -17,6 +17,7 @@ import ProcessesDock from '../features/processes/ProcessesDock'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
 import { REVEAL_TURN_EVENT } from '../features/board/boardCommands'
+import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../features/engine/scrollAnchors'
 import ScrollToBottom from './chat/ScrollToBottom'
 
 interface ChatViewProps {
@@ -61,10 +62,11 @@ interface ChatViewProps {
   /** `pane`: home reducido dentro de un panel del board. */
   homeVariant?: 'home' | 'pane'
   /**
-   * Render por turno terminado (tarjeta de resultado en Boards). Ausente por
-   * defecto: la vista Normal conserva su presentación.
+   * Abre la superficie de cambios de la sesión para un turno con changeset
+   * (acción de la fila de metadatos). El contenido del turno nunca se
+   * duplica: Normal y Boards comparten `TurnResult`/`TurnMeta`.
    */
-  renderResult?: (timeline: TurnTimeline) => ReactNode
+  onReviewChanges?: (timeline: TurnTimeline) => void
   /** Paneles a los que se puede escribir con `@Panel mensaje` (solo Boards). */
   mentionTargets?: readonly PaneMentionTarget[]
   onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
@@ -105,7 +107,7 @@ function ChatView({
   composerPrimary = true,
   composerAcceptsGlobalFocus = true,
   homeVariant = 'home',
-  renderResult,
+  onReviewChanges,
   mentionTargets,
   onSendToTarget,
 }: ChatViewProps) {
@@ -113,9 +115,11 @@ function ChatView({
   const autoFollow = useUIStore((s) => s.autoFollow)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const followRef = useRef(true)
+  // Con un ancla de lectura guardada, el primer render ya arranca «sin seguir
+  // el final»: así ningún efecto lleva abajo antes de restaurar la fila.
+  const followRef = useRef(readScrollAnchor(sessionId)?.follow !== false)
   const virtRef = useRef<VirtualizerHandle>(null)
-  const [atBottom, setAtBottom] = useState(true)
+  const [atBottom, setAtBottom] = useState(() => readScrollAnchor(sessionId)?.follow !== false)
   const [now, setNow] = useState(Date.now())
   const [planStarting, setPlanStarting] = useState(false)
   const planStartingRef = useRef(false)
@@ -139,24 +143,78 @@ function ChatView({
     return () => window.clearInterval(timer)
   }, [activeTimeline])
 
+  // Ancla de lectura: fila superior visible y desplazamiento dentro de ella,
+  // o «seguir el final». Se actualiza en cada scroll del usuario y se guarda
+  // por sesión al desmontar o cambiar de sesión (colapsar un panel, volver a
+  // Normal…), para restaurarla al volver sin timeouts arbitrarios.
+  const anchorRef = useRef<ScrollAnchor>({ follow: true })
+  const restoreRef = useRef<ScrollAnchor | null>(null)
+  const streamRef = useRef(stream)
+  streamRef.current = stream
+
+  function snapshotAnchor(): ScrollAnchor {
+    const el = scrollRef.current
+    const virt = virtRef.current
+    if (!el || el.scrollHeight - el.scrollTop - el.clientHeight < 80) return { follow: true }
+    if (!virt) return anchorRef.current
+    const index = virt.findItemIndex(virt.scrollOffset)
+    const row = streamRef.current[index]
+    if (!row) return { follow: true }
+    return { follow: false, rowId: row.id, offset: Math.max(0, virt.scrollOffset - virt.getItemOffset(index)) }
+  }
+
   function handleScroll() {
     const el = scrollRef.current
     if (!el) return
-    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80)
-    followRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    setAtBottom(bottom)
+    followRef.current = bottom
+    anchorRef.current = snapshotAnchor()
   }
 
-  useEffect(() => {
-    followRef.current = true
-    setAtBottom(true)
+  // Al montar o cambiar de sesión: sin ancla guardada (o con «seguir el
+  // final») el scroll va al fondo antes de pintar, sin destello; con ancla de
+  // lectura se restaura cuando las filas existan. Al salir, se guarda la
+  // última ancla conocida de la sesión que se deja.
+  useLayoutEffect(() => {
+    const saved = readScrollAnchor(sessionId)
+    if (!saved || saved.follow) {
+      followRef.current = true
+      setAtBottom(true)
+      anchorRef.current = { follow: true }
+      restoreRef.current = null
+      const scroller = scrollRef.current
+      if (scroller) scroller.scrollTop = scroller.scrollHeight
+    } else {
+      followRef.current = false
+      setAtBottom(false)
+      anchorRef.current = saved
+      restoreRef.current = saved
+    }
+    return () => {
+      saveScrollAnchor(sessionId, anchorRef.current)
+    }
   }, [sessionId])
 
-  // Al cambiar de sesión, dejar el scroll al fondo antes de pintar: sin
-  // esto se destella la mitad de la lista.
   useLayoutEffect(() => {
-    const scroller = scrollRef.current
-    if (scroller) scroller.scrollTop = scroller.scrollHeight
-  }, [sessionId])
+    const pending = restoreRef.current
+    if (!pending || pending.follow) return
+    const index = stream.findIndex((row) => row.id === pending.rowId)
+    if (index >= 0) {
+      restoreRef.current = null
+      // virtua reintenta hasta medir la fila: no hace falta esperar a ciegas.
+      virtRef.current?.scrollToIndex(index, { align: 'start', offset: pending.offset })
+      return
+    }
+    // La fila ya no existe en un transcript cargado: no hay a qué volver.
+    if (stream.length > 0 && !historyLoading) {
+      restoreRef.current = null
+      followRef.current = true
+      setAtBottom(true)
+      anchorRef.current = { follow: true }
+      virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
+    }
+  }, [stream, historyLoading])
 
   // «Ir al resultado» desde un aviso: mostrar el turno sin marcarlo leído (eso
   // solo ocurre cuando su bloque queda visible).
@@ -215,8 +273,8 @@ function ChatView({
 
   useEffect(() => {
     // Autoscroll inteligente: solo sigue si el usuario ya estaba abajo
-    // y la preferencia está activa.
-    if (autoFollow && atBottom && stream.length > 0) {
+    // y la preferencia está activa; nunca mientras se restaura un ancla.
+    if (autoFollow && atBottom && stream.length > 0 && !restoreRef.current) {
       virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
     }
   }, [stream, isStreaming, atBottom, autoFollow])
@@ -276,7 +334,7 @@ function ChatView({
                       user={row.user}
                       now={now}
                       onResolveApproval={onResolveApproval}
-                      result={renderResult?.(row.timeline)}
+                      onReviewChanges={onReviewChanges ? () => onReviewChanges(row.timeline) : undefined}
                       planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3 text-sm"><span className="flex-1">¿Implementar este plan?</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="rounded-lg px-3 py-2 hover:bg-[var(--bg-hover)]">Ahora no</button><button type="button" disabled={planStarting} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white disabled:opacity-50" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? 'Iniciando…' : 'Implementar plan'}</button></div> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}

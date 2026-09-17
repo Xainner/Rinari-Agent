@@ -1,23 +1,15 @@
-import { memo, useState } from 'react'
-import { CheckCheck, CircleAlert, CircleCheck, CircleSlash, FileDiff, OctagonX, RotateCcw } from 'lucide-react'
-import { toast } from 'sonner'
+import { memo } from 'react'
+import { CheckCheck, CircleAlert, CircleCheck, CircleSlash, ExternalLink, FileDiff, OctagonX, RotateCcw } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { ChatMessage } from '../../types'
 import type { TurnTimeline } from '../activity/types'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../components/ui/alert-dialog'
+import { elapsedLabel } from '../activity/TurnMeta'
+import { usePrepareRetry } from '../activity/usePrepareRetry'
 import { selectTurnFinalText, terminalOutcomeOf, type TerminalOutcome } from '../engine/sessionSelectors'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { cn } from '../../lib/utils'
-import { prepareRetryDraft } from './prepareRetryDraft'
+import { useUIStore } from '../../stores/ui'
+import { revealBoardAttention } from './boardCommands'
 
 export const RESULT_PREVIEW_CHARS = 140
 
@@ -27,13 +19,8 @@ export interface ResultSummaryCardProps {
   messages: readonly ChatMessage[]
   /** Abre el dock de cambios del panel (rotulado por proyecto si no hay changeset del turno). */
   onReviewChanges?: () => void
-}
-
-function elapsedLabel(ms: number): string {
-  const seconds = Math.max(0, Math.round(ms / 1000))
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}m ${seconds % 60}s`
+  /** Navega al turno original. Por defecto revela el turno en su panel del board. */
+  onReveal?: () => void
 }
 
 function previewOf(text: string | null): string | null {
@@ -44,20 +31,25 @@ function previewOf(text: string | null): string | null {
 }
 
 /**
- * Tarjeta de resultado de un turno terminado (solo Boards). Datos admisibles:
- * outcome del turno, vista previa del texto final, changeset **de ese turno**
- * (si el timeline lo trae), duración con ambos tiempos y modelo ejecutor solo
- * cuando la llamada lo registró. Lo que falta se omite: nunca se rellena
- * desde el modelo actual ni desde `git status` del root. El color comunica el
- * estado del turno, no la corrección del código.
+ * Tarjeta **resumen** de un turno terminado, para superficies fuera de la
+ * conversación completa (lista de pendientes, resumen de un panel colapsado).
+ * No se inyecta en la conversación expandida: allí la respuesta se muestra una
+ * sola vez con `TurnResult` y sus metadatos con `TurnMeta`. El extracto de
+ * {@link RESULT_PREVIEW_CHARS} caracteres nunca sustituye al mensaje
+ * persistido; «Ver turno» enlaza al original.
+ *
+ * Datos admisibles: outcome del turno, extracto del texto final, changeset
+ * **de ese turno** (si el timeline lo trae), duración con ambos tiempos y
+ * modelo ejecutor solo cuando la llamada lo registró. Lo que falta se omite:
+ * nunca se rellena desde el modelo actual ni desde `git status` del root. El
+ * color comunica el estado del turno, no la corrección del código.
  */
-function ResultSummaryCard({ sessionId, timeline, messages, onReviewChanges }: ResultSummaryCardProps) {
+function ResultSummaryCard({ sessionId, timeline, messages, onReviewChanges, onReveal }: ResultSummaryCardProps) {
   const { t } = useI18n()
   const outcome = terminalOutcomeOf(timeline)
   const receipt = useBoardAttentionStore((state) => state.sessions[sessionId]?.turns[timeline.turnId])
   const markTurnSeen = useBoardAttentionStore((state) => state.markTurnSeen)
-  const [pendingApply, setPendingApply] = useState<(() => void) | null>(null)
-  const [pendingKind, setPendingKind] = useState<'draft-exists' | 'peer-origin'>('draft-exists')
+  const { retry, dialog } = usePrepareRetry(sessionId, timeline, messages)
   if (!outcome) return null
 
   const unread = receipt?.state === 'unread'
@@ -71,15 +63,7 @@ function ResultSummaryCard({ sessionId, timeline, messages, onReviewChanges }: R
   const outcomeKey = `board.result.outcome.${outcome}` as const
   const Icon = outcome === 'completed' ? CircleCheck : outcome === 'failed' ? OctagonX : outcome === 'stopped' ? CircleAlert : CircleSlash
 
-  function retry() {
-    const result = prepareRetryDraft(sessionId, timeline, messages)
-    if (result.outcome === 'prepared') toast.success(t('board.result.retryPrepared'))
-    else if (result.outcome === 'no-input') toast.info(t('board.result.retryNoInput'))
-    else {
-      setPendingKind(result.outcome)
-      setPendingApply(() => result.apply)
-    }
-  }
+  const reveal = onReveal ?? (() => revealBoardAttention({ sessionId, turnId: timeline.turnId }, { goBoard: useUIStore.getState().goBoard }))
 
   return (
     <section
@@ -108,6 +92,9 @@ function ResultSummaryCard({ sessionId, timeline, messages, onReviewChanges }: R
         </details>
       )}
       <div className="result-card-actions">
+        <button type="button" className="result-card-action" onClick={reveal}>
+          <ExternalLink size={13} aria-hidden="true" /> {t('board.result.reveal')}
+        </button>
         {onReviewChanges && (
           <button type="button" className="result-card-action" onClick={onReviewChanges}>
             <FileDiff size={13} aria-hidden="true" /> {t('board.result.review')}
@@ -124,22 +111,7 @@ function ResultSummaryCard({ sessionId, timeline, messages, onReviewChanges }: R
           </button>
         )}
       </div>
-      <AlertDialog open={pendingApply !== null} onOpenChange={(open) => { if (!open) setPendingApply(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('board.result.prepareRetry')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingKind === 'peer-origin' ? t('board.peers.untrusted') : t('board.result.replaceDraftHint')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('board.result.preserveDraft')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { pendingApply?.(); setPendingApply(null); toast.success(t('board.result.retryPrepared')) }}>
-              {t('board.result.replaceDraft')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {dialog}
     </section>
   )
 }

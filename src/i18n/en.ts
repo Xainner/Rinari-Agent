@@ -1151,6 +1151,7 @@ export const en: Record<I18nKey, string> = {
   'board.result.model': 'Run by {model}',
   'board.result.modelUnknown': 'Executing model: no data',
   'board.result.review': 'Review changes',
+  'board.result.reveal': 'View turn',
   'board.result.markRead': 'Mark as read',
   'board.result.prepareRetry': 'Prepare retry',
   'board.result.retryPrepared': 'Message copied to the composer: review it and send when ready.',

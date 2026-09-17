@@ -3,6 +3,22 @@ import { useWindowAttention } from '../../hooks/useWindowAttention'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export const RESULT_READ_DWELL_MS = 500
+/** Altura mínima del cuerpo que debe estar en pantalla cuando el bloque es más alto que el viewport. */
+export const RESULT_READ_MIN_VISIBLE_PX = 120
+const THRESHOLDS = Array.from({ length: 21 }, (_, index) => index / 20)
+
+/**
+ * Regla de visibilidad del **cuerpo** del resultado: al menos la mitad del
+ * bloque, o `RESULT_READ_MIN_VISIBLE_PX` de un bloque más alto que eso. Un
+ * marcador de 1 px asomando por debajo de un cuerpo fuera de pantalla no
+ * cumple ninguna de las dos.
+ */
+export function isResultBodyVisible(entry: Pick<IntersectionObserverEntry, 'isIntersecting' | 'intersectionRatio' | 'intersectionRect' | 'boundingClientRect'>): boolean {
+  if (!entry.isIntersecting) return false
+  if (entry.intersectionRatio >= 0.5) return true
+  const height = entry.boundingClientRect.height
+  return height > RESULT_READ_MIN_VISIBLE_PX && entry.intersectionRect.height >= RESULT_READ_MIN_VISIBLE_PX
+}
 
 /**
  * Condiciones de la superficie que muestra un transcript: si la sesión de
@@ -22,10 +38,13 @@ export function useReadTracking(): ReadTracking | null {
 }
 
 /**
- * Marca un resultado como leído **solo** cuando su bloque está en el viewport,
- * la superficie es visible, la ventana tiene atención y nada modal lo tapa,
- * durante `RESULT_READ_DWELL_MS` seguidos (timer cancelable). Es una regla de
- * UX, no una medición de atención humana. Devuelve el ref del bloque.
+ * Marca un resultado como leído **solo** cuando el cuerpo real del resultado
+ * (el elemento al que se aplica el ref, no un centinela) está en el viewport
+ * según `isResultBodyVisible`, la superficie es visible, la ventana tiene
+ * atención y nada modal lo tapa, durante `RESULT_READ_DWELL_MS` seguidos
+ * (timer cancelable). Enfocar la sesión, cambiar de vista o mostrar una
+ * tarjeta resumida no lo marca. Es una regla de UX, no una medición de
+ * atención humana. Devuelve el ref del bloque.
  */
 export function useResultVisibility(turnId: string, enabled: boolean) {
   const ref = useRef<HTMLDivElement | null>(null)
@@ -49,7 +68,7 @@ export function useResultVisibility(turnId: string, enabled: boolean) {
     const observer = new IntersectionObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.5 && !modalOpen()) {
+      if (isResultBodyVisible(entry) && !modalOpen()) {
         if (timer === null) {
           timer = window.setTimeout(() => {
             timer = null
@@ -59,7 +78,7 @@ export function useResultVisibility(turnId: string, enabled: boolean) {
       } else {
         clear()
       }
-    }, { threshold: [0, 0.5, 1] })
+    }, { threshold: THRESHOLDS })
     observer.observe(element)
     return () => {
       observer.disconnect()

@@ -19,12 +19,10 @@ import CollapsedPaneStrip from './CollapsedPaneStrip'
 import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
 import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
-import ResultSummaryCard from './ResultSummaryCard'
 import { toast } from 'sonner'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { PaneMentionTarget } from '../../components/composer/paneMention'
 import { FOCUS_COMPOSER_EVENT } from '../../components/composer/focusComposer'
-import type { TurnTimeline } from '../activity/types'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
 
@@ -108,8 +106,6 @@ function SessionPane({
     setWorkspaceTab(pane.paneId, 'changes')
     setWorkspaceVisible(pane.paneId, true)
   }, [pane.paneId, setDockTab, setWorkspaceTab, setWorkspaceVisible])
-  const messagesRef = useRef(session.messages)
-  messagesRef.current = session.messages
   // `@Panel mensaje` desde el compositor: reenvío manual (origen `user`, con cita).
   const mentionTargets = useMemo<PaneMentionTarget[] | undefined>(
     () => (peerMessaging && forwardTargets.length > 0 ? forwardTargets.map((item) => ({ id: item.sessionId, label: item.label })) : undefined),
@@ -131,9 +127,6 @@ function SessionPane({
       return false
     }
   }, [forwardTargets, pane.sessionId, t])
-  const renderResult = useCallback((timeline: TurnTimeline) => (
-    <ResultSummaryCard sessionId={pane.sessionId} timeline={timeline} messages={messagesRef.current} onReviewChanges={reviewChanges} />
-  ), [pane.sessionId, reviewChanges])
   const peers = peerMessaging
     ? {
         boardEnabled: messagingEnabled,
@@ -313,7 +306,7 @@ function SessionPane({
               historyNote={data.historyInfo[pane.sessionId] ?? null}
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
-              renderResult={renderResult}
+              onReviewChanges={reviewChanges}
               mentionTargets={mentionTargets}
               onSendToTarget={peerMessaging ? sendToTarget : undefined}
             />

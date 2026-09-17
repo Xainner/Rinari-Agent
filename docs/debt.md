@@ -61,15 +61,26 @@ documentado; lo demás no se presenta como terminado.
   la sesión (`SessionWorkspace`). El transporte sigue siendo el poll JPEG de
   `browser.view.get`, rotulado como vista previa; el browser nativo con el
   target del Engine es el documento 03.
+- **Capturas con el navegador oculto** — `DONE`. `browser.view.get` siempre
+  ejecuta `Page.captureScreenshot` cuando hay browser conectado: no hay modo
+  solo-metadata. Por eso solo se sondea a cadencia de capturas con la
+  superficie a la vista y, fuera de ella, con una sonda puntual al montar y al
+  terminar un turno (`useBrowserFrame.test.tsx`), nunca con un temporizador de
+  fondo — documento 03 §10 y documento 04 §5 («browser oculto: sin poll de
+  screenshots de UI»).
+- **Layout del dock guardado antes del hello** — `DONE`. `setHomeId` reindexa
+  del namespace por defecto al `home_id` real sin pisar un layout existente
+  (`sessionDock.test.ts`).
 - **Aprobación antes de la comprobación de pares** — `DONE` (Engine).
   `ToolDefinition.precheck` rechaza destinos inválidos antes del
   consentimiento y `deliver` revalida después (`test_engine_peers.py`).
 - **Layout del dock por Engine home** — `DONE`. `sessionDock` se indexa por
   `home_id` (nuevo en el hello) + sesión; el board migró a schema 3.
-- **ResultSummaryCard sin consumidor en la app** — `OPEN`. Queda como
-  componente de resumen (pendientes / panel colapsado) con test propio, sin
-  montarse todavía en la lista de pendientes; decidir si se integra en
-  `BoardAttentionMenu` o se retira.
+- **ResultSummaryCard** — `WONTFIX`. Se retiró: no tenía consumidor en la app
+  y el doc 01 §4.2 solo admite una tarjeta con extracto fuera de la
+  conversación y enlazando al turno original. Portarla a Electron sin uso era
+  deuda pura; si alguna superficie de pendientes la necesita, se recupera del
+  historial y se implementa con ese enlace.
 - **Recibos de lectura por instalación** — `OPEN`. `boardAttention` sigue
   indexado por `rinari.profile.v1`; podría adoptar el mismo `home_id` que
   `sessionDock`.

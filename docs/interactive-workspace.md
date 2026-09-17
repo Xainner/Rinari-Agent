@@ -255,11 +255,11 @@ Validación: `src/stores/board.test.ts` (§7.6), `BoardView.collapse.test.tsx`.
   resumen anterior de duración/acciones y aparece para turnos largos o
   excepcionales, no leídos o con changeset. Lo que falta se omite; nunca se
   rellena desde el modelo actual ni desde `git status`.
-- `ResultSummaryCard` queda como tarjeta **resumen** explícita para superficies
-  fuera de la conversación (pendientes, panel colapsado): extracto de 140
-  caracteres, «Ver turno» que enlaza al original, mismo flujo de reintento
-  (`usePrepareRetry`). Ya no se inyecta bajo cada turno expandido
-  (`ChatView` expone `onReviewChanges`, no un `renderResult`).
+- La tarjeta resumen bajo cada turno expandido desaparece: `ChatView` expone
+  `onReviewChanges`, no un `renderResult`. El doc 01 §4.2 permite una tarjeta
+  con extracto para superficies fuera de la conversación (pendientes, panel
+  colapsado) siempre que enlace al turno original; no se implementa aquí
+  porque ninguna superficie la consume todavía.
 - **Lectura**: `useResultVisibility` observa el bloque real de `TurnResult`,
   no un centinela. Cuenta como visible al menos la mitad del bloque o
   `RESULT_READ_MIN_VISIBLE_PX` (120 px) de uno más alto, con la superficie
@@ -298,5 +298,5 @@ Validación: `src/stores/board.test.ts` (§7.6), `BoardView.collapse.test.tsx`.
 Validación: `features/activity/TurnResult.test.tsx` (UX-03/04/05),
 `features/board/useResultVisibility.test.tsx` (UX-10, centinela de 1 px),
 `components/ChatView.scroll.test.tsx` (UX-06), `services/notificationPolicy.test.ts`,
-`features/board/useBoardNotifications.test.tsx`, `ResultSummaryCard.test.tsx`,
+`features/board/useBoardNotifications.test.tsx`,
 `hooks/useWindowTitle.test.ts`.

@@ -841,6 +841,20 @@ EngineSupervisor
 Engine Protocol
 ```
 
+## Toolchain baseline
+
+Node **>= 22.12** (Electron 44 requires it) and npm **10**, as declared in
+`engines` and used by CI.
+
+The lock file must be written by npm 10. npm 11 resolves the bundled
+`@emnapi/*` dependencies of `@tailwindcss/oxide-wasm32-wasi` differently and
+produces a lock that `npm ci` rejects on the runner — the failure surfaces only
+in CI, where every other gate then never runs. If your npm is newer:
+
+```bash
+npx --yes npm@10 install --package-lock-only
+```
+
 ## Platform adapter: do not import the host directly
 
 The renderer reaches the host only through `src/platform` (`platform()`), never

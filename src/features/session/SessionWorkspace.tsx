@@ -40,6 +40,8 @@ export interface SessionWorkspaceProps {
   sharedRoot?: boolean
   /** El Engine anuncia `browser_view_v1`; sin capability no se consulta. */
   browserEnabled?: boolean
+  /** La sesión ejecuta un turno: al terminar se sondea el navegador una vez. */
+  busy?: boolean
 }
 
 /**
@@ -51,7 +53,7 @@ export interface SessionWorkspaceProps {
  * drawer dentro de este contenedor: no reaparece ninguna superficie flotante
  * global.
  */
-export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true }: SessionWorkspaceProps) {
+export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, busy = false }: SessionWorkspaceProps) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
@@ -106,10 +108,18 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   }, [sessionId, reveal, setVisible])
 
   // Navegador del Engine: se consulta a la cadencia de capturas solo con la
-  // superficie a la vista; en segundo plano solo para el indicador.
+  // superficie a la vista. Un browser aparece por actividad del agente, así
+  // que fuera de esa superficie basta una sonda al montar y otra al terminar
+  // un turno: oculto no genera poll de capturas.
   const [targetId, setTargetId] = useState('')
+  const [browserProbe, setBrowserProbe] = useState(0)
+  const wasBusy = useRef(false)
+  useEffect(() => {
+    if (wasBusy.current && !busy) setBrowserProbe((value) => value + 1)
+    wasBusy.current = busy
+  }, [busy])
   const browserActive = layout.visible && layout.activeSurface === 'browser'
-  const browser = useBrowserFrame(sessionId, { active: browserActive, targetId, enabled: browserEnabled })
+  const browser = useBrowserFrame(sessionId, { active: browserActive, targetId, enabled: browserEnabled, probe: browserProbe })
   const revealedInstance = useRef<string | null>(null)
   useEffect(() => {
     const instance = browser.connectedInstance

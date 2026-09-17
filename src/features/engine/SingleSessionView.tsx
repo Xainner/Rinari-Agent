@@ -53,6 +53,7 @@ export default function SingleSessionView({
       density="normal"
       focused
       browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+      busy={busy}
     >
       <ChatView
         homeContext={{

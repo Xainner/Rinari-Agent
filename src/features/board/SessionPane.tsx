@@ -227,6 +227,7 @@ function SessionPane({
           focused={focused}
           sharedRoot={sharedRoot}
           browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+          busy={session.busy}
         >
           <ReadTrackingContext.Provider value={readTracking}>
           <div className="session-pane-chat">

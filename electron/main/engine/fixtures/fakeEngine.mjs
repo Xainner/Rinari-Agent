@@ -11,6 +11,10 @@ import process from 'node:process'
 
 const scenario = process.env.RINARI_FAKE_SCENARIO ?? 'default'
 
+// El PID por stderr: deja que un test compruebe que el proceso murió de
+// verdad tras un handshake fallido, sin contar procesos del sistema.
+process.stderr.write(`PID ${process.pid}\n`)
+
 // Las capabilities que el supervisor exige para conectar; el escenario
 // `outdated` las recorta para probar el rechazo.
 const REQUIRED = [

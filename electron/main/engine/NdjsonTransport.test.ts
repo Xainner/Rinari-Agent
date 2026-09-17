@@ -35,27 +35,59 @@ async function connect(scenario = 'default', epoch = 1) {
   }
 }
 
-async function expectSpawnToFail(scenario: string) {
+/** ¿Sigue vivo ese proceso? `kill(pid, 0)` no lo mata: solo pregunta. */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+type FailedSpawn = TransportError & { pids: number[] }
+
+/** El error del handshake, con los PID que el Engine falso anunció. */
+async function expectSpawnToFail(
+  scenario: string,
+  handshakeTimeoutMs?: number,
+): Promise<FailedSpawn | null> {
   const previous = process.env.RINARI_FAKE_SCENARIO
   process.env.RINARI_FAKE_SCENARIO = scenario
+  const pids: number[] = []
   try {
     return await NdjsonTransport.spawn({
       program: process.execPath,
       args: [FAKE],
       epoch: 1,
+      handshakeTimeoutMs,
       onEvent: () => {},
-      onStderr: () => {},
+      onStderr: (line) => {
+        const match = /^PID (\d+)$/.exec(line)
+        if (match) pids.push(Number(match[1]))
+      },
     }).then(
       (transport) => {
         open.push(transport)
         return null
       },
-      (error: TransportError) => error,
+      (error: TransportError) => Object.assign(error, { pids }) as FailedSpawn,
     )
   } finally {
     if (previous === undefined) delete process.env.RINARI_FAKE_SCENARIO
     else process.env.RINARI_FAKE_SCENARIO = previous
   }
+}
+
+/** Tras un handshake fallido, el hijo no puede seguir vivo. */
+async function expectChildGone(scenario: string, handshakeTimeoutMs?: number): Promise<FailedSpawn> {
+  const error = await expectSpawnToFail(scenario, handshakeTimeoutMs)
+  expect(error, `${scenario} debía fallar el handshake`).not.toBeNull()
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  for (const pid of error!.pids) {
+    expect(alive(pid), `el proceso ${pid} de '${scenario}' sigue vivo`).toBe(false)
+  }
+  return error!
 }
 
 afterEach(async () => {
@@ -76,9 +108,23 @@ describe('LineSplitter', () => {
     expect(splitter.push(Buffer.from('uno\r\ndos\ntres\r\n', 'utf8'))).toEqual(['uno', 'dos', 'tres'])
   })
 
-  it('no deja crecer una línea sin fin', () => {
+  it('NDJSON-01 — una línea incompleta que pasa el límite falla', () => {
     const splitter = new LineSplitter(64)
     expect(() => splitter.push(Buffer.alloc(128, 0x61))).toThrow(/exceeded 64 bytes/)
+  })
+
+  it('NDJSON-02 — una línea ya completa que pasa el límite también falla', () => {
+    // Con el newline dentro del chunk, el búfer restante queda vacío: la
+    // comprobación posterior no la vería y la línea entera pasaría.
+    const splitter = new LineSplitter(64)
+    const chunk = Buffer.concat([Buffer.alloc(128, 0x61), Buffer.from('\n')])
+    expect(() => splitter.push(chunk)).toThrow(/exceeded 64 bytes/)
+  })
+
+  it('NDJSON-03 — una línea justo dentro del límite se acepta', () => {
+    const splitter = new LineSplitter(64)
+    const chunk = Buffer.concat([Buffer.alloc(64, 0x61), Buffer.from('\n')])
+    expect(splitter.push(chunk)).toEqual(['a'.repeat(64)])
   })
 
   it('una línea vacía es una línea, no un final', () => {
@@ -120,6 +166,22 @@ describe('handshake', () => {
     const error = await expectSpawnToFail('die-before-hello')
     expect(error?.kind).toBe('handshake')
     expect(error?.message).toContain('before the hello')
+  })
+
+  it('LIFE-01 — un hello que nunca llega no deja el proceso vivo', async () => {
+    // El proceso ya existe cuando el handshake falla; sin limpieza quedaría
+    // un Engine huérfano por cada intento.
+    const error = await expectChildGone('no-hello', 400)
+    expect(error.kind).toBe('handshake')
+    expect(error.pids.length).toBeGreaterThan(0)
+  })
+
+  it('LIFE-02 — una primera línea inválida tampoco lo deja vivo', async () => {
+    expect((await expectChildGone('garbage-hello')).kind).toBe('handshake')
+  })
+
+  it('LIFE-03 — un hello incompatible cierra el transporte', async () => {
+    expect((await expectChildGone('future-protocol')).message).toContain('incompatible')
   })
 })
 

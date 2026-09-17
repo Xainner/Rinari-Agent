@@ -66,6 +66,8 @@ export interface SpawnOptions extends TransportHandlers {
   cwd?: string
   /** Época de conexión: identifica a esta instancia frente a las anteriores. */
   epoch: number
+  /** Plazo del handshake; solo los tests lo acortan. */
+  handshakeTimeoutMs?: number
 }
 
 interface PendingRequest {
@@ -96,6 +98,17 @@ export class LineSplitter {
       if (newline === -1) break
       let end = newline
       if (end > start && this.buffer[end - 1] === 0x0d) end -= 1 // CRLF
+      // El límite se comprueba **antes** de materializar la línea: si llega
+      // entera dentro de un chunk, el búfer restante queda vacío y la
+      // comprobación posterior no la vería.
+      if (end - start > this.maxBytes) {
+        const size = end - start
+        this.buffer = Buffer.alloc(0)
+        throw new TransportError(
+          'io',
+          `engine line exceeded ${this.maxBytes} bytes (${size}); dropping the stream`,
+        )
+      }
       lines.push(this.buffer.subarray(start, end).toString('utf8'))
       start = newline + 1
     }
@@ -141,7 +154,7 @@ export class NdjsonTransport {
 
   /** Lanza el proceso y completa el handshake; al volver, el lector corre. */
   static async spawn(options: SpawnOptions): Promise<NdjsonTransport> {
-    const { program, args, cwd, epoch, ...handlers } = options
+    const { program, args, cwd, epoch, handshakeTimeoutMs, ...handlers } = options
     let child: ChildProcessWithoutNullStreams
     try {
       child = spawn(program, [...args], {
@@ -157,7 +170,14 @@ export class NdjsonTransport {
       throw new TransportError('spawn', reason instanceof Error ? reason.message : String(reason))
     }
     const transport = new NdjsonTransport(child, epoch, handlers)
-    await transport.handshake()
+    try {
+      await transport.handshake(handshakeTimeoutMs)
+    } catch (error) {
+      // El proceso ya existe cuando el handshake falla: sin esto quedaría un
+      // Engine huérfano por cada intento fallido, sujetando sus tuberías.
+      await transport.shutdown()
+      throw error
+    }
     return transport
   }
 
@@ -167,12 +187,12 @@ export class NdjsonTransport {
     return this.hello
   }
 
-  private handshake(): Promise<Hello> {
+  private handshake(timeoutMs = HANDSHAKE_TIMEOUT_MS): Promise<Hello> {
     return new Promise<Hello>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.settleHandshake = null
         reject(new TransportError('handshake', 'timed out waiting for engine hello'))
-      }, HANDSHAKE_TIMEOUT_MS)
+      }, timeoutMs)
       this.settleHandshake = (result) => {
         clearTimeout(timer)
         this.settleHandshake = null

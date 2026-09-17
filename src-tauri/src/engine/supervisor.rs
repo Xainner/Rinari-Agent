@@ -165,10 +165,14 @@ impl EngineSupervisor {
 
     fn set_state(&self, state: EngineState, detail: Option<String>) {
         if let Ok(mut inner) = self.inner.lock() {
+            // A failure always records why. The previous guard kept an
+            // existing detail on the way into Failed, meaning to protect a
+            // first failure reason from a later one -- but `detail` also
+            // carries progress ("spawning uv" while handshaking), and every
+            // path into Failed passes through Handshaking first, so it only
+            // ever discarded the real reason and left the step it died on.
             inner.state = state;
-            if state != EngineState::Failed || inner.detail.is_none() {
-                inner.detail = detail;
-            }
+            inner.detail = detail;
         }
     }
 
@@ -1239,6 +1243,30 @@ mod tests {
         let status = supervisor.status();
         assert_eq!(status.state, EngineState::Stopped);
         assert!(status.engine_version.is_none());
+    }
+
+    #[test]
+    fn failure_detail_reports_the_reason_not_the_step() {
+        // Every path into Failed goes through Handshaking, which parks
+        // "spawning <program>" in the same field. Reporting that instead of
+        // the error turned "the engine refused its own database" into a
+        // message about uv.
+        let supervisor = EngineSupervisor::new();
+        let error = supervisor
+            .start_with("rinari-engine-that-does-not-exist", &[], None)
+            .expect_err("must fail to spawn");
+        let status = supervisor.status();
+        assert_eq!(status.state, EngineState::Failed);
+        let detail = status.detail.expect("a failure states its reason");
+        assert!(
+            !detail.starts_with("spawning"),
+            "detail still reports the step, not the reason: {detail}"
+        );
+        assert!(
+            detail.contains(&error.message) || error.message.contains(&detail),
+            "detail ({detail}) and error ({}) disagree",
+            error.message
+        );
     }
 
     #[test]

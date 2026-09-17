@@ -105,9 +105,10 @@ documentado; lo demás no se presenta como terminado.
 - **`mcp_get` sin llamador** — `OPEN`. Registrado en `invoke_handler` y expuesto
   al WebView, pero ningún archivo de `src/` lo invoca. Decidir si se retira
   antes de portarlo al host nuevo: es superficie que nadie usa.
-- **Validación en ejecución de la allowlist** — `OPEN` por diseño. `DesktopCommand`
-  es una unión de TypeScript: no valida nada en ejecución. La allowlist efectiva
-  y sus validadores son del main de Electron (documento 02 §3.1, entrega D).
+- **Validación en ejecución de la allowlist** — `DONE` (entrega D).
+  `electron/shared/validation.ts` usa el mismo inventario generado como
+  allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
+  método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
 ### Boards y mensajería entre paneles (2026-09-15)
 

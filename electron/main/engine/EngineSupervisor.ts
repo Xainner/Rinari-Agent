@@ -12,25 +12,9 @@
 import { locateEngine, EngineNotFound, type EngineCommand } from './engineLocator'
 import { NdjsonTransport, TransportError } from './NdjsonTransport'
 import type { EngineEvent, Hello } from '../../shared/protocol'
+import type { EngineState, EngineStatus } from '../../shared/contracts'
 
-export type EngineState =
-  | 'stopped'
-  | 'starting'
-  | 'handshaking'
-  | 'ready'
-  | 'degraded'
-  | 'restarting'
-  | 'failed'
-
-export interface EngineStatus {
-  state: EngineState
-  engine_version: string | null
-  protocol_version: number | null
-  detail: string | null
-  capabilities: Record<string, boolean>
-  /** Del hello: espacia por home el estado de presentación por sesión. */
-  home_id: string | null
-}
+export type { EngineState, EngineStatus } from '../../shared/contracts'
 
 export interface CommandError {
   code: string

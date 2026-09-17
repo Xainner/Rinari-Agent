@@ -22,7 +22,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionMove",
       "engine_method_name": "session.move",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "project_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -64,7 +80,41 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspacePreviewStart",
       "engine_method_name": "workspace.preview.start",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "path",
+        "turn_id",
+        "run_dev",
+        "dev_url"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        },
+        {
+          "key": "run_dev",
+          "from": "run_dev",
+          "optional": false
+        },
+        {
+          "key": "dev_url",
+          "from": "dev_url",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -91,7 +141,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "BrowserViewGet",
       "engine_method_name": "browser.view.get",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "target_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "target_id",
+          "from": "target_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -128,7 +194,35 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceProcessList",
       "engine_method_name": "workspace.process.list",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "id",
+        "cursor",
+        "limit"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "id",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "cursor",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "limit",
+          "from": null,
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -155,7 +249,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceProcessRead",
       "engine_method_name": "workspace.process.read",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -192,7 +302,35 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceProcessStop",
       "engine_method_name": "workspace.process.stop",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "id",
+        "engine_instance_id",
+        "generation"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "id",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "engine_instance_id",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "generation",
+          "from": null,
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -219,7 +357,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspacePreviewStatus",
       "engine_method_name": "workspace.preview.status",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "preview_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "preview_id",
+          "from": "preview_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -246,7 +400,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspacePreviewStop",
       "engine_method_name": "workspace.preview.stop",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "preview_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "preview_id",
+          "from": "preview_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -278,7 +448,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceFileRead",
       "engine_method_name": "workspace.file.read",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "path",
+        "turn_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -311,6 +503,8 @@
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
       "host_effects": [
         "abre ruta/URL con el opener del sistema"
       ],
@@ -334,7 +528,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "QuestionList",
       "engine_method_name": "question.list",
-      "engine_params": [],
+      "engine_params": [
+        "session_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -371,7 +575,35 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "QuestionResolve",
       "engine_method_name": "question.resolve",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "request_id",
+        "status",
+        "answers"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "request_id",
+          "from": "request_id",
+          "optional": false
+        },
+        {
+          "key": "status",
+          "from": "status",
+          "optional": false
+        },
+        {
+          "key": "answers",
+          "from": "answers",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -388,6 +620,8 @@
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -404,6 +638,8 @@
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
       "host_effects": [
         "emite evento al frontend"
       ],
@@ -422,6 +658,8 @@
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -438,6 +676,8 @@
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
       "host_effects": [
         "emite evento al frontend"
       ],
@@ -456,6 +696,8 @@
       "engine_method": "RuntimeSnapshotGet",
       "engine_method_name": "runtime.snapshot.get",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -472,6 +714,8 @@
       "engine_method": null,
       "engine_method_name": null,
       "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -514,6 +758,30 @@
         "project_id",
         "state"
       ],
+      "engine_param_map": [
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": false
+        },
+        {
+          "key": "include_closed",
+          "from": "include_closed",
+          "optional": false,
+          "default": "false"
+        },
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "state",
+          "from": "state",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -538,6 +806,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -562,6 +838,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -592,6 +876,19 @@
         "ref",
         "title"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "title",
+          "from": "title",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -616,6 +913,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -640,6 +945,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -666,7 +979,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionFork",
       "engine_method_name": "session.fork",
-      "engine_params": [],
+      "engine_params": [
+        "ref",
+        "title"
+      ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "title",
+          "from": "title",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -693,7 +1022,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionHistory",
       "engine_method_name": "session.history",
-      "engine_params": [],
+      "engine_params": [
+        "ref",
+        "limit"
+      ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -725,7 +1070,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionTimeline",
       "engine_method_name": "session.timeline",
-      "engine_params": [],
+      "engine_params": [
+        "ref",
+        "before_turn_index",
+        "limit"
+      ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "before_turn_index",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -756,6 +1123,19 @@
         "ref",
         "mode"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "mode",
+          "from": "mode",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -802,7 +1182,42 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionCreate",
       "engine_method_name": "session.create",
-      "engine_params": [],
+      "engine_params": [
+        "cwd",
+        "chat",
+        "title",
+        "mode",
+        "permission_profile"
+      ],
+      "engine_param_map": [
+        {
+          "key": "cwd",
+          "from": "cwd",
+          "optional": true
+        },
+        {
+          "key": "chat",
+          "from": "chat",
+          "optional": false,
+          "default": "false"
+        },
+        {
+          "key": "title",
+          "from": "title",
+          "optional": true
+        },
+        {
+          "key": "mode",
+          "from": "mode",
+          "optional": true
+        },
+        {
+          "key": "permission_profile",
+          "from": null,
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -839,6 +1254,24 @@
         "model",
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "model",
+          "from": "model",
+          "optional": false
+        },
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -863,6 +1296,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -893,6 +1334,19 @@
         "ref",
         "permission_profile"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "permission_profile",
+          "from": "permission_profile",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -917,6 +1371,14 @@
       "engine_params": [
         "turn_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -947,6 +1409,19 @@
         "turn_id",
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -977,6 +1452,19 @@
         "turn_id",
         "paths"
       ],
+      "engine_param_map": [
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        },
+        {
+          "key": "paths",
+          "from": "paths",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1013,6 +1501,25 @@
         "paths",
         "apply_safe_only"
       ],
+      "engine_param_map": [
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        },
+        {
+          "key": "paths",
+          "from": "paths",
+          "optional": false
+        },
+        {
+          "key": "apply_safe_only",
+          "from": "apply_safe_only",
+          "optional": false,
+          "default": "false"
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1044,7 +1551,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionEvents",
       "engine_method_name": "session.events",
-      "engine_params": [],
+      "engine_params": [
+        "ref",
+        "after_seq",
+        "limit"
+      ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "after_seq",
+          "from": "after_seq",
+          "optional": true
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1069,6 +1598,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1099,6 +1636,20 @@
         "ref",
         "cascade"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "cascade",
+          "from": "cascade",
+          "optional": false,
+          "default": "false"
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1147,6 +1698,35 @@
         "attachments",
         "allow_unconfirmed_vision"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        },
+        {
+          "key": "reasoning_effort",
+          "from": "reasoning_effort",
+          "optional": false
+        },
+        {
+          "key": "attachments",
+          "from": "attachments",
+          "optional": false
+        },
+        {
+          "key": "allow_unconfirmed_vision",
+          "from": "allow_unconfirmed_vision",
+          "optional": false,
+          "default": "false"
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1172,6 +1752,14 @@
       "engine_params": [
         "session_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1202,6 +1790,19 @@
         "approval_id",
         "decision"
       ],
+      "engine_param_map": [
+        {
+          "key": "approval_id",
+          "from": "approval_id",
+          "optional": false
+        },
+        {
+          "key": "decision",
+          "from": "decision",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1232,6 +1833,19 @@
         "session_id",
         "message"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1256,6 +1870,14 @@
       "engine_params": [
         "session_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1280,6 +1902,14 @@
       "engine_params": [
         "session_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1304,6 +1934,14 @@
       "engine_params": [
         "session_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1349,8 +1987,37 @@
         "board_id",
         "expected_revision",
         "enabled",
-        "members"
+        "members",
+        "group_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "board_id",
+          "from": "board_id",
+          "optional": false
+        },
+        {
+          "key": "expected_revision",
+          "from": "expected_revision",
+          "optional": false
+        },
+        {
+          "key": "enabled",
+          "from": "enabled",
+          "optional": false
+        },
+        {
+          "key": "members",
+          "from": "members",
+          "optional": false
+        },
+        {
+          "key": "group_id",
+          "from": "group_id",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1382,7 +2049,29 @@
       "returns": "Result<Value, CommandError>",
       "engine_method": "SessionPeerGroupGet",
       "engine_method_name": "session.peer_group.get",
-      "engine_params": [],
+      "engine_params": [
+        "group_id",
+        "session_id",
+        "board_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "group_id",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "session_id",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "board_id",
+          "from": null,
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1407,6 +2096,14 @@
       "engine_params": [
         "group_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "group_id",
+          "from": "group_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1431,6 +2128,14 @@
       "engine_params": [
         "session_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1455,6 +2160,14 @@
       "engine_params": [
         "message_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "message_id",
+          "from": "message_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1493,8 +2206,33 @@
       "engine_method_name": "session.peer_message.forward",
       "engine_params": [
         "target_session_id",
-        "message"
+        "message",
+        "source_session_id",
+        "quoted_source"
       ],
+      "engine_param_map": [
+        {
+          "key": "target_session_id",
+          "from": "target_session_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        },
+        {
+          "key": "source_session_id",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "quoted_source",
+          "from": null,
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1519,6 +2257,14 @@
       "engine_params": [
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1549,6 +2295,19 @@
         "path",
         "task_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1580,7 +2339,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "VerificationLatest",
       "engine_method_name": "verification.latest",
-      "engine_params": [],
+      "engine_params": [
+        "path",
+        "kinds",
+        "limit"
+      ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "kinds",
+          "from": "kinds",
+          "optional": true
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1611,6 +2392,19 @@
         "path",
         "changed_files"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "changed_files",
+          "from": "changed_files",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1632,7 +2426,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "CheckpointList",
       "engine_method_name": "checkpoint.list",
-      "engine_params": [],
+      "engine_params": [
+        "path"
+      ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1657,6 +2461,14 @@
       "engine_params": [
         "checkpoint_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "checkpoint_id",
+          "from": "checkpoint_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1693,7 +2505,35 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "CheckpointRestore",
       "engine_method_name": "checkpoint.restore",
-      "engine_params": [],
+      "engine_params": [
+        "path",
+        "checkpoint_id",
+        "preview",
+        "allow_mixed"
+      ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "checkpoint_id",
+          "from": "checkpoint_id",
+          "optional": false
+        },
+        {
+          "key": "preview",
+          "from": "preview",
+          "optional": false
+        },
+        {
+          "key": "allow_mixed",
+          "from": "allow_mixed",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1718,6 +2558,14 @@
       "engine_params": [
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1749,7 +2597,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProjectDiff",
       "engine_method_name": "project.diff",
-      "engine_params": [],
+      "engine_params": [
+        "path",
+        "file",
+        "max_chars"
+      ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "file",
+          "from": "file",
+          "optional": true
+        },
+        {
+          "key": "max_chars",
+          "from": "max_chars",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1786,6 +2656,25 @@
         "query",
         "limit"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "query",
+          "from": "query",
+          "optional": false
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": false,
+          "default": "30"
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1807,7 +2696,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ArtifactList",
       "engine_method_name": "artifact.list",
-      "engine_params": [],
+      "engine_params": [
+        "session_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1834,7 +2733,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ArtifactRead",
       "engine_method_name": "artifact.read",
-      "engine_params": [],
+      "engine_params": [
+        "uri",
+        "max_bytes"
+      ],
+      "engine_param_map": [
+        {
+          "key": "uri",
+          "from": "uri",
+          "optional": false
+        },
+        {
+          "key": "max_bytes",
+          "from": "max_bytes",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1865,6 +2780,19 @@
         "session_id",
         "attachments"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "attachments",
+          "from": "attachments",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1896,7 +2824,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "AttachmentPreview",
       "engine_method_name": "attachment.preview",
-      "engine_params": [],
+      "engine_params": [
+        "uri",
+        "max_dimension",
+        "max_bytes"
+      ],
+      "engine_param_map": [
+        {
+          "key": "uri",
+          "from": "uri",
+          "optional": false
+        },
+        {
+          "key": "max_dimension",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "max_bytes",
+          "from": "max_bytes",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1923,7 +2873,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionImageSupport",
       "engine_method_name": "session.image_support",
-      "engine_params": [],
+      "engine_params": [
+        "session_id",
+        "model_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "model_id",
+          "from": "model_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1940,6 +2906,8 @@
       "engine_method": "VisionSettingsGet",
       "engine_method_name": "vision.settings.get",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1956,6 +2924,8 @@
       "engine_method": "ContextSettingsGet",
       "engine_method_name": "context.settings.get",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1977,7 +2947,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ContextCompact",
       "engine_method_name": "context.compact",
-      "engine_params": [],
+      "engine_params": [
+        "session_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1999,7 +2979,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ContextStatus",
       "engine_method_name": "context.status",
-      "engine_params": [],
+      "engine_params": [
+        "model_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "model_id",
+          "from": "model_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2022,6 +3012,8 @@
       "engine_method": "ContextSettingsSet",
       "engine_method_name": "context.settings.set",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": "settings",
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2044,6 +3036,8 @@
       "engine_method": "VisionSettingsSet",
       "engine_method_name": "vision.settings.set",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": "settings",
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2074,6 +3068,19 @@
         "session_id",
         "attachments"
       ],
+      "engine_param_map": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "attachments",
+          "from": "attachments",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2098,6 +3105,14 @@
       "engine_params": [
         "job_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "job_id",
+          "from": "job_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2122,6 +3137,14 @@
       "engine_params": [
         "job_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "job_id",
+          "from": "job_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2146,6 +3169,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2167,7 +3198,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "UsageGet",
       "engine_method_name": "usage.get",
-      "engine_params": [],
+      "engine_params": [
+        "ref"
+      ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2184,6 +3225,8 @@
       "engine_method": "AgentList",
       "engine_method_name": "agent.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2208,6 +3251,14 @@
       "engine_params": [
         "agent"
       ],
+      "engine_param_map": [
+        {
+          "key": "agent",
+          "from": "agent",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2249,7 +3300,41 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "AgentConfigSet",
       "engine_method_name": "agent.config.set",
-      "engine_params": [],
+      "engine_params": [
+        "agent",
+        "model",
+        "fallback",
+        "enabled",
+        "clear"
+      ],
+      "engine_param_map": [
+        {
+          "key": "agent",
+          "from": "agent",
+          "optional": false
+        },
+        {
+          "key": "model",
+          "from": "model",
+          "optional": false
+        },
+        {
+          "key": "fallback",
+          "from": "fallback",
+          "optional": false
+        },
+        {
+          "key": "enabled",
+          "from": "enabled",
+          "optional": false
+        },
+        {
+          "key": "clear",
+          "from": "clear",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2266,6 +3351,8 @@
       "engine_method": "SoulList",
       "engine_method_name": "soul.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2290,6 +3377,14 @@
       "engine_params": [
         "id"
       ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2331,7 +3426,41 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SoulCreate",
       "engine_method_name": "soul.create",
-      "engine_params": [],
+      "engine_params": [
+        "id",
+        "name",
+        "identity",
+        "description",
+        "version"
+      ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "identity",
+          "from": "identity",
+          "optional": false
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": false
+        },
+        {
+          "key": "version",
+          "from": "version",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2373,7 +3502,41 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SoulUpdate",
       "engine_method_name": "soul.update",
-      "engine_params": [],
+      "engine_params": [
+        "id",
+        "name",
+        "identity",
+        "description",
+        "version"
+      ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "identity",
+          "from": "identity",
+          "optional": true
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": true
+        },
+        {
+          "key": "version",
+          "from": "version",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2398,6 +3561,14 @@
       "engine_params": [
         "id"
       ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2422,6 +3593,14 @@
       "engine_params": [
         "id"
       ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2438,6 +3617,8 @@
       "engine_method": "McpList",
       "engine_method_name": "mcp.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2462,6 +3643,14 @@
       "engine_params": [
         "name"
       ],
+      "engine_param_map": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": []
@@ -2490,6 +3679,19 @@
         "name",
         "command"
       ],
+      "engine_param_map": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "command",
+          "from": "command",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2514,6 +3716,14 @@
       "engine_params": [
         "name"
       ],
+      "engine_param_map": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2543,6 +3753,14 @@
       "engine_params": [
         "name"
       ],
+      "engine_param_map": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2567,6 +3785,14 @@
       "engine_params": [
         "name"
       ],
+      "engine_param_map": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2583,6 +3809,8 @@
       "engine_method": "PluginList",
       "engine_method_name": "plugin.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2612,6 +3840,14 @@
       "engine_params": [
         "name"
       ],
+      "engine_param_map": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2628,6 +3864,8 @@
       "engine_method": "PluginDiagnostics",
       "engine_method_name": "plugin.diagnostics",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2644,6 +3882,8 @@
       "engine_method": "ToolList",
       "engine_method_name": "tool.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2660,6 +3900,8 @@
       "engine_method": "PolicyGet",
       "engine_method_name": "policy.get",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2676,6 +3918,8 @@
       "engine_method": "ProfileBundleList",
       "engine_method_name": "profile_bundle.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2722,7 +3966,47 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProfileBundleCreate",
       "engine_method_name": "profile_bundle.create",
-      "engine_params": [],
+      "engine_params": [
+        "id",
+        "name",
+        "description",
+        "soul_id",
+        "mode",
+        "agents"
+      ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": true
+        },
+        {
+          "key": "soul_id",
+          "from": "soul_id",
+          "optional": true
+        },
+        {
+          "key": "mode",
+          "from": "mode",
+          "optional": true
+        },
+        {
+          "key": "agents",
+          "from": "agents",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2747,6 +4031,14 @@
       "engine_params": [
         "id"
       ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2773,7 +4065,23 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProfileBundleApply",
       "engine_method_name": "profile_bundle.apply",
-      "engine_params": [],
+      "engine_params": [
+        "id",
+        "session_ref"
+      ],
+      "engine_param_map": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "session_ref",
+          "from": "session_ref",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2795,7 +4103,17 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProjectListRecent",
       "engine_method_name": "project.list_recent",
-      "engine_params": [],
+      "engine_params": [
+        "limit"
+      ],
+      "engine_param_map": [
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2820,6 +4138,15 @@
       "engine_params": [
         "include_archived"
       ],
+      "engine_param_map": [
+        {
+          "key": "include_archived",
+          "from": "include_archived",
+          "optional": false,
+          "default": "false"
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2844,6 +4171,14 @@
       "engine_params": [
         "project_id"
       ],
+      "engine_param_map": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2875,7 +4210,29 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProjectAdd",
       "engine_method_name": "project.add",
-      "engine_params": [],
+      "engine_params": [
+        "path",
+        "name",
+        "description"
+      ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2917,7 +4274,41 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProjectUpdate",
       "engine_method_name": "project.update",
-      "engine_params": [],
+      "engine_params": [
+        "project_id",
+        "name",
+        "description",
+        "pinned",
+        "archived"
+      ],
+      "engine_param_map": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": false
+        },
+        {
+          "key": "pinned",
+          "from": "pinned",
+          "optional": false
+        },
+        {
+          "key": "archived",
+          "from": "archived",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2948,6 +4339,19 @@
         "project_id",
         "session_policy"
       ],
+      "engine_param_map": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "session_policy",
+          "from": "policy",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2972,6 +4376,14 @@
       "engine_params": [
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2996,6 +4408,14 @@
       "engine_params": [
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3020,6 +4440,14 @@
       "engine_params": [
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3044,6 +4472,14 @@
       "engine_params": [
         "path"
       ],
+      "engine_param_map": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3060,6 +4496,8 @@
       "engine_method": "ProviderList",
       "engine_method_name": "provider.list",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3116,7 +4554,59 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProviderCreate",
       "engine_method_name": "provider.create",
-      "engine_params": [],
+      "engine_params": [
+        "alias",
+        "type",
+        "auth_method",
+        "endpoint",
+        "account_hint",
+        "secret",
+        "secret_env",
+        "settings"
+      ],
+      "engine_param_map": [
+        {
+          "key": "alias",
+          "from": "alias",
+          "optional": false
+        },
+        {
+          "key": "type",
+          "from": "provider_type",
+          "optional": false
+        },
+        {
+          "key": "auth_method",
+          "from": "auth_method",
+          "optional": false
+        },
+        {
+          "key": "endpoint",
+          "from": "endpoint",
+          "optional": false
+        },
+        {
+          "key": "account_hint",
+          "from": "account_hint",
+          "optional": false
+        },
+        {
+          "key": "secret",
+          "from": "secret",
+          "optional": false
+        },
+        {
+          "key": "secret_env",
+          "from": "secret_env",
+          "optional": false
+        },
+        {
+          "key": "settings",
+          "from": "settings",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3141,6 +4631,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3192,7 +4690,53 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ProviderUpdate",
       "engine_method_name": "provider.update",
-      "engine_params": [],
+      "engine_params": [
+        "ref",
+        "alias",
+        "endpoint",
+        "account_hint",
+        "secret",
+        "secret_env",
+        "settings"
+      ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "alias",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "endpoint",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "account_hint",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "secret",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "secret_env",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "settings",
+          "from": null,
+          "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3229,6 +4773,25 @@
         "switch_to",
         "keep_credentials"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "switch_to",
+          "from": "switch_to",
+          "optional": false
+        },
+        {
+          "key": "keep_credentials",
+          "from": "keep_credentials",
+          "optional": false,
+          "default": "false"
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3253,6 +4816,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3269,6 +4840,8 @@
       "engine_method": "ProviderDiscover",
       "engine_method_name": "provider.discover",
       "engine_params": [],
+      "engine_param_map": [],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3293,6 +4866,14 @@
       "engine_params": [
         "ref"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3317,6 +4898,14 @@
       "engine_params": [
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3347,6 +4936,19 @@
         "ref",
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3388,7 +4990,41 @@
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ModelAdd",
       "engine_method_name": "model.add",
-      "engine_params": [],
+      "engine_params": [
+        "provider",
+        "provider_model_id",
+        "alias",
+        "capabilities",
+        "settings"
+      ],
+      "engine_param_map": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        },
+        {
+          "key": "provider_model_id",
+          "from": "provider_model_id",
+          "optional": false
+        },
+        {
+          "key": "alias",
+          "from": "alias",
+          "optional": false
+        },
+        {
+          "key": "capabilities",
+          "from": "capabilities",
+          "optional": false
+        },
+        {
+          "key": "settings",
+          "from": "settings",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3425,6 +5061,24 @@
         "new_alias",
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "new_alias",
+          "from": "new_alias",
+          "optional": false
+        },
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3455,6 +5109,19 @@
         "ref",
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3485,6 +5152,19 @@
         "ref",
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3509,6 +5189,14 @@
       "engine_params": [
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3533,6 +5221,14 @@
       "engine_params": [
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3557,6 +5253,14 @@
       "engine_params": [
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3587,6 +5291,19 @@
         "ref",
         "provider"
       ],
+      "engine_param_map": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "engine_params_passthrough": null,
       "host_effects": [],
       "registered": true,
       "callers": [

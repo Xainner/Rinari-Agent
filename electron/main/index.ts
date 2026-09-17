@@ -12,6 +12,7 @@ import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
 import { EngineSupervisor } from './engine/EngineSupervisor'
+import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry } from './ipc/validateSender'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
@@ -77,7 +78,13 @@ function buildServices(): HostServices {
       start: () => engine.start(),
       shutdown: () => engine.shutdown(),
       restart: () => engine.restart(),
-      request: (method, params) => engine.request(method, params),
+      // El renderer llama por nombre de comando; el Engine habla por método
+      // del protocolo y con otras claves. Sin traducir, ninguna llamada de
+      // dominio llegaría a su destino.
+      request: (name, params) => {
+        const call = translateCommand(name, params ?? {})
+        return engine.request(call.method, call.params)
+      },
     },
     window: {
       minimize: () => getWindow()?.minimize(),
@@ -160,6 +167,73 @@ function openWindow(): void {
   })
 
   if (process.env.RINARI_SMOKE) attachSmoke(mainWindow)
+  if (process.env.RINARI_PARITY) attachParityProbe(mainWindow)
+}
+
+/**
+ * Sonda de paridad (documento 02 §8): arranca el Engine **real** desde el host
+ * y ejercita un corte transversal de los doce módulos de comandos por el
+ * camino completo —renderer, preload, IPC validado, traducción y protocolo—.
+ *
+ * Es lo que distingue «la app abre» de «la app habla con el Engine». Lo
+ * ejecuta el renderer, no el main, para que ningún atajo se salte el puente.
+ */
+function attachParityProbe(window: BrowserWindow): void {
+  window.webContents.on('did-finish-load', () => {
+    void window.webContents
+      .executeJavaScript(
+        `(async () => {
+           const api = window.rinariDesktop
+           const out = { started: null, calls: [], turn: null }
+           try { out.started = (await api.engine.start()).state } catch (e) { out.started = 'error: ' + e.message }
+
+           const run = async (name, params) => {
+             try { await api.command(name, params); out.calls.push({ name, ok: true }) }
+             catch (e) { out.calls.push({ name, ok: false, code: e.code, message: e.message }) }
+           }
+           // Un comando por módulo del inventario, solo de lectura.
+           await run('session_list', {})
+           await run('project_list_recent', { limit: 5 })
+           await run('provider_list', {})
+           await run('model_list', {})
+           await run('agent_list', {})
+           await run('soul_list', {})
+           await run('mcp_list', {})
+           await run('tool_list', {})
+           await run('bundle_list', {})
+           await run('policy_get', {})
+           await run('vision_settings_get', {})
+           await run('context_settings_get', {})
+
+           // Un turno de verdad contra un proveedor falso: acepta y falla al
+           // conectar, que es el pipeline entero sin salir de la máquina.
+           try {
+             await api.command('provider_create', {
+               alias: 'falso', provider_type: 'custom',
+               auth_method: 'none', endpoint: 'http://127.0.0.1:9/v1',
+             })
+             await api.command('model_add', { provider: 'falso', provider_model_id: 'fake-1', alias: 'fake' })
+             await api.command('model_use', { reference: 'fake' })
+             const session = await api.command('session_create', { chat: true, title: 'paridad' })
+             const id = session.session?.id ?? session.id
+             const events = []
+             api.engine.onEvent((event) => { if (event.event) events.push(event.event) })
+             await api.command('turn_start', { session_id: id, message: 'hola' })
+             await new Promise((resolve) => setTimeout(resolve, 6000))
+             out.turn = { session: Boolean(id), events: [...new Set(events)] }
+           } catch (e) { out.turn = { error: e.code + ': ' + e.message } }
+           return out
+         })()`,
+      )
+      .then((report: Record<string, unknown>) => {
+        console.log(`RINARI_PARITY ${JSON.stringify(report)}`)
+        setTimeout(() => app.exit(0), 100)
+      })
+      .catch((error: unknown) => {
+        console.log(`RINARI_PARITY ${JSON.stringify({ error: String(error) })}`)
+        setTimeout(() => app.exit(1), 100)
+      })
+  })
 }
 
 /**

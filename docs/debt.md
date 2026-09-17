@@ -121,16 +121,23 @@ documentado; lo demás no se presenta como terminado.
 - **Arranque real** — `DONE` como smoke: `npm run desktop:smoke` abre Electron
   y verifica renderer, puente y ausencia de fugas. **No** es paridad: los 130
   comandos del inventario no están ejercitados contra el host nuevo.
-- **Traducción comando → método del protocolo** — `OPEN`, y es el grueso de lo
-  que falta de D. El nombre del comando **no** es el método: `session_get`
+- **Traducción comando → método del protocolo** — `DONE`. El nombre del comando **no** es el método: `session_get`
   habla con `session.get`, y los argumentos se renombran (`reference` → `ref`
-  en 21 comandos). El host Tauri hacía esa traducción en 130 handlers Rust;
-  `services.engine.request` del host nuevo reenvía el nombre del comando tal
-  cual, así que **hoy ninguna llamada de dominio funcionaría en Electron**. El
-  inventario ya lleva método real y renombrados como especificación
-  (`commandMap.test.ts` lo fija), y quedan 124 traducciones por escribir: 45
-  de identidad, 21 con `reference` → `ref`, 4 casos especiales y 54 cuyo
-  wrapper arma los parámetros de otra forma y hay que leer uno a uno.
+  en 21 comandos, `provider_type` → `type`). El host Tauri hacía esa traducción
+  en 130 handlers Rust y el nuevo la necesitaba igual. El
+  inventario lleva método real y renombrados, y `commandMap.generated.ts`
+  produce las 125 traducciones desde el mismo código Rust, así que no pueden
+  divergir de él. `peer_group_get` se escribe a mano porque su host anterior
+  usa precedencia (`else if`) y manda **una** clave, no la unión; está
+  documentado como excepción y probado.
+- **Paridad contra el Engine real** — `DONE` como corte transversal:
+  `npm run desktop:parity` arranca el Engine desde Electron en un home
+  temporal y ejercita un comando por cada uno de los doce módulos más un turno
+  con proveedor falso, que recorre `turn.started → model.failed → turn.failed`.
+  Prueba el camino completo —renderer, preload, IPC validado, traducción,
+  NDJSON y eventos de vuelta—. **No** es la matriz completa: son 12 de 125
+  comandos, y los 113 restantes tienen traducción generada y probada en
+  unidad, pero no ejercitada contra el Engine.
 - **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
   `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
   el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un

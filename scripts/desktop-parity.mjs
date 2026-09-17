@@ -86,6 +86,89 @@ function splitArgs(raw) {
  * `ref`). Sin resolverlo, el inventario diría «—» en 95 de 130 filas y el host
  * nuevo se construiría contra una traducción que no existe.
  */
+/**
+ * Claves del protocolo que arma un wrapper, y de qué argumento sale cada una.
+ *
+ * Dos formas conviven en el host Rust y las dos hay que leer, porque el
+ * renombrado vive justo ahí:
+ *
+ *   json!({"ref": reference, "title": title})
+ *   params.insert("ref".to_string(), Value::String(reference.to_string()))
+ *
+ * Una clave dentro de `if let Some(x)` es opcional: se omite si falta, no se
+ * envía nula. Enviar `null` donde el host anterior omitía cambia lo que el
+ * Engine recibe.
+ */
+function paramBindings(body, args) {
+  const known = new Set(args)
+  const bindings = []
+  const seen = new Set()
+
+  const add = (key, expression, optional) => {
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    // El primer identificador de la expresión que sea un argumento del
+    // wrapper es su origen; si no hay ninguno, es un valor fijo.
+    const from = [...String(expression).matchAll(/\b([a-z_][a-z0-9_]*)\b/gi)]
+      .map((entry) => entry[1])
+      .find((token) => known.has(token))
+    bindings.push({ key, from: from ?? null, optional })
+  }
+
+  // Forma 1: `json!({ … })`, tomando el objeto completo por balance de llaves.
+  const jsonAt = body.indexOf('json!({')
+  if (jsonAt !== -1) {
+    let depth = 0
+    let end = jsonAt + 'json!('.length
+    for (; end < body.length; end += 1) {
+      if (body[end] === '{') depth += 1
+      else if (body[end] === '}' && --depth === 0) break
+    }
+    const object = body.slice(jsonAt + 'json!({'.length, end)
+    // Pares de primer nivel: un objeto anidado no aporta claves de protocolo.
+    let level = 0
+    let current = ''
+    const pairs = []
+    for (const char of object) {
+      if ('{['.includes(char)) level += 1
+      else if ('}]'.includes(char)) level -= 1
+      if (char === ',' && level === 0) {
+        pairs.push(current)
+        current = ''
+      } else current += char
+    }
+    pairs.push(current)
+    for (const pair of pairs) {
+      const match = /^\s*"([^"]+)"\s*:\s*([\s\S]*)$/.exec(pair)
+      if (match) add(match[1], match[2], false)
+    }
+  }
+
+  // Forma 2: inserciones en un `serde_json::Map`.
+  for (const entry of body.matchAll(/params\.insert\(\s*"([^"]+)"\.to_string\(\),\s*([\s\S]*?)\);/g)) {
+    const before = body.slice(0, entry.index)
+    const guard = /if let Some\([^)]*\)\s*=\s*[^{]*\{\s*$/.test(before.slice(-200))
+    add(entry[1], entry[2], guard)
+  }
+
+  // Forma 3: asignación por índice sobre un `json!({})`.
+  for (const entry of body.matchAll(/params\["([^"]+)"\]\s*=\s*([\s\S]*?);/g)) {
+    add(entry[1], entry[2], true)
+  }
+  return bindings
+}
+
+/**
+ * El argumento **es** el objeto de parámetros: `context_settings_set` pasa su
+ * `settings` tal cual. No hay claves que mapear, y tratarlo como si las
+ * hubiera envolvería el objeto en otro.
+ */
+function passthroughArg(body, args) {
+  const match = /request\(\s*(?:[\w:]*Method::\w+|Method::\w+)\s*,\s*Some\(\s*([a-z_][a-z0-9_]*)\s*\)/i.exec(body)
+  const name = match?.[1]
+  return name && args.includes(name) ? name : null
+}
+
 function supervisorWrappers() {
   const text = readFileSync(join(ROOT, 'src-tauri/src/engine/supervisor.rs'), 'utf8')
   const wrappers = new Map()
@@ -103,13 +186,15 @@ function supervisorWrappers() {
     const body = chunk.slice(close)
     const method = /Method::(\w+)/.exec(body)?.[1]
     if (!method) continue
-    // Claves con las que el wrapper arma los parámetros del protocolo.
-    const payload = /json!\(\{([\s\S]*?)\}\)/.exec(body)?.[1] ?? ''
-    const keys = [...payload.matchAll(/"([^"]+)"\s*:/g)].map((entry) => entry[1])
+    const args = splitArgs(rawArgs.replace(/&self\s*,?/, '')).map((arg) => arg.name)
+    const bindings = paramBindings(body, args)
     wrappers.set(name, {
       method,
-      params: keys,
-      args: splitArgs(rawArgs.replace(/&self\s*,?/, '')).map((arg) => arg.name),
+      params: bindings.map((entry) => entry.key),
+      bindings,
+      args,
+      /** Delega en otro wrapper con argumentos fijos (`session_create`). */
+      delegatesTo: /self\.(\w+)\(([^)]*)\)/.exec(body.replace(/self\.request\([^)]*\)/g, ''))?.[1] ?? null,
     })
   }
   return wrappers
@@ -129,6 +214,62 @@ function methodNames() {
     names.set(entry[1], entry[2])
   }
   return names
+}
+
+/** Argumentos de una llamada, respetando paréntesis anidados. */
+function callArguments(body, openParen) {
+  let depth = 0
+  let end = openParen
+  for (; end < body.length; end += 1) {
+    if (body[end] === '(') depth += 1
+    else if (body[end] === ')' && --depth === 0) break
+  }
+  const raw = body.slice(openParen + 1, end)
+  const parts = []
+  let level = 0
+  let current = ''
+  for (const char of raw) {
+    if ('(<['.includes(char)) level += 1
+    else if (')>]'.includes(char)) level -= 1
+    if (char === ',' && level === 0) {
+      parts.push(current)
+      current = ''
+    } else current += char
+  }
+  parts.push(current)
+  return parts.map((part) => part.trim()).filter(Boolean)
+}
+
+/**
+ * Compone el mapeo del comando: sus argumentos llegan al wrapper por posición,
+ * y el wrapper los pone bajo la clave del protocolo. De ahí sale, por ejemplo,
+ * que `reference` del renderer viaje como `ref`.
+ *
+ * Un argumento que la llamada fija (`include_closed.unwrap_or(false)`) se
+ * anota con su valor por defecto: omitirlo cambiaría lo que recibe el Engine.
+ */
+function composeParams(wrapper, callArgs, wrappers) {
+  // Un wrapper que solo delega en otro con argumentos fijos.
+  const target = wrapper.delegatesTo ? wrappers.get(wrapper.delegatesTo) : null
+  const effective = target && target.bindings.length ? target : wrapper
+
+  const bySlot = new Map()
+  wrapper.args.forEach((argName, index) => {
+    const expression = callArgs[index] ?? ''
+    const source = /^[&*]*([a-z_][a-z0-9_]*)/i.exec(expression)?.[1] ?? null
+    const fallback = /unwrap_or\(\s*([^)]*)\)/.exec(expression)?.[1] ?? null
+    bySlot.set(argName, { source, fallback })
+  })
+
+  return effective.bindings.map((binding) => {
+    const slot = binding.from ? bySlot.get(binding.from) : undefined
+    return {
+      key: binding.key,
+      from: slot?.source ?? binding.from ?? null,
+      optional: binding.optional,
+      ...(slot?.fallback ? { default: slot.fallback } : {}),
+    }
+  })
 }
 
 function handlers() {
@@ -152,9 +293,22 @@ function handlers() {
       const body = piece.slice(sig.index + sig[0].length)
       // Directo, o resuelto por el wrapper del supervisor al que delega.
       const direct = /Method::(\w+)/.exec(body)?.[1] ?? null
-      const delegated = [...body.matchAll(/engine\.(\w+)\s*\(/g)]
-        .map((entry) => wrappers.get(entry[1]))
-        .find(Boolean)
+      // `engine.request(...)` es el despachador genérico, no un wrapper de
+      // dominio: casarlo daría el `Method::` de su tabla de plazos.
+      const call = [...body.matchAll(/engine\.(\w+)\s*\(/g)].find(
+        (entry) => entry[1] !== 'request' && wrappers.has(entry[1]),
+      )
+      const delegated = call ? wrappers.get(call[1]) : undefined
+      const commandArgs = splitArgs(sig[3]).map((arg) => arg.name)
+      // Algunos comandos arman los parámetros ellos mismos y le pasan el
+      // `Value` ya hecho al wrapper (`provider_create` renombra
+      // `provider_type` a `type` ahí). Entonces las claves están en el
+      // comando, no en el wrapper, y son estas las que valen.
+      const own = paramBindings(body, commandArgs)
+      const composed = delegated
+        ? composeParams(delegated, callArguments(body, call.index + call[0].length - 1), wrappers)
+        : null
+      const paramMap = composed?.length ? composed : own.length ? own : composed ?? (direct ? own : null)
       found.set(sig[2], {
         command: sig[2],
         module: path.replace(/\.rs$/, ''),
@@ -166,7 +320,11 @@ function handlers() {
         /** El método tal como viaja por el protocolo, no la variante Rust. */
         engine_method_name: names.get(direct ?? delegated?.method ?? '') ?? null,
         /** Claves con las que el parámetro llega al Engine; renombra. */
-        engine_params: delegated?.params ?? null,
+        engine_params: paramMap ? paramMap.map((entry) => entry.key) : null,
+        /** Mapeo completo: argumento del renderer -> clave del protocolo. */
+        engine_param_map: paramMap,
+        /** El argumento es el objeto de parámetros entero, sin envolver. */
+        engine_params_passthrough: passthroughArg(body, commandArgs),
         host_effects: EFFECTS.filter(([token]) => body.includes(token)).map(([, label]) => label),
       })
     }
@@ -493,13 +651,71 @@ function renderCommandUnion(data) {
   ].join('\n')
 }
 
+/**
+ * Tabla de traducción para el host Electron.
+ *
+ * El renderer llama por nombre de comando; el Engine habla por método del
+ * protocolo y con **otras** claves. El host anterior hacía esa traducción en
+ * 130 handlers Rust; aquí se genera del mismo código para que no pueda
+ * divergir de él.
+ */
+function renderCommandMap(data) {
+  const rows = data.commands
+    .filter((row) => row.engine_method_name)
+    .sort((a, b) => a.command.localeCompare(b.command))
+  const lines = [
+    '// Generado por `npm run parity:inventory`. No editar a mano.',
+    '// Documento 02 §2: el nombre del comando no es el método del protocolo y',
+    '// sus argumentos se renombran por el camino (`reference` viaja como `ref`).',
+    '',
+    '/** Cómo un argumento del renderer llega al Engine. */',
+    'export interface ParamBinding {',
+    '  /** Clave con la que el Engine lo recibe. */',
+    '  key: string',
+    '  /** Argumento del renderer del que sale; `null` si es un valor fijo. */',
+    '  from: string | null',
+    '  /** Se omite cuando falta, en vez de enviarse nulo. */',
+    '  optional: boolean',
+    '  /** Valor que ponía el host anterior cuando el argumento faltaba. */',
+    '  fallback?: boolean | string',
+    '}',
+    '',
+    'export interface CommandTranslation {',
+    '  method: string',
+    '  params: ParamBinding[]',
+    '  /** El argumento nombrado **es** el objeto de parámetros, sin envolver. */',
+    '  passthrough?: string',
+    '}',
+    '',
+    'export const COMMAND_MAP: Record<string, CommandTranslation> = {',
+  ]
+  for (const row of rows) {
+    const params = (row.engine_param_map ?? []).map((entry) => {
+      const parts = [`key: '${entry.key}'`, `from: ${entry.from ? `'${entry.from}'` : 'null'}`, `optional: ${entry.optional}`]
+      if (entry.default !== undefined) {
+        const literal = entry.default === 'true' || entry.default === 'false' ? entry.default : `'${entry.default}'`
+        parts.push(`fallback: ${literal}`)
+      }
+      return `{ ${parts.join(', ')} }`
+    })
+    const passthrough = row.engine_params_passthrough ? `, passthrough: '${row.engine_params_passthrough}'` : ''
+    lines.push(
+      `  ${row.command}: { method: '${row.engine_method_name}', params: [${params.join(', ')}]${passthrough} },`,
+    )
+  }
+  lines.push('}', '')
+  return lines.join('\n')
+}
+
 const data = build()
 const json = JSON.stringify(data, null, 2) + '\n'
 const markdown = render(data)
 const union = renderCommandUnion(data)
+const commandMap = renderCommandMap(data)
 const jsonPath = join(OUT_DIR, 'desktop-parity.json')
 const mdPath = join(OUT_DIR, 'desktop-parity.md')
 const unionPath = join(ROOT, 'src', 'platform', 'commands.generated.ts')
+const mapPath = join(ROOT, 'electron', 'main', 'engine', 'commandMap.generated.ts')
 
 /**
  * Cierre de la entrega C (documento 02 §8): «no queda un import Tauri en
@@ -546,7 +762,7 @@ function tauriImportsOutsideAdapter(data) {
 
 if (CHECK) {
   const stale = []
-  for (const [path, expected] of [[jsonPath, json], [mdPath, markdown], [unionPath, union]]) {
+  for (const [path, expected] of [[jsonPath, json], [mdPath, markdown], [unionPath, union], [mapPath, commandMap]]) {
     if (!existsSync(path) || readFileSync(path, 'utf8') !== expected) stale.push(rel(path))
   }
   if (stale.length) {
@@ -578,5 +794,7 @@ if (CHECK) {
   writeFileSync(jsonPath, json)
   writeFileSync(mdPath, markdown)
   writeFileSync(unionPath, union)
+  mkdirSync(dirname(mapPath), { recursive: true })
+  writeFileSync(mapPath, commandMap)
   console.log(`${rel(jsonPath)} y ${rel(mdPath)}: ${data.registered_commands} comandos, ${data.handlers_not_registered.length} sin registrar, ${data.registered_without_frontend_caller.length} sin llamador.`)
 }

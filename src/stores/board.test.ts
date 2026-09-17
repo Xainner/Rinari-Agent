@@ -12,6 +12,7 @@ import {
   normalizeBoard,
   useBoardStore,
 } from './board'
+import { resetSessionDockForTests, useSessionDockStore } from './sessionDock'
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -56,13 +57,12 @@ describe('board layout store', () => {
     expect(useBoardStore.getState().panes[0].width).toBe(PANE_MAX_WIDTH)
     useBoardStore.getState().setPaneWidth(pane.paneId, Number.NaN)
     expect(useBoardStore.getState().panes[0].width).toBe(PANE_MAX_WIDTH)
-    useBoardStore.getState().setWorkspaceVisible(pane.paneId, false)
-    useBoardStore.getState().setDockTab(pane.paneId, 'file')
-    useBoardStore.getState().setWorkspaceTab(pane.paneId, 'tasks')
-    expect(useBoardStore.getState().panes[0]).toMatchObject({ workspaceVisible: false, dockTab: 'file', workspaceTab: 'tasks' })
+    // El dock ya no es un campo del panel: vive por sesión en `sessionDock`.
+    expect(useBoardStore.getState().panes[0]).not.toHaveProperty('workspaceVisible')
+    expect(useBoardStore.getState().panes[0]).not.toHaveProperty('dockTab')
   })
 
-  it('persists only layout preferences under the v1 key with internal schema 2', () => {
+  it('persists only layout preferences under the v1 key with internal schema 3', () => {
     useBoardStore.getState().addPane('ses_a')
     useBoardStore.getState().setSoftLimit(3)
     flushBoardPersistence()
@@ -90,11 +90,34 @@ describe('board layout store', () => {
     expect(layout.panes.map((pane) => pane.sessionId)).toEqual(['ses_a', 'ses_b'])
     expect(new Set(layout.panes.map((pane) => pane.paneId)).size).toBe(2)
     expect(layout.panes[1].width).toBe(PANE_DEFAULT_WIDTH)
-    expect(layout.panes[0]).toMatchObject({ collapsed: false, dockTab: 'workspace', workspaceTab: 'changes', peerReceive: true, peerSend: true })
+    expect(layout.panes[0]).toMatchObject({ collapsed: false, peerReceive: true, peerSend: true })
     expect(layout.focusedPaneId).toBe('p1')
     expect(layout.focusMode).toBe(false)
     expect(layout.focusModeSnapshot).toBeNull()
     expect(layout.notifications).toEqual({ toasts: true, system: false, needsYou: true, systemDetails: false })
+  })
+
+  it('migrates the schema-2 per-pane dock into the per-session layout without overwriting an existing one', () => {
+    resetSessionDockForTests()
+    useSessionDockStore.getState().update('ses_kept', { visible: false, activeSurface: 'browser', widthPx: 500, workspaceTab: 'tasks' })
+    normalizeBoard({
+      version: 2,
+      panes: [
+        { paneId: 'p1', sessionId: 'ses_a', workspaceVisible: false, workspaceWidth: 420, dockTab: 'file', workspaceTab: 'verification' },
+        { paneId: 'p2', sessionId: 'ses_kept', workspaceVisible: true, workspaceWidth: 300, dockTab: 'workspace', workspaceTab: 'changes' },
+        { paneId: 'p3', sessionId: 'ses_plain' },
+      ],
+    })
+    const dock = useSessionDockStore.getState()
+    expect(dock.layoutFor('ses_a')).toMatchObject({ visible: false, widthPx: 420, activeSurface: 'files', workspaceTab: 'verification' })
+    // Una sesión que ya tenía layout propio no se reescribe con el del panel.
+    expect(dock.layoutFor('ses_kept')).toMatchObject({ visible: false, activeSurface: 'browser', widthPx: 500, workspaceTab: 'tasks' })
+    // Sin campos de dock no se inventa un layout.
+    expect(Object.keys(dock.layouts).some((key) => key.includes('ses_plain'))).toBe(false)
+    // Un layout ya en schema 3 no vuelve a migrar nada.
+    resetSessionDockForTests()
+    normalizeBoard({ version: 3, panes: [{ paneId: 'p1', sessionId: 'ses_a', workspaceVisible: false }] })
+    expect(Object.keys(useSessionDockStore.getState().layouts)).toEqual([])
   })
 
   it('normalizes focus mode without a snapshot and keeps future versions untouched', () => {

@@ -31,11 +31,16 @@ effective permissions, working directory, commands, visible model messages and
 result. Child activity is correlated and persisted under the parent turn and is
 rebuilt when conversation history reloads. It is not private model reasoning.
 
-The **Navegador** panel opens automatically when the active conversation has a
-connected engine browser. It shows periodic captures of the exact CDP page the
-agent uses, supports choosing a page and can be minimized or reopened. It is an
-observation panel: manual interaction is available through **Abrir fuera**.
-It does not run a duplicate iframe page or expose Tauri commands to web content.
+The **Navegador** surface lives in the session dock (`SessionWorkspace`, shared
+by Normal and board panes), never as a floating global panel. It shows periodic
+captures of the exact CDP page the agent uses, supports choosing a page and can
+be hidden with the dock; a newly connected engine browser is revealed only when
+that session is focused and its dock is closed, otherwise the tab shows an
+indicator. It is an observation surface labelled as a preview: manual
+interaction is available through **Abrir fuera**. It does not run a duplicate
+iframe page or expose Tauri commands to web content. Polling runs at capture
+cadence only while the surface is visible and at a low background cadence for
+the indicator.
 
 The browser survives individual turns and closes with the session or engine.
 `browser.view.get` is read-only: polling never launches or navigates a browser.

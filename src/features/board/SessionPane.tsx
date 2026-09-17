@@ -1,23 +1,15 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
 import QueueBar from '../../components/chat/QueueBar'
-import { ResizeHandle } from '../../components/ui/resize-handle'
-import { useDragResize } from '../../hooks/useDragResize'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
-import { FileWorkspaceProvider } from '../files/FileWorkspace'
-import {
-  CHAT_MIN_DOCKED_WIDTH,
-  WORKSPACE_MAX_WIDTH,
-  WORKSPACE_MIN_WIDTH,
-  useBoardStore,
-  type BoardPane,
-} from '../../stores/board'
+import { useBoardStore, type BoardPane } from '../../stores/board'
+import { useSessionDockStore } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
 import CollapsedPaneStrip from './CollapsedPaneStrip'
-import PaneDock from './PaneDock'
 import PaneHeader from './PaneHeader'
+import SessionWorkspace from '../session/SessionWorkspace'
 import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
 import { toast } from 'sonner'
 import { commandMessage, engineApi } from '../../services/engine'
@@ -25,8 +17,6 @@ import type { PaneMentionTarget } from '../../components/composer/paneMention'
 import { FOCUS_COMPOSER_EVENT } from '../../components/composer/focusComposer'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
-
-const HANDLE_WIDTH = 6
 
 export interface SessionPaneProps {
   pane: BoardPane
@@ -46,8 +36,9 @@ export interface SessionPaneProps {
 }
 
 /**
- * Un panel expandido del board: header local, conversación de **su** sesión y
- * dock (workspace/archivo). No monta el Engine ni escucha eventos ajenos: todo
+ * Un panel expandido del board: header local y el `SessionWorkspace` de **su**
+ * sesión (conversación + dock de archivos/navegador/workspace, el mismo que
+ * usa la vista Normal). No monta el Engine ni escucha eventos ajenos: todo
  * llega por selectores de su `sessionId`.
  */
 function SessionPane({
@@ -68,10 +59,9 @@ function SessionPane({
   const commands = useEngineCommands()
   const data = useEngineData()
   const session = usePaneSession(pane.sessionId)
-  const setWorkspaceVisible = useBoardStore((state) => state.setWorkspaceVisible)
-  const setWorkspaceWidth = useBoardStore((state) => state.setWorkspaceWidth)
-  const setDockTab = useBoardStore((state) => state.setDockTab)
-  const setWorkspaceTab = useBoardStore((state) => state.setWorkspaceTab)
+  const dockVisible = useSessionDockStore((state) => state.layoutFor(pane.sessionId).visible)
+  const setDockVisible = useSessionDockStore((state) => state.setVisible)
+  const revealDock = useSessionDockStore((state) => state.reveal)
   const movePane = useBoardStore((state) => state.movePane)
   const setCollapsed = useBoardStore((state) => state.setCollapsed)
   const expandPane = useBoardStore((state) => state.expandPane)
@@ -102,10 +92,8 @@ function SessionPane({
   const readTracking = useMemo(() => ({ sessionId: pane.sessionId, visible: !pane.collapsed }), [pane.sessionId, pane.collapsed])
   // «Revisar cambios»: dock de workspace en la pestaña de cambios (rotulada por proyecto).
   const reviewChanges = useCallback(() => {
-    setDockTab(pane.paneId, 'workspace')
-    setWorkspaceTab(pane.paneId, 'changes')
-    setWorkspaceVisible(pane.paneId, true)
-  }, [pane.paneId, setDockTab, setWorkspaceTab, setWorkspaceVisible])
+    revealDock(pane.sessionId, 'workspace', { workspaceTab: 'changes' })
+  }, [pane.sessionId, revealDock])
   // `@Panel mensaje` desde el compositor: reenvío manual (origen `user`, con cita).
   const mentionTargets = useMemo<PaneMentionTarget[] | undefined>(
     () => (peerMessaging && forwardTargets.length > 0 ? forwardTargets.map((item) => ({ id: item.sessionId, label: item.label })) : undefined),
@@ -138,41 +126,6 @@ function SessionPane({
         canForward: forwardTargets.length > 0,
       }
     : undefined
-
-  // Geometría real del panel: decide si el dock cabe al lado o va en drawer.
-  const bodyRef = useRef<HTMLDivElement>(null)
-  const [innerWidth, setInnerWidth] = useState<number | null>(null)
-  useEffect(() => {
-    const element = bodyRef.current
-    if (!element || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width
-      if (typeof width === 'number') setInnerWidth(width)
-    })
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
-  const canDock = innerWidth === null || innerWidth >= CHAT_MIN_DOCKED_WIDTH + pane.workspaceWidth + HANDLE_WIDTH
-  const dockLayout: 'docked' | 'drawer' = canDock ? 'docked' : 'drawer'
-
-  const [liveWorkspaceWidth, setLiveWorkspaceWidth] = useState(pane.workspaceWidth)
-  useEffect(() => {
-    setLiveWorkspaceWidth(pane.workspaceWidth)
-  }, [pane.workspaceWidth])
-  const { handleProps } = useDragResize({
-    value: liveWorkspaceWidth,
-    min: WORKSPACE_MIN_WIDTH,
-    max: () => Math.min(WORKSPACE_MAX_WIDTH, Math.max(WORKSPACE_MIN_WIDTH, (innerWidth ?? WORKSPACE_MAX_WIDTH) - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH)),
-    direction: 'left',
-    onChange: setLiveWorkspaceWidth,
-    onCommit: (final) => setWorkspaceWidth(pane.paneId, final),
-    disabled: dockLayout === 'drawer',
-  })
-
-  const revealFile = useCallback(() => {
-    setDockTab(pane.paneId, 'file')
-    setWorkspaceVisible(pane.paneId, true)
-  }, [pane.paneId, setDockTab, setWorkspaceVisible])
 
   const focus = useCallback(() => {
     if (!focused) onFocus(pane.paneId)
@@ -221,10 +174,10 @@ function SessionPane({
         session={session}
         focused={focused}
         sharedRoot={sharedRoot}
-        workspaceVisible={pane.workspaceVisible}
+        workspaceVisible={dockVisible}
         canMoveLeft={canMoveLeft}
         canMoveRight={canMoveRight}
-        onToggleWorkspace={() => setWorkspaceVisible(pane.paneId, !pane.workspaceVisible)}
+        onToggleWorkspace={() => setDockVisible(pane.sessionId, !dockVisible)}
         onConfigureComposer={configureComposer}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
         onMoveLeft={() => movePane(pane.paneId, index - 1)}
@@ -266,8 +219,15 @@ function SessionPane({
           )}
         </div>
       )}
-      <div ref={bodyRef} className="session-pane-body">
-        <FileWorkspaceProvider sessionId={pane.sessionId} onOpen={revealFile}>
+      <div className="session-pane-body">
+        <SessionWorkspace
+          sessionId={pane.sessionId}
+          record={session.record}
+          density="pane"
+          focused={focused}
+          sharedRoot={sharedRoot}
+          browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+        >
           <ReadTrackingContext.Provider value={readTracking}>
           <div className="session-pane-chat">
             <ChatView
@@ -313,25 +273,7 @@ function SessionPane({
             <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} />
           </div>
           </ReadTrackingContext.Provider>
-          {pane.workspaceVisible && (
-            <>
-              {dockLayout === 'docked' && (
-                <ResizeHandle {...handleProps} label={t('board.resize.workspace')} />
-              )}
-              <PaneDock
-                session={session.record}
-                tab={pane.dockTab}
-                onTabChange={(tab) => setDockTab(pane.paneId, tab)}
-                workspaceTab={pane.workspaceTab}
-                onWorkspaceTabChange={(tab) => setWorkspaceTab(pane.paneId, tab)}
-                sharedRoot={sharedRoot}
-                layout={dockLayout}
-                width={liveWorkspaceWidth}
-                onClose={() => setWorkspaceVisible(pane.paneId, false)}
-              />
-            </>
-          )}
-        </FileWorkspaceProvider>
+        </SessionWorkspace>
       </div>
     </section>
   )

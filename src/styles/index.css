@@ -830,6 +830,21 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .pane-dock-count { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--bg-hover); font-size: 10px; }
 .pane-dock-body { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; flex-direction: column; overflow: hidden; }
 .pane-dock-body > * { flex: 1 1 auto; min-height: 0; }
+/* Workspace de sesión (Normal y panel): conversación + dock con ancho real.
+ * min-width/min-height 0 evitan que el dock empuje el chat fuera de su celda. */
+.session-workspace { position: relative; display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; height: 100%; }
+.session-workspace-chat { display: flex; flex: 1 1 0; min-width: 0; min-height: 0; flex-direction: column; }
+.session-workspace-chat > * { flex: 1 1 auto; min-height: 0; }
+.session-workspace[data-density="normal"] .pane-dock-drawer { width: min(92%, 520px); }
+.pane-dock-dot { display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: var(--success, #3fbf7f); }
+.browser-toolbar { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); font-size: 12px; color: var(--text-muted); }
+.browser-toolbar-state { font-weight: 600; }
+.browser-toolbar-state[data-connected] { color: var(--success, #3fbf7f); }
+.browser-toolbar-select { max-width: 40%; padding: 2px 6px; border-radius: var(--radius-control); background: var(--bg-elevated); color: var(--text); font-size: 12px; }
+.browser-toolbar-url { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; }
+.browser-toolbar-action { flex: 0 0 auto; text-decoration: underline; }
+.browser-view-slot { flex: 1 1 auto; min-height: 0; overflow: auto; background: #0a0a0a; }
+.browser-footer { padding: 6px 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-subtle); }
 .workspace-tabs-compact::-webkit-scrollbar { height: 4px; }
 .add-pane-heading { padding: 8px 12px 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle); }
 .add-pane-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: var(--radius-control); text-align: left; transition: background-color 120ms; }

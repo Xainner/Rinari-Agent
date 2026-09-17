@@ -28,7 +28,8 @@ import {
 } from './features/board/boardCommands'
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
-import BrowserPanel from './features/browser/BrowserPanel'
+import { requestDockToggle } from './features/session/SessionWorkspace'
+import { useSessionDockStore } from './stores/sessionDock'
 import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
@@ -234,8 +235,12 @@ function App() {
     return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
   }
   const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
-  // Overlays (navegador, procesos): solo la sesión de trabajo enfocada y expandida.
-  const overlaySessionId = view === 'chat' ? session.activeSession : view === 'board' && focusedBoardPane && !focusedBoardPane.collapsed ? focusedBoardPane.sessionId : ''
+  // El layout del dock se guarda por Engine home + sesión: la identidad estable
+  // viene del hello (`home_id`), nunca del instance id que cambia al arrancar.
+  const homeId = session.status?.home_id ?? null
+  useEffect(() => {
+    useSessionDockStore.getState().setHomeId(homeId)
+  }, [homeId])
   /** Elegir una sesión desde sidebar/paleta: en Boards enfoca o añade su panel; en Normal la selecciona. */
   const chooseSession = (id: string) => {
     if (view === 'board') {
@@ -289,7 +294,13 @@ function App() {
         case 'about': goSettings('about'); break
         case 'engine': goEngine(); break
         case 'sidebar': toggleSidebarCollapsed(); break
-        case 'files': window.dispatchEvent(new Event('rinari-files-toggle')); break
+        case 'files': {
+          // Destinatario explícito: la sesión del panel enfocado en Boards o la
+          // sesión Normal; nunca todos los providers montados.
+          const target = view === 'board' ? focusedBoardPane?.sessionId : session.activeSession
+          if (target) requestDockToggle({ sessionId: target, surface: 'files' })
+          break
+        }
         case 'commands': setPaletteOpen(true); break
         case 'processes':
           if (session.activeSession) {
@@ -532,8 +543,6 @@ function App() {
           />
         )}
       </AppShell>
-
-      {overlaySessionId && <BrowserPanel key={overlaySessionId} sessionId={overlaySessionId} />}
 
       <ProviderWizard
         open={wizardOpen}

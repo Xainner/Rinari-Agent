@@ -2,12 +2,15 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
-import FileWorkspace, {
+import {
   FileLink,
   FileTurnContext,
+  FileViewer,
+  FileWorkspaceProvider,
   fileUrlTransform,
   localFileTarget,
 } from './FileWorkspace'
+import type { ReactNode } from 'react'
 import { desktopApi } from '../../services/desktop'
 
 vi.mock('../../services/desktop', () => ({
@@ -38,14 +41,24 @@ it('handles Windows paths, spaces, line suffixes and file URIs', () => {
   expect(fileUrlTransform('data:text/html,test')).toBe('')
 })
 
+/** Controlador + visor, como los monta la superficie Archivos del dock. */
+function Files({ children }: { children: ReactNode }) {
+  return (
+    <FileWorkspaceProvider sessionId="session">
+      {children}
+      <FileViewer />
+    </FileWorkspaceProvider>
+  )
+}
+
 it('opens the engine preview with turn provenance and deduplicates tabs', async () => {
   const user = userEvent.setup()
   render(
-    <FileWorkspace sessionId="session">
+    <Files>
       <FileTurnContext.Provider value="old-turn">
         <FileLink href="plan.md">Open plan</FileLink>
       </FileTurnContext.Provider>
-    </FileWorkspace>,
+    </Files>,
   )
   await user.click(screen.getByText('Open plan'))
   expect(await screen.findByRole('heading', { name: 'Planning document' })).toBeTruthy()
@@ -62,9 +75,9 @@ it('shows missing file errors without replacing the conversation', async () => {
   vi.mocked(desktopApi.readFile).mockRejectedValueOnce(new Error('File no longer exists'))
   const user = userEvent.setup()
   render(
-    <FileWorkspace sessionId="session">
+    <Files>
       <FileLink href="missing.md">Original conversation</FileLink>
-    </FileWorkspace>,
+    </Files>,
   )
   await user.click(screen.getByText('Original conversation'))
   expect((await screen.findByRole('alert')).textContent).toContain('File no longer exists')

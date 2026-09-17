@@ -1,43 +1,39 @@
 import { create } from 'zustand'
+import {
+  DOCK_MAX_WIDTH,
+  DOCK_MIN_WIDTH,
+  WORKSPACE_TABS,
+  useSessionDockStore,
+  type WorkspaceTab,
+} from './sessionDock'
 
 /**
  * Composición visual de Boards.
  *
  * El panel (`paneId`) es presentación; la sesión (`sessionId`) es la identidad
- * de ejecución y pertenece al Engine. Aquí solo viven orden, anchos, dock,
- * foco, límite suave y preferencias deseadas. Nunca busy, grants,
- * capabilities, mensajes ni resultados de tools.
+ * de ejecución y pertenece al Engine. Aquí solo viven orden, anchos, foco,
+ * límite suave y preferencias deseadas. Nunca busy, grants, capabilities,
+ * mensajes ni resultados de tools. El dock (visible, superficie, ancho,
+ * pestaña de workspace) es un layout **por sesión** compartido con Normal y
+ * vive en `sessionDock`; el schema 2 lo guardaba por panel y se migra.
  *
- * Clave de almacenamiento `rinari.board.v1` con `version` interno 2 (la clave
+ * Clave de almacenamiento `rinari.board.v1` con `version` interno 3 (la clave
  * no es la versión del schema). La lectura de resultados vive aparte
  * (`boardAttention`).
  */
 export const BOARD_STORAGE_KEY = 'rinari.board.v1'
-export const BOARD_SCHEMA_VERSION = 2
+export const BOARD_SCHEMA_VERSION = 3
 
 export const PANE_MIN_WIDTH = 480
 export const PANE_DEFAULT_WIDTH = 760
 export const PANE_MAX_WIDTH = 1600
-export const WORKSPACE_MIN_WIDTH = 280
-export const WORKSPACE_DEFAULT_WIDTH = 360
-export const WORKSPACE_MAX_WIDTH = 800
-/** Ancho mínimo del chat para acoplar el dock al lado; si no cabe, el dock es un drawer. */
-export const CHAT_MIN_DOCKED_WIDTH = 480
 export const SOFT_LIMIT_DEFAULT = 6
-
-export type DockTab = 'workspace' | 'file'
-export type WorkspaceTab = 'changes' | 'tasks' | 'verification' | 'checkpoints' | 'artifacts' | 'insight'
-const WORKSPACE_TABS: readonly WorkspaceTab[] = ['changes', 'tasks', 'verification', 'checkpoints', 'artifacts', 'insight']
 
 export interface BoardPane {
   paneId: string
   sessionId: string
   width: number
-  workspaceVisible: boolean
-  workspaceWidth: number
   collapsed: boolean
-  dockTab: DockTab
-  workspaceTab: WorkspaceTab
   peerReceive: boolean
   peerSend: boolean
 }
@@ -86,10 +82,6 @@ interface BoardState extends PersistedBoard {
   movePane: (paneId: string, toIndex: number) => void
   focusPane: (paneId: string | null) => void
   setPaneWidth: (paneId: string, width: number) => void
-  setWorkspaceWidth: (paneId: string, width: number) => void
-  setWorkspaceVisible: (paneId: string, visible: boolean) => void
-  setDockTab: (paneId: string, tab: DockTab) => void
-  setWorkspaceTab: (paneId: string, tab: WorkspaceTab) => void
   setSoftLimit: (limit: number) => void
   setPeerFlags: (paneId: string, flags: Partial<Pick<BoardPane, 'peerReceive' | 'peerSend'>>) => void
   setMessagingEnabled: (enabled: boolean) => void
@@ -140,6 +132,14 @@ function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
+/** Campos de dock que el schema 2 guardaba en cada panel. */
+interface LegacyPaneDock {
+  workspaceVisible?: unknown
+  workspaceWidth?: unknown
+  dockTab?: unknown
+  workspaceTab?: unknown
+}
+
 function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
   if (!raw || typeof raw !== 'object') return null
   const item = raw as Partial<BoardPane>
@@ -151,14 +151,26 @@ function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
     paneId,
     sessionId: item.sessionId,
     width: clamp(item.width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, PANE_DEFAULT_WIDTH),
-    workspaceVisible: bool(item.workspaceVisible, true),
-    workspaceWidth: clamp(item.workspaceWidth, WORKSPACE_MIN_WIDTH, WORKSPACE_MAX_WIDTH, WORKSPACE_DEFAULT_WIDTH),
     collapsed: bool(item.collapsed, false),
-    dockTab: item.dockTab === 'file' ? 'file' : 'workspace',
-    workspaceTab: WORKSPACE_TABS.includes(item.workspaceTab as WorkspaceTab) ? (item.workspaceTab as WorkspaceTab) : 'changes',
     peerReceive: bool(item.peerReceive, true),
     peerSend: bool(item.peerSend, true),
   }
+}
+
+/**
+ * Schema ≤ 2 → 3: el dock por panel pasa a ser el layout por sesión. Solo se
+ * adopta cuando la sesión aún no tiene layout propio; nada se borra.
+ */
+function migrateLegacyPaneDock(raw: unknown, sessionId: string): void {
+  if (!raw || typeof raw !== 'object') return
+  const legacy = raw as LegacyPaneDock
+  if (legacy.workspaceVisible === undefined && legacy.workspaceWidth === undefined && legacy.dockTab === undefined && legacy.workspaceTab === undefined) return
+  useSessionDockStore.getState().adoptIfAbsent(sessionId, {
+    visible: typeof legacy.workspaceVisible === 'boolean' ? legacy.workspaceVisible : undefined,
+    widthPx: typeof legacy.workspaceWidth === 'number' ? clamp(legacy.workspaceWidth, DOCK_MIN_WIDTH, DOCK_MAX_WIDTH, DOCK_MIN_WIDTH) : undefined,
+    surface: legacy.dockTab === 'file' ? 'files' : legacy.dockTab === 'workspace' ? 'workspace' : undefined,
+    workspaceTab: WORKSPACE_TABS.includes(legacy.workspaceTab as WorkspaceTab) ? (legacy.workspaceTab as WorkspaceTab) : undefined,
+  })
 }
 
 export function defaultBoard(): PersistedBoard {
@@ -177,9 +189,10 @@ export function defaultBoard(): PersistedBoard {
 }
 
 /**
- * Valida un layout persistido (v1 del plan original o v2) y devuelve uno
+ * Valida un layout persistido (v1 del plan original, v2 o v3) y devuelve uno
  * completo. Datos ausentes → defaults; entradas inválidas se descartan;
- * ids de pane duplicados y sesiones repetidas se deduplican. Nunca lanza.
+ * ids de pane duplicados y sesiones repetidas se deduplican; el dock por
+ * panel de v≤2 migra al layout por sesión. Nunca lanza.
  */
 export function normalizeBoard(raw: unknown): PersistedBoard {
   const base = defaultBoard()
@@ -199,6 +212,7 @@ export function normalizeBoard(raw: unknown): PersistedBoard {
     if (!pane) continue
     if (seenPaneIds.has(pane.paneId)) pane.paneId = newId('pane')
     seenPaneIds.add(pane.paneId)
+    if (version < BOARD_SCHEMA_VERSION) migrateLegacyPaneDock(item, pane.sessionId)
     panes.push(pane)
   }
   const focusedPaneId =
@@ -331,14 +345,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       paneId: newId('pane'),
       sessionId,
       width: PANE_DEFAULT_WIDTH,
-      workspaceVisible: true,
-      workspaceWidth: WORKSPACE_DEFAULT_WIDTH,
       collapsed: false,
-      dockTab: 'workspace',
-      workspaceTab: 'changes',
       peerReceive: true,
       peerSend: true,
     }
+    // Un panel nuevo abre su dock en Workspace, como siempre en Boards; una
+    // sesión con layout propio (Normal o un panel anterior) lo conserva.
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: true, surface: 'workspace' })
     set((state) => {
       const panes = [...state.panes]
       const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1
@@ -422,20 +435,6 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     panes: state.panes.map((pane) => pane.paneId === paneId
       ? { ...pane, width: clamp(width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, pane.width) }
       : pane),
-  })),
-  setWorkspaceWidth: (paneId, width) => set((state) => ({
-    panes: state.panes.map((pane) => pane.paneId === paneId
-      ? { ...pane, workspaceWidth: clamp(width, WORKSPACE_MIN_WIDTH, WORKSPACE_MAX_WIDTH, pane.workspaceWidth) }
-      : pane),
-  })),
-  setWorkspaceVisible: (paneId, visible) => set((state) => ({
-    panes: state.panes.map((pane) => pane.paneId === paneId && pane.workspaceVisible !== visible ? { ...pane, workspaceVisible: visible } : pane),
-  })),
-  setDockTab: (paneId, tab) => set((state) => ({
-    panes: state.panes.map((pane) => pane.paneId === paneId && pane.dockTab !== tab ? { ...pane, dockTab: tab } : pane),
-  })),
-  setWorkspaceTab: (paneId, tab) => set((state) => ({
-    panes: state.panes.map((pane) => pane.paneId === paneId && pane.workspaceTab !== tab ? { ...pane, workspaceTab: tab } : pane),
   })),
   setSoftLimit: (limit) => set({ softLimit: clamp(limit, 0, 100, SOFT_LIMIT_DEFAULT) }),
   setPeerFlags: (paneId, flags) => set((state) => ({

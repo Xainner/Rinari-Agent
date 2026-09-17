@@ -59,13 +59,15 @@ Project headers collapse their sessions. Composer selectors close upon selection
 
 # Boards: paneles, restauración y dock
 
-- Un board persistido (`rinari.board.v1`, schema interno 2) con N paneles en
+- Un board persistido (`rinari.board.v1`, schema interno 3) con N paneles en
   columnas con scroll horizontal. Cada panel referencia exactamente una sesión;
   una misma sesión no se añade dos veces (un segundo intento la enfoca). Se
-  persisten orden, anchos, dock, foco, límite suave y preferencias deseadas;
-  nunca busy, grants, mensajes ni resultados. Un layout de una versión futura no
-  se reescribe. Las escrituras se agrupan (250 ms) y se vuelcan al ocultar la
-  ventana.
+  persisten orden, anchos de panel, foco, límite suave y preferencias deseadas;
+  nunca busy, grants, mensajes ni resultados. El dock ya no es un campo del
+  panel: es el layout **por sesión** de `sessionDock` (abajo); el schema 2 lo
+  guardaba por panel y se migra al cargar sin reescribir layouts existentes.
+  Un layout de una versión futura no se reescribe. Las escrituras se agrupan
+  (250 ms) y se vuelcan al ocultar la ventana.
 - «Añadir panel» ofrece chat general, proyecto registrado, carpeta nueva y
   sesiones existentes. Siempre crea con `session.create {project_id}` sin
   activar la sesión Normal; una carpeta nueva se registra con `project.add`.
@@ -88,13 +90,50 @@ Project headers collapse their sessions. Composer selectors close upon selection
   ocupada aplica igual en ambas vistas y un cambio nunca reescribe la
   atribución de un turno ya iniciado.
 - Cada panel monta su propio `Composer` (clave de borrador = sesión, sin tocar
-  el espejo de Normal), `FileWorkspaceProvider` y dock derecho compartido con
-  superficies **Workspace** (tabs desplazables con etiqueta de alcance Proyecto /
-  Sesión) y **Archivo**; los enlaces de archivo activan Archivo en ese dock. Si
-  el chat no conserva 480 px, el dock pasa a drawer dentro del panel.
-- Quitar un panel conserva sesión, turno y borrador; «Quitar y cerrar sesión»
-  espera la confirmación del motor y no retira el panel ante un error. Los
-  overlays de navegador y procesos se montan solo para el panel enfocado.
+  el espejo de Normal) y el mismo `SessionWorkspace` que la vista Normal.
+- Quitar un panel conserva sesión, turno, borrador y layout del dock; «Quitar y
+  cerrar sesión» espera la confirmación del motor y no retira el panel ante un
+  error. No hay overlays globales: navegador y archivos viven en el dock de su
+  sesión; los procesos, en su conversación.
+
+# Workspace único por sesión: `SessionWorkspace` y el dock
+
+- `features/session/SessionWorkspace` compone conversación + dock y lo
+  consumen `SingleSessionView` (Normal) y `SessionPane` (Boards) con distinta
+  densidad: una sola implementación del visor de archivos, del navegador y del
+  workspace. El dock (`SessionDock`) tiene tres superficies con una sola
+  activa: **Archivos** (tablist y renderizadores actuales), **Navegador**
+  (toolbar + slot de vista) y **Workspace** (cambios, tareas, verificaciones,
+  checkpoints, artefactos, insight). Ocupa ancho real dentro de la sesión
+  (`min-width: 0`, flex); si chat y dock no caben (480 px de chat), pasa a un
+  drawer **dentro del mismo contenedor**, con foco en su pestaña activa, cierre
+  visible y Escape. Cerrar el dock no cierra archivos, browser ni procesos.
+- Layout persistido (`stores/sessionDock`, clave `rinari.sessionDock.v1`):
+  `{ schemaVersion: 1, visible, activeSurface, widthPx, workspaceTab }` por
+  `home_id::sessionId`, donde `home_id` es la identidad estable del Engine
+  home que publica el hello (`EngineStatus.home_id`; nunca
+  `engine_instance_id`). Nunca se persisten `webContentsId`, grants, `busy`,
+  handles CDP ni generaciones. Las entradas de un schema futuro se conservan
+  intactas. Un panel nuevo abre Workspace por defecto; una sesión con layout
+  propio lo conserva al pasar de Normal a Boards y viceversa.
+- Acciones con destinatario: el atajo/paleta «archivos» emite
+  `rinari:dock-toggle` con `sessionId` (panel enfocado en Boards, sesión
+  Normal en Normal) y opcionalmente `surface`; ningún atajo abre el dock de
+  todos los providers montados. Los enlaces de archivo revelan Archivos en el
+  dock de **su** sesión; «Revisar cambios» revela Workspace › Cambios.
+- Navegador: `useBrowserFrame` consulta `browser.view.get` por sesión a 1,5 s
+  solo con la superficie a la vista y a 5 s en segundo plano para el indicador
+  de la pestaña; sin `browser_view_v1` no consulta. Un browser nuevo del
+  Engine se revela en el dock solo si está cerrado y la sesión es la enfocada;
+  nunca roba foco a otro panel, cambia Normal/Boards ni reemplaza un archivo
+  que el usuario lee (queda el indicador). El slot muestra hoy el fallback de
+  capturas JPEG rotulado como vista previa; no es un browser controlado
+  (documento 03). El inspector de procesos ya no esconde el navegador ni el
+  navegador contrae los logs: no compiten por una zona flotante.
+
+Validación: `stores/sessionDock.test.ts`, `features/session/SessionWorkspace.test.tsx`
+(UX-07/08/09, mismo layout Normal↔Boards), `features/processes/SurfaceCoordination.test.tsx`
+(revelado del browser, sin overlay), `stores/board.test.ts` (migración schema 2→3).
 - Las preguntas pendientes tienen un controlador compartido por sesión
   (`usePendingQuestions`): una carga y una suscripción también cuando el header
   del panel muestra el badge.

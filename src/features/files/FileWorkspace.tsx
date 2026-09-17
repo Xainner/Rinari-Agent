@@ -15,8 +15,6 @@ import { desktopApi, type FilePreview } from '../../services/desktop'
 import { commandMessage, engineApi } from '../../services/engine'
 import { copyText } from '../../lib/clipboard'
 import Markdown, { CodeBlock } from '../../components/Markdown'
-import { ResizeHandle } from '../../components/ui/resize-handle'
-import { useDragResize } from '../../hooks/useDragResize'
 import HtmlPreview from './HtmlPreview'
 
 type OpenFile = (path: string, turnId?: string) => void
@@ -111,9 +109,9 @@ export function useFileWorkspace(): FileWorkspaceController | null {
  *
  * Mantiene las pestañas (indexadas por sesión, turno y destino) y el contexto
  * `openFile` que consumen los enlaces del transcript. La presentación es
- * `FileViewer`; el layout inline de Normal es `FileWorkspace` y el dock de un
- * panel del board monta el mismo controlador con `onOpen` para revelar su
- * superficie de archivo. Las lecturas siguen pasando por el Engine.
+ * `FileViewer`, montada en la superficie **Archivos** del dock de la sesión
+ * (`SessionWorkspace`, compartido por Normal y Boards); `onOpen` revela esa
+ * superficie. Las lecturas siguen pasando por el Engine.
  */
 export function FileWorkspaceProvider({
   sessionId,
@@ -317,75 +315,5 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
         </p>
       )}
     </div>
-  )
-}
-
-const FILES_WIDTH_KEY = 'rinari.files.width'
-const FILES_MIN = 280
-const FILES_MAX = 800
-
-function readFilesWidth(): number {
-  try {
-    return Math.max(FILES_MIN, Math.min(FILES_MAX, Number(localStorage.getItem(FILES_WIDTH_KEY)) || 440))
-  } catch {
-    return 440
-  }
-}
-
-/**
- * Layout inline de la vista Normal: conversación + visor lateral con
- * separador. `listenToggle` decide si esta instancia responde al evento
- * global `rinari-files-toggle` (un board solo lo enruta al panel enfocado).
- */
-export default function FileWorkspace({
-  sessionId,
-  children,
-  listenToggle = true,
-}: {
-  sessionId: string
-  children: ReactNode
-  listenToggle?: boolean
-}) {
-  const [visible, setVisible] = useState(false)
-  const [width, setWidth] = useState(readFilesWidth)
-  const container = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!listenToggle) return
-    const toggle = () => setVisible((v) => !v)
-    window.addEventListener('rinari-files-toggle', toggle)
-    return () => window.removeEventListener('rinari-files-toggle', toggle)
-  }, [listenToggle])
-  const { handleProps } = useDragResize({
-    value: width,
-    min: FILES_MIN,
-    max: () => Math.min(FILES_MAX, (container.current?.clientWidth ?? FILES_MAX) * 0.7),
-    direction: 'left',
-    onChange: setWidth,
-    onCommit: (final) => {
-      try {
-        localStorage.setItem(FILES_WIDTH_KEY, String(final))
-      } catch {
-        /* optional preference */
-      }
-    },
-  })
-  return (
-    <FileWorkspaceProvider sessionId={sessionId} onOpen={() => setVisible(true)}>
-      <div ref={container} className="flex h-full min-w-0">
-        <div className="min-w-0 flex-1">{children}</div>
-        {visible && (
-          <>
-            <ResizeHandle {...handleProps} label="Ancho del visor" />
-            <aside
-              aria-label="Visor de archivos"
-              style={{ width, maxWidth: '70%' }}
-              className="flex min-w-0 shrink-0 flex-col"
-            >
-              <FileViewer onClose={() => setVisible(false)} />
-            </aside>
-          </>
-        )}
-      </div>
-    </FileWorkspaceProvider>
   )
 }

@@ -1,17 +1,19 @@
 import { useCallback } from 'react'
 import ChatView from '../../components/ChatView'
 import { ReadTrackingContext } from '../board/useResultVisibility'
-import FileWorkspace from '../files/FileWorkspace'
+import SessionWorkspace from '../session/SessionWorkspace'
 import { useEngineCommands, useEngineData, useRuntimeStore } from './EngineContext'
 import { useSessionBusy, useSessionThread, useSessionTimelines } from './sessionSelectors'
 import { selectReasoning, useSessionUiStore } from '../../stores/sessionUi'
+import { useSessionDockStore } from '../../stores/sessionDock'
 import type { ReasoningEffort } from '../../lib/reasoning'
 import type { ModelSummary } from '../../services/engine'
 
 /**
- * Vista Normal: la sesión activa con las mismas primitivas que usará cada
- * panel del board. Se suscribe únicamente a su sesión, de modo que `App` deja
- * de repintarse por cada token.
+ * Vista Normal: la sesión activa con las mismas primitivas y el mismo
+ * `SessionWorkspace` (conversación + dock) que cada panel del board. Se
+ * suscribe únicamente a su sesión, de modo que `App` deja de repintarse por
+ * cada token.
  */
 export default function SingleSessionView({
   onOpenProviders,
@@ -35,6 +37,8 @@ export default function SingleSessionView({
     (effort: ReasoningEffort) => setReasoningFor(sessionId, effort),
     [sessionId, setReasoningFor],
   )
+  const revealDock = useSessionDockStore((state) => state.reveal)
+  const reviewChanges = useCallback(() => revealDock(sessionId, 'workspace', { workspaceTab: 'changes' }), [revealDock, sessionId])
   const projectRoot = record?.kind === 'PROJECT' ? (record.project_root ?? null) : null
   const project = record?.project_id
     ? data.projects.find((item) => item.id === record.project_id) ?? null
@@ -43,7 +47,13 @@ export default function SingleSessionView({
 
   return (
     <ReadTrackingContext.Provider value={sessionId ? { sessionId, visible: true } : null}>
-    <FileWorkspace sessionId={sessionId}>
+    <SessionWorkspace
+      sessionId={sessionId}
+      record={record}
+      density="normal"
+      focused
+      browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+    >
       <ChatView
         homeContext={{
           projectName: project?.name ?? projectRoot,
@@ -79,8 +89,9 @@ export default function SingleSessionView({
         onSearchFiles={commands.searchFiles}
         processesOpenSignal={processesOpenSignal}
         historyNote={sessionId !== '' ? (data.historyInfo[sessionId] ?? null) : null}
+        onReviewChanges={sessionId ? reviewChanges : undefined}
       />
-    </FileWorkspace>
+    </SessionWorkspace>
     </ReadTrackingContext.Provider>
   )
 }

@@ -20,6 +20,9 @@ jobs:
       # o cambia de firma sin regenerarlo, el host Electron se construiría
       # contra una lista incompleta.
       - run: npm run parity:check
+      # main y preload se comprueban aparte del renderer: su entorno es Node y
+      # Electron, no el DOM (documento 02 §8).
+      - run: npm run typecheck:electron
       - run: npm test
       - run: npm run build
 

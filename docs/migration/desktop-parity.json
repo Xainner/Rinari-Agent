@@ -21,6 +21,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionMove",
+      "engine_method_name": "session.move",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -61,9 +63,9 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspacePreviewStart",
-      "host_effects": [
-        "abre ruta/URL con el opener del sistema"
-      ],
+      "engine_method_name": "workspace.preview.start",
+      "engine_params": [],
+      "host_effects": [],
       "registered": true,
       "callers": [
         "src/services/desktop.ts"
@@ -88,6 +90,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "BrowserViewGet",
+      "engine_method_name": "browser.view.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -123,6 +127,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceProcessList",
+      "engine_method_name": "workspace.process.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -148,6 +154,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceProcessRead",
+      "engine_method_name": "workspace.process.read",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -183,6 +191,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceProcessStop",
+      "engine_method_name": "workspace.process.stop",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -208,9 +218,9 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspacePreviewStatus",
-      "host_effects": [
-        "abre ruta/URL con el opener del sistema"
-      ],
+      "engine_method_name": "workspace.preview.status",
+      "engine_params": [],
+      "host_effects": [],
       "registered": true,
       "callers": [
         "src/services/desktop.ts"
@@ -235,9 +245,9 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspacePreviewStop",
-      "host_effects": [
-        "abre ruta/URL con el opener del sistema"
-      ],
+      "engine_method_name": "workspace.preview.stop",
+      "engine_params": [],
+      "host_effects": [],
       "registered": true,
       "callers": [
         "src/services/desktop.ts"
@@ -267,6 +277,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "WorkspaceFileRead",
+      "engine_method_name": "workspace.file.read",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -296,7 +308,9 @@
         }
       ],
       "returns": "Result<(), CommandError>",
-      "engine_method": "SessionMove",
+      "engine_method": null,
+      "engine_method_name": null,
+      "engine_params": null,
       "host_effects": [
         "abre ruta/URL con el opener del sistema"
       ],
@@ -319,6 +333,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "QuestionList",
+      "engine_method_name": "question.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -354,6 +370,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "QuestionResolve",
+      "engine_method_name": "question.resolve",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -368,9 +386,9 @@
       "args": [],
       "returns": "EngineStatus",
       "engine_method": null,
-      "host_effects": [
-        "emite evento al frontend"
-      ],
+      "engine_method_name": null,
+      "engine_params": null,
+      "host_effects": [],
       "registered": true,
       "callers": [
         "src/services/engine.ts"
@@ -384,6 +402,8 @@
       "args": [],
       "returns": "Result<EngineStatus, CommandError>",
       "engine_method": null,
+      "engine_method_name": null,
+      "engine_params": null,
       "host_effects": [
         "emite evento al frontend"
       ],
@@ -400,9 +420,9 @@
       "args": [],
       "returns": "Result<EngineStatus, CommandError>",
       "engine_method": null,
-      "host_effects": [
-        "emite evento al frontend"
-      ],
+      "engine_method_name": null,
+      "engine_params": null,
+      "host_effects": [],
       "registered": true,
       "callers": [
         "src/services/engine.ts"
@@ -416,6 +436,8 @@
       "args": [],
       "returns": "Result<EngineStatus, CommandError>",
       "engine_method": null,
+      "engine_method_name": null,
+      "engine_params": null,
       "host_effects": [
         "emite evento al frontend"
       ],
@@ -431,7 +453,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "RuntimeSnapshotGet",
+      "engine_method_name": "runtime.snapshot.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -446,6 +470,8 @@
       "args": [],
       "returns": "OpenRequest",
       "engine_method": null,
+      "engine_method_name": null,
+      "engine_params": null,
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -480,7 +506,14 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionFork",
+      "engine_method": "SessionList",
+      "engine_method_name": "session.list",
+      "engine_params": [
+        "kind",
+        "include_closed",
+        "project_id",
+        "state"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -500,7 +533,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionOpen",
+      "engine_method_name": "session.open",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -520,7 +557,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionGet",
+      "engine_method_name": "session.get",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -545,7 +586,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionFork",
+      "engine_method": "SessionRename",
+      "engine_method_name": "session.rename",
+      "engine_params": [
+        "ref",
+        "title"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -565,7 +611,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionFork",
+      "engine_method": "SessionArchive",
+      "engine_method_name": "session.archive",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -585,7 +635,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionFork",
+      "engine_method": "SessionRestore",
+      "engine_method_name": "session.restore",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -611,6 +665,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionFork",
+      "engine_method_name": "session.fork",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -635,7 +691,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionCreate",
+      "engine_method": "SessionHistory",
+      "engine_method_name": "session.history",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -665,7 +723,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionCreate",
+      "engine_method": "SessionTimeline",
+      "engine_method_name": "session.timeline",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -690,7 +750,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionCreate",
+      "engine_method": "SessionModeSet",
+      "engine_method_name": "session.mode.set",
+      "engine_params": [
+        "ref",
+        "mode"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -736,6 +801,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionCreate",
+      "engine_method_name": "session.create",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -765,7 +832,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionModelSet",
+      "engine_method_name": "session.model.set",
+      "engine_params": [
+        "ref",
+        "model",
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -785,7 +858,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPermissionGet",
+      "engine_method_name": "session.permission.get",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -810,7 +887,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPermissionSet",
+      "engine_method_name": "session.permission.set",
+      "engine_params": [
+        "ref",
+        "permission_profile"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -830,7 +912,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "TurnChangesGet",
+      "engine_method_name": "turn.changes.get",
+      "engine_params": [
+        "turn_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -855,7 +941,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "TurnChangesReview",
+      "engine_method_name": "turn.changes.review",
+      "engine_params": [
+        "turn_id",
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -880,7 +971,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "TurnChangesUndoPreview",
+      "engine_method_name": "turn.changes.undo.preview",
+      "engine_params": [
+        "turn_id",
+        "paths"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -910,7 +1006,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "TurnChangesUndo",
+      "engine_method_name": "turn.changes.undo",
+      "engine_params": [
+        "turn_id",
+        "paths",
+        "apply_safe_only"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -940,7 +1042,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionEvents",
+      "engine_method_name": "session.events",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -960,7 +1064,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionClose",
+      "engine_method_name": "session.close",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -985,7 +1093,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "SessionCreate",
+      "engine_method": "SessionDelete",
+      "engine_method_name": "session.delete",
+      "engine_params": [
+        "ref",
+        "cascade"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1025,7 +1138,15 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionTurnStart",
+      "engine_method_name": "session.turn.start",
+      "engine_params": [
+        "session_id",
+        "message",
+        "reasoning_effort",
+        "attachments",
+        "allow_unconfirmed_vision"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1046,7 +1167,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionTurnCancel",
+      "engine_method_name": "session.turn.cancel",
+      "engine_params": [
+        "session_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1071,7 +1196,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ApprovalResolve",
+      "engine_method_name": "approval.resolve",
+      "engine_params": [
+        "approval_id",
+        "decision"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1096,7 +1226,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionQueueAdd",
+      "engine_method_name": "session.queue.add",
+      "engine_params": [
+        "session_id",
+        "message"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1116,7 +1251,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionQueueList",
+      "engine_method_name": "session.queue.list",
+      "engine_params": [
+        "session_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1136,7 +1275,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionQueueClear",
+      "engine_method_name": "session.queue.clear",
+      "engine_params": [
+        "session_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1156,7 +1299,11 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionQueueResume",
+      "engine_method_name": "session.queue.resume",
+      "engine_params": [
+        "session_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1196,7 +1343,14 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPeerGroupSet",
+      "engine_method_name": "session.peer_group.set",
+      "engine_params": [
+        "board_id",
+        "expected_revision",
+        "enabled",
+        "members"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1226,7 +1380,9 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPeerGroupGet",
+      "engine_method_name": "session.peer_group.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1246,7 +1402,11 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPeerGroupRevoke",
+      "engine_method_name": "session.peer_group.revoke",
+      "engine_params": [
+        "group_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1266,7 +1426,11 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPeerMessageList",
+      "engine_method_name": "session.peer_message.list",
+      "engine_params": [
+        "session_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1286,7 +1450,11 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPeerMessageCancel",
+      "engine_method_name": "session.peer_message.cancel",
+      "engine_params": [
+        "message_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1321,7 +1489,12 @@
         }
       ],
       "returns": "Result<Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SessionPeerMessageForward",
+      "engine_method_name": "session.peer_message.forward",
+      "engine_params": [
+        "target_session_id",
+        "message"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1341,7 +1514,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "TaskTree",
+      "engine_method_name": "task.tree",
+      "engine_params": [
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1366,7 +1543,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "TaskGet",
+      "engine_method_name": "task.get",
+      "engine_params": [
+        "path",
+        "task_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1396,7 +1578,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "VerificationLatest",
+      "engine_method_name": "verification.latest",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1421,7 +1605,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "VerificationPlan",
+      "engine_method_name": "verification.plan",
+      "engine_params": [
+        "path",
+        "changed_files"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1441,7 +1630,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "CheckpointList",
+      "engine_method_name": "checkpoint.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1461,7 +1652,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "CheckpointShow",
+      "engine_method_name": "checkpoint.show",
+      "engine_params": [
+        "checkpoint_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1496,7 +1691,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "CheckpointRestore",
+      "engine_method_name": "checkpoint.restore",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1516,7 +1713,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectChanges",
+      "engine_method_name": "project.changes",
+      "engine_params": [
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1546,7 +1747,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectDiff",
+      "engine_method_name": "project.diff",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1576,7 +1779,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "WorkspaceFileSearch",
+      "engine_method_name": "workspace.file.search",
+      "engine_params": [
+        "session_id",
+        "query",
+        "limit"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1596,7 +1805,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ArtifactList",
+      "engine_method_name": "artifact.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1621,7 +1832,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ArtifactRead",
+      "engine_method_name": "artifact.read",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1646,7 +1859,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "AttachmentPrepare",
+      "engine_method_name": "attachment.prepare",
+      "engine_params": [
+        "session_id",
+        "attachments"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1676,7 +1894,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "VisionSettingsGet",
+      "engine_method": "AttachmentPreview",
+      "engine_method_name": "attachment.preview",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1702,6 +1922,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "SessionImageSupport",
+      "engine_method_name": "session.image_support",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1716,6 +1938,8 @@
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "VisionSettingsGet",
+      "engine_method_name": "vision.settings.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1730,6 +1954,8 @@
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ContextSettingsGet",
+      "engine_method_name": "context.settings.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1750,6 +1976,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ContextCompact",
+      "engine_method_name": "context.compact",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1770,6 +1998,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ContextStatus",
+      "engine_method_name": "context.status",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1790,6 +2020,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "ContextSettingsSet",
+      "engine_method_name": "context.settings.set",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1810,6 +2042,8 @@
       ],
       "returns": "Result<serde_json::Value, CommandError>",
       "engine_method": "VisionSettingsSet",
+      "engine_method_name": "vision.settings.set",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1834,7 +2068,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "VisionSettingsGet",
+      "engine_method": "AttachmentPrepareStart",
+      "engine_method_name": "attachment.prepare.start",
+      "engine_params": [
+        "session_id",
+        "attachments"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1854,7 +2093,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "VisionSettingsGet",
+      "engine_method": "AttachmentPrepareGet",
+      "engine_method_name": "attachment.prepare.get",
+      "engine_params": [
+        "job_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1874,7 +2117,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "VisionSettingsGet",
+      "engine_method": "AttachmentPrepareCancel",
+      "engine_method_name": "attachment.prepare.cancel",
+      "engine_params": [
+        "job_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1894,7 +2141,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "VisionSettingsGet",
+      "engine_method": "ContextGet",
+      "engine_method_name": "context.get",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1914,7 +2165,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": "VisionSettingsGet",
+      "engine_method": "UsageGet",
+      "engine_method_name": "usage.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1928,7 +2181,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "AgentList",
+      "engine_method_name": "agent.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1948,7 +2203,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "AgentConfigGet",
+      "engine_method_name": "agent.config.get",
+      "engine_params": [
+        "agent"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -1988,7 +2247,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "AgentConfigSet",
+      "engine_method_name": "agent.config.set",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2002,7 +2263,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SoulList",
+      "engine_method_name": "soul.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2022,7 +2285,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SoulGet",
+      "engine_method_name": "soul.get",
+      "engine_params": [
+        "id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2062,7 +2329,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SoulCreate",
+      "engine_method_name": "soul.create",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2102,7 +2371,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SoulUpdate",
+      "engine_method_name": "soul.update",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2122,7 +2393,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SoulRemove",
+      "engine_method_name": "soul.remove",
+      "engine_params": [
+        "id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2142,7 +2417,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "SoulActivate",
+      "engine_method_name": "soul.activate",
+      "engine_params": [
+        "id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2156,7 +2435,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "McpList",
+      "engine_method_name": "mcp.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2176,7 +2457,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "McpGet",
+      "engine_method_name": "mcp.get",
+      "engine_params": [
+        "name"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": []
@@ -2199,7 +2484,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "McpCreate",
+      "engine_method_name": "mcp.create",
+      "engine_params": [
+        "name",
+        "command"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2219,7 +2509,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "McpRemove",
+      "engine_method_name": "mcp.remove",
+      "engine_params": [
+        "name"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2244,7 +2538,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "McpEnable",
+      "engine_method_name": "mcp.enable",
+      "engine_params": [
+        "name"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2264,7 +2562,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "McpTest",
+      "engine_method_name": "mcp.test",
+      "engine_params": [
+        "name"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2278,7 +2580,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "PluginList",
+      "engine_method_name": "plugin.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2303,7 +2607,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "PluginEnable",
+      "engine_method_name": "plugin.enable",
+      "engine_params": [
+        "name"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2317,7 +2625,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "PluginDiagnostics",
+      "engine_method_name": "plugin.diagnostics",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2331,7 +2641,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ToolList",
+      "engine_method_name": "tool.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2345,7 +2657,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "PolicyGet",
+      "engine_method_name": "policy.get",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2359,7 +2673,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProfileBundleList",
+      "engine_method_name": "profile_bundle.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2404,7 +2720,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProfileBundleCreate",
+      "engine_method_name": "profile_bundle.create",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2424,7 +2742,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProfileBundleRemove",
+      "engine_method_name": "profile_bundle.remove",
+      "engine_params": [
+        "id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2449,7 +2771,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProfileBundleApply",
+      "engine_method_name": "profile_bundle.apply",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2469,7 +2793,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectListRecent",
+      "engine_method_name": "project.list_recent",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2489,7 +2815,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectList",
+      "engine_method_name": "project.list",
+      "engine_params": [
+        "include_archived"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2509,7 +2839,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectGet",
+      "engine_method_name": "project.get",
+      "engine_params": [
+        "project_id"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2539,7 +2873,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectAdd",
+      "engine_method_name": "project.add",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2579,7 +2915,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectUpdate",
+      "engine_method_name": "project.update",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2604,7 +2942,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectRemove",
+      "engine_method_name": "project.remove",
+      "engine_params": [
+        "project_id",
+        "session_policy"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2624,7 +2967,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectOpen",
+      "engine_method_name": "project.open",
+      "engine_params": [
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2644,7 +2991,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectStatus",
+      "engine_method_name": "project.status",
+      "engine_params": [
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2664,7 +3015,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectIntelligence",
+      "engine_method_name": "project.intelligence",
+      "engine_params": [
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2684,7 +3039,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProjectTrust",
+      "engine_method_name": "project.trust",
+      "engine_params": [
+        "path"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2698,7 +3057,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderList",
+      "engine_method_name": "provider.list",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2753,7 +3114,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderCreate",
+      "engine_method_name": "provider.create",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2773,7 +3136,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderGet",
+      "engine_method_name": "provider.get",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2823,7 +3190,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderUpdate",
+      "engine_method_name": "provider.update",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2853,7 +3222,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderRemove",
+      "engine_method_name": "provider.remove",
+      "engine_params": [
+        "ref",
+        "switch_to",
+        "keep_credentials"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2873,7 +3248,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderTest",
+      "engine_method_name": "provider.test",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2887,7 +3266,9 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderDiscover",
+      "engine_method_name": "provider.discover",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2907,7 +3288,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ProviderUse",
+      "engine_method_name": "provider.use",
+      "engine_params": [
+        "ref"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2927,7 +3312,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelList",
+      "engine_method_name": "model.list",
+      "engine_params": [
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2952,7 +3341,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelGet",
+      "engine_method_name": "model.get",
+      "engine_params": [
+        "ref",
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -2992,7 +3386,9 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelAdd",
+      "engine_method_name": "model.add",
+      "engine_params": [],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3022,7 +3418,13 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelAlias",
+      "engine_method_name": "model.alias",
+      "engine_params": [
+        "ref",
+        "new_alias",
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3047,7 +3449,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelRemove",
+      "engine_method_name": "model.remove",
+      "engine_params": [
+        "ref",
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3072,7 +3479,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelUse",
+      "engine_method_name": "model.use",
+      "engine_params": [
+        "ref",
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3092,7 +3504,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelDiscover",
+      "engine_method_name": "model.discover",
+      "engine_params": [
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3112,7 +3528,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelDiscoveryStart",
+      "engine_method_name": "model.discovery.start",
+      "engine_params": [
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3132,7 +3552,11 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelRefresh",
+      "engine_method_name": "model.refresh",
+      "engine_params": [
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [
@@ -3157,7 +3581,12 @@
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
-      "engine_method": null,
+      "engine_method": "ModelTest",
+      "engine_method_name": "model.test",
+      "engine_params": [
+        "ref",
+        "provider"
+      ],
       "host_effects": [],
       "registered": true,
       "callers": [

@@ -77,19 +77,84 @@ function splitArgs(raw) {
     })
 }
 
+/**
+ * Wrappers tipados de `EngineSupervisor`: `session_get` → `SessionGet` con
+ * `{"ref": …}`.
+ *
+ * La mayoría de los comandos no llevan el `Method::` en su cuerpo: delegan en
+ * uno de estos, que además **renombra** los argumentos (`reference` viaja como
+ * `ref`). Sin resolverlo, el inventario diría «—» en 95 de 130 filas y el host
+ * nuevo se construiría contra una traducción que no existe.
+ */
+function supervisorWrappers() {
+  const text = readFileSync(join(ROOT, 'src-tauri/src/engine/supervisor.rs'), 'utf8')
+  const wrappers = new Map()
+  // Se trocea por función en vez de casar firma y cuerpo con un regex: uno
+  // no anclado puede empezar en una función y terminar en el `->` de otra,
+  // y entonces cada wrapper hereda el método del siguiente.
+  const chunks = text.split(/\n    pub fn /).slice(1)
+  for (const chunk of chunks) {
+    const name = /^(\w+)/.exec(chunk)?.[1]
+    if (!name) continue
+    const open = chunk.indexOf('(')
+    const close = chunk.indexOf(') -> ', open)
+    if (open === -1 || close === -1) continue
+    const rawArgs = chunk.slice(open + 1, close)
+    const body = chunk.slice(close)
+    const method = /Method::(\w+)/.exec(body)?.[1]
+    if (!method) continue
+    // Claves con las que el wrapper arma los parámetros del protocolo.
+    const payload = /json!\(\{([\s\S]*?)\}\)/.exec(body)?.[1] ?? ''
+    const keys = [...payload.matchAll(/"([^"]+)"\s*:/g)].map((entry) => entry[1])
+    wrappers.set(name, {
+      method,
+      params: keys,
+      args: splitArgs(rawArgs.replace(/&self\s*,?/, '')).map((arg) => arg.name),
+    })
+  }
+  return wrappers
+}
+
+/**
+ * `Method::SessionGet` → `"session.get"`.
+ *
+ * El nombre de la variante Rust no es el método del protocolo. El host nuevo
+ * habla con el Engine por la cadena, así que sin este mapa la traducción
+ * estaría a medias.
+ */
+function methodNames() {
+  const text = readFileSync(join(ROOT, 'src-tauri/src/engine/protocol_generated.rs'), 'utf8')
+  const names = new Map()
+  for (const entry of text.matchAll(/^\s*(\w+)\s*=>\s*"([^"]+)",/gm)) {
+    names.set(entry[1], entry[2])
+  }
+  return names
+}
+
 function handlers() {
+  const wrappers = supervisorWrappers()
+  const names = methodNames()
   const found = new Map()
   const dir = join(ROOT, 'src-tauri/src/commands')
   for (const path of readdirSync(dir).filter((name) => name.endsWith('.rs')).sort()) {
     const text = readFileSync(join(dir, path), 'utf8')
-    const attr = /#\[tauri::command(?:\(([^)]*)\))?\]/g
-    let match
-    while ((match = attr.exec(text))) {
+    // Se trocea por atributo: un cuerpo acotado «por caracteres» se mete en la
+    // función siguiente y le roba su `Method::`, que es justo el dato que este
+    // inventario existe para dar bien.
+    const pieces = text.split(/#\[tauri::command/).slice(1)
+    for (const piece of pieces) {
+      const attrEnd = piece.indexOf(']')
+      const match = [null, piece.slice(0, attrEnd)]
       const sig = /pub(?:\(crate\))?\s+(async\s+)?fn\s+(\w+)\s*\(([\s\S]*?)\)\s*(?:->\s*([\s\S]+?))?\s*\{/.exec(
-        text.slice(match.index),
+        piece,
       )
       if (!sig) continue
-      const body = text.slice(match.index + sig.index + sig[0].length, match.index + sig.index + sig[0].length + 2000)
+      const body = piece.slice(sig.index + sig[0].length)
+      // Directo, o resuelto por el wrapper del supervisor al que delega.
+      const direct = /Method::(\w+)/.exec(body)?.[1] ?? null
+      const delegated = [...body.matchAll(/engine\.(\w+)\s*\(/g)]
+        .map((entry) => wrappers.get(entry[1]))
+        .find(Boolean)
       found.set(sig[2], {
         command: sig[2],
         module: path.replace(/\.rs$/, ''),
@@ -97,7 +162,11 @@ function handlers() {
         rename_all: match[1]?.includes('snake_case') ? 'snake_case' : 'camelCase (por defecto)',
         args: splitArgs(sig[3]),
         returns: (sig[4] ?? '()').trim(),
-        engine_method: /Method::(\w+)/.exec(body)?.[1] ?? null,
+        engine_method: direct ?? delegated?.method ?? null,
+        /** El método tal como viaja por el protocolo, no la variante Rust. */
+        engine_method_name: names.get(direct ?? delegated?.method ?? '') ?? null,
+        /** Claves con las que el parámetro llega al Engine; renombra. */
+        engine_params: delegated?.params ?? null,
         host_effects: EFFECTS.filter(([token]) => body.includes(token)).map(([, label]) => label),
       })
     }
@@ -348,6 +417,13 @@ function render(data) {
   add('mayoría usa `snake_case` explícito y el host nuevo debe respetar exactamente el')
   add('mismo contrato, o las llamadas fallan en silencio.')
   add()
+  add('**El nombre del comando no es el método del protocolo.** `session_get` habla')
+  add('con `session.get`, y sus argumentos se renombran por el camino: el renderer')
+  add('envía `reference` y el Engine recibe `ref`. El host anterior hacía esa')
+  add('traducción en 130 handlers Rust; el nuevo la necesita igual, y esta tabla es su')
+  add('especificación. La columna «Método del Engine» es la cadena real, no la')
+  add('variante del enum.')
+  add()
 
   const byModule = new Map()
   for (const row of data.commands) {
@@ -367,7 +443,8 @@ function render(data) {
     add('| Comando | Argumentos | Método del Engine | Plazo | Devuelve | Efectos de host | Llamado desde |')
     add('|---|---|---|---|---|---|---|')
     for (const row of rows) {
-      const method = row.engine_method ? `\`${row.engine_method}\`` : '—'
+      // La cadena del protocolo, que es con lo que habla el host nuevo.
+      const method = row.engine_method_name ? `\`${row.engine_method_name}\`` : '—'
       const effects = row.host_effects?.length ? row.host_effects.join('<br>') : '—'
       add(
         `| \`${row.command}\` | ${args(row)} | ${method} | ${deadline(row)} | ` +

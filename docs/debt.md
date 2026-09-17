@@ -121,6 +121,16 @@ documentado; lo demás no se presenta como terminado.
 - **Arranque real** — `DONE` como smoke: `npm run desktop:smoke` abre Electron
   y verifica renderer, puente y ausencia de fugas. **No** es paridad: los 130
   comandos del inventario no están ejercitados contra el host nuevo.
+- **Traducción comando → método del protocolo** — `OPEN`, y es el grueso de lo
+  que falta de D. El nombre del comando **no** es el método: `session_get`
+  habla con `session.get`, y los argumentos se renombran (`reference` → `ref`
+  en 21 comandos). El host Tauri hacía esa traducción en 130 handlers Rust;
+  `services.engine.request` del host nuevo reenvía el nombre del comando tal
+  cual, así que **hoy ninguna llamada de dominio funcionaría en Electron**. El
+  inventario ya lleva método real y renombrados como especificación
+  (`commandMap.test.ts` lo fija), y quedan 124 traducciones por escribir: 45
+  de identidad, 21 con `reference` → `ref`, 4 casos especiales y 54 cuyo
+  wrapper arma los parámetros de otra forma y hay que leer uno a uno.
 - **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
   `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
   el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un

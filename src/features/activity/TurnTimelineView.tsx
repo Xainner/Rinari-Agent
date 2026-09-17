@@ -11,7 +11,6 @@ import {
   ListTree,
   LoaderCircle,
   Pencil,
-  RotateCcw,
   ShieldAlert,
   Sparkles,
   SquareTerminal,
@@ -25,17 +24,10 @@ import type { ChatMessage } from '../../types'
 import Markdown from '../../components/Markdown'
 import { FileLink } from '../files/FileWorkspace'
 import MessageBubble from '../../components/MessageBubble'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../components/ui/alert-dialog'
-import { commandMessage, engineApi, type TurnChangedFile, type TurnUndoPreview } from '../../services/engine'
+import { usePeerNavigation } from '../board/PeerNavigationContext'
+import TurnMeta from './TurnMeta'
+import TurnResult from './TurnResult'
+import { commandMessage, engineApi } from '../../services/engine'
 import { formatTool, toolCategory } from './formatActivity'
 import { ImageActivity } from './ImageActivity'
 import type { TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
@@ -49,6 +41,8 @@ interface Props {
   onResolveApproval: (id: string, decision: string) => void
   onContinue?: () => void
   planActions?: ReactNode
+  /** Abre la superficie de cambios de la sesión (fila de metadatos del turno). */
+  onReviewChanges?: () => void
 }
 
 const ICONS = {
@@ -121,7 +115,8 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
 }
 
 function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, { type: 'model' }>; onResolveApproval: (id: string, decision: string) => void }) {
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
+  const peerNavigation = usePeerNavigation()
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <details className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
@@ -169,7 +164,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     return (
       <div className="my-2 border-l-2 border-amber-400/50 py-1 pl-3 text-[13px]">
         <div className="flex items-center gap-2 text-[var(--text)]"><ShieldAlert size={14} className="text-amber-400" />{item.description || item.capability}<span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">{item.risk}</span></div>
-        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.target}</div>}
+        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</div>}
         {(pending || resolving) ? (
           <div className="mt-2 flex flex-wrap gap-2">
             <ApprovalActions item={item} disabled={resolving} onResolve={onResolveApproval} />
@@ -197,7 +192,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
       </div>
     </details>
   )
-  if (item.type === 'changeset') return <ChangeSetRow item={item} turnActive={false} />
+  if (item.type === 'changeset') return null
   if (item.type === 'question') return <details className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{item.request.status === 'pending' ? 'Esperando tu respuesta' : item.request.status === 'answered' ? 'Preguntas respondidas' : item.request.status === 'skipped' ? 'Preguntas omitidas' : 'Preguntas expiradas'}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></details>
   if (item.type === 'system') return null
   const labels = item.type === 'context'
@@ -351,100 +346,6 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
   return choices.filter(([decision]) => !item.choices || item.choices.includes(decision)).map(([decision, label]) => <button key={decision} type="button" disabled={disabled} onClick={() => onResolve(item.approvalId, decision)} className="min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--text)] disabled:opacity-50">{label}</button>)
 }
 
-function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem, { type: 'changeset' }>; turnActive: boolean }) {
-  const { lang } = useI18n()
-  const [reviewing, setReviewing] = useState(false)
-  const [files, setFiles] = useState<TurnChangedFile[]>(item.files)
-  const [preview, setPreview] = useState<TurnUndoPreview | null>(null)
-  const [working, setWorking] = useState(false)
-  if (item.files.length === 0 && item.warnings.length === 0) return null
-
-  async function review() {
-    try {
-      const result = await engineApi.reviewTurnChanges(item.turnId)
-      setFiles(result.files)
-    } catch {
-      // The event already contains the persisted public diff; keep it available
-      // when an older bridge lacks the review command.
-      setFiles(item.files)
-    }
-    setReviewing((open) => !open)
-  }
-
-  async function prepareUndo() {
-    setWorking(true)
-    try {
-      setPreview(await engineApi.previewTurnUndo(item.turnId))
-    } catch (error) {
-      toast.error(commandMessage(error))
-    } finally {
-      setWorking(false)
-    }
-  }
-
-  async function undo(safeOnly: boolean) {
-    setWorking(true)
-    try {
-      const result = await engineApi.undoTurnChanges(
-        item.turnId,
-        undefined,
-        safeOnly,
-      )
-      toast.success(lang === 'es'
-        ? `Deshacer: ${result.applied.length} archivo(s) restaurado(s)`
-        : `Undo: ${result.applied.length} file(s) restored`)
-      window.dispatchEvent(new Event('rinari-workspace-refresh'))
-      setPreview(null)
-    } catch (error) {
-      toast.error(commandMessage(error))
-    } finally {
-      setWorking(false)
-    }
-  }
-
-  const status = item.status === 'undone'
-    ? (lang === 'es' ? 'Deshecho' : 'Undone')
-    : item.status === 'partially_undone'
-      ? (lang === 'es' ? 'Deshecho parcialmente' : 'Partially undone')
-      : item.status === 'conflicted'
-        ? (lang === 'es' ? 'Con conflictos' : 'Conflicted')
-        : null
-  return (
-    <div className="my-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3 text-[12px]">
-      <div className="flex flex-wrap items-center gap-2">
-        <GitBranch size={14} className="text-[var(--accent-2)]" />
-        <span className="font-medium text-[var(--text)]">{files.length} {lang === 'es' ? 'archivo(s) de este turno' : 'file(s) from this turn'}</span>
-        <span className="font-mono text-[11px] text-emerald-400">+{item.additions}</span>
-        <span className="font-mono text-[11px] text-red-400">-{item.deletions}</span>
-        {status && <span className="text-[var(--text-subtle)]">· {status}</span>}
-      </div>
-      {(!item.attributionComplete || item.warnings.length > 0) && (
-        <div className="mt-2 flex gap-2 text-amber-300"><ShieldAlert size={13} className="mt-0.5 shrink-0" /><span>{lang === 'es' ? 'La atribución es parcial; algunos cambios no se pueden deshacer con seguridad.' : 'Attribution is partial; some changes cannot be safely undone.'}</span></div>
-      )}
-      <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void review()} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)]">{lang === 'es' ? 'Revisar' : 'Review'}</button>
-        <button type="button" disabled={working || turnActive || item.status !== 'active' || files.length === 0} onClick={() => void prepareUndo()} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-40"><RotateCcw size={12} />{lang === 'es' ? 'Deshacer' : 'Undo'}</button>
-      </div>
-      {reviewing && <div className="mt-3 space-y-2">{files.map((file) => <details key={file.absolute_path} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2"><summary className="cursor-pointer text-[var(--text-muted)]"><span className="mr-2 uppercase text-[10px] text-[var(--text-subtle)]">{file.kind}</span>{file.path}{file.sensitive && <span className="ml-2 text-amber-300">{lang === 'es' ? 'sensible' : 'sensitive'}</span>}</summary>{file.diff != null && <pre className="mt-2 max-h-64 overflow-auto whitespace-pre font-mono text-[11px] text-[var(--text-subtle)]">{file.diff}</pre>}{file.diff == null && <p className="mt-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Contenido no disponible para revisión.' : 'Content unavailable for review.'}</p>}</details>)}</div>}
-      <AlertDialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{lang === 'es' ? 'Deshacer cambios de este turno' : 'Undo this turn’s changes'}</AlertDialogTitle>
-            <AlertDialogDescription>{preview?.conflicts.length
-              ? (lang === 'es' ? `${preview.conflicts.length} ruta(s) cambiaron después del turno. El undo total está bloqueado.` : `${preview.conflicts.length} path(s) changed after the turn. Full undo is blocked.`)
-              : (lang === 'es' ? 'Se restaurarán únicamente los archivos atribuidos con seguridad a este turno.' : 'Only files safely attributed to this turn will be restored.')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          {preview && preview.conflicts.length > 0 && <ul className="max-h-40 overflow-auto text-xs text-amber-300">{preview.conflicts.map((conflict) => <li key={conflict.absolute_path}>{conflict.path} · {conflict.reason}</li>)}</ul>}
-          <AlertDialogFooter>
-            <AlertDialogCancel>{lang === 'es' ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
-            <AlertDialogAction disabled={working || (preview?.operations.length ?? 0) === 0} onClick={() => void undo(Boolean(preview?.conflicts.length))}>{preview?.conflicts.length ? (lang === 'es' ? 'Deshacer solo los seguros' : 'Undo safe files only') : (lang === 'es' ? 'Deshacer' : 'Undo')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  )
-}
-
 const visualPending = (item: VisionTimelineItem) => ['queued', 'preparing', 'running'].includes(item.status)
 
 function VisualProgress({ items, status, onResolveApproval }: {
@@ -478,10 +379,15 @@ function VisualProgress({ items, status, onResolveApproval }: {
   </>
 }
 
-export default function TurnTimelineView({ timeline, user, now, onResolveApproval, planActions }: Props) {
+/**
+ * Un turno en la conversación, idéntico en Normal y Boards: mensaje del
+ * usuario, actividad intermedia, la respuesta final canónica (`TurnResult`,
+ * una sola vez) y una fila compacta de metadatos/acciones (`TurnMeta`) que no
+ * repite el cuerpo.
+ */
+export default function TurnTimelineView({ timeline, user, now, onResolveApproval, planActions, onReviewChanges }: Props) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
-  const changeSets = timeline.items.filter((item) => item.type === 'changeset')
   const visualItems = timeline.items.filter((item): item is VisionTimelineItem => item.type === 'vision' && item.route !== 'conversation')
   const visualRunning = ['running', 'approval', 'cancelling'].includes(timeline.status) && visualItems.some(visualPending)
   const visible = timeline.items.filter((item) => item !== final && item.type !== 'changeset' && item.type !== 'vision' && (item.type !== 'model' || Boolean(item.content)))
@@ -499,13 +405,12 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
   const waiting = !visualRunning && (timeline.status === 'cancelling' || (!actionRunning && (timeline.status === 'running' || timeline.status === 'approval') && (initialWait || betweenSteps)))
   const terminalExceptional = ['failed', 'cancelled', 'stopped'].includes(timeline.status)
   const duration = (timeline.completedAt ?? now) - timeline.startedAt
-  const showSummary = Boolean(final) && (significant.length >= 3 || duration >= 10_000 || terminalExceptional)
-  const statusLabel = lang === 'es'
-    ? ({ completed: 'completado', failed: 'falló', cancelled: 'cancelado', stopped: 'detenido' } as Record<string, string>)[timeline.status] ?? timeline.status
-    : timeline.status
+  // La fila de metadatos se muestra siempre para turnos excepcionales y para
+  // los largos; TurnMeta la añade además cuando hay no leído o changeset.
+  const emphasis = Boolean(final) && (significant.length >= 3 || duration >= 10_000 || terminalExceptional)
   return (
     <div className="space-y-3">
-      {user ? <MessageBubble message={user} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId }} /> : null}
+      {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       <div className="space-y-1 pl-0.5">
         {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'model' ? (
           <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown></div>
@@ -518,13 +423,9 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
             <span className="text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(duration)}</span>
           </div>
         )}
-        {timeline.status === 'failed' && <div role="alert" className="flex items-center gap-2 py-1 text-[13px] text-red-400"><CircleAlert size={13} />{timeline.error || (lang === 'es' ? 'El turno falló' : 'Turn failed')}</div>}
       </div>
-      {final?.type === 'model' && (timeline.mode === 'plan' ? <section aria-label="Plan propuesto" className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"><div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />Plan propuesto</div><Markdown>{final.content}</Markdown>{planActions}</section> : <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />)}
-      {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={['running', 'approval', 'cancelling'].includes(timeline.status)} />)}
-      {showSummary && <div className="flex items-center gap-2 text-[10px] text-[var(--text-subtle)]"><span>{elapsed(duration)}</span><span>·</span><span>{significant.length} {lang === 'es' ? 'acciones' : 'actions'}</span><span>·</span><span>{statusLabel}</span></div>}
-      {timeline.status === 'failed' && timeline.errorDetails?.history_preserved === true && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'El trabajo previo está conservado. Puedes enviar un nuevo mensaje; las acciones de resultado desconocido requieren comprobar su estado.' : 'Previous work is preserved. You can send a new message; unknown action outcomes require checking their state.'}</p>}
-      {timeline.status === 'failed' && timeline.errorDetails && <details className="text-xs text-[var(--text-subtle)]"><summary>{lang === 'es' ? 'Diagnóstico de la interrupción' : 'Interruption diagnostics'}</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{JSON.stringify(Object.fromEntries(Object.entries(timeline.errorDetails).filter(([key]) => key !== 'partial_text')), null, 2)}</pre></details>}
+      <TurnResult timeline={timeline} planActions={planActions} />
+      <TurnMeta timeline={timeline} user={user} actions={significant.length} emphasis={emphasis} onReviewChanges={onReviewChanges} />
     </div>
   )
 }

@@ -31,11 +31,16 @@ effective permissions, working directory, commands, visible model messages and
 result. Child activity is correlated and persisted under the parent turn and is
 rebuilt when conversation history reloads. It is not private model reasoning.
 
-The **Navegador** panel opens automatically when the active conversation has a
-connected engine browser. It shows periodic captures of the exact CDP page the
-agent uses, supports choosing a page and can be minimized or reopened. It is an
-observation panel: manual interaction is available through **Abrir fuera**.
-It does not run a duplicate iframe page or expose Tauri commands to web content.
+The **Navegador** surface lives in the session dock (`SessionWorkspace`, shared
+by Normal and board panes), never as a floating global panel. It shows periodic
+captures of the exact CDP page the agent uses, supports choosing a page and can
+be hidden with the dock; a newly connected engine browser is revealed only when
+that session is focused and its dock is closed, otherwise the tab shows an
+indicator. It is an observation surface labelled as a preview: manual
+interaction is available through **Abrir fuera**. It does not run a duplicate
+iframe page or expose Tauri commands to web content. Polling runs at capture
+cadence only while the surface is visible and at a low background cadence for
+the indicator.
 
 The browser survives individual turns and closes with the session or engine.
 `browser.view.get` is read-only: polling never launches or navigates a browser.
@@ -46,3 +51,14 @@ game inside Code.
 New capabilities: `agent_inheritance_v1`, `agent_activity_v1`, `browser_view_v1`.
 Update the packaged engine and restart `npm run tauri -- dev` to load the new
 Rust command and protocol. No commit or publication is included in this change.
+
+## Subagents vs. peers of a session
+
+Subagents (`agent.spawn`) run inside the owner turn, inherit a narrowed
+context and report back as evidence. **Peers** are other top-level sessions
+on the same board: their messages arrive as separate turns marked
+`origin.kind = "peer"`, never inherit anything from the sender and are
+untrusted data for the receiver. A peer-originated turn cannot spawn
+subagents either; the owner forwards the message as their own task when it
+should become work. See `docs/interactive-workspace.md` › "Boards: mensajería
+entre paneles".

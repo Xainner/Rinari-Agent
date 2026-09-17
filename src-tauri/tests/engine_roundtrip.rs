@@ -108,6 +108,14 @@ fn is(name: &str) -> impl Fn(&EngineEvent) -> bool + '_ {
 }
 
 #[test]
+fn status_carries_the_stable_home_identity_from_the_hello() {
+    let harness = start_fake("stream");
+    let status = harness.supervisor.status();
+    assert_eq!(status.home_id.as_deref(), Some("fakehome00000001"));
+    assert!(harness.supervisor.shutdown().home_id.is_none());
+}
+
+#[test]
 fn history_grows_with_turns_and_rejects_unknown_sessions() {
     let harness = start_fake("stream");
     let session_id = create_session(&harness);

@@ -49,6 +49,13 @@ instalador trae Agent + engine empaquetado; un update trae ambos).
   `.sig`). Para releases, firmar siempre en CI.
 - Matriz actual: solo Windows. Ampliar a macOS/Linux cuando se necesite
   (el sidecar Python empaquetado es por plataforma).
+- Boards (rama `feature/multiboard`): el pin del Engine apunta al commit de
+  `feature/session-peer-messaging` de Rinari-CLI. `npm run protocol:check`
+  en CI necesita ese SHA publicado en GitHub; en local se regenera con
+  `RINARI_ENGINE_SCHEMA=<ruta al schema del CLI>`. La capability
+  `session_peer_messaging_v1` es opcional: sin ella el board funciona sin
+  mensajería. Las notificaciones del sistema no van en este build (ver
+  `docs/debt.md`); el título de ventana usa `core:window:allow-set-title`.
 - `v0.1.1`: primera versión con updater. Incluye guards de sesión vacía
   con versión en el mensaje + fail-fast en el frontend para separar bugs
   de UI de bugs del puente (nota: se probó aceptar snake+camel en Rust y

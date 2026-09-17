@@ -11,7 +11,14 @@ import {
 } from '../lib/appearance'
 import type { Language } from '../types'
 
-export type View = 'chat' | 'settings' | 'engine' | 'workspace' | 'project'
+/**
+ * `chat` es la vista Normal (nombre interno conservado); `board` es Boards.
+ * Ambas son presentaciones del mismo Engine: cambiar de una a otra nunca
+ * altera turnos, permisos, modelos ni borradores.
+ */
+export type View = 'chat' | 'board' | 'settings' | 'engine' | 'workspace' | 'project'
+/** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
+export type WorkspaceView = Extract<View, 'chat' | 'board'>
 
 /** Secciones de Ajustes. Las marcadas con * llegan en fases posteriores. */
 export type SettingsSection =
@@ -32,7 +39,7 @@ export type SettingsSection =
   | 'advanced'
   | 'about'
 
-export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar'
+export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards' | 'collapsePane' | 'expandPane'
 export type ShortcutBindings = Record<ShortcutAction, string>
 
 export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
@@ -40,6 +47,10 @@ export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
   palette: 'Ctrl+K',
   settings: 'Ctrl+,',
   sidebar: 'Ctrl+B',
+  boards: 'Ctrl+Shift+B',
+  // Colapso/expansión del panel enfocado en Boards; sin acelerador nativo.
+  collapsePane: 'Ctrl+Alt+[',
+  expandPane: 'Ctrl+Alt+]',
 }
 
 function readBool(key: string, fallback: boolean): boolean {
@@ -91,6 +102,8 @@ function writeShortcutBindings(bindings: ShortcutBindings): void {
 
 interface UIState {
   view: View
+  /** Última vista de trabajo (Normal o Boards); en memoria, no persistida. */
+  lastWorkspaceView: WorkspaceView
   settingsSection: SettingsSection
   lang: Language
   sidebarOpen: boolean
@@ -109,10 +122,13 @@ interface UIState {
   shortcutBindings: ShortcutBindings
   /** Home del proyecto abierto (root). Solo con view 'project'. */
   projectRoot: string | null
-  /** Sesión con inspector de procesos abierto; el navegador no se autoabre encima. */
-  processesInspectorFor: string | null
-  setProcessesInspectorFor: (sessionId: string | null) => void
   goChat: () => void
+  /** Selección idempotente de Normal (alias de `goChat`). */
+  goNormal: () => void
+  /** Selección idempotente de Boards. */
+  goBoard: () => void
+  /** Alterna Normal ↔ Boards; desde una vista auxiliar entra a la alternativa de la última vista de trabajo. */
+  toggleBoards: () => void
   goEngine: () => void
   goWorkspace: () => void
   goProject: (root: string) => void
@@ -145,6 +161,7 @@ if (typeof window !== 'undefined') {
 /** Estado de shell (vista, sidebar, paleta, tema, prefs). Lo caliente (sesiones, streaming) sigue en los servicios. */
 export const useUIStore = create<UIState>((set) => ({
   view: 'chat',
+  lastWorkspaceView: 'chat',
   projectRoot: null,
   settingsSection: 'general',
   lang: typeof window === 'undefined' ? 'es' : readLang(),
@@ -161,9 +178,14 @@ export const useUIStore = create<UIState>((set) => ({
   showTechnicalActivityNames:
     typeof window === 'undefined' ? false : readBool('rinari.showTechnicalActivityNames', false),
   shortcutBindings: typeof window === 'undefined' ? DEFAULT_SHORTCUT_BINDINGS : readShortcutBindings(),
-  processesInspectorFor: null,
-  setProcessesInspectorFor: (processesInspectorFor) => set({ processesInspectorFor }),
-  goChat: () => set({ view: 'chat', sidebarOpen: false, projectRoot: null }),
+  goChat: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
+  goNormal: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
+  goBoard: () => set({ view: 'board', lastWorkspaceView: 'board', sidebarOpen: false, projectRoot: null }),
+  toggleBoards: () => set((s) => {
+    const current = s.view === 'chat' || s.view === 'board' ? s.view : s.lastWorkspaceView
+    const next: WorkspaceView = current === 'board' ? 'chat' : 'board'
+    return { view: next, lastWorkspaceView: next, sidebarOpen: false, projectRoot: null }
+  }),
   goEngine: () => set({ view: 'engine', sidebarOpen: false, projectRoot: null }),
   goWorkspace: () => set({ view: 'workspace', sidebarOpen: false, projectRoot: null }),
   goProject: (root) => set({ view: 'project', sidebarOpen: false, projectRoot: root }),

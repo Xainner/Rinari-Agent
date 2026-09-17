@@ -6,7 +6,6 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
 import ProcessesDock, { RECENT_SUCCESS_MS } from './ProcessesDock'
 import { useComposerStore } from '../../stores/composer'
-import { useUIStore } from '../../stores/ui'
 import { I18nProvider } from '../../i18n'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
@@ -17,7 +16,6 @@ afterEach(() => {
   vi.clearAllMocks()
   vi.restoreAllMocks()
   useComposerStore.setState({ sessionKey: 'draft', text: '' })
-  useUIStore.setState({ processesInspectorFor: null })
 })
 
 function activeRow(id: string, command: string, extra: Record<string, unknown> = {}) {

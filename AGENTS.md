@@ -884,7 +884,6 @@ Do not replace working Luma primitives merely to match a preference list.
 
 ```text
 @tanstack/react-query
-react-resizable-panels
 react-diff-view
 @xterm/xterm
 @xterm/addon-fit
@@ -893,6 +892,11 @@ react-hook-form
 specta
 tauri-specta
 ```
+
+Nota (2026-09-15): `react-resizable-panels` se descartó para Boards. Esa
+librería reparte porcentajes en un contenedor fijo; el board necesita N
+columnas en píxeles con scroll horizontal, así que el resizer es propio
+(`useDragResize` + `ResizeHandle`, extraído del visor de archivos).
 
 ### Useful when feature lands
 

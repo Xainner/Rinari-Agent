@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type Ref, type SyntheticEvent } f
 import { AnimatePresence, motion } from 'framer-motion'
 import { SquareTerminal } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { useUIStore } from '../../stores/ui'
 import { useSessionProcesses } from './useSessionProcesses'
 import ProcessRow from './ProcessRow'
 import ProcessInspector, { type ProcessInspectorFilter } from './ProcessInspector'
@@ -153,24 +152,8 @@ export default function ProcessesDock({
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
-  // Coordinación mínima con el navegador: el inspector abierto evita que el
-  // navegador se autoabra encima; abrir el navegador manualmente contrae
-  // los logs conservando el resumen. Nada de esto detiene recursos.
-  const setProcessesInspectorFor = useUIStore((s) => s.setProcessesInspectorFor)
-  useEffect(() => {
-    if (!sessionId) return
-    setProcessesInspectorFor(inspectorOpen ? sessionId : null)
-    return () => setProcessesInspectorFor(null)
-  }, [inspectorOpen, sessionId, setProcessesInspectorFor])
-
-  useEffect(() => {
-    function onBrowserOpen() {
-      setInspectorOpen(false)
-      setLogPaused(false)
-    }
-    window.addEventListener('rinari-browser-open', onBrowserOpen)
-    return () => window.removeEventListener('rinari-browser-open', onBrowserOpen)
-  }, [])
+  // El navegador vive en el dock lateral de la sesión y ya no compite por una
+  // zona flotante: el inspector no lo esconde ni el navegador contrae los logs.
 
   // Al desmontar no se detiene nada, pero sí se cancelan temporizadores.
   useEffect(

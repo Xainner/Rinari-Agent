@@ -30,6 +30,7 @@ pub mod desktop;
 pub mod ecosystem;
 pub mod engine;
 pub mod models;
+pub mod peers;
 pub mod projects;
 pub mod providers;
 pub mod sessions;

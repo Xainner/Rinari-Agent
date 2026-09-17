@@ -45,6 +45,67 @@ documentado; lo demás no se presenta como terminado.
 
 ## Deuda vigente
 
+### Base integrada Boards + procesos (2026-09-16, plan 00/01)
+
+- **Controles duplicados** — `DONE`. `PaneHeader` ya no edita modelo ni modo;
+  Composer es el único propietario (`BoardView.controls.test.tsx`).
+- **Respuesta final duplicada** — `DONE`. `TurnResult` + `TurnMeta`
+  compartidos; `ResultSummaryCard` solo como resumen fuera del chat
+  (`TurnResult.test.tsx`).
+- **Anclas de scroll al colapsar** — `DONE`. `scrollAnchors.ts` guarda fila +
+  offset o «seguir el final» y `ChatView` restaura sin timeouts
+  (`ChatView.scroll.test.tsx`).
+- **Lectura por centinela de 1 px** — `DONE`. `useResultVisibility` observa el
+  cuerpo real (`useResultVisibility.test.tsx`).
+- **Navegador flotante global** — `DONE` como presentación: vive en el dock de
+  la sesión (`SessionWorkspace`). El transporte sigue siendo el poll JPEG de
+  `browser.view.get`, rotulado como vista previa; el browser nativo con el
+  target del Engine es el documento 03.
+- **Capturas con el navegador oculto** — `DONE`. `browser.view.get` siempre
+  ejecuta `Page.captureScreenshot` cuando hay browser conectado: no hay modo
+  solo-metadata. Por eso solo se sondea a cadencia de capturas con la
+  superficie a la vista y, fuera de ella, con una sonda puntual al montar y al
+  terminar un turno (`useBrowserFrame.test.tsx`), nunca con un temporizador de
+  fondo — documento 03 §10 y documento 04 §5 («browser oculto: sin poll de
+  screenshots de UI»).
+- **Layout del dock guardado antes del hello** — `DONE`. `setHomeId` reindexa
+  del namespace por defecto al `home_id` real sin pisar un layout existente
+  (`sessionDock.test.ts`).
+- **Aprobación antes de la comprobación de pares** — `DONE` (Engine).
+  `ToolDefinition.precheck` rechaza destinos inválidos antes del
+  consentimiento y `deliver` revalida después (`test_engine_peers.py`).
+- **Layout del dock por Engine home** — `DONE`. `sessionDock` se indexa por
+  `home_id` (nuevo en el hello) + sesión; el board migró a schema 3.
+- **ResultSummaryCard** — `WONTFIX`. Se retiró: no tenía consumidor en la app
+  y el doc 01 §4.2 solo admite una tarjeta con extracto fuera de la
+  conversación y enlazando al turno original. Portarla a Electron sin uso era
+  deuda pura; si alguna superficie de pendientes la necesita, se recupera del
+  historial y se implementa con ese enlace.
+- **Recibos de lectura por instalación** — `OPEN`. `boardAttention` sigue
+  indexado por `rinari.profile.v1`; podría adoptar el mismo `home_id` que
+  `sessionDock`.
+- **`cargo fmt` bloqueado en la máquina de integración** — `NOT_RUN` local:
+  Control de aplicaciones bloquea `cargo-fmt` (os error 4551); se verificó con
+  `rustfmt --check` directo y CI ejecuta `cargo fmt --check`.
+
+### Boards y mensajería entre paneles (2026-09-15)
+
+- **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`
+  (dependencia nueva con autorización). El adaptador `services/notifications.ts`
+  declara `canSend=false`; el ajuste aparece como no disponible. La activación
+  por clic en desktop no está verificada y no debe anunciarse.
+- **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`. El
+  Engine no serializa dos sesiones sobre el mismo root; el board solo avisa.
+- **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"
+  del runtime; tras un arranque en frío el sidebar no sabe si una sesión no
+  abierta está ocupada hasta que llega un evento.
+- **Perfil de lectura por instalación** — `OPEN`. Los recibos se indexan por
+  `rinari.profile.v1` (id local aleatorio); si el Agent apunta a otro home de
+  Engine con la misma instalación, los recibos se comparten.
+- **Compilación Rust en Windows con Smart App Control** — `OPEN`. `cargo
+  clippy/test` no ejecutan en esa máquina (os error 4551); solo `cargo fmt`.
+  CI cubre clippy y test.
+
 - **Timeline narrativa (archivo 4)** — `OPEN`. La actividad cronológica
   persistida, correlación completa de llamadas y presentación narrativa se
   implementarán en el siguiente ciclo; no se adelantaron dentro de 1–3.

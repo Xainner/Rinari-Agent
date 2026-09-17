@@ -51,6 +51,10 @@ The browser panel shows captures of the page the engine is actually using. Choos
 
 The processes panel shows session-owned background commands, logs and status, with controls to stop managed resources. Local HTML previews have their own viewing surface. Follow a development server or inspect its output without losing the conversation.
 
+### Work several projects side by side.
+
+**Boards** puts N sessions in one window, each with its own project, provider and model, chat and workspace. Panes collapse into strips, keep a confirmed status (working, needs you, finished, failed) with unread results, and the agents of a board can message each other — every message from another agent is treated as untrusted data, needs your approval per destination and never grants the receiver new permissions. Toggle with `Ctrl+Shift+B`.
+
 ## Your models. Your working style.
 
 | Make it yours | What is available today |

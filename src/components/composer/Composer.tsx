@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
-import { ArrowUp, Box, Brain, Check, ChevronDown, Eye, FileText, Image as ImageIcon, LoaderCircle, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Brain, Check, Columns3, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '../../i18n'
-import { useComposerStore } from '../../stores/composer'
+import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
-import { brandForProvider } from '../../lib/providerBrand'
-import ProviderLogo from '../ProviderLogo'
+import ModelPicker from './ModelPicker'
+import { FOCUS_COMPOSER_EVENT } from './focusComposer'
+import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -26,6 +27,22 @@ interface ComposerProps {
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   sessionId?: string
+  /**
+   * Clave del borrador. Por defecto `sessionId` o `'draft'` antes de que exista
+   * sesión. Cada instancia lee y escribe únicamente esta clave.
+   */
+  draftKey?: string
+  /**
+   * Instancia de la vista Normal: mantiene sincronizado el espejo legacy del
+   * store (`switchSession`) para los consumidores que aún lo usan. Los
+   * Composers de un board pasan `false`.
+   */
+  primary?: boolean
+  /**
+   * Único destinatario de `rinari:focus-composer` y del autofocus al cambiar
+   * de disposición. En un board solo el panel enfocado lo recibe.
+   */
+  acceptsGlobalFocus?: boolean
   isStreaming: boolean
   onStop: () => void
   models: ModelSummary[]
@@ -45,6 +62,13 @@ interface ComposerProps {
   permissionProfilesV2: boolean
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
+  /**
+   * Paneles del board a los que se puede escribir con `@Panel mensaje`. Solo
+   * en Boards; sin lista no hay autocompletado ni envío directo.
+   */
+  mentionTargets?: readonly PaneMentionTarget[]
+  /** Envía `text` al panel `targetId` como tarea del usuario (reenvío manual). */
+  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
 }
 
 const MODES = ['plan', 'build', 'review'] as const
@@ -61,6 +85,9 @@ export default function Composer({
   onPrepareAttachments,
   onCancelAttachmentPreparation,
   sessionId,
+  draftKey: explicitDraftKey,
+  primary = true,
+  acceptsGlobalFocus = true,
   isStreaming,
   onStop,
   models,
@@ -79,9 +106,13 @@ export default function Composer({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
+  mentionTargets,
+  onSendToTarget,
 }: ComposerProps) {
   const { t } = useI18n()
-  const text = useComposerStore((s) => s.text)
+  const draftKey = explicitDraftKey ?? (sessionId || 'draft')
+  const draft = useComposerStore(selectDraft(draftKey))
+  const text = draft.text
   const appReduceMotion = useUIStore((s) => s.reduceMotion)
   const systemReducedMotion = useReducedMotion()
   // Indicador deslizante del modo: una sola pieza a nivel del grupo,
@@ -128,9 +159,6 @@ export default function Composer({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set())
-  const [modelOpen, setModelOpen] = useState(false)
-  const [modelQuery, setModelQuery] = useState('')
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [reasoningOpen, setReasoningOpen] = useState(false)
@@ -143,27 +171,28 @@ export default function Composer({
   useEffect(() => {
     if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
-  const providerGroups = [...new Set(models.map(model => model.provider ?? 'Otros'))]
-  const providerEndpoint = (alias: string | null | undefined) =>
-    providers?.find((provider) => provider.alias === alias)?.endpoint ?? null
-  const activeProvider =
-    (activeModel ?? models.find((model) => model.alias === activeAlias))?.provider ?? activeAlias
-  const activeBrand = brandForProvider({ alias: activeProvider, endpoint: providerEndpoint(activeProvider) })
-  const normalizedModelQuery = modelQuery.trim().toLowerCase()
-  const matchingModels = normalizedModelQuery
-    ? models.filter((model) => [model.alias, model.provider, model.provider_model_id].filter(Boolean).join(' ').toLowerCase().includes(normalizedModelQuery))
-    : models
-  const attachments = useComposerStore((s) => s.attachments)
-  const addStoredAttachment = useComposerStore((s) => s.addAttachment)
-  const updateStoredAttachment = useComposerStore((s) => s.updateAttachment)
-  const removeStoredAttachment = useComposerStore((s) => s.removeAttachment)
+  const attachments = draft.attachments
+  const addAttachmentFor = useComposerStore((s) => s.addAttachmentFor)
+  const updateAttachmentFor = useComposerStore((s) => s.updateAttachmentFor)
+  const removeAttachmentFor = useComposerStore((s) => s.removeAttachmentFor)
+  const setTextFor = useComposerStore((s) => s.setTextFor)
   const updateAttachmentById = useComposerStore((s) => s.updateAttachmentById)
   const replaceAttachmentById = useComposerStore((s) => s.replaceAttachmentById)
   const removeAttachmentsById = useComposerStore((s) => s.removeAttachmentsById)
   const restoreSubmission = useComposerStore((s) => s.restoreSubmission)
   const switchDraftSession = useComposerStore((s) => s.switchSession)
+  const setText = (value: string) => setTextFor(draftKey, value)
   const [fileMatches, setFileMatches] = useState<Array<{ path: string; relative_path: string; name: string }>>([])
   const mention = text.match(/(?:^|\s)@([^\s]*)$/)?.[1] ?? null
+  // Mensaje directo a otro panel: `@Panel texto` al inicio del mensaje.
+  const paneTargets = mentionTargets ?? []
+  const paneQuery = paneTargets.length > 0 ? paneMentionQuery(text) : null
+  const paneMatches = paneQuery !== null ? matchPaneTargets(paneQuery, paneTargets) : []
+  const paneMention = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(text, paneTargets) : null
+  const [paneHighlight, setPaneHighlight] = useState(0)
+  useEffect(() => {
+    setPaneHighlight(0)
+  }, [paneQuery])
   const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
   const [visionRevision, setVisionRevision] = useState(0)
   useEffect(() => { const refresh = () => setVisionRevision(n => n + 1); window.addEventListener('rinari-vision-changed', refresh); return () => window.removeEventListener('rinari-vision-changed', refresh) }, [])
@@ -186,8 +215,10 @@ export default function Composer({
   }, [sessionId, activeAlias, attachments.length, visionRouteKey, visionModelId, visionRevision])
 
   useEffect(() => {
-    switchDraftSession(sessionId || 'draft')
-  }, [sessionId, switchDraftSession])
+    // Only the Normal instance moves the legacy mirror; a board pane must not
+    // redirect wrappers that other components still call without a key.
+    if (primary) switchDraftSession(draftKey)
+  }, [draftKey, primary, switchDraftSession])
 
   useEffect(() => {
     if (mention === null) {
@@ -209,16 +240,26 @@ export default function Composer({
   }, [mention, onSearchFiles])
 
   useEffect(() => {
-    function focus() {
+    function focus(event: Event) {
+      // A typed request names its session and reaches that instance even when
+      // it is not the one accepting global focus (e.g. the pane header menu
+      // focusing its own composer). A legacy event without detail goes to
+      // whichever instance currently accepts global focus.
+      const wanted = (event as CustomEvent<{ sessionId?: string } | undefined>).detail?.sessionId
+      if (wanted) {
+        if (!sessionId || wanted !== sessionId) return
+      } else if (!acceptsGlobalFocus) {
+        return
+      }
       textareaRef.current?.focus()
     }
-    window.addEventListener('rinari:focus-composer', focus)
-    return () => window.removeEventListener('rinari:focus-composer', focus)
-  }, [])
+    window.addEventListener(FOCUS_COMPOSER_EVENT, focus)
+    return () => window.removeEventListener(FOCUS_COMPOSER_EVENT, focus)
+  }, [acceptsGlobalFocus, sessionId])
 
   useEffect(() => {
-    textareaRef.current?.focus()
-  }, [placement])
+    if (acceptsGlobalFocus) textareaRef.current?.focus()
+  }, [placement, acceptsGlobalFocus])
 
   function autosize() {
     const el = textareaRef.current
@@ -228,17 +269,42 @@ export default function Composer({
   }
 
   async function handleSend() {
-    const initial = useComposerStore.getState()
-    const content = initial.text
-    const submissionSessionKey = initial.sessionKey
-    const attachmentIds = attachments.map((item) => item.id)
-    if (isStreaming || isSubmitting || visionUnavailable || attachments.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && attachments.length === 0)) return
-    initial.clear()
+    // Capture identity and content before any await: focus or view changes
+    // during the request must not redirect the outcome to another draft.
+    const submissionSessionKey = draftKey
+    const store = useComposerStore.getState()
+    const current = store.getDraft(submissionSessionKey)
+    const content = current.text
+    const outgoing = current.attachments
+    const attachmentIds = outgoing.map((item) => item.id)
+    if (isStreaming || isSubmitting || visionUnavailable || outgoing.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && outgoing.length === 0)) return
+    const direct = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(content, paneTargets) : null
+    if (direct && onSendToTarget) {
+      // Mensaje directo a otro panel: solo texto; los adjuntos se quedan en el borrador.
+      if (!direct.message) return
+      setTextFor(submissionSessionKey, '')
+      autosize()
+      textareaRef.current?.focus()
+      setIsSubmitting(true)
+      try {
+        const ok = await onSendToTarget(direct.target.id, direct.message)
+        if (!ok) {
+          setTextFor(submissionSessionKey, content)
+          requestAnimationFrame(autosize)
+        }
+      } catch {
+        setTextFor(submissionSessionKey, content)
+        requestAnimationFrame(autosize)
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+    store.clearFor(submissionSessionKey)
     autosize()
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
-      const outgoing = attachments
       const ok = await onSend(content.trim() || 'Revisa los archivos adjuntos.', outgoing)
       if (ok) removeAttachmentsById(attachmentIds)
       if (!ok) {
@@ -253,7 +319,7 @@ export default function Composer({
     }
   }
 
-  const canSend = !!text.trim() || attachments.length > 0
+  const canSend = paneMention ? paneMention.message.length > 0 : (!!text.trim() || attachments.length > 0)
 
   async function prepareOne(item: AttachmentRef) {
     if (!onPrepareAttachments) return
@@ -280,7 +346,7 @@ export default function Composer({
     const pending = onPrepareAttachments
       ? { ...item, status: 'preparing' as const, error: undefined }
       : item
-    addStoredAttachment(pending)
+    addAttachmentFor(draftKey, pending)
     if (onPrepareAttachments) void prepareOne(pending)
   }
 
@@ -371,7 +437,16 @@ export default function Composer({
   function beginWorkspaceAttachment() {
     setAttachmentOpen(false)
     const next = text.match(/(?:^|\s)@[^\s]*$/) ? text : `${text}${text && !text.endsWith(' ') ? ' ' : ''}@`
-    useComposerStore.getState().setText(next)
+    setText(next)
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+      autosize()
+    })
+  }
+
+  function choosePaneTarget(target: PaneMentionTarget) {
+    setText(`@${target.label} `)
+    setFileMatches([])
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
       autosize()
@@ -380,7 +455,7 @@ export default function Composer({
 
   function chooseWorkspaceFile(file: { path: string; relative_path: string; name: string }) {
     addAttachment({ id: `att_${Date.now().toString(36)}_${file.path}`, path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
-    useComposerStore.getState().setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
+    setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
     setFileMatches([])
     requestAnimationFrame(autosize)
   }
@@ -398,10 +473,10 @@ export default function Composer({
                 </button>
                 {file.ocr && <span className="rounded bg-[var(--accent-2)]/10 px-1 text-[10px] text-[var(--accent-2)]">OCR</span>}
                 {file.warning && <span title={file.warning} className="text-amber-300">⚠</span>}
-                {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">Páginas (ej. 1-3,5)<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateStoredAttachment(file.path, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">Páginas visuales<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateStoredAttachment(file.path, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">Repreparar PDF</button></div></details>}
+                {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">Páginas (ej. 1-3,5)<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">Páginas visuales<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">Repreparar PDF</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={`Cancelar preparación de ${file.name}`} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
                 {file.status === 'error' && <><span title={file.error} className="text-red-400">{file.error || 'Error'}</span><button type="button" aria-label={`Reintentar ${file.name}`} onClick={() => void prepareOne(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><RefreshCw size={11} /></button></>}
-                <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => removeStoredAttachment(file.path)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><X size={11} /></button>
+                <button type="button" aria-label={`Quitar ${file.name}`} onClick={() => removeAttachmentFor(draftKey, file.id)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><X size={11} /></button>
               </span>
             ))}
           </div>
@@ -410,8 +485,33 @@ export default function Composer({
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-amber-400/30 p-2 text-xs">{visionRoute?.reason}</div>}
         {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">Visión: {visionRoute.destination}</p>}
         {imageAttachments.some(file => !file.ocr) && <button type="button" onClick={useOcrForImages} className="mb-2 text-[11px] text-[var(--text-muted)]">Usar OCR para estas imágenes</button>}
-        {fileMatches.length > 0 && (
+        {paneMention && (
+          <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--accent-2)]" data-testid="pane-mention-chip">
+            <MessageSquareShare size={12} aria-hidden="true" />
+            <span>{t('composer.paneMention.direct', { label: paneMention.target.label })}</span>
+            <span className="text-[var(--text-subtle)]">· {paneMention.message ? t('composer.paneMention.hint') : t('composer.paneMention.empty')}</span>
+          </div>
+        )}
+        {(paneMatches.length > 0 || fileMatches.length > 0) && (
           <div className="absolute right-2 bottom-full left-2 z-30 mb-2 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl">
+            {paneMatches.length > 0 && (
+              <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">
+                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.paneMention.heading')}</p>
+                {paneMatches.map((target, index) => (
+                  <button
+                    key={target.id}
+                    type="button"
+                    role="option"
+                    aria-selected={index === paneHighlight}
+                    onMouseEnter={() => setPaneHighlight(index)}
+                    onClick={() => choosePaneTarget(target)}
+                    className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${index === paneHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
+                  >
+                    <Columns3 size={13} /><span className="truncate">{target.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {fileMatches.map((file) => (
               <button key={file.path} type="button" onClick={() => chooseWorkspaceFile(file)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
                 <FileText size={13} /><span className="truncate">{file.relative_path}</span>
@@ -426,11 +526,17 @@ export default function Composer({
           aria-label={t('composer.message')}
           placeholder={isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
           onChange={(e) => {
-            useComposerStore.getState().setText(e.target.value)
+            setText(e.target.value)
             autosize()
           }}
           onPaste={handlePaste}
           onKeyDown={(e) => {
+            if (paneMatches.length > 0 && !e.nativeEvent.isComposing) {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setPaneHighlight((index) => (index + 1) % paneMatches.length); return }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setPaneHighlight((index) => (index - 1 + paneMatches.length) % paneMatches.length); return }
+              if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); choosePaneTarget(paneMatches[paneHighlight] ?? paneMatches[0]); return }
+              if (e.key === 'Escape') { e.preventDefault(); setText(text.replace(/^@/, '')); return }
+            }
             const sendWithEnter = useUIStore.getState().enterToSend
             const mod = e.ctrlKey || e.metaKey
             if (
@@ -531,90 +637,16 @@ export default function Composer({
             })}
           </div>
           <div className="composer-model-controls">
-          <Popover open={modelOpen} onOpenChange={(open) => { setModelOpen(open); if (open) { setModelQuery(''); onDiscoverModels() } }}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                disabled={isStreaming}
-                title={t('composer.chooseModel')}
-                className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] disabled:opacity-40"
-              >
-                {activeBrand ? (
-                  <ProviderLogo brand={activeBrand} size={14} />
-                ) : (
-                  <Box size={13} aria-hidden="true" className="shrink-0" />
-                )}
-                <span className="truncate">{activeAlias ?? t('composer.noModel')}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="flex min-h-0 w-64 flex-col overflow-hidden p-1.5"
-              style={{
-                maxHeight: 'min(32rem, var(--radix-popover-content-available-height))',
-              }}
-            >
-              <div className="shrink-0 border-b border-[var(--border)] p-1.5">
-                <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 focus-within:border-[var(--border-strong)]">
-                  <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
-                  <input autoFocus value={modelQuery} onChange={(event) => setModelQuery(event.target.value)} placeholder={t('composer.searchModels')} className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]" />
-                </label>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
-                {models.length === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { setModelOpen(false); onOpenProviders() }}
-                    className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-                  >
-                    {t('composer.noModelsSetup')}
-                  </button>
-                )}
-                {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">No se encontraron modelos.</p>}
-                {providerGroups.filter(provider => matchingModels.some(model => (model.provider ?? 'Otros') === provider)).map(provider => <section key={provider} aria-label={provider}>
-                  <h3 className="text-[11px] font-semibold text-[var(--text-subtle)]">
-                    <button type="button" aria-expanded={Boolean(modelQuery.trim()) || !collapsedProviders.has(provider)} onClick={() => setCollapsedProviders(current => { const next = new Set(current); if (next.has(provider)) next.delete(provider); else next.add(provider); return next })} disabled={Boolean(modelQuery.trim())} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default">
-                    <span className="flex size-3.5 shrink-0 items-center justify-center">
-                      <ProviderLogo alias={provider} endpoint={providerEndpoint(provider)} size={13} />
-                    </span>
-                    <span className="flex-1">{provider}</span>
-                    <ChevronDown size={13} aria-hidden="true" className={`transition-transform ${!modelQuery.trim() && collapsedProviders.has(provider) ? '-rotate-90' : ''}`} />
-                    </button>
-                  </h3>
-                  {(Boolean(modelQuery.trim()) || !collapsedProviders.has(provider)) && matchingModels.filter(model => (model.provider ?? 'Otros') === provider).map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => { setModelOpen(false); onUseModel(model) }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium text-[var(--text)]">
-                        {model.alias}
-                      </span>
-                      <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]">
-                        {model.provider ?? ''} · {model.provider_model_id}
-                      </span>
-                    </span>
-                    {model.active && (
-                      <Check size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
-                    )}
-                  </button>
-                ))}</section>)}
-              </div>
-              {models.length > 0 && (
-                <div className="shrink-0 border-t border-[var(--border)] pt-1">
-                  <button
-                    type="button"
-                    onClick={() => { setModelOpen(false); onOpenProviders() }}
-                    className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-                  >
-                    {t('composer.manageModels')}
-                  </button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
+          <ModelPicker
+            models={models}
+            providers={providers}
+            activeAlias={activeAlias}
+            activeModel={activeModel}
+            onUseModel={onUseModel}
+            onDiscoverModels={onDiscoverModels}
+            onOpenProviders={onOpenProviders}
+            disabled={isStreaming}
+          />
           <Popover open={reasoningOpen} onOpenChange={setReasoningOpen}>
             <PopoverTrigger asChild>
               <button

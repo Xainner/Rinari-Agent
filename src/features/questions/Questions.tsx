@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ChevronLeft, ChevronRight, CircleHelp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { desktopApi, type QuestionRequest } from '../../services/desktop'
-import { commandMessage, onEngineEvent } from '../../services/engine'
+import { commandMessage } from '../../services/engine'
+import { refreshPendingQuestions, usePendingQuestions } from './usePendingQuestions'
 
 export function QuestionCard({
   request,
@@ -113,52 +114,22 @@ export function QuestionCard({
   )
 }
 
+/**
+ * Tarjetas de preguntas pendientes de una sesión. Consume el controlador
+ * compartido (`usePendingQuestions`): una carga y una suscripción por sesión,
+ * también cuando el badge del header del panel muestra la misma colección.
+ */
 export default function Questions({ sessionId }: { sessionId: string }) {
-  const [requests, setRequests] = useState<QuestionRequest[]>([])
-  const [revision, setRevision] = useState(0)
-  useEffect(() => {
-    if (!sessionId) return
-    let disposed = false
-    let generation = 0
-    const refresh = () => {
-      const current = ++generation
-      void desktopApi
-        .questions(sessionId)
-        .then((r) => {
-          if (!disposed && current === generation) setRequests(r.questions)
-        })
-        .catch((error) => {
-          if (!disposed) toast.error(commandMessage(error))
-        })
-    }
-    const subscription = onEngineEvent((event) => {
-      if (
-        event.payload.session_id === sessionId &&
-        (event.event.startsWith('question.') ||
-          ['turn.completed', 'turn.failed', 'turn.cancelled'].includes(event.event))
-      )
-        refresh()
-    })
-    void subscription.then(() => {
-      if (!disposed) refresh()
-    })
-    refresh()
-    return () => {
-      disposed = true
-      void subscription.then((stop) => stop())
-    }
-  }, [sessionId, revision])
+  const requests = usePendingQuestions(sessionId)
   return (
     <>
-      {requests
-        .filter((r) => r.session_id === sessionId && r.status === 'pending')
-        .map((request) => (
-          <QuestionCard
-            key={request.request_id}
-            request={request}
-            onResolved={() => setRevision((r) => r + 1)}
-          />
-        ))}
+      {requests.map((request) => (
+        <QuestionCard
+          key={request.request_id}
+          request={request}
+          onResolved={() => refreshPendingQuestions(sessionId)}
+        />
+      ))}
     </>
   )
 }

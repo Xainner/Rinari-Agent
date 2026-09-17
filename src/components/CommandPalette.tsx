@@ -27,6 +27,8 @@ interface CommandPaletteProps {
   activeId: string | null
   onSelectSession: (id: string) => void
   onNewSession: () => void
+  /** Abre Boards y el diálogo de alta de panel. */
+  onNewPane?: () => void
   onOpenSettings: (section?: SettingsSection) => void
   onOpenEngine: () => void
   onOpenWorkspace: () => void
@@ -49,6 +51,7 @@ export default function CommandPalette({
   activeId,
   onSelectSession,
   onNewSession,
+  onNewPane,
   onOpenSettings,
   onOpenEngine,
   onOpenWorkspace,
@@ -131,6 +134,20 @@ export default function CommandPalette({
                 <Plus />
                 {t('sidebar.newChat')}
               </Command.Item>
+              {onNewPane && (
+                <Command.Item value={t('cmd.addPane')} onSelect={() => run(onNewPane)} className={itemClass}>
+                  <Plus />
+                  {t('cmd.addPane')}
+                </Command.Item>
+              )}
+              {([
+                ['collapse-all-panes', t('cmd.collapseAllPanes')],
+                ['expand-all-panes', t('cmd.expandAllPanes')],
+                ['collapse-finished-panes', t('cmd.collapseFinishedPanes')],
+                ['toggle-focus-mode', t('cmd.toggleFocusMode')],
+                ['mark-all-board-results-read', t('cmd.markAllBoardResultsRead')],
+              ] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
+              {([['view-normal', t('nav.normal')], ['view-boards', t('nav.boards')]] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['open-folder', 'Abrir carpeta'], ['files', 'Panel de archivos'], ['sidebar', 'Barra lateral'], ['updates', 'Buscar actualizaciones'], ['about', 'Acerca de Rinari Agent']] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               <Command.Item
                 value={t('engine.restart')}

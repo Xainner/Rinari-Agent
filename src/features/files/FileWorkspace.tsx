@@ -1,7 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -76,7 +78,7 @@ export function FileLink({
   )
 }
 
-type Tab = {
+export type FileTab = {
   key: string
   sessionId: string
   turnId?: string
@@ -84,42 +86,56 @@ type Tab = {
   file?: FilePreview
   error?: string
 }
-export default function FileWorkspace({
+
+export interface FileWorkspaceController {
+  sessionId: string
+  tabs: FileTab[]
+  selected: FileTab | undefined
+  select: (key: string) => void
+  close: (key: string) => void
+  open: OpenFile
+  source: boolean
+  setSource: (next: boolean | ((current: boolean) => boolean)) => void
+}
+
+const FileWorkspaceContext = createContext<FileWorkspaceController | null>(null)
+
+export function useFileWorkspace(): FileWorkspaceController | null {
+  return useContext(FileWorkspaceContext)
+}
+
+/**
+ * Controlador de previews de archivo de una sesión.
+ *
+ * Mantiene las pestañas (indexadas por sesión, turno y destino) y el contexto
+ * `openFile` que consumen los enlaces del transcript. La presentación es
+ * `FileViewer`, montada en la superficie **Archivos** del dock de la sesión
+ * (`SessionWorkspace`, compartido por Normal y Boards); `onOpen` revela esa
+ * superficie. Las lecturas siguen pasando por el Engine.
+ */
+export function FileWorkspaceProvider({
   sessionId,
   children,
+  onOpen,
 }: {
   sessionId: string
   children: ReactNode
+  /** Se llama al abrir un archivo; el layout decide cómo mostrar el visor. */
+  onOpen?: () => void
 }) {
-  const [tabs, setTabs] = useState<Tab[]>([])
+  const [tabs, setTabs] = useState<FileTab[]>([])
   const [active, setActive] = useState('')
-  const [visible, setVisible] = useState(false)
   const [source, setSource] = useState(false)
-  const [width, setWidth] = useState(() => {
-    try {
-      return Math.max(
-        280,
-        Math.min(
-          800,
-          Number(localStorage.getItem('rinari.files.width')) || 440,
-        ),
-      )
-    } catch {
-      return 440
-    }
-  })
-  const container = useRef<HTMLDivElement>(null)
-  const currentTabs = tabs.filter((tab) => tab.sessionId === sessionId)
-  const selected =
-    currentTabs.find((tab) => tab.key === active) ?? currentTabs.at(-1)
+  const onOpenRef = useRef(onOpen)
   useEffect(() => {
-    const toggle = () => setVisible((v) => !v)
-    window.addEventListener('rinari-files-toggle', toggle)
-    return () => window.removeEventListener('rinari-files-toggle', toggle)
-  }, [])
-  async function open(target: string, turnId?: string) {
+    onOpenRef.current = onOpen
+  })
+  const currentTabs = useMemo(() => tabs.filter((tab) => tab.sessionId === sessionId), [tabs, sessionId])
+  const selected = currentTabs.find((tab) => tab.key === active) ?? currentTabs.at(-1)
+
+  const open = useCallback(async (target: string, turnId?: string) => {
     const key = JSON.stringify([sessionId, turnId, target])
-    setVisible(true)
+    onOpenRef.current?.()
     setActive(key)
     setTabs((current) =>
       current.some((t) => t.key === key)
@@ -151,202 +167,153 @@ export default function FileWorkspace({
         ),
       )
     }
-  }
+  }, [sessionId])
+
+  const controller = useMemo<FileWorkspaceController>(() => ({
+    sessionId,
+    tabs: currentTabs,
+    selected,
+    select: setActive,
+    close: (key) => setTabs((current) => current.filter((t) => t.key !== key)),
+    open: (path, turnId) => void open(path, turnId),
+    source,
+    setSource,
+  }), [sessionId, currentTabs, selected, open, source])
+
   return (
-    <FileContext.Provider value={(path, turnId) => void open(path, turnId)}>
-      <div ref={container} className="flex h-full min-w-0">
-        <div className="min-w-0 flex-1">{children}</div>
-        {visible && (
-          <>
+    <FileWorkspaceContext.Provider value={controller}>
+      <FileContext.Provider value={controller.open}>{children}</FileContext.Provider>
+    </FileWorkspaceContext.Provider>
+  )
+}
+
+/** Presentación del visor: pestañas, ruta, acciones y contenido. */
+export function FileViewer({ onClose, className = '' }: { onClose?: () => void; className?: string }) {
+  const controller = useFileWorkspace()
+  if (!controller) return null
+  const { tabs: currentTabs, selected, select, close, open, source, setSource } = controller
+  return (
+    <div className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg-app)] text-sm ${className}`}>
+      <div className="flex items-center border-b border-[var(--border)]">
+        <div
+          role="tablist"
+          aria-label="Archivos abiertos"
+          className="flex flex-1 overflow-x-auto"
+        >
+          {currentTabs.map((tab) => (
             <div
-              role="separator"
-              aria-label="Ancho del visor"
-              aria-orientation="vertical"
-              aria-valuenow={width}
-              tabIndex={0}
-              className="w-1 shrink-0 cursor-col-resize bg-[var(--border)] hover:bg-[var(--accent)]"
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                  e.preventDefault()
-                  setWidth((w) =>
-                    Math.max(
-                      280,
-                      Math.min(800, w + (e.key === 'ArrowLeft' ? 20 : -20)),
-                    ),
-                  )
-                }
-              }}
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId)
-              }}
-              onPointerMove={(e) => {
-                if (
-                  e.currentTarget.hasPointerCapture(e.pointerId) &&
-                  container.current
-                )
-                  setWidth(
-                    Math.max(
-                      280,
-                      Math.min(
-                        container.current.clientWidth * 0.7,
-                        container.current.getBoundingClientRect().right -
-                          e.clientX,
-                      ),
-                    ),
-                  )
-              }}
-              onPointerUp={(e) => {
-                e.currentTarget.releasePointerCapture(e.pointerId)
-                try {
-                  localStorage.setItem('rinari.files.width', String(width))
-                } catch {
-                  /* optional preference */
-                }
-              }}
-            />
-            <aside
-              aria-label="Visor de archivos"
-              style={{ width, maxWidth: '70%' }}
-              className="flex min-w-0 shrink-0 flex-col bg-[var(--bg-app)] text-sm"
+              key={tab.key}
+              className={`flex shrink-0 items-center border-r border-[var(--border)] ${selected?.key === tab.key ? 'bg-[var(--bg-hover)]' : ''}`}
             >
-              <div className="flex items-center border-b border-[var(--border)]">
-                <div
-                  role="tablist"
-                  aria-label="Archivos abiertos"
-                  className="flex flex-1 overflow-x-auto"
-                >
-                  {currentTabs.map((tab) => (
-                    <div
-                      key={tab.key}
-                      className={`flex shrink-0 items-center border-r border-[var(--border)] ${selected?.key === tab.key ? 'bg-[var(--bg-hover)]' : ''}`}
-                    >
-                      <button
-                        role="tab"
-                        aria-selected={selected?.key === tab.key}
-                        onClick={() => setActive(tab.key)}
-                        className="flex items-center gap-2 px-3 py-3"
-                      >
-                        <FileText size={14} />
-                        {tab.file?.name ?? tab.target.split(/[\\/]/).at(-1)}
-                      </button>
-                      <button
-                        aria-label={`Cerrar ${tab.file?.name ?? tab.target}`}
-                        onClick={() =>
-                          setTabs((current) =>
-                            current.filter((t) => t.key !== tab.key),
-                          )
-                        }
-                        className="pr-2"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  aria-label="Cerrar visor"
-                  onClick={() => setVisible(false)}
-                  className="p-3"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              {selected ? (
-                <>
-                  <div className="flex items-center gap-2 border-b border-[var(--border)] p-2">
-                    <span
-                      title={selected.file?.path ?? selected.target}
-                      className="min-w-0 flex-1 truncate text-xs text-[var(--text-muted)]"
-                    >
-                      {selected.file?.path ?? selected.target}
-                    </span>
-                    <button
-                      aria-label="Copiar ruta"
-                      onClick={() =>
-                        void copyText(selected.file?.path ?? selected.target)
-                      }
-                    >
-                      <Copy size={14} />
-                    </button>
-                    {selected.file &&
-                      !selected.target.startsWith('artifact:') &&
-                      !['html', 'htm'].includes(selected.file.language) && (
-                        <button
-                          aria-label="Abrir externamente"
-                          onClick={() =>
-                            void desktopApi
-                              .openFile(
-                                selected.sessionId,
-                                selected.file!.path,
-                                selected.turnId,
-                              )
-                              .catch((error) =>
-                                toast.error(commandMessage(error)),
-                              )
-                          }
-                        >
-                          <ExternalLink size={14} />
-                        </button>
-                      )}
-                  </div>
-                  {selected.file?.language === 'md' && (
-                    <button
-                      className="self-start px-3 py-2 text-xs"
-                      onClick={() => setSource((v) => !v)}
-                    >
-                      {source ? 'Vista previa' : 'Ver fuente'}
-                    </button>
-                  )}
-                  <div
-                    role="tabpanel"
-                    className={`min-h-0 flex-1 overflow-auto ${selected.file && ['html', 'htm'].includes(selected.file.language) && !selected.target.startsWith('artifact:') ? '' : 'p-4'}`}
-                  >
-                    {selected.error ? (
-                      <p role="alert">{selected.error}</p>
-                    ) : selected.file &&
-                      ['html', 'htm'].includes(selected.file.language) &&
-                      !selected.target.startsWith('artifact:') ? (
-                      <HtmlPreview
-                        key={selected.key}
-                        sessionId={selected.sessionId}
-                        turnId={selected.turnId}
-                        file={selected.file}
-                      />
-                    ) : selected.file ? (
-                      <FileTurnContext.Provider value={selected.turnId}>
-                        <FileContext.Provider
-                          value={(path) => {
-                            const nested =
-                              !/^(?:[a-z]:[\\/]|\/|artifact:)/i.test(path)
-                                ? `${selected.file!.path.replace(/[\\/][^\\/]*$/, '')}/${path}`
-                                : path
-                            void open(nested, selected.turnId)
-                          }}
-                        >
-                          {selected.file.language === 'md' && !source ? (
-                            <Markdown>{selected.file.content}</Markdown>
-                          ) : (
-                            <CodeBlock
-                              code={selected.file.content}
-                              language={selected.file.language}
-                            />
-                          )}
-                        </FileContext.Provider>
-                      </FileTurnContext.Provider>
-                    ) : (
-                      <p role="status">Cargando archivo…</p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="p-4 text-[var(--text-muted)]">
-                  Abre un archivo desde la conversación.
-                </p>
-              )}
-            </aside>
-          </>
+              <button
+                role="tab"
+                aria-selected={selected?.key === tab.key}
+                onClick={() => select(tab.key)}
+                className="flex items-center gap-2 px-3 py-3"
+              >
+                <FileText size={14} />
+                {tab.file?.name ?? tab.target.split(/[\\/]/).at(-1)}
+              </button>
+              <button
+                aria-label={`Cerrar ${tab.file?.name ?? tab.target}`}
+                onClick={() => close(tab.key)}
+                className="pr-2"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+        {onClose && (
+          <button aria-label="Cerrar visor" onClick={onClose} className="p-3">
+            <X size={16} />
+          </button>
         )}
       </div>
-    </FileContext.Provider>
+      {selected ? (
+        <>
+          <div className="flex items-center gap-2 border-b border-[var(--border)] p-2">
+            <span
+              title={selected.file?.path ?? selected.target}
+              className="min-w-0 flex-1 truncate text-xs text-[var(--text-muted)]"
+            >
+              {selected.file?.path ?? selected.target}
+            </span>
+            <button
+              aria-label="Copiar ruta"
+              onClick={() => void copyText(selected.file?.path ?? selected.target)}
+            >
+              <Copy size={14} />
+            </button>
+            {selected.file &&
+              !selected.target.startsWith('artifact:') &&
+              !['html', 'htm'].includes(selected.file.language) && (
+                <button
+                  aria-label="Abrir externamente"
+                  onClick={() =>
+                    void desktopApi
+                      .openFile(selected.sessionId, selected.file!.path, selected.turnId)
+                      .catch((error) => toast.error(commandMessage(error)))
+                  }
+                >
+                  <ExternalLink size={14} />
+                </button>
+              )}
+          </div>
+          {selected.file?.language === 'md' && (
+            <button
+              className="self-start px-3 py-2 text-xs"
+              onClick={() => setSource((v) => !v)}
+            >
+              {source ? 'Vista previa' : 'Ver fuente'}
+            </button>
+          )}
+          <div
+            role="tabpanel"
+            className={`min-h-0 flex-1 overflow-auto ${selected.file && ['html', 'htm'].includes(selected.file.language) && !selected.target.startsWith('artifact:') ? '' : 'p-4'}`}
+          >
+            {selected.error ? (
+              <p role="alert">{selected.error}</p>
+            ) : selected.file &&
+              ['html', 'htm'].includes(selected.file.language) &&
+              !selected.target.startsWith('artifact:') ? (
+              <HtmlPreview
+                key={selected.key}
+                sessionId={selected.sessionId}
+                turnId={selected.turnId}
+                file={selected.file}
+              />
+            ) : selected.file ? (
+              <FileTurnContext.Provider value={selected.turnId}>
+                <FileContext.Provider
+                  value={(path) => {
+                    const nested =
+                      !/^(?:[a-z]:[\\/]|\/|artifact:)/i.test(path)
+                        ? `${selected.file!.path.replace(/[\\/][^\\/]*$/, '')}/${path}`
+                        : path
+                    open(nested, selected.turnId)
+                  }}
+                >
+                  {selected.file.language === 'md' && !source ? (
+                    <Markdown>{selected.file.content}</Markdown>
+                  ) : (
+                    <CodeBlock
+                      code={selected.file.content}
+                      language={selected.file.language}
+                    />
+                  )}
+                </FileContext.Provider>
+              </FileTurnContext.Provider>
+            ) : (
+              <p role="status">Cargando archivo…</p>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="p-4 text-[var(--text-muted)]">
+          Abre un archivo desde la conversación.
+        </p>
+      )}
+    </div>
   )
 }

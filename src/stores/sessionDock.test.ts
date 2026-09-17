@@ -62,6 +62,30 @@ describe('session dock layout', () => {
     expect(rewritten['default::ses_old']).toMatchObject({ visible: false })
   })
 
+  it('reindexa al home real lo guardado antes del hello, sin pisar un layout existente', () => {
+    const store = useSessionDockStore.getState()
+    // El hello aún no llegó: el layout cae en el namespace por defecto.
+    store.reveal('ses_a', 'files')
+    store.reveal('ses_b', 'browser')
+    expect(Object.keys(useSessionDockStore.getState().layouts)).toContain('default::ses_a')
+
+    // Un layout que ya existía en el home real no debe perderse ni pisarse.
+    useSessionDockStore.setState({
+      layouts: {
+        ...useSessionDockStore.getState().layouts,
+        'home_1::ses_b': { schemaVersion: 1, visible: true, activeSurface: 'workspace', widthPx: 500, workspaceTab: 'tasks' },
+      },
+    })
+
+    useSessionDockStore.getState().setHomeId('home_1')
+    const layouts = useSessionDockStore.getState().layouts
+    expect(Object.keys(layouts).filter((key) => key.startsWith('default::'))).toEqual([])
+    expect(layouts['home_1::ses_a']).toMatchObject({ visible: true, activeSurface: 'files' })
+    expect(layouts['home_1::ses_b']).toMatchObject({ widthPx: 500, workspaceTab: 'tasks' })
+    expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ activeSurface: 'files' })
+    expect(JSON.parse(window.localStorage.getItem(SESSION_DOCK_STORAGE_KEY) ?? '{}')).toHaveProperty('home_1::ses_a')
+  })
+
   it('adoptIfAbsent never overrides a layout the user already has; forget removes it', () => {
     const store = useSessionDockStore.getState()
     store.adoptIfAbsent('ses_a', { visible: true, surface: 'workspace' })

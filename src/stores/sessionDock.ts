@@ -121,7 +121,27 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => ({
   homeId: null,
   layouts: initial.layouts,
   foreign: initial.foreign,
-  setHomeId: (homeId) => set((state) => (state.homeId === (homeId || null) ? state : { homeId: homeId || null })),
+  setHomeId: (homeId) => set((state) => {
+    const next = homeId || null
+    if (state.homeId === next) return state
+    // El `home_id` llega con el hello: lo que se guardó antes quedó bajo el
+    // namespace por defecto. Se reindexa al home real en lugar de perderse,
+    // sin pisar un layout que esa sesión ya tenga en el home de destino.
+    if (state.homeId !== null || next === null || next === DEFAULT_HOME) return { homeId: next }
+    const prefix = `${DEFAULT_HOME}::`
+    const pending = Object.keys(state.layouts).filter((key) => key.startsWith(prefix))
+    if (pending.length === 0) return { homeId: next }
+    const layouts: Record<string, SessionDockLayout> = {}
+    for (const [key, layout] of Object.entries(state.layouts)) {
+      if (!key.startsWith(prefix)) layouts[key] = layout
+    }
+    for (const key of pending) {
+      const target = `${next}::${key.slice(prefix.length)}`
+      if (!(target in layouts)) layouts[target] = state.layouts[key]
+    }
+    persist({ layouts, foreign: state.foreign })
+    return { homeId: next, layouts }
+  }),
   layoutFor: (sessionId) => get().layouts[dockNamespaceKey(get().homeId, sessionId)] ?? defaultDockLayout(),
   update: (sessionId, patch) => set((state) => {
     if (!sessionId) return state

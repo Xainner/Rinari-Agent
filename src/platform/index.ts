@@ -9,6 +9,7 @@
  */
 
 import type { DesktopBridge } from './contract'
+import { electronBridge, hostApi } from './electron'
 import { tauriBridge } from './tauri'
 
 export type {
@@ -23,7 +24,16 @@ export type {
 } from './contract'
 export { DESKTOP_COMMANDS } from './contract'
 
-let current: DesktopBridge = tauriBridge
+/**
+ * Elige el host presente. Electron se detecta por el puente que publica su
+ * preload; si no está, se usa el adaptador Tauri, que es el host por defecto
+ * hasta el cutover de la entrega H.
+ */
+function detect(): DesktopBridge {
+  return hostApi() !== undefined ? electronBridge : tauriBridge
+}
+
+let current: DesktopBridge = detect()
 
 /** El puente del host actual. */
 export function platform(): DesktopBridge {

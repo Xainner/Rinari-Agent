@@ -110,6 +110,30 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
+### Host Electron (2026-09-17, plan 02, entrega D)
+
+- **Transporte y supervisor** — `DONE`. Portados con sus plazos, códigos y
+  estados; probados contra un Engine falso con eventos intercalados, Unicode
+  partido, respuestas tardías, EOF, stderr voluminoso y cierre.
+- **Frontera de privilegios** — `DONE`. Origen exacto, frame principal,
+  allowlist en ejecución y preload sin `ipcRenderer`. El smoke comprueba que el
+  renderer carga desde `app://rinari` sin `window.require` ni `window.process`.
+- **Arranque real** — `DONE` como smoke: `npm run desktop:smoke` abre Electron
+  y verifica renderer, puente y ausencia de fugas. **No** es paridad: los 130
+  comandos del inventario no están ejercitados contra el host nuevo.
+- **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
+  `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
+  el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un
+  permiso ausente se muestra ausente, no como éxito simulado.
+- **Trabajo activo al cerrar** — `PARTIAL`. Se pregunta siempre que el Engine
+  esté en marcha, que peca de prudente; saber si hay turnos vivos exige
+  preguntárselo al Engine y está pendiente.
+- **Menú de aplicación y notificaciones** — `OPEN`. El menú nativo de
+  aplicación (`menu.rs`) y el adaptador de notificaciones del §7 no están
+  portados; el canal `PUSH.menuAction` existe pero nadie lo emite todavía.
+- **Empaquetado** — `OPEN`. `electron-builder`, el sidecar del Engine en
+  recursos y el instalador NSIS son del documento 04 (entrega G).
+
 ### Boards y mensajería entre paneles (2026-09-15)
 
 - **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`

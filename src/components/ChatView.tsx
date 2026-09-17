@@ -1,19 +1,22 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
 import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
+import { selectLatestTurn } from '../features/engine/sessionSelectors'
 import TurnTimelineView from '../features/activity/TurnTimelineView'
 import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
+import type { PaneMentionTarget } from './composer/paneMention'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
 import ProcessesDock from '../features/processes/ProcessesDock'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
+import { REVEAL_TURN_EVENT } from '../features/board/boardCommands'
 import ScrollToBottom from './chat/ScrollToBottom'
 
 interface ChatViewProps {
@@ -51,9 +54,23 @@ interface ChatViewProps {
   /** Historial de la sesión activa aún cargando: se muestra esqueleto
    * de conversación en vez del home transitorio. */
   historyLoading?: boolean
+  /** Instancia Normal del Composer (espejo legacy del borrador). Los paneles pasan `false`. */
+  composerPrimary?: boolean
+  /** Solo el panel enfocado recibe foco global/autofocus. */
+  composerAcceptsGlobalFocus?: boolean
+  /** `pane`: home reducido dentro de un panel del board. */
+  homeVariant?: 'home' | 'pane'
+  /**
+   * Render por turno terminado (tarjeta de resultado en Boards). Ausente por
+   * defecto: la vista Normal conserva su presentación.
+   */
+  renderResult?: (timeline: TurnTimeline) => ReactNode
+  /** Paneles a los que se puede escribir con `@Panel mensaje` (solo Boards). */
+  mentionTargets?: readonly PaneMentionTarget[]
+  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
 }
 
-export default function ChatView({
+function ChatView({
   homeContext = { projectName: null, changedFiles: null },
   messages,
   sessionId,
@@ -85,6 +102,12 @@ export default function ChatView({
   onSearchFiles,
   processesOpenSignal = 0,
   historyLoading = false,
+  composerPrimary = true,
+  composerAcceptsGlobalFocus = true,
+  homeVariant = 'home',
+  renderResult,
+  mentionTargets,
+  onSendToTarget,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -97,7 +120,7 @@ export default function ChatView({
   const [planStarting, setPlanStarting] = useState(false)
   const planStartingRef = useRef(false)
   const [dismissedPlans, setDismissedPlans] = useState<Set<string>>(() => new Set())
-  const latestTurn = Object.values(timelines).filter(turn => turn.sessionId === sessionId).sort((a, b) => b.startedAt - a.startedAt)[0]
+  const latestTurn = selectLatestTurn({ timelines }, sessionId) ?? undefined
   const pendingPlan = sessionMode === 'plan' && latestTurn?.mode === 'plan' && latestTurn.status === 'completed' && latestTurn.items.some(item => item.type === 'model' && item.outputKind === 'final' && item.content) && !dismissedPlans.has(latestTurn.turnId) && !isStreaming
   const stream = useMemo(
     () => buildChatStream(messages, timelines, sessionId),
@@ -134,6 +157,22 @@ export default function ChatView({
     const scroller = scrollRef.current
     if (scroller) scroller.scrollTop = scroller.scrollHeight
   }, [sessionId])
+
+  // «Ir al resultado» desde un aviso: mostrar el turno sin marcarlo leído (eso
+  // solo ocurre cuando su bloque queda visible).
+  useEffect(() => {
+    function onReveal(event: Event) {
+      const detail = (event as CustomEvent<{ sessionId: string; turnId: string }>).detail
+      if (!detail || detail.sessionId !== sessionId) return
+      const index = stream.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === detail.turnId : row.message.turnId === detail.turnId)
+      if (index < 0) return
+      followRef.current = false
+      setAtBottom(false)
+      virtRef.current?.scrollToIndex(index, { align: 'start' })
+    }
+    window.addEventListener(REVEAL_TURN_EVENT, onReveal)
+    return () => window.removeEventListener(REVEAL_TURN_EVENT, onReveal)
+  }, [sessionId, stream])
 
   useEffect(() => {
     const content = contentRef.current
@@ -189,6 +228,8 @@ export default function ChatView({
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
       sessionId={sessionId}
+      primary={composerPrimary}
+      acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}
       onStop={onStop}
       models={models}
@@ -207,11 +248,13 @@ export default function ChatView({
       permissionProfilesV2={permissionProfilesV2}
       onPermissionChange={onPermissionChange}
       onSearchFiles={onSearchFiles}
+      mentionTargets={mentionTargets}
+      onSendToTarget={onSendToTarget}
     />
   )
 
   return (
-    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty || loadingHistory} transcript={!empty ? (
+    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty || loadingHistory} variant={homeVariant} transcript={!empty ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
             {historyNote?.hasMore && (
@@ -233,6 +276,7 @@ export default function ChatView({
                       user={row.user}
                       now={now}
                       onResolveApproval={onResolveApproval}
+                      result={renderResult?.(row.timeline)}
                       planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3 text-sm"><span className="flex-1">¿Implementar este plan?</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="rounded-lg px-3 py-2 hover:bg-[var(--bg-hover)]">Ahora no</button><button type="button" disabled={planStarting} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white disabled:opacity-50" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? 'Iniciando…' : 'Implementar plan'}</button></div> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}
@@ -272,3 +316,6 @@ export default function ChatView({
     </HomeWelcome>
   )
 }
+
+/** Memoizado: cada instancia solo repinta cuando cambian sus props (su sesión). */
+export default memo(ChatView)

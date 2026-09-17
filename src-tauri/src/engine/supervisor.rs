@@ -323,6 +323,7 @@ impl EngineSupervisor {
         let timeout = match method {
             Method::ProjectStatus => Duration::from_secs(5),
             Method::SessionList
+            | Method::SessionGet
             | Method::SessionCreate
             | Method::SessionOpen
             | Method::SessionRename
@@ -536,6 +537,10 @@ impl EngineSupervisor {
             Method::SessionTurnCancel,
             Some(json!({"session_id": session_id})),
         )
+    }
+
+    pub fn session_get(&self, reference: &str) -> Result<Value, CommandError> {
+        self.request(Method::SessionGet, Some(json!({"ref": reference})))
     }
 
     pub fn session_open(&self, reference: &str) -> Result<Value, CommandError> {
@@ -976,6 +981,93 @@ impl EngineSupervisor {
             Method::SessionQueueClear,
             Some(json!({"session_id": session_id})),
         )
+    }
+
+    // -- peer messaging between sessions (Boards) --------------------------------
+
+    pub fn queue_resume(&self, session_id: &str) -> Result<Value, CommandError> {
+        self.request(
+            Method::SessionQueueResume,
+            Some(json!({"session_id": session_id})),
+        )
+    }
+
+    pub fn peer_group_set(
+        &self,
+        board_id: &str,
+        group_id: Option<&str>,
+        expected_revision: i64,
+        enabled: bool,
+        members: Vec<Value>,
+    ) -> Result<Value, CommandError> {
+        let mut params = json!({
+            "board_id": board_id,
+            "expected_revision": expected_revision,
+            "enabled": enabled,
+            "members": members,
+        });
+        if let Some(group_id) = group_id {
+            params["group_id"] = Value::String(group_id.to_string());
+        }
+        self.request(Method::SessionPeerGroupSet, Some(params))
+    }
+
+    pub fn peer_group_get(
+        &self,
+        board_id: Option<&str>,
+        session_id: Option<&str>,
+        group_id: Option<&str>,
+    ) -> Result<Value, CommandError> {
+        let mut params = json!({});
+        if let Some(value) = group_id {
+            params["group_id"] = Value::String(value.to_string());
+        } else if let Some(value) = session_id {
+            params["session_id"] = Value::String(value.to_string());
+        } else if let Some(value) = board_id {
+            params["board_id"] = Value::String(value.to_string());
+        }
+        self.request(Method::SessionPeerGroupGet, Some(params))
+    }
+
+    pub fn peer_group_revoke(&self, group_id: &str) -> Result<Value, CommandError> {
+        self.request(
+            Method::SessionPeerGroupRevoke,
+            Some(json!({"group_id": group_id})),
+        )
+    }
+
+    pub fn peer_message_list(&self, session_id: &str) -> Result<Value, CommandError> {
+        self.request(
+            Method::SessionPeerMessageList,
+            Some(json!({"session_id": session_id})),
+        )
+    }
+
+    pub fn peer_message_cancel(&self, message_id: &str) -> Result<Value, CommandError> {
+        self.request(
+            Method::SessionPeerMessageCancel,
+            Some(json!({"message_id": message_id})),
+        )
+    }
+
+    pub fn peer_message_forward(
+        &self,
+        target_session_id: &str,
+        message: &str,
+        source_session_id: Option<&str>,
+        quoted_source: Option<Value>,
+    ) -> Result<Value, CommandError> {
+        let mut params = json!({
+            "target_session_id": target_session_id,
+            "message": message,
+        });
+        if let Some(source) = source_session_id {
+            params["source_session_id"] = Value::String(source.to_string());
+        }
+        if let Some(quoted) = quoted_source {
+            params["quoted_source"] = quoted;
+        }
+        self.request(Method::SessionPeerMessageForward, Some(params))
     }
 
     pub fn bundle_list(&self) -> Result<Value, CommandError> {

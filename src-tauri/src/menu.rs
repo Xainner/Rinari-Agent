@@ -38,6 +38,12 @@ pub fn build(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         "Ver",
         true,
         &[
+            // Vistas de trabajo: selección idempotente. Sin acelerador nativo a
+            // propósito: el atajo configurable (Ctrl+Shift+B) lo gestiona el
+            // frontend y un acelerador duplicado dispararía la acción dos veces.
+            &item("view-normal", "Normal", None)?,
+            &item("view-boards", "Boards", None)?,
+            &PredefinedMenuItem::separator(app)?,
             &item("sidebar", "Barra lateral", Some("CmdOrCtrl+B"))?,
             &item("files", "Panel de archivos", Some("CmdOrCtrl+Shift+E"))?,
             &item("commands", "Paleta de comandos", Some("CmdOrCtrl+K"))?,

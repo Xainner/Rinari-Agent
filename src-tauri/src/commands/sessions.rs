@@ -70,6 +70,14 @@ pub(crate) async fn session_open(
 }
 
 #[tauri::command]
+pub(crate) async fn session_get(
+    supervisor: State<'_, EngineSupervisor>,
+    reference: String,
+) -> Result<serde_json::Value, CommandError> {
+    super::run_engine(supervisor, move |engine| engine.session_get(&reference)).await
+}
+
+#[tauri::command]
 pub(crate) async fn session_close(
     supervisor: State<'_, EngineSupervisor>,
     reference: String,

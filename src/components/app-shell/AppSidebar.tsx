@@ -4,6 +4,7 @@ import {
   Archive,
   ArchiveRestore,
   ChevronDown,
+  Columns3,
   Copy,
   Cpu,
   FolderGit2,
@@ -65,6 +66,12 @@ export interface AppSidebarProps {
   archivedProjects: ProjectSummary[]
   activeId: string
   busySessionIds?: ReadonlySet<string>
+  /** Sesiones presentes en el board (marca visual). */
+  boardSessionIds?: ReadonlySet<string>
+  /** Señal de atención por sesión del board (intervención › fallo › resultado sin leer). */
+  boardSignalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
+  /** Añade la sesión al board (o la enfoca) y va a Boards. */
+  onOpenInBoard?: (id: string) => void
   onSelectSession: (id: string) => void
   /** Ir al home del proyecto (vista workspace). */
   onOpenProject: (root: string) => void
@@ -122,6 +129,9 @@ export function AppSidebar({
   archivedProjects,
   activeId,
   busySessionIds,
+  boardSessionIds,
+  boardSignalBySession,
+  onOpenInBoard,
   onSelectSession,
   onOpenProject,
   onCloseSession,
@@ -239,6 +249,9 @@ export function AppSidebar({
   const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
+    const onBoard = boardSessionIds?.has(session.id) === true
+    const signal = boardSignalBySession?.[session.id] ?? null
+    const signalLabel = signal === 'needs_you' ? t('sidebar.sessionNeedsYou') : signal === 'failed' ? t('sidebar.sessionFailed') : signal === 'unread' ? t('sidebar.sessionUnread') : null
     return (
       <li key={session.id} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
@@ -287,6 +300,10 @@ export function AppSidebar({
                 className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
               />
             )}
+            {signal && signalLabel && (
+              <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal={signal} data-testid="sidebar-signal" />
+            )}
+            {onBoard && <span role="img" aria-label={t('sidebar.onBoard')} title={t('sidebar.onBoard')} className="shrink-0 text-[var(--text-subtle)]"><Columns3 size={12} aria-hidden="true" /></span>}
           </button>
           <DropdownMenu open={sessionMenu === session.id} onOpenChange={open => setSessionMenu(open ? session.id : null)}>
             <DropdownMenuTrigger asChild>
@@ -324,6 +341,9 @@ export function AppSidebar({
                     <DropdownMenuItem disabled={session.kind === 'CHAT'} onSelect={() => onMoveSession(session.id, null)}>Espacio general</DropdownMenuItem>
                     {projects.filter(project => !project.archived).map(project => <DropdownMenuItem key={project.id} disabled={project.id === session.project_id} onSelect={() => onMoveSession(session.id, project.id)}>{project.name || projectDisplayName(project.root)}</DropdownMenuItem>)}
                   </DropdownMenuSubContent></DropdownMenuSub>}
+                  {onOpenInBoard && <DropdownMenuItem onSelect={() => onOpenInBoard(session.id)}>
+                    <Columns3 size={13} /> {t('sidebar.openInBoard')}
+                  </DropdownMenuItem>}
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
                     <GitFork size={13} /> {t('sidebar.fork')}
                   </DropdownMenuItem>

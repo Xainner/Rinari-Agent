@@ -1,5 +1,5 @@
 import type { ChatMessage, PendingApproval, TurnStopReason } from '../../types'
-import type { TimelineTurn } from '../../services/engine'
+import type { MessageOrigin, TimelineTurn } from '../../services/engine'
 import type { TurnChangedFile } from '../../services/engine'
 
 export type TimelineStatus =
@@ -176,6 +176,8 @@ export interface TurnTimeline {
   stopReason?: TurnStopReason
   errorDetails?: Record<string, unknown>
   error?: string
+  /** Procedencia del turno (peer / reenvío); `undefined` = petición del usuario. */
+  origin?: MessageOrigin | null
 }
 
 export interface TurnTimelineState {

@@ -4,16 +4,20 @@ import { useI18n } from '../../i18n'
 import { useUIStore, type ShortcutAction } from '../../stores/ui'
 import { Section } from './parts'
 
-const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' }> = [
+const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.boards' | 'settings.shortcuts.collapsePane' | 'settings.shortcuts.expandPane' }> = [
   { id: 'newChat', label: 'settings.shortcuts.new' },
   { id: 'palette', label: 'settings.shortcuts.palette' },
   { id: 'settings', label: 'settings.shortcuts.settings' },
   { id: 'sidebar', label: 'settings.shortcuts.sidebar' },
+  { id: 'boards', label: 'settings.shortcuts.boards' },
+  { id: 'collapsePane', label: 'settings.shortcuts.collapsePane' },
+  { id: 'expandPane', label: 'settings.shortcuts.expandPane' },
 ]
 
 function shortcutFromEvent(event: KeyboardEvent<HTMLButtonElement>): string | null {
   if (event.key === 'Escape') return null
   const key = event.key.length === 1 ? event.key.toUpperCase() : event.key === ',' ? ',' : null
+  // Alt solo (sin Ctrl/Meta) sigue siendo válido para colapso/expansión.
   if (!key || (!event.ctrlKey && !event.metaKey && !event.altKey)) return null
   return `${event.ctrlKey || event.metaKey ? 'Ctrl+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''}${key}`
 }
@@ -56,7 +60,7 @@ export default function ShortcutsSettings() {
           ))}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-[var(--text-subtle)]">Usa Ctrl, Alt o Shift junto a otra tecla. Esc cancela.</p>
+          <p className="text-xs text-[var(--text-subtle)]">Usa Ctrl, Alt o Shift junto a otra tecla. Esc cancela. {t('settings.shortcuts.closeContext')}</p>
           <button type="button" onClick={resetShortcutBindings} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
             <RotateCcw size={13} /> Restaurar
           </button>

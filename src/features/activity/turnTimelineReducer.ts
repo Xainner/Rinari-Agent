@@ -1,5 +1,5 @@
 import type { ChatMessage, PendingApproval, TurnStopReason } from '../../types'
-import type { EngineEventMsg, TimelineTurn, TurnChangedFile } from '../../services/engine'
+import type { EngineEventMsg, MessageOrigin, TimelineTurn, TurnChangedFile } from '../../services/engine'
 import type {
   ApprovalTimelineItem,
   TimelineItem,
@@ -44,11 +44,20 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+function originOf(value: unknown): MessageOrigin | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const kind = (value as { kind?: unknown }).kind
+  if (kind !== 'peer' && kind !== 'user' && kind !== 'automation') return undefined
+  return value as MessageOrigin
+}
+
 function number(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 function busyCopy(current: Set<string>, sessionId: string, busy: boolean): Set<string> {
+  // Same membership → same Set: selectors on busySessions must not repaint per token.
+  if (current.has(sessionId) === busy) return current
   const next = new Set(current)
   if (busy) next.add(sessionId)
   else next.delete(sessionId)
@@ -397,6 +406,7 @@ function normalizePersistedTurn(turn: TimelineTurn): TurnTimeline {
     startedAt: parseTime(turn.started_at, 0),
     completedAt: turn.completed_at ? parseTime(turn.completed_at, 0) : undefined,
     userMessage: turn.user_message,
+    origin: originOf(turn.origin),
     error: errorMessage(turn.terminal?.error),
     errorDetails: turn.terminal?.error && typeof turn.terminal.error === 'object'
       ? (turn.terminal.error as { details?: Record<string, unknown> }).details : undefined,
@@ -581,6 +591,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       status: 'running',
       startedAt: parseTime(payload.occurred_at, timeline.startedAt),
       userMessage: text(payload.message) || timeline.userMessage,
+      origin: originOf(payload.origin) ?? timeline.origin,
     }
   } else {
     const terminal = terminalStatus(event)

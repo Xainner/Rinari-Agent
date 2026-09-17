@@ -7,25 +7,29 @@ import { useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import HomeWelcome from './HomeWelcome'
 afterEach(cleanup)
-beforeEach(() => { useComposerStore.setState({ text: '', attachments: [] }); useUIStore.setState({ showSuggestions: true }) })
+// El home lee el borrador por clave de sesión (`draftsBySession`), no el espejo global.
+const draftOf = (key = 'test') => useComposerStore.getState().getDraft(key)
+beforeEach(() => { useComposerStore.setState({ sessionKey: 'draft', text: '', attachments: [], draftsBySession: {} }); useUIStore.setState({ showSuggestions: true }) })
 function welcome(projectName: string | null = null) {
   return <I18nProvider lang="es"><HomeWelcome sessionId="test" context={{ projectName, changedFiles: null }} engineReady={false}><textarea aria-label="Borrador" /></HomeWelcome></I18nProvider>
 }
 it('prepares an editable draft, focuses the composer and prevents overwriting it', async () => {
   render(welcome())
   await userEvent.click(screen.getByRole('button', { name: /Ayúdame a planear/ }))
-  expect(useComposerStore.getState().text).toContain('plan de implementación')
+  expect(draftOf().text).toContain('plan de implementación')
+  // La instancia Normal no ha movido el espejo: otra clave sigue vacía.
+  expect(draftOf('draft').text).toBe('')
   expect(document.activeElement).toBe(screen.getByRole('textbox'))
   expect((screen.getByRole('button', { name: /Analiza este código/ }) as HTMLButtonElement).disabled).toBe(true)
   expect((screen.getByRole('button', { name: 'Otras ideas' }) as HTMLButtonElement).disabled).toBe(true)
 })
 it('freezes suggestions while typing and updates after clearing the draft', () => {
   const { rerender } = render(welcome())
-  act(() => useComposerStore.setState({ text: 'Mi trabajo' }))
+  act(() => useComposerStore.getState().setTextFor('test', 'Mi trabajo'))
   rerender(welcome('Rinari'))
   expect(screen.getByRole('button', { name: /Analiza este código/ })).toBeTruthy()
-  expect(useComposerStore.getState().text).toBe('Mi trabajo')
-  act(() => useComposerStore.setState({ text: '' }))
+  expect(draftOf().text).toBe('Mi trabajo')
+  act(() => useComposerStore.getState().clearFor('test'))
   expect(screen.getByRole('button', { name: /Entender este proyecto/ })).toBeTruthy()
 })
 it('rotates applicable ideas and respects the hidden-suggestions preference', async () => {

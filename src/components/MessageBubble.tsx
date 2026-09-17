@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, X } from 'lucide-react'
+import { ArrowUpRight, Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, X } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
+import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
 import Markdown from './Markdown'
@@ -73,14 +74,23 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return () => window.clearInterval(timer)
   }, [message.pending])
 
+  if (message.role === 'user' && message.origin?.kind === 'peer') {
+    return <PeerBubble message={message} />
+  }
+
   if (message.role === 'user') {
+    const quoted = message.origin?.kind === 'user' ? message.origin.quoted_source : null
+    const quotedSession = quoted && typeof quoted.session_id === 'string' ? quoted.session_id : null
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
+        {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
+        <div className="flex justify-end">
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-[var(--text)]">
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             {message.attachments.map((attachment) => <HistoricalAttachment key={attachment.id} attachment={attachment} />)}
           </div>}
           {message.content}
+        </div>
         </div>
       </div>
     )
@@ -132,5 +142,58 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         {copied ? t('markdown.copied') : t('bubble.copy')}
       </button>
     </div>
+  )
+}
+
+/**
+ * Mensaje recibido del agente de otro panel. Va a la izquierda, con marco
+ * propio y atribución: el usuario debe distinguirlo de su propio prompt. Es
+ * dato no confiable para el modelo; el runtime del Engine ya lo limita.
+ */
+function PeerBubble({ message }: { message: ChatMessage }) {
+  const { t } = useI18n()
+  const navigation = usePeerNavigation()
+  const origin = message.origin!
+  const sourceId = origin.source_session_id ?? null
+  const label = (sourceId && navigation?.labelFor(sourceId)) || origin.source_label || sourceId || t('board.peers.unknown')
+  const canNavigate = Boolean(sourceId && navigation?.labelFor(sourceId))
+  return (
+    <div className="flex justify-start" data-testid="peer-bubble">
+      <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-[var(--accent-2)]/40 bg-[var(--accent-2)]/10 px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text)]">
+        <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--accent-2)]">
+          <MessageSquareShare size={13} aria-hidden="true" />
+          <span className="truncate">{t('board.peers.incoming', { label })}</span>
+          {typeof origin.hop === 'number' && origin.hop > 1 && (
+            <span className="rounded-full bg-[var(--accent-2)]/15 px-1.5 py-0.5 font-mono text-[10px] normal-case" title={t('board.peers.hopHint')}>
+              {t('board.peers.hop', { n: origin.hop })}
+            </span>
+          )}
+          {canNavigate && sourceId && (
+            <button
+              type="button"
+              onClick={() => navigation?.focusSession(sourceId)}
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 normal-case text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+            >
+              {t('board.peers.goToPane')} <ArrowUpRight size={11} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        <div className="whitespace-pre-wrap">{message.content}</div>
+        <p className="mt-1.5 text-[10px] text-[var(--text-subtle)]">{t('board.peers.untrusted')}</p>
+      </div>
+    </div>
+  )
+}
+
+/** El usuario reenvió a mano un texto de otro panel: se marca la cita, sin techo. */
+function ForwardedBadge({ sessionId }: { sessionId: string }) {
+  const { t } = useI18n()
+  const navigation = usePeerNavigation()
+  const label = navigation?.labelFor(sessionId) ?? sessionId
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
+      <MessageSquareShare size={11} aria-hidden="true" />
+      {t('board.peers.forwardedFrom', { label })}
+    </span>
   )
 }

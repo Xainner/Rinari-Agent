@@ -5,6 +5,11 @@ import type {
   ToolSummary as ProtocolToolSummary,
   ProjectSummary as ProtocolProjectSummary,
   SessionSummary as ProtocolSessionSummary,
+  MessageOrigin,
+  PeerGroup,
+  PeerGroupMember,
+  PeerMessage,
+  QueuedPromptEntry,
 } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
@@ -70,6 +75,8 @@ export interface HistoryMessage {
   name: string | null;
   created_at: string;
   turn_id?: string | null;
+  /** Procedencia (peer/user-forward); ausente en engines anteriores. */
+  origin?: MessageOrigin | null;
   images?: Array<{ uri: string; sha256: string }> | null;
   attachments?: Array<{
     id?: string;
@@ -108,6 +115,7 @@ export interface TimelineTurn {
   items: TimelineEvent[];
   final_response: string;
   terminal?: Record<string, unknown>;
+  origin?: MessageOrigin | null;
 }
 
 export interface TurnChangedFile {
@@ -428,6 +436,9 @@ export const engineApi = {
       "session_open",
       { reference },
     ),
+  /** Fila autoritativa de una sesión (cualquier estado); no la reabre ni la reconcilia. */
+  sessionGet: (reference: string) =>
+    invoke<{ session: SessionSummary }>('session_get', { reference }),
   renameSession: (reference: string, title: string) =>
     invoke<{ session: SessionSummary }>('session_rename', { reference, title }),
   archiveSession: (reference: string) =>
@@ -642,11 +653,58 @@ export const engineApi = {
       message,
     }),
   queueList: (session_id: string) =>
-    invoke<{ session_id: string; queue: string[]; pending: number }>("queue_list", {
+    invoke<{
+      session_id: string
+      queue: string[]
+      pending: number
+      // Typed entries (manual + peer inbox); absent on engines without
+      // `session_peer_messaging_v1`.
+      entries?: QueuedPromptEntry[]
+    }>("queue_list", {
       session_id,
     }),
   queueClear: (session_id: string) =>
     invoke<{ session_id: string; removed: number }>("queue_clear", { session_id }),
+  queueResume: (session_id: string) =>
+    invoke<{ session_id: string; resumed: number }>("queue_resume", { session_id }),
+  // -- peer messaging between the sessions of a board ------------------------
+  peerGroupSet: (input: {
+    board_id: string
+    group_id?: string | null
+    expected_revision: number
+    enabled: boolean
+    members: PeerGroupMember[]
+  }) =>
+    invoke<PeerGroup & { warnings?: string[] }>("peer_group_set", {
+      board_id: input.board_id,
+      group_id: input.group_id ?? null,
+      expected_revision: input.expected_revision,
+      enabled: input.enabled,
+      members: input.members,
+    }),
+  peerGroupGet: (selector: { board_id?: string; session_id?: string; group_id?: string }) =>
+    invoke<{ group: PeerGroup | null }>("peer_group_get", {
+      board_id: selector.board_id ?? null,
+      session_id: selector.session_id ?? null,
+      group_id: selector.group_id ?? null,
+    }),
+  peerGroupRevoke: (group_id: string) => invoke<PeerGroup>("peer_group_revoke", { group_id }),
+  peerMessageList: (session_id: string) =>
+    invoke<{ session_id: string; messages: PeerMessage[] }>("peer_message_list", { session_id }),
+  peerMessageCancel: (message_id: string) =>
+    invoke<PeerMessage>("peer_message_cancel", { message_id }),
+  peerMessageForward: (input: {
+    target_session_id: string
+    message: string
+    source_session_id?: string | null
+    quoted_source?: Record<string, unknown> | null
+  }) =>
+    invoke<PeerMessage>("peer_message_forward", {
+      target_session_id: input.target_session_id,
+      message: input.message,
+      source_session_id: input.source_session_id ?? null,
+      quoted_source: input.quoted_source ?? null,
+    }),
   bundleList: () => invoke<{ profiles: ProfileBundle[] }>("bundle_list"),
   bundleCreate: (input: {
     id: string;
@@ -1014,3 +1072,5 @@ export async function prepareAttachmentRefsWithJob(
 export function onEngineEvent(callback: (event: EngineEventMsg) => void): Promise<UnlistenFn> {
   return listen<EngineEventMsg>(ENGINE_EVENT, (wrapper) => callback(wrapper.payload));
 }
+
+export type { MessageOrigin, PeerGroup, PeerGroupMember, PeerMessage, QueuedPromptEntry }

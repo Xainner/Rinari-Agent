@@ -1,5 +1,7 @@
 /** Shared UI types. Engine-owned domain types live in services/engine.ts. */
 
+import type { MessageOrigin } from './types/protocol.generated'
+
 export type Language = 'es' | 'en'
 
 export type Role = 'user' | 'assistant'
@@ -13,6 +15,12 @@ export interface ChatMessage {
   pending?: boolean
   turnId?: string
   attachments?: AttachmentRef[]
+  /**
+   * Procedencia del mensaje de rol usuario: `peer` = lo envió el agente de
+   * otro panel (dato no confiable), `user` con `quoted_source` = reenviado a
+   * mano por el usuario. Ausente o `user` sin cita = lo escribió el usuario.
+   */
+  origin?: MessageOrigin | null
 }
 
 export type SessionKind = 'chat' | 'project'

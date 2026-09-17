@@ -25,6 +25,8 @@ import type { ChatMessage } from '../../types'
 import Markdown from '../../components/Markdown'
 import { FileLink } from '../files/FileWorkspace'
 import MessageBubble from '../../components/MessageBubble'
+import { usePeerNavigation } from '../board/PeerNavigationContext'
+import { useResultVisibility } from '../board/useResultVisibility'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +51,8 @@ interface Props {
   onResolveApproval: (id: string, decision: string) => void
   onContinue?: () => void
   planActions?: ReactNode
+  /** Tarjeta de resultado (Boards) tras el bloque final/error. */
+  result?: ReactNode
 }
 
 const ICONS = {
@@ -121,7 +125,8 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
 }
 
 function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, { type: 'model' }>; onResolveApproval: (id: string, decision: string) => void }) {
-  const { lang } = useI18n()
+  const { t, lang } = useI18n()
+  const peerNavigation = usePeerNavigation()
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <details className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
@@ -169,7 +174,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     return (
       <div className="my-2 border-l-2 border-amber-400/50 py-1 pl-3 text-[13px]">
         <div className="flex items-center gap-2 text-[var(--text)]"><ShieldAlert size={14} className="text-amber-400" />{item.description || item.capability}<span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">{item.risk}</span></div>
-        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.target}</div>}
+        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</div>}
         {(pending || resolving) ? (
           <div className="mt-2 flex flex-wrap gap-2">
             <ApprovalActions item={item} disabled={resolving} onResolve={onResolveApproval} />
@@ -478,7 +483,16 @@ function VisualProgress({ items, status, onResolveApproval }: {
   </>
 }
 
-export default function TurnTimelineView({ timeline, user, now, onResolveApproval, planActions }: Props) {
+/**
+ * Marca visible del bloque final/error de un turno terminado: la lectura
+ * automática (§8.6) exige que esté en viewport con la ventana atendida.
+ */
+function ResultReadSentinel({ turnId, terminal }: { turnId: string; terminal: boolean }) {
+  const ref = useResultVisibility(turnId, terminal)
+  return <div ref={ref} aria-hidden="true" data-testid="result-read-sentinel" data-turn-id={turnId} className="h-px w-full" />
+}
+
+export default function TurnTimelineView({ timeline, user, now, onResolveApproval, planActions, result }: Props) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
   const changeSets = timeline.items.filter((item) => item.type === 'changeset')
@@ -505,7 +519,7 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
     : timeline.status
   return (
     <div className="space-y-3">
-      {user ? <MessageBubble message={user} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId }} /> : null}
+      {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       <div className="space-y-1 pl-0.5">
         {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'model' ? (
           <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown></div>
@@ -522,6 +536,8 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
       </div>
       {final?.type === 'model' && (timeline.mode === 'plan' ? <section aria-label="Plan propuesto" className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"><div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />Plan propuesto</div><Markdown>{final.content}</Markdown>{planActions}</section> : <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />)}
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={['running', 'approval', 'cancelling'].includes(timeline.status)} />)}
+      {result}
+      <ResultReadSentinel turnId={timeline.turnId} terminal={['completed', 'failed', 'stopped', 'cancelled'].includes(timeline.status)} />
       {showSummary && <div className="flex items-center gap-2 text-[10px] text-[var(--text-subtle)]"><span>{elapsed(duration)}</span><span>·</span><span>{significant.length} {lang === 'es' ? 'acciones' : 'actions'}</span><span>·</span><span>{statusLabel}</span></div>}
       {timeline.status === 'failed' && timeline.errorDetails?.history_preserved === true && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'El trabajo previo está conservado. Puedes enviar un nuevo mensaje; las acciones de resultado desconocido requieren comprobar su estado.' : 'Previous work is preserved. You can send a new message; unknown action outcomes require checking their state.'}</p>}
       {timeline.status === 'failed' && timeline.errorDetails && <details className="text-xs text-[var(--text-subtle)]"><summary>{lang === 'es' ? 'Diagnóstico de la interrupción' : 'Interruption diagnostics'}</summary><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{JSON.stringify(Object.fromEntries(Object.entries(timeline.errorDetails).filter(([key]) => key !== 'partial_text')), null, 2)}</pre></details>}

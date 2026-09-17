@@ -1,4 +1,4 @@
-import { GitBranch, Menu, PanelLeft } from 'lucide-react'
+import { GitBranch } from 'lucide-react'
 import { projectDisplayName } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
 
@@ -19,12 +19,12 @@ interface ChatHeaderProps {
   git: HeaderGit | null
   gitMissing: boolean
   onOpenProject: (() => void) | null
-  onOpenMobileSidebar: () => void
-  onExpandSidebar: () => void
-  sidebarCollapsed: boolean
 }
 
-/** Header mínimo y contextual: toggles + título + proyecto/git + kind/modo. */
+/**
+ * Contenido contextual de la conversación (título + proyecto/git + kind/modo).
+ * Se monta dentro de `AppStatusBar`; no es un segundo header global.
+ */
 export default function ChatHeader({
   title,
   kind,
@@ -34,32 +34,10 @@ export default function ChatHeader({
   git,
   gitMissing,
   onOpenProject,
-  onOpenMobileSidebar,
-  onExpandSidebar,
-  sidebarCollapsed,
 }: ChatHeaderProps) {
   const { t } = useI18n()
   return (
-    <header className="flex h-13 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
-      <button
-        type="button"
-        onClick={onOpenMobileSidebar}
-        aria-label={t('chat.openMenu')}
-        className="rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] lg:hidden"
-      >
-        <Menu size={19} />
-      </button>
-      {sidebarCollapsed && (
-        <button
-          type="button"
-          onClick={onExpandSidebar}
-          aria-label={t('shell.expand')}
-          title={t('shell.expand')}
-          className="hidden rounded-lg p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] lg:block"
-        >
-          <PanelLeft size={18} />
-        </button>
-      )}
+    <div className="flex min-w-0 flex-1 items-center gap-2">
       {title && (
         <p
           title={title}
@@ -95,6 +73,6 @@ export default function ChatHeader({
           {[kind, mode].filter(Boolean).join(' · ')}
         </span>
       )}
-    </header>
+    </div>
   )
 }

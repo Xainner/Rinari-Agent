@@ -1,21 +1,38 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
-import { dispatchAction, type DesktopAction } from './services/actions'
+import { dispatchAction, resolveContextualAction, type DesktopAction } from './services/actions'
+import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { open as openFolderDialog } from '@tauri-apps/plugin-dialog'
 import { toast } from 'sonner'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
 import { checkForUpdates, installUpdateAndRelaunch } from './services/updates'
 import { useUIStore } from './stores/ui'
+import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
+import { EngineProvider } from './features/engine/EngineContext'
+import { useSessionHasContent } from './features/engine/sessionSelectors'
+import SingleSessionView from './features/engine/SingleSessionView'
+import BoardActivityController from './features/board/BoardActivityController'
+import BoardAttentionMenu from './features/board/BoardAttentionMenu'
+import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
+import { projectDisplayName } from './features/projects/workspaceModel'
+import {
+  collapseAllPanes,
+  collapseFinishedPanes,
+  collapseFocusedPane,
+  expandAllPanes,
+  expandPaneShortcut,
+  markAllBoardResultsRead,
+  toggleFocusMode,
+} from './features/board/boardCommands'
 import AppShell from './components/app-shell/AppShell'
-import FileWorkspace from './features/files/FileWorkspace'
+import AppStatusBar from './components/app-shell/AppStatusBar'
 import BrowserPanel from './features/browser/BrowserPanel'
 import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
 import ChatHeader from './components/app-shell/ChatHeader'
-import ChatView from './components/ChatView'
 import CommandPalette from './components/CommandPalette'
 import EngineConsole from './features/engine/EngineConsole'
 import SettingsView from './features/settings/SettingsView'
@@ -24,6 +41,8 @@ import ProjectHome from './features/projects/ProjectHome'
 import ProviderWizard from './features/providers/ProviderWizard'
 import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
+
+const BoardView = lazy(() => import('./features/board/BoardView'))
 
 const APP_VERSION = '0.1.2'
 
@@ -37,6 +56,9 @@ function App() {
   const setPaletteOpen = useUIStore((s) => s.setPaletteOpen)
   const togglePalette = useUIStore((s) => s.togglePalette)
   const goChat = useUIStore((s) => s.goChat)
+  const goNormal = useUIStore((s) => s.goNormal)
+  const goBoard = useUIStore((s) => s.goBoard)
+  const toggleBoards = useUIStore((s) => s.toggleBoards)
   const goEngine = useUIStore((s) => s.goEngine)
   const goWorkspace = useUIStore((s) => s.goWorkspace)
   const goProject = useUIStore((s) => s.goProject)
@@ -48,8 +70,14 @@ function App() {
   const shortcutBindings = useUIStore((s) => s.shortcutBindings)
 
   const session = useEngineSession()
-  const activeRecord =
-    session.sessions.find((s) => s.id === session.activeSession) ?? null
+  const activeRecord = session.sessionsById[session.activeSession] ?? null
+  // Booleano estable: decide si hay header sin suscribirse a cada token.
+  const activeHasContent = useSessionHasContent(session.runtime, session.activeSession)
+  // Sesiones distintas con aprobaciones pendientes (una sesión cuenta una vez).
+  const attentionSessionCount = useMemo(
+    () => new Set(session.approvals.map((item) => item.session_id).filter(Boolean)).size,
+    [session.approvals],
+  )
   const activeTitle = activeRecord?.title ?? null
   const activeProject = activeRecord?.project_id
     ? session.projects.find((project) => project.id === activeRecord.project_id) ?? null
@@ -169,29 +197,93 @@ function App() {
     }
   }, [session.ready, session.catalogLoaded, session.catalogError, session.providers.length, wizardSnoozed])
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const pressed = `${e.ctrlKey || e.metaKey ? 'Ctrl+' : ''}${e.altKey ? 'Alt+' : ''}${e.shiftKey ? 'Shift+' : ''}${e.key.length === 1 ? e.key.toUpperCase() : e.key}`
-      const action = Object.entries(shortcutBindings).find(([, shortcut]) => shortcut.toUpperCase() === pressed.toUpperCase())?.[0]
-      if (!action) return
-      e.preventDefault()
-      if (action === 'palette') togglePalette()
-      if (action === 'settings') goSettings()
-      if (action === 'sidebar') toggleSidebarCollapsed()
-      if (action === 'newChat') void session.createSession().then((id) => id && goChat())
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [shortcutBindings, togglePalette, goSettings, toggleSidebarCollapsed, goChat, session.createSession])
+  useDesktopShortcuts(shortcutBindings, (action) => {
+    if (action === 'palette') togglePalette()
+    if (action === 'settings') goSettings()
+    if (action === 'sidebar') toggleSidebarCollapsed()
+    if (action === 'boards') toggleBoards()
+    if (action === 'newChat') dispatchAction('new-chat')
+    // Colapso/expansión solo actúan en Boards; en otras vistas no hacen nada.
+    if (action === 'collapsePane') dispatchAction('collapse-pane')
+    if (action === 'expandPane') dispatchAction('expand-pane')
+  })
 
   const desktopActionRef = useRef<(action: DesktopAction) => void>(() => {})
+  /** Acciones del board (alta/baja de paneles); las registra BoardView cuando existe. */
+  const boardActionsRef = useRef<{ addPane: () => void; removePane: () => void }>({ addPane: () => {}, removePane: () => {} })
+  const boardPanes = useBoardStore((s) => s.panes)
+  const boardFocusedPaneId = useBoardStore((s) => s.focusedPaneId)
+  const boardAddPane = useBoardStore((s) => s.addPane)
+  const boardFocusPane = useBoardStore((s) => s.focusPane)
+  const boardSessionIds = useMemo(() => new Set(boardPanes.map((pane) => pane.sessionId)), [boardPanes])
+  const boardCounts = useBoardStatusStore(selectAttentionCounts)
+  const boardStatusByPane = useBoardStatusStore((s) => s.byPane)
+  /** Señal por sesión para el sidebar: categorías distinguibles, no un punto genérico. */
+  const boardSignalBySession = useMemo(() => {
+    const out: Record<string, 'needs_you' | 'failed' | 'unread'> = {}
+    for (const status of Object.values(boardStatusByPane)) {
+      const current = out[status.sessionId]
+      if (status.kind === 'needs_you') out[status.sessionId] = 'needs_you'
+      else if (status.kind === 'failed' && current !== 'needs_you') out[status.sessionId] = 'failed'
+      else if (status.unreadResultCount > 0 && !current) out[status.sessionId] = 'unread'
+    }
+    return out
+  }, [boardStatusByPane])
+  const boardLabelFor = (id: string) => {
+    const record = session.sessionsById[id]
+    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
+  }
+  const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
+  // Overlays (navegador, procesos): solo la sesión de trabajo enfocada y expandida.
+  const overlaySessionId = view === 'chat' ? session.activeSession : view === 'board' && focusedBoardPane && !focusedBoardPane.collapsed ? focusedBoardPane.sessionId : ''
+  /** Elegir una sesión desde sidebar/paleta: en Boards enfoca o añade su panel; en Normal la selecciona. */
+  const chooseSession = (id: string) => {
+    if (view === 'board') {
+      const existing = useBoardStore.getState().paneForSession(id)
+      if (existing) boardFocusPane(existing.paneId)
+      else boardAddPane(id, { focus: true })
+      return
+    }
+    void session.selectSession(id)
+    goChat()
+  }
+  const openInBoard = (id: string) => {
+    const existing = useBoardStore.getState().paneForSession(id)
+    if (existing) boardFocusPane(existing.paneId)
+    else boardAddPane(id, { focus: true })
+    goBoard()
+  }
 
   useEffect(() => {
     const handle = (action: DesktopAction) => {
       switch (action) {
-        case 'new-chat': void session.createSession().then(id => id && goChat()); break
+        case 'new-chat': {
+          // Contextual: en Boards abre "Añadir panel" (lo cablea el store del board).
+          if (resolveContextualAction('new', { view }) === 'add-pane') { boardActionsRef.current.addPane(); break }
+          void session.createSession().then(id => id && goChat()); break
+        }
+        case 'view-normal': goNormal(); break
+        case 'view-boards': goBoard(); break
+        case 'toggle-boards': toggleBoards(); break
+        case 'collapse-pane': if (view === 'board') collapseFocusedPane(); break
+        case 'expand-pane': if (view === 'board') expandPaneShortcut(); break
+        case 'collapse-all-panes': collapseAllPanes(); break
+        case 'expand-all-panes': expandAllPanes(); break
+        case 'collapse-finished-panes': {
+          const result = collapseFinishedPanes()
+          if (result.outcome === 'focus-mode') toast.info(translate(lang, 'board.toolbar.collapseFinishedFocusMode'))
+          else if (result.outcome === 'nothing') toast.info(translate(lang, 'board.toolbar.nothingToCollapse'))
+          else toast.success(translate(lang, 'board.toolbar.collapsedFinished', { n: result.count }))
+          break
+        }
+        case 'toggle-focus-mode': goBoard(); toggleFocusMode(); break
+        case 'mark-all-board-results-read': markAllBoardResultsRead(); break
         case 'open-folder': void openFolderDialog({ directory: true }).then(path => { if (typeof path === 'string') void handleOpenProjectPath(path).then(ok => ok && goChat()) }); break
-        case 'close-session': if (session.activeSession) void session.closeSession(session.activeSession); break
+        case 'close-session': {
+          // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.
+          if (resolveContextualAction('close', { view }) === 'remove-pane') { boardActionsRef.current.removePane(); break }
+          if (session.activeSession) void session.closeSession(session.activeSession); break
+        }
         case 'settings': goSettings(); break
         case 'appearance': goSettings('appearance'); break
         case 'about': goSettings('about'); break
@@ -244,6 +336,8 @@ function App() {
 
   return (
     <I18nProvider lang={lang}>
+      <EngineProvider session={session}>
+      <BoardActivityController />
       <DesktopContextMenu />
       <ProcessRuntimeProvider
         epoch={session.connectionEpoch ?? 0}
@@ -295,12 +389,12 @@ function App() {
             archivedSessions={session.archivedSessions}
             projects={session.projects}
             archivedProjects={session.archivedProjects}
-            activeId={session.activeSession}
+            activeId={view === 'board' ? (focusedBoardPane?.sessionId ?? '') : session.activeSession}
             busySessionIds={session.busySessionIds}
-            onSelectSession={(id) => {
-              void session.selectSession(id)
-              goChat()
-            }}
+            boardSessionIds={boardSessionIds}
+            boardSignalBySession={boardSignalBySession}
+            onOpenInBoard={openInBoard}
+            onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
             onCloseSession={(id) => void session.closeSession(id)}
             onRenameSession={(id, title) => void session.renameSession(id, title)}
@@ -317,76 +411,55 @@ function App() {
             approvals={session.approvals}
           />
         }
-        header={
-          view === 'chat' && (session.messages.length > 0 || Object.values(session.timelines).some(turn => turn.sessionId === session.activeSession)) ? (
-            <ChatHeader
-              title={activeTitle}
-              kind={activeRecord?.kind ?? null}
-              mode={activeRecord?.mode ?? null}
-              projectRoot={session.activeProjectRoot}
-              projectName={activeProject?.name ?? session.activeProjectRoot}
-              git={
-                session.activeGitStatus?.status.available
-                  ? {
-                      branch: session.activeGitStatus.status.branch,
-                      dirty: session.activeGitStatus.status.dirty,
-                      changed: session.activeGitStatus.status.files.length,
-                    }
-                  : null
-              }
-              gitMissing={session.activeGitError !== null}
-              onOpenProject={
-                session.activeProjectRoot
-                  ? () => goProject(session.activeProjectRoot as string)
-                  : null
-              }
-              onOpenMobileSidebar={() => setSidebarOpen(true)}
-              onExpandSidebar={toggleSidebarCollapsed}
-              sidebarCollapsed={sidebarCollapsed}
-            />
-          ) : (
-            <></>
-          )
+        topbar={
+          <AppStatusBar
+            context={
+              view === 'chat' && activeHasContent ? (
+                <ChatHeader
+                  title={activeTitle}
+                  kind={activeRecord?.kind ?? null}
+                  mode={activeRecord?.mode ?? null}
+                  projectRoot={session.activeProjectRoot}
+                  projectName={activeProject?.name ?? session.activeProjectRoot}
+                  git={
+                    session.activeGitStatus?.status.available
+                      ? {
+                          branch: session.activeGitStatus.status.branch,
+                          dirty: session.activeGitStatus.status.dirty,
+                          changed: session.activeGitStatus.status.files.length,
+                        }
+                      : null
+                  }
+                  gitMissing={session.activeGitError !== null}
+                  onOpenProject={
+                    session.activeProjectRoot
+                      ? () => goProject(session.activeProjectRoot as string)
+                      : null
+                  }
+                />
+              ) : view !== 'chat' && view !== 'board' ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
+              ) : null
+            }
+            selectedView={view === 'chat' || view === 'board' ? view : null}
+            onSelectView={(next) => (next === 'board' ? goBoard() : goNormal())}
+            toggleShortcut={shortcutBindings.boards}
+            engineState={session.status?.state ?? null}
+            workingCount={session.busySessionIds.size}
+            attentionCount={attentionSessionCount}
+            boardAttentionCount={boardCounts.attentionPaneCount}
+            attentionMenu={<BoardAttentionMenu labelFor={boardLabelFor} goBoard={goBoard} disabled={!session.ready} />}
+            onOpenMobileSidebar={() => setSidebarOpen(true)}
+            onExpandSidebar={toggleSidebarCollapsed}
+            sidebarCollapsed={sidebarCollapsed}
+          />
         }
       >
-        {view === 'chat' && (
-          <FileWorkspace sessionId={session.activeSession}><ChatView
-            homeContext={{ projectName: activeProject?.name ?? session.activeProjectRoot, changedFiles: session.activeGitStatus?.status.available ? session.activeGitStatus.status.files.length : null }}
-            messages={session.messages}
-            sessionId={session.activeSession}
-            isStreaming={session.busy}
-            engineReady={session.ready}
-            onSend={session.send}
-            onPrepareAttachments={session.prepareAttachments}
-            onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
-            onImplementPlan={session.implementPlan}
-            onStop={() => void session.cancelTurn()}
-            onOpenProviders={() => goSettings('providers')}
-            models={session.models}
-            providers={session.providers}
-            activeAlias={session.activeModel?.alias ?? null}
-            activeModel={session.activeModel}
-            onUseModel={(model) => void session.useModel(model)}
-            onDiscoverModels={() => void session.discoverCatalog()}
-            sessionMode={activeRecord?.mode ?? null}
-            historyLoading={session.historyLoading}
-            onModeChange={(mode) => void session.setMode(mode)}
-            reasoningEffort={session.reasoningEffort}
-            onReasoningChange={session.setReasoningEffort}
-            timelines={session.timelines}
-            onResolveApproval={(id, decision) => void session.resolveApproval(id, decision)}
-            permissionProfile={activeRecord?.permission_profile ?? 'workspace'}
-            effectivePermissionProfile={activeRecord?.effective_permission_profile ?? 'workspace'}
-            permissionProfilesV2={session.status?.capabilities.permission_profiles_v2 === true}
-            onPermissionChange={(profile) => void session.setPermission(profile)}
-            onSearchFiles={session.searchFiles}
-            processesOpenSignal={processesSignal}
-            historyNote={
-              session.activeSession !== ''
-                ? (session.historyInfo[session.activeSession] ?? null)
-                : null
-            }
-          /></FileWorkspace>
+        {view === 'chat' && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />}
+        {view === 'board' && (
+          <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
+            <BoardView actionsRef={boardActionsRef} />
+          </Suspense>
         )}
         {view === 'engine' && <EngineConsole session={session} />}
         {view === 'workspace' && (
@@ -460,7 +533,7 @@ function App() {
         )}
       </AppShell>
 
-      {view === 'chat' && session.activeSession && <BrowserPanel key={session.activeSession} sessionId={session.activeSession} />}
+      {overlaySessionId && <BrowserPanel key={overlaySessionId} sessionId={overlaySessionId} />}
 
       <ProviderWizard
         open={wizardOpen}
@@ -478,12 +551,10 @@ function App() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         sessions={session.sessions}
-        activeId={session.activeSession || null}
-        onSelectSession={(id) => {
-          void session.selectSession(id)
-          goChat()
-        }}
+        activeId={(view === 'board' ? focusedBoardPane?.sessionId : session.activeSession) || null}
+        onSelectSession={chooseSession}
         onNewSession={() => dispatchAction('new-chat')}
+        onNewPane={() => { goBoard(); boardActionsRef.current.addPane() }}
         onOpenSettings={(section) => goSettings(section)}
         onOpenEngine={goEngine}
         onOpenWorkspace={goWorkspace}
@@ -496,6 +567,7 @@ function App() {
         onLanguageChange={setLang}
       />
       </ProcessRuntimeProvider>
+      </EngineProvider>
     </I18nProvider>
   )
 }

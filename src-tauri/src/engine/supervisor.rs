@@ -43,6 +43,8 @@ pub struct EngineStatus {
     pub protocol_version: Option<u32>,
     pub detail: Option<String>,
     pub capabilities: HashMap<String, bool>,
+    /// From the hello: namespaces per-session presentation state by home.
+    pub home_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -151,6 +153,7 @@ impl EngineSupervisor {
                         .as_ref()
                         .map(|hello| hello.capabilities.clone())
                         .unwrap_or_default(),
+                    home_id: inner.hello.as_ref().and_then(|hello| hello.home_id.clone()),
                 }
             }
             Err(_) => EngineStatus {
@@ -159,6 +162,7 @@ impl EngineSupervisor {
                 protocol_version: None,
                 detail: Some("supervisor lock poisoned".to_string()),
                 capabilities: HashMap::new(),
+                home_id: None,
             },
         }
     }

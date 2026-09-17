@@ -28,6 +28,8 @@ export interface EngineStatus {
   protocol_version: number | null;
   detail: string | null;
   capabilities: Record<string, boolean>;
+  /** Identidad estable del Engine home (digest de su ruta); `null` en engines antiguos. */
+  home_id?: string | null;
 }
 
 export interface CommandError {

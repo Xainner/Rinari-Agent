@@ -31,6 +31,10 @@ pub struct Hello {
     pub engine_version: String,
     #[serde(default)]
     pub capabilities: HashMap<String, bool>,
+    /// Stable identity of the Engine home (a digest of its resolved path).
+    /// Unlike `engine_instance_id` it survives restarts; older engines omit it.
+    #[serde(default)]
+    pub home_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1198,9 +1198,13 @@ def main(argv):
         raise SystemExit(f"unknown scenario: {scenario}")
     if scenario == "legacy":
         CAPABILITIES.pop("interactive_questions_v1")
-    sys.stdout.write(json.dumps({
+    hello = {
         "type": "hello", "protocol": "rinari-engine", "protocol_version": 1,
-        "engine_version": "fake-1.0", "capabilities": CAPABILITIES}) + "\n")
+        "engine_version": "fake-1.0", "capabilities": CAPABILITIES}
+    # The legacy scenario also predates home_id: the host must tolerate its absence.
+    if scenario != "legacy":
+        hello["home_id"] = "fakehome00000001"
+    sys.stdout.write(json.dumps(hello) + "\n")
     sys.stdout.flush()
     engine = FakeEngine(scenario)
     for line in sys.stdin:

@@ -45,11 +45,40 @@ documentado; lo demás no se presenta como terminado.
 
 ## Deuda vigente
 
+### Base integrada Boards + procesos (2026-09-16, plan 00/01)
+
+- **Controles duplicados** — `DONE`. `PaneHeader` ya no edita modelo ni modo;
+  Composer es el único propietario (`BoardView.controls.test.tsx`).
+- **Respuesta final duplicada** — `DONE`. `TurnResult` + `TurnMeta`
+  compartidos; `ResultSummaryCard` solo como resumen fuera del chat
+  (`TurnResult.test.tsx`).
+- **Anclas de scroll al colapsar** — `DONE`. `scrollAnchors.ts` guarda fila +
+  offset o «seguir el final» y `ChatView` restaura sin timeouts
+  (`ChatView.scroll.test.tsx`).
+- **Lectura por centinela de 1 px** — `DONE`. `useResultVisibility` observa el
+  cuerpo real (`useResultVisibility.test.tsx`).
+- **Navegador flotante global** — `DONE` como presentación: vive en el dock de
+  la sesión (`SessionWorkspace`). El transporte sigue siendo el poll JPEG de
+  `browser.view.get`, rotulado como vista previa; el browser nativo con el
+  target del Engine es el documento 03.
+- **Aprobación antes de la comprobación de pares** — `DONE` (Engine).
+  `ToolDefinition.precheck` rechaza destinos inválidos antes del
+  consentimiento y `deliver` revalida después (`test_engine_peers.py`).
+- **Layout del dock por Engine home** — `DONE`. `sessionDock` se indexa por
+  `home_id` (nuevo en el hello) + sesión; el board migró a schema 3.
+- **ResultSummaryCard sin consumidor en la app** — `OPEN`. Queda como
+  componente de resumen (pendientes / panel colapsado) con test propio, sin
+  montarse todavía en la lista de pendientes; decidir si se integra en
+  `BoardAttentionMenu` o se retira.
+- **Recibos de lectura por instalación** — `OPEN`. `boardAttention` sigue
+  indexado por `rinari.profile.v1`; podría adoptar el mismo `home_id` que
+  `sessionDock`.
+- **`cargo fmt` bloqueado en la máquina de integración** — `NOT_RUN` local:
+  Control de aplicaciones bloquea `cargo-fmt` (os error 4551); se verificó con
+  `rustfmt --check` directo y CI ejecuta `cargo fmt --check`.
+
 ### Boards y mensajería entre paneles (2026-09-15)
 
-- **Anclas de scroll al colapsar** — `OPEN`. Al expandir una tira el chat
-  vuelve al final (auto-follow); no se conserva el punto de lectura previo.
-  Falta guardar `rowId/turnId + offset` en `sessionUi.ts` antes de desmontar.
 - **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`
   (dependencia nueva con autorización). El adaptador `services/notifications.ts`
   declara `canSend=false`; el ajuste aparece como no disponible. La activación
@@ -59,10 +88,6 @@ documentado; lo demás no se presenta como terminado.
 - **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"
   del runtime; tras un arranque en frío el sidebar no sabe si una sesión no
   abierta está ocupada hasta que llega un evento.
-- **Aprobación antes de la comprobación de pares** — `OPEN` (Engine). Un
-  `session.send` a un panel que no recibe pide consentimiento y luego falla
-  con `PEER_RECEIVE_DISABLED`. Sería mejor validar la membresía antes de
-  preguntar.
 - **Perfil de lectura por instalación** — `OPEN`. Los recibos se indexan por
   `rinari.profile.v1` (id local aleatorio); si el Agent apunta a otro home de
   Engine con la misma instalación, los recibos se comparten.

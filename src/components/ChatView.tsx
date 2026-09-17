@@ -367,9 +367,9 @@ function ChatView({
         </div>
     ) : undefined}>
       {sessionId !== '' && (
-        <ProcessesDock key={sessionId} sessionId={sessionId} openSignal={processesOpenSignal} />
+        <ProcessesDock key={`processes:${sessionId}`} sessionId={sessionId} openSignal={processesOpenSignal} />
       )}
-      <Questions key={sessionId} sessionId={sessionId} />
+      <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
       {composer}
     </HomeWelcome>
   )

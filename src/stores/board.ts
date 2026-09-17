@@ -25,7 +25,9 @@ export const BOARD_STORAGE_KEY = 'rinari.board.v1'
 export const BOARD_SCHEMA_VERSION = 3
 
 export const PANE_MIN_WIDTH = 480
-export const PANE_DEFAULT_WIDTH = 760
+/** Chat mínimo acoplado (480) + dock por defecto (360) + separador: un panel
+ * nuevo muestra su dock al lado del chat, no como drawer encima del composer. */
+export const PANE_DEFAULT_WIDTH = 860
 export const PANE_MAX_WIDTH = 1600
 export const SOFT_LIMIT_DEFAULT = 6
 

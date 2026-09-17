@@ -11,12 +11,29 @@ import process from 'node:process'
 
 const scenario = process.env.RINARI_FAKE_SCENARIO ?? 'default'
 
+// Las capabilities que el supervisor exige para conectar; el escenario
+// `outdated` las recorta para probar el rechazo.
+const REQUIRED = [
+  'desktop_turn_runtime_v3',
+  'tool_contracts_v1',
+  'desktop_workspace_v1',
+  'interactive_questions_v1',
+  'web_preview_v1',
+  'plan_read_scope_v1',
+  'persistent_context_compaction_v1',
+  'recoverable_tool_results_v1',
+]
+
 const HELLO = {
   type: 'hello',
   protocol: 'rinari-engine',
   protocol_version: 1,
   engine_version: 'fake-1.0',
-  capabilities: { chat: true, projects: true },
+  capabilities: {
+    chat: true,
+    projects: true,
+    ...(scenario === 'outdated' ? {} : Object.fromEntries(REQUIRED.map((name) => [name, true]))),
+  },
   home_id: 'home_fake',
 }
 

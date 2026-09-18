@@ -44,6 +44,14 @@ export const PAGE_OPERATIONS: Readonly<Record<string, string>> = Object.freeze(
  */
 export const CONTEXT_OPERATIONS = new Set([
   'page.screenshot',
+  // Observación bufferizada por el host: no hay una `CdpSession` de la que
+  // drenar, así que la recoge el debugger y se sirve desde aquí (§6.3).
+  'page.consoleEvents',
+  'page.networkEvents',
+  // Las cookies son de la partición del contexto, no de una página: van por
+  // la API de `session` y no por un debugger page-level (§6.3).
+  'context.cookies',
+  'context.setCookie',
   'context.targets',
   'context.newPage',
   'context.closePage',

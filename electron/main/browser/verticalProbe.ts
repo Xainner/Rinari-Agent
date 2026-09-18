@@ -113,6 +113,8 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     'browser.fill',
     'browser.click',
     'browser.screenshot',
+    'browser.console',
+    'browser.network',
   ]
 
   /**
@@ -505,6 +507,68 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     })
     deps.registry.closeTarget(context, hiddenTarget.targetId)
     await sleep(200)
+
+    // ── V4c: consola y red, que hasta ahora eran UNSUPPORTED (R10-13).
+    //
+    //    Se provoca actividad real en la página y se comprueba que el agente
+    //    la observa. La red se mide con una petición que la propia página
+    //    dispara, no con la navegación: así se prueba el buffer del host y no
+    //    un efecto de la carga inicial.
+    await read(
+      view,
+      `(() => { console.log('marca-consola-vertical');
+                void fetch(${JSON.stringify(deps.fixtureUrl)} + '?sonda=1');
+                return true; })()`,
+    )
+    await sleep(800)
+
+    await script([
+      { tool: 'browser.console', args: {} },
+      { tool: 'browser.network', args: {} },
+      { text: 'observado' },
+    ])
+    const observed2 = await runTurn(sessionId, 'mira la consola y la red', 45_000)
+    const consoleTool = observed2.tools.find((tool) => tool.tool === 'browser.console')
+    const networkTool = observed2.tools.find((tool) => tool.tool === 'browser.network')
+    const consoleText = JSON.stringify(parseObservation(consoleTool?.observation) ?? {})
+    const networkText = JSON.stringify(parseObservation(networkTool?.observation) ?? {})
+    const sawLog = consoleText.includes('marca-consola-vertical')
+    const sawRequest = networkText.includes('sonda=1')
+
+    record({
+      id: 'V4c',
+      title: 'Consola y red del target se observan por el host',
+      status: sawLog && sawRequest ? 'ok' : 'failed',
+      detail:
+        sawLog && sawRequest
+          ? 'el agente leyó el mensaje de consola y la petición que lanzó la página'
+          : `consola ${sawLog ? 'sí' : 'no'} · red ${sawRequest ? 'sí' : 'no'} — ` +
+            `${errorCodeOf(consoleTool) ?? consoleTool?.outcome ?? 'sin evento'} / ` +
+            `${errorCodeOf(networkTool) ?? networkTool?.outcome ?? 'sin evento'}`,
+      evidence: { sawLog, sawRequest, trace: observed2.trace },
+    })
+
+    // ── V4d: cookies de la partición, y sin cruzar entre sesiones (§6.3).
+    const cookieName = `vertical${Date.now()}`
+    await deps.registry.setCookie(context, { name: cookieName, value: 'secreto' })
+    await sleep(300)
+
+    const own = await deps.registry.cookies(context)
+    const mine = own.find((cookie) => cookie.name === cookieName)
+    // El valor no sale del host: la credencial no pasea por el broker.
+    const leaksValue = own.some((cookie) => 'value' in cookie)
+
+    record({
+      id: 'V4d',
+      title: 'Las cookies son de la partición del contexto y su valor no sale',
+      status: mine && !leaksValue ? 'ok' : 'failed',
+      detail: !mine
+        ? 'la cookie escrita no aparece en la partición del contexto'
+        : leaksValue
+          ? 'el host devolvió el valor de una cookie; es una credencial y no debe cruzar'
+          : `la cookie ${cookieName} está en su partición y sólo viajan nombre, dominio y banderas`,
+      evidence: { found: Boolean(mine), leaksValue, total: own.length },
+    })
 
     // ── Paso 5: control manual. La UI bloquea mutaciones concurrentes, y una
     //    edición manual se observa al devolver el control.

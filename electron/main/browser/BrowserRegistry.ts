@@ -34,12 +34,39 @@ export type ControlOwner = 'agent' | 'user'
 const DEFAULT_LOGICAL_SIZE = { width: 1280, height: 800 }
 
 
+/** Métodos CDP que se bufferizan para consola y red (§6.3). */
+const CONSOLE_METHODS = new Set(['Runtime.consoleAPICalled', 'Runtime.exceptionThrown'])
+const NETWORK_METHODS = new Set([
+  'Network.requestWillBeSent',
+  'Network.responseReceived',
+  'Network.loadingFailed',
+])
+
+/**
+ * Tope del buffer por clase y target.
+ *
+ * Una página que registra en bucle no puede crecer sin límite en el host: el
+ * §6.3 pide «buffers limitados». Al llenarse se descartan los más viejos, que
+ * es lo que una herramienta que consulta lo reciente quiere de todos modos.
+ */
+const MAX_BUFFERED = 500
+
 interface TargetEntry {
   targetId: string
   view: WebContentsView
   /** Lo que hay que deshacer al cerrar; el §6.2 avisa de que quitar un nodo
    *  de React no libera una vista nativa [E8]. */
   dispose: Array<() => void>
+  /**
+   * Eventos observados de esta página, por clase.
+   *
+   * El backend externo los toma del buffer de su `CdpSession`; aquí no hay
+   * ninguna, así que los recoge el host desde el debugger. Se guardan sólo los
+   * métodos de la allowlist: escuchar todo sería observar la aplicación
+   * entera, no esta página (§6.3).
+   */
+  console: Array<Record<string, unknown>>
+  network: Array<Record<string, unknown>>
 }
 
 export interface ContextEntry {
@@ -195,7 +222,7 @@ export class BrowserRegistry {
     })
 
     const targetId = randomUUID()
-    const entry: TargetEntry = { targetId, view, dispose: [] }
+    const entry: TargetEntry = { targetId, view, dispose: [], console: [], network: [] }
     const contents = view.webContents
 
     // Nada de ventanas nuevas decididas por la página: un popup heredaría el
@@ -258,9 +285,87 @@ export class BrowserRegistry {
 
   /** Adjunta el debugger si hace falta. Es la vía CDP page-level del §6.3. */
   attach(entry: TargetEntry): void {
-    if (!entry.view.webContents.debugger.isAttached()) {
-      entry.view.webContents.debugger.attach('1.3')
+    const debug = entry.view.webContents.debugger
+    if (debug.isAttached()) return
+    debug.attach('1.3')
+
+    // Observación de consola y red. Se recoge aquí porque el backend externo
+    // la toma del buffer de su `CdpSession` y aquí no hay ninguna. Sólo los
+    // métodos de la allowlist: escuchar todo sería observar la aplicación
+    // entera en vez de esta página (§6.3).
+    const onMessage = (_event: unknown, method: string, params: Record<string, unknown>) => {
+      const bucket = CONSOLE_METHODS.has(method)
+        ? entry.console
+        : NETWORK_METHODS.has(method)
+          ? entry.network
+          : null
+      if (!bucket) return
+      bucket.push({ method, params })
+      // Se descarta lo más viejo: una página que registra en bucle no puede
+      // crecer sin límite en el host.
+      if (bucket.length > MAX_BUFFERED) bucket.splice(0, bucket.length - MAX_BUFFERED)
     }
+    debug.on('message', onMessage)
+    entry.dispose.push(() => debug.off('message', onMessage))
+
+    // Sin habilitar los dominios no llega ningún evento.
+    for (const domain of ['Runtime', 'Network']) {
+      void debug.sendCommand(`${domain}.enable`, {}).catch(() => {
+        // Un dominio que no se puede habilitar deja su observación vacía, que
+        // es mejor que tumbar la operación que pidió adjuntar.
+      })
+    }
+  }
+
+  /**
+   * Vacía y devuelve lo observado de una clase.
+   *
+   * Drenar en vez de copiar: cada consulta ve lo nuevo desde la anterior, que
+   * es el contrato del backend externo.
+   */
+  drainObserved(entry: TargetEntry, kind: 'console' | 'network', limit: number): unknown[] {
+    const bucket = entry[kind]
+    const taken = bucket.splice(0, Math.max(0, limit))
+    return taken
+  }
+
+  /**
+   * Cookies de **esta** partición (§6.3).
+   *
+   * Por la API de `session` y no por CDP: las cookies pertenecen a la
+   * partición del contexto, no a una página, y `Network.getCookies` sobre un
+   * debugger page-level no es la misma pregunta. Así dos sesiones con el mismo
+   * origen no comparten nada.
+   *
+   * El valor **no sale de aquí**. El contrato de la herramienta ya lo redacta,
+   * pero mandarlo por el broker sería pasear una credencial sin necesidad.
+   */
+  async cookies(context: ContextEntry): Promise<Array<Record<string, unknown>>> {
+    const jar = electronSession.fromPartition(context.partition).cookies
+    const cookies = await jar.get({})
+    return cookies.map((cookie) => ({
+      name: cookie.name,
+      domain: cookie.domain,
+      path: cookie.path,
+      httpOnly: Boolean(cookie.httpOnly),
+      secure: Boolean(cookie.secure),
+    }))
+  }
+
+  async setCookie(
+    context: ContextEntry,
+    input: { name: string; value: string; url?: string },
+  ): Promise<void> {
+    // `cookies.set` exige una URL; CDP la infería de la página. Se toma la de
+    // la pestaña activa para conservar ese comportamiento.
+    const active = this.target(context.contextId, null)
+    const url = input.url || active?.view.webContents.getURL() || ''
+    if (!isNavigableUrl(url)) {
+      throw new Error('setting a cookie needs an http(s) url or a page to take it from')
+    }
+    await electronSession
+      .fromPartition(context.partition)
+      .cookies.set({ url, name: input.name, value: input.value })
   }
 
   closeTarget(context: ContextEntry, targetId: string): boolean {

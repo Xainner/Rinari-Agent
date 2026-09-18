@@ -68,7 +68,7 @@ console.log(`modelo falso en ${model.origin}`)
 
 // Pasos que el gate exige ver. Un informe al que le falte uno no es un PASS
 // con menos cobertura: es un informe que no prueba lo que dice probar.
-const REQUIRED_STEPS = ['V1', 'V2', 'V2b', 'V2c', 'V3', 'V4', 'V4b', 'V5', 'V6', 'V7a', 'V7', 'V7c', 'V8']
+const REQUIRED_STEPS = ['V1', 'V2', 'V2b', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'V6', 'V7a', 'V7', 'V7c', 'V8']
 
 // Perfil de Electron propio, no sólo home del Engine: el renderer guarda
 // drafts y preferencias, y la sonda no debe tocar los del usuario.

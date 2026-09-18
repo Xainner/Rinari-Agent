@@ -416,6 +416,50 @@ export class NativeBrowserHost {
         return { data: image.toPNG().toString('base64') }
       }
 
+      case 'page.consoleEvents':
+      case 'page.networkEvents': {
+        // Observación bufferizada por el host: aquí no hay `CdpSession` de la
+        // que drenar. Devuelve los eventos crudos ya filtrados por la
+        // allowlist, y el Engine les da la misma forma que al backend externo
+        // para que la herramienta no note de dónde vinieron.
+        const entry = registry.target(context.contextId, request.target_id)
+        if (!entry || entry.view.webContents.isDestroyed()) {
+          throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
+        }
+        registry.attach(entry)
+        const limit = Number(request.params.limit)
+        const kind = request.operation === 'page.consoleEvents' ? 'console' : 'network'
+        return {
+          events: registry.drainObserved(
+            entry,
+            kind,
+            Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1_000) : 100,
+          ),
+        }
+      }
+
+      case 'context.cookies':
+        return { cookies: await registry.cookies(context) }
+
+      case 'context.setCookie': {
+        const name = request.params.name
+        const value = request.params.value
+        if (typeof name !== 'string' || !name || typeof value !== 'string') {
+          throw new OperationError('INVALID_ARGUMENT', 'a cookie needs a name and a value')
+        }
+        const url = request.params.url
+        try {
+          await registry.setCookie(context, {
+            name,
+            value,
+            url: typeof url === 'string' ? url : undefined,
+          })
+        } catch (error) {
+          throw new OperationError('INVALID_ARGUMENT', messageOf(error))
+        }
+        return { set: name }
+      }
+
       case 'context.targets':
         return {
           targets: registry.describeTargets(context),

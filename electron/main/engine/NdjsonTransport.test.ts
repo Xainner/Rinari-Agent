@@ -185,6 +185,23 @@ describe('handshake', () => {
   })
 })
 
+describe('LIFE-04 — el cleanup de una sonda no deja el Engine vivo', () => {
+  it('el hijo muere tras el cierre que usa `desktop:parity`', async () => {
+    // `app.exit()` salta el ciclo de vida: sin este cierre explícito, el host
+    // termina y su hijo se queda con el home temporal sujeto.
+    const { transport, stderr } = await connect()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const pid = Number(/^PID (\d+)$/.exec(stderr.find((line) => line.startsWith('PID ')) ?? '')?.[1])
+    expect(Number.isFinite(pid), 'el Engine falso debía anunciar su PID').toBe(true)
+    expect(alive(pid)).toBe(true)
+
+    // Es el mismo camino que `QuitCoordinator.shutdownWithoutPrompt`.
+    await transport.shutdown()
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(alive(pid), `el Engine ${pid} sigue vivo tras el cierre`).toBe(false)
+  })
+})
+
 describe('peticiones', () => {
   it('correlaciona la respuesta con su id', async () => {
     const { transport } = await connect()

@@ -28,8 +28,15 @@ export interface WindowDeps {
   /** `development` añade a la CSP lo justo para Vite y su HMR. */
   cspMode: 'production' | 'development'
   onState: (state: WindowState) => void
-  /** Se pide cerrar: el host decide si hay trabajo activo que confirmar. */
+  /** Se pide cerrar: el coordinador de salida decide qué hacer. */
   onCloseRequested: (window: BrowserWindow) => void
+  /**
+   * ¿La salida ya está confirmada? Entonces el cierre se deja pasar. Sin
+   * esto, el `preventDefault` incondicional impediría que `app.quit()`
+   * terminara nunca: salir cerraría la ventana, y la ventana bloquearía la
+   * salida.
+   */
+  isQuitCommitted: () => boolean
 }
 
 function stateOf(window: BrowserWindow): WindowState {
@@ -141,6 +148,7 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   })
 
   window.on('close', (event) => {
+    if (deps.isQuitCommitted()) return
     event.preventDefault()
     deps.onCloseRequested(window)
   })

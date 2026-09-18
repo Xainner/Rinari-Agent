@@ -15,6 +15,8 @@ import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry, originOf } from './ipc/validateSender'
+import { canPush } from './ipc/pushGuard'
+import { QuitCoordinator } from './lifecycle/QuitCoordinator'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
@@ -51,8 +53,14 @@ const registry = new SenderRegistry(TRUSTED_ORIGIN)
 const handoff = new HandoffQueue()
 
 function send(channel: string, payload: unknown): void {
-  // Solo al renderer registrado: nunca a un webContents cualquiera.
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
+  // Solo al renderer de confianza, y solo mientras siga en su origen: si
+  // cargara otro contenido, dejaría de recibir eventos del Engine aunque ya
+  // no pudiera invocar IPC privilegiado.
+  const window = mainWindow
+  if (!window || window.isDestroyed()) return
+  const target = { url: window.webContents.getURL(), destroyed: false }
+  if (!canPush(target, TRUSTED_ORIGIN, originOf)) return
+  window.webContents.send(channel, payload)
 }
 
 const engine = new EngineSupervisor({
@@ -147,29 +155,46 @@ function buildServices(): HostServices {
 }
 
 /**
- * Cierre con trabajo activo (§4.3 y documento 04 §3.3): se pregunta en vez de
- * matar turnos en marcha. Cerrar de verdad detiene los recursos del host; no
- * se introduce un daemon nuevo en esta migración.
+ * Salida de la aplicación (§4.3 y documento 04 §3.3).
+ *
+ * Una sola autoridad para el botón X, el menú Salir, `Cmd+Q`/`Alt+F4` y
+ * `app.quit()`: se pregunta **antes** de detener el Engine, y cancelar no
+ * toca nada. Antes había dos rutas y la de `before-quit` cerraba el Engine
+ * antes del diálogo.
  */
-async function confirmClose(window: BrowserWindow): Promise<void> {
+const quitCoordinator = new QuitCoordinator({
   // Aproximación deliberada: saber si hay trabajo realmente activo exige
   // preguntárselo al Engine. Mientras tanto se pregunta siempre que esté en
   // marcha, que peca de prudente en vez de matar un turno en silencio.
-  if (engine.status().state === 'ready') {
-    const { response } = await dialog.showMessageBox(window, {
-      type: 'question',
+  shouldConfirm: () => engine.status().state === 'ready',
+  async confirm() {
+    const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+    const options = {
+      type: 'question' as const,
       buttons: ['Cerrar Rinari', 'Cancelar'],
       defaultId: 1,
       cancelId: 1,
       message: '¿Cerrar Rinari Agent?',
       detail:
         'El Engine se detendrá. Los turnos en ejecución se interrumpen y los procesos administrados se cierran.',
-    })
-    if (response !== 0) return
-  }
-  await engine.shutdown()
-  window.destroy()
-}
+    }
+    const { response } = target
+      ? await dialog.showMessageBox(target, options)
+      : await dialog.showMessageBox(options)
+    return response === 0
+  },
+  shutdown: () => engine.shutdown().then(() => undefined),
+  commit() {
+    unregisterIpc?.()
+    unregisterIpc = null
+    app.quit()
+  },
+  onShutdownError(error, reason) {
+    // Ni se fuerza la salida ni se oculta: queda registrado y se puede
+    // reintentar, en vez de terminar con el Engine a medio cerrar.
+    console.error(`[rinari] el cierre del Engine falló (${reason}):`, error)
+  },
+})
 
 function openWindow(): void {
   const preloadPath = join(__dirname, 'preload.cjs')
@@ -181,9 +206,11 @@ function openWindow(): void {
     trustedOrigin: TRUSTED_ORIGIN,
     cspMode: isDev ? 'development' : 'production',
     onState: (state) => send(PUSH.windowState, state),
-    onCloseRequested: (window) => {
-      void confirmClose(window)
+    onCloseRequested: () => {
+      // El manejador de ventana no detiene el Engine por su cuenta: delega.
+      void quitCoordinator.requestQuit('window-close')
     },
+    isQuitCommitted: () => quitCoordinator.isCommitted(),
   })
 
   registry.trust(mainWindow.webContents.id)
@@ -211,6 +238,18 @@ function openWindow(): void {
 }
 
 /**
+ * Cierra el Engine antes de terminar una sonda.
+ *
+ * `app.exit()` salta el ciclo de vida normal: el host muere y su hijo se
+ * queda vivo con el home temporal sujeto. Por eso el cierre es explícito,
+ * sin diálogo, y solo después se sale.
+ */
+async function finishProbe(code: number): Promise<void> {
+  const ok = await quitCoordinator.shutdownWithoutPrompt('parity')
+  app.exit(ok ? code : 1)
+}
+
+/**
  * Sonda de paridad (documento 02 §8): arranca el Engine **real** desde el host
  * y ejercita un corte transversal de los doce módulos de comandos por el
  * camino completo —renderer, preload, IPC validado, traducción y protocolo—.
@@ -227,11 +266,11 @@ function attachParityProbe(window: BrowserWindow): void {
       .executeJavaScript('window.__rinariParityProbe ? window.__rinariParityProbe() : Promise.resolve({ error: "probe not registered" })')
       .then((report: Record<string, unknown>) => {
         console.log(`RINARI_PARITY ${JSON.stringify(report)}`)
-        setTimeout(() => app.exit(0), 100)
+        void finishProbe(0)
       })
       .catch((error: unknown) => {
         console.log(`RINARI_PARITY ${JSON.stringify({ error: String(error) })}`)
-        setTimeout(() => app.exit(1), 100)
+        void finishProbe(1)
       })
   })
 }
@@ -245,7 +284,7 @@ function attachParityProbe(window: BrowserWindow): void {
 function attachSmoke(window: BrowserWindow): void {
   const report = (ok: boolean, detail: Record<string, unknown>) => {
     console.log(`RINARI_SMOKE ${JSON.stringify({ ok, ...detail })}`)
-    setTimeout(() => app.exit(ok ? 0 : 1), 50)
+    void finishProbe(ok ? 0 : 1)
   }
   window.webContents.on('did-fail-load', (_event, code, description, url) => {
     report(false, { stage: 'load', code, description, url })
@@ -287,7 +326,8 @@ if (!app.requestSingleInstanceLock()) {
       buildApplicationMenu({
         getWindow: () => mainWindow,
         onAction: (id) => send(PUSH.menuAction, id),
-        onQuit: () => app.quit(),
+        // El menú entra por la misma autoridad que el resto.
+        onQuit: () => void quitCoordinator.requestQuit('menu'),
       }),
     )
     unregisterIpc = registerIpc(registry, buildServices())
@@ -299,13 +339,16 @@ if (!app.requestSingleInstanceLock()) {
     })
   })
 
+  // En macOS cerrar la última ventana no termina la aplicación: se conserva
+  // esa semántica y `activate` vuelve a abrirla.
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (process.platform !== 'darwin') void quitCoordinator.requestQuit('window-all-closed')
   })
 
-  app.on('before-quit', () => {
-    unregisterIpc?.()
-    unregisterIpc = null
-    void engine.shutdown()
+  app.on('before-quit', (event) => {
+    // Ya confirmado: se deja pasar, o habría un bucle salir → cerrar → salir.
+    if (quitCoordinator.isCommitted()) return
+    event.preventDefault()
+    void quitCoordinator.requestQuit('app')
   })
 }

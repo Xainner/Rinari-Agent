@@ -28,6 +28,14 @@ jobs:
       # `dist/`, así que sin esto el smoke no tiene nada que abrir.
       - run: npm run build
       - run: npm run desktop:build
+      # El helper SUID de Chromium exige root y modo 4755, y `npm ci` no lo
+      # instala así. Se corrige el permiso en vez de arrancar con
+      # `--no-sandbox`: el sandbox es justo lo que el smoke comprueba, y el
+      # documento 02 §10 prohíbe desactivarlo para salir del paso.
+      - name: Fix the Electron sandbox helper permissions
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
       # Abre Electron de verdad: comprueba que el renderer carga por el
       # esquema propio con el puente puesto y sin fugas de Node. Necesita un
       # display, de ahí xvfb (documento 02 §8).

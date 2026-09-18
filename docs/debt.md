@@ -110,6 +110,24 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
+### Cierre del ciclo de vida de salida (2026-09-18)
+
+- **Salir podía detener el Engine antes de preguntar** — `DONE`. `Cmd+Q`, el
+  menú y `app.quit()` entraban por `before-quit`, que cerraba el Engine antes
+  del diálogo: cancelar dejaba la ventana abierta con el turno ya interrumpido.
+  `QuitCoordinator` es ahora la única autoridad y pregunta **antes** de tocar
+  nada (QUIT-01..07).
+- **Las sondas salían con `app.exit()`** — `DONE`. Saltaba el ciclo de vida y
+  el Engine hijo se quedaba vivo con el home temporal sujeto; ahora se cierra
+  explícitamente antes de salir (LIFE-04).
+- **PUSH sin comprobar el destino** — `DONE`. El envío al renderer exige que
+  siga en el origen de confianza, no solo que la ventana exista
+  (SEC-PUSH-01..03). Es defensa en capas: el IPC entrante ya validaba.
+- **Confirmación de cierre conservadora** — `OPEN` declarado. Se pregunta
+  siempre que el Engine esté en marcha; saber si hay turnos vivos exige una
+  consulta al Engine que no existe todavía. Lo obligatorio —preguntar antes de
+  cerrar— sí se cumple.
+
 ### Correcciones del PR #9 (2026-09-17)
 
 - **Operaciones del host por `command()`** — `DONE`. `engine_start` y las otras
@@ -142,8 +160,9 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución y preload sin `ipcRenderer`. El smoke comprueba que el
   renderer carga desde `app://rinari` sin `window.require` ni `window.process`.
 - **Arranque real** — `DONE` como smoke: `npm run desktop:smoke` abre Electron
-  y verifica renderer, puente y ausencia de fugas. **No** es paridad: los 130
-  comandos del inventario no están ejercitados contra el host nuevo.
+  y verifica renderer, puente y ausencia de fugas. **No** es paridad: de los
+  130 comandos del inventario (124 del Engine y 6 del host), solo los 12
+  representativos de `desktop:parity` se ejercitan contra el host nuevo.
 - **Traducción comando → método del protocolo** — `DONE`. El nombre del comando **no** es el método: `session_get`
   habla con `session.get`, y los argumentos se renombran (`reference` → `ref`
   en 21 comandos, `provider_type` → `type`). El host Tauri hacía esa traducción
@@ -158,9 +177,11 @@ documentado; lo demás no se presenta como terminado.
   temporal y ejercita un comando por cada uno de los doce módulos más un turno
   con proveedor falso, que recorre `turn.started → model.failed → turn.failed`.
   Prueba el camino completo —renderer, preload, IPC validado, traducción,
-  NDJSON y eventos de vuelta—. **No** es la matriz completa: son 12 de 125
-  comandos, y los 113 restantes tienen traducción generada y probada en
-  unidad, pero no ejercitada contra el Engine.
+  NDJSON y eventos de vuelta—. **No** es la matriz completa: son **12
+  comandos representativos** —uno por módulo— más un turno real, de los 124
+  respaldados por el Engine. Los otros 112 tienen cobertura de traducción por
+  unidad e invariantes (método válido, renombrados, tabla completa), no
+  ejercicio individual contra un Engine vivo.
 - **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
   `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
   el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un

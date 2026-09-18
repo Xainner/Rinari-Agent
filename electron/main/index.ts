@@ -347,6 +347,7 @@ function attachVerticalProof(): void {
         fixtureUrl,
         modelOrigin,
         window,
+        physicalClick: physicalClicker(),
       }),
     )
     .then((report) => {
@@ -360,15 +361,38 @@ function attachVerticalProof(): void {
 }
 
 /**
- * Termina la prueba vertical sin quedarse colgada.
+ * Click real del sistema para la prueba de click-through, cuando la
+ * plataforma lo permite. El script lo aporta el runner.
+ */
+function physicalClicker(): ((x: number, y: number) => Promise<void>) | undefined {
+  const script = process.env.RINARI_PROBE_PS1
+  if (process.platform !== 'win32' || !script) return undefined
+  return (x, y) =>
+    new Promise<void>((resolve, reject) => {
+      void import('node:child_process').then(({ execFile }) => {
+        execFile(
+          'powershell.exe',
+          ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-X', `${x}`, '-Y', `${y}`],
+          (error) => (error ? reject(error) : resolve()),
+        )
+      })
+    })
+}
+
+/**
+ * Termina la prueba vertical sin quedarse colgada **y sin mentir**.
  *
- * El informe ya está publicado cuando se llega aquí, así que un cierre que no
- * responde no puede convertirse en «la prueba no reportó»: se le da un plazo y
- * después se sale igual.
+ * Antes el plazo forzaba `app.exit(code)` con el mismo código, así que una
+ * limpieza que no terminaba salía igualmente con éxito: el contrato de
+ * lifecycle del PR #9 quedaba sin comprobar justo en el caso que importa. Si
+ * hay que forzar, se sale con fallo y se dice.
  */
 function endVerticalProof(code: number): void {
   browserRegistry?.disposeAll()
-  const forced = setTimeout(() => app.exit(code), 15_000)
+  const forced = setTimeout(() => {
+    console.error('RINARI_BROWSER_VERTICAL_CLEANUP timeout')
+    app.exit(1)
+  }, 15_000)
   void finishProbe(code).finally(() => clearTimeout(forced))
 }
 

@@ -49,11 +49,26 @@ export interface VerticalDeps {
    * widget que considera oculto, así que la prueba necesita poder mostrarla y
    * decir en qué estado estaba.
    */
-  window: { show(): void; focus(): void; isVisible(): boolean; isMinimized(): boolean }
+  window: {
+    show(): void
+    focus(): void
+    isVisible(): boolean
+    isMinimized(): boolean
+    getBounds(): { x: number; y: number; width: number; height: number }
+  }
+  /**
+   * Click real del sistema. Sin él no se puede probar el click-through: una
+   * entrada sintética va dirigida a un webContents y se salta el hit-testing,
+   * así que daría por buena cualquier superposición.
+   */
+  physicalClick?: (x: number, y: number) => Promise<void>
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
+/** Tamaño lógico del slot, en DIP. La captura sale en físicos (§8.2). */
+const LOGICAL_SIZE = { width: 760, height: 560 }
 
 export async function runVerticalProof(deps: VerticalDeps): Promise<{
   steps: StepResult[]
@@ -94,6 +109,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
   const BROWSER_TOOLS = [
     'browser.navigate',
     'browser.snapshot',
+    'browser.a11y',
     'browser.fill',
     'browser.click',
     'browser.screenshot',
@@ -342,20 +358,88 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
 
     // ── Paso 4: la captura del Engine contiene el estado visible, con tamaño
     //    y target identificados.
+    //    Se abre el artefacto y se comprueba **su contenido**. Exigir sólo
+    //    `ok` y `bytes > 0` daba por buena cualquier imagen: no distinguía
+    //    esta página de otra, ni esta sesión de otra.
     await script([{ tool: 'browser.screenshot', args: {} }, { text: 'capturado' }])
     const shot = await runTurn(sessionId, 'haz una captura')
     const shotTool = shot.tools.find((tool) => tool.tool === 'browser.screenshot')
     const observation = parseObservation(shotTool?.observation)
     const bytes = Number(observation?.bytes ?? 0)
+    // La herramienta devuelve el artefacto como URI `file://`, no como ruta.
+    const artifactUri = String(observation?.artifact ?? '')
+    const artifactPath = artifactUri.startsWith('file://')
+      ? decodeURIComponent(new URL(artifactUri).pathname).replace(/^\/([A-Za-z]:)/, '$1')
+      : artifactUri
+
+    const { createHash } = await import('node:crypto')
+    const { readFile } = await import('node:fs/promises')
+    const { nativeImage } = await import('electron')
+
+    let hashMatches = false
+    let size: { width: number; height: number } | null = null
+    let looksLikeFixture = false
+    let artifactError: string | null = null
+    try {
+      const raw = await readFile(artifactPath)
+      hashMatches = createHash('sha256').update(raw).digest('hex') === String(observation?.sha256)
+      const image = nativeImage.createFromBuffer(raw)
+      size = image.getSize()
+      // El fixture es un color plano inconfundible: si la captura es de esa
+      // página, domina la imagen. Sin OCR y sin depender de la fuente.
+      const bitmap = image.toBitmap()
+      let hits = 0
+      for (let index = 0; index + 3 < bitmap.length; index += 4) {
+        if (
+          Math.abs(bitmap[index + 2]! - 220) <= 24 &&
+          Math.abs(bitmap[index + 1]! - 30) <= 24 &&
+          Math.abs(bitmap[index]! - 40) <= 24
+        ) {
+          hits += 1
+        }
+      }
+      looksLikeFixture = hits > (bitmap.length / 4) * 0.5
+    } catch (error) {
+      artifactError = message(error)
+    }
+
+    // La captura sale en píxeles físicos; los bounds, en DIP (§8.2).
+    const { screen } = await import('electron')
+    const scale = screen.getPrimaryDisplay().scaleFactor
+    const expected = {
+      width: Math.round(LOGICAL_SIZE.width * scale),
+      height: Math.round(LOGICAL_SIZE.height * scale),
+    }
+    const sizeMatches = size?.width === expected.width && size?.height === expected.height
+    const targetIsOurs = deps.registry.target(context.contextId, target.targetId) !== undefined
+
     record({
       id: 'V4',
-      title: 'Una screenshot del Engine contiene el estado visible, con tamaño y target',
-      status: shotTool?.ok === true && bytes > 0 ? 'ok' : 'failed',
+      title: 'La screenshot es de esta página y de esta sesión, no sólo bytes',
+      status:
+        shotTool?.ok === true && hashMatches && sizeMatches && looksLikeFixture && targetIsOurs
+          ? 'ok'
+          : 'failed',
       detail:
-        bytes > 0
-          ? `captura de ${bytes} bytes del target ${target.targetId} de esta sesión`
-          : `la captura no trajo bytes: ${JSON.stringify(observation).slice(0, 200)}`,
-      evidence: { bytes, sha256: observation?.sha256, targetId: target.targetId },
+        artifactError !== null
+          ? `no se pudo abrir el artefacto: ${artifactError}`
+          : !hashMatches
+            ? 'el sha256 del artefacto no coincide con el que declaró la herramienta'
+            : !sizeMatches
+              ? `la captura mide ${size?.width}×${size?.height} y el target ${expected.width}×${expected.height}`
+              : !looksLikeFixture
+                ? 'la imagen no es la página del fixture'
+                : `${bytes} bytes, ${size?.width}×${size?.height}, sha256 verificado, contenido del fixture, target de esta sesión`,
+      evidence: {
+        bytes,
+        sha256: observation?.sha256,
+        hashMatches,
+        size,
+        expected,
+        looksLikeFixture,
+        targetId: target.targetId,
+        targetIsOurs,
+      },
     })
 
     // ── Paso 5: control manual. La UI bloquea mutaciones concurrentes, y una
@@ -393,21 +477,31 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const blocked = await runTurn(sessionId, 'vuelve a pulsar aplicar')
     const blockedTool = blocked.tools.find((tool) => tool.tool === 'browser.click')
 
-    // Edición «manual»: se hace sobre la vista, no por el broker, que es lo
-    // que hace el usuario cuando tiene el control.
-    //
-    // Se toca también el atributo. Fijar sólo la propiedad `value` no cambia
-    // el HTML serializado, así que el snapshot del agente no la vería y el
-    // paso habría fallado por cómo está escrita la comprobación, no por el
-    // comportamiento que pretende medir.
-    const manual = `manual-${Date.now()}`
-    await read(
+    // Edición manual **con entrada real del widget**, que es la ruta del
+    // usuario. La versión anterior asignaba `value` y además `setAttribute`
+    // para que el HTML serializado lo contuviera; eso probaba una edición
+    // artificial y, peor, tocaba el fixture para que el snapshot viera una
+    // propiedad que el producto no observa.
+    const rect = await read<{ x: number; y: number }>(
       view,
-      `(() => { const f = document.getElementById('field');
-                f.value = ${JSON.stringify(manual)};
-                f.setAttribute('value', ${JSON.stringify(manual)});
-                return true; })()`,
+      `(() => { const r = document.getElementById('field').getBoundingClientRect();
+                return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`,
     )
+    await read(view, "(document.getElementById('field').value = '', true)")
+    view.webContents.focus()
+    for (const type of ['mouseDown', 'mouseUp'] as const) {
+      view.webContents.sendInputEvent({ type, x: rect.x, y: rect.y, button: 'left', clickCount: 1 })
+    }
+    await sleep(200)
+
+    const manual = `manual${Date.now()}`
+    for (const char of manual) {
+      view.webContents.sendInputEvent({ type: 'keyDown', keyCode: char })
+      view.webContents.sendInputEvent({ type: 'char', keyCode: char })
+      view.webContents.sendInputEvent({ type: 'keyUp', keyCode: char })
+    }
+    await sleep(400)
+    const typedLive = await read<string>(view, "document.getElementById('field').value")
 
     await call('browser.control.set', {
       session_id: sessionId,
@@ -416,12 +510,15 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     })
     const returned = await awaitControl('agent')
 
-    await script([{ tool: 'browser.snapshot', args: {} }, { text: 'observado' }])
+    // El agente observa el **valor vivo** por a11y, no el HTML serializado:
+    // escribir en un campo no cambia su atributo, así que un snapshot no lo
+    // vería y el paso mediría la forma de la comprobación en vez del
+    // comportamiento.
+    await script([{ tool: 'browser.a11y', args: {} }, { text: 'observado' }])
     const observed = await runTurn(sessionId, 'mira cómo quedó el campo')
-    const snapshotTool = observed.tools.find((tool) => tool.tool === 'browser.snapshot')
-    const snapshot = parseObservation(snapshotTool?.observation)
-    const html = String(snapshot?.html ?? '')
-    const sawManual = html.includes(manual)
+    const a11yTool = observed.tools.find((tool) => tool.tool === 'browser.a11y')
+    const tree = parseObservation(a11yTool?.observation)
+    const sawManual = JSON.stringify(tree?.nodes ?? []).includes(manual)
 
     // Se distingue «rechazado» de «no llegó a ejecutarse»: un turno que no
     // produjo la herramienta no demuestra exclusión, y darlo por bueno sería
@@ -429,18 +526,25 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const blockedCode = errorCodeOf(blockedTool)
     const refused = blockedTool?.outcome !== 'completed' && blockedCode === 'CONFLICT'
     const ranAnyway = blockedTool?.outcome === 'completed' && blockedTool?.ok === true
+    // La edición tiene que haber ocurrido de verdad antes de exigir que se
+    // observe: si el tecleo no llegó, `sawManual` sería falso por otra razón.
+    const typedForReal = typedLive === manual
     record({
       id: 'V5',
       title: 'Control manual: sin mutaciones concurrentes, y la edición manual se observa al devolverlo',
-      status: refused && sawManual ? 'ok' : 'failed',
-      detail: refused
-        ? sawManual
-          ? `con el usuario al mando el click se rechazó (${blockedCode}), y al devolver el control el agente leyó la edición manual`
-          : 'el click se rechazó, pero el agente no vio la edición manual al recuperar el control'
-        : ranAnyway
-          ? 'el click del agente se ejecutó con el usuario al mando: no hay exclusión'
-          : `el click no se ejecutó, pero tampoco se rechazó por control (${blockedCode ?? 'sin tool.completed'}): la exclusión no queda demostrada`,
+      status: refused && typedForReal && sawManual ? 'ok' : 'failed',
+      detail: !typedForReal
+        ? `la edición manual no llegó a la página: el campo quedó en «${typedLive}»`
+        : refused
+          ? sawManual
+            ? `con el usuario al mando el click se rechazó (${blockedCode}); tecleado real en el campo, y al devolver el control el agente lo leyó por a11y`
+            : 'el click se rechazó y el tecleo llegó, pero el agente no vio el valor vivo al recuperar el control'
+          : ranAnyway
+            ? 'el click del agente se ejecutó con el usuario al mando: no hay exclusión'
+            : `el click no se ejecutó, pero tampoco se rechazó por control (${blockedCode ?? 'sin evento terminal'}): la exclusión no queda demostrada`,
       evidence: {
+        typedLive,
+        typedForReal,
         // La petición vuelve sin conceder: la confirmación llega por evento.
         requestedState: requested.control_state,
         requestedOwnerAtReply: requested.control,
@@ -554,24 +658,73 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const after = await read<[number, number]>(view, '[window.innerWidth, window.innerHeight]')
     const keptViewport = after[0] === before[0] && after[1] === before[1]
 
-    // La superposición se monta aquí a propósito, para la parte del §8.3 que
-    // trata de modales y click-through. No es el estado de reposo: montada
-    // permanentemente bloquearía también al agente (ver V2c y BrowserRegistry).
+    record({
+      id: 'V7',
+      title: 'Reducir el área visible recorta sin cambiar el viewport del documento',
+      status: keptViewport ? 'ok' : 'failed',
+      detail: keptViewport
+        ? `el recorte pasó a 200×140 y el viewport sigue en ${after[0]}×${after[1]}`
+        : `el viewport cambió de ${before.join('×')} a ${after.join('×')} al recortar`,
+      evidence: { before, after },
+    })
+
+    // ── V7b: overlay y click-through, que es otra cosa que el recorte.
+    //
+    //    Antes se comprobaba que la barrera fuera el último hijo. Eso describe
+    //    el orden de apilado, no que un click destinado a un modal llegue al
+    //    modal: hace falta entrada real del sistema, porque `sendInputEvent`
+    //    va dirigido a un webContents y se salta el hit-testing.
+    deps.registry.setGeometry(context, {
+      visible: { x: 24, y: 120, width: 520, height: 380 },
+      logical: { width: LOGICAL_SIZE.width, height: LOGICAL_SIZE.height },
+    })
     deps.registry.setControl(context, 'agent', true)
-    await sleep(300)
+    await sleep(500)
+
+    if (!deps.physicalClick) {
+      record({
+        id: 'V7b',
+        title: 'Un click destinado al overlay no atraviesa hasta la página',
+        status: 'skipped',
+        detail:
+          'no ejecutado: la síntesis de entrada del sistema es de Windows y no está disponible aquí. El criterio de la entrega E es Windows; en otras plataformas queda por medir.',
+      })
+    } else {
+      const bounds = deps.window.getBounds()
+      const spot = { x: bounds.x + 24 + 200, y: bounds.y + 120 + 200 }
+      const pageBefore = await read<number>(view, 'window.__probe.clicks')
+      deps.window.show()
+      deps.window.focus()
+      await sleep(400)
+      await deps.physicalClick(spot.x, spot.y)
+      await sleep(400)
+      const pageAfter = await read<number>(view, 'window.__probe.clicks')
+
+      const blocked = pageAfter === pageBefore
+      record({
+        id: 'V7b',
+        title: 'Un click destinado al overlay no atraviesa hasta la página',
+        status: blocked ? 'ok' : 'failed',
+        detail: blocked
+          ? `con la superposición delante, el click del sistema no llegó a la página (${pageBefore} → ${pageAfter})`
+          : `el click atravesó la superposición: la página pasó de ${pageBefore} a ${pageAfter}`,
+        evidence: { pageBefore, pageAfter, spot },
+      })
+    }
+
     const barrierOnTop =
       context.barrier !== null &&
       context.container.children[context.container.children.length - 1] === context.barrier
     deps.registry.setControl(context, 'agent')
 
     record({
-      id: 'V7',
-      title: 'Reducir el área visible recorta sin cambiar el viewport, y nada atraviesa la barrera',
-      status: keptViewport && barrierOnTop ? 'ok' : 'failed',
-      detail: keptViewport
-        ? `el recorte pasó a 200×140 y el viewport sigue en ${after[0]}×${after[1]}; la barrera nativa es la superficie frontal`
-        : `el viewport cambió de ${before.join('×')} a ${after.join('×')} al recortar`,
-      evidence: { before, after, barrierOnTop },
+      id: 'V7c',
+      title: 'La superposición es la superficie frontal del contenedor',
+      status: barrierOnTop ? 'ok' : 'failed',
+      detail: barrierOnTop
+        ? 'la barrera es el último hijo, así que una página creada después no se pone delante'
+        : 'la barrera no es la superficie frontal',
+      evidence: { barrierOnTop },
     })
 
     // ── Paso 8: se mata el Engine con una mutación en vuelo.

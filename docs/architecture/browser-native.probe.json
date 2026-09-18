@@ -219,8 +219,8 @@
       "status": "ok",
       "finding": "No: con particiones distintas, la segunda sesión no ve el localStorage de la primera pese a cargar la misma URL.",
       "detail": {
-        "marker": "marca-1789738411641",
-        "ownRead": "marca-1789738411641",
+        "marker": "marca-1789741998313",
+        "ownRead": "marca-1789741998313",
         "readBack": null,
         "partitions": [
           "probe-session-a",

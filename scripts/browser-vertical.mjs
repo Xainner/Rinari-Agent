@@ -66,8 +66,16 @@ const home = mkdtempSync(join(tmpdir(), 'rinari-vertical-'))
 console.log(`fixture en ${fixtureUrl}`)
 console.log(`modelo falso en ${model.origin}`)
 
+// Pasos que el gate exige ver. Un informe al que le falte uno no es un PASS
+// con menos cobertura: es un informe que no prueba lo que dice probar.
+const REQUIRED_STEPS = ['V1', 'V2', 'V2b', 'V2c', 'V3', 'V4', 'V5', 'V6', 'V7a', 'V7', 'V7c', 'V8']
+
+// Perfil de Electron propio, no sólo home del Engine: el renderer guarda
+// drafts y preferencias, y la sonda no debe tocar los del usuario.
+const userData = mkdtempSync(join(tmpdir(), 'rinari-vertical-profile-'))
+
 const electronBin = (await import('electron')).default
-const child = spawn(electronBin, [MAIN], {
+const child = spawn(electronBin, [MAIN, `--user-data-dir=${userData}`], {
   cwd: ROOT,
   env: {
     ...process.env,
@@ -78,6 +86,13 @@ const child = spawn(electronBin, [MAIN], {
     RINARI_ENGINE_BIN: 'uv',
     RINARI_ENGINE_ARGS: 'run rinari',
     RINARI_ENGINE_CWD: CLI,
+    // La prueba de click-through necesita entrada real del sistema; el
+    // script es de Windows y lo aporta el runner.
+    ...(process.platform === 'win32'
+      ? { RINARI_PROBE_PS1: join(ROOT, 'electron/probe/physicalClick.ps1') }
+      : {}),
+    // Un `RINARI_ENGINE_ARGS_JSON` del operador no puede ganarle al fixture.
+    RINARI_ENGINE_ARGS_JSON: '',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -86,14 +101,36 @@ let output = ''
 child.stdout.on('data', (chunk) => (output += chunk.toString()))
 child.stderr.on('data', (chunk) => (output += chunk.toString()))
 
+/**
+ * Suelta lo del test y dice si quedó algo sin limpiar.
+ *
+ * Un `catch` silencioso convertía un home retenido —es decir, un proceso hijo
+ * todavía vivo— en una limpieza aparentemente correcta.
+ */
 async function cleanup() {
   await model.close()
   await new Promise((resolve) => fixtureServer.close(resolve))
-  try {
-    rmSync(home, { recursive: true, force: true })
-  } catch {
-    // El Engine puede seguir soltando el home un instante; no es del test.
+  // `exit` del proceso principal no significa que sus auxiliares —GPU,
+  // utility, renderers— hayan terminado, y en Windows los handles se liberan
+  // al morir cada uno. Se espera a que se suelten de verdad; si a los 15 s
+  // siguen tomados, eso **sí** es una fuga y se reporta.
+  const leftovers = []
+  for (const [label, dir] of [
+    ['home del Engine', home],
+    ['perfil de Electron', userData],
+  ]) {
+    const attempts = 30
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        rmSync(dir, { recursive: true, force: true })
+        break
+      } catch (error) {
+        if (attempt === attempts - 1) leftovers.push(`${label}: ${error.code ?? error.message}`)
+        else await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+    }
   }
+  return leftovers
 }
 
 const timer = setTimeout(async () => {
@@ -125,13 +162,36 @@ child.on('exit', async (code) => {
   const { total, ok, failed } = report.summary ?? {}
   console.log(`\n${ok}/${total} pasos del §3 · ${failed} fallidos`)
 
-  // Un paso fallido sin la salida del host y del Engine no se puede
-  // diagnosticar; con `RINARI_VERTICAL_QUIET=1` se calla.
-  if ((failed > 0 || report.fatal) && !process.env.RINARI_VERTICAL_QUIET) {
+  // El veredicto no es `failed === 0`. Eso daba por bueno un informe al que
+  // le faltaran pasos, o que los declarara `skipped` en el gate obligatorio.
+  const seen = new Set((report.steps ?? []).map((step) => step.id))
+  const missing = REQUIRED_STEPS.filter((id) => !seen.has(id))
+  const skipped = (report.steps ?? []).filter((step) => step.status === 'skipped')
+  const cleanupTimedOut = output.includes('RINARI_BROWSER_VERTICAL_CLEANUP timeout')
+  const leftovers = await cleanup()
+
+  const problems = []
+  if (report.fatal) problems.push(`abortó: ${report.fatal}`)
+  if (failed > 0) problems.push(`${failed} pasos fallidos`)
+  if (missing.length) problems.push(`faltan pasos obligatorios: ${missing.join(', ')}`)
+  if (cleanupTimedOut) problems.push('la limpieza del host no confirmó a tiempo')
+  if (leftovers.length) problems.push(`quedaron recursos sin liberar: ${leftovers.join('; ')}`)
+  if (code !== 0) problems.push(`el host salió con código ${code}`)
+
+  // `skipped` no descalifica por sí solo —una plataforma puede no poder
+  // ejecutar la entrada física—, pero se dice en alto para que nadie lo lea
+  // como cobertura.
+  for (const step of skipped) console.log(`– ${step.id} no se ejecutó: ${step.detail}`)
+
+  if ((problems.length || report.fatal) && !process.env.RINARI_VERTICAL_QUIET) {
     console.log('\n--- salida del host y del Engine ---')
     console.log(output.slice(-6000))
   }
 
-  await cleanup()
-  process.exit(code === 0 && !report.fatal && failed === 0 ? 0 : 1)
+  if (problems.length) {
+    console.error(`\nprueba vertical NO superada: ${problems.join(' · ')}`)
+    process.exit(1)
+  }
+  console.log('limpieza confirmada y todos los pasos obligatorios presentes.')
+  process.exit(0)
 })

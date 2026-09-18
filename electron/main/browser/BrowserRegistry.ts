@@ -106,6 +106,15 @@ export class BrowserRegistry {
     this.contexts.set(contextId, entry)
     this.bySession.set(sessionId, contextId)
     this.hardenPartition(entry)
+    // El contexto nace **sin** barrera aunque el control sea del agente.
+    //
+    // La prueba vertical midió que, en la ventana de la aplicación, una
+    // superposición nativa bloquea también el input que el broker despacha por
+    // CDP: con la barrera puesta el click del agente no llega, y sin ella sí.
+    // Montarla por defecto dejaba al agente sin manos. La medición aislada de
+    // la sonda decía lo contrario, y esa discrepancia está sin resolver
+    // (`docs/architecture/browser-native.md`), así que mientras tanto la
+    // barrera es explícita y no un estado de reposo.
     return entry
   }
 
@@ -190,6 +199,9 @@ export class BrowserRegistry {
     context.targets.set(targetId, entry)
     context.order.push(targetId)
     context.container.addChildView(view)
+    // La barrera vuelve arriba: el orden de hijos decide quién recibe el
+    // click, así que una página creada después se pondría delante de ella.
+    this.raiseBarrier(context)
     this.applyGeometry(context)
     return entry
   }
@@ -239,10 +251,12 @@ export class BrowserRegistry {
    * bloquean también el input que el broker despacha por CDP, así que
    * cerrarlos dejaría al agente sin manos.
    */
-  setControl(context: ContextEntry, owner: ControlOwner): void {
-    if (context.control === owner) return
+  setControl(context: ContextEntry, owner: ControlOwner, barrier = false): void {
     context.control = owner
-    if (owner === 'agent') {
+    // La barrera es explícita: sólo se monta cuando quien llama la pide, y hoy
+    // eso es la prueba de overlays. Ver `ensureContext` para por qué no es el
+    // estado de reposo del control del agente.
+    if (owner === 'agent' && barrier) {
       if (!context.barrier) {
         const barrier = new WebContentsView({
           webPreferences: {
@@ -267,6 +281,14 @@ export class BrowserRegistry {
       context.barrier.webContents.close()
       context.barrier = null
     }
+  }
+
+  /** Devuelve la barrera al frente del contenedor. */
+  private raiseBarrier(context: ContextEntry): void {
+    const barrier = context.barrier
+    if (!barrier) return
+    context.container.removeChildView(barrier)
+    context.container.addChildView(barrier)
   }
 
   disposeContext(contextId: string): void {

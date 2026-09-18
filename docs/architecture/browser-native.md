@@ -110,13 +110,36 @@ al agente.**
 `afterRelease` volvió a 1, lo que descarta que los ceros vinieran de una página
 rota en vez del propio flag.
 
-**Decisión.** El arbitraje del §7 se implementa con una **`View` hermana por
-encima** de la vista del browser dentro del mismo contenedor de recorte. Se
-monta mientras el control es del agente y se retira al devolverlo.
+**Una superposición nativa sí para al usuario.** `BARRIER-01`, con entrada real
+del sistema: sin barrera 1 click en la página; con barrera 0 en la página y 1 en
+la superposición; al retirarla, 1 otra vez. No hay click-through y el click va a
+quien está delante.
 
-**Medido** (`BARRIER-01`, con entrada real del sistema): sin barrera 1 click en
-la página; con barrera 0 en la página y 1 en la superposición; al retirarla, 1
-otra vez. No hay click-through y el click va a quien está delante.
+**Pero no está decidido que pueda estar montada mientras el agente trabaja.**
+Las dos mediciones se contradicen y la discrepancia está **sin resolver**:
+
+| Dónde | Barrera montada | ¿Llega el click del agente por CDP? |
+|---|---|---|
+| Sonda aislada, `BaseWindow` (`BARRIER-02`) | sí | **sí** (1 click) |
+| Prueba vertical, ventana de la aplicación (`V2c`) | sí | **no** (0 clicks) |
+| Prueba vertical, misma ventana, barrera retirada | no | **sí** (1 click) |
+
+La segunda es la configuración que importa, así que manda: **el contexto no
+nace con barrera**. Se monta sólo cuando alguien la pide explícitamente, hoy
+para probar overlays y modales (§8.3). Mientras la discrepancia no se explique,
+no se puede afirmar que la barrera separe las dos rutas.
+
+Lo que la prueba vertical **sí** demuestra es que la exclusión funciona en el
+Engine: con el usuario al mando, `browser.click` termina en `tool.failed` con
+`CONFLICT` y no toca la página (`V5`). Eso cumple el §7 en lo que pide de
+verdad —«una herramienta mutable debe recibir un estado de intervención/no
+disponible, no ejecutarse a escondidas ni quedarse en retry infinito»— sin
+depender de una barrera cuyo comportamiento no está fijado.
+
+Queda abierto, y bloquea la entrega F: qué distingue las dos configuraciones
+—`BaseWindow` frente a `BrowserWindow`, la URL de la superposición, el foco— y,
+en consecuencia, qué impide al usuario tocar la página mientras una herramienta
+ejecuta. Sin esa respuesta no se puede anunciar exclusión mutua.
 
 Ese último punto exige una nota sobre el método. Las comprobaciones `INPUT-*`
 usan `sendInputEvent`, que va dirigido a un webContents concreto y **se salta el
@@ -128,12 +151,13 @@ cursor).
 
 **Consecuencia.** Se descarta alternar la barrera para cada acción del agente:
 sería justo la «ventana global de bypass» que el §7 prohíbe, y además con
-carrera. Con la superposición no hace falta, porque no estorba a la ruta CDP.
+carrera.
 
-La misma medición cubre el §8.3 y BR-07: un modal que invada el área del
-browser se presenta como superficie nativa por encima y **no** deja pasar
-clicks. Ocultar la vista durante el overlay sigue siendo válido; ya no es la
-única opción probada.
+Para el §8.3 y BR-07 la medición basta tal cual: un modal que invada el área
+del browser se presenta como superficie nativa por encima y **no** deja pasar
+clicks. Ahí no hay conflicto, porque mientras el modal está delante el agente
+tampoco debe estar tocando la página. Ocultar la vista durante el overlay sigue
+siendo válido; ya no es la única opción probada.
 
 ## 4. CDP: transporte sí, superficie pública no
 
@@ -177,7 +201,59 @@ el `localStorage` escrito por la primera. La comprobación incluye que la
 primera **sí** relea su marca, para que un fallo de escritura no pase por
 aislamiento.
 
-## 6. Lo que esta etapa no probó
+## 6. Los ocho pasos del §3
+
+```bash
+npm run desktop:build && npm run browser:vertical
+```
+
+Un Engine real, el pipeline real de herramientas y policy, y un modelo falso
+que sirve llamadas a herramienta guionizadas por loopback
+(`scripts/fake-model.mjs`). Lo único fingido es **qué pide el modelo**: el
+adaptador del proveedor, el bucle de turno, la policy y la ejecución de
+herramientas son los de producción, que es lo que pide el §3 al exigir que la
+prueba «no dependa de que un LLM produzca casualmente el comando correcto».
+
+Cada paso se comprueba mirando **la vista nativa**, no el resultado de la
+herramienta: que `browser.fill` devuelva `ok` no demuestra que cambiara la
+página que el usuario tiene delante.
+
+| | Paso del §3 | Cómo se comprueba |
+|---|---|---|
+| V1 | Vista en blanco con contexto registrado | el contexto es de esa sesión y su target está en `about:blank` |
+| V2 | Un turno navega al fixture | la vista **que ya existía** queda en la URL; no se creó otra |
+| V3 | Snapshot, llenar y click | `#result` pasa a `applied` con el valor que escribió la herramienta, leído del webContents |
+| V4 | Screenshot con tamaño y target | bytes > 0 y el target es el de esta sesión |
+| V5 | Control manual | con el usuario al mando `browser.click` acaba en `tool.failed` con `CONFLICT`; al devolver el control el agente lee la edición manual |
+| V6 | Segunda sesión, misma URL | no ve su `localStorage` y su target no se resuelve desde el contexto ajeno |
+| V7 | Recorte y overlay | el recorte baja a 200×140 y el viewport sigue en 760×560 |
+| V8 | Matar el Engine | tras reiniciarlo el contador de clicks de la página no subió |
+
+Dos comprobaciones más, que no son pasos del §3 pero sin las cuales los demás
+no significan lo que parecen:
+
+- **V2b** — el Engine sigue respondiendo a `engine.info` después de una
+  operación de browser. Está por lo que se cuenta abajo.
+- **V2c** — un click por CDP emitido desde main llega a la página. Sin este
+  control, un fallo del paso 3 no distingue «el broker no funciona» de «esta
+  vista no recibe input», y se depura el sitio equivocado.
+
+### Lo que rompió: nada que se despache en el loop de stdio puede esperar al host
+
+El loop de stdio del Engine despacha en serie y la respuesta del host entra por
+ese mismo loop. Un handler de protocolo que espere al host no se queda lento:
+**se queda bloqueado para siempre**, y con él todo el canal de control —ni
+Stop, ni cancelación, ni `engine.info`—.
+
+Pasó con tres: `browser.view.get` contaba targets, `browser.control.set`
+confirmaba la transición con el host y `session.close` esperaba a que el
+contexto se dispusiera. El §5.4 lo dice del lado de las herramientas —«se
+ejecutan en workers, no dentro del loop de stdio»—; esta es la misma regla
+vista desde el Engine. Ahora `status()` es local, el control no viaja (main
+monta la barrera al recibir la revisión confirmada, que es el orden del §7) y
+el cierre avisa en segundo plano.
+
+## 7. Lo que esta etapa no probó
 
 Se listan para que nadie los dé por cubiertos:
 
@@ -195,14 +271,21 @@ Se listan para que nadie los dé por cubiertos:
 - **Carga y ciclos.** BR-13 (100 ciclos mostrar/ocultar/cerrar) y BR-14 (frames
   grandes contra Stop) son de la entrega F.
 
-## 7. Qué queda fijado para la entrega F
+## 8. Qué queda fijado para la entrega F
 
 1. `View` contenedora con el rectángulo visible; `WebContentsView` hija con
    bounds lógicos. Un `webContents`, una vista (§6.2, [E3]).
 2. Geometría en DIP; imágenes rotuladas con tamaño y escala.
-3. Arbitraje por superposición nativa. Nada de `pointer-events`, nada de
-   alternar la intercepción por acción.
+3. El arbitraje lo hace cumplir el Engine: una herramienta mutable con el
+   usuario al mando recibe `CONFLICT`, no se ejecuta ni reintenta. La barrera
+   nativa queda para overlays, y **no** montada por defecto.
 4. Broker con allowlist semántica. `Target.*` y `Browser.*` no se exponen: la
    enumeración la sirve la registry.
 5. Suscripción a `detach` del debugger como pérdida de control, con pendientes
    invalidados y sin reintento de mutaciones.
+6. Ningún handler de protocolo espera al host. Lo que necesite al host va en
+   un worker o en segundo plano.
+
+Y una cosa que **no** queda fijada y hay que resolver antes de F: qué impide
+que el usuario toque la página mientras una herramienta ejecuta (§3 de este
+documento).

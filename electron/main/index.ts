@@ -71,12 +71,16 @@ function send(channel: string, payload: unknown): void {
  * del Engine siguen su camino normal.
  */
 let browserHost: NativeBrowserHost | null = null
+let browserRegistry: BrowserRegistry | null = null
+/** Observadores de eventos del Engine; sólo los usa la prueba vertical. */
+const engineEventTaps = new Set<(event: Record<string, unknown>) => void>()
 
 const engine = new EngineSupervisor({
   onEvent: (event) => {
     // Una solicitud del broker es un evento efímero para main, no actividad
     // de conversación: el §5.4 prohíbe entregarla a `runtimeStore`/React.
     if (browserHost?.handleEngineEvent(event)) return
+    for (const tap of engineEventTaps) tap(event as unknown as Record<string, unknown>)
     send(PUSH.engineEvent, event)
   },
   onStatus: (status: EngineStatus) => {
@@ -248,7 +252,7 @@ function openWindow(): void {
 
   // El browser nativo cuelga de esta ventana: sus vistas son hijas de su
   // contenido, así que nace y muere con ella (§6.2, [E8]).
-  const browserRegistry = new BrowserRegistry({
+  browserRegistry = new BrowserRegistry({
     window: mainWindow,
     onEvent: (event) =>
       browserHost?.notify(event.kind, event.contextId, event.targetId, event.detail),
@@ -275,14 +279,75 @@ function openWindow(): void {
     handoff.close()
     // Cerrar la ventana no libera las vistas agregadas por sí solo (§6.2,
     // [E8]): se desmontan aquí, y el Engine se entera de que su host se fue.
-    browserRegistry.disposeAll()
+    browserRegistry?.disposeAll()
     void browserHost?.unregister()
     browserHost = null
+    browserRegistry = null
     mainWindow = null
   })
 
   if (process.env.RINARI_SMOKE) attachSmoke(mainWindow)
   if (process.env.RINARI_PARITY) attachParityProbe(mainWindow)
+  if (process.env.RINARI_BROWSER_VERTICAL) attachVerticalProof()
+}
+
+/**
+ * Prueba vertical del browser (documento 03 §3). Corre en main porque cada
+ * paso se comprueba mirando la vista nativa, no el resultado de la
+ * herramienta: que una tool devuelva `ok` no demuestra que cambiara la página
+ * que el usuario tiene delante.
+ */
+function attachVerticalProof(): void {
+  const fixtureUrl = process.env.RINARI_BROWSER_FIXTURE
+  const modelOrigin = process.env.RINARI_BROWSER_MODEL
+  const window = mainWindow
+  if (!fixtureUrl || !modelOrigin || !browserRegistry || !browserHost || !window) {
+    console.log(
+      `RINARI_BROWSER_VERTICAL ${JSON.stringify({
+        steps: [],
+        fatal: 'faltan el fixture, el modelo falso o el host del browser',
+      })}`,
+    )
+    void finishProbe(1)
+    return
+  }
+
+  void import('./browser/verticalProbe')
+    .then(({ runVerticalProof }) =>
+      runVerticalProof({
+        engine,
+        registry: browserRegistry!,
+        host: browserHost!,
+        onEngineEvent: (listener) => {
+          engineEventTaps.add(listener)
+          return () => engineEventTaps.delete(listener)
+        },
+        fixtureUrl,
+        modelOrigin,
+        window,
+      }),
+    )
+    .then((report) => {
+      console.log(`RINARI_BROWSER_VERTICAL ${JSON.stringify(report)}`)
+      endVerticalProof(report.summary.failed === 0 ? 0 : 1)
+    })
+    .catch((error: unknown) => {
+      console.log(`RINARI_BROWSER_VERTICAL ${JSON.stringify({ steps: [], fatal: String(error) })}`)
+      endVerticalProof(1)
+    })
+}
+
+/**
+ * Termina la prueba vertical sin quedarse colgada.
+ *
+ * El informe ya está publicado cuando se llega aquí, así que un cierre que no
+ * responde no puede convertirse en «la prueba no reportó»: se le da un plazo y
+ * después se sale igual.
+ */
+function endVerticalProof(code: number): void {
+  browserRegistry?.disposeAll()
+  const forced = setTimeout(() => app.exit(code), 15_000)
+  void finishProbe(code).finally(() => clearTimeout(forced))
 }
 
 /**

@@ -188,6 +188,16 @@
       }
     },
     {
+      "id": "BARRIER-02",
+      "question": "¿Pasa el input del agente por CDP con la barrera nativa montada encima?",
+      "status": "ok",
+      "finding": "Sí: con la barrera montada el click por CDP llegó igual (1). La barrera separa las dos rutas y puede quedarse puesta mientras el agente trabaja.",
+      "detail": {
+        "agentUnderBarrier": 1,
+        "agentWithout": 1
+      }
+    },
+    {
       "id": "BARRIER-01",
       "question": "¿Una vista nativa superpuesta intercepta el click del usuario?",
       "status": "ok",
@@ -209,8 +219,8 @@
       "status": "ok",
       "finding": "No: con particiones distintas, la segunda sesión no ve el localStorage de la primera pese a cargar la misma URL.",
       "detail": {
-        "marker": "marca-1789699848664",
-        "ownRead": "marca-1789699848664",
+        "marker": "marca-1789713007998",
+        "ownRead": "marca-1789713007998",
         "readBack": null,
         "partitions": [
           "probe-session-a",
@@ -230,8 +240,8 @@
     }
   ],
   "summary": {
-    "total": 15,
-    "ok": 12,
+    "total": 16,
+    "ok": 13,
     "failed": 3,
     "inconclusive": 0
   },

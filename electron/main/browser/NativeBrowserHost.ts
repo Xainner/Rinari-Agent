@@ -17,7 +17,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { BrowserRegistry, type ContextEntry } from './BrowserRegistry'
-import { isHostRequest, isNavigableUrl, resolveOperation, type HostRequest } from './operations'
+import { hostRequestOf, isNavigableUrl, resolveOperation, type HostRequest } from './operations'
 
 export type { HostRequest }
 
@@ -104,8 +104,9 @@ export class NativeBrowserHost {
    * reenvíe al renderer.
    */
   handleEngineEvent(event: unknown): boolean {
-    if (!isHostRequest(event)) return false
-    void this.execute(event)
+    const request = hostRequestOf(event)
+    if (!request) return false
+    void this.execute(request)
     return true
   }
 
@@ -214,6 +215,18 @@ export class NativeBrowserHost {
         const closed = registry.closeTarget(context, request.target_id)
         if (!closed) throw new OperationError('TARGET_NOT_FOUND', 'no such page in this context')
         return { closed: request.target_id }
+      }
+
+      case 'context.setControl': {
+        const owner = request.params.owner
+        if (owner !== 'agent' && owner !== 'user') {
+          throw new OperationError('INVALID_ARGUMENT', `unknown control owner: ${String(owner)}`)
+        }
+        // La barrera nativa se monta mientras manda el agente y se retira al
+        // devolver el control (§7). Es la única de las opciones medidas que
+        // deja pasar el input que el broker despacha por CDP.
+        registry.setControl(context, owner)
+        return { control: owner }
       }
 
       case 'context.close':

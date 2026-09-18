@@ -39,6 +39,7 @@ export const CONTEXT_OPERATIONS = new Set([
   'context.newPage',
   'context.closePage',
   'context.close',
+  'context.setControl',
 ])
 
 export type Resolution =
@@ -80,6 +81,16 @@ export interface HostRequest {
  * **consume** el evento o lo reenvía al renderer, y un evento a medio formar
  * que se diera por bueno desaparecería de la conversación sin ejecutarse.
  */
+export function hostRequestOf(envelope: unknown): HostRequest | null {
+  if (typeof envelope !== 'object' || envelope === null) return null
+  const outer = envelope as Record<string, unknown>
+  if (outer.type !== 'event' || outer.event !== 'host.browser.request') return null
+  const payload = outer.payload
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return null
+  const candidate = { ...(payload as Record<string, unknown>), type: 'host.browser.request' }
+  return isHostRequest(candidate) ? candidate : null
+}
+
 export function isHostRequest(event: unknown): event is HostRequest {
   if (typeof event !== 'object' || event === null) return false
   const candidate = event as Record<string, unknown>

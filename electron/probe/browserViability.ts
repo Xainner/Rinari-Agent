@@ -722,6 +722,53 @@ async function probeNativeBarrier(
     await sleep(300)
     const afterRemoval = await clicksOn(slot)
 
+    // ── La pregunta que BARRIER-01 por sí sola no contesta: la barrera para
+    //    al usuario, pero ¿deja pasar al agente? Si no, el arbitraje no puede
+    //    tenerla montada mientras el agente trabaja, que es justo cuando hace
+    //    falta. Se mide con la barrera puesta y con ella quitada.
+    const overlayAgain = remoteView('probe-overlay-2')
+    overlayAgain.setBounds({ x: 0, y: 0, width: CLIP.width, height: CLIP.height })
+    clip.addChildView(overlayAgain)
+    await load(overlayAgain, fixture.slotUrl)
+    await sleep(400)
+
+    const debug = slot.webContents.debugger
+    if (!debug.isAttached()) debug.attach('1.3')
+    const cdpClick = async (): Promise<number> => {
+      await resetOn(slot)
+      for (const type of ['mousePressed', 'mouseReleased'] as const) {
+        await debug.sendCommand('Input.dispatchMouseEvent', {
+          type,
+          x: 40,
+          y: 40,
+          button: 'left',
+          clickCount: 1,
+        })
+      }
+      await sleep(250)
+      return clicksOn(slot)
+    }
+    const agentUnderBarrier = await cdpClick()
+    clip.removeChildView(overlayAgain)
+    overlayAgain.webContents.close()
+    await sleep(300)
+    const agentWithout = await cdpClick()
+    if (debug.isAttached()) debug.detach()
+
+    const agentPasses = agentWithout > 0 && agentUnderBarrier > 0
+    record({
+      id: 'BARRIER-02',
+      question: '¿Pasa el input del agente por CDP con la barrera nativa montada encima?',
+      status: agentWithout === 0 ? 'inconclusive' : agentPasses ? 'ok' : 'failed',
+      finding:
+        agentWithout === 0
+          ? `Indeterminado: el click por CDP no llegó ni sin barrera (${agentWithout}).`
+          : agentPasses
+            ? `Sí: con la barrera montada el click por CDP llegó igual (${agentUnderBarrier}). La barrera separa las dos rutas y puede quedarse puesta mientras el agente trabaja.`
+            : `No: sin barrera el click por CDP llegó (${agentWithout}) y con ella no (${agentUnderBarrier}). Una superposición que tapa al usuario tapa también al agente, así que no puede estar montada mientras el agente muta.`,
+      detail: { agentUnderBarrier, agentWithout },
+    })
+
     const blocks = baseline > 0 && underBarrier === 0 && afterRemoval > 0
     record({
       id: 'BARRIER-01',

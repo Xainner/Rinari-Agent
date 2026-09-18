@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CONTEXT_OPERATIONS,
   PAGE_OPERATIONS,
+  hostRequestOf,
   isHostRequest,
   isNavigableUrl,
   resolveOperation,
@@ -106,6 +107,35 @@ describe('qué cuenta como solicitud del broker', () => {
       expect(isHostRequest(value)).toBe(false)
     },
   )
+})
+
+describe('la solicitud llega dentro del sobre de evento', () => {
+  // El Engine la emite como cualquier otro evento porque el transporte del
+  // host sólo clasifica como evento lo que trae `type: "event"`. Una
+  // envoltura propia se quedaba sin entregar y el turno esperaba hasta
+  // agotar su plazo.
+  const envelope = (payload: Record<string, unknown>) => ({
+    type: 'event',
+    event: 'host.browser.request',
+    payload,
+  })
+
+  it('se extrae del sobre', () => {
+    const extracted = hostRequestOf(envelope(request()))
+    expect(extracted?.operation).toBe('page.navigate')
+    expect(extracted?.session_id).toBe('ses-1')
+  })
+
+  it.each([
+    ['otro evento', { type: 'event', event: 'turn.completed', payload: request() }],
+    ['sin sobre', request()],
+    ['payload ausente', { type: 'event', event: 'host.browser.request' }],
+    ['payload en array', { type: 'event', event: 'host.browser.request', payload: [] }],
+    ['payload incompleto', envelope({ ...request(), session_id: '' })],
+    ['respuesta, no evento', { id: 'r1', ok: true, result: {} }],
+  ])('%s no se extrae', (_label, value) => {
+    expect(hostRequestOf(value)).toBeNull()
+  })
 })
 
 describe('destinos que una página del agente puede tomar (§9)', () => {

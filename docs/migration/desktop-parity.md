@@ -16,8 +16,8 @@ que el frontend usa directamente.
 
 | Superficie | Cantidad |
 |---|---|
-| Comandos registrados en `invoke_handler` | **130** |
-| Handlers `#[tauri::command]` hallados | 130 |
+| Comandos registrados en `invoke_handler` | **131** |
+| Handlers `#[tauri::command]` hallados | 131 |
 | Handlers sin registrar | 0 |
 | Invocados desde el frontend sin registrar | 0 |
 | Registrados sin ningún llamador en `src/` | 1 |
@@ -149,7 +149,7 @@ variante del enum.
 | `peer_message_list` | `session_id`: `String` | `session.peer_message.list` | 60 s | `Result<Value, CommandError>` | — | `services/engine.ts` |
 | `queue_resume` | `session_id`: `String` | `session.queue.resume` | 60 s | `Result<Value, CommandError>` | — | `services/engine.ts` |
 
-### Workspace, contexto y adjuntos — `commands/workspace.rs` (26)
+### Workspace, contexto y adjuntos — `commands/workspace.rs` (27)
 
 | Comando | Argumentos | Método del Engine | Plazo | Devuelve | Efectos de host | Llamado desde |
 |---|---|---|---|---|---|---|
@@ -168,6 +168,7 @@ variante del enum.
 | `context_settings_get` | — | `context.settings.get` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `context_settings_set` | `settings`: `serde_json::Value` | `context.settings.set` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `context_status` | `model_id`: `String` | `context.status` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
+| `flow_get` | `project_id`: `Option<String>` *(opcional)*<br>`session_id`: `Option<String>` *(opcional)* | `flow.get` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `project_changes` | `path`: `String` | `project.changes` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `project_diff` | `path`: `String`<br>`file`: `Option<String>` *(opcional)*<br>`max_chars`: `Option<u32>` *(opcional)* | `project.diff` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `session_image_support` | `session_id`: `Option<String>` *(opcional)*<br>`model_id`: `Option<String>` *(opcional)* | `session.image_support` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |

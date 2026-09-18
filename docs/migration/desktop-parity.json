@@ -1,6 +1,6 @@
 {
-  "registered_commands": 130,
-  "handlers_found": 130,
+  "registered_commands": 131,
+  "handlers_found": 131,
   "commands": [
     {
       "command": "session_move",
@@ -2405,6 +2405,52 @@
           "key": "quoted_source",
           "from": null,
           "optional": true
+        }
+      ],
+      "engine_params_passthrough": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "flow_get",
+      "module": "workspace",
+      "async": true,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
+      "engine_method": "FlowGet",
+      "engine_method_name": "flow.get",
+      "engine_params": [
+        "project_id",
+        "session_id"
+      ],
+      "engine_param_map": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
         }
       ],
       "engine_params_passthrough": null,

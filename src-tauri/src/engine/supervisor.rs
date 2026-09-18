@@ -623,6 +623,19 @@ impl EngineSupervisor {
         self.request(Method::TaskTree, Some(json!({"path": path})))
     }
 
+    /// Stages of a project or of one session (`project_flow_v1`). Exactly one
+    /// of the two ids; the Engine validates and rejects both/none.
+    pub fn flow_get(
+        &self,
+        project_id: Option<String>,
+        session_id: Option<String>,
+    ) -> Result<Value, CommandError> {
+        self.request(
+            Method::FlowGet,
+            Some(json!({"project_id": project_id, "session_id": session_id})),
+        )
+    }
+
     pub fn task_get(&self, path: &str, task_id: &str) -> Result<Value, CommandError> {
         self.request(
             Method::TaskGet,

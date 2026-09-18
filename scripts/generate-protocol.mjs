@@ -48,7 +48,18 @@ const pascal = (value) => value
   .map((part) => part[0].toUpperCase() + part.slice(1))
   .join('')
 
+// `anyOf: [{ $ref }, { type: 'null' }]` is how the schema spells a nullable
+// object reference (JSON Schema has no `type: [ref, null]`).
+function nullableRef(node) {
+  if (!Array.isArray(node.anyOf) || node.anyOf.length !== 2) return null
+  const reference = node.anyOf.find((branch) => branch.$ref)
+  const nothing = node.anyOf.find((branch) => branch.type === 'null')
+  return reference && nothing ? reference : null
+}
+
 function tsType(node) {
+  const optionalRef = nullableRef(node)
+  if (optionalRef) return `${tsType(optionalRef)} | null`
   if (node.$ref) return pascal(node.$ref.split('/').at(-1))
   if ('const' in node) return JSON.stringify(node.const)
   if (node.enum) return node.enum.map((item) => JSON.stringify(item)).join(' | ')
@@ -66,7 +77,11 @@ function tsType(node) {
 function rustType(node, required) {
   let nullable = false
   let value = node
-  if (Array.isArray(node.type)) {
+  const optionalRef = nullableRef(node)
+  if (optionalRef) {
+    nullable = true
+    value = optionalRef
+  } else if (Array.isArray(node.type)) {
     nullable = node.type.includes('null')
     value = { ...node, type: node.type.find((type) => type !== 'null') }
   }

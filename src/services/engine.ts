@@ -1,5 +1,8 @@
 import type {
   Attachment as ProtocolAttachment,
+  FlowResult,
+  FlowStage,
+  FlowSummary,
   ToolSummary as ProtocolToolSummary,
   ProjectSummary as ProtocolProjectSummary,
   SessionSummary as ProtocolSessionSummary,
@@ -504,6 +507,12 @@ export const engineApi = {
       "workspace_file_search",
       { session_id: sessionId, query, limit },
     ),
+  /** Etapas de un proyecto o de una sesión (`project_flow_v1`); exactamente un id. */
+  flowGet: (scope: { project_id: string } | { session_id: string }) =>
+    platform().command<FlowResult>("flow_get", {
+      project_id: 'project_id' in scope ? scope.project_id : null,
+      session_id: 'session_id' in scope ? scope.session_id : null,
+    }),
   taskTree: (path: string) =>
     platform().command<{ tasks: TaskItem[]; depths: Record<string, number> }>("task_tree", {
       path,
@@ -1075,4 +1084,4 @@ export function onEngineEvent(callback: (event: EngineEventMsg) => void): Promis
   return platform().events.onEngineEvent(callback);
 }
 
-export type { MessageOrigin, PeerGroup, PeerGroupMember, PeerMessage, QueuedPromptEntry }
+export type { FlowResult, FlowStage, FlowSummary, MessageOrigin, PeerGroup, PeerGroupMember, PeerMessage, QueuedPromptEntry }

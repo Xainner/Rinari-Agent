@@ -107,6 +107,7 @@ pub fn run() {
             commands::peers::peer_message_list,
             commands::peers::peer_message_cancel,
             commands::peers::peer_message_forward,
+            commands::workspace::flow_get,
             commands::workspace::task_tree,
             commands::workspace::task_get,
             commands::workspace::verification_latest,

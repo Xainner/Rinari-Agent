@@ -464,6 +464,61 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       },
     })
 
+    // ── R10-08: con dos pestañas, la que opera y la que se ve son la misma.
+    //
+    //    Antes todas las vistas se apilaban en el mismo rectángulo y una
+    //    operación sin `target_id` iba a la primera creada. Con dos pestañas
+    //    eso significa que la captura y el click pueden describir páginas
+    //    distintas, y «el Engine opera exactamente la página visible» deja de
+    //    ser cierto.
+    const first = deps.registry.target(context.contextId, null)
+    const second = deps.registry.createTarget(context)
+    await second.view.webContents.loadURL('about:blank')
+    await second.view.webContents.executeJavaScript("document.title = 'segunda', true")
+    await sleep(300)
+
+    const defaultIsNew = deps.registry.target(context.contextId, null)?.targetId
+    const listed = deps.registry.describeTargets(context)
+    const activeCount = listed.filter((entry) => entry.active).length
+    const onlyOneVisible = activeCount === 1
+
+    // Se vuelve a la primera y el objetivo por defecto la sigue.
+    deps.registry.setActiveTarget(context, first!.targetId)
+    await sleep(200)
+    const defaultBack = deps.registry.target(context.contextId, null)?.targetId
+
+    // Cerrar la que no está activa no cambia la selección ni recarga la otra.
+    const urlBeforeClose = first!.view.webContents.getURL()
+    deps.registry.closeTarget(context, second.targetId)
+    await sleep(200)
+    const survivor = deps.registry.target(context.contextId, null)?.targetId
+    const urlAfterClose = first!.view.webContents.getURL()
+
+    const tabsOk =
+      defaultIsNew === second.targetId &&
+      onlyOneVisible &&
+      defaultBack === first!.targetId &&
+      survivor === first!.targetId &&
+      urlAfterClose === urlBeforeClose
+
+    record({
+      id: 'V7a',
+      title: 'Con dos pestañas, la operación por defecto va a la que se ve',
+      status: tabsOk ? 'ok' : 'failed',
+      detail: tabsOk
+        ? 'una pestaña nueva pasa a ser la activa y la operación por defecto la sigue; al volver a la primera, también; cerrar la inactiva no mueve la selección ni recarga la superviviente'
+        : `la selección no siguió a la pestaña visible: por defecto tras crear ${String(defaultIsNew)}, tras volver ${String(defaultBack)}, superviviente ${String(survivor)}, visibles ${activeCount}`,
+      evidence: {
+        created: second.targetId,
+        firstTarget: first?.targetId,
+        defaultAfterCreate: defaultIsNew,
+        defaultAfterSelect: defaultBack,
+        survivor,
+        visibleCount: activeCount,
+        urlPreserved: urlAfterClose === urlBeforeClose,
+      },
+    })
+
     // ── Paso 7: geometría. Se reduce el área visible y se comprueba que el
     //    viewport del documento **no** se encoge, y que una superficie por
     //    encima no deja pasar clicks.

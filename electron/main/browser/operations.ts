@@ -40,6 +40,7 @@ export const CONTEXT_OPERATIONS = new Set([
   'context.closePage',
   'context.close',
   'context.setControl',
+  'context.selectTarget',
 ])
 
 export type Resolution =

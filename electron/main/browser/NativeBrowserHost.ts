@@ -177,6 +177,32 @@ export class NativeBrowserHost {
   }
 
   /**
+   * Empuja al Engine la lista de pestañas y cuál está visible.
+   *
+   * Es un push y no una consulta porque `browser.context.get` se despacha en
+   * el loop de stdio del Engine: preguntarle al host desde ahí sería un
+   * bloqueo permanente (§5.4). El Engine cachea lo último que llegó y contesta
+   * en local.
+   */
+  publishTargets(contextId: string): void {
+    const binding = this.binding
+    const context = this.deps.registry.context(contextId)
+    if (!binding || !context?.engineContextId) return
+    void this.deps
+      .request('host.browser.event', {
+        binding_id: binding.binding_id,
+        engine_instance_id: binding.engine_instance_id,
+        kind: 'targets',
+        context_id: context.engineContextId,
+        targets: this.deps.registry.describeTargets(context),
+        active_target_id: context.activeTargetId,
+      })
+      .catch(() => {
+        // Que la UI se quede con una foto vieja no puede tumbar la operación.
+      })
+  }
+
+  /**
    * Avisa al Engine de un cambio observado en un contexto (§5.2).
    *
    * Viaja el `context_id` **del Engine**, no el id local de main. Los dos
@@ -296,7 +322,19 @@ export class NativeBrowserHost {
 
     switch (request.operation) {
       case 'context.targets':
-        return { targets: registry.describeTargets(context) }
+        return {
+          targets: registry.describeTargets(context),
+          active_target_id: context.activeTargetId,
+        }
+
+      case 'context.selectTarget': {
+        const targetId = request.params.target_id
+        if (typeof targetId !== 'string' || !registry.setActiveTarget(context, targetId)) {
+          throw new OperationError('TARGET_NOT_FOUND', 'no such page in this context')
+        }
+        this.publishTargets(context.contextId)
+        return { active_target_id: targetId }
+      }
 
       case 'context.newPage': {
         const url = String(request.params.url ?? 'about:blank')
@@ -305,6 +343,7 @@ export class NativeBrowserHost {
         }
         const entry = registry.createTarget(context)
         await entry.view.webContents.loadURL(url)
+        this.publishTargets(context.contextId)
         return { target_id: entry.targetId, url }
       }
 
@@ -314,6 +353,7 @@ export class NativeBrowserHost {
         }
         const closed = registry.closeTarget(context, request.target_id)
         if (!closed) throw new OperationError('TARGET_NOT_FOUND', 'no such page in this context')
+        this.publishTargets(context.contextId)
         return { closed: request.target_id }
       }
 
@@ -368,6 +408,10 @@ export class NativeBrowserHost {
     this.deps.registry.attach(entry)
     try {
       const value = await entry.view.webContents.debugger.sendCommand(method, request.params)
+      // Navegar cambia la URL y el título que la toolbar enseña; sin esto la
+      // UI se quedaría con la foto anterior hasta el siguiente cambio de
+      // pestaña.
+      if (request.operation === 'page.navigate') this.publishTargets(context.contextId)
       return (value ?? {}) as Record<string, unknown>
     } catch (error) {
       const text = messageOf(error)

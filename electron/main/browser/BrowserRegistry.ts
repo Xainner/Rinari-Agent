@@ -58,8 +58,17 @@ export interface ContextEntry {
   partition: string
   container: View
   targets: Map<string, TargetEntry>
-  /** Orden de creación: la operación sin `target_id` usa el primero. */
+  /** Orden de creación, para elegir superviviente al cerrar una pestaña. */
   order: string[]
+  /**
+   * La pestaña que se ve y sobre la que opera una solicitud sin `target_id`.
+   *
+   * Antes no existía: todas las vistas se apilaban en el mismo rectángulo y la
+   * operación por defecto iba a la primera creada, que no tiene por qué ser la
+   * que el usuario está mirando. Eso hace que «el Engine opera exactamente la
+   * página visible» deje de ser cierto en cuanto hay dos pestañas.
+   */
+  activeTargetId: string | null
   control: ControlOwner
   /** Superposición nativa que bloquea al usuario mientras muta el agente. */
   barrier: WebContentsView | null
@@ -105,6 +114,7 @@ export class BrowserRegistry {
       container,
       targets: new Map(),
       order: [],
+      activeTargetId: null,
       control: 'agent',
       barrier: null,
       geometry: null,
@@ -138,10 +148,26 @@ export class BrowserRegistry {
     const context = this.contexts.get(contextId)
     if (!context) return undefined
     if (targetId === null) {
-      const first = context.order[0]
-      return first ? context.targets.get(first) : undefined
+      // La pestaña **activa**, no la primera creada. Usar la primera hacía que
+      // una operación sin target fuera a una página que el usuario ya no está
+      // viendo, mientras la captura y el click describían páginas distintas.
+      const active = context.activeTargetId
+      return active ? context.targets.get(active) : undefined
     }
     return context.targets.get(targetId)
+  }
+
+  /**
+   * Elige la pestaña visible del contexto.
+   *
+   * Sólo una se muestra: el contenedor recorta un rectángulo y dos vistas
+   * superpuestas ahí compiten por el mismo espacio y por el input.
+   */
+  setActiveTarget(context: ContextEntry, targetId: string): boolean {
+    if (!context.targets.has(targetId)) return false
+    context.activeTargetId = targetId
+    this.applyGeometry(context)
+    return true
   }
 
   /** Crea una página en el contexto. La vista nace oculta hasta tener slot. */
@@ -205,6 +231,8 @@ export class BrowserRegistry {
     context.targets.set(targetId, entry)
     context.order.push(targetId)
     context.container.addChildView(view)
+    // Una pestaña nueva pasa a ser la visible, como en cualquier navegador.
+    context.activeTargetId = targetId
     // La barrera vuelve arriba: el orden de hijos decide quién recibe el
     // click, así que una página creada después se pondría delante de ella.
     this.raiseBarrier(context)
@@ -222,9 +250,17 @@ export class BrowserRegistry {
   closeTarget(context: ContextEntry, targetId: string): boolean {
     const entry = context.targets.get(targetId)
     if (!entry) return false
+    const wasActive = context.activeTargetId === targetId
+    // El superviviente se elige **antes** de borrar, para poder tomar el
+    // vecino en el orden y no siempre el primero.
+    const index = context.order.indexOf(targetId)
     this.disposeTarget(context, entry)
     context.targets.delete(targetId)
     context.order = context.order.filter((id) => id !== targetId)
+    if (wasActive) {
+      context.activeTargetId = context.order[Math.min(index, context.order.length - 1)] ?? null
+      this.applyGeometry(context)
+    }
     return true
   }
 
@@ -241,9 +277,18 @@ export class BrowserRegistry {
     context.container.setBounds({ ...visible })
     // Bounds lógicos **relativos al contenedor**, que es quien recorta. En DIP:
     // la sonda midió que `setBounds` no lleva `devicePixelRatio` (§8.2).
+    //
+    // Sólo la activa se muestra. Las demás siguen vivas —su página conserva
+    // DOM, historial y almacenamiento— pero ocultas: apiladas en el mismo
+    // rectángulo competirían por el espacio y por el input.
     for (const targetId of context.order) {
       const entry = context.targets.get(targetId)
-      entry?.view.setBounds({ x: 0, y: 0, width: logical.width, height: logical.height })
+      if (!entry) continue
+      const active = targetId === context.activeTargetId
+      entry.view.setVisible(active)
+      if (active) {
+        entry.view.setBounds({ x: 0, y: 0, width: logical.width, height: logical.height })
+      }
     }
     if (context.barrier) {
       context.barrier.setBounds({ x: 0, y: 0, width: visible.width, height: visible.height })
@@ -317,7 +362,9 @@ export class BrowserRegistry {
   }
 
   /** Metadata pública de los targets de un contexto (§5.3). */
-  describeTargets(context: ContextEntry): Array<{ target_id: string; url: string; title: string }> {
+  describeTargets(
+    context: ContextEntry,
+  ): Array<{ target_id: string; url: string; title: string; active: boolean }> {
     return context.order.flatMap((targetId) => {
       const entry = context.targets.get(targetId)
       if (!entry || entry.view.webContents.isDestroyed()) return []
@@ -326,6 +373,9 @@ export class BrowserRegistry {
           target_id: targetId,
           url: entry.view.webContents.getURL(),
           title: entry.view.webContents.getTitle(),
+          // Cuál es la visible viaja con la lista: el Engine y la UI tienen
+          // que coincidir en qué página describe una operación sin target.
+          active: targetId === context.activeTargetId,
         },
       ]
     })

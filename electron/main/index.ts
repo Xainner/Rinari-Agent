@@ -170,6 +170,18 @@ function publishBrowserContext(sessionId: string): void {
 }
 
 /**
+ * Esconde la vista nativa de una sesión. El contexto sigue vivo (§8.3).
+ *
+ * Se llama desde los dos sitios donde el panel deja de estar: cuando el
+ * renderer suelta su slot, y cuando el renderer entero desaparece sin llegar a
+ * soltarlo.
+ */
+function retirePresentation(sessionId: string): void {
+  const context = browserRegistry?.contextForSession(sessionId)
+  if (context) browserRegistry?.hidePresentation(context)
+}
+
+/**
  * Servicios del browser nativo (documento 03 §6.1).
  *
  * Todo lo que el renderer puede pedir está aquí, y es intención: metadata,
@@ -227,8 +239,13 @@ function browserServices(): HostServices['browser'] {
 
     // Retirar el slot **sólo** quita la presentación: ni cierra el contexto,
     // ni el browser, ni cancela el turno (§8.3).
+    //
+    // Y quitarla de verdad: antes esto sólo soltaba el lease, así que cerrar el
+    // panel o cambiar a Archivos dejaba la vista nativa pintada encima de la
+    // aplicación, tapando lo que hubiera debajo y comiéndose su input.
     detachSlot: async (slotId) => {
-      layoutCoordinator?.detach(slotId)
+      const lease = layoutCoordinator?.detach(slotId)
+      if (lease) retirePresentation(lease.sessionId)
     },
 
     // La elección del usuario la aplica main y se publica al Engine, para que
@@ -421,6 +438,13 @@ function openWindow(): void {
     // la cadena "null" por no ser un esquema especial.
     if (originOf(url) === TRUSTED_ORIGIN) registry.trust(mainWindow!.webContents.id)
     else registry.revoke()
+
+    // El renderer que reservó los slots ya no es el de antes. Una recarga no
+    // ejecuta la limpieza de React, así que nadie soltaría esos leases y las
+    // vistas nativas se quedarían compuestas sobre una página que ya no las
+    // reserva. Se retiran aquí; si el panel vuelve a montarse pedirá su slot y
+    // publicará geometría nueva.
+    for (const lease of layoutCoordinator?.detachAll() ?? []) retirePresentation(lease.sessionId)
   })
 
   mainWindow.on('closed', () => {
@@ -475,6 +499,10 @@ function attachVerticalProof(): void {
         fixtureUrl,
         modelOrigin,
         window,
+        // Los mismos servicios que invoca el IPC del renderer, no una copia de
+        // su lógica: la presentación se reserva y se retira por donde la pide
+        // el panel de verdad.
+        services: browserServices(),
         physicalClick: physicalClicker(),
       }),
     )

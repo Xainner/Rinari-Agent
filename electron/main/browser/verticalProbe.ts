@@ -57,6 +57,25 @@ export interface VerticalDeps {
     getBounds(): { x: number; y: number; width: number; height: number }
   }
   /**
+   * Los servicios que el IPC del renderer invoca para reservar y soltar la
+   * presentación. Se pasan los de verdad y no una reimplementación: el fallo
+   * que motivó el paso V9 estaba justo en ese cableado —el lease se soltaba y
+   * la vista se quedaba pintada—, así que una prueba que volviera a montar la
+   * lógica a mano no lo habría visto.
+   */
+  services: {
+    attachSlot(sessionId: string): Promise<{ slot_id: string; session_id: string }>
+    updateSlot(request: {
+      slot_id: string
+      logical_bounds: { x: number; y: number; width: number; height: number }
+      visible_bounds: { x: number; y: number; width: number; height: number }
+      shown: boolean
+      layout_revision: number
+      overlay_depth: number
+    }): Promise<void>
+    detachSlot(slotId: string): Promise<void>
+  }
+  /**
    * Click real del sistema. Sin él no se puede probar el click-through: una
    * entrada sintética va dirigida a un webContents y se salta el hit-testing,
    * así que daría por buena cualquier superposición.
@@ -855,6 +874,82 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         ? 'la barrera es el último hijo, así que una página creada después no se pone delante'
         : 'la barrera no es la superficie frontal',
       evidence: { barrierOnTop },
+    })
+
+    // ── V9: cerrar el panel retira la vista de la ventana.
+    //
+    //    Por el camino del renderer —reservar slot, publicar geometría,
+    //    soltarlo—, no llamando al registry a mano: el fallo estaba en ese
+    //    cableado. Soltar el lease sólo hacía que main dejara de admitir
+    //    geometría; el contenedor seguía compuesto con sus últimos bounds, así
+    //    que al cerrar el dock o cambiar a Archivos la página se quedaba
+    //    pegada encima de la aplicación y además se comía el input de ese
+    //    rectángulo, porque ningún `z-index` del renderer tapa una vista
+    //    nativa.
+    //
+    //    Y se exige lo que el §8.3 pide además de esconder: que no cierre
+    //    nada. La página tiene que seguir viva y volver al reaparecer el slot.
+    const lease = await deps.services.attachSlot(sessionId)
+    const slotVisible = { x: 24, y: 120, width: 520, height: 380 }
+    const slotLogical = { x: 24, y: 120, ...LOGICAL_SIZE }
+    await deps.services.updateSlot({
+      slot_id: lease.slot_id,
+      logical_bounds: slotLogical,
+      visible_bounds: slotVisible,
+      shown: true,
+      layout_revision: 1,
+      overlay_depth: 0,
+    })
+    await sleep(300)
+    const shownBefore = context.container.getVisible()
+    const boundsBefore = context.container.getBounds()
+
+    await deps.services.detachSlot(lease.slot_id)
+    await sleep(300)
+    const shownAfter = context.container.getVisible()
+    // Esconder no es cerrar: la página sigue contestando y conserva su URL.
+    const urlWhileHidden = view.webContents.getURL()
+    let aliveWhileHidden = false
+    let hiddenFailure = ''
+    try {
+      aliveWhileHidden = (await read<boolean>(view, 'document.readyState === "complete"')) === true
+    } catch (error) {
+      hiddenFailure = message(error)
+    }
+
+    // Y vuelve: retirar la presentación no es una puerta de un solo sentido.
+    // El slot se deja puesto, que es como estaba el panel antes de V9: el paso
+    // siguiente despacha input por CDP y Chromium no lo entrega a un widget
+    // que considera oculto.
+    const back = await deps.services.attachSlot(sessionId)
+    await deps.services.updateSlot({
+      slot_id: back.slot_id,
+      logical_bounds: slotLogical,
+      visible_bounds: slotVisible,
+      shown: true,
+      layout_revision: 1,
+      overlay_depth: 0,
+    })
+    await sleep(300)
+    const shownAgain = context.container.getVisible()
+
+    const retired = shownBefore && !shownAfter && aliveWhileHidden && shownAgain
+    record({
+      id: 'V9',
+      title: 'Cerrar el panel retira la vista nativa sin cerrar la página',
+      status: retired ? 'ok' : 'failed',
+      detail: retired
+        ? `con slot la vista se compone en ${boundsBefore.width}×${boundsBefore.height}, al soltarlo desaparece de la ventana con la página viva en ${urlWhileHidden}, y vuelve al reservarlo otra vez`
+        : `presentación con slot: ${shownBefore}; tras soltarlo: ${shownAfter}; página viva escondida: ${aliveWhileHidden}${hiddenFailure ? ` (${hiddenFailure})` : ''}; al volver a reservar: ${shownAgain}`,
+      evidence: {
+        shownBefore,
+        boundsBefore,
+        shownAfter,
+        aliveWhileHidden,
+        hiddenFailure,
+        urlWhileHidden,
+        shownAgain,
+      },
     })
 
     // ── Paso 8: se mata el Engine con una mutación en vuelo.

@@ -229,7 +229,7 @@ página que el usuario tiene delante.
 | V7 | Recorte y overlay | el recorte baja a 200×140 y el viewport sigue en 760×560 |
 | V8 | Matar el Engine | tras reiniciarlo el contador de clicks de la página no subió |
 
-Dos comprobaciones más, que no son pasos del §3 pero sin las cuales los demás
+Tres comprobaciones más, que no son pasos del §3 pero sin las cuales los demás
 no significan lo que parecen:
 
 - **V2b** — el Engine sigue respondiendo a `engine.info` después de una
@@ -237,6 +237,30 @@ no significan lo que parecen:
 - **V2c** — un click por CDP emitido desde main llega a la página. Sin este
   control, un fallo del paso 3 no distingue «el broker no funciona» de «esta
   vista no recibe input», y se depura el sitio equivocado.
+- **V9** — soltar el slot retira la vista de la ventana, y la página sigue
+  viva. Va por los servicios que invoca el IPC del renderer —reservar,
+  publicar geometría, soltar— y no llamando a la registry a mano, porque el
+  fallo que motivó el paso estaba justo en ese cableado.
+
+### Lo que rompió: soltar el lease no despinta nada
+
+Cerrar el panel del navegador, o cambiar a Archivos, dejaba la página nativa
+pintada encima de la aplicación. `detachSlot` olvidaba el lease en el
+coordinador y ahí acababa: main dejaba de **admitir** geometría, pero nadie
+tocaba la vista, que seguía compuesta con sus últimos bounds. Y no era sólo
+verla: una vista nativa no la tapa ningún `z-index`, así que también se quedaba
+con el input de ese rectángulo.
+
+Retirar la presentación es una operación sobre la vista, no sobre el
+coordinador. Ahora `detach` devuelve **de quién era** el slot y main esconde el
+contenedor de esa sesión conservando la geometría —el §8.3 pide que ocultar no
+cambie la página, y reescribir los bounds le cambiaría el viewport al
+documento—. Capturar sigue funcionando escondida porque es `capturePage`, no
+`Page.captureScreenshot` (§2).
+
+El mismo agujero se abría sin desmontaje: una recarga del renderer no ejecuta
+la limpieza de React, así que sus leases quedaban vivos sin nadie que los
+soltara. Se retiran también en `did-navigate` de la ventana principal.
 
 ### Lo que rompió: nada que se despache en el loop de stdio puede esperar al host
 

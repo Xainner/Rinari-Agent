@@ -126,13 +126,36 @@ export class ViewLayoutCoordinator {
     return lease
   }
 
-  /** Retira la presentación. **No** cierra el contexto ni cancela nada (§8.3). */
-  detach(slotId: string): boolean {
+  /**
+   * Retira el slot y dice **de quién era**. No cierra el contexto ni cancela
+   * nada (§8.3), pero quien llama necesita la sesión: olvidar el lease no
+   * despinta nada por sí solo, y sin este dato no hay forma de saber qué
+   * presentación hay que esconder.
+   *
+   * `undefined` cuando el slot ya no existe —un desmontaje tardío tras haberse
+   * reemplazado el lease—, y entonces no hay presentación que retirar: la que
+   * está montada es de otro slot.
+   */
+  detach(slotId: string): SlotLease | undefined {
     const lease = this.slots.get(slotId)
-    if (!lease) return false
+    if (!lease) return undefined
     this.slots.delete(slotId)
     if (this.bySession.get(lease.sessionId) === slotId) this.bySession.delete(lease.sessionId)
-    return true
+    return lease
+  }
+
+  /**
+   * Retira todos los slots y los devuelve.
+   *
+   * Para cuando el renderer que los reservó deja de existir —una recarga no
+   * ejecuta la limpieza de React— y sus leases quedarían vivos sin nadie que
+   * los actualizara ni los soltara.
+   */
+  detachAll(): SlotLease[] {
+    const leases = [...this.slots.values()]
+    this.slots.clear()
+    this.bySession.clear()
+    return leases
   }
 
   leaseFor(sessionId: string): SlotLease | undefined {

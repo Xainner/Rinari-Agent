@@ -391,6 +391,29 @@ export class BrowserRegistry {
     this.applyGeometry(context)
   }
 
+  /**
+   * Retira la presentación sin cerrar nada (§8.3).
+   *
+   * Hacía falta y no existía. Soltar el lease del slot sólo hace que main deje
+   * de admitir geometría; el contenedor seguía compuesto sobre la ventana con
+   * sus últimos bounds, así que cerrar el panel o cambiar a Archivos dejaba la
+   * vista nativa encima de lo que el renderer pintara —tapándolo y quedándose
+   * además con el input de ese rectángulo, porque una vista nativa no la tapa
+   * ningún `z-index`—.
+   *
+   * La geometría se conserva y sólo se marca invisible: el §8.3 pide que
+   * ocultar no cambie la página, y reescribir los bounds cambiaría el viewport
+   * del documento. Se queda pegada para que un target creado mientras el panel
+   * está cerrado —`createTarget` reaplica la geometría— no la devuelva a la
+   * vista. Capturar sigue funcionando escondida: es `capturePage`, no
+   * `Page.captureScreenshot`.
+   */
+  hidePresentation(context: ContextEntry): void {
+    if (!context.geometry || !context.geometry.visible) return
+    context.geometry = { ...context.geometry, visible: false }
+    this.applyGeometry(context)
+  }
+
   private applyGeometry(context: ContextEntry): void {
     const geometry = context.geometry
     if (!geometry) return

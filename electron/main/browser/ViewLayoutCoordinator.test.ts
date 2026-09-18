@@ -113,9 +113,42 @@ describe('leases y admisión', () => {
   it('desmontar retira el lease y no admite más geometría', () => {
     const coordinator = make()
     const lease = coordinator.attach('ses-1')
-    expect(coordinator.detach(lease.slotId)).toBe(true)
-    expect(coordinator.detach(lease.slotId)).toBe(false)
+    expect(coordinator.detach(lease.slotId)).toEqual(lease)
+    expect(coordinator.detach(lease.slotId)).toBeUndefined()
     expect(coordinator.update(lease.slotId, layout())).toEqual({
+      ok: false,
+      reason: 'unknown-slot',
+    })
+  })
+
+  // Quien suelta el slot tiene que esconder la vista, y para eso necesita saber
+  // de quién era. Cuando `detach` sólo decía «sí/no», main olvidaba el lease y
+  // dejaba la vista nativa compuesta encima de la aplicación.
+  it('soltar un slot dice de qué sesión era', () => {
+    const coordinator = make()
+    coordinator.attach('ses-1')
+    const lease = coordinator.attach('ses-2')
+    expect(coordinator.detach(lease.slotId)?.sessionId).toBe('ses-2')
+  })
+
+  // Un desmontaje que llega tarde, cuando su lease ya se reemplazó, no puede
+  // hacer que se esconda la presentación del slot que sí está montado.
+  it('soltar un slot ya reemplazado no reclama nada', () => {
+    const coordinator = make()
+    const first = coordinator.attach('ses-1')
+    const second = coordinator.attach('ses-1')
+    expect(coordinator.detach(first.slotId)).toBeUndefined()
+    expect(coordinator.leaseFor('ses-1')).toEqual(second)
+  })
+
+  it('soltar todos los slots los devuelve y deja el coordinador vacío', () => {
+    const coordinator = make()
+    const one = coordinator.attach('ses-1')
+    const two = coordinator.attach('ses-2')
+    expect(coordinator.detachAll()).toEqual([one, two])
+    expect(coordinator.detachAll()).toEqual([])
+    expect(coordinator.leaseFor('ses-1')).toBeUndefined()
+    expect(coordinator.update(two.slotId, layout())).toEqual({
       ok: false,
       reason: 'unknown-slot',
     })

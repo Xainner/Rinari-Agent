@@ -31,6 +31,8 @@ import BoardView from '../board/BoardView'
 import { BoardHarness, engineFixture, sessionFixture } from '../board/testUtils'
 import { FileLink } from '../files/FileWorkspace'
 import { resetPendingQuestionsForTests } from '../questions/usePendingQuestions'
+import { setPlatformForTests } from '../../platform'
+import { createTestBridge } from '../../platform/testBridge'
 import SessionWorkspace, { requestDockToggle } from './SessionWorkspace'
 
 type ResizeCallback = (entries: Array<{ contentRect: { width: number } }>) => void
@@ -156,4 +158,49 @@ it('UX-07: removing a pane keeps its draft, sends nothing and leaves the session
   expect(engine.cancelTurnFor).not.toHaveBeenCalled()
   // Ni el layout del dock ni la sesión se borran por quitar el panel.
   expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ visible: true, activeSurface: 'files' })
+})
+
+// Doc 03 §8.3: el panel se revela cuando el agente empieza a usar el browser.
+//
+// Reportado en uso real: el usuario no abrió el dock, el agente abrió una
+// página y no había forma de verla. Que se revele es comodidad —la vista
+// maqueta y se captura igual sin panel—, pero sin ella el navegador existe sin
+// que nadie se entere.
+it('revela el navegador cuando el contexto nativo pasa a estar listo, y sólo una vez', async () => {
+  const bridge = createTestBridge()
+  const restore = setPlatformForTests(bridge)
+  try {
+    render(<I18nProvider lang="es">{workspace('ses_a', { focused: true })}</I18nProvider>)
+    expect(screen.queryByTestId('session-dock')).toBeNull()
+
+    const ready = {
+      session_id: 'ses_a',
+      supported: true,
+      host_registered: true,
+      context_state: 'ready' as const,
+      available: true,
+      backend: 'electron-native',
+      control: 'agent' as const,
+      control_state: 'agent' as const,
+      control_revision: 1,
+      active_target_id: 't1',
+      targets: [{ target_id: 't1', url: 'https://example.com/a', title: 'A', active: true }],
+    }
+    await act(async () => {
+      bridge.emitBrowserContext(ready)
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('session-dock').dataset.surface).toBe('browser'),
+    )
+
+    // Cerrarlo es decisión del usuario: otro aviso del mismo contexto no se lo
+    // vuelve a abrir en la cara.
+    act(() => useSessionDockStore.getState().setVisible('ses_a', false))
+    await act(async () => {
+      bridge.emitBrowserContext(ready)
+    })
+    expect(screen.queryByTestId('session-dock')).toBeNull()
+  } finally {
+    restore()
+  }
 })

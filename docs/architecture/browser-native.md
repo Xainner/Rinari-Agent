@@ -65,6 +65,33 @@ una captura estática cuando queda parcialmente fuera— **no hace falta** para
 scroll horizontal ni para colapso parcial del panel en esta plataforma. Sigue
 siendo el plan si otra plataforma mide distinto. No se implementa por si acaso.
 
+### Una vista que nunca se compone no maqueta
+
+Esto salió de uso real, y es el límite del párrafo anterior: el contenedor
+recorta, sí, pero **si recorta a nada la página no llega a existir**. Medido con
+la misma jerarquía y la página cargada:
+
+| contenedor | `innerWidth` | `capturePage` |
+|---|---|---|
+| 0×0 | 0 | 0 bytes |
+| con tamaño, `setVisible(false)` desde el nacimiento | 0 | 0 bytes |
+| 0×0 + `enableDeviceEmulation` | 1280 | 0 bytes |
+| **1×1 visible** | 1280 | 4714 bytes |
+| escondido **después** de componerse | 799 | 5556 bytes |
+
+Tres cosas que no son obvias. La vista toma su viewport de **sus propios
+bounds** aunque el contenedor la recorte a un píxel. La emulación de
+dispositivo arregla la maquetación pero no la composición, así que no sirve
+para capturar. Y esconder es reversible sólo si la vista llegó a componerse
+alguna vez: el estado «escondida» conserva lo que había, no lo crea.
+
+**Consecuencia.** El contenedor de un contexto no baja nunca de 1×1. Un turno
+puede usar el browser antes de que nadie abra el panel —y el §8.3 exige que
+ocultarlo no rompa una herramienta que esté usando ese target—, así que un
+contexto sin presentar mantiene ese suelo en vez de irse a cero. Sin él, la
+página no tiene viewport: ni coordenadas de click, ni `loading="lazy"`, ni
+imagen.
+
 ## 2. DPI: `setBounds` habla en DIP, la captura en píxeles físicos
 
 **Decisión.** La geometría del slot se envía a main **sin multiplicar por
@@ -238,9 +265,12 @@ no significan lo que parecen:
   control, un fallo del paso 3 no distingue «el broker no funciona» de «esta
   vista no recibe input», y se depura el sitio equivocado.
 - **V9** — soltar el slot retira la vista de la ventana, y la página sigue
-  viva. Va por los servicios que invoca el IPC del renderer —reservar,
-  publicar geometría, soltar— y no llamando a la registry a mano, porque el
-  fallo que motivó el paso estaba justo en ese cableado.
+  usable: conserva su viewport y se puede capturar. Va por los servicios que
+  invoca el IPC del renderer —reservar, publicar geometría, soltar— y no
+  llamando a la registry a mano, porque el fallo que motivó el paso estaba
+  justo en ese cableado.
+- **V10** — un contexto que **nunca** se presentó maqueta y se captura igual.
+  Es el caso extremo del §8.3 y el que llegó desde uso real.
 
 ### Lo que rompió: soltar el lease no despinta nada
 

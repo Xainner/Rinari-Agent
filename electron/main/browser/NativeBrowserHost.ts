@@ -411,9 +411,31 @@ export class NativeBrowserHost {
         if (!entry || entry.view.webContents.isDestroyed()) {
           throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
         }
+        // Se comprueba **antes** de pedirla. Con el contenedor a cero,
+        // `capturePage` bloquea el proceso principal entero y ni un plazo en
+        // JavaScript lo rescataría: sus temporizadores tampoco corren.
+        if (!registry.isComposited(context)) {
+          throw new OperationError(
+            'CAPTURE_EMPTY',
+            'this context is not being composited, so there is nothing to capture yet',
+          )
+        }
         const image = await entry.view.webContents.capturePage()
+        const png = image.toPNG()
+        // Una captura vacía no es una captura. `capturePage` resuelve tan
+        // contento con cero bytes cuando la vista no llegó a componerse, y
+        // devolver eso como éxito es peor que fallar: quien mira el resultado
+        // cree que tiene la página. Se dice qué pasó y con qué tamaño, porque
+        // un viewport a cero es la señal de que nadie presentó esa vista.
+        if (png.length === 0 || image.isEmpty()) {
+          const { width, height } = image.getSize()
+          throw new OperationError(
+            'CAPTURE_EMPTY',
+            `the capture came back empty (${width}×${height}): this page has never been composited`,
+          )
+        }
         // Misma forma que devolvía CDP, para que el manager no cambie.
-        return { data: image.toPNG().toString('base64') }
+        return { data: png.toString('base64') }
       }
 
       case 'page.consoleEvents':

@@ -33,6 +33,32 @@ export type ControlOwner = 'agent' | 'user'
  */
 const DEFAULT_LOGICAL_SIZE = { width: 1280, height: 800 }
 
+/**
+ * Lo mínimo que el contenedor ocupa cuando no hay nada que presentar.
+ *
+ * No es cosmética: una `WebContentsView` que **nunca se compone** no maqueta.
+ * Medido, con la jerarquía del §8.2 y la página cargada:
+ *
+ * | contenedor            | `innerWidth` | `capturePage` |
+ * |-----------------------|--------------|---------------|
+ * | 0×0                   | 0            | 0 bytes       |
+ * | con tamaño, escondido | 0            | 0 bytes       |
+ * | 0×0 + emulación       | 1280         | 0 bytes       |
+ * | **1×1 visible**       | 1280         | 4714 bytes    |
+ * | escondido **después** | 799          | 5556 bytes    |
+ *
+ * O sea: la vista toma su viewport de sus propios bounds aunque el contenedor
+ * la recorte a un píxel, pero si nunca llegó a componerse no tiene viewport
+ * ninguno y todo lo que dependa de la maquetación —coordenadas de un click,
+ * `loading="lazy"`, la captura— describe una página que no existe. La
+ * emulación de dispositivo arregla la maquetación pero no la composición, así
+ * que tampoco basta.
+ *
+ * El §8.3 pide que ocultar el panel no rompa una herramienta que esté usando
+ * ese target, así que el contenedor no se esconde del todo: baja a este suelo.
+ */
+const LAYOUT_FLOOR = { x: 0, y: 0, width: 1, height: 1 }
+
 
 /** Métodos CDP que se bufferizan para consola y red (§6.3). */
 const CONSOLE_METHODS = new Set(['Runtime.consoleAPICalled', 'Runtime.exceptionThrown'])
@@ -130,7 +156,9 @@ export class BrowserRegistry {
     // con el proceso; un modo persistente exige UX y limpieza propias.
     const partition = `rinari-browser-${contextId}`
     const container = new View()
-    container.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+    // En el suelo, no a cero: ver `LAYOUT_FLOOR`. Un contexto que se usa antes
+    // de que el usuario abra el panel tiene que maquetar igual.
+    container.setBounds({ ...LAYOUT_FLOOR })
     this.deps.window.contentView.addChildView(container)
 
     const entry: ContextEntry = {
@@ -265,15 +293,10 @@ export class BrowserRegistry {
     context.targets.set(targetId, entry)
     context.order.push(targetId)
     context.container.addChildView(view)
-    // Tamaño desde el nacimiento, aunque no haya slot que la presente.
-    //
-    // Una vista sin bounds queda en 0×0: la página maqueta contra un viewport
-    // vacío y las coordenadas de un click, el snapshot y la captura describen
-    // algo que no es la página. Un turno puede usar el browser antes de que el
-    // usuario abra el panel, y entonces no hay ninguna geometría todavía.
-    if (!context.geometry) {
-      view.setBounds({ x: 0, y: 0, ...DEFAULT_LOGICAL_SIZE })
-    }
+    // El tamaño se lo da `applyGeometry`, que ahora también atiende al contexto
+    // sin slot. Darlo aquí no bastaba: la vista tenía bounds, pero el
+    // contenedor estaba a 0×0 y la recortaba a nada, así que no se componía y
+    // la página se quedaba sin viewport igual.
     // Una pestaña nueva pasa a ser la visible, como en cualquier navegador.
     context.activeTargetId = targetId
     // La barrera vuelve arriba: el orden de hijos decide quién recibe el
@@ -385,6 +408,23 @@ export class BrowserRegistry {
     return true
   }
 
+  /**
+   * ¿Se está componiendo este contexto?
+   *
+   * Lo pregunta la captura antes de pedirla. No es una comprobación de cortesía:
+   * con el contenedor a cero, `capturePage` sobre una vista con el debugger
+   * enganchado **bloquea el proceso principal** —medido: ni los temporizadores
+   * de main vuelven a correr—, así que un plazo en JavaScript no salvaría nada
+   * porque no llegaría a dispararse. La única salida es no llamarla.
+   *
+   * Con `LAYOUT_FLOOR` esto siempre es cierto; queda como cierre por si alguien
+   * vuelve a bajar el contenedor a cero.
+   */
+  isComposited(context: ContextEntry): boolean {
+    const bounds = context.container.getBounds()
+    return bounds.width > 0 && bounds.height > 0
+  }
+
   /** Geometría del slot (§8.1): main coloca, React sólo reserva el espacio. */
   setGeometry(context: ContextEntry, layout: ResolvedLayout): void {
     context.geometry = layout
@@ -401,12 +441,11 @@ export class BrowserRegistry {
    * además con el input de ese rectángulo, porque una vista nativa no la tapa
    * ningún `z-index`—.
    *
-   * La geometría se conserva y sólo se marca invisible: el §8.3 pide que
-   * ocultar no cambie la página, y reescribir los bounds cambiaría el viewport
-   * del documento. Se queda pegada para que un target creado mientras el panel
-   * está cerrado —`createTarget` reaplica la geometría— no la devuelva a la
-   * vista. Capturar sigue funcionando escondida: es `capturePage`, no
-   * `Page.captureScreenshot`.
+   * El tamaño lógico se conserva y sólo se marca no presentado: el §8.3 pide
+   * que ocultar no cambie la página, y reescribir los bounds le cambiaría el
+   * viewport al documento. El contenedor baja al suelo de `LAYOUT_FLOOR` en vez
+   * de esconderse, porque una vista que deja de componerse del todo se lleva la
+   * maquetación por delante y con ella la captura.
    */
   hidePresentation(context: ContextEntry): void {
     if (!context.geometry || !context.geometry.visible) return
@@ -416,10 +455,18 @@ export class BrowserRegistry {
 
   private applyGeometry(context: ContextEntry): void {
     const geometry = context.geometry
-    if (!geometry) return
-    const { container, page, visible } = geometry
+    // Se aplica también sin geometría: antes esto volvía sin hacer nada, así
+    // que un contexto que nadie había presentado dejaba sus vistas sin bounds
+    // y la página sin viewport.
+    const presented = geometry !== null && geometry.visible
+    const container = presented ? geometry.container : LAYOUT_FLOOR
+    // El tamaño lógico se conserva escondido: el §8.3 pide que ocultar el panel
+    // no le cambie el viewport al documento, y reescribirlo lo cambiaría.
+    const page = geometry ? geometry.page : { x: 0, y: 0, ...DEFAULT_LOGICAL_SIZE }
     context.container.setBounds({ ...container })
-    context.container.setVisible(visible)
+    // Nunca `setVisible(false)`: una vista que no se compone no maqueta, y en
+    // el suelo ya no ocupa nada que se vea.
+    context.container.setVisible(true)
 
     // La página va **desplazada** dentro del contenedor, que es quien recorta:
     // `page.x` es negativo cuando el scroll recortó por la izquierda, y el

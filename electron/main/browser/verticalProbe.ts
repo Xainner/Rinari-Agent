@@ -901,21 +901,39 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       overlay_depth: 0,
     })
     await sleep(300)
-    const shownBefore = context.container.getVisible()
     const boundsBefore = context.container.getBounds()
+    const presentedBefore = boundsBefore.width > 1 && boundsBefore.height > 1
 
     await deps.services.detachSlot(lease.slot_id)
-    await sleep(300)
-    const shownAfter = context.container.getVisible()
+    await sleep(400)
+    const boundsAfter = context.container.getBounds()
+    // Retirada de verdad: el contenedor baja al suelo de maquetado, que es un
+    // píxel. Se mide por bounds y no por el flag de visibilidad porque el
+    // contenedor **no** se esconde: una vista que deja de componerse pierde la
+    // maquetación y con ella la captura.
+    const retiredFromWindow = boundsAfter.width <= 1 && boundsAfter.height <= 1
     // Esconder no es cerrar: la página sigue contestando y conserva su URL.
     const urlWhileHidden = view.webContents.getURL()
     let aliveWhileHidden = false
+    let viewportWhileHidden: [number, number] = [0, 0]
     let hiddenFailure = ''
     try {
       aliveWhileHidden = (await read<boolean>(view, 'document.readyState === "complete"')) === true
+      viewportWhileHidden = await read<[number, number]>(view, '[innerWidth, innerHeight]')
     } catch (error) {
       hiddenFailure = message(error)
     }
+    // Y lo que de verdad se rompió en manos del usuario: con el panel cerrado
+    // la captura salía de **cero bytes** mientras la herramienta decía `ok`.
+    let hiddenShotBytes = 0
+    try {
+      hiddenShotBytes = (await view.webContents.capturePage()).toPNG().length
+    } catch (error) {
+      hiddenFailure = hiddenFailure || message(error)
+    }
+    const keepsViewport =
+      viewportWhileHidden[0] === LOGICAL_SIZE.width &&
+      viewportWhileHidden[1] === LOGICAL_SIZE.height
 
     // Y vuelve: retirar la presentación no es una puerta de un solo sentido.
     // El slot se deja puesto, que es como estaba el panel antes de V9: el paso
@@ -931,26 +949,75 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       overlay_depth: 0,
     })
     await sleep(300)
-    const shownAgain = context.container.getVisible()
+    const boundsAgain = context.container.getBounds()
+    const presentedAgain = boundsAgain.width > 1 && boundsAgain.height > 1
 
-    const retired = shownBefore && !shownAfter && aliveWhileHidden && shownAgain
+    const retired =
+      presentedBefore &&
+      retiredFromWindow &&
+      aliveWhileHidden &&
+      keepsViewport &&
+      hiddenShotBytes > 0 &&
+      presentedAgain
     record({
       id: 'V9',
-      title: 'Cerrar el panel retira la vista nativa sin cerrar la página',
+      title: 'Cerrar el panel retira la vista de la ventana y la página sigue usable',
       status: retired ? 'ok' : 'failed',
       detail: retired
-        ? `con slot la vista se compone en ${boundsBefore.width}×${boundsBefore.height}, al soltarlo desaparece de la ventana con la página viva en ${urlWhileHidden}, y vuelve al reservarlo otra vez`
-        : `presentación con slot: ${shownBefore}; tras soltarlo: ${shownAfter}; página viva escondida: ${aliveWhileHidden}${hiddenFailure ? ` (${hiddenFailure})` : ''}; al volver a reservar: ${shownAgain}`,
+        ? `presentada en ${boundsBefore.width}×${boundsBefore.height}, al soltar el slot baja a ${boundsAfter.width}×${boundsAfter.height} conservando el viewport en ${viewportWhileHidden.join('×')} y capturando ${hiddenShotBytes} bytes, y vuelve al reservarlo otra vez`
+        : `presentada antes: ${presentedBefore}; retirada de la ventana: ${retiredFromWindow} (${boundsAfter.width}×${boundsAfter.height}); página viva: ${aliveWhileHidden}; viewport conservado: ${keepsViewport} (${viewportWhileHidden.join('×')}); captura escondida: ${hiddenShotBytes} bytes; vuelve: ${presentedAgain}${hiddenFailure ? ` · ${hiddenFailure}` : ''}`,
       evidence: {
-        shownBefore,
         boundsBefore,
-        shownAfter,
+        boundsAfter,
+        boundsAgain,
         aliveWhileHidden,
+        viewportWhileHidden,
+        hiddenShotBytes,
         hiddenFailure,
         urlWhileHidden,
-        shownAgain,
       },
     })
+
+    // ── V10: el contexto que **nunca** tuvo panel.
+    //
+    //    Reportado en uso real: sin abrir el dock, las capturas salían de 0
+    //    bytes con la herramienta diciendo `ok`, y el DOM medía `innerWidth`
+    //    0. La causa no era la captura: el contenedor nacía a 0×0 y recortaba
+    //    la vista a nada, así que la página no llegaba a componerse **nunca** y
+    //    no tenía viewport. Sin viewport no hay maquetación, y sin maquetación
+    //    ni las coordenadas de un click ni `loading="lazy"` ni la imagen
+    //    describen la página.
+    //
+    //    El §8.3 exige que ocultar no rompa una herramienta que use ese target;
+    //    esto es el caso extremo: nunca se enseñó.
+    const loneSession = `${sessionId}-sin-panel`
+    const loneContext = deps.registry.ensureContext(loneSession)
+    const loneTarget = deps.registry.createTarget(loneContext)
+    deps.registry.attach(loneTarget)
+    await loneTarget.view.webContents.loadURL(deps.fixtureUrl)
+    await awaitPainted(loneTarget.view)
+    const loneViewport = await read<[number, number]>(
+      loneTarget.view,
+      '[innerWidth, innerHeight]',
+    )
+    let loneBytes = 0
+    let loneFailure = ''
+    try {
+      loneBytes = (await loneTarget.view.webContents.capturePage()).toPNG().length
+    } catch (error) {
+      loneFailure = message(error)
+    }
+    const loneOk = loneViewport[0] > 0 && loneViewport[1] > 0 && loneBytes > 0
+    record({
+      id: 'V10',
+      title: 'Un contexto que nunca se presentó maqueta y se puede capturar',
+      status: loneOk ? 'ok' : 'failed',
+      detail: loneOk
+        ? `sin haber abierto el panel nunca, la página maqueta en ${loneViewport.join('×')} y captura ${loneBytes} bytes`
+        : `viewport ${loneViewport.join('×')} y captura de ${loneBytes} bytes sin panel${loneFailure ? `: ${loneFailure}` : ''}`,
+      evidence: { loneViewport, loneBytes, loneFailure },
+    })
+    deps.registry.disposeContext(loneContext.contextId)
 
     // ── Paso 8: se mata el Engine con una mutación en vuelo.
     //

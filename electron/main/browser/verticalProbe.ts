@@ -360,14 +360,34 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
 
     // ── Paso 5: control manual. La UI bloquea mutaciones concurrentes, y una
     //    edición manual se observa al devolver el control.
-    const taken = (await call('browser.control.set', {
+    /** Espera al evento de transición confirmada. */
+    const awaitControl = async (want: string, timeoutMs = 15_000) => {
+      const deadline = Date.now() + timeoutMs
+      while (Date.now() < deadline) {
+        const seen = [...events]
+          .reverse()
+          .find((entry) => entry.event === 'browser.control.changed')
+        const payload = seen?.payload as Record<string, unknown> | undefined
+        if (payload?.control_state === want) return payload
+        await sleep(100)
+      }
+      throw new Error(`el control no llegó a «${want}» en ${timeoutMs} ms`)
+    }
+
+    const requested = (await call('browser.control.set', {
       session_id: sessionId,
       owner: 'user',
-    })) as { control: string; control_revision: number }
-    // El orden del §7: el Engine cierra las mutaciones del agente y confirma
-    // la revisión, y **sólo después** main habilita el input manual retirando
-    // la barrera. Es lo que hará la toolbar en la entrega F.
-    deps.registry.setControl(context, 'user')
+    })) as { control: string; control_state: string; control_revision: number }
+
+    // La petición vuelve enseguida con la admisión ya cerrada, pero **sin**
+    // conceder: el Engine espera en un worker a las mutaciones ya admitidas.
+    // Main no toca la barrera hasta que llega la confirmación, que es el orden
+    // del §7 —«solo después main habilita input manual»—.
+    const confirmed = await awaitControl('user')
+    const taken = {
+      control_revision: Number(confirmed.control_revision),
+      control_state: String(confirmed.control_state),
+    }
 
     await script([{ tool: 'browser.click', args: { selector: '#go' } }, { text: 'intentado' }])
     const blocked = await runTurn(sessionId, 'vuelve a pulsar aplicar')
@@ -389,12 +409,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
                 return true; })()`,
     )
 
-    const returned = (await call('browser.control.set', {
+    await call('browser.control.set', {
       session_id: sessionId,
       owner: 'agent',
       expected_revision: taken.control_revision,
-    })) as { control: string; control_revision: number }
-    deps.registry.setControl(context, 'agent')
+    })
+    const returned = await awaitControl('agent')
 
     await script([{ tool: 'browser.snapshot', args: {} }, { text: 'observado' }])
     const observed = await runTurn(sessionId, 'mira cómo quedó el campo')
@@ -421,6 +441,9 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
           ? 'el click del agente se ejecutó con el usuario al mando: no hay exclusión'
           : `el click no se ejecutó, pero tampoco se rechazó por control (${blockedCode ?? 'sin tool.completed'}): la exclusión no queda demostrada`,
       evidence: {
+        // La petición vuelve sin conceder: la confirmación llega por evento.
+        requestedState: requested.control_state,
+        requestedOwnerAtReply: requested.control,
         takenRevision: taken.control_revision,
         returnedRevision: returned.control_revision,
         blockedError: blockedCode,

@@ -156,6 +156,67 @@ export function isHostRequest(event: unknown): event is HostRequest {
 }
 
 /**
+ * Huella de una solicitud, para distinguir una reentrega de un id reciclado.
+ *
+ * Incluye contexto, generación, target y params: el mismo `request_id` con
+ * otra carga describe **otra** operación, y ejecutarla como si fuera la misma
+ * sería peor que ejecutarla dos veces.
+ */
+export function fingerprintOf(request: HostRequest): string {
+  return JSON.stringify([
+    request.session_id,
+    request.context_id,
+    request.generation,
+    request.operation,
+    request.target_id,
+    request.params,
+  ])
+}
+
+/** Cuántas solicitudes se recuerdan. Retención acotada. */
+export const MAX_REMEMBERED = 512
+
+/**
+ * Lleva la cuenta de qué se ha ejecutado ya, por `request_id`.
+ *
+ * Una reentrega comparte la ejecución en curso —o su resultado conocido— en
+ * vez de volver a pulsar el botón. El mismo id con otra carga es un conflicto,
+ * no un duplicado, y no se ejecuta nada.
+ *
+ * Deliberadamente sin persistencia: el registro muere con la época del
+ * binding, porque tras un reinicio no se puede prometer «una sola vez» y el
+ * §5.4 dice que un éxito no se reconstruye.
+ */
+export class RequestLedger<T> {
+  private readonly seen = new Map<string, { fingerprint: string; run: Promise<T> }>()
+
+  /**
+   * Devuelve la ejecución de esta solicitud, creándola sólo la primera vez.
+   * `null` significa conflicto: ese id ya describió otra operación.
+   */
+  remember(requestId: string, fingerprint: string, start: () => Promise<T>): Promise<T> | null {
+    const known = this.seen.get(requestId)
+    if (known) return known.fingerprint === fingerprint ? known.run : null
+
+    const run = start()
+    this.seen.set(requestId, { fingerprint, run })
+    if (this.seen.size > MAX_REMEMBERED) {
+      const oldest = this.seen.keys().next().value
+      if (oldest !== undefined) this.seen.delete(oldest)
+    }
+    return run
+  }
+
+  get size(): number {
+    return this.seen.size
+  }
+
+  clear(): void {
+    this.seen.clear()
+  }
+}
+
+/**
  * Destinos que una página del agente no puede tomar.
  *
  * El §9 avisa de que «una página localhost no es confiable por su hostname»:

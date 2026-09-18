@@ -18,6 +18,8 @@ import { randomUUID } from 'node:crypto'
 
 import { BrowserRegistry, type ContextEntry } from './BrowserRegistry'
 import {
+  RequestLedger,
+  fingerprintOf,
   hostRequestOf,
   isHostChannelEvent,
   isNavigableUrl,
@@ -53,6 +55,11 @@ export interface NativeBrowserHostDeps {
   onError?: (message: string, detail?: unknown) => void
 }
 
+/** Lo que produjo una ejecución: resultado o error, nunca ambos. */
+type ExecutionOutcome =
+  | { result: Record<string, unknown>; failure?: undefined }
+  | { failure: OperationError; result?: undefined }
+
 class OperationError extends Error {
   constructor(
     readonly code: string,
@@ -75,6 +82,17 @@ export class NativeBrowserHost {
   private epoch = 0
   /** Un solo registro por época; las llamadas simultáneas lo comparten. */
   private registering: Promise<HostBinding | null> | null = null
+  /**
+   * Solicitudes vistas en esta época, por `request_id`.
+   *
+   * Una reentrega de la misma solicitud **no** se ejecuta otra vez: comparte
+   * la ejecución en curso o devuelve el resultado conocido. El mismo id con
+   * otra carga es un conflicto, no un duplicado.
+   *
+   * No sobrevive al binding: tras un reinicio no se puede prometer «una sola
+   * vez», y el §5.4 dice justamente que un éxito no se reconstruye.
+   */
+  private readonly seen = new RequestLedger<ExecutionOutcome>()
 
   constructor(private readonly deps: NativeBrowserHostDeps) {}
 
@@ -101,6 +119,9 @@ export class NativeBrowserHost {
     this.epoch += 1
     this.binding = null
     this.registering = null
+    // Lo recordado pertenece a la época que se va: tras un reinicio no se
+    // puede prometer «una sola vez», y un éxito no se reconstruye (§5.4).
+    this.seen.clear()
     // Los contextos siguen existiendo como vistas, pero ya no tienen
     // autoridad: su próxima solicitud llegará con un binding que el Engine
     // nuevo no reconoce, y se rechaza antes de tocar la página.
@@ -160,6 +181,30 @@ export class NativeBrowserHost {
    * Devuelve `true` cuando lo ha consumido, para que quien llama **no** lo
    * reenvíe al renderer.
    */
+  /**
+   * Aplica una transición de control **ya confirmada** por el Engine (§7).
+   *
+   * Llega por evento porque el Engine la resuelve en un worker: cerrar la
+   * admisión es inmediato, pero esperar a las mutaciones admitidas no puede
+   * ocurrir en su loop de stdio. Main no habilita ni bloquea input hasta
+   * recibir esto, que es justo el orden que pide el documento: «solo después
+   * main habilita input manual».
+   */
+  applyControl(sessionId: string, state: string): void {
+    const context = this.deps.registry.contextForSession(sessionId)
+    if (!context) return
+    if (state === 'user') {
+      this.deps.registry.setControl(context, 'user')
+      return
+    }
+    if (state === 'agent') {
+      this.deps.registry.setControl(context, 'agent')
+      return
+    }
+    // `uncertain`: no se pudo garantizar exclusión, así que el control sigue
+    // siendo del agente y **no** se habilita la entrada manual.
+  }
+
   handleEngineEvent(event: unknown): boolean {
     // Se decide por namespace, no por validez: un frame del canal privado se
     // consume siempre, esté bien formado o no. Devolver `false` por un payload
@@ -234,9 +279,6 @@ export class NativeBrowserHost {
   }
 
   private async execute(request: HostRequest): Promise<void> {
-    let result: Record<string, unknown> | null = null
-    let failure: OperationError | null = null
-
     const binding = this.binding
     if (!binding || request.binding_id !== binding.binding_id) {
       // Una solicitud de un binding que ya no es el nuestro no se ejecuta.
@@ -245,25 +287,7 @@ export class NativeBrowserHost {
     }
     if (request.engine_instance_id !== binding.engine_instance_id) return
 
-    if (this.inFlight >= MAX_CONCURRENT) {
-      failure = new OperationError(
-        'RESOURCE_EXHAUSTED',
-        `the desktop host is already running ${MAX_CONCURRENT} browser operations`,
-        true,
-      )
-    } else {
-      this.inFlight += 1
-      try {
-        result = await this.run(request)
-      } catch (error) {
-        failure =
-          error instanceof OperationError
-            ? error
-            : new OperationError('BROWSER_PROTOCOL', messageOf(error))
-      } finally {
-        this.inFlight -= 1
-      }
-    }
+    const outcome = await this.executeOnce(request)
 
     // La respuesta replica la correlación (§5.3). Si el binding cambió
     // mientras se ejecutaba, el Engine la rechazará: es lo correcto, porque su
@@ -273,12 +297,63 @@ export class NativeBrowserHost {
         request_id: request.request_id,
         binding_id: request.binding_id,
         engine_instance_id: request.engine_instance_id,
-        ...(failure
-          ? { error: { code: failure.code, message: failure.message, retryable: failure.retryable } }
-          : { result: result ?? {} }),
+        ...(outcome.failure
+          ? {
+              error: {
+                code: outcome.failure.code,
+                message: outcome.failure.message,
+                retryable: outcome.failure.retryable,
+              },
+            }
+          : { result: outcome.result ?? {} }),
       })
     } catch (error) {
       this.deps.onError?.('the reply to a browser operation could not be delivered', error)
+    }
+  }
+
+  /**
+   * Ejecuta una solicitud **una sola vez** por `request_id` y época.
+   *
+   * Una reentrega comparte la ejecución en curso o su resultado conocido en
+   * vez de volver a pulsar el botón. El mismo id con otra carga no es un
+   * duplicado sino un conflicto, y se rechaza sin ejecutar nada.
+   */
+  private executeOnce(request: HostRequest): Promise<ExecutionOutcome> {
+    const shared = this.seen.remember(request.request_id, fingerprintOf(request), () =>
+      this.runGuarded(request),
+    )
+    if (shared) return shared
+    return Promise.resolve({
+      failure: new OperationError(
+        'CONFLICT',
+        'this request id was already used for a different operation',
+      ),
+    })
+  }
+
+  private async runGuarded(request: HostRequest): Promise<ExecutionOutcome> {
+    if (this.inFlight >= MAX_CONCURRENT) {
+      return {
+        failure: new OperationError(
+          'RESOURCE_EXHAUSTED',
+          `the desktop host is already running ${MAX_CONCURRENT} browser operations`,
+          true,
+        ),
+      }
+    }
+    this.inFlight += 1
+    try {
+      return { result: await this.run(request) }
+    } catch (error) {
+      return {
+        failure:
+          error instanceof OperationError
+            ? error
+            : new OperationError('BROWSER_PROTOCOL', messageOf(error)),
+      }
+    } finally {
+      this.inFlight -= 1
     }
   }
 

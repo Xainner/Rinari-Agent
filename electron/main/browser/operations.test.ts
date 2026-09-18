@@ -8,12 +8,16 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CONTEXT_OPERATIONS,
+  MAX_REMEMBERED,
   PAGE_OPERATIONS,
+  RequestLedger,
+  fingerprintOf,
   hostRequestOf,
   isHostChannelEvent,
   isHostRequest,
   isNavigableUrl,
   resolveOperation,
+  type HostRequest,
 } from './operations'
 
 function request(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -214,6 +218,77 @@ describe('PRIVATE-01 — el canal privado se clasifica por namespace', () => {
     ['nada', null],
   ])('%s no pertenece', (_label, value) => {
     expect(isHostChannelEvent(value)).toBe(false)
+  })
+})
+
+describe('DEDUP-01/02 — una solicitud se ejecuta una sola vez', () => {
+  const ledger = () => new RequestLedger<string>()
+  /** La misma solicitud del resto del fichero, ya tipada. */
+  const typed = (overrides: Record<string, unknown> = {}) =>
+    request(overrides) as unknown as HostRequest
+
+  it('una reentrega comparte la ejecución en curso', async () => {
+    const book = ledger()
+    let runs = 0
+    const start = () => {
+      runs += 1
+      return Promise.resolve(`resultado-${runs}`)
+    }
+    const first = book.remember('r1', 'huella', start)
+    const again = book.remember('r1', 'huella', start)
+    expect(await first).toBe('resultado-1')
+    // Lo importante no es que devuelva lo mismo, sino que **no se ejecute**
+    // otra vez: repetir un click lo pulsa dos veces.
+    expect(await again).toBe('resultado-1')
+    expect(runs).toBe(1)
+  })
+
+  it('el mismo id con otra carga es conflicto y no ejecuta nada', () => {
+    const book = ledger()
+    let runs = 0
+    book.remember('r1', fingerprintOf(typed()), () => {
+      runs += 1
+      return Promise.resolve('ok')
+    })
+    const conflicto = book.remember('r1', fingerprintOf(typed({ operation: 'page.mouse' })), () => {
+      runs += 1
+      return Promise.resolve('no debería')
+    })
+    expect(conflicto).toBeNull()
+    expect(runs).toBe(1)
+  })
+
+  it('la huella distingue lo que describe otra operación', () => {
+    const base = fingerprintOf(typed())
+    expect(fingerprintOf(typed())).toBe(base)
+    for (const cambio of [
+      { operation: 'page.mouse' },
+      { params: { url: 'http://127.0.0.1:9/otra' } },
+      { target_id: 'otro' },
+      { context_id: 'ctx-2' },
+      { generation: 2 },
+      { session_id: 'ses-2' },
+    ]) {
+      expect(fingerprintOf(typed(cambio))).not.toBe(base)
+    }
+  })
+
+  it('el id y el binding no entran en la huella', () => {
+    // Son la correlación, no la operación: una reentrega trae el mismo id y
+    // cambiar de binding ya invalida el registro entero.
+    expect(fingerprintOf(typed({ request_id: 'otro', binding_id: 'otro' }))).toBe(
+      fingerprintOf(typed()),
+    )
+  })
+
+  it('la retención está acotada y se puede vaciar', () => {
+    const book = ledger()
+    for (let index = 0; index <= MAX_REMEMBERED + 10; index += 1) {
+      book.remember(`r${index}`, 'h', () => Promise.resolve('ok'))
+    }
+    expect(book.size).toBeLessThanOrEqual(MAX_REMEMBERED)
+    book.clear()
+    expect(book.size).toBe(0)
   })
 })
 

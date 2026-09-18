@@ -86,6 +86,16 @@ const engine = new EngineSupervisor({
       browserHost?.handleEngineEvent(event)
       return
     }
+    // Una transición de control ya confirmada: main aplica la barrera aquí y
+    // no al pedirla, porque el Engine la resuelve en un worker (§7).
+    const frame = event as { event?: unknown; payload?: Record<string, unknown> }
+    if (frame.event === 'browser.control.changed' && frame.payload) {
+      const sessionId = frame.payload.session_id
+      const state = frame.payload.control_state
+      if (typeof sessionId === 'string' && typeof state === 'string') {
+        browserHost?.applyControl(sessionId, state)
+      }
+    }
     for (const tap of engineEventTaps) tap(event as unknown as Record<string, unknown>)
     send(PUSH.engineEvent, event)
   },

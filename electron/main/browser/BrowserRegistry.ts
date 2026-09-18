@@ -138,6 +138,12 @@ export class BrowserRegistry {
     return this.contexts.get(contextId)
   }
 
+  /** El contexto de una sesión, sin crearlo si no existe. */
+  contextForSession(sessionId: string): ContextEntry | undefined {
+    const contextId = this.bySession.get(sessionId)
+    return contextId ? this.contexts.get(contextId) : undefined
+  }
+
   /**
    * Resuelve un target dentro de **su** contexto.
    *

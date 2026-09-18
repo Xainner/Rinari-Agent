@@ -10,6 +10,7 @@ import {
   CONTEXT_OPERATIONS,
   PAGE_OPERATIONS,
   hostRequestOf,
+  isHostChannelEvent,
   isHostRequest,
   isNavigableUrl,
   resolveOperation,
@@ -135,6 +136,84 @@ describe('la solicitud llega dentro del sobre de evento', () => {
     ['respuesta, no evento', { id: 'r1', ok: true, result: {} }],
   ])('%s no se extrae', (_label, value) => {
     expect(hostRequestOf(value)).toBeNull()
+  })
+})
+
+describe('DTO-01/02 — identidad completa, no una parte', () => {
+  // Los dos objetos que la revisión de PR #10 reprodujo contra el predicado
+  // anterior. El primero no trae contexto, generación, target ni plazo; el
+  // segundo los trae con tipos imposibles. Los dos pasaban.
+  const sinIdentidad = {
+    request_id: 'r1',
+    binding_id: 'b1',
+    engine_instance_id: 'e1',
+    session_id: 's1',
+    operation: 'page.navigate',
+    params: {},
+  }
+
+  it('una solicitud sin contexto ni generación ni plazo se rechaza', () => {
+    expect(isHostRequest({ type: 'host.browser.request', ...sinIdentidad })).toBe(false)
+  })
+
+  it('tipos imposibles en los campos de identidad se rechazan', () => {
+    expect(
+      isHostRequest({
+        type: 'host.browser.request',
+        ...sinIdentidad,
+        context_id: 42,
+        target_id: [],
+        generation: -1,
+        timeout_ms: NaN,
+        control_revision: 'x',
+      }),
+    ).toBe(false)
+  })
+
+  it.each([
+    ['contexto vacío', { context_id: '' }],
+    ['generación negativa', { generation: -1 }],
+    ['generación fraccionaria', { generation: 1.5 }],
+    ['plazo no finito', { timeout_ms: Infinity }],
+    ['plazo cero', { timeout_ms: 0 }],
+    ['plazo negativo', { timeout_ms: -1 }],
+    ['target de tipo raro', { target_id: 7 }],
+    ['target vacío', { target_id: '' }],
+    ['operación vacía', { operation: '' }],
+    ['id desmesurado', { request_id: 'x'.repeat(300) }],
+  ])('%s se rechaza', (_label, overrides) => {
+    expect(isHostRequest(request(overrides))).toBe(false)
+  })
+
+  it('un target ausente sí es válido: la operación usa la página del contexto', () => {
+    expect(isHostRequest(request({ target_id: null }))).toBe(true)
+  })
+})
+
+describe('PRIVATE-01 — el canal privado se clasifica por namespace', () => {
+  // Se decide antes de validar. Antes, un frame privado malformado devolvía
+  // «no es mío» y acababa enviado al renderer como evento de conversación.
+  it.each([
+    'host.browser.request',
+    'host.browser.something-unknown',
+    'host.browser.',
+  ])('%s pertenece al canal privado', (name) => {
+    expect(isHostChannelEvent({ type: 'event', event: name, payload: {} })).toBe(true)
+  })
+
+  it('un frame privado malformado sigue siendo privado', () => {
+    const roto = { type: 'event', event: 'host.browser.request', payload: { nope: true } }
+    expect(isHostChannelEvent(roto)).toBe(true)
+    expect(hostRequestOf(roto)).toBeNull()
+  })
+
+  it.each([
+    ['evento normal', { type: 'event', event: 'turn.completed', payload: {} }],
+    ['nombre parecido', { type: 'event', event: 'hostXbrowser.request', payload: {} }],
+    ['respuesta', { id: 'r1', ok: true }],
+    ['nada', null],
+  ])('%s no pertenece', (_label, value) => {
+    expect(isHostChannelEvent(value)).toBe(false)
   })
 })
 

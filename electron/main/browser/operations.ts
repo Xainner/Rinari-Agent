@@ -81,6 +81,28 @@ export interface HostRequest {
  * **consume** el evento o lo reenvía al renderer, y un evento a medio formar
  * que se diera por bueno desaparecería de la conversación sin ejecutarse.
  */
+/** Prefijo reservado al broker. Nada de aquí llega al renderer. */
+export const HOST_EVENT_PREFIX = 'host.browser.'
+
+/**
+ * ¿Pertenece este evento al canal privado del broker?
+ *
+ * Se clasifica **por namespace, antes de validar**. Antes se decidía por si
+ * el payload era válido, así que un `host.browser.request` malformado —o
+ * llegado antes de que existiera el host— caía al camino público y se enviaba
+ * al renderer como evento de conversación. Un frame privado sigue siendo
+ * privado aunque esté roto.
+ */
+export function isHostChannelEvent(envelope: unknown): boolean {
+  if (typeof envelope !== 'object' || envelope === null) return false
+  const outer = envelope as Record<string, unknown>
+  return (
+    outer.type === 'event' &&
+    typeof outer.event === 'string' &&
+    outer.event.startsWith(HOST_EVENT_PREFIX)
+  )
+}
+
 export function hostRequestOf(envelope: unknown): HostRequest | null {
   if (typeof envelope !== 'object' || envelope === null) return null
   const outer = envelope as Record<string, unknown>
@@ -91,22 +113,45 @@ export function hostRequestOf(envelope: unknown): HostRequest | null {
   return isHostRequest(candidate) ? candidate : null
 }
 
+/** Tope de un identificador opaco. Ninguno legítimo se acerca. */
+const MAX_ID_LENGTH = 256
+
+function isId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
 export function isHostRequest(event: unknown): event is HostRequest {
-  if (typeof event !== 'object' || event === null) return false
+  if (typeof event !== 'object' || event === null || Array.isArray(event)) return false
   const candidate = event as Record<string, unknown>
-  return (
-    candidate.type === 'host.browser.request' &&
-    typeof candidate.request_id === 'string' &&
-    candidate.request_id !== '' &&
-    typeof candidate.binding_id === 'string' &&
-    typeof candidate.engine_instance_id === 'string' &&
-    typeof candidate.session_id === 'string' &&
-    candidate.session_id !== '' &&
-    typeof candidate.operation === 'string' &&
-    typeof candidate.params === 'object' &&
-    candidate.params !== null &&
-    !Array.isArray(candidate.params)
-  )
+
+  // Identidad completa, no una parte. Antes faltaban `context_id`,
+  // `generation`, `target_id` y `timeout_ms`, así que pasaba una solicitud sin
+  // contexto —y una con `context_id: 42`, `target_id: []`, `generation: -1` y
+  // `timeout_ms: NaN`—. Lo que sale de aquí decide sobre qué página se opera.
+  if (candidate.type !== 'host.browser.request') return false
+  if (!isId(candidate.request_id)) return false
+  if (!isId(candidate.binding_id)) return false
+  if (!isId(candidate.engine_instance_id)) return false
+  if (!isId(candidate.session_id)) return false
+  if (!isId(candidate.context_id)) return false
+  if (!isCount(candidate.generation)) return false
+
+  // El target puede faltar —la operación usa entonces la página del
+  // contexto—, pero si viene tiene que ser un identificador.
+  if (candidate.target_id !== null && !isId(candidate.target_id)) return false
+
+  if (typeof candidate.operation !== 'string' || candidate.operation === '') return false
+  // `NaN` e `Infinity` son números; un deadline hecho con ellos no expira.
+  if (!isCount(candidate.timeout_ms) || candidate.timeout_ms === 0) return false
+
+  const params = candidate.params
+  if (typeof params !== 'object' || params === null || Array.isArray(params)) return false
+
+  return true
 }
 
 /**

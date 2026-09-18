@@ -12,6 +12,7 @@ import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
 import { BrowserRegistry } from './browser/BrowserRegistry'
+import { isHostChannelEvent } from './browser/operations'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
@@ -77,14 +78,25 @@ const engineEventTaps = new Set<(event: Record<string, unknown>) => void>()
 
 const engine = new EngineSupervisor({
   onEvent: (event) => {
-    // Una solicitud del broker es un evento efímero para main, no actividad
-    // de conversación: el §5.4 prohíbe entregarla a `runtimeStore`/React.
-    if (browserHost?.handleEngineEvent(event)) return
+    // El canal privado del broker se descarta **antes** de mirar si hay host.
+    // El §5.4 prohíbe entregar esas solicitudes a `runtimeStore`/React, y eso
+    // vale también cuando llegan antes de que exista la ventana: sin esta
+    // comprobación, un frame privado en ese hueco acababa en el renderer.
+    if (isHostChannelEvent(event)) {
+      browserHost?.handleEngineEvent(event)
+      return
+    }
     for (const tap of engineEventTaps) tap(event as unknown as Record<string, unknown>)
     send(PUSH.engineEvent, event)
   },
   onStatus: (status: EngineStatus) => {
     send(PUSH.engineStatus, status)
+    // Dejar de estar listo revoca el binding. Sin esto, reiniciar el Engine
+    // sin cerrar la ventana dejaba `registered` en `true` para siempre y la
+    // instancia nueva no se registraba nunca.
+    if (status.state !== 'ready') {
+      browserHost?.onEngineLost(status.state)
+    }
     // El binding se pide cuando hay Engine listo, no al abrir la ventana: el
     // registro sólo significa algo contra una instancia viva, y un Engine que
     // se reinicia acuña una nueva (§5.2).

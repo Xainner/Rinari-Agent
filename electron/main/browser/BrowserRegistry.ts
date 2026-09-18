@@ -49,6 +49,11 @@ export interface ContextEntry {
    * traiga otro: un `context_id` de otra sesión no alcanza esta vista (§5.3).
    */
   engineContextId: string | null
+  /**
+   * Generación del contexto según el Engine. No retrocede: una solicitud de
+   * una generación anterior describe un contexto que ya no existe.
+   */
+  generation: number
   sessionId: string
   partition: string
   container: View
@@ -94,6 +99,7 @@ export class BrowserRegistry {
     const entry: ContextEntry = {
       contextId,
       engineContextId: null,
+      generation: 0,
       sessionId,
       partition,
       container,

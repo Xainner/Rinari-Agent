@@ -39,7 +39,7 @@ export interface VerticalDeps {
     request(method: string, params?: unknown, timeoutMs?: number): Promise<unknown>
   }
   registry: BrowserRegistry
-  host: NativeBrowserHost
+  host: Pick<NativeBrowserHost, 'registered' | 'bindingId'>
   /** Se registra un observador de eventos del Engine y se devuelve su retirada. */
   onEngineEvent(listener: (event: Record<string, unknown>) => void): () => void
   fixtureUrl: string
@@ -496,23 +496,71 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       evidence: { before, after, barrierOnTop },
     })
 
-    // ── Paso 8: se mata el Engine. Los pendientes terminan de forma
-    //    controlada y no se reenvía un click al reiniciar.
+    // ── Paso 8: se mata el Engine con una mutación en vuelo.
+    //
+    //    La versión anterior reiniciaba en reposo y comprobaba que
+    //    `host.registered` siguiera puesto. Ese booleano **no cambiaba nunca**
+    //    —era `binding !== null` y nadie lo revocaba—, así que la prueba
+    //    pasaba tanto si el host se volvía a registrar como si no. Ahora se
+    //    exige lo contrario: que el binding se pierda, que se acuñe uno nuevo,
+    //    y que una operación nativa posterior funcione con él.
     const clicksBefore = await read<number>(view, 'window.__probe.clicks')
+    const bindingBefore = deps.host.bindingId
+
+    // Un turno que muta, lanzado y **no** esperado: el Engine muere mientras
+    // la operación está viva.
+    await script([{ tool: 'browser.click', args: { selector: '#go' } }, { text: 'nunca' }])
+    void call('session.turn.start', { session_id: sessionId, message: 'pulsa otra vez' }).catch(
+      () => {
+        // El turno muere con el Engine; su error no es el resultado del paso.
+      },
+    )
+    await sleep(700)
     await deps.engine.restart()
-    for (let attempt = 0; attempt < 100 && !deps.host.registered; attempt += 1) await sleep(100)
-    await sleep(1000)
-    const clicksAfter = await read<number>(view, 'window.__probe.clicks')
+
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      if (deps.host.registered && deps.host.bindingId !== bindingBefore) break
+      await sleep(100)
+    }
+    await sleep(500)
+    const clicksAfterRestart = await read<number>(view, 'window.__probe.clicks')
+    const bindingAfter = deps.host.bindingId
+    const rebound = bindingAfter !== null && bindingAfter !== bindingBefore
+
+    // Y el binding nuevo sirve: una operación nativa posterior llega.
+    let worksAfter = false
+    try {
+      const debugAfter = view.webContents.debugger
+      if (!debugAfter.isAttached()) debugAfter.attach('1.3')
+      const title = (await debugAfter.sendCommand('Runtime.evaluate', {
+        expression: 'document.title',
+        returnByValue: true,
+      })) as { result?: { value?: unknown } }
+      worksAfter = typeof title.result?.value === 'string'
+    } catch {
+      worksAfter = false
+    }
+
+    // Un click en vuelo pudo aplicarse cero o una vez; nunca dos por replay.
+    const noReplay = clicksAfterRestart - clicksBefore <= 1
 
     record({
       id: 'V8',
-      title: 'Matar el Engine termina lo pendiente y no reenvía un click al reiniciar',
-      status: clicksAfter === clicksBefore ? 'ok' : 'failed',
-      detail:
-        clicksAfter === clicksBefore
-          ? `tras matar y rearrancar el Engine la página sigue con ${clicksAfter} clicks: no se reprodujo ninguna mutación`
-          : `la página pasó de ${clicksBefore} a ${clicksAfter} clicks tras el reinicio: hubo replay`,
-      evidence: { clicksBefore, clicksAfter, hostReRegistered: deps.host.registered },
+      title: 'Matar el Engine con una mutación en vuelo: binding nuevo y sin replay',
+      status: rebound && noReplay && worksAfter ? 'ok' : 'failed',
+      detail: !rebound
+        ? `el host no se volvió a registrar contra la instancia nueva (binding ${String(bindingAfter)})`
+        : !noReplay
+          ? `la página pasó de ${clicksBefore} a ${clicksAfterRestart} clicks: la mutación se reprodujo`
+          : !worksAfter
+            ? 'hay binding nuevo pero una operación nativa posterior no funciona'
+            : `binding nuevo tras el reinicio, la página pasó de ${clicksBefore} a ${clicksAfterRestart} clicks (a lo sumo la que estaba en vuelo) y el contexto vuelve a operar`,
+      evidence: {
+        clicksBefore,
+        clicksAfterRestart,
+        bindingChanged: rebound,
+        worksAfterRestart: worksAfter,
+      },
     })
   } catch (error) {
     // ¿Sigue vivo el Engine? Distingue «se bloqueó el loop de stdio» de «se

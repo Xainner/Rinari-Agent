@@ -24,12 +24,14 @@ jobs:
       # Electron, no el DOM (documento 02 §8).
       - run: npm run typecheck:electron
       - run: npm test
+      # El renderer se construye antes del smoke: el host lo sirve desde
+      # `dist/`, así que sin esto el smoke no tiene nada que abrir.
+      - run: npm run build
       - run: npm run desktop:build
       # Abre Electron de verdad: comprueba que el renderer carga por el
       # esquema propio con el puente puesto y sin fugas de Node. Necesita un
       # display, de ahí xvfb (documento 02 §8).
       - run: xvfb-run -a npm run desktop:smoke
-      - run: npm run build
 
   rust:
     runs-on: ${{ matrix.os }}

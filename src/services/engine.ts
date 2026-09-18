@@ -1,5 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   Attachment as ProtocolAttachment,
   ToolSummary as ProtocolToolSummary,
@@ -12,6 +10,8 @@ import type {
   QueuedPromptEntry,
 } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
+
+import { platform, type Unsubscribe } from '../platform'
 
 export type EngineState =
   | "stopped"
@@ -397,8 +397,6 @@ export interface ProjectChanges {
   files: ChangedFile[];
 }
 
-export const ENGINE_EVENT = "rinari-engine-event";
-
 export function isCommandError(value: unknown): value is CommandError {
   return (
     typeof value === "object" &&
@@ -413,19 +411,21 @@ export function commandMessage(error: unknown): string {
 }
 
 export const engineApi = {
-  status: () => invoke<EngineStatus>("engine_status"),
-  start: () => invoke<EngineStatus>("engine_start"),
-  shutdown: () => invoke<EngineStatus>("engine_shutdown"),
-  restart: () => invoke<EngineStatus>("engine_restart"),
+  // Ciclo de vida del proceso: es del host, no un método del Engine. Pasarlo
+  // por `command()` fallaba al traducir, porque no hay método que traducir.
+  status: () => platform().engine.status(),
+  start: () => platform().engine.start(),
+  shutdown: () => platform().engine.shutdown(),
+  restart: () => platform().engine.restart(),
   sessions: (kind?: string, includeClosed?: boolean, projectId?: string, state?: string) =>
-    invoke<{ sessions: SessionSummary[] }>("session_list", {
+    platform().command<{ sessions: SessionSummary[] }>("session_list", {
       kind: kind ?? null,
       include_closed: includeClosed ?? null,
       project_id: projectId ?? null,
       state: state ?? null,
     }),
   createSession: (options?: { cwd?: string; chat?: boolean; title?: string; mode?: string; permission_profile?: string; project_id?: string }) =>
-    invoke<{ session: SessionSummary; created: boolean }>("session_create", {
+    platform().command<{ session: SessionSummary; created: boolean }>("session_create", {
       cwd: options?.cwd ?? null,
       chat: options?.chat ?? false,
       title: options?.title ?? null,
@@ -434,30 +434,30 @@ export const engineApi = {
       project_id: options?.project_id ?? null,
     }),
   openSession: (reference: string) =>
-    invoke<{ session: SessionSummary; created: boolean; warnings: string[] }>(
+    platform().command<{ session: SessionSummary; created: boolean; warnings: string[] }>(
       "session_open",
       { reference },
     ),
   /** Fila autoritativa de una sesión (cualquier estado); no la reabre ni la reconcilia. */
   sessionGet: (reference: string) =>
-    invoke<{ session: SessionSummary }>('session_get', { reference }),
+    platform().command<{ session: SessionSummary }>('session_get', { reference }),
   renameSession: (reference: string, title: string) =>
-    invoke<{ session: SessionSummary }>('session_rename', { reference, title }),
+    platform().command<{ session: SessionSummary }>('session_rename', { reference, title }),
   archiveSession: (reference: string) =>
-    invoke<{ session: SessionSummary }>('session_archive', { reference }),
+    platform().command<{ session: SessionSummary }>('session_archive', { reference }),
   restoreSession: (reference: string) =>
-    invoke<{ session: SessionSummary }>('session_restore', { reference }),
+    platform().command<{ session: SessionSummary }>('session_restore', { reference }),
   forkSession: (reference: string, title?: string) =>
-    invoke<{ session: SessionSummary }>('session_fork', { reference, title: title ?? null }),
+    platform().command<{ session: SessionSummary }>('session_fork', { reference, title: title ?? null }),
   sessionHistory: (reference: string, limit?: number) =>
-    invoke<{
+    platform().command<{
       session_id: string;
       messages: HistoryMessage[];
       total: number;
       has_more: boolean;
     }>("session_history", { reference, limit: limit ?? null }),
   sessionTimeline: (reference: string, beforeTurnIndex?: number, limit?: number) =>
-    invoke<{
+    platform().command<{
       session_id: string;
       turns: TimelineTurn[];
       has_more: boolean;
@@ -468,65 +468,65 @@ export const engineApi = {
       limit: limit ?? null,
     }),
   setSessionMode: (reference: string, mode: string) =>
-    invoke<{ session: SessionSummary }>("session_mode_set", { reference, mode }),
+    platform().command<{ session: SessionSummary }>("session_mode_set", { reference, mode }),
   setSessionModel: (reference: string, model: string, provider?: string) =>
-    invoke<{ session: SessionSummary; model: ModelSummary }>("session_model_set", {
+    platform().command<{ session: SessionSummary; model: ModelSummary }>("session_model_set", {
       reference,
       model,
       provider: provider ?? null,
     }),
   setSessionPermission: (reference: string, permissionProfile: string) =>
-    invoke<{ session: SessionSummary }>("session_permission_set", {
+    platform().command<{ session: SessionSummary }>("session_permission_set", {
       reference,
       permission_profile: permissionProfile,
     }),
   getSessionPermission: (reference: string) =>
-    invoke<{ session: SessionSummary }>("session_permission_get", { reference }),
+    platform().command<{ session: SessionSummary }>("session_permission_get", { reference }),
   turnChanges: (turnId: string) =>
-    invoke<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
+    platform().command<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
   reviewTurnChanges: (turnId: string, path?: string) =>
-    invoke<{ changeset_id: string; turn_id: string; files: TurnChangedFile[] }>(
+    platform().command<{ changeset_id: string; turn_id: string; files: TurnChangedFile[] }>(
       'turn_changes_review',
       { turn_id: turnId, path: path ?? null },
     ),
   previewTurnUndo: (turnId: string, paths?: string[]) =>
-    invoke<TurnUndoPreview>('turn_changes_undo_preview', {
+    platform().command<TurnUndoPreview>('turn_changes_undo_preview', {
       turn_id: turnId,
       paths: paths ?? null,
     }),
   undoTurnChanges: (turnId: string, paths?: string[], applySafeOnly = false) =>
-    invoke<TurnUndoPreview & { status: string; applied: string[]; skipped: string[] }>(
+    platform().command<TurnUndoPreview & { status: string; applied: string[]; skipped: string[] }>(
       'turn_changes_undo',
       { turn_id: turnId, paths: paths ?? null, apply_safe_only: applySafeOnly },
     ),
   searchWorkspaceFiles: (sessionId: string, query: string, limit = 30) =>
-    invoke<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>(
+    platform().command<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>(
       "workspace_file_search",
       { session_id: sessionId, query, limit },
     ),
   taskTree: (path: string) =>
-    invoke<{ tasks: TaskItem[]; depths: Record<string, number> }>("task_tree", {
+    platform().command<{ tasks: TaskItem[]; depths: Record<string, number> }>("task_tree", {
       path,
     }),
   taskGet: (path: string, task_id: string) =>
-    invoke<{ task: TaskItem }>("task_get", { path, task_id }),
+    platform().command<{ task: TaskItem }>("task_get", { path, task_id }),
   verificationLatest: (path: string, kinds?: string[], limit?: number) =>
-    invoke<{ records: Array<Record<string, unknown>> }>("verification_latest", {
+    platform().command<{ records: Array<Record<string, unknown>> }>("verification_latest", {
       path,
       kinds: kinds ?? null,
       limit: limit ?? null,
     }),
   verificationPlan: (path: string, changed_files: string[]) =>
-    invoke<{ plan: Record<string, unknown> }>("verification_plan", {
+    platform().command<{ plan: Record<string, unknown> }>("verification_plan", {
       path,
       changed_files,
     }),
   checkpointList: (path?: string) =>
-    invoke<{ checkpoints: Array<Record<string, unknown>> }>("checkpoint_list", {
+    platform().command<{ checkpoints: Array<Record<string, unknown>> }>("checkpoint_list", {
       path: path ?? null,
     }),
   checkpointShow: (checkpoint_id: string) =>
-    invoke<{ checkpoint: Record<string, unknown> }>("checkpoint_show", {
+    platform().command<{ checkpoint: Record<string, unknown> }>("checkpoint_show", {
       checkpoint_id,
     }),
   checkpointRestore: (input: {
@@ -535,22 +535,22 @@ export const engineApi = {
     preview?: boolean;
     allow_mixed?: boolean;
   }) =>
-    invoke<{ result: Record<string, unknown> }>("checkpoint_restore", {
+    platform().command<{ result: Record<string, unknown> }>("checkpoint_restore", {
       path: input.path,
       checkpoint_id: input.checkpoint_id ?? null,
       preview: input.preview ?? null,
       allow_mixed: input.allow_mixed ?? null,
     }),
   projectChanges: (path: string) =>
-    invoke<ProjectChanges>("project_changes", { path }),
+    platform().command<ProjectChanges>("project_changes", { path }),
   projectDiff: (path: string, file?: string, max_chars?: number) =>
-    invoke<{ diff: string; truncated: boolean; binary: boolean; chars: number }>(
+    platform().command<{ diff: string; truncated: boolean; binary: boolean; chars: number }>(
       "project_diff",
       { path, file: file ?? null, max_chars: max_chars ?? null },
     ),
-  agentList: () => invoke<{ agents: AgentView[] }>("agent_list"),
+  agentList: () => platform().command<{ agents: AgentView[] }>("agent_list"),
   agentConfigGet: (agent: string) =>
-    invoke<{ agent: AgentView }>("agent_config_get", { agent }),
+    platform().command<{ agent: AgentView }>("agent_config_get", { agent }),
   agentConfigSet: (input: {
     agent: string;
     model?: string;
@@ -558,7 +558,7 @@ export const engineApi = {
     enabled?: boolean;
     clear?: boolean;
   }) =>
-    invoke<{ agent: AgentView }>("agent_config_set", {
+    platform().command<{ agent: AgentView }>("agent_config_set", {
       agent: input.agent,
       model: input.model ?? null,
       fallback: input.fallback ?? null,
@@ -566,12 +566,12 @@ export const engineApi = {
       clear: input.clear ?? null,
     }),
   sessionEvents: (reference: string, after_seq?: number, limit?: number) =>
-    invoke<{ session_id: string; events: SessionEvent[]; has_more: boolean }>(
+    platform().command<{ session_id: string; events: SessionEvent[]; has_more: boolean }>(
       "session_events",
       { reference, after_seq: after_seq ?? null, limit: limit ?? null },
     ),
-  soulList: () => invoke<{ souls: SoulSummary[]; active_id: string | null }>("soul_list"),
-  soulGet: (id: string) => invoke<{ soul: SoulDetail }>("soul_get", { id }),
+  soulList: () => platform().command<{ souls: SoulSummary[]; active_id: string | null }>("soul_list"),
+  soulGet: (id: string) => platform().command<{ soul: SoulDetail }>("soul_get", { id }),
   soulCreate: (input: {
     id: string;
     name: string;
@@ -579,7 +579,7 @@ export const engineApi = {
     description?: string;
     version?: string;
   }) =>
-    invoke<{ soul: SoulDetail }>("soul_create", {
+    platform().command<{ soul: SoulDetail }>("soul_create", {
       id: input.id,
       name: input.name,
       identity: input.identity,
@@ -593,69 +593,69 @@ export const engineApi = {
     description?: string;
     version?: string;
   }) =>
-    invoke<{ soul: SoulDetail }>("soul_update", {
+    platform().command<{ soul: SoulDetail }>("soul_update", {
       id: input.id,
       name: input.name ?? null,
       identity: input.identity ?? null,
       description: input.description ?? null,
       version: input.version ?? null,
     }),
-  soulRemove: (id: string) => invoke<{ removed: { id: string } }>("soul_remove", { id }),
-  soulActivate: (id: string) => invoke<{ soul: SoulSummary }>("soul_activate", { id }),
-  mcpList: () => invoke<{ servers: McpServer[] }>("mcp_list"),
+  soulRemove: (id: string) => platform().command<{ removed: { id: string } }>("soul_remove", { id }),
+  soulActivate: (id: string) => platform().command<{ soul: SoulSummary }>("soul_activate", { id }),
+  mcpList: () => platform().command<{ servers: McpServer[] }>("mcp_list"),
   mcpCreate: (name: string, command: string[]) =>
-    invoke<{ server: McpServer }>("mcp_create", { name, command }),
-  mcpRemove: (name: string) => invoke<{ removed: { name: string } }>("mcp_remove", { name }),
+    platform().command<{ server: McpServer }>("mcp_create", { name, command }),
+  mcpRemove: (name: string) => platform().command<{ removed: { name: string } }>("mcp_remove", { name }),
   mcpSetEnabled: (name: string, enabled: boolean) =>
-    invoke<{ server: McpServer }>("mcp_set_enabled", { name, enabled }),
-  mcpTest: (name: string) => invoke<{ test: McpTest }>("mcp_test", { name }),
-  pluginList: () => invoke<{ plugins: PluginInfo[] }>("plugin_list"),
+    platform().command<{ server: McpServer }>("mcp_set_enabled", { name, enabled }),
+  mcpTest: (name: string) => platform().command<{ test: McpTest }>("mcp_test", { name }),
+  pluginList: () => platform().command<{ plugins: PluginInfo[] }>("plugin_list"),
   pluginSetEnabled: (name: string, enabled: boolean) =>
-    invoke<{ plugin: PluginInfo }>("plugin_set_enabled", { name, enabled }),
+    platform().command<{ plugin: PluginInfo }>("plugin_set_enabled", { name, enabled }),
   pluginDiagnostics: () =>
-    invoke<{ reports: Array<{ name: string; source: string; diagnostics: Array<{ code: string; message: string }> }> }>(
+    platform().command<{ reports: Array<{ name: string; source: string; diagnostics: Array<{ code: string; message: string }> }> }>(
       "plugin_diagnostics",
     ),
-  toolList: () => invoke<{ tools: NativeTool[] }>("tool_list"),
+  toolList: () => platform().command<{ tools: NativeTool[] }>("tool_list"),
   policyGet: () =>
-    invoke<{ mode_profile: Record<string, string>; note: string }>("policy_get"),
+    platform().command<{ mode_profile: Record<string, string>; note: string }>("policy_get"),
   artifactList: (session_id?: string) =>
-    invoke<{ artifacts: ArtifactSummary[] }>("artifact_list", {
+    platform().command<{ artifacts: ArtifactSummary[] }>("artifact_list", {
       session_id: session_id ?? null,
     }),
   artifactRead: (uri: string, max_bytes?: number) =>
-    invoke<{ artifact: ArtifactSummary; text: string; truncated: boolean; max_bytes: number }>(
+    platform().command<{ artifact: ArtifactSummary; text: string; truncated: boolean; max_bytes: number }>(
       "artifact_read",
       { uri, max_bytes: max_bytes ?? null },
     ),
   attachmentPrepare: (session_id: string, attachments: AttachmentInput[]) =>
-    invoke<{ attachments: PreparedAttachmentResult[] }>('attachment_prepare', { session_id, attachments }),
+    platform().command<{ attachments: PreparedAttachmentResult[] }>('attachment_prepare', { session_id, attachments }),
   attachmentPreview: (uri: string, max_bytes?: number, max_dimension?: number) =>
-    invoke<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null, max_dimension: max_dimension ?? null }),
-  visionSettingsGet: () => invoke<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
-  contextSettingsGet: () => invoke<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
-  contextCompact: (sessionId: string) => invoke('context_compact', { sessionId }),
-  contextStatus: (modelId: string) => invoke<import('../types/protocol.generated').ContextStatus>('context_status', { modelId }),
-  contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => invoke<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
-  visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => invoke<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
-  sessionImageSupport: (session_id: string | null, model_id?: string) => invoke<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),
+    platform().command<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null, max_dimension: max_dimension ?? null }),
+  visionSettingsGet: () => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
+  contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
+  contextCompact: (sessionId: string) => platform().command('context_compact', { sessionId }),
+  contextStatus: (modelId: string) => platform().command<import('../types/protocol.generated').ContextStatus>('context_status', { modelId }),
+  contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
+  visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
+  sessionImageSupport: (session_id: string | null, model_id?: string) => platform().command<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),
   attachmentPrepareStart: (session_id: string, attachments: AttachmentInput[]) =>
-    invoke<Record<string, unknown>>('attachment_prepare_start', { session_id, attachments }),
+    platform().command<Record<string, unknown>>('attachment_prepare_start', { session_id, attachments }),
   attachmentPrepareGet: (job_id: string) =>
-    invoke<Record<string, unknown>>('attachment_prepare_get', { job_id }),
+    platform().command<Record<string, unknown>>('attachment_prepare_get', { job_id }),
   attachmentPrepareCancel: (job_id: string) =>
-    invoke<Record<string, unknown>>('attachment_prepare_cancel', { job_id }),
+    platform().command<Record<string, unknown>>('attachment_prepare_cancel', { job_id }),
   contextGet: (reference: string) =>
-    invoke<{ context: SessionContext }>("context_get", { reference }),
+    platform().command<{ context: SessionContext }>("context_get", { reference }),
   usageGet: (reference?: string) =>
-    invoke<{ usage: SessionUsage }>("usage_get", { reference: reference ?? null }),
+    platform().command<{ usage: SessionUsage }>("usage_get", { reference: reference ?? null }),
   queueAdd: (session_id: string, message: string) =>
-    invoke<{ session_id: string; position: number; pending: number }>("queue_add", {
+    platform().command<{ session_id: string; position: number; pending: number }>("queue_add", {
       session_id,
       message,
     }),
   queueList: (session_id: string) =>
-    invoke<{
+    platform().command<{
       session_id: string
       queue: string[]
       pending: number
@@ -666,9 +666,9 @@ export const engineApi = {
       session_id,
     }),
   queueClear: (session_id: string) =>
-    invoke<{ session_id: string; removed: number }>("queue_clear", { session_id }),
+    platform().command<{ session_id: string; removed: number }>("queue_clear", { session_id }),
   queueResume: (session_id: string) =>
-    invoke<{ session_id: string; resumed: number }>("queue_resume", { session_id }),
+    platform().command<{ session_id: string; resumed: number }>("queue_resume", { session_id }),
   // -- peer messaging between the sessions of a board ------------------------
   peerGroupSet: (input: {
     board_id: string
@@ -677,7 +677,7 @@ export const engineApi = {
     enabled: boolean
     members: PeerGroupMember[]
   }) =>
-    invoke<PeerGroup & { warnings?: string[] }>("peer_group_set", {
+    platform().command<PeerGroup & { warnings?: string[] }>("peer_group_set", {
       board_id: input.board_id,
       group_id: input.group_id ?? null,
       expected_revision: input.expected_revision,
@@ -685,29 +685,29 @@ export const engineApi = {
       members: input.members,
     }),
   peerGroupGet: (selector: { board_id?: string; session_id?: string; group_id?: string }) =>
-    invoke<{ group: PeerGroup | null }>("peer_group_get", {
+    platform().command<{ group: PeerGroup | null }>("peer_group_get", {
       board_id: selector.board_id ?? null,
       session_id: selector.session_id ?? null,
       group_id: selector.group_id ?? null,
     }),
-  peerGroupRevoke: (group_id: string) => invoke<PeerGroup>("peer_group_revoke", { group_id }),
+  peerGroupRevoke: (group_id: string) => platform().command<PeerGroup>("peer_group_revoke", { group_id }),
   peerMessageList: (session_id: string) =>
-    invoke<{ session_id: string; messages: PeerMessage[] }>("peer_message_list", { session_id }),
+    platform().command<{ session_id: string; messages: PeerMessage[] }>("peer_message_list", { session_id }),
   peerMessageCancel: (message_id: string) =>
-    invoke<PeerMessage>("peer_message_cancel", { message_id }),
+    platform().command<PeerMessage>("peer_message_cancel", { message_id }),
   peerMessageForward: (input: {
     target_session_id: string
     message: string
     source_session_id?: string | null
     quoted_source?: Record<string, unknown> | null
   }) =>
-    invoke<PeerMessage>("peer_message_forward", {
+    platform().command<PeerMessage>("peer_message_forward", {
       target_session_id: input.target_session_id,
       message: input.message,
       source_session_id: input.source_session_id ?? null,
       quoted_source: input.quoted_source ?? null,
     }),
-  bundleList: () => invoke<{ profiles: ProfileBundle[] }>("bundle_list"),
+  bundleList: () => platform().command<{ profiles: ProfileBundle[] }>("bundle_list"),
   bundleCreate: (input: {
     id: string;
     name: string;
@@ -716,7 +716,7 @@ export const engineApi = {
     mode?: string;
     agents?: Record<string, { model?: string; fallback?: string }>;
   }) =>
-    invoke<{ profile: ProfileBundle }>("bundle_create", {
+    platform().command<{ profile: ProfileBundle }>("bundle_create", {
       id: input.id,
       name: input.name,
       description: input.description ?? null,
@@ -724,14 +724,13 @@ export const engineApi = {
       mode: input.mode ?? null,
       agents: input.agents ?? null,
     }),
-  bundleRemove: (id: string) => invoke<{ removed: { id: string } }>("bundle_remove", { id }),
+  bundleRemove: (id: string) => platform().command<{ removed: { id: string } }>("bundle_remove", { id }),
   bundleApply: (id: string, session_ref?: string) =>
-    invoke<{ applied: Record<string, unknown> }>("bundle_apply", {
+    platform().command<{ applied: Record<string, unknown> }>("bundle_apply", {
       id,
       session_ref: session_ref ?? null,
     }),
-  initialOpenRequest: () =>
-    invoke<{ project: string | null; session: string | null }>("initial_open_request"),
+  initialOpenRequest: () => platform().handoff.initial(),
   startTurn: (
     sessionId: string,
     message: string,
@@ -744,7 +743,7 @@ export const engineApi = {
     if (!sessionId) {
       return Promise.reject(new Error('UI sin sesión (fail-fast frontend)'))
     }
-    return invoke<{ status: string; turn_id: string; session_id: string }>("turn_start", {
+    return platform().command<{ status: string; turn_id: string; session_id: string }>("turn_start", {
       session_id: sessionId,
       message,
       reasoning_effort: reasoningEffort ?? null,
@@ -755,29 +754,29 @@ export const engineApi = {
     })
   },
   cancelTurn: (sessionId: string) =>
-    invoke<{ status: string; turn_id: string; session_id: string }>("turn_cancel", {
+    platform().command<{ status: string; turn_id: string; session_id: string }>("turn_cancel", {
       session_id: sessionId,
     }),
   resolveApproval: (approvalId: string, decision: string) =>
-    invoke<{ status: string; approval_id: string; decision: string }>("approval_resolve", {
+    platform().command<{ status: string; approval_id: string; decision: string }>("approval_resolve", {
       approval_id: approvalId,
       decision,
     }),
-  snapshot: () => invoke<{ snapshot: unknown }>("snapshot_get"),
+  snapshot: () => platform().command<{ snapshot: unknown }>("snapshot_get"),
 
   projectRecents: (limit?: number) =>
-    invoke<{ projects: ProjectSummary[] }>(
+    platform().command<{ projects: ProjectSummary[] }>(
       "project_list_recent",
       limit === undefined ? {} : { limit },
     ),
   projectList: (includeArchived = false) =>
-    invoke<{ projects: ProjectSummary[] }>('project_list', {
+    platform().command<{ projects: ProjectSummary[] }>('project_list', {
       include_archived: includeArchived,
     }),
   projectGet: (projectId: string) =>
-    invoke<{ project: ProjectSummary }>('project_get', { project_id: projectId }),
+    platform().command<{ project: ProjectSummary }>('project_get', { project_id: projectId }),
   projectAdd: (path: string, name?: string, description?: string) =>
-    invoke<{ project: ProjectSummary; created: boolean }>('project_add', {
+    platform().command<{ project: ProjectSummary; created: boolean }>('project_add', {
       path,
       name: name ?? null,
       description: description ?? null,
@@ -786,7 +785,7 @@ export const engineApi = {
     projectId: string,
     patch: { name?: string; description?: string; pinned?: boolean; archived?: boolean },
   ) =>
-    invoke<{ project: ProjectSummary }>('project_update', {
+    platform().command<{ project: ProjectSummary }>('project_update', {
       project_id: projectId,
       name: patch.name ?? null,
       description: patch.description ?? null,
@@ -794,36 +793,36 @@ export const engineApi = {
       archived: patch.archived ?? null,
     }),
   projectRemove: (projectId: string, sessionPolicy: 'keep' | 'archive' | 'delete' = 'archive') =>
-    invoke<{
+    platform().command<{
       project: ProjectSummary;
       session_policy: string;
       sessions_affected: number;
       filesystem_deleted: false;
     }>('project_remove', { project_id: projectId, session_policy: sessionPolicy }),
   projectOpen: (path: string) =>
-    invoke<{ project: ProjectSummary; session: SessionSummary; created: boolean }>(
+    platform().command<{ project: ProjectSummary; session: SessionSummary; created: boolean }>(
       "project_open",
       { path },
     ),
   projectStatus: (path: string) =>
-    invoke<ProjectStatus>("project_status", { path }),
+    platform().command<ProjectStatus>("project_status", { path }),
   projectIntelligence: (path: string) =>
-    invoke<ProjectIntelligence>("project_intelligence", { path }),
+    platform().command<ProjectIntelligence>("project_intelligence", { path }),
   projectTrust: (path: string) =>
-    invoke<{
+    platform().command<{
       project: { root: string };
       trust: { state: string; canonical_path: string; fingerprint: string | null; trusted_at: string };
     }>("project_trust", { path }),
   closeSession: (reference: string) =>
-    invoke<{ session: SessionSummary }>("session_close", { reference }),
+    platform().command<{ session: SessionSummary }>("session_close", { reference }),
   deleteSession: (reference: string, cascade?: boolean) =>
-    invoke<SessionDeleteResult>("session_delete", {
+    platform().command<SessionDeleteResult>("session_delete", {
       reference,
       cascade: cascade ?? null,
     }),
 
   providerList: () =>
-    invoke<{ providers: ProviderSummary[]; active_alias: string | null }>(
+    platform().command<{ providers: ProviderSummary[]; active_alias: string | null }>(
       "provider_list",
     ),
   providerCreate: (input: {
@@ -835,7 +834,7 @@ export const engineApi = {
     secret?: string;
     secret_env?: string;
   }) =>
-    invoke<{ provider: ProviderSummary }>("provider_create", {
+    platform().command<{ provider: ProviderSummary }>("provider_create", {
       alias: input.alias,
       provider_type: input.provider_type,
       auth_method: input.auth_method ?? null,
@@ -846,7 +845,7 @@ export const engineApi = {
       settings: null,
     }),
   providerGet: (reference: string) =>
-    invoke<{ provider: ProviderSummary }>("provider_get", { reference }),
+    platform().command<{ provider: ProviderSummary }>("provider_get", { reference }),
   providerUpdate: (
     reference: string,
     patch: {
@@ -857,37 +856,37 @@ export const engineApi = {
       secret_env?: string;
     },
   ) =>
-    invoke<{ provider: ProviderSummary }>("provider_update", {
+    platform().command<{ provider: ProviderSummary }>("provider_update", {
       reference,
       ...patch,
     }),
   providerRemove: (reference: string, switchTo?: string) =>
-    invoke<{ removed: { id: string; alias: string } }>("provider_remove", {
+    platform().command<{ removed: { id: string; alias: string } }>("provider_remove", {
       reference,
       switch_to: switchTo ?? null,
       keep_credentials: false,
     }),
   providerTest: (reference: string) =>
-    invoke<ProviderHealth>("provider_test", { reference }),
+    platform().command<ProviderHealth>("provider_test", { reference }),
   providerDiscover: () =>
-    invoke<{ candidates: DiscoveryCandidate[] }>("provider_discover"),
+    platform().command<{ candidates: DiscoveryCandidate[] }>("provider_discover"),
   providerUse: (reference: string) =>
-    invoke<{ provider: ProviderSummary; model: ModelSummary | null }>(
+    platform().command<{ provider: ProviderSummary; model: ModelSummary | null }>(
       "provider_use",
       { reference },
     ),
 
   modelList: (provider?: string) =>
-    invoke<{ models: ModelSummary[] }>("model_list", {
+    platform().command<{ models: ModelSummary[] }>("model_list", {
       provider: provider ?? null,
     }),
   modelGet: (reference: string, provider?: string) =>
-    invoke<{ model: ModelSummary }>("model_get", {
+    platform().command<{ model: ModelSummary }>("model_get", {
       reference,
       provider: provider ?? null,
     }),
   modelAdd: (input: { provider: string; provider_model_id: string; alias: string }) =>
-    invoke<{ model: ModelSummary }>("model_add", {
+    platform().command<{ model: ModelSummary }>("model_add", {
       provider: input.provider,
       provider_model_id: input.provider_model_id,
       alias: input.alias,
@@ -895,35 +894,35 @@ export const engineApi = {
       settings: null,
     }),
   modelAlias: (reference: string, newAlias: string, provider?: string) =>
-    invoke<{ model: ModelSummary }>("model_alias", {
+    platform().command<{ model: ModelSummary }>("model_alias", {
       reference,
       new_alias: newAlias,
       provider: provider ?? null,
     }),
   modelRemove: (reference: string, provider?: string) =>
-    invoke<{ removed: { id: string; alias: string } }>("model_remove", {
+    platform().command<{ removed: { id: string; alias: string } }>("model_remove", {
       reference,
       provider: provider ?? null,
     }),
   modelUse: (reference: string, provider?: string) =>
-    invoke<{
+    platform().command<{
       model: ModelSummary;
       provider: ProviderSummary;
       switched_provider: boolean;
     }>("model_use", { reference, provider: provider ?? null }),
   modelDiscover: (provider?: string) =>
-    invoke<{ providers: Record<string, DiscoveredModel[]> }>("model_discover", {
+    platform().command<{ providers: Record<string, DiscoveredModel[]> }>("model_discover", {
       provider: provider ?? null,
     }),
   modelDiscoveryStart: (provider?: string) =>
-    invoke<{
+    platform().command<{
       job_id: string;
       status: 'running' | 'completed';
       cached: boolean;
       providers?: Record<string, DiscoveredModel[]>;
     }>('model_discovery_start', { provider: provider ?? null }),
   modelRefresh: (provider?: string) =>
-    invoke<{
+    platform().command<{
       providers: Record<
         string,
         {
@@ -936,7 +935,7 @@ export const engineApi = {
       >;
     }>("model_refresh", { provider: provider ?? null }),
   modelTest: (reference: string, provider?: string) =>
-    invoke<{ ok: boolean; detail: string; model: ModelSummary }>("model_test", {
+    platform().command<{ ok: boolean; detail: string; model: ModelSummary }>("model_test", {
       reference,
       provider: provider ?? null,
     }),
@@ -1071,8 +1070,9 @@ export async function prepareAttachmentRefsWithJob(
   }
 }
 
-export function onEngineEvent(callback: (event: EngineEventMsg) => void): Promise<UnlistenFn> {
-  return listen<EngineEventMsg>(ENGINE_EVENT, (wrapper) => callback(wrapper.payload));
+/** Un solo canal para todos los eventos del Engine, no un lector por panel. */
+export function onEngineEvent(callback: (event: EngineEventMsg) => void): Promise<Unsubscribe> {
+  return platform().events.onEngineEvent(callback);
 }
 
 export type { MessageOrigin, PeerGroup, PeerGroupMember, PeerMessage, QueuedPromptEntry }

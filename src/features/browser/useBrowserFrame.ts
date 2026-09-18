@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
+
+import { platform } from '../../platform'
 
 /** Cadencia con la superficie del navegador a la vista (transporte de capturas actual). */
 export const BROWSER_POLL_ACTIVE_MS = 1_500
@@ -43,7 +44,7 @@ export function useBrowserFrame(
   const requestRef = useRef<(alive: () => boolean) => Promise<void>>(async () => {})
   requestRef.current = async (alive) => {
     try {
-      const next = await invoke<BrowserFrame>('browser_view_get', { session_id: sessionId, target_id: targetId || null })
+      const next = await platform().command<BrowserFrame>('browser_view_get', { session_id: sessionId, target_id: targetId || null })
       if (!alive()) return
       setFrame(next)
       setError(next.error ?? '')

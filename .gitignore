@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Bundles de main y preload del host Electron
+dist-electron
 *.local
 src-tauri/target
 src-tauri/target-*/

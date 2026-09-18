@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { Globe } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
+
+import { platform } from '../../platform'
 
 export interface BrowserSurfaceProps {
   frame: BrowserFrame | null
@@ -42,7 +43,7 @@ export default function BrowserSurface({ frame, error, targetId, onTargetChange 
         )}
         <span className="browser-toolbar-url" title={frame?.url ?? undefined}>{frame?.url || t('browser.waiting')}</span>
         {frame?.url && /^https?:\/\//i.test(frame.url) && (
-          <button type="button" className="browser-toolbar-action" onClick={() => void openUrl(frame.url!).catch((reason) => setOpenError(String(reason)))}>
+          <button type="button" className="browser-toolbar-action" onClick={() => void platform().opener.openUrl(frame.url!).catch((reason) => setOpenError(String(reason)))}>
             {t('browser.openExternal')}
           </button>
         )}

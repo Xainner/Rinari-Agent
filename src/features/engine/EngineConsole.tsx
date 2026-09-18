@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent, type EngineEventMsg } from '../../services/engine'
 import { Section } from '../../components/settings/parts'
 import type { EngineSession } from './useEngineSession'
+
+import { platform } from '../../platform'
 
 interface LogLine {
   key: number
@@ -60,7 +61,7 @@ export default function EngineConsole({ session }: { session: EngineSession }) {
       setLines((prev) => [...prev.slice(-199), { key: lineKey++, text, kind }])
     push('diag: turn_start(session_id="") …', 'info')
     try {
-      const raw = await invoke('turn_start', { session_id: '', message: 'ping' })
+      const raw = await platform().command('turn_start', { session_id: '', message: 'ping' })
       push(`diag: turn_start OK inesperado: ${JSON.stringify(raw)}`, 'error')
     } catch (err) {
       push(`diag: turn_start → ${commandMessage(err)}`, 'error')

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { FolderOpen, FolderGit2, MessageSquare, MessageSquarePlus, Search } from 'lucide-react'
-import { open as openFolderDialog } from '@tauri-apps/plugin-dialog'
+import { platform } from '../../platform'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, type ProjectSummary, type SessionSummary } from '../../services/engine'
@@ -110,7 +110,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDi
   }
 
   async function chooseFolder() {
-    const picked = await openFolderDialog({ directory: true })
+    const picked = (await platform().dialog.openFiles({ directory: true }))?.[0] ?? null
     if (typeof picked !== 'string') return
     setBusy(true)
     try {

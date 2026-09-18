@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { toast } from 'sonner'
 import {
   desktopApi,
@@ -9,6 +8,8 @@ import {
 } from '../../services/desktop'
 import { commandMessage } from '../../services/engine'
 import { CodeBlock } from '../../components/Markdown'
+
+import { platform } from '../../platform'
 
 export function isolatedPreviewUrl(url: string): boolean {
   try {
@@ -196,7 +197,7 @@ export default function HtmlPreview({
           disabled={!preview?.ready}
           onClick={() => {
             if (preview)
-              void openUrl(preview.url).catch((reason) =>
+              void platform().opener.openUrl(preview.url).catch((reason) =>
                 toast.error(commandMessage(reason)),
               )
           }}

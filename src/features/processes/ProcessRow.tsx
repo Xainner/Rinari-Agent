@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink, Square } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useProcessesMotion, PROCESSES_DURATION } from './processMotion'
@@ -16,6 +15,8 @@ import {
   type ProcessPresentation,
   type StopOperation,
 } from './processesModel'
+
+import { platform } from '../../platform'
 
 function statusColor(key: ReturnType<typeof deriveStatusKey>): string {
   switch (key) {
@@ -127,7 +128,7 @@ export default function ProcessRow({
             title={validUrl}
             onClick={() => {
               setUrlError('')
-              void openUrl(validUrl).catch((reason: unknown) =>
+              void platform().opener.openUrl(validUrl).catch((reason: unknown) =>
                 setUrlError(reason instanceof Error ? reason.message : String(reason)),
               )
             }}

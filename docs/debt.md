@@ -88,12 +88,126 @@ documentado; lo demás no se presenta como terminado.
   Control de aplicaciones bloquea `cargo-fmt` (os error 4551); se verificó con
   `rustfmt --check` directo y CI ejecuta `cargo fmt --check`.
 
+### Interfaz de plataforma (2026-09-17, plan 02, entrega C)
+
+- **Inventario de paridad** — `DONE`. `scripts/desktop-parity.mjs` lo genera del
+  código y `parity:check` corre en CI: 130 comandos, 3 eventos y las APIs de
+  `@tauri-apps` usadas directamente. No puede divergir del host.
+- **Imports de Tauri fuera del adaptador** — `DONE` para componentes y
+  servicios: solo `src/platform/tauri.ts` importa `@tauri-apps`, y
+  `parity:check` falla si reaparece uno. La suite quedó verde sin reescribir
+  tests, que es la prueba de que el adaptador conserva el comportamiento.
+- **Tests que montan el host directamente** — `OPEN`. Once archivos de test
+  siguen haciendo `vi.mock('@tauri-apps/…')` en vez de `createTestBridge()`.
+  Funciona porque la implementación Tauri pasa por esos módulos, pero dejará de
+  hacerlo cuando el host por defecto sea Electron (entrega D): entonces hay que
+  migrarlos o dejarán de probar el camino real.
+- **`mcp_get` sin llamador** — `OPEN`. Registrado en `invoke_handler` y expuesto
+  al WebView, pero ningún archivo de `src/` lo invoca. Decidir si se retira
+  antes de portarlo al host nuevo: es superficie que nadie usa.
+- **Validación en ejecución de la allowlist** — `DONE` (entrega D).
+  `electron/shared/validation.ts` usa el mismo inventario generado como
+  allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
+  método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
+
+### Cierre del ciclo de vida de salida (2026-09-18)
+
+- **Salir podía detener el Engine antes de preguntar** — `DONE`. `Cmd+Q`, el
+  menú y `app.quit()` entraban por `before-quit`, que cerraba el Engine antes
+  del diálogo: cancelar dejaba la ventana abierta con el turno ya interrumpido.
+  `QuitCoordinator` es ahora la única autoridad y pregunta **antes** de tocar
+  nada (QUIT-01..07).
+- **Las sondas salían con `app.exit()`** — `DONE`. Saltaba el ciclo de vida y
+  el Engine hijo se quedaba vivo con el home temporal sujeto; ahora se cierra
+  explícitamente antes de salir (LIFE-04).
+- **PUSH sin comprobar el destino** — `DONE`. El envío al renderer exige que
+  siga en el origen de confianza, no solo que la ventana exista
+  (SEC-PUSH-01..03). Es defensa en capas: el IPC entrante ya validaba.
+- **Confirmación de cierre conservadora** — `OPEN` declarado. Se pregunta
+  siempre que el Engine esté en marcha; saber si hay turnos vivos exige una
+  consulta al Engine que no existe todavía. Lo obligatorio —preguntar antes de
+  cerrar— sí se cumple.
+
+### Correcciones del PR #9 (2026-09-17)
+
+- **Operaciones del host por `command()`** — `DONE`. `engine_start` y las otras
+  cinco no son métodos del protocolo: el contrato las expone como intenciones
+  (`engine.*`, `handoff.initial`, `files.openExternal`) y `command()` solo
+  acepta comandos respaldados por el Engine. Bajo Electron, arrancar el Engine
+  desde la UI real fallaba (`hostOnly.test.ts`, gate `desktop:parity`).
+- **Traducción que adivinaba semántica** — `DONE`. El generador falla en
+  cerrado: un handler que ramifica o con bindings sin rastrear se marca
+  `manual` y exige adaptador escrito. `mcp_set_enabled(false)` habilitaba
+  (`commandAdapters.test.ts`, TR-01..09). Auditoría: 114 automáticas, 10
+  manuales, 2 passthrough, 6 solo host, **0 sin resolver**.
+- **E2E que saltaba el adaptador** — `DONE`. La sonda vive en el renderer y usa
+  `engineApi`/`desktopApi`, así que recorre `src/services` y `src/platform`.
+- **`desktop:dev` sin IPC** — `DONE`. El origen de confianza es el que se
+  carga de verdad; la CSP tiene modo y la de producción no hereda nada del dev
+  (DEV-01..03).
+- **Handshake fallido dejaba el hijo vivo** — `DONE` (LIFE-01..03, por PID).
+- **Límite de línea NDJSON** — `DONE`. No se aplicaba a una línea ya completa
+  dentro del chunk (NDJSON-01..03).
+- **`npm ci` roto en CI** — `DONE`. Lock regenerado con npm 10 y baseline
+  documentada en `engines` y AGENTS.md.
+
+### Host Electron (2026-09-17, plan 02, entrega D)
+
+- **Transporte y supervisor** — `DONE`. Portados con sus plazos, códigos y
+  estados; probados contra un Engine falso con eventos intercalados, Unicode
+  partido, respuestas tardías, EOF, stderr voluminoso y cierre.
+- **Frontera de privilegios** — `DONE`. Origen exacto, frame principal,
+  allowlist en ejecución y preload sin `ipcRenderer`. El smoke comprueba que el
+  renderer carga desde `app://rinari` sin `window.require` ni `window.process`.
+- **Arranque real** — `DONE` como smoke: `npm run desktop:smoke` abre Electron
+  y verifica renderer, puente y ausencia de fugas. **No** es paridad: de los
+  130 comandos del inventario (124 del Engine y 6 del host), solo los 12
+  representativos de `desktop:parity` se ejercitan contra el host nuevo.
+- **Traducción comando → método del protocolo** — `DONE`. El nombre del comando **no** es el método: `session_get`
+  habla con `session.get`, y los argumentos se renombran (`reference` → `ref`
+  en 21 comandos, `provider_type` → `type`). El host Tauri hacía esa traducción
+  en 130 handlers Rust y el nuevo la necesitaba igual. El
+  inventario lleva método real y renombrados, y `commandMap.generated.ts`
+  produce las 125 traducciones desde el mismo código Rust, así que no pueden
+  divergir de él. `peer_group_get` se escribe a mano porque su host anterior
+  usa precedencia (`else if`) y manda **una** clave, no la unión; está
+  documentado como excepción y probado.
+- **Paridad contra el Engine real** — `DONE` como corte transversal:
+  `npm run desktop:parity` arranca el Engine desde Electron en un home
+  temporal y ejercita un comando por cada uno de los doce módulos más un turno
+  con proveedor falso, que recorre `turn.started → model.failed → turn.failed`.
+  Prueba el camino completo —renderer, preload, IPC validado, traducción,
+  NDJSON y eventos de vuelta—. **No** es la matriz completa: son **12
+  comandos representativos** —uno por módulo— más un turno real, de los 124
+  respaldados por el Engine. Los otros 112 tienen cobertura de traducción por
+  unidad e invariantes (método válido, renombrados, tabla completa), no
+  ejercicio individual contra un Engine vivo.
+- **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
+  `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
+  el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un
+  permiso ausente se muestra ausente, no como éxito simulado.
+- **Trabajo activo al cerrar** — `PARTIAL`. Se pregunta siempre que el Engine
+  esté en marcha, que peca de prudente; saber si hay turnos vivos exige
+  preguntárselo al Engine y está pendiente.
+- **Menú de aplicación** — `DONE`. Portado de `menu.rs` con sus entradas,
+  etiquetas y aceleradores; salir y el zoom los resuelve el host y el resto
+  viaja por `PUSH.menuAction`. Normal y Boards siguen sin acelerador nativo a
+  propósito: el atajo lo gestiona el frontend y duplicarlo dispararía la
+  acción dos veces (§5.2).
+- **Notificaciones del sistema** — `DONE` bajo Electron, y cierra la deuda que
+  venía de Boards. `Notification.isSupported()` decide la disponibilidad real,
+  hay deduplicación de 10 s y el clic **solo** enfoca y resuelve el destino:
+  no envía, no reanuda, no aprueba. Bajo Tauri se sigue declarando no
+  soportado, porque este build no incluye `tauri-plugin-notification`.
+- **Empaquetado** — `OPEN`. `electron-builder`, el sidecar del Engine en
+  recursos y el instalador NSIS son del documento 04 (entrega G).
+
 ### Boards y mensajería entre paneles (2026-09-15)
 
-- **Notificaciones del sistema** — `OPEN`. Requiere `tauri-plugin-notification`
-  (dependencia nueva con autorización). El adaptador `services/notifications.ts`
-  declara `canSend=false`; el ajuste aparece como no disponible. La activación
-  por clic en desktop no está verificada y no debe anunciarse.
+- **Notificaciones del sistema** — `PARTIAL`. Resueltas en Electron (ver
+  entrega D); bajo Tauri siguen sin canal nativo porque
+  `tauri-plugin-notification` es una dependencia nueva que requiere
+  autorización, y el ajuste lo muestra como no disponible.
 - **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`. El
   Engine no serializa dos sesiones sobre el mismo root; el board solo avisa.
 - **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"

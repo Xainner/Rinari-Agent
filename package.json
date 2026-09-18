@@ -9,8 +9,16 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
+    "typecheck:electron": "tsc -p tsconfig.electron.json",
+    "desktop:build": "node scripts/build-desktop.mjs",
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "desktop:start": "electron dist-electron/main.cjs",
+    "desktop:smoke": "node scripts/desktop-smoke.mjs",
+    "desktop:parity": "node scripts/desktop-parity-e2e.mjs",
     "protocol:generate": "node scripts/generate-protocol.mjs",
-    "protocol:check": "node scripts/generate-protocol.mjs --check"
+    "protocol:check": "node scripts/generate-protocol.mjs --check",
+    "parity:inventory": "node scripts/desktop-parity.mjs",
+    "parity:check": "node scripts/desktop-parity.mjs --check"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.23",
@@ -53,9 +61,14 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",
+    "electron": "44.4.1",
     "jsdom": "^29.1.1",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
     "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": "^10"
   }
 }

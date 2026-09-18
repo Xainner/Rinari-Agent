@@ -1,5 +1,6 @@
-import { invoke } from '@tauri-apps/api/core'
 import type { ManagedProcess, ProcessOutput } from '../types/protocol.generated'
+
+import { platform } from '../platform'
 
 export interface ProcessListResult {
   processes: ManagedProcess[]
@@ -132,7 +133,7 @@ export const processesApi = {
     opts: { cursor?: string; limit?: number } = {},
   ): Promise<ProcessListResult> {
     requireSession(sessionId)
-    const raw = await invoke<unknown>('workspace_process_list', {
+    const raw = await platform().command<unknown>('workspace_process_list', {
       session_id: sessionId,
       ...(opts.cursor !== undefined ? { cursor: opts.cursor } : {}),
       ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
@@ -146,7 +147,7 @@ export const processesApi = {
   async read(sessionId: string, id: string): Promise<ProcessReadResult> {
     requireSession(sessionId)
     requireId(id)
-    const raw = await invoke<unknown>('workspace_process_read', { session_id: sessionId, id })
+    const raw = await platform().command<unknown>('workspace_process_read', { session_id: sessionId, id })
     if (!isProcessReadResult(raw)) throw new Error('processes: respuesta read malformada')
     return raw
   },
@@ -158,7 +159,7 @@ export const processesApi = {
   ): Promise<ProcessStopResult> {
     requireSession(sessionId)
     requireId(id)
-    const raw = await invoke<unknown>('workspace_process_stop', {
+    const raw = await platform().command<unknown>('workspace_process_stop', {
       session_id: sessionId,
       id,
       ...(preconditions !== undefined

@@ -1,0 +1,422 @@
+// Generado por `npm run parity:inventory`. No editar a mano.
+// Documento 02 §3.1: la lista de comandos del host es cerrada y sale del
+// inventario de paridad, para que no pueda divergir del código del host.
+
+/** Comandos que el host expone al renderer. */
+export type DesktopCommand =
+  | 'agent_config_get'
+  | 'agent_config_set'
+  | 'agent_list'
+  | 'approval_resolve'
+  | 'artifact_list'
+  | 'artifact_read'
+  | 'attachment_prepare'
+  | 'attachment_prepare_cancel'
+  | 'attachment_prepare_get'
+  | 'attachment_prepare_start'
+  | 'attachment_preview'
+  | 'browser_view_get'
+  | 'bundle_apply'
+  | 'bundle_create'
+  | 'bundle_list'
+  | 'bundle_remove'
+  | 'checkpoint_list'
+  | 'checkpoint_restore'
+  | 'checkpoint_show'
+  | 'context_compact'
+  | 'context_get'
+  | 'context_settings_get'
+  | 'context_settings_set'
+  | 'context_status'
+  | 'engine_restart'
+  | 'engine_shutdown'
+  | 'engine_start'
+  | 'engine_status'
+  | 'initial_open_request'
+  | 'mcp_create'
+  | 'mcp_get'
+  | 'mcp_list'
+  | 'mcp_remove'
+  | 'mcp_set_enabled'
+  | 'mcp_test'
+  | 'model_add'
+  | 'model_alias'
+  | 'model_discover'
+  | 'model_discovery_start'
+  | 'model_get'
+  | 'model_list'
+  | 'model_refresh'
+  | 'model_remove'
+  | 'model_test'
+  | 'model_use'
+  | 'peer_group_get'
+  | 'peer_group_revoke'
+  | 'peer_group_set'
+  | 'peer_message_cancel'
+  | 'peer_message_forward'
+  | 'peer_message_list'
+  | 'plugin_diagnostics'
+  | 'plugin_list'
+  | 'plugin_set_enabled'
+  | 'policy_get'
+  | 'project_add'
+  | 'project_changes'
+  | 'project_diff'
+  | 'project_get'
+  | 'project_intelligence'
+  | 'project_list'
+  | 'project_list_recent'
+  | 'project_open'
+  | 'project_remove'
+  | 'project_status'
+  | 'project_trust'
+  | 'project_update'
+  | 'provider_create'
+  | 'provider_discover'
+  | 'provider_get'
+  | 'provider_list'
+  | 'provider_remove'
+  | 'provider_test'
+  | 'provider_update'
+  | 'provider_use'
+  | 'question_list'
+  | 'question_resolve'
+  | 'queue_add'
+  | 'queue_clear'
+  | 'queue_list'
+  | 'queue_resume'
+  | 'session_archive'
+  | 'session_close'
+  | 'session_create'
+  | 'session_delete'
+  | 'session_events'
+  | 'session_fork'
+  | 'session_get'
+  | 'session_history'
+  | 'session_image_support'
+  | 'session_list'
+  | 'session_mode_set'
+  | 'session_model_set'
+  | 'session_move'
+  | 'session_open'
+  | 'session_permission_get'
+  | 'session_permission_set'
+  | 'session_rename'
+  | 'session_restore'
+  | 'session_timeline'
+  | 'snapshot_get'
+  | 'soul_activate'
+  | 'soul_create'
+  | 'soul_get'
+  | 'soul_list'
+  | 'soul_remove'
+  | 'soul_update'
+  | 'task_get'
+  | 'task_tree'
+  | 'tool_list'
+  | 'turn_cancel'
+  | 'turn_changes_get'
+  | 'turn_changes_review'
+  | 'turn_changes_undo'
+  | 'turn_changes_undo_preview'
+  | 'turn_start'
+  | 'usage_get'
+  | 'verification_latest'
+  | 'verification_plan'
+  | 'vision_settings_get'
+  | 'vision_settings_set'
+  | 'workspace_file_open'
+  | 'workspace_file_read'
+  | 'workspace_file_search'
+  | 'workspace_preview_start'
+  | 'workspace_preview_status'
+  | 'workspace_preview_stop'
+  | 'workspace_process_list'
+  | 'workspace_process_read'
+  | 'workspace_process_stop'
+
+/** La misma lista en tiempo de ejecución, para validaciones y tests. */
+export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
+  'agent_config_get',
+  'agent_config_set',
+  'agent_list',
+  'approval_resolve',
+  'artifact_list',
+  'artifact_read',
+  'attachment_prepare',
+  'attachment_prepare_cancel',
+  'attachment_prepare_get',
+  'attachment_prepare_start',
+  'attachment_preview',
+  'browser_view_get',
+  'bundle_apply',
+  'bundle_create',
+  'bundle_list',
+  'bundle_remove',
+  'checkpoint_list',
+  'checkpoint_restore',
+  'checkpoint_show',
+  'context_compact',
+  'context_get',
+  'context_settings_get',
+  'context_settings_set',
+  'context_status',
+  'engine_restart',
+  'engine_shutdown',
+  'engine_start',
+  'engine_status',
+  'initial_open_request',
+  'mcp_create',
+  'mcp_get',
+  'mcp_list',
+  'mcp_remove',
+  'mcp_set_enabled',
+  'mcp_test',
+  'model_add',
+  'model_alias',
+  'model_discover',
+  'model_discovery_start',
+  'model_get',
+  'model_list',
+  'model_refresh',
+  'model_remove',
+  'model_test',
+  'model_use',
+  'peer_group_get',
+  'peer_group_revoke',
+  'peer_group_set',
+  'peer_message_cancel',
+  'peer_message_forward',
+  'peer_message_list',
+  'plugin_diagnostics',
+  'plugin_list',
+  'plugin_set_enabled',
+  'policy_get',
+  'project_add',
+  'project_changes',
+  'project_diff',
+  'project_get',
+  'project_intelligence',
+  'project_list',
+  'project_list_recent',
+  'project_open',
+  'project_remove',
+  'project_status',
+  'project_trust',
+  'project_update',
+  'provider_create',
+  'provider_discover',
+  'provider_get',
+  'provider_list',
+  'provider_remove',
+  'provider_test',
+  'provider_update',
+  'provider_use',
+  'question_list',
+  'question_resolve',
+  'queue_add',
+  'queue_clear',
+  'queue_list',
+  'queue_resume',
+  'session_archive',
+  'session_close',
+  'session_create',
+  'session_delete',
+  'session_events',
+  'session_fork',
+  'session_get',
+  'session_history',
+  'session_image_support',
+  'session_list',
+  'session_mode_set',
+  'session_model_set',
+  'session_move',
+  'session_open',
+  'session_permission_get',
+  'session_permission_set',
+  'session_rename',
+  'session_restore',
+  'session_timeline',
+  'snapshot_get',
+  'soul_activate',
+  'soul_create',
+  'soul_get',
+  'soul_list',
+  'soul_remove',
+  'soul_update',
+  'task_get',
+  'task_tree',
+  'tool_list',
+  'turn_cancel',
+  'turn_changes_get',
+  'turn_changes_review',
+  'turn_changes_undo',
+  'turn_changes_undo_preview',
+  'turn_start',
+  'usage_get',
+  'verification_latest',
+  'verification_plan',
+  'vision_settings_get',
+  'vision_settings_set',
+  'workspace_file_open',
+  'workspace_file_read',
+  'workspace_file_search',
+  'workspace_preview_start',
+  'workspace_preview_status',
+  'workspace_preview_stop',
+  'workspace_process_list',
+  'workspace_process_read',
+  'workspace_process_stop',
+] as const
+
+/**
+ * Operaciones del host, no del Engine: ciclo de vida del proceso, handoff
+ * del arranque y las que necesitan un efecto nativo. No se traducen a un
+ * método del protocolo y el contrato las expone como intenciones propias.
+ */
+export type HostOnlyCommand =
+  | 'engine_restart'
+  | 'engine_shutdown'
+  | 'engine_start'
+  | 'engine_status'
+  | 'initial_open_request'
+  | 'workspace_file_open'
+
+export const HOST_ONLY_COMMANDS: readonly HostOnlyCommand[] = [
+  'engine_restart',
+  'engine_shutdown',
+  'engine_start',
+  'engine_status',
+  'initial_open_request',
+  'workspace_file_open',
+] as const
+
+/** Comandos que sí son una llamada al Engine y viajan por `command()`. */
+export type EngineBackedCommand = Exclude<DesktopCommand, HostOnlyCommand>
+
+export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
+  'agent_config_get',
+  'agent_config_set',
+  'agent_list',
+  'approval_resolve',
+  'artifact_list',
+  'artifact_read',
+  'attachment_prepare',
+  'attachment_prepare_cancel',
+  'attachment_prepare_get',
+  'attachment_prepare_start',
+  'attachment_preview',
+  'browser_view_get',
+  'bundle_apply',
+  'bundle_create',
+  'bundle_list',
+  'bundle_remove',
+  'checkpoint_list',
+  'checkpoint_restore',
+  'checkpoint_show',
+  'context_compact',
+  'context_get',
+  'context_settings_get',
+  'context_settings_set',
+  'context_status',
+  'mcp_create',
+  'mcp_get',
+  'mcp_list',
+  'mcp_remove',
+  'mcp_set_enabled',
+  'mcp_test',
+  'model_add',
+  'model_alias',
+  'model_discover',
+  'model_discovery_start',
+  'model_get',
+  'model_list',
+  'model_refresh',
+  'model_remove',
+  'model_test',
+  'model_use',
+  'peer_group_get',
+  'peer_group_revoke',
+  'peer_group_set',
+  'peer_message_cancel',
+  'peer_message_forward',
+  'peer_message_list',
+  'plugin_diagnostics',
+  'plugin_list',
+  'plugin_set_enabled',
+  'policy_get',
+  'project_add',
+  'project_changes',
+  'project_diff',
+  'project_get',
+  'project_intelligence',
+  'project_list',
+  'project_list_recent',
+  'project_open',
+  'project_remove',
+  'project_status',
+  'project_trust',
+  'project_update',
+  'provider_create',
+  'provider_discover',
+  'provider_get',
+  'provider_list',
+  'provider_remove',
+  'provider_test',
+  'provider_update',
+  'provider_use',
+  'question_list',
+  'question_resolve',
+  'queue_add',
+  'queue_clear',
+  'queue_list',
+  'queue_resume',
+  'session_archive',
+  'session_close',
+  'session_create',
+  'session_delete',
+  'session_events',
+  'session_fork',
+  'session_get',
+  'session_history',
+  'session_image_support',
+  'session_list',
+  'session_mode_set',
+  'session_model_set',
+  'session_move',
+  'session_open',
+  'session_permission_get',
+  'session_permission_set',
+  'session_rename',
+  'session_restore',
+  'session_timeline',
+  'snapshot_get',
+  'soul_activate',
+  'soul_create',
+  'soul_get',
+  'soul_list',
+  'soul_remove',
+  'soul_update',
+  'task_get',
+  'task_tree',
+  'tool_list',
+  'turn_cancel',
+  'turn_changes_get',
+  'turn_changes_review',
+  'turn_changes_undo',
+  'turn_changes_undo_preview',
+  'turn_start',
+  'usage_get',
+  'verification_latest',
+  'verification_plan',
+  'vision_settings_get',
+  'vision_settings_set',
+  'workspace_file_read',
+  'workspace_file_search',
+  'workspace_preview_start',
+  'workspace_preview_status',
+  'workspace_preview_stop',
+  'workspace_process_list',
+  'workspace_process_read',
+  'workspace_process_stop',
+] as const

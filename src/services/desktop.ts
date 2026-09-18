@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import type { SessionSummary } from './engine'
 
 import type {
@@ -6,6 +5,8 @@ import type {
   FilePreview,
   WebPreview,
 } from '../types/protocol.generated'
+import { platform } from '../platform'
+
 export type { WebPreview } from '../types/protocol.generated'
 export type { QuestionRequest, FilePreview } from '../types/protocol.generated'
 
@@ -17,7 +18,7 @@ export const desktopApi = {
     run_dev = false,
     dev_url?: string,
   ) =>
-    invoke<WebPreview>('workspace_preview_start', {
+    platform().command<WebPreview>('workspace_preview_start', {
       session_id,
       path,
       turn_id,
@@ -25,29 +26,30 @@ export const desktopApi = {
       dev_url,
     }),
   previewStatus: (session_id: string, preview_id: string) =>
-    invoke<WebPreview>('workspace_preview_status', { session_id, preview_id }),
+    platform().command<WebPreview>('workspace_preview_status', { session_id, preview_id }),
   stopPreview: (session_id: string, preview_id: string) =>
-    invoke<{ stopped: boolean }>('workspace_preview_stop', {
+    platform().command<{ stopped: boolean }>('workspace_preview_stop', {
       session_id,
       preview_id,
     }),
+  /** El Engine valida la ruta y el host la abre; no es un método del Engine. */
   openFile: (session_id: string, path: string, turn_id?: string) =>
-    invoke<void>('workspace_file_open', { session_id, path, turn_id }),
+    platform().files.openExternal({ session_id, path, turn_id }),
   moveSession: (session_id: string, project_id: string | null) =>
-    invoke<{ session: SessionSummary }>('session_move', {
+    platform().command<{ session: SessionSummary }>('session_move', {
       session_id,
       project_id,
     }),
   readFile: (session_id: string, path: string, turn_id?: string) =>
-    invoke<FilePreview>('workspace_file_read', { session_id, path, turn_id }),
+    platform().command<FilePreview>('workspace_file_read', { session_id, path, turn_id }),
   questions: (session_id: string) =>
-    invoke<{ questions: QuestionRequest[] }>('question_list', { session_id }),
+    platform().command<{ questions: QuestionRequest[] }>('question_list', { session_id }),
   answer: (
     request: QuestionRequest,
     answers: Record<string, string>,
     skip = false,
   ) =>
-    invoke<QuestionRequest>('question_resolve', {
+    platform().command<QuestionRequest>('question_resolve', {
       session_id: request.session_id,
       request_id: request.request_id,
       answers,

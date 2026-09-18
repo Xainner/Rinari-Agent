@@ -24,7 +24,6 @@ import { APP_SCHEME } from '../appScheme'
 export const PAGE_OPERATIONS: Readonly<Record<string, string>> = Object.freeze(
   Object.assign(Object.create(null) as Record<string, string>, {
     'page.navigate': 'Page.navigate',
-    'page.screenshot': 'Page.captureScreenshot',
     'page.evaluate': 'Runtime.evaluate',
     'page.a11y': 'Accessibility.getFullAXTree',
     'page.boxModel': 'DOM.getBoxModel',
@@ -33,8 +32,18 @@ export const PAGE_OPERATIONS: Readonly<Record<string, string>> = Object.freeze(
   }),
 )
 
-/** Operaciones sobre el contexto, que no son un comando CDP. */
+/**
+ * Operaciones que no son un comando CDP.
+ *
+ * `page.screenshot` está aquí, y no entre las page-level, por una medición:
+ * `Page.captureScreenshot` **no vuelve nunca** si la vista no está compuesta
+ * en pantalla —escondida, con el panel colapsado, o sin slot todavía—, y el
+ * §8.3 exige que ocultar no rompa una herramienta que esté usando ese target.
+ * `webContents.capturePage()` sí funciona escondida, y el §6.3 permite
+ * explícitamente resolver con APIs de Electron lo que CDP no cubre.
+ */
 export const CONTEXT_OPERATIONS = new Set([
+  'page.screenshot',
   'context.targets',
   'context.newPage',
   'context.closePage',

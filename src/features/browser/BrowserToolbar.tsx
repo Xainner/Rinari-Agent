@@ -14,6 +14,8 @@ export interface BrowserToolbarProps {
   /** URL que se muestra; con el visor viene de la captura. */
   url: string
   connected: boolean
+  /** Estado del contexto, para no llamar «desconectado» a lo que se prepara. */
+  state?: string
   onSelectTarget: (targetId: string) => void
   onNavigate?: (url: string) => void
   onTakeControl?: () => void
@@ -34,6 +36,7 @@ export default function BrowserToolbar({
   activeTargetId,
   url,
   connected,
+  state,
   onSelectTarget,
   onNavigate,
   onTakeControl,
@@ -55,8 +58,14 @@ export default function BrowserToolbar({
   return (
     <header className="browser-toolbar">
       <Globe size={14} aria-hidden="true" />
+      {/* Un contexto que se está preparando no está desconectado, y decirlo
+          así hace pensar que algo se rompió. */}
       <span role="status" className="browser-toolbar-state" data-connected={connected || undefined}>
-        {connected ? t('browser.live') : t('browser.disconnected')}
+        {connected
+          ? t('browser.live')
+          : state === 'creating' || state === 'absent'
+            ? t('browser.nativePreparing')
+            : t('browser.disconnected')}
       </span>
 
       {targets.length > 1 && (

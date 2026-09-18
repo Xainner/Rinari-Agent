@@ -306,6 +306,14 @@ function App() {
           if (target) requestDockToggle({ sessionId: target, surface: 'files' })
           break
         }
+        case 'browser': {
+          // Mismo dock y mismo destinatario explícito que Archivos: el
+          // navegador es otra superficie del panel de la sesión, no una
+          // ventana aparte (documento 03 §1).
+          const target = view === 'board' ? focusedBoardPane?.sessionId : session.activeSession
+          if (target) requestDockToggle({ sessionId: target, surface: 'browser' })
+          break
+        }
         case 'commands': setPaletteOpen(true); break
         case 'processes':
           if (session.activeSession) {

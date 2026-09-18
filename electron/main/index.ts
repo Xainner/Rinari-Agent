@@ -409,6 +409,7 @@ function openWindow(): void {
     registry: browserRegistry,
     request: (method, params) => engine.request(method, params),
     onError: (message, detail) => console.error(`[rinari-browser] ${message}`, detail ?? ''),
+    onContextChanged: (sessionId) => publishBrowserContext(sessionId),
   })
 
   // La autorización es del contenido: si navega fuera, se revoca hasta que

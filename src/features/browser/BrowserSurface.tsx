@@ -84,6 +84,7 @@ export default function BrowserSurface({
         activeTargetId={activeTargetId}
         url={url}
         connected={Boolean(connected)}
+        state={useNative ? context?.context_state : frame?.state}
         onSelectTarget={useNative ? (id) => void native.selectTarget(id) : onTargetChange}
         onNavigate={useNative ? (next) => void native.navigate(next) : undefined}
         onTakeControl={useNative ? () => void native.takeControl() : undefined}

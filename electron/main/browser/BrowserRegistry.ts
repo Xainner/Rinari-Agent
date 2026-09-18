@@ -24,6 +24,15 @@ import type { ResolvedLayout } from './ViewLayoutCoordinator'
 /** Quién puede mutar la página ahora mismo (§7). */
 export type ControlOwner = 'agent' | 'user'
 
+/**
+ * Tamaño lógico de una página que todavía no tiene slot, en DIP.
+ *
+ * Un turno puede usar el browser antes de que el usuario abra el panel. Sin
+ * esto la vista nace en 0×0 y todo lo que dependa de la maquetación —click,
+ * snapshot, captura— describe una página que no existe.
+ */
+const DEFAULT_LOGICAL_SIZE = { width: 1280, height: 800 }
+
 
 interface TargetEntry {
   targetId: string
@@ -229,6 +238,15 @@ export class BrowserRegistry {
     context.targets.set(targetId, entry)
     context.order.push(targetId)
     context.container.addChildView(view)
+    // Tamaño desde el nacimiento, aunque no haya slot que la presente.
+    //
+    // Una vista sin bounds queda en 0×0: la página maqueta contra un viewport
+    // vacío y las coordenadas de un click, el snapshot y la captura describen
+    // algo que no es la página. Un turno puede usar el browser antes de que el
+    // usuario abra el panel, y entonces no hay ninguna geometría todavía.
+    if (!context.geometry) {
+      view.setBounds({ x: 0, y: 0, ...DEFAULT_LOGICAL_SIZE })
+    }
     // Una pestaña nueva pasa a ser la visible, como en cualquier navegador.
     context.activeTargetId = targetId
     // La barrera vuelve arriba: el orden de hijos decide quién recibe el

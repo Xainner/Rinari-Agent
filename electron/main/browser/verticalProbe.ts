@@ -187,6 +187,32 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
   const read = <T>(view: WebContentsView, expression: string) =>
     view.webContents.executeJavaScript(expression) as Promise<T>
 
+  /**
+   * Espera a que la vista produzca un fotograma de verdad.
+   *
+   * Un `sleep` fijo no sirve: Chromium no entrega input ni captura a una vista
+   * que todavía no está compuesta, y cuánto tarda depende de la máquina y de
+   * qué más esté pintando. Esperar a un `requestAnimationFrame` de la propia
+   * página es la señal directa —sólo corre cuando el compositor la atiende— y
+   * convierte una prueba intermitente en una que mide lo que dice medir.
+   */
+  const awaitPainted = async (view: WebContentsView, timeoutMs = 10_000) => {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      try {
+        const painted = await read<boolean>(
+          view,
+          'new Promise((resolve) => requestAnimationFrame(() => resolve(true)))',
+        )
+        if (painted) return true
+      } catch {
+        // La página aún no puede evaluar; se reintenta.
+      }
+      await sleep(150)
+    }
+    return false
+  }
+
   let sessionId = ''
   let secondSessionId = ''
   let view: WebContentsView | null = null
@@ -296,7 +322,9 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     // emitido aquí mismo sobre esta vista. Si tampoco llega, el problema es de
     // la vista o de la ventana, no del camino Engine → broker → host.
     view.webContents.focus()
-    await sleep(300)
+    // Sin esto la prueba era intermitente: pulsaba antes de que la vista
+    // estuviera compuesta y el click no llegaba a ninguna parte.
+    const painted = await awaitPainted(view)
     const clicksAtStart = await read<number>(view, 'window.__probe.clicks')
     const debug = view.webContents.debugger
     if (!debug.isAttached()) debug.attach('1.3')
@@ -323,6 +351,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       evidence: {
         clicksAtStart,
         clicksAfterDirect,
+        painted,
         windowVisibleAtStart: visibleAtStart,
         windowVisibleNow: deps.window.isVisible(),
       },
@@ -442,6 +471,40 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         targetIsOurs,
       },
     })
+
+    // ── V4b: capturar un target que **no** se está presentando.
+    //
+    //    Es el caso real que apareció usando la app: un turno usa el browser
+    //    antes de que el usuario abra el panel, o con el dock en otra
+    //    superficie. `Page.captureScreenshot` se quedaba colgado hasta agotar
+    //    el plazo, y el §8.3 dice que ocultar no puede romper una herramienta
+    //    que esté usando ese target.
+    const hiddenTarget = deps.registry.createTarget(context)
+    await hiddenTarget.view.webContents.loadURL(deps.fixtureUrl)
+    // Vuelve a la primera: la recién creada queda viva pero sin presentar.
+    deps.registry.setActiveTarget(context, target.targetId)
+    await sleep(400)
+
+    await script([
+      { tool: 'browser.screenshot', args: { target_id: hiddenTarget.targetId } },
+      { text: 'capturado' },
+    ])
+    const hiddenShot = await runTurn(sessionId, 'captura la pestaña que no se ve', 45_000)
+    const hiddenTool = hiddenShot.tools.find((tool) => tool.tool === 'browser.screenshot')
+    const hiddenBytes = Number(parseObservation(hiddenTool?.observation)?.bytes ?? 0)
+
+    record({
+      id: 'V4b',
+      title: 'Una pestaña que no se está presentando se puede capturar igual',
+      status: hiddenTool?.outcome === 'completed' && hiddenBytes > 0 ? 'ok' : 'failed',
+      detail:
+        hiddenBytes > 0
+          ? `captura de ${hiddenBytes} bytes de un target sin presentar: ocultar no detiene el recurso`
+          : `la captura de un target oculto acabó en ${hiddenTool?.outcome ?? 'nada'} (${errorCodeOf(hiddenTool) ?? 'sin código'})`,
+      evidence: { hiddenBytes, outcome: hiddenTool?.outcome, targetId: hiddenTarget.targetId },
+    })
+    deps.registry.closeTarget(context, hiddenTarget.targetId)
+    await sleep(200)
 
     // ── Paso 5: control manual. La UI bloquea mutaciones concurrentes, y una
     //    edición manual se observa al devolver el control.

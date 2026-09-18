@@ -148,7 +148,7 @@ export default function CommandPalette({
                 ['mark-all-board-results-read', t('cmd.markAllBoardResultsRead')],
               ] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['view-normal', t('nav.normal')], ['view-boards', t('nav.boards')]] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
-              {([['open-folder', 'Abrir carpeta'], ['files', 'Panel de archivos'], ['sidebar', 'Barra lateral'], ['updates', 'Buscar actualizaciones'], ['about', 'Acerca de Rinari Agent']] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
+              {([['open-folder', 'Abrir carpeta'], ['files', 'Panel de archivos'], ['browser', 'Panel de navegador'], ['sidebar', 'Barra lateral'], ['updates', 'Buscar actualizaciones'], ['about', 'Acerca de Rinari Agent']] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               <Command.Item
                 value={t('engine.restart')}
                 onSelect={() => run(onEngineRestart)}

@@ -77,10 +77,15 @@ describe('allowlist de operaciones', () => {
       kind: 'page',
       method: 'Accessibility.getFullAXTree',
     })
-    expect(resolveOperation('page.screenshot')).toEqual({
-      kind: 'page',
-      method: 'Page.captureScreenshot',
-    })
+  })
+
+  it('la captura no es un comando CDP', () => {
+    // Medido: `Page.captureScreenshot` no vuelve nunca si la vista no está
+    // compuesta en pantalla —escondida, colapsada o sin slot—, y el §8.3
+    // prohíbe que ocultar rompa una herramienta que use ese target. La
+    // captura la sirve `webContents.capturePage`, que sí funciona escondida.
+    expect(resolveOperation('page.screenshot')).toEqual({ kind: 'context' })
+    expect(PAGE_OPERATIONS['page.screenshot']).toBeUndefined()
   })
 })
 

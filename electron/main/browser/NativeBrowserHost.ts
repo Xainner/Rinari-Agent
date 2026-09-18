@@ -53,6 +53,8 @@ export interface NativeBrowserHostDeps {
   /** Envía un método al Engine; es el canal privado de stdio (§5.1). */
   request: (method: string, params: unknown) => Promise<unknown>
   onError?: (message: string, detail?: unknown) => void
+  /** Algo cambió en el contexto de esta sesión y la UI debe refrescarse. */
+  onContextChanged?: (sessionId: string) => void
 }
 
 /** Lo que produjo una ejecución: resultado o error, nunca ambos. */
@@ -233,6 +235,11 @@ export class NativeBrowserHost {
     const binding = this.binding
     const context = this.deps.registry.context(contextId)
     if (!binding || !context?.engineContextId) return
+    // La UI también tiene que enterarse. Antes sólo se refrescaba tras una
+    // acción del usuario, así que cuando navegaba el **agente** la toolbar se
+    // quedaba con el estado del montaje: página viva y cabecera diciendo
+    // «desconectado».
+    this.deps.onContextChanged?.(context.sessionId)
     void this.deps
       .request('host.browser.event', {
         binding_id: binding.binding_id,
@@ -396,6 +403,19 @@ export class NativeBrowserHost {
     }
 
     switch (request.operation) {
+      case 'page.screenshot': {
+        // Por `capturePage` y no por CDP: `Page.captureScreenshot` se queda
+        // colgado si la vista no está compuesta en pantalla, y una captura
+        // tiene que seguir funcionando con el panel oculto o sin abrir (§8.3).
+        const entry = registry.target(context.contextId, request.target_id)
+        if (!entry || entry.view.webContents.isDestroyed()) {
+          throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
+        }
+        const image = await entry.view.webContents.capturePage()
+        // Misma forma que devolvía CDP, para que el manager no cambie.
+        return { data: image.toPNG().toString('base64') }
+      }
+
       case 'context.targets':
         return {
           targets: registry.describeTargets(context),

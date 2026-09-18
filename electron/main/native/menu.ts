@@ -94,6 +94,10 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
         { type: 'separator' },
         item('sidebar', 'Barra lateral', 'CmdOrCtrl+B'),
         item('files', 'Panel de archivos', 'CmdOrCtrl+Shift+E'),
+        // El navegador vive en el mismo dock que los archivos, así que se abre
+        // igual. Sin esta entrada sólo se llegaba abriendo Archivos y cambiando
+        // de pestaña dentro, que no es «abrir Browser» (documento 03 §1).
+        item('browser', 'Panel de navegador', 'CmdOrCtrl+Shift+U'),
         item('commands', 'Paleta de comandos', 'CmdOrCtrl+K'),
         item('zoom-in', 'Acercar', 'CmdOrCtrl+Plus'),
         item('zoom-out', 'Alejar', 'CmdOrCtrl+-'),

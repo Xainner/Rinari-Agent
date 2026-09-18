@@ -12,7 +12,8 @@ import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
 import { BrowserRegistry } from './browser/BrowserRegistry'
-import { isHostChannelEvent } from './browser/operations'
+import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
+import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
@@ -73,6 +74,7 @@ function send(channel: string, payload: unknown): void {
  */
 let browserHost: NativeBrowserHost | null = null
 let browserRegistry: BrowserRegistry | null = null
+let layoutCoordinator: ViewLayoutCoordinator | null = null
 /** Observadores de eventos del Engine; sólo los usa la prueba vertical. */
 const engineEventTaps = new Set<(event: Record<string, unknown>) => void>()
 
@@ -152,9 +154,127 @@ function registerAppScheme(root: string): void {
   })
 }
 
+/**
+ * Avisa al renderer de que el contexto de una sesión cambió.
+ *
+ * Se empuja en vez de sondear: el §10 limita el poll al visor de capturas, y
+ * el nativo no necesita ninguno.
+ */
+function publishBrowserContext(sessionId: string): void {
+  void engine
+    .request('browser.context.get', { session_id: sessionId })
+    .then((view) => send(PUSH.browserContextChanged, view))
+    .catch(() => {
+      // Un Engine que aún no responde no puede tumbar la UI.
+    })
+}
+
+/**
+ * Servicios del browser nativo (documento 03 §6.1).
+ *
+ * Todo lo que el renderer puede pedir está aquí, y es intención: metadata,
+ * presentación, pestaña, control y navegación. El broker, el debugger y los
+ * identificadores del host no cruzan el puente.
+ */
+function browserServices(): HostServices['browser'] {
+  const requireContext = (sessionId: string) => {
+    const context = browserRegistry?.contextForSession(sessionId)
+    if (!context) throw Object.assign(new Error('this session has no browser context'), {
+      code: 'BROWSER_ABSENT',
+    })
+    return context
+  }
+
+  return {
+    // Consulta sin efectos: mirar el estado desde la UI no abre un navegador.
+    context: (sessionId) => engine.request('browser.context.get', { session_id: sessionId }),
+
+    // Creación explícita. La vista nace en blanco; la primera navegación la
+    // pide el usuario o una herramienta.
+    prepare: async (sessionId) => {
+      const view = await engine.request('browser.context.prepare', { session_id: sessionId })
+      const context = browserRegistry?.ensureContext(sessionId)
+      if (context && context.order.length === 0) {
+        const target = browserRegistry!.createTarget(context)
+        await target.view.webContents.loadURL('about:blank')
+        browserHost?.publishTargets(context.contextId)
+      }
+      return view
+    },
+
+    attachSlot: async (sessionId) => {
+      if (!layoutCoordinator) throw new Error('the window is not ready')
+      const lease = layoutCoordinator.attach(sessionId)
+      return { slot_id: lease.slotId, session_id: lease.sessionId }
+    },
+
+    updateSlot: async (request) => {
+      if (!layoutCoordinator || !browserRegistry) return
+      const outcome = layoutCoordinator.update(request.slot_id, {
+        logicalBounds: request.logical_bounds,
+        visibleBounds: request.visible_bounds,
+        shown: request.shown,
+        layoutRevision: request.layout_revision,
+        overlayDepth: request.overlay_depth,
+      })
+      // Una geometría rechazada —atrasada, fuera de la ventana, imposible— se
+      // descarta en silencio: es una actualización perdida, no un error que
+      // deba romper el render del panel.
+      if (!outcome.ok) return
+      const context = browserRegistry.contextForSession(outcome.lease.sessionId)
+      if (context) browserRegistry.setGeometry(context, outcome.resolved)
+    },
+
+    // Retirar el slot **sólo** quita la presentación: ni cierra el contexto,
+    // ni el browser, ni cancela el turno (§8.3).
+    detachSlot: async (slotId) => {
+      layoutCoordinator?.detach(slotId)
+    },
+
+    // La elección del usuario la aplica main y se publica al Engine, para que
+    // su target por defecto sea el que se ve. No pasa por el guard de control:
+    // elegir pestaña es del usuario, no una mutación del agente.
+    selectTarget: async (sessionId, targetId) => {
+      const context = requireContext(sessionId)
+      if (!browserRegistry!.setActiveTarget(context, targetId)) {
+        throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
+      }
+      browserHost?.publishTargets(context.contextId)
+      publishBrowserContext(sessionId)
+      return { active_target_id: targetId }
+    },
+
+    setControl: (sessionId, owner, expectedRevision) =>
+      engine.request('browser.control.set', {
+        session_id: sessionId,
+        owner,
+        ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
+      }),
+
+    // Navegación de la toolbar: es del usuario sobre su propia página, no una
+    // herramienta del agente. Se cierra el esquema igual que para el contenido
+    // remoto (§9) y se opera sobre la pestaña visible.
+    navigate: async (sessionId, url) => {
+      if (!isNavigableUrl(url)) {
+        throw Object.assign(new Error(`the desktop browser will not navigate to ${url}`), {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+      const context = requireContext(sessionId)
+      const entry = browserRegistry!.target(context.contextId, null)
+      if (!entry) throw Object.assign(new Error('this context has no page'), { code: 'NOT_FOUND' })
+      await entry.view.webContents.loadURL(url)
+      browserHost?.publishTargets(context.contextId)
+      publishBrowserContext(sessionId)
+      return { url }
+    },
+  }
+}
+
 function buildServices(): HostServices {
   const getWindow = () => mainWindow
   return {
+    browser: browserServices(),
     engine: {
       status: () => engine.status(),
       start: () => engine.start(),
@@ -274,6 +394,12 @@ function openWindow(): void {
 
   // El browser nativo cuelga de esta ventana: sus vistas son hijas de su
   // contenido, así que nace y muere con ella (§6.2, [E8]).
+  // El coordinador acota la geometría al contenido de **esta** ventana: el
+  // renderer pide un slot para su sesión, no coordenadas arbitrarias.
+  layoutCoordinator = new ViewLayoutCoordinator(() => {
+    const size = mainWindow?.getContentBounds() ?? { width: 0, height: 0 }
+    return { width: size.width, height: size.height }
+  })
   browserRegistry = new BrowserRegistry({
     window: mainWindow,
     onEvent: (event) =>
@@ -305,6 +431,7 @@ function openWindow(): void {
     void browserHost?.unregister()
     browserHost = null
     browserRegistry = null
+    layoutCoordinator = null
     mainWindow = null
   })
 

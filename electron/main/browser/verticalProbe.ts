@@ -228,8 +228,9 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     //    registrado. Lo hace el host, no el Engine: es el orden del §3.
     const context = deps.registry.ensureContext(sessionId)
     deps.registry.setGeometry(context, {
-      visible: { x: 24, y: 120, width: 520, height: 380 },
-      logical: { width: 760, height: 560 },
+      container: { x: 24, y: 120, width: 520, height: 380 },
+      page: { x: 0, y: 0, width: LOGICAL_SIZE.width, height: LOGICAL_SIZE.height },
+      visible: true,
     })
     const target = deps.registry.createTarget(context)
     view = target.view
@@ -651,8 +652,9 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     //    encima no deja pasar clicks.
     const before = await read<[number, number]>(view, '[window.innerWidth, window.innerHeight]')
     deps.registry.setGeometry(context, {
-      visible: { x: 24, y: 120, width: 200, height: 140 },
-      logical: { width: 760, height: 560 },
+      container: { x: 24, y: 120, width: 200, height: 140 },
+      page: { x: 0, y: 0, width: LOGICAL_SIZE.width, height: LOGICAL_SIZE.height },
+      visible: true,
     })
     await sleep(400)
     const after = await read<[number, number]>(view, '[window.innerWidth, window.innerHeight]')
@@ -675,8 +677,9 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     //    modal: hace falta entrada real del sistema, porque `sendInputEvent`
     //    va dirigido a un webContents y se salta el hit-testing.
     deps.registry.setGeometry(context, {
-      visible: { x: 24, y: 120, width: 520, height: 380 },
-      logical: { width: LOGICAL_SIZE.width, height: LOGICAL_SIZE.height },
+      container: { x: 24, y: 120, width: 520, height: 380 },
+      page: { x: 0, y: 0, width: LOGICAL_SIZE.width, height: LOGICAL_SIZE.height },
+      visible: true,
     })
     deps.registry.setControl(context, 'agent', true)
     await sleep(500)

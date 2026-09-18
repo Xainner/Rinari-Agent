@@ -19,19 +19,11 @@ import { View, WebContentsView, session as electronSession, type BaseWindow } fr
 import { randomUUID } from 'node:crypto'
 
 import { isNavigableUrl } from './operations'
+import type { ResolvedLayout } from './ViewLayoutCoordinator'
 
 /** Quién puede mutar la página ahora mismo (§7). */
 export type ControlOwner = 'agent' | 'user'
 
-export interface SlotGeometry {
-  /** Rectángulo visible dentro de la ventana, en DIP. */
-  visible: { x: number; y: number; width: number; height: number }
-  /**
-   * Tamaño lógico del documento, en DIP. Puede ser mayor que el visible: el
-   * contenedor recorta y el viewport no se entera (§8.2).
-   */
-  logical: { width: number; height: number }
-}
 
 interface TargetEntry {
   targetId: string
@@ -72,7 +64,7 @@ export interface ContextEntry {
   control: ControlOwner
   /** Superposición nativa que bloquea al usuario mientras muta el agente. */
   barrier: WebContentsView | null
-  geometry: SlotGeometry | null
+  geometry: ResolvedLayout | null
 }
 
 export interface RegistryDeps {
@@ -271,18 +263,22 @@ export class BrowserRegistry {
   }
 
   /** Geometría del slot (§8.1): main coloca, React sólo reserva el espacio. */
-  setGeometry(context: ContextEntry, geometry: SlotGeometry): void {
-    context.geometry = geometry
+  setGeometry(context: ContextEntry, layout: ResolvedLayout): void {
+    context.geometry = layout
     this.applyGeometry(context)
   }
 
   private applyGeometry(context: ContextEntry): void {
     const geometry = context.geometry
     if (!geometry) return
-    const { visible, logical } = geometry
-    context.container.setBounds({ ...visible })
-    // Bounds lógicos **relativos al contenedor**, que es quien recorta. En DIP:
-    // la sonda midió que `setBounds` no lleva `devicePixelRatio` (§8.2).
+    const { container, page, visible } = geometry
+    context.container.setBounds({ ...container })
+    context.container.setVisible(visible)
+
+    // La página va **desplazada** dentro del contenedor, que es quien recorta:
+    // `page.x` es negativo cuando el scroll recortó por la izquierda, y el
+    // tamaño sigue siendo el lógico para que el viewport no se entere (§8.2).
+    // En DIP: la sonda midió que `setBounds` no lleva `devicePixelRatio`.
     //
     // Sólo la activa se muestra. Las demás siguen vivas —su página conserva
     // DOM, historial y almacenamiento— pero ocultas: apiladas en el mismo
@@ -292,12 +288,10 @@ export class BrowserRegistry {
       if (!entry) continue
       const active = targetId === context.activeTargetId
       entry.view.setVisible(active)
-      if (active) {
-        entry.view.setBounds({ x: 0, y: 0, width: logical.width, height: logical.height })
-      }
+      if (active) entry.view.setBounds({ ...page })
     }
     if (context.barrier) {
-      context.barrier.setBounds({ x: 0, y: 0, width: visible.width, height: visible.height })
+      context.barrier.setBounds({ x: 0, y: 0, width: container.width, height: container.height })
     }
   }
 

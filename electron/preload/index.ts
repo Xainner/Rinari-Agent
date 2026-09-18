@@ -24,6 +24,10 @@ import {
   CHANNEL,
   PUSH,
   type BridgeResult,
+  type BrowserContextView,
+  type BrowserControlView,
+  type BrowserSlotLayoutRequest,
+  type BrowserSlotLease,
   type ContextMenuRequest,
   type EngineStatus,
   type NotificationSupport,
@@ -172,6 +176,36 @@ const api = {
 
   menu: {
     onAction: (callback: (action: string) => void) => subscribe<string>(PUSH.menuAction, callback),
+  },
+
+  /**
+   * Browser nativo (documento 03 §6.1).
+   *
+   * Intenciones, no primitivas. Aquí **no** hay nada de `host.browser.*`, ni
+   * `debugger.sendCommand`, ni forma de nombrar un `webContentsId`: el broker
+   * es de main, y una respuesta suya no es un permiso que la página pueda
+   * guardar o reproducir (§5.2).
+   */
+  browser: {
+    /** Consulta sin efectos: mirar el estado no abre un navegador. */
+    context: (sessionId: string) => call<BrowserContextView>(CHANNEL.browserContext, sessionId),
+    /** Creación explícita del contexto y su primera página en blanco. */
+    prepare: (sessionId: string) => call<BrowserContextView>(CHANNEL.browserPrepare, sessionId),
+    /** Reserva el hueco del panel. El identificador lo acuña main. */
+    attachSlot: (sessionId: string) => call<BrowserSlotLease>(CHANNEL.browserAttachSlot, sessionId),
+    /** Geometría del hueco. Main valida y decide dónde se pinta. */
+    updateSlot: (layout: BrowserSlotLayoutRequest) => call<void>(CHANNEL.browserUpdateSlot, layout),
+    /** Retira la presentación. No cierra el contexto ni cancela el turno. */
+    detachSlot: (slotId: string) => call<void>(CHANNEL.browserDetachSlot, slotId),
+    selectTarget: (sessionId: string, targetId: string) =>
+      call<{ active_target_id: string }>(CHANNEL.browserSelectTarget, sessionId, targetId),
+    setControl: (sessionId: string, owner: 'agent' | 'user', expectedRevision?: number) =>
+      call<BrowserControlView>(CHANNEL.browserSetControl, sessionId, owner, expectedRevision),
+    navigate: (sessionId: string, url: string) =>
+      call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
+    /** Cambios de pestañas, control o estado, empujados por main. */
+    onContextChanged: (callback: (view: BrowserContextView) => void) =>
+      subscribe<BrowserContextView>(PUSH.browserContextChanged, callback),
   },
 
   /**

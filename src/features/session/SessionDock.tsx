@@ -107,7 +107,16 @@ export default function SessionDock({
         {surface === 'workspace' ? (
           <WorkspaceView session={session} embedded tab={workspaceTab} onTabChange={onWorkspaceTabChange} sharedRoot={sharedRoot} />
         ) : surface === 'browser' ? (
-          <BrowserSurface frame={browser.frame} error={browser.error} targetId={browser.targetId} onTargetChange={browser.onTargetChange} />
+          <BrowserSurface
+            sessionId={sessionId}
+            frame={browser.frame}
+            error={browser.error}
+            targetId={browser.targetId}
+            onTargetChange={browser.onTargetChange}
+            // La superficie sólo se presenta cuando es la pestaña a la vista:
+            // ocultarla retira la presentación, no cierra el contexto (§8.3).
+            shown={surface === 'browser'}
+          />
         ) : (
           <FileViewer />
         )}

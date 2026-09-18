@@ -11,6 +11,8 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
+import { BrowserRegistry } from './browser/BrowserRegistry'
+import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
@@ -63,9 +65,37 @@ function send(channel: string, payload: unknown): void {
   window.webContents.send(channel, payload)
 }
 
+/**
+ * Host del browser nativo (documento 03 §5, §6). Se construye tarde porque
+ * necesita la ventana; hasta entonces, `browserHost` es `null` y los eventos
+ * del Engine siguen su camino normal.
+ */
+let browserHost: NativeBrowserHost | null = null
+
 const engine = new EngineSupervisor({
-  onEvent: (event) => send(PUSH.engineEvent, event),
-  onStatus: (status: EngineStatus) => send(PUSH.engineStatus, status),
+  onEvent: (event) => {
+    // Una solicitud del broker es un evento efímero para main, no actividad
+    // de conversación: el §5.4 prohíbe entregarla a `runtimeStore`/React.
+    if (browserHost?.handleEngineEvent(event)) return
+    send(PUSH.engineEvent, event)
+  },
+  onStatus: (status: EngineStatus) => {
+    send(PUSH.engineStatus, status)
+    // El binding se pide cuando hay Engine listo, no al abrir la ventana: el
+    // registro sólo significa algo contra una instancia viva, y un Engine que
+    // se reinicia acuña una nueva (§5.2).
+    //
+    // Se comprueba la capability antes de llamar: un Engine antiguo se degrada
+    // al visor de capturas y **no** recibe métodos desconocidos una y otra vez.
+    if (
+      status.state === 'ready' &&
+      browserHost &&
+      !browserHost.registered &&
+      status.capabilities[ENGINE_BROKER_CAPABILITY] === true
+    ) {
+      void browserHost.register()
+    }
+  },
   onStderr: (line) => console.error(`[rinari-engine] ${line}`),
   resourceDir: process.resourcesPath,
   packaged: app.isPackaged,
@@ -216,6 +246,19 @@ function openWindow(): void {
   registry.trust(mainWindow.webContents.id)
   handoff.open((request: OpenRequest) => send(PUSH.openRequest, request))
 
+  // El browser nativo cuelga de esta ventana: sus vistas son hijas de su
+  // contenido, así que nace y muere con ella (§6.2, [E8]).
+  const browserRegistry = new BrowserRegistry({
+    window: mainWindow,
+    onEvent: (event) =>
+      browserHost?.notify(event.kind, event.contextId, event.targetId, event.detail),
+  })
+  browserHost = new NativeBrowserHost({
+    registry: browserRegistry,
+    request: (method, params) => engine.request(method, params),
+    onError: (message, detail) => console.error(`[rinari-browser] ${message}`, detail ?? ''),
+  })
+
   // La autorización es del contenido: si navega fuera, se revoca hasta que
   // vuelva a cargarse el origen propio.
   mainWindow.webContents.on('did-navigate', (_event, url) => {
@@ -230,6 +273,11 @@ function openWindow(): void {
   mainWindow.on('closed', () => {
     registry.revoke()
     handoff.close()
+    // Cerrar la ventana no libera las vistas agregadas por sí solo (§6.2,
+    // [E8]): se desmontan aquí, y el Engine se entera de que su host se fue.
+    browserRegistry.disposeAll()
+    void browserHost?.unregister()
+    browserHost = null
     mainWindow = null
   })
 

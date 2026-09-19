@@ -14,6 +14,9 @@
  * que el usuario tiene delante, y eso es justo lo que el §1 exige demostrar.
  */
 
+import { readdirSync, rmSync } from 'node:fs'
+import { basename, resolve as resolvePath } from 'node:path'
+
 import type { WebContentsView } from 'electron'
 
 import type { BrowserRegistry } from './BrowserRegistry'
@@ -134,6 +137,11 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     'browser.screenshot',
     'browser.console',
     'browser.network',
+    'browser.upload',
+    'browser.download',
+    // Para V11: el agente escribe el fichero que va a subir, así la ruta pasa
+    // por el mismo sandbox que después resuelve la subida.
+    'fs.write',
   ]
 
   /**
@@ -1018,6 +1026,117 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       evidence: { loneViewport, loneBytes, loneFailure },
     })
     deps.registry.disposeContext(loneContext.contextId)
+
+    // ── V11: subir un fichero (§6.3, R10-13).
+    //
+    //    Se comprueba en **la página**, no en el resultado de la herramienta:
+    //    que `browser.upload` conteste `ok` no demuestra que el input tenga un
+    //    fichero. El fichero lo escribe antes el propio agente, así que la
+    //    ruta pasa por el mismo sandbox de la sesión que después la resuelve.
+    const uploadName = `subida-${Date.now()}.txt`
+    await script([
+      { tool: 'fs.write', args: { path: uploadName, content: 'contenido de la subida vertical' } },
+      { tool: 'browser.upload', args: { selector: '#adjunto', path: uploadName } },
+      { text: 'listo' },
+    ])
+    const uploaded = await runTurn(sessionId, 'adjunta el fichero al formulario', 90_000)
+    await sleep(500)
+    const uploadTool = uploaded.tools.find((tool) => tool.tool === 'browser.upload')
+    const inPage = await read<{ files: number; name: string }>(
+      view,
+      `({ files: document.getElementById('adjunto').files.length,
+          name: document.getElementById('subido').getAttribute('data-name') })`,
+    )
+    // La procedencia es parte del contrato de la herramienta: quien lea el
+    // resultado tiene que poder decir **qué** bytes se entregaron.
+    const uploadObservation = parseObservation(uploadTool?.observation) as
+      | { provenance?: { sha256?: unknown; bytes?: unknown; path?: unknown } }
+      | null
+    const provenance = uploadObservation?.provenance
+    const hasProvenance =
+      typeof provenance?.sha256 === 'string' && typeof provenance?.bytes === 'number'
+    const uploadOk = inPage.files === 1 && inPage.name === uploadName && hasProvenance
+
+    record({
+      id: 'V11',
+      title: 'El agente sube un fichero y el input de la página lo recibe',
+      status: uploadOk ? 'ok' : 'failed',
+      detail: uploadOk
+        ? `el input tiene 1 fichero y la página lo llama «${inPage.name}», con sha256 y tamaño en la procedencia`
+        : `ficheros en el input: ${inPage.files}; nombre visto por la página: ${inPage.name || 'ninguno'}; procedencia: ${hasProvenance ? 'sí' : 'no'} — ${errorCodeOf(uploadTool) ?? uploadTool?.outcome ?? 'sin evento'}`,
+      evidence: { inPage, provenance, trace: uploaded.trace },
+    })
+
+    // El fichero lo escribió el agente en el directorio de trabajo de la
+    // sesión, que es un checkout real. La prueba no deja nada suyo ahí.
+    const uploadedPath = typeof provenance?.path === 'string' ? provenance.path : ''
+    if (uploadedPath) rmSync(uploadedPath, { force: true })
+
+    // ── V12: descargar, con el nombre que propone el servidor (BR-09).
+    //
+    //    El fixture manda `Content-Disposition: attachment; filename="../../CON.txt"`.
+    //    Tres cosas a la vez: salto de directorio, y un nombre que en Windows
+    //    es un dispositivo. Si el host lo usara tal cual, el fichero saldría
+    //    del directorio de artefactos o no sería un fichero.
+    //
+    //    El primer `browser.download` habilita y expira —las descargas están
+    //    cerradas en reposo para que ninguna página abra el diálogo de
+    //    guardado del sistema—, luego se pulsa, y el segundo la recoge.
+    await script([
+      { tool: 'browser.download', args: { wait_s: 1 } },
+      { tool: 'browser.click', args: { selector: '#bajar' } },
+      { tool: 'browser.download', args: { wait_s: 15 } },
+      { text: 'listo' },
+    ])
+    const downloaded = await runTurn(sessionId, 'descarga el fichero del enlace', 120_000)
+    const downloadTools = downloaded.tools.filter((tool) => tool.tool === 'browser.download')
+    const lastDownload = downloadTools[downloadTools.length - 1]
+    const downloadObservation = parseObservation(lastDownload?.observation) as
+      | { path?: unknown; suggested_name?: unknown; bytes?: unknown; downloads_dir?: unknown }
+      | null
+    const savedPath = typeof downloadObservation?.path === 'string' ? downloadObservation.path : ''
+    const savedDir =
+      typeof downloadObservation?.downloads_dir === 'string'
+        ? downloadObservation.downloads_dir
+        : ''
+    const savedName = basename(savedPath)
+    // Diagnóstico: qué hay de verdad en el directorio de artefactos. Sin esto,
+    // un fallo sólo dice «no apareció» y no distingue «el host no guardó» de
+    // «el Engine no lo vio».
+    const artifactRoot = process.env.RINARI_HOME
+      ? resolvePath(process.env.RINARI_HOME, 'artifacts', sessionId)
+      : ''
+    let onDisk: string[] = []
+    try {
+      if (artifactRoot) onDisk = readdirSync(artifactRoot)
+    } catch (error) {
+      onDisk = [`no se pudo leer: ${message(error)}`]
+    }
+    // Dentro del directorio de artefactos, y con el nombre saneado: el
+    // separador que traía el servidor no puede haber sobrevivido.
+    const stayedInside =
+      savedPath !== '' && savedDir !== '' && resolvePath(savedPath) === resolvePath(savedDir, savedName)
+    // No se fija el nombre exacto: Chromium ya colapsa los separadores antes
+    // de `will-download` —medido: entrega `_.._CON.txt`— y clavar esa cadena
+    // ataría la prueba a su versión. Lo que importa es la propiedad: que sea
+    // un componente de ruta y que no empiece por el salto que mandó el
+    // servidor.
+    const nameSanitised =
+      savedName !== '' &&
+      !savedName.includes('/') &&
+      !savedName.includes('\\') &&
+      !savedName.startsWith('..')
+    const downloadOk = lastDownload?.outcome === 'completed' && stayedInside && nameSanitised
+
+    record({
+      id: 'V12',
+      title: 'Una descarga con nombre hostil aterriza saneada en los artefactos',
+      status: downloadOk ? 'ok' : 'failed',
+      detail: downloadOk
+        ? `«../../CON.txt» se guardó como «${savedName}» dentro de ${savedDir}, ${String(downloadObservation?.bytes ?? '?')} bytes`
+        : `guardado en ${savedPath || 'ningún sitio'}; nombre ${savedName || 'ninguno'}; dentro del directorio: ${stayedInside} — ${errorCodeOf(lastDownload) ?? lastDownload?.outcome ?? 'sin evento'}`,
+      evidence: { savedPath, savedDir, savedName, artifactRoot, onDisk, trace: downloaded.trace },
+    })
 
     // ── Paso 8: se mata el Engine con una mutación en vuelo.
     //

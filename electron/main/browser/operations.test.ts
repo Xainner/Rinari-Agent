@@ -15,8 +15,10 @@ import {
   hostRequestOf,
   isHostChannelEvent,
   isHostRequest,
+  FALLBACK_DOWNLOAD_NAME,
   isNavigableUrl,
   resolveOperation,
+  safeDownloadName,
   type HostRequest,
 } from './operations'
 
@@ -332,5 +334,83 @@ describe('destinos que una página del agente puede tomar (§9)', () => {
     // decide aquí es el esquema; a dónde se navega lo decide la policy de red.
     expect(isNavigableUrl('http://localhost:3000/')).toBe(true)
     expect(isNavigableUrl('file://localhost/etc/passwd')).toBe(false)
+  })
+})
+
+// Subidas y descargas (documento 03 §6.3, BR-09 de la matriz).
+describe('subir y descargar no son un passthrough de CDP', () => {
+  // Lo importante no es que las operaciones nuevas existan, es que los
+  // comandos CDP equivalentes **sigan sin existir**. `DOM.setFileInputFiles`
+  // entrega un fichero del disco a contenido remoto, y `Browser.*` la sonda lo
+  // midió alcanzable desde una sesión page-level y cruzando particiones.
+  it('los comandos CDP crudos no se pueden pedir', () => {
+    expect(resolveOperation('DOM.setFileInputFiles')).toEqual({ kind: 'unsupported' })
+    expect(resolveOperation('Browser.setDownloadBehavior')).toEqual({ kind: 'unsupported' })
+    expect(PAGE_OPERATIONS['DOM.setFileInputFiles']).toBeUndefined()
+    expect(PAGE_OPERATIONS['Browser.setDownloadBehavior']).toBeUndefined()
+  })
+
+  it('las operaciones semánticas las resuelve el host, no un comando', () => {
+    expect(resolveOperation('page.setFileInput')).toEqual({ kind: 'context' })
+    expect(resolveOperation('context.beginDownload')).toEqual({ kind: 'context' })
+    expect(CONTEXT_OPERATIONS.has('page.setFileInput')).toBe(true)
+  })
+})
+
+describe('el nombre de una descarga viene de la página, así que es hostil', () => {
+  it('se queda con el último componente de una ruta', () => {
+    // El caso que importa: sin esto, el destino sale del directorio de
+    // artefactos y escribe donde diga el servidor.
+    expect(safeDownloadName('../../.ssh/authorized_keys')).toBe('authorized_keys')
+    expect(safeDownloadName(String.raw`..\..\Windows\System32\drivers\etc\hosts`)).toBe(
+      'hosts',
+    )
+    expect(safeDownloadName('/etc/passwd')).toBe('passwd')
+  })
+
+  it('un nombre que sólo son puntos o espacios no deja nada usable', () => {
+    for (const hostile of ['.', '..', '...', '   ', '', '  ..  ']) {
+      expect(safeDownloadName(hostile)).toBe(FALLBACK_DOWNLOAD_NAME)
+    }
+  })
+
+  it('los nombres de dispositivo de Windows no crean ficheros', () => {
+    // Abrir `CON.txt` para escribir habla con un dispositivo, no crea nada.
+    expect(safeDownloadName('CON')).toBe('_CON')
+    expect(safeDownloadName('con.txt')).toBe('_con.txt')
+    expect(safeDownloadName('LPT1.pdf')).toBe('_LPT1.pdf')
+    expect(safeDownloadName('NUL')).toBe('_NUL')
+    // Y uno que sólo se le parece sí pasa tal cual.
+    expect(safeDownloadName('console.log')).toBe('console.log')
+  })
+
+  it('quita caracteres de control y los que Windows prohíbe', () => {
+    expect(safeDownloadName('a\u0000b.txt')).toBe('ab.txt')
+    expect(safeDownloadName('sal\nto.txt')).toBe('salto.txt')
+    expect(safeDownloadName('re<po>rt:e"|?*.pdf')).toBe('reporte.pdf')
+  })
+
+  it('recorta puntos y espacios del final, que Windows se comería', () => {
+    // Si no, el fichero acaba con un nombre distinto del que se validó.
+    expect(safeDownloadName('informe.   ')).toBe('informe')
+    expect(safeDownloadName('  informe.pdf  ')).toBe('informe.pdf')
+  })
+
+  it('acota la longitud sin perder la extensión', () => {
+    const long = `${'n'.repeat(400)}.pdf`
+    const safe = safeDownloadName(long)
+    expect(safe.length).toBeLessThanOrEqual(120)
+    expect(safe.endsWith('.pdf')).toBe(true)
+  })
+
+  it('lo que no es una cadena no es un nombre', () => {
+    for (const value of [undefined, null, 42, {}, ['a.txt']]) {
+      expect(safeDownloadName(value)).toBe(FALLBACK_DOWNLOAD_NAME)
+    }
+  })
+
+  it('un nombre normal se respeta', () => {
+    expect(safeDownloadName('informe 2024.pdf')).toBe('informe 2024.pdf')
+    expect(safeDownloadName('datos-final_v2.csv')).toBe('datos-final_v2.csv')
   })
 })

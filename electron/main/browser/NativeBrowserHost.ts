@@ -15,6 +15,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { statSync, type Stats } from 'node:fs'
+import { isAbsolute } from 'node:path'
 
 import { BrowserRegistry, type ContextEntry } from './BrowserRegistry'
 import {
@@ -457,6 +459,73 @@ export class NativeBrowserHost {
             kind,
             Number.isInteger(limit) && limit > 0 ? Math.min(limit, 1_000) : 100,
           ),
+        }
+      }
+
+      case 'page.setFileInput': {
+        const selector = request.params.selector
+        const files = request.params.files
+        if (typeof selector !== 'string' || selector === '') {
+          throw new OperationError('INVALID_ARGUMENT', 'a file input needs a selector')
+        }
+        // Un fichero por ahora, y siempre una ruta. El sandbox lo resuelve el
+        // Engine —es quien conoce las raíces de la sesión—, pero lo que llega
+        // aquí se entrega a **contenido remoto**, así que el host comprueba
+        // por su cuenta que sea una ruta absoluta a un fichero normal que
+        // existe: un directorio o una ruta relativa no se pasan a la página.
+        if (!Array.isArray(files) || files.length !== 1 || typeof files[0] !== 'string') {
+          throw new OperationError('INVALID_ARGUMENT', 'exactly one file path is expected')
+        }
+        const filePath = files[0]
+        if (!isAbsolute(filePath)) {
+          throw new OperationError('INVALID_ARGUMENT', 'the file path has to be absolute')
+        }
+        let stats: Stats
+        try {
+          stats = statSync(filePath)
+        } catch {
+          throw new OperationError('TARGET_NOT_FOUND', 'that file does not exist')
+        }
+        if (!stats.isFile()) {
+          throw new OperationError('INVALID_ARGUMENT', 'only a regular file can be uploaded')
+        }
+
+        const entry = registry.target(context.contextId, request.target_id)
+        if (!entry || entry.view.webContents.isDestroyed()) {
+          throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
+        }
+        registry.attach(entry)
+        const debug = entry.view.webContents.debugger
+        // El elemento se resuelve aquí y no en el Engine: así no viaja ningún
+        // `objectId` por el broker, que sería un handle a un nodo de la página
+        // con vida propia al otro lado.
+        const found = (await debug.sendCommand('Runtime.evaluate', {
+          expression: `document.querySelector(${JSON.stringify(selector)})`,
+        })) as { result?: { objectId?: string }; exceptionDetails?: unknown }
+        if (found.exceptionDetails) {
+          throw new OperationError('JS_ERROR', 'the selector could not be evaluated on this page')
+        }
+        const objectId = found.result?.objectId
+        if (typeof objectId !== 'string') {
+          throw new OperationError('TARGET_NOT_FOUND', 'no element matches that selector')
+        }
+        await debug.sendCommand('DOM.enable', {})
+        await debug.sendCommand('DOM.setFileInputFiles', { files: [filePath], objectId })
+        return { selector, files: [filePath] }
+      }
+
+      case 'context.beginDownload': {
+        const directory = request.params.downloadPath
+        if (typeof directory !== 'string' || directory === '') {
+          throw new OperationError('INVALID_ARGUMENT', 'downloads need a destination directory')
+        }
+        try {
+          return registry.beginDownload(context, directory)
+        } catch (error) {
+          throw new OperationError(
+            'INVALID_ARGUMENT',
+            error instanceof Error ? error.message : String(error),
+          )
         }
       }
 

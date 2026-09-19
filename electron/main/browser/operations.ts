@@ -44,6 +44,16 @@ export const PAGE_OPERATIONS: Readonly<Record<string, string>> = Object.freeze(
  */
 export const CONTEXT_OPERATIONS = new Set([
   'page.screenshot',
+  // Poner un fichero del disco en un input. Semántica y no
+  // `DOM.setFileInputFiles` suelto: lo que entra es un selector y una ruta, y
+  // el host resuelve el elemento él mismo. Exponer el comando crudo habría
+  // dejado pasar un `objectId` y un array de rutas arbitrarias.
+  'page.setFileInput',
+  // Aceptar descargas de **esta** partición. `Browser.setDownloadBehavior` no
+  // se reenvía: la sonda midió que el dominio `Browser` responde desde una
+  // sesión page-level y cruza particiones, así que se resuelve con la API de
+  // `session`, que sí tiene el ámbito correcto (§6.3).
+  'context.beginDownload',
   // Observación bufferizada por el host: no hay una `CdpSession` de la que
   // drenar, así que la recoge el debugger y se sirve desde aquí (§6.3).
   'page.consoleEvents',
@@ -231,6 +241,57 @@ export class RequestLedger<T> {
   clear(): void {
     this.seen.clear()
   }
+}
+
+/** Nombre de recambio cuando lo que sugiere la página no deja nada usable. */
+export const FALLBACK_DOWNLOAD_NAME = 'descarga'
+
+/** Tope de longitud del nombre, con margen para el sufijo de desempate. */
+const MAX_NAME_LENGTH = 120
+
+/**
+ * Nombres que Windows reserva para dispositivos, con o sin extensión.
+ *
+ * Abrir `CON.txt` para escribir no crea un fichero: habla con un dispositivo.
+ */
+const RESERVED_NAMES =
+  /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i
+
+/**
+ * Nombre de fichero seguro a partir del que sugiere la descarga.
+ *
+ * El nombre lo propone **la página**, por `Content-Disposition` o por la URL,
+ * así que es entrada de un tercero y se trata como tal: si se usara tal cual,
+ * un `../../.ssh/authorized_keys` escribiría fuera del directorio de
+ * artefactos, y en Windows un `CON` ni siquiera sería un fichero.
+ *
+ * No intenta conservar la intención del nombre a toda costa; intenta que lo
+ * que salga sea un componente de ruta y nada más. Quien quiera el original lo
+ * tiene en `suggested_name`, que viaja aparte y sin usarse para abrir nada.
+ */
+export function safeDownloadName(suggested: unknown): string {
+  if (typeof suggested !== 'string') return FALLBACK_DOWNLOAD_NAME
+  // Sólo el último componente: separadores de los dos sistemas, porque el
+  // nombre puede venir de un servidor que no es el de esta máquina.
+  const base = suggested.split(/[/\\]/).pop() ?? ''
+  const cleaned = base
+    // Los caracteres que Windows prohíbe, más los de control: un `\n` en un
+    // nombre es tan legítimo como una ruta relativa.
+    // eslint-disable-next-line no-control-regex
+    .replace(/[<>:"|?* -]/g, '')
+    // Puntos y espacios al principio y al final: Windows los recorta solo al
+    // crear, así que el fichero acabaría con un nombre distinto del validado.
+    .replace(/^[.\s]+|[.\s]+$/g, '')
+    .trim()
+  if (cleaned === '') return FALLBACK_DOWNLOAD_NAME
+  const guarded = RESERVED_NAMES.test(cleaned) ? `_${cleaned}` : cleaned
+  if (guarded.length <= MAX_NAME_LENGTH) return guarded
+  // Se recorta por delante conservando la extensión: un nombre larguísimo es
+  // un problema de longitud de ruta, y perder el tipo de fichero de paso
+  // sería gratis.
+  const dot = guarded.lastIndexOf('.')
+  const extension = dot > 0 ? guarded.slice(dot, dot + 16) : ''
+  return guarded.slice(0, MAX_NAME_LENGTH - extension.length) + extension
 }
 
 /**

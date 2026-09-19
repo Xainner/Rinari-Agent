@@ -39,10 +39,20 @@ input,button{font-size:16px;padding:6px 10px;}</style></head>
   <input id="field" name="field" type="text" value="">
   <button id="go" type="button">Aplicar</button>
   <p id="result" data-state="pending">sin aplicar</p>
+  <input id="adjunto" type="file">
+  <p id="subido" data-name="" data-count="0">sin adjunto</p>
+  <a id="bajar" href="/descarga">Bajar</a>
 </div>
 <script>
   window.__probe = { clicks: 0 };
   document.addEventListener('click', function () { window.__probe.clicks += 1; }, true);
+  document.getElementById('adjunto').addEventListener('change', function (event) {
+    var files = event.target.files;
+    var out = document.getElementById('subido');
+    out.setAttribute('data-count', String(files.length));
+    out.setAttribute('data-name', files.length ? files[0].name : '');
+    out.textContent = files.length ? 'adjunto: ' + files[0].name : 'sin adjunto';
+  });
   document.getElementById('go').addEventListener('click', function () {
     var result = document.getElementById('result');
     result.textContent = 'aplicado: ' + document.getElementById('field').value;
@@ -50,7 +60,25 @@ input,button{font-size:16px;padding:6px 10px;}</style></head>
   });
 </script></body></html>`
 
-const fixtureServer = createServer((_request, response) => {
+/**
+ * El nombre que propone el servidor es **hostil a propósito** (BR-09): trae
+ * salto de directorio, separadores de los dos sistemas y un nombre de
+ * dispositivo de Windows. Si el host lo usara tal cual, el fichero acabaría
+ * fuera del directorio de artefactos.
+ */
+const HOSTILE_DOWNLOAD_NAME = '../../CON.txt'
+const DOWNLOAD_BODY = 'contenido-descargado-vertical'
+
+const fixtureServer = createServer((request, response) => {
+  if ((request.url ?? '').startsWith('/descarga')) {
+    response.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${HOSTILE_DOWNLOAD_NAME}"`,
+      'Cache-Control': 'no-store',
+    })
+    response.end(DOWNLOAD_BODY)
+    return
+  }
   response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
   response.end(FIXTURE)
 })
@@ -68,7 +96,7 @@ console.log(`modelo falso en ${model.origin}`)
 
 // Pasos que el gate exige ver. Un informe al que le falte uno no es un PASS
 // con menos cobertura: es un informe que no prueba lo que dice probar.
-const REQUIRED_STEPS = ['V1', 'V2', 'V2b', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'V6', 'V7a', 'V7', 'V7c', 'V9', 'V10', 'V8']
+const REQUIRED_STEPS = ['V1', 'V2', 'V2b', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'V6', 'V7a', 'V7', 'V7c', 'V9', 'V10', 'V11', 'V12', 'V8']
 
 // Perfil de Electron propio, no sólo home del Engine: el renderer guarda
 // drafts y preferencias, y la sonda no debe tocar los del usuario.

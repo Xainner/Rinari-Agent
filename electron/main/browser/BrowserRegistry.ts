@@ -15,10 +15,18 @@
  * viewport del documento, que es lo que exige el §8.2.
  */
 
-import { View, WebContentsView, session as electronSession, type BaseWindow } from 'electron'
+import {
+  View,
+  WebContentsView,
+  session as electronSession,
+  type BaseWindow,
+  type DownloadItem,
+} from 'electron'
 import { randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { isAbsolute, resolve, sep } from 'node:path'
 
-import { isNavigableUrl } from './operations'
+import { isNavigableUrl, safeDownloadName } from './operations'
 import type { ResolvedLayout } from './ViewLayoutCoordinator'
 
 /** Quién puede mutar la página ahora mismo (§7). */
@@ -126,6 +134,12 @@ export interface ContextEntry {
   control: ControlOwner
   /** Superposición nativa que bloquea al usuario mientras muta el agente. */
   barrier: WebContentsView | null
+  /**
+   * Qué hace esta partición con una descarga. `directory` nulo es el estado de
+   * reposo: se cancelan, para que ninguna página abra el diálogo de guardado
+   * del sistema por su cuenta.
+   */
+  downloads: { directory: string | null; dispose: () => void } | null
   geometry: ResolvedLayout | null
 }
 
@@ -133,6 +147,33 @@ export interface RegistryDeps {
   window: BaseWindow
   /** Se avisa al broker de pérdidas de control y crashes (§5.2). */
   onEvent: (event: { kind: string; contextId: string; targetId?: string; detail?: unknown }) => void
+}
+
+/**
+ * Nombre libre dentro del directorio.
+ *
+ * Dos descargas del mismo fichero no se pisan: la segunda es un fichero nuevo,
+ * no una versión del primero, y sobrescribir perdería el anterior sin decirlo.
+ */
+function uniqueName(directory: string, name: string): string {
+  if (!existsSync(resolve(directory, name)) && !existsSync(resolve(directory, `${name}.part`))) {
+    return name
+  }
+  const dot = name.lastIndexOf('.')
+  const stem = dot > 0 ? name.slice(0, dot) : name
+  const extension = dot > 0 ? name.slice(dot) : ''
+  for (let n = 1; n < 1000; n += 1) {
+    const candidate = `${stem} (${n})${extension}`
+    if (
+      !existsSync(resolve(directory, candidate)) &&
+      !existsSync(resolve(directory, `${candidate}.part`))
+    ) {
+      return candidate
+    }
+  }
+  // Mil colisiones es un directorio que ya no describe nada; se desempata con
+  // algo que no puede chocar en vez de sobrescribir.
+  return `${stem}-${randomUUID()}${extension}`
 }
 
 export class BrowserRegistry {
@@ -173,11 +214,14 @@ export class BrowserRegistry {
       activeTargetId: null,
       control: 'agent',
       barrier: null,
+      downloads: null,
       geometry: null,
     }
     this.contexts.set(contextId, entry)
     this.bySession.set(sessionId, contextId)
     this.hardenPartition(entry)
+    // Descargas cerradas mientras nadie las pida con un destino.
+    this.installDownloadHandler(entry, null)
     // El contexto nace **sin** barrera aunque el control sea del agente.
     //
     // La prueba vertical midió que, en la ventana de la aplicación, una
@@ -375,6 +419,96 @@ export class BrowserRegistry {
     }))
   }
 
+  /**
+   * Acepta descargas de esta partición y las deja en `directory` (§6.3).
+   *
+   * Por la API de `session` y no por `Browser.setDownloadBehavior`: la sonda
+   * midió que el dominio `Browser` responde desde una sesión page-level y que
+   * su ámbito **cruza particiones**, así que reenviarlo daría a una página
+   * mando sobre las descargas de las demás sesiones. Esto sólo alcanza a la
+   * partición de este contexto.
+   *
+   * El fichero se escribe con sufijo `.part` y se renombra al terminar. El
+   * Engine vigila el directorio para saber cuándo hay algo nuevo, y sin eso
+   * recogería un fichero a medio bajar y calcularía su sha256 sobre bytes
+   * incompletos.
+   */
+  beginDownload(context: ContextEntry, directory: string): { directory: string } {
+    if (!isAbsolute(directory)) {
+      throw new Error('the download directory has to be an absolute path')
+    }
+    const target = resolve(directory)
+    mkdirSync(target, { recursive: true })
+    this.installDownloadHandler(context, target)
+    return { directory: target }
+  }
+
+  /**
+   * Qué hace esta partición con una descarga.
+   *
+   * Con `directory`, se guarda ahí. Sin él, **se cancela**: es el estado de
+   * reposo, y no por prudencia abstracta. Sin ningún manejador, Electron abre
+   * el diálogo de guardado del sistema, así que la primera página que el
+   * agente visite con una descarga automática le plantaría al usuario un
+   * cuadro modal que no pidió, sobre una ruta que nadie acotó. El §9 pide deny
+   * por defecto y aquí eso además evita una UI sorpresa.
+   */
+  private installDownloadHandler(context: ContextEntry, directory: string | null): void {
+    // Un solo oyente: reenganchar sustituye, porque dos guardarían dos veces.
+    context.downloads?.dispose()
+    const partition = electronSession.fromPartition(context.partition)
+
+    const onWillDownload = (_event: unknown, item: DownloadItem) => {
+      if (directory === null) {
+        item.cancel()
+        this.deps.onEvent({
+          kind: 'download-blocked',
+          contextId: context.contextId,
+          detail: { suggested: item.getFilename() },
+        })
+        return
+      }
+      const target = directory
+      // El nombre lo propone la página. Se sanea y se comprueba **después**
+      // de resolver: un nombre que pase el filtro pero acabe fuera del
+      // directorio no se escribe, se cancela.
+      const name = uniqueName(target, safeDownloadName(item.getFilename()))
+      const finalPath = resolve(target, name)
+      if (!finalPath.startsWith(target + sep)) {
+        item.cancel()
+        this.deps.onEvent({
+          kind: 'download-rejected',
+          contextId: context.contextId,
+          detail: { suggested: item.getFilename() },
+        })
+        return
+      }
+      const partPath = `${finalPath}.part`
+      item.setSavePath(partPath)
+      item.once('done', (_doneEvent: unknown, state: string) => {
+        if (state !== 'completed') {
+          rmSync(partPath, { force: true })
+          return
+        }
+        try {
+          renameSync(partPath, finalPath)
+        } catch {
+          // Si no se puede renombrar, el `.part` se queda y el Engine no lo
+          // recoge: mejor que publicar un fichero cuyo nombre no controlamos.
+        }
+      })
+    }
+
+    partition.on('will-download', onWillDownload)
+    context.downloads = {
+      directory,
+      dispose: () => {
+        partition.off('will-download', onWillDownload)
+        context.downloads = null
+      },
+    }
+  }
+
   async setCookie(
     context: ContextEntry,
     input: { name: string; value: string; url?: string },
@@ -545,6 +679,9 @@ export class BrowserRegistry {
       context.barrier.webContents.close()
       context.barrier = null
     }
+    // El oyente de descargas vive en la partición, no en la vista: quitar las
+    // vistas no lo suelta.
+    context.downloads?.dispose()
     this.deps.window.contentView.removeChildView(context.container)
     this.contexts.delete(contextId)
     this.bySession.delete(context.sessionId)

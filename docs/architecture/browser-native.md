@@ -271,6 +271,30 @@ no significan lo que parecen:
   justo en ese cableado.
 - **V10** — un contexto que **nunca** se presentó maqueta y se captura igual.
   Es el caso extremo del §8.3 y el que llegó desde uso real.
+- **V11** — el agente escribe un fichero y lo sube; el `input` de la página
+  acaba con él. Se mira el DOM, no el `ok` de la herramienta.
+- **V12** — una descarga cuyo `Content-Disposition` propone
+  `../../CON.txt` aterriza dentro del directorio de artefactos y con un nombre
+  que es un componente de ruta. Es BR-09 en el camino real.
+
+### Descargas: deny por defecto, y Chromium sanea antes que tú
+
+Dos cosas que no eran obvias al portarlas.
+
+**Sin manejador de `will-download`, Electron abre el diálogo de guardado del
+sistema.** O sea: la primera página con una descarga automática le planta al
+usuario un cuadro modal que no pidió, sobre una ruta que nadie acotó. Por eso
+la partición de un contexto nace cancelando descargas y sólo las acepta cuando
+alguien pide un destino, que además siempre es el directorio de artefactos de
+la sesión.
+
+**El nombre llega ya colapsado.** Medido: con `filename="../../CON.txt"`,
+`item.getFilename()` devuelve `_.._CON.txt`. Chromium quita los separadores y
+desactiva el nombre de dispositivo por su cuenta. El saneado propio se queda
+igualmente —es entrada de un tercero y no se delega en que otro la filtre—,
+pero la prueba comprueba la **propiedad** —que sea un componente de ruta,
+dentro del directorio— y no una cadena concreta, que ataría el resultado a la
+versión de Chromium.
 
 ### Lo que rompió: soltar el lease no despinta nada
 

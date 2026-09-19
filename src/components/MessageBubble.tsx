@@ -5,6 +5,7 @@ import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
+import { useBlockingOverlay } from '../stores/overlay'
 import Markdown from './Markdown'
 
 function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
@@ -24,6 +25,10 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
     }).catch(() => undefined).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [attachment.kind, attachment.uri, previewUrl])
+
+  // El visor cubre la ventana: mientras está abierto se retiran las vistas
+  // nativas, que si no quedarían por encima de él (§8.3).
+  useBlockingOverlay(open)
 
   async function showPreview() {
     setOpen(true)

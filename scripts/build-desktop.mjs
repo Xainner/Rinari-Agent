@@ -29,6 +29,13 @@ const EXTERNAL = [
 const TARGETS = [
   { name: 'main', input: join(ROOT, 'electron/main/index.ts'), file: join(OUT, 'main.cjs') },
   { name: 'preload', input: join(ROOT, 'electron/preload/index.ts'), file: join(OUT, 'preload.cjs') },
+  // Sonda de viabilidad del browser (documento 03 §3). Es un proceso Electron
+  // aparte, no parte de la app: entra aquí porque necesita el mismo empaquetado.
+  {
+    name: 'browser-probe',
+    input: join(ROOT, 'electron/probe/browserViability.ts'),
+    file: join(OUT, 'browser-probe.cjs'),
+  },
 ]
 
 async function buildOnce() {

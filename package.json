@@ -18,7 +18,9 @@
     "protocol:generate": "node scripts/generate-protocol.mjs",
     "protocol:check": "node scripts/generate-protocol.mjs --check",
     "parity:inventory": "node scripts/desktop-parity.mjs",
-    "parity:check": "node scripts/desktop-parity.mjs --check"
+    "parity:check": "node scripts/desktop-parity.mjs --check",
+    "browser:probe": "node scripts/browser-probe.mjs",
+    "browser:vertical": "node scripts/browser-vertical.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.23",

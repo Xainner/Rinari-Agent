@@ -138,6 +138,43 @@ export interface DesktopBridge {
     clampToWorkArea(): Promise<void>
   }
 
+  /**
+   * Browser nativo del dock (documento 03 §6.1).
+   *
+   * Intenciones, no primitivas: React reserva el hueco y pide transiciones;
+   * dónde se pinta una superficie nativa, qué método CDP la mueve y qué
+   * `webContents` la sostiene son de main y no cruzan.
+   *
+   * Un host sin browser nativo lo dice —`supported: false`— en vez de fingir
+   * soporte: la superficie cae al visor de capturas y se rotula como tal.
+   */
+  browser: {
+    /** Consulta sin efectos. Mirar el estado no abre un navegador. */
+    context(sessionId: string): Promise<NativeBrowserContext>
+    /** Creación explícita del contexto y su página en blanco. */
+    prepare(sessionId: string): Promise<NativeBrowserContext>
+    /** Reserva el hueco del panel; el identificador lo acuña el host. */
+    attachSlot(sessionId: string): Promise<{ slotId: string }>
+    /** Geometría del hueco. El host valida y decide. */
+    updateSlot(layout: NativeBrowserSlotLayout): Promise<void>
+    /** Retira la presentación. No cierra nada ni cancela el turno. */
+    detachSlot(slotId: string): Promise<void>
+    /** Pestaña visible; también es la que opera sin target explícito. */
+    selectTarget(sessionId: string, targetId: string): Promise<void>
+    /** Tomar o devolver el control. La confirmación puede llegar después. */
+    setControl(
+      sessionId: string,
+      owner: 'agent' | 'user',
+      expectedRevision?: number,
+    ): Promise<NativeBrowserControl>
+    /** Navegación pedida por el usuario desde la toolbar. */
+    navigate(sessionId: string, url: string): Promise<void>
+    /** Cambios de pestañas, control o estado. Sin sondeo. */
+    onContextChanged(
+      callback: (view: NativeBrowserContext) => void,
+    ): Promise<Unsubscribe>
+  }
+
   dialog: {
     /** Selección explícita del usuario. Devuelve `null` si cancela. */
     openFiles(options?: OpenFilesOptions): Promise<string[] | null>
@@ -178,4 +215,60 @@ export interface DesktopBridge {
    * simular un Engine conectado (documento 02 §3.2).
    */
   isDesktop(): boolean
+}
+
+// -- browser nativo (documento 03 §6.1) --------------------------------------
+
+/** Una pestaña del contexto, tal como la ve la UI. */
+export interface NativeBrowserTarget {
+  target_id: string
+  url: string
+  title: string
+  active: boolean
+}
+
+/**
+ * Lo que la UI sabe del browser de una sesión.
+ *
+ * Los tres primeros campos son distintos a propósito: el protocolo puede
+ * soportarlo, el host puede estar registrado, y aun así no haber contexto
+ * listo (§5.2). Enseñar «nativo» antes de tiempo es prometer una superficie
+ * que todavía no puede mostrar nada.
+ */
+export interface NativeBrowserContext {
+  session_id: string
+  supported: boolean
+  host_registered: boolean
+  context_state: 'absent' | 'creating' | 'ready' | 'disconnected' | 'disposed'
+  available: boolean
+  backend: string | null
+  control?: 'agent' | 'user'
+  control_state?: 'agent' | 'taking-user-control' | 'user' | 'uncertain'
+  control_revision?: number
+  active_target_id?: string | null
+  targets?: NativeBrowserTarget[]
+}
+
+export interface NativeBrowserControl {
+  control: 'agent' | 'user'
+  control_state: string
+  control_revision: number
+}
+
+/**
+ * Geometría del hueco reservado.
+ *
+ * `logicalBounds` es dónde estaría el panel entero y `visibleBounds` lo que se
+ * ve. Hacen falta los dos: con uno solo no se puede representar un scroll que
+ * recorta por la izquierda, y reducir el ancho desde el origen enseñaría otra
+ * vez el principio de la página (§8.2).
+ */
+export interface NativeBrowserSlotLayout {
+  slotId: string
+  logicalBounds: { x: number; y: number; width: number; height: number }
+  visibleBounds: { x: number; y: number; width: number; height: number }
+  shown: boolean
+  layoutRevision: number
+  /** Overlays encima ahora mismo; >0 esconde la superficie nativa (§8.3). */
+  overlayDepth: number
 }

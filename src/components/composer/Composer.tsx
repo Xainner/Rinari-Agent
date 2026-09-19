@@ -3,6 +3,7 @@ import { useReducedMotion } from 'framer-motion'
 import { ArrowUp, Brain, Check, Columns3, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
+import { useBlockingOverlay } from '../../stores/overlay'
 import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } from '../../services/engine'
@@ -163,6 +164,9 @@ export default function Composer({
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [reasoningOpen, setReasoningOpen] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
+  // El visor cubre la ventana: mientras está abierto se retiran las vistas
+  // nativas, que si no quedarían por encima de él (§8.3).
+  useBlockingOverlay(previewAttachment !== null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
   const [previewLoading, setPreviewLoading] = useState(false)

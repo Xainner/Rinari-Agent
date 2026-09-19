@@ -16,9 +16,15 @@ import type { Language } from '../types'
  * Ambas son presentaciones del mismo Engine: cambiar de una a otra nunca
  * altera turnos, permisos, modelos ni borradores.
  */
-export type View = 'chat' | 'board' | 'settings' | 'engine' | 'workspace' | 'project'
+export type View = 'chat' | 'board' | 'flows' | 'settings' | 'engine' | 'workspace' | 'project'
 /** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
-export type WorkspaceView = Extract<View, 'chat' | 'board'>
+export type WorkspaceView = Extract<View, 'chat' | 'board' | 'flows'>
+
+/** Alcance de la vista Flujos: un proyecto registrado o una sesión suelta. Preferencia, no dato. */
+export interface FlowScope {
+  kind: 'project' | 'session'
+  id: string
+}
 
 /** Secciones de Ajustes. Las marcadas con * llegan en fases posteriores. */
 export type SettingsSection =
@@ -39,7 +45,7 @@ export type SettingsSection =
   | 'advanced'
   | 'about'
 
-export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards' | 'collapsePane' | 'expandPane'
+export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards' | 'flows' | 'collapsePane' | 'expandPane'
 export type ShortcutBindings = Record<ShortcutAction, string>
 
 export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
@@ -48,6 +54,7 @@ export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
   settings: 'Ctrl+,',
   sidebar: 'Ctrl+B',
   boards: 'Ctrl+Shift+B',
+  flows: 'Ctrl+Shift+L',
   // Colapso/expansión del panel enfocado en Boards; sin acelerador nativo.
   collapsePane: 'Ctrl+Alt+[',
   expandPane: 'Ctrl+Alt+]',
@@ -83,6 +90,27 @@ function readCollapsed(): boolean {
   return readBool('rinari.sidebarCollapsed', false)
 }
 
+const FLOW_SCOPE_KEY = 'rinari.flowScope'
+
+function readFlowScope(): FlowScope | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FLOW_SCOPE_KEY) ?? 'null') as Partial<FlowScope> | null
+    if (!parsed || (parsed.kind !== 'project' && parsed.kind !== 'session') || typeof parsed.id !== 'string' || !parsed.id) return null
+    return { kind: parsed.kind, id: parsed.id }
+  } catch {
+    return null
+  }
+}
+
+function writeFlowScope(scope: FlowScope | null): void {
+  try {
+    if (scope) localStorage.setItem(FLOW_SCOPE_KEY, JSON.stringify(scope))
+    else localStorage.removeItem(FLOW_SCOPE_KEY)
+  } catch {
+    /* preferencia opcional */
+  }
+}
+
 function readShortcutBindings(): ShortcutBindings {
   try {
     const stored = JSON.parse(localStorage.getItem('rinari.shortcutBindings') ?? '{}') as Partial<ShortcutBindings>
@@ -102,7 +130,11 @@ function writeShortcutBindings(bindings: ShortcutBindings): void {
 
 interface UIState {
   view: View
-  /** Última vista de trabajo (Normal o Boards); en memoria, no persistida. */
+  /** Alcance elegido en Flujos; se persiste como preferencia (`rinari.flowScope`). */
+  flowScope: FlowScope | null
+  setFlowScope: (scope: FlowScope | null) => void
+  goFlows: (scope?: FlowScope) => void
+  /** Última vista de trabajo (Normal, Boards o Flujos); en memoria, no persistida. */
   lastWorkspaceView: WorkspaceView
   settingsSection: SettingsSection
   lang: Language
@@ -181,8 +213,17 @@ export const useUIStore = create<UIState>((set) => ({
   goChat: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
   goNormal: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
   goBoard: () => set({ view: 'board', lastWorkspaceView: 'board', sidebarOpen: false, projectRoot: null }),
+  flowScope: typeof window === 'undefined' ? null : readFlowScope(),
+  setFlowScope: (flowScope) => {
+    writeFlowScope(flowScope)
+    set({ flowScope })
+  },
+  goFlows: (scope) => {
+    if (scope) writeFlowScope(scope)
+    set((s) => ({ view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null, flowScope: scope ?? s.flowScope }))
+  },
   toggleBoards: () => set((s) => {
-    const current = s.view === 'chat' || s.view === 'board' ? s.view : s.lastWorkspaceView
+    const current = s.view === 'chat' || s.view === 'board' || s.view === 'flows' ? s.view : s.lastWorkspaceView
     const next: WorkspaceView = current === 'board' ? 'chat' : 'board'
     return { view: next, lastWorkspaceView: next, sidebarOpen: false, projectRoot: null }
   }),

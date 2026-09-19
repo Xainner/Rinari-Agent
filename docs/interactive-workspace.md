@@ -300,3 +300,50 @@ Validación: `features/activity/TurnResult.test.tsx` (UX-03/04/05),
 `components/ChatView.scroll.test.tsx` (UX-06), `services/notificationPolicy.test.ts`,
 `features/board/useBoardNotifications.test.tsx`,
 `hooks/useWindowTitle.test.ts`.
+
+# Flujos: avance del proyecto y cómo intervino la IA (`project_flow_v1`)
+
+- Tercera vista de trabajo, **Normal | Boards | Flujos** (`view='flows'`,
+  atajo `Ctrl+Shift+L`, menú nativo Ver › Flujos, paleta «Abrir Flujos» y
+  «Ver flujo» en el menú de cada proyecto y sesión del sidebar). Cambiar a
+  Flujos no inicia, cancela ni modifica turnos, modelos, modos ni borradores.
+- **Todo lo derivado viene del Engine.** `engineApi.flowGet({ project_id } |
+  { session_id })` llama a `flow.get` (una sola petición por alcance; nunca
+  `session.timeline` por sesión desde React). Una etapa es una racha contigua
+  de turnos con el mismo modo a través de todas las sesiones del proyecto;
+  cada PLAN abre un ciclo. La vista no estima nada: progreso `null` se rotula
+  «sin datos», un grafo de tareas vacío o ausente «sin tareas registradas»,
+  duración sin ambos tiempos «Duración no disponible». Nunca un porcentaje
+  inventado a partir del número de turnos.
+- Alcance (`flowScope` en `stores/ui`, persistido en `rinari.flowScope`):
+  proyectos registrados no archivados, la sesión de proyecto abierta desde el
+  sidebar (grupo «Sesiones del proyecto») y las conversaciones sueltas. Por
+  defecto, el proyecto de la sesión activa; si no hay, el primer proyecto; si
+  no, la sesión activa. Un alcance que dejó de existir se sustituye, nunca se
+  inventa.
+- Canvas horizontal con columnas en píxeles (como Boards): tarjetas de 300 px
+  con paso, tipo, estado (`pane-header-status[data-kind]`, misma paleta que
+  los paneles), título (encabezado del plan o primer mensaje), extracto,
+  progreso, duración, turnos, ejecutores (`ProviderLogo` por modelo) y
+  agentes, hasta 4 archivos + «+n», sesiones implicadas y turnos de origen
+  peer rotulados como procedencia. Separador «Ciclo n» entre ciclos. El
+  detalle (`FlowStageDetail`) es un drawer **dentro de la vista**
+  (`role="complementary"`, foco al abrir, Escape cierra), no un overlay.
+- «Ir al turno» / «Atender» reutilizan las primitivas de avisos: si la sesión
+  está en el board, `revealBoardAttention` (Boards, expandir, enfocar,
+  revelar); si no, `selectSession` + Normal + `requestTurnReveal`, que deja la
+  petición **en cola** para que `ChatView` la consuma al montar esa sesión y la
+  conserve hasta que la fila exista. Revelar no marca leído.
+- Refresco: `useFlow` escucha `turn.*`, `turn.changes.completed`,
+  `verification.completed`, `approval.*` y `question.*` de las sesiones del
+  flujo cargado y vuelve a pedir `flow.get` con 500 ms de debounce; descarta
+  respuestas tardías por generación. Si el Engine conectado no anuncia
+  `project_flow_v1`, la vista lo dice (`flow-unsupported`) y no llama a
+  `flow.get`; el botón y el atajo siguen existiendo para que el aviso sea
+  visible.
+
+Validación: `src/features/flow/FlowView.test.tsx` (FLOW-01…09, FLOW-11),
+`src/components/ChatView.scroll.test.tsx` (FLOW-10, revelado en cola),
+`electron/main/engine/translateCommand.test.ts` (`flow_get`), y en el Engine
+`tests/unit/test_engine_flow.py`. Evidencia real en
+`docs/evidence/flows-2026-09-18/`.

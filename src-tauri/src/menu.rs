@@ -43,6 +43,7 @@ pub fn build(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             // frontend y un acelerador duplicado dispararía la acción dos veces.
             &item("view-normal", "Normal", None)?,
             &item("view-boards", "Boards", None)?,
+            &item("view-flows", "Flujos", None)?,
             &PredefinedMenuItem::separator(app)?,
             &item("sidebar", "Barra lateral", Some("CmdOrCtrl+B"))?,
             &item("files", "Panel de archivos", Some("CmdOrCtrl+Shift+E"))?,

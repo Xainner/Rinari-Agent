@@ -36,6 +36,7 @@ import { useBoardStore, defaultBoard } from '../stores/board'
 import { useComposerStore } from '../stores/composer'
 import { resetScrollAnchorsForTests, readScrollAnchor } from '../features/engine/scrollAnchors'
 import { BoardHarness, engineFixture, sessionFixture } from '../features/board/testUtils'
+import { requestTurnReveal, takeQueuedTurnReveal } from '../features/board/boardCommands'
 import SingleSessionView from '../features/engine/SingleSessionView'
 import { engineEventAction } from '../features/activity/turnTimelineReducer'
 import { resetPendingQuestionsForTests } from '../features/questions/usePendingQuestions'
@@ -128,4 +129,23 @@ it('an anchor whose row no longer exists falls back to the end once the transcri
   render(<BoardHarness engine={rebuilt}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
   expect(scrollToIndex).not.toHaveBeenCalledWith(4, expect.anything())
   expect(scrollToIndex).toHaveBeenCalledWith(2, { align: 'end' })
+})
+
+it('FLOW-10: a turn reveal requested before the session mounts is applied when it does, and wins over "follow the end"', () => {
+  const engine = engineWithTurns(10)
+  // «Ir al turno» desde Flujos: la petición llega mientras la app aún cambia de sesión.
+  requestTurnReveal({ sessionId: 'ses_a', turnId: 't4' })
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  expect(scrollToIndex).toHaveBeenCalledWith(4, { align: 'start' })
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+  // Consumida: otra sesión no la hereda.
+  expect(takeQueuedTurnReveal('ses_a')).toBeNull()
+})
+
+it('FLOW-10: a queued reveal for another session is ignored and left for that session', () => {
+  const engine = engineWithTurns(3)
+  requestTurnReveal({ sessionId: 'ses_other', turnId: 't1' })
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  expect(scrollToIndex).not.toHaveBeenCalledWith(1, { align: 'start' })
+  expect(takeQueuedTurnReveal('ses_other')).toBe('t1')
 })

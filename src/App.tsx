@@ -44,6 +44,7 @@ import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
+const FlowView = lazy(() => import('./features/flow/FlowView'))
 
 const APP_VERSION = '0.1.2'
 
@@ -59,6 +60,7 @@ function App() {
   const goChat = useUIStore((s) => s.goChat)
   const goNormal = useUIStore((s) => s.goNormal)
   const goBoard = useUIStore((s) => s.goBoard)
+  const goFlows = useUIStore((s) => s.goFlows)
   const toggleBoards = useUIStore((s) => s.toggleBoards)
   const goEngine = useUIStore((s) => s.goEngine)
   const goWorkspace = useUIStore((s) => s.goWorkspace)
@@ -208,6 +210,7 @@ function App() {
     if (action === 'settings') goSettings()
     if (action === 'sidebar') toggleSidebarCollapsed()
     if (action === 'boards') toggleBoards()
+    if (action === 'flows') goFlows()
     if (action === 'newChat') dispatchAction('new-chat')
     // Colapso/expansión solo actúan en Boards; en otras vistas no hacen nada.
     if (action === 'collapsePane') dispatchAction('collapse-pane')
@@ -274,6 +277,7 @@ function App() {
         }
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break
+        case 'view-flows': goFlows(); break
         case 'toggle-boards': toggleBoards(); break
         case 'collapse-pane': if (view === 'board') collapseFocusedPane(); break
         case 'expand-pane': if (view === 'board') expandPaneShortcut(); break
@@ -411,6 +415,7 @@ function App() {
             boardSessionIds={boardSessionIds}
             boardSignalBySession={boardSignalBySession}
             onOpenInBoard={openInBoard}
+            onViewFlow={(scope) => goFlows(scope)}
             onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
             onCloseSession={(id) => void session.closeSession(id)}
@@ -454,12 +459,12 @@ function App() {
                       : null
                   }
                 />
-              ) : view !== 'chat' && view !== 'board' ? (
+              ) : view !== 'chat' && view !== 'board' && view !== 'flows' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null
             }
-            selectedView={view === 'chat' || view === 'board' ? view : null}
-            onSelectView={(next) => (next === 'board' ? goBoard() : goNormal())}
+            selectedView={view === 'chat' || view === 'board' || view === 'flows' ? view : null}
+            onSelectView={(next) => (next === 'board' ? goBoard() : next === 'flows' ? goFlows() : goNormal())}
             toggleShortcut={shortcutBindings.boards}
             engineState={session.status?.state ?? null}
             workingCount={session.busySessionIds.size}
@@ -476,6 +481,11 @@ function App() {
         {view === 'board' && (
           <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
             <BoardView actionsRef={boardActionsRef} />
+          </Suspense>
+        )}
+        {view === 'flows' && (
+          <Suspense fallback={<div className="flow-view" aria-busy="true" />}>
+            <FlowView />
           </Suspense>
         )}
         {view === 'engine' && <EngineConsole session={session} />}

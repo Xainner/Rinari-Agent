@@ -18,6 +18,7 @@ import type { Language } from '../types'
 import { dispatchAction } from '../services/actions'
 import type { Theme } from '../lib/theme'
 import { useI18n } from '../i18n'
+import { useBlockingOverlay } from '../stores/overlay'
 import type { SettingsSection } from '../stores/ui'
 
 interface CommandPaletteProps {
@@ -79,6 +80,11 @@ export default function CommandPalette({
     fn()
     onClose()
   }
+
+  // La paleta cubre la ventana, así que mientras está abierta las vistas
+  // nativas se retiran: si no, se dibuja debajo del navegador (§8.3). Aquí va
+  // condicionada a `open` porque el componente sigue montado cerrado.
+  useBlockingOverlay(open)
 
   const q = query.trim().toLowerCase()
   const filtered =

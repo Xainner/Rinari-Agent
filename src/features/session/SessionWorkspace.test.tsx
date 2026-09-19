@@ -33,6 +33,7 @@ import { FileLink } from '../files/FileWorkspace'
 import { resetPendingQuestionsForTests } from '../questions/usePendingQuestions'
 import { setPlatformForTests } from '../../platform'
 import { createTestBridge } from '../../platform/testBridge'
+import { resetOverlaysForTests, useOverlayStore } from '../../stores/overlay'
 import SessionWorkspace, { requestDockToggle } from './SessionWorkspace'
 
 type ResizeCallback = (entries: Array<{ contentRect: { width: number } }>) => void
@@ -201,6 +202,47 @@ it('revela el navegador cuando el contexto nativo pasa a estar listo, y sólo un
     })
     expect(screen.queryByTestId('session-dock')).toBeNull()
   } finally {
+    restore()
+  }
+})
+
+// Doc 03 §8.3: un modal encima retira la vista nativa.
+//
+// El eslabón que se comprueba aquí es el del medio: que la cuenta global de
+// overlays llegue hasta la geometría que se publica. Las dos puntas ya tienen
+// prueba propia —el recuento en `stores/overlay`, y que `visible` se apague
+// con `overlayDepth > 0` en `ViewLayoutCoordinator`—, pero sin este tramo el
+// modal seguiría dibujándose debajo del navegador y las tres pasarían igual.
+it('un overlay bloqueante viaja en la geometría del slot', async () => {
+  const bridge = createTestBridge()
+  const restore = setPlatformForTests(bridge)
+  resetOverlaysForTests()
+  try {
+    bridge.browserContext = {
+      session_id: 'ses_a',
+      supported: true,
+      host_registered: true,
+      context_state: 'ready' as const,
+      available: true,
+      backend: 'electron-native',
+      control: 'agent' as const,
+      control_state: 'agent' as const,
+      control_revision: 1,
+      active_target_id: 't1',
+      targets: [{ target_id: 't1', url: 'https://example.com/a', title: 'A', active: true }],
+    }
+    useSessionDockStore.getState().reveal('ses_a', 'browser')
+    render(<I18nProvider lang="es">{workspace('ses_a', { focused: true })}</I18nProvider>)
+    await waitFor(() => expect(bridge.browserLayouts.length).toBeGreaterThan(0))
+    expect(bridge.browserLayouts.at(-1)!.overlayDepth).toBe(0)
+
+    act(() => useOverlayStore.getState().raise('modal-de-prueba'))
+    await waitFor(() => expect(bridge.browserLayouts.at(-1)!.overlayDepth).toBe(1))
+
+    act(() => useOverlayStore.getState().drop('modal-de-prueba'))
+    await waitFor(() => expect(bridge.browserLayouts.at(-1)!.overlayDepth).toBe(0))
+  } finally {
+    resetOverlaysForTests()
     restore()
   }
 })

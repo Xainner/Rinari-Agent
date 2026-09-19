@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { useBlockingOverlay } from '../../stores/overlay'
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
@@ -19,6 +20,19 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
   )
 }
 
+/**
+ * Retira las vistas nativas mientras el diálogo está **abierto**.
+ *
+ * Va aquí dentro y no en `DialogContent` porque ese se renderiza siempre —los
+ * consumidores escriben `<Dialog open={x}><DialogContent/>`— y sólo los hijos
+ * del `Portal` montan con la apertura. Colgado del componente de fuera, el
+ * navegador se habría quedado escondido mientras la pantalla existiera.
+ */
+function BlockNativeViews() {
+  useBlockingOverlay()
+  return null
+}
+
 function DialogContent({
   className,
   children,
@@ -26,6 +40,9 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPrimitive.Portal>
+      {/* §8.3: ningún `z-index` del DOM queda por encima de una
+          `WebContentsView`, así que un modal necesita que se retire. */}
+      <BlockNativeViews />
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(

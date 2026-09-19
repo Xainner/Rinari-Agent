@@ -52,6 +52,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   context_settings_get: { method: 'context.settings.get', params: [] },
   context_settings_set: { method: 'context.settings.set', params: [], passthrough: 'settings' },
   context_status: { method: 'context.status', params: [{ key: 'model_id', from: 'model_id', optional: false }] },
+  flow_get: { method: 'flow.get', params: [{ key: 'project_id', from: 'project_id', optional: false }, { key: 'session_id', from: 'session_id', optional: false }] },
   mcp_create: { method: 'mcp.create', params: [{ key: 'name', from: 'name', optional: false }, { key: 'command', from: 'command', optional: false }] },
   mcp_get: { method: 'mcp.get', params: [{ key: 'name', from: 'name', optional: false }] },
   mcp_list: { method: 'mcp.list', params: [] },

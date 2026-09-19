@@ -32,6 +32,7 @@ export type DesktopCommand =
   | 'engine_shutdown'
   | 'engine_start'
   | 'engine_status'
+  | 'flow_get'
   | 'initial_open_request'
   | 'mcp_create'
   | 'mcp_get'
@@ -165,6 +166,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   'engine_shutdown',
   'engine_start',
   'engine_status',
+  'flow_get',
   'initial_open_request',
   'mcp_create',
   'mcp_get',
@@ -319,6 +321,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   'context_settings_get',
   'context_settings_set',
   'context_status',
+  'flow_get',
   'mcp_create',
   'mcp_get',
   'mcp_list',

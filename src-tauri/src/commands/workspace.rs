@@ -29,6 +29,18 @@ pub(crate) async fn task_tree(
 }
 
 #[tauri::command(rename_all = "snake_case")]
+pub(crate) async fn flow_get(
+    supervisor: State<'_, EngineSupervisor>,
+    project_id: Option<String>,
+    session_id: Option<String>,
+) -> Result<serde_json::Value, CommandError> {
+    run_engine(supervisor, move |engine| {
+        engine.flow_get(project_id, session_id)
+    })
+    .await
+}
+
+#[tauri::command(rename_all = "snake_case")]
 pub(crate) async fn task_get(
     supervisor: State<'_, EngineSupervisor>,
     path: String,

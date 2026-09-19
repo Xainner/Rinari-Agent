@@ -43,6 +43,13 @@ describe('renombrado de argumentos', () => {
     })
   })
 
+  it('`flow_get` omite el id ausente: el Engine exige exactamente uno', () => {
+    expect(translateCommand('flow_get', { project_id: 'proj_a', session_id: null })).toEqual({
+      method: 'flow.get',
+      params: { project_id: 'proj_a' },
+    })
+  })
+
   it('`provider_type` viaja como `type`', () => {
     const call = translateCommand('provider_create', { alias: 'local', provider_type: 'openai_compatible' })
     expect(call.method).toBe('provider.create')

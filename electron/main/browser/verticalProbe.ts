@@ -178,6 +178,10 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       if (terminal) {
         return {
           terminal: String(terminal.event),
+          // Por qué terminó así. Sin esto, un turno que falla antes de llamar
+          // al modelo sólo dice «turn.failed» y no se distingue de uno cuyas
+          // herramientas fallaron.
+          terminalDetail: JSON.stringify(terminal.payload ?? {}).slice(0, 400),
           // Los tres finales de una herramienta. Mirar sólo `tool.completed`
           // hacía pasar por «no se ejecutó» un rechazo, que llega como
           // `tool.failed` y es justo lo que algunos pasos quieren comprobar.
@@ -1169,21 +1173,68 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const bindingAfter = deps.host.bindingId
     const rebound = bindingAfter !== null && bindingAfter !== bindingBefore
 
-    // Y el binding nuevo sirve: una operación nativa posterior llega.
-    let worksAfter = false
-    try {
-      const debugAfter = view.webContents.debugger
-      if (!debugAfter.isAttached()) debugAfter.attach('1.3')
-      const title = (await debugAfter.sendCommand('Runtime.evaluate', {
-        expression: 'document.title',
-        returnByValue: true,
-      })) as { result?: { value?: unknown } }
-      worksAfter = typeof title.result?.value === 'string'
-    } catch {
-      worksAfter = false
+    // Y el binding nuevo sirve — **por el broker**, no por el debugger.
+    //
+    // Esto es lo que antes daba un falso positivo. Se comprobaba con
+    // `debugger.sendCommand` desde main, y eso sólo demuestra que la
+    // `WebContentsView` sigue viva; no que el Engine nuevo, con su
+    // `context_id` nuevo, alcance esa misma vista. Y no la alcanzaba: el host
+    // recordaba el `engineContextId` de la instancia muerta y contestaba
+    // `TARGET_NOT_FOUND` a todo. El paso pasaba igual.
+    //
+    // Ahora se exige el camino entero: turno real → herramienta → broker →
+    // host → la misma vista. Una lectura y una mutación, porque una lectura
+    // sola no prueba que se pueda volver a operar.
+    // El turno que se mató con el Engine deja su lease de turno tomado hasta
+    // que el proceso viejo suelta el lock del sistema, y `session.turn.start`
+    // contesta `CONFLICT` mientras tanto. Se cancela y se espera, que es lo
+    // que el propio error sugiere hacer —«use `rinari stop`»—; sin esto el
+    // paso confundía «la sesión sigue ocupada» con «el rebind no funciona».
+    await call('session.turn.cancel', { session_id: sessionId }).catch(() => {
+      // Si ya no hay turno que cancelar, mejor.
+    })
+    let sessionFree = false
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      try {
+        const probe = (await call('session.get', { session_id: sessionId })) as {
+          busy?: unknown
+        }
+        if (probe?.busy !== true) {
+          sessionFree = true
+          break
+        }
+      } catch {
+        // Un Engine que aún no atiende no es una respuesta; se reintenta.
+      }
+      await sleep(250)
     }
 
-    // Un click en vuelo pudo aplicarse cero o una vez; nunca dos por replay.
+    const urlBeforeRestart = view.webContents.getURL()
+    const markerAfterRestart = `tras-reinicio-${Date.now()}`
+    await script([
+      { tool: 'browser.snapshot', args: {} },
+      { tool: 'browser.fill', args: { selector: '#field', value: markerAfterRestart } },
+      { tool: 'browser.click', args: { selector: '#go' } },
+      { text: 'listo' },
+    ])
+    const afterRestart = await runTurn(sessionId, 'lee la página y vuelve a aplicar', 90_000)
+    await sleep(400)
+    const snapshotTool = afterRestart.tools.find((tool) => tool.tool === 'browser.snapshot')
+    const fillTool = afterRestart.tools.find((tool) => tool.tool === 'browser.fill')
+    // Se mira la página, no el `ok`: el DOM tiene que llevar la marca nueva y
+    // la URL tiene que ser la de antes —no se recreó la vista—.
+    const domAfterRestart = await read<{ text: string; url: string }>(
+      view,
+      `({ text: document.getElementById('result').textContent, url: location.href })`,
+    )
+    const readBack = snapshotTool?.outcome === 'completed'
+    const mutatedAgain =
+      fillTool?.outcome === 'completed' && domAfterRestart.text.includes(markerAfterRestart)
+    const samePage = domAfterRestart.url === urlBeforeRestart
+    const worksAfter = readBack && mutatedAgain && samePage
+
+    // El click en vuelo pudo aplicarse cero o una vez; nunca dos por replay.
+    // El de este turno es deliberado y se descuenta.
     const noReplay = clicksAfterRestart - clicksBefore <= 1
 
     record({
@@ -1195,13 +1246,22 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         : !noReplay
           ? `la página pasó de ${clicksBefore} a ${clicksAfterRestart} clicks: la mutación se reprodujo`
           : !worksAfter
-            ? 'hay binding nuevo pero una operación nativa posterior no funciona'
-            : `binding nuevo tras el reinicio, la página pasó de ${clicksBefore} a ${clicksAfterRestart} clicks (a lo sumo la que estaba en vuelo) y el contexto vuelve a operar`,
+            ? `hay binding nuevo pero el Engine nuevo no opera la misma vista por el broker — snapshot: ${readBack}; mutación: ${mutatedAgain}; misma URL: ${samePage} (turno ${afterRestart.terminal} ${afterRestart.terminalDetail}; eventos ${afterRestart.names.join(', ')}; traza ${afterRestart.trace.join(', ') || 'vacía'})`
+            : `binding nuevo tras el reinicio; el Engine nuevo lee y muta **la misma vista** por el broker —misma URL, marca nueva en el DOM— y la mutación en vuelo no se reprodujo (${clicksBefore} → ${clicksAfterRestart})`,
       evidence: {
         clicksBefore,
         clicksAfterRestart,
         bindingChanged: rebound,
         worksAfterRestart: worksAfter,
+        readBack,
+        mutatedAgain,
+        samePage,
+        terminal: afterRestart.terminal,
+        sessionFree,
+        eventNames: afterRestart.names,
+        urlBeforeRestart,
+        domAfterRestart,
+        trace: afterRestart.trace,
       },
     })
   } catch (error) {

@@ -691,6 +691,32 @@ export class BrowserRegistry {
     for (const contextId of [...this.contexts.keys()]) this.disposeContext(contextId)
   }
 
+  /**
+   * Olvida a qué instancia del Engine pertenecían los contextos vivos.
+   *
+   * Se llama cuando se pierde el Engine. El `engineContextId` es la
+   * comprobación de que una solicitud trae el contexto que este host asoció a
+   * esa sesión, y sirve mientras la instancia sea la misma. Tras un reinicio
+   * deja de servir y pasa a estorbar: el Engine nuevo acuña su propio
+   * `context_id`, no coincide con el recordado, y **la vista viva queda
+   * inalcanzable para siempre** con `TARGET_NOT_FOUND`.
+   *
+   * No se cierra nada. La `WebContentsView`, su DOM, su historial, su
+   * almacenamiento, los `target_id` del host y el slot siguen donde estaban:
+   * lo único que se retira es la identidad de la instancia anterior, para que
+   * la primera solicitud de la nueva vuelva a enlazar sobre la misma página.
+   *
+   * Sigue sin ser una puerta abierta: quién puede pedir algo lo deciden el
+   * `binding_id` y el `engine_instance_id`, que se comprueban antes, y el
+   * contexto lo resuelve la sesión, no el id que venga.
+   */
+  resetEngineBindings(): void {
+    for (const context of this.contexts.values()) {
+      context.engineContextId = null
+      context.generation = 0
+    }
+  }
+
   /** Metadata pública de los targets de un contexto (§5.3). */
   describeTargets(
     context: ContextEntry,

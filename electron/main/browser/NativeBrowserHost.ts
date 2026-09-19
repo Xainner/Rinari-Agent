@@ -126,6 +126,11 @@ export class NativeBrowserHost {
     // Lo recordado pertenece a la época que se va: tras un reinicio no se
     // puede prometer «una sola vez», y un éxito no se reconstruye (§5.4).
     this.seen.clear()
+    // Y los contextos vivos olvidan de qué instancia del Engine eran. Sin
+    // esto, el Engine nuevo acuña otro `context_id`, deja de coincidir con el
+    // recordado y **la vista viva queda inalcanzable**: cada herramienta
+    // recibe `TARGET_NOT_FOUND` sobre una página que está ahí delante.
+    this.deps.registry.resetEngineBindings()
     // Los contextos siguen existiendo como vistas, pero ya no tienen
     // autoridad: su próxima solicitud llegará con un binding que el Engine
     // nuevo no reconoce, y se rechaza antes de tocar la página.

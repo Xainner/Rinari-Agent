@@ -73,6 +73,12 @@ export default function BrowserToolbar({
           aria-label={t('browser.tab')}
           className="browser-toolbar-select"
           value={activeTargetId}
+          // Cambiar de pestaña con el navegador nativo redirige la siguiente
+          // operación del agente, que sin `target_id` va a la activa. Mientras
+          // no mande el usuario, no se ofrece (§7). En el visor de capturas no
+          // aplica: allí no hay una vista que el agente esté usando.
+          disabled={native && !userHasControl}
+          title={native && !userHasControl ? t('browser.needsControl') : undefined}
           onChange={(event) => onSelectTarget(event.target.value)}
         >
           {targets.map((page) => (
@@ -95,6 +101,11 @@ export default function BrowserToolbar({
             aria-label={t('browser.url')}
             className="browser-toolbar-url-input"
             value={draft}
+            // Navegar se lleva por delante el DOM que el agente está usando.
+            // main lo rechaza igualmente —la autoridad no está aquí—, pero
+            // ofrecer algo que va a fallar es peor que no ofrecerlo.
+            disabled={!userHasControl}
+            title={!userHasControl ? t('browser.needsControl') : undefined}
             onChange={(event) => setDraft(event.target.value)}
             spellCheck={false}
           />

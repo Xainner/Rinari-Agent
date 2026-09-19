@@ -1052,6 +1052,7 @@ export const en: Record<I18nKey, string> = {
   'browser.returnControl': 'Return to the agent',
   'browser.controlPending': 'Taking control…',
   'browser.controlAgent': 'Agent is driving',
+  'browser.needsControl': 'Take control of this browser first',
   'browser.controlUser': 'You are driving',
   'browser.controlUncertain': 'Control could not be taken: an operation is still running',
   'browser.fallbackNote': 'Preview of the engine\'s page (captures). This is not a controlled native browser yet; to interact manually, open the page outside.',

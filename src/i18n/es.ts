@@ -1068,6 +1068,7 @@ export const es = {
   'browser.returnControl': 'Devolver al agente',
   'browser.controlPending': 'Tomando el control…',
   'browser.controlAgent': 'Conduce el agente',
+  'browser.needsControl': 'Toma antes el control de este navegador',
   'browser.controlUser': 'Conduces tú',
   'browser.controlUncertain': 'No se pudo tomar el control: hay una operación en curso',
   'browser.fallbackNote': 'Vista previa de la página del motor (capturas). Todavía no es un navegador nativo controlado; para interactuar manualmente, abre la página fuera.',

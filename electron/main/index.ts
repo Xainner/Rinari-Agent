@@ -189,6 +189,22 @@ function retirePresentation(sessionId: string): void {
  * identificadores del host no cruzan el puente.
  */
 function browserServices(): HostServices['browser'] {
+  /**
+   * Una acción manual sobre la página sólo vale si manda el usuario (§7).
+   *
+   * Se comprueba **en main** y no sólo en React. El renderer deshabilita los
+   * controles, pero eso es presentación: la autoridad no puede estar en el
+   * lado que se puede modificar. El estado que se mira es el que el Engine
+   * confirmó, que es el mismo que hace cumplir el arbitraje del otro lado.
+   */
+  const requireUserControl = (context: { control: string }, what: string) => {
+    if (context.control === 'user') return
+    throw Object.assign(
+      new Error(`${what} needs manual control of this browser; take control first`),
+      { code: 'BROWSER_CONTROL_REQUIRED' },
+    )
+  }
+
   const requireContext = (sessionId: string) => {
     const context = browserRegistry?.contextForSession(sessionId)
     if (!context) throw Object.assign(new Error('this session has no browser context'), {
@@ -249,10 +265,15 @@ function browserServices(): HostServices['browser'] {
     },
 
     // La elección del usuario la aplica main y se publica al Engine, para que
-    // su target por defecto sea el que se ve. No pasa por el guard de control:
-    // elegir pestaña es del usuario, no una mutación del agente.
+    // su target por defecto sea el que se ve.
     selectTarget: async (sessionId, targetId) => {
       const context = requireContext(sessionId)
+      // Y exige el control, aunque no toque el DOM. Antes no lo hacía —«elegir
+      // pestaña es del usuario»—, pero una operación del agente sin
+      // `target_id` va a la **activa**: cambiarla mientras manda el agente le
+      // redirige la siguiente herramienta a otra página sin que nadie lo
+      // arbitre. Eso es una mutación concurrente aunque no lo parezca.
+      requireUserControl(context, 'switching tabs')
       if (!browserRegistry!.setActiveTarget(context, targetId)) {
         throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
       }
@@ -278,6 +299,9 @@ function browserServices(): HostServices['browser'] {
         })
       }
       const context = requireContext(sessionId)
+      // Navegar la página que el agente está usando es la mutación más grande
+      // que hay: se lleva por delante el DOM entero. Requiere el control.
+      requireUserControl(context, 'navigating')
       const entry = browserRegistry!.target(context.contextId, null)
       if (!entry) throw Object.assign(new Error('this context has no page'), { code: 'NOT_FOUND' })
       await entry.view.webContents.loadURL(url)

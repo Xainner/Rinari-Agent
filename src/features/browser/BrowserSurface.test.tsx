@@ -209,3 +209,40 @@ describe('control desde la toolbar (§7)', () => {
     expect(await screen.findByRole('button', { name: /tomar control|take control/i })).toBeTruthy()
   })
 })
+
+// Documento 03 §7: acciones manuales sobre la página del agente.
+//
+// El guard de verdad está en main —la autoridad no puede vivir en el lado que
+// se puede modificar—, pero ofrecer un control que va a fallar es peor que no
+// ofrecerlo.
+describe('la toolbar no muta la página del agente sin control', () => {
+  it('con el agente al mando, la URL y las pestañas están deshabilitadas', async () => {
+    bridge.browserContext = nativeContext({
+      control: 'agent',
+      control_state: 'agent',
+      targets: [
+        { target_id: 't1', url: 'https://example.com/a', title: 'A', active: true },
+        { target_id: 't2', url: 'https://example.com/b', title: 'B', active: false },
+      ],
+    })
+    paint()
+    const url = await screen.findByLabelText('Dirección')
+    expect((url as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText('Pestaña del navegador') as HTMLSelectElement).disabled).toBe(true)
+  })
+
+  it('con el usuario al mando, vuelven a estar disponibles', async () => {
+    bridge.browserContext = nativeContext({
+      control: 'user',
+      control_state: 'user',
+      targets: [
+        { target_id: 't1', url: 'https://example.com/a', title: 'A', active: true },
+        { target_id: 't2', url: 'https://example.com/b', title: 'B', active: false },
+      ],
+    })
+    paint()
+    const url = await screen.findByLabelText('Dirección')
+    expect((url as HTMLInputElement).disabled).toBe(false)
+    expect((screen.getByLabelText('Pestaña del navegador') as HTMLSelectElement).disabled).toBe(false)
+  })
+})

@@ -331,6 +331,21 @@ vista desde el Engine. Ahora `status()` es local, el control no viaja (main
 monta la barrera al recibir la revisión confirmada, que es el orden del §7) y
 el cierre avisa en segundo plano.
 
+### Lo que rompió: un timeout del caller no liquida la mutación remota
+
+Una operación emitida puede expirar o cancelarse en el worker mientras el host
+todavía la está ejecutando. El resultado para la herramienta es
+`outcome_unknown`, pero eso no autoriza a retirar su lease: conceder control al
+usuario en ese intervalo dejaría dos controladores sobre la misma página.
+
+El broker conserva la correlación abandonada hasta una reply tardía, un crash
+del contexto o la pérdida del binding. El caller no revive ni recibe ese
+resultado tardío; el settlement sólo libera la retención interna. Los leases de
+una mutación semántica completa comparten esa contabilidad, de modo que un
+click sigue cubierto desde la lectura de coordenadas hasta el último
+`mouseReleased`. SETTLE-01…05 fijan las carreras reply/timeout/cancelación y el
+traspaso de control; la prueba vertical conserva 20/20 pasos con este Engine.
+
 ## 7. Lo que esta etapa no probó
 
 Se listan para que nadie los dé por cubiertos:
@@ -360,7 +375,8 @@ Se listan para que nadie los dé por cubiertos:
 4. Broker con allowlist semántica. `Target.*` y `Browser.*` no se exponen: la
    enumeración la sirve la registry.
 5. Suscripción a `detach` del debugger como pérdida de control, con pendientes
-   invalidados y sin reintento de mutaciones.
+   liquidados y sin reintento de mutaciones. Timeout y cancelación conservan la
+   correlación hasta una reply tardía o una pérdida definitiva del recurso.
 6. Ningún handler de protocolo espera al host. Lo que necesite al host va en
    un worker o en segundo plano.
 

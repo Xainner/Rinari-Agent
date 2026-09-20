@@ -390,7 +390,8 @@ ejecuta el vertical bajo Xvfb con home y perfil efímeros. Los pasos que
 dependen de entrada física real permanecen en el gate manual de Windows; el
 broker, la frontera remota, aislamiento, lifecycle, backpressure, restart,
 uploads y downloads sí corren en CI. La ejecución local final usó
-`1b5469cb7c68aaf618b3bb85df5942ed6e52a5a9`, el mismo SHA que fija el manifest.
+`6de4827d58c829535fa9160a8a073423f86a049f`, el merge SHA de CLI #10 y el mismo
+SHA que fija el manifest.
 
 La contabilidad se informa por plataforma: el gate físico de Windows pasa
 **29/29**. En Linux/Xvfb pasan **27**, se omiten únicamente `V2p` y `V7b` por

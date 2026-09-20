@@ -112,3 +112,73 @@ jobs:
         env:
           RINARI_CLI: ${{ github.workspace }}/Rinari-CLI
         run: xvfb-run -a npm run browser:vertical
+
+  setup-bootstrapper:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Read pinned Engine revision
+        id: engine
+        shell: pwsh
+        run: |
+          $manifest = Get-Content engine-manifest.json -Raw | ConvertFrom-Json
+          "sha=$($manifest.engine_git_sha)" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          repository: Xainner/Rinari-CLI
+          ref: ${{ steps.engine.outputs.sha }}
+          path: Rinari-CLI
+      - uses: astral-sh/setup-uv@v5
+      - run: npm ci
+      - run: npm run setup:web:build
+      - working-directory: installer/setup/src-tauri
+        run: cargo fmt --check
+      - working-directory: installer/setup/src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+      - working-directory: installer/setup/src-tauri
+        run: cargo test
+      - name: Build the unsigned review package
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-engine.ps1 `
+            -CliRepo "${{ github.workspace }}\Rinari-CLI" -OutDir engine-dist
+          npm run installer:art
+          npm run package:hashes
+          npm run package:payload
+          npm run setup:build
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/finalize-setup.ps1
+      - name: Install, launch, and uninstall from a Unicode path
+        shell: pwsh
+        run: |
+          $setup = Resolve-Path release/installer/Rinari-Agent-Setup-0.2.0-x64.exe
+          $install = Join-Path $env:RUNNER_TEMP 'Rinari revisión 你好'
+          $installed = Start-Process -FilePath $setup -ArgumentList @('--silent-install', ('"' + $install + '"')) -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "silent install failed: $($installed.ExitCode)" }
+          if (-not (Test-Path -LiteralPath (Join-Path $install 'rinari-agent.exe'))) { throw 'installed executable missing' }
+          if (-not (Test-Path -LiteralPath (Join-Path $install 'rinari-code.exe'))) { throw 'compatibility executable missing' }
+          if (-not (Test-Path -LiteralPath (Join-Path $install 'resources\engine-dist\python.exe'))) { throw 'installed Engine missing' }
+          $env:RINARI_SMOKE = '1'
+          $env:RINARI_HOME = Join-Path $env:RUNNER_TEMP 'rinari-smoke-engine-home'
+          $env:RINARI_KEYRING = '0'
+          $profile = Join-Path $env:RUNNER_TEMP 'rinari-smoke-profile'
+          $smoke = Start-Process -FilePath (Join-Path $install 'rinari-agent.exe') -ArgumentList ('--user-data-dir="' + $profile + '"') -Wait -PassThru
+          if ($smoke.ExitCode -ne 0) { throw "installed app smoke failed: $($smoke.ExitCode)" }
+          $removed = Start-Process -FilePath (Join-Path $install 'Rinari-Setup.exe') -ArgumentList @('--silent-uninstall', ('"' + $install + '"')) -Wait -PassThru
+          if ($removed.ExitCode -ne 0) { throw "silent uninstall failed: $($removed.ExitCode)" }
+          $deadline = (Get-Date).AddSeconds(20)
+          while ((Test-Path -LiteralPath $install) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
+          if (Test-Path -LiteralPath $install) { throw 'uninstall did not remove the owned installation' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rinari-agent-setup-unsigned
+          path: |
+            release/installer/Rinari-Agent-Setup-0.2.0-x64.exe
+            release/installer/setup.sha256.json

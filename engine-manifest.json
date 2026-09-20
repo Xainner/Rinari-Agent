@@ -31,5 +31,5 @@
     "session_peer_messaging_v1",
     "browser_host_bridge_v1"
   ],
-  "development_build": true
+  "development_build": false
 }

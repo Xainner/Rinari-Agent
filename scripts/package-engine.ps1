@@ -38,9 +38,12 @@ $getPipUrl = "https://bootstrap.pypa.io/get-pip.py"
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "rinari-engine-pkg"
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $resolvedOut = [System.IO.Path]::GetFullPath($OutDir)
-$expectedRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "src-tauri"))
-if (-not $resolvedOut.StartsWith($expectedRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
-  throw "OutDir debe permanecer dentro de $expectedRoot"
+$allowedOutputs = @(
+  [System.IO.Path]::GetFullPath((Join-Path $repoRoot "src-tauri\engine-dist")),
+  [System.IO.Path]::GetFullPath((Join-Path $repoRoot "engine-dist"))
+)
+if (-not ($allowedOutputs -contains $resolvedOut)) {
+  throw "OutDir debe ser exactamente src-tauri/engine-dist o engine-dist dentro del repositorio"
 }
 if (Test-Path -LiteralPath $resolvedOut) {
   Remove-Item -LiteralPath $resolvedOut -Recurse -Force

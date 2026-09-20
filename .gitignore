@@ -29,6 +29,20 @@ src-tauri/target-*/
 
 # Packaged engine (build output, see scripts/package-engine.ps1)
 src-tauri/engine-dist/
+engine-dist/
+release/electron/
+release/installer/
+installer/setup/dist/
+installer/setup/src-tauri/target/
+installer/setup/src-tauri/resources/payload/
+installer/setup/src-tauri/gen/
+installer/setup/public/assets/
+build/installer/assets/
+build/installer/upstream/
+build/installer/package-inputs.sha256.json
+build/installer/path-entry.ps1
+build/installer/rinari-ui.nsh
+build/installer/rinari.cmd
 src-tauri/2
 
 # Local review/fix notes (never commit)

@@ -1,5 +1,8 @@
 # Revisión UX del motor (2026-09-08) — PENDIENTE DE REVISIÓN DEL USUARIO
 
+> Registro histórico anterior al cutover Electron. Las menciones al puente
+> Tauri explican el diagnóstico de esa revisión y no son instrucciones activas.
+
 Cambios aplicados para que Rinari Agent no parezca depender de un "motor"
 que hay que encender a mano. Nada aquí toca el protocolo ni el engine:
 solo presentación y arranque automático.

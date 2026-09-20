@@ -3,12 +3,12 @@
 // vista. `browser.view.get` siempre captura la pantalla del target cuando hay
 // un browser conectado, así que oculto no puede haber poll de capturas: solo
 // una sonda puntual al montar y al terminar un turno.
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(async () => ({ state: 'disconnected' })) }))
 
-import { invoke } from '@tauri-apps/api/core'
 import { BROWSER_POLL_ACTIVE_MS, useBrowserFrame } from './useBrowserFrame'
 
 const invoked = vi.mocked(invoke)

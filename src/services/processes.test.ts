@@ -1,8 +1,8 @@
+import { installMockPlatform } from '../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { describe, expect, it, vi } from 'vitest'
-import { invoke } from '@tauri-apps/api/core'
 import { isManagedProcess, isProcessListResult, isProcessOutput, isProcessStopResult, processesApi } from './processes'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 
 describe('processesApi', () => {
   it('no lista sin sesión ni crea sesión implícita', async () => {

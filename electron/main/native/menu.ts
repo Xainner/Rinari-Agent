@@ -1,7 +1,7 @@
 /**
  * Menú de aplicación (documento 02 §5.2 y §7).
  *
- * Port de `src-tauri/src/menu.rs` con las mismas entradas, etiquetas y
+ * Menú compatible con el host 0.1.3, con las mismas entradas, etiquetas y
  * aceleradores. Dos decisiones del host anterior que se conservan porque son
  * de comportamiento, no de estilo:
  *

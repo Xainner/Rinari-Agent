@@ -13,5 +13,5 @@ identify this build as development.
 
 Validation and operator commands are documented in Rinari-CLI `docs/context-compaction.md`.
 The local development package was updated and verified on 2026-09-13. Start a fresh
-`npm run tauri -- dev` process to test it; an already-running Engine retains its loaded
-code. Frontend: 92 tests passed. Rust: 18 tests and the opt-in packaged integration passed.
+`npm run desktop:dev` process to test it; an already-running Engine retains its loaded
+code. The historical validation counts are preserved in Git; current gates run in CI.

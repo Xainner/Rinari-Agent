@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ setTitle: vi.fn(async () => {}) }) }))
+import { describe, expect, it } from 'vitest'
 
 import { composeWindowTitle, setWindowTitle } from './useWindowTitle'
 

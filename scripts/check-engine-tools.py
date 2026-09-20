@@ -57,7 +57,7 @@ def check_ocr(python):
 
 def main():
     root = Path(__file__).resolve().parent.parent
-    python = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root / "src-tauri/engine-dist/python.exe"
+    python = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root / "engine-dist/python.exe"
     manifest = json.loads((root / "engine-manifest.json").read_text(encoding="utf-8"))
     requests = [
         {"id": "info", "method": "engine.info", "params": {}},

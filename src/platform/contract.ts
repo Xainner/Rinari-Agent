@@ -238,8 +238,6 @@ export interface DesktopBridge {
     /** Importa y verifica antes de inicializar los stores del renderer. */
     importPending(): Promise<MigrationStatus>
     retry(): Promise<MigrationStatus>
-    /** Solo Tauri 0.1.3 produce el artefacto manual de transición. */
-    exportForElectron(): Promise<MigrationStatus>
   }
 
   /**

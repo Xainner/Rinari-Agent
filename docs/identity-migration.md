@@ -1,5 +1,9 @@
 # Rinari Code → Rinari Agent
 
+> Documento histórico de la transición 0.1.1 → 0.1.2. No describe el runtime
+> activo 0.2.x ni sus comandos de desarrollo; el cutover Electron se documenta
+> en `docs/migration/tauri-electron-transition.md` y `docs/evidence/delivery-h.md`.
+
 The desktop identity changes in 0.1.2. The engine protocol, engine home,
 credentials, sessions and `RINARI_ENGINE_*` variables do not change.
 

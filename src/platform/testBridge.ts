@@ -292,7 +292,6 @@ export function createTestBridge(): TestBridge {
       async status() { return bridge.migrationStatus },
       async importPending() { return bridge.migrationStatus },
       async retry() { return bridge.migrationStatus },
-      async exportForElectron() { return bridge.migrationStatus },
     },
 
     isDesktop: () => bridge.desktop,

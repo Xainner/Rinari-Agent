@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../test/mockPlatform'
+installMockPlatform()
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))
 
 import { I18nProvider } from '../i18n'
 import { PeerNavigationProvider } from '../features/board/PeerNavigationContext'

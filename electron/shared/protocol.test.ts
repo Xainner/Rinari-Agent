@@ -1,4 +1,4 @@
-// Port de los tests de `src-tauri/src/engine/protocol.rs`: el contrato de
+// Pruebas portadas del contrato del host 0.1.3: el contrato de
 // envolturas del Engine no cambia por cambiar de host (documento 02 §4).
 import { describe, expect, it } from 'vitest'
 

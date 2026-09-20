@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useEffect } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
 import { useSessionProcesses } from './useSessionProcesses'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 function Probe({ sessionId, observeOutput = false }: { sessionId: string; observeOutput?: boolean }) {

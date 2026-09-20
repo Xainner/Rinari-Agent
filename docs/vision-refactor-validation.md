@@ -64,6 +64,6 @@ No se realizó una inspección manual de la ventana de Windows. La skill
 requiere: “Use `node_repl` JavaScript for all Computer Use actions.” Ese runtime no
 está disponible en esta sesión; las pruebas de componentes no sustituyen esa revisión.
 
-Para probar la aplicación, reiniciar npm run tauri -- dev desde Rinari-Agent.
+Para probar la aplicación, reiniciar npm run desktop:dev desde Rinari-Agent.
 No hace falta confirmar visión desconocida ni configurar un especialista para
 intentar imágenes con el modelo principal.

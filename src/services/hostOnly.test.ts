@@ -34,14 +34,13 @@ describe('separación host-only / Engine', () => {
     expect(solapados).toEqual([])
   })
 
-  it('los host-only son exactamente los siete que no hablan por el protocolo', () => {
+  it('los host-only son exactamente los seis que no hablan por el protocolo', () => {
     expect([...HOST_ONLY_COMMANDS].sort()).toEqual([
       'engine_restart',
       'engine_shutdown',
       'engine_start',
       'engine_status',
       'initial_open_request',
-      'migration_export',
       'workspace_file_open',
     ])
   })

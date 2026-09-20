@@ -49,7 +49,7 @@ las últimas 256 solicitudes. Reutilizar una clave con otros argumentos produce 
 - El handshake exige `tool_contracts_v1` para impedir que un motor viejo parezca compatible.
 - `engine-manifest.json` identifica la base Git y marca `development_build=true`.
   El paquete local contiene los cambios sin commit y registra su SHA-256 de wheel
-  en `src-tauri/engine-dist/ENGINE_SOURCE.json` y `ENGINE_VERSION`.
+  en `engine-dist/ENGINE_SOURCE.json` y `ENGINE_VERSION`.
 - El empaquetador exige `-Development` para fuentes modificadas, comprueba rutas
   antes de limpiar y prueba el contrato con un home temporal.
 - Comprobación reproducible: `python scripts/check-engine-tools.py` (desde Code).

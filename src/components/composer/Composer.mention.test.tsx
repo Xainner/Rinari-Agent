@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+installMockPlatform()
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -6,8 +8,6 @@ import { I18nProvider } from '../../i18n'
 import { useComposerStore } from '../../stores/composer'
 import Composer from './Composer'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 
 afterEach(cleanup)
 beforeEach(() => {

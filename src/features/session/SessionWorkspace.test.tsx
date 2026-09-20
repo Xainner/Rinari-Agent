@@ -1,14 +1,12 @@
 // @vitest-environment jsdom
 // Doc 01 §5: un workspace visual por sesión (chat + dock de Archivos /
 // Navegador / Workspace) compartido por Normal y Boards (UX-07, UX-08, UX-09).
+import { installMockPlatform } from '../../test/mockPlatform'
+installMockPlatform()
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(async () => ({ state: 'disconnected' })) }))
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
 vi.mock('../../services/desktop', () => ({
   desktopApi: {
     questions: vi.fn(async () => ({ questions: [] })),

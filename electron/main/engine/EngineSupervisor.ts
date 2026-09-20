@@ -1,7 +1,7 @@
 /**
  * Ciclo de vida del Engine (documento 02 §4.1 y §4.3).
  *
- * Port de `src-tauri/src/engine/supervisor.rs`: los mismos estados, los mismos
+ * Supervisor compatible con el host 0.1.3: los mismos estados, los mismos
  * códigos de error y la misma tabla de plazos por método —que el §4.2 pide
  * conservar en vez de aplanar a 60 s—.
  *

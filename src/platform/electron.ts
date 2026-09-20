@@ -251,9 +251,6 @@ export const electronBridge: DesktopBridge = {
       }
     },
     retry: () => required().migration.retry(),
-    async exportForElectron(): Promise<MigrationStatus> {
-      throw new Error('Electron does not export the Tauri transition artifact.')
-    },
   },
 
   isDesktop: () => hostApi() !== undefined,

@@ -1229,10 +1229,4 @@ export const en: Record<I18nKey, string> = {
   'settings.general.board.title': 'Boards',
   'settings.general.board.softLimit': 'Pane warning',
   'settings.general.board.softLimitHint': 'Warns when exceeding this number of panes (0 disables the warning). It does not limit sessions.',
-  'settings.about.migration': 'Move to Electron',
-  'settings.about.migrationHint': 'Prepare your UI preferences for Rinari Agent 0.2.0. Credentials, cookies, permissions, and Engine data are never included.',
-  'settings.about.migrationPrepare': 'Prepare transition',
-  'settings.about.migrationPreparing': 'Preparing…',
-  'settings.about.migrationReady': 'The transition is ready. Install Rinari Agent 0.2.0 when it becomes available.',
-  'settings.about.migrationFailed': 'Could not prepare the transition: {detail}',
 }

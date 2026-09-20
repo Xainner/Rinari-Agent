@@ -35,6 +35,34 @@ import {
   assertString,
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
+import {
+  MIGRATION_ALLOWED_KEYS,
+  MIGRATION_MAX_ENTRIES,
+  MIGRATION_MAX_TOTAL_BYTES,
+  MIGRATION_MAX_VALUE_BYTES,
+} from '../../shared/migration'
+
+const MIGRATION_KEYS = new Set<string>(MIGRATION_ALLOWED_KEYS)
+
+function assertMigrationPreferences(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ValidationError('preferences must be an object')
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length > MIGRATION_MAX_ENTRIES) throw new ValidationError('too many preference entries')
+  let total = 0
+  const result: Record<string, string> = Object.create(null) as Record<string, string>
+  for (const [key, raw] of entries) {
+    if (!MIGRATION_KEYS.has(key)) throw new ValidationError(`preference key is not allowed: ${key}`)
+    if (typeof raw !== 'string') throw new ValidationError(`preference value must be text: ${key}`)
+    const bytes = Buffer.byteLength(raw, 'utf8')
+    if (bytes > MIGRATION_MAX_VALUE_BYTES) throw new ValidationError(`preference value is too large: ${key}`)
+    total += bytes + Buffer.byteLength(key, 'utf8')
+    if (total > MIGRATION_MAX_TOTAL_BYTES) throw new ValidationError('preference export is too large')
+    result[key] = raw
+  }
+  return result
+}
 
 /** Lo que el main sabe hacer; lo aporta `index.ts` al registrar. */
 export interface HostServices {
@@ -60,6 +88,14 @@ export interface HostServices {
     send(notification: SystemNotificationRequest): boolean
   }
   updates: { check(): Promise<unknown>; installAndRelaunch(): Promise<void> }
+  migration: {
+    status(): Promise<unknown>
+    stage(): Promise<unknown>
+    commit(token: string, preferences: Record<string, string>): Promise<unknown>
+    verify(token: string): Promise<unknown>
+    fail(token: string | undefined, message: string): Promise<unknown>
+    retry(): Promise<unknown>
+  }
   handoff: { initial(): { project: string | null; session: string | null } }
   /**
    * Browser nativo (documento 03 §6.1). Intenciones, no primitivas: el
@@ -304,6 +340,31 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
     [CHANNEL.updatesInstall, guarded(registry, () => services.updates.installAndRelaunch())],
+    [CHANNEL.migrationStatus, guarded(registry, () => services.migration.status())],
+    [CHANNEL.migrationStage, guarded(registry, () => services.migration.stage())],
+    [
+      CHANNEL.migrationCommit,
+      guarded(registry, (_event, token, preferences) =>
+        services.migration.commit(
+          assertString(token, 'token', 128),
+          assertMigrationPreferences(preferences),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.migrationVerify,
+      guarded(registry, (_event, token) => services.migration.verify(assertString(token, 'token', 128))),
+    ],
+    [
+      CHANNEL.migrationFail,
+      guarded(registry, (_event, token, message) =>
+        services.migration.fail(
+          token === undefined ? undefined : assertString(token, 'token', 128),
+          assertString(message, 'message', 2_000),
+        ),
+      ),
+    ],
+    [CHANNEL.migrationRetry, guarded(registry, () => services.migration.retry())],
     [CHANNEL.initialOpenRequest, guarded(registry, () => services.handoff.initial())],
 
     // Browser nativo. Cada canal lleva una intención y nada más: no hay

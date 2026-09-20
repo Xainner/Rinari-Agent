@@ -40,6 +40,7 @@ import {
   type UpdateAvailable,
   type WindowState,
 } from '../shared/contracts'
+import type { MigrationStage, MigrationStatus } from '../shared/migration'
 import type { EngineEvent as EngineEventMessage } from '../shared/protocol'
 
 class BridgeError extends Error {
@@ -166,6 +167,17 @@ const api = {
   updates: {
     check: () => call<UpdateAvailable | null>(CHANNEL.updatesCheck),
     installAndRelaunch: () => call<void>(CHANNEL.updatesInstall),
+  },
+
+  migration: {
+    status: () => call<MigrationStatus>(CHANNEL.migrationStatus),
+    stage: () => call<MigrationStage | null>(CHANNEL.migrationStage),
+    commit: (token: string, preferences: Record<string, string>) =>
+      call<MigrationStatus>(CHANNEL.migrationCommit, token, preferences),
+    verify: (token: string) => call<MigrationStatus>(CHANNEL.migrationVerify, token),
+    fail: (token: string | undefined, message: string) =>
+      call<MigrationStatus>(CHANNEL.migrationFail, token, message),
+    retry: () => call<MigrationStatus>(CHANNEL.migrationRetry),
   },
 
   handoff: {

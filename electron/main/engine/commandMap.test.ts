@@ -2,7 +2,7 @@
 //
 // El nombre del comando **no** es el método del protocolo, y sus argumentos se
 // renombran por el camino. Estas pruebas fijan que el inventario tenga ese dato
-// para los 130, para que la traducción del host nuevo no se construya sobre
+// para todos, para que la traducción del host nuevo no se construya sobre
 // una tabla incompleta.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -35,6 +35,7 @@ const HOST_ONLY = new Set([
   'engine_shutdown',
   'engine_restart',
   'initial_open_request',
+  'migration_export',
   'workspace_file_open',
 ])
 

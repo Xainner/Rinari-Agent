@@ -27,6 +27,12 @@ export const CHANNEL = {
   notificationsSend: 'rinari:notifications.send',
   updatesCheck: 'rinari:updates.check',
   updatesInstall: 'rinari:updates.installAndRelaunch',
+  migrationStatus: 'rinari:migration.status',
+  migrationStage: 'rinari:migration.importPending',
+  migrationCommit: 'rinari:migration.commit',
+  migrationVerify: 'rinari:migration.verify',
+  migrationFail: 'rinari:migration.fail',
+  migrationRetry: 'rinari:migration.retry',
   /** El renderer pide el handoff pendiente del arranque en frío. */
   initialOpenRequest: 'rinari:handoff.initial',
 
@@ -102,6 +108,8 @@ export interface UpdateAvailable {
   version: string
   body?: string
 }
+
+export type { MigrationStage, MigrationStatus } from './migration'
 
 /**
  * Resultado de un canal petición/respuesta. Los errores viajan como datos, no

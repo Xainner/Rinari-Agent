@@ -33,7 +33,9 @@ import type {
   OpenRequest,
   Unsubscribe,
   UpdateAvailable,
+  MigrationStatus,
 } from './contract'
+import { collectAllowedPreferences } from '../../electron/shared/migration'
 
 const ENGINE_EVENT = 'rinari-engine-event'
 const MENU_EVENT = 'rinari-menu-action'
@@ -204,6 +206,24 @@ export const tauriBridge: DesktopBridge = {
       if (!update) return
       await update.downloadAndInstall()
       await relaunch()
+    },
+  },
+
+  migration: {
+    async status(): Promise<MigrationStatus> {
+      return { state: 'not_started', pending: false, can_export: true }
+    },
+    async importPending(): Promise<MigrationStatus> {
+      return { state: 'not_started', pending: false, can_export: true }
+    },
+    async retry(): Promise<MigrationStatus> {
+      return { state: 'not_started', pending: false, can_export: true }
+    },
+    async exportForElectron(): Promise<MigrationStatus> {
+      const status = await invoke<MigrationStatus>('migration_export', {
+        preferences: collectAllowedPreferences(window.localStorage),
+      })
+      return { ...status, can_export: true }
     },
   },
 

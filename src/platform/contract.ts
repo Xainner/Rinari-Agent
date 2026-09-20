@@ -20,6 +20,7 @@
 
 import type { EngineBackedCommand } from './commands.generated'
 import type { EngineStatus } from './engineStatus'
+import type { MigrationStatus } from '../../electron/shared/migration'
 
 export type {
   DesktopCommand,
@@ -32,6 +33,7 @@ export {
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
 export type { EngineStatus, EngineState } from './engineStatus'
+export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
 /** Cancela una suscripción. Idempotente: llamarla dos veces no es un error. */
 export type Unsubscribe = () => void
@@ -209,6 +211,15 @@ export interface DesktopBridge {
     check(): Promise<UpdateAvailable | null>
     /** Descarga, instala y reinicia. */
     installAndRelaunch(): Promise<void>
+  }
+
+  migration: {
+    status(): Promise<MigrationStatus>
+    /** Importa y verifica antes de inicializar los stores del renderer. */
+    importPending(): Promise<MigrationStatus>
+    retry(): Promise<MigrationStatus>
+    /** Solo Tauri 0.1.3 produce el artefacto manual de transición. */
+    exportForElectron(): Promise<MigrationStatus>
   }
 
   /**

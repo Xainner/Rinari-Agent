@@ -1,6 +1,6 @@
 {
-  "registered_commands": 130,
-  "handlers_found": 130,
+  "registered_commands": 131,
+  "handlers_found": 131,
   "commands": [
     {
       "command": "session_move",
@@ -770,6 +770,33 @@
       "rename_all": "camelCase (por defecto)",
       "args": [],
       "returns": "OpenRequest",
+      "manual": false,
+      "unresolved": [],
+      "branches": [],
+      "engine_method": null,
+      "engine_method_name": null,
+      "engine_params": null,
+      "engine_param_map": null,
+      "engine_params_passthrough": null,
+      "host_effects": [],
+      "registered": true,
+      "callers": [
+        "src/platform/tauri.ts"
+      ]
+    },
+    {
+      "command": "migration_export",
+      "module": "migration",
+      "async": false,
+      "rename_all": "snake_case",
+      "args": [
+        {
+          "name": "preferences",
+          "type": "BTreeMap<String, String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<MigrationStatus, String>",
       "manual": false,
       "unresolved": [],
       "branches": [],

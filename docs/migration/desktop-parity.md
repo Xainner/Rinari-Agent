@@ -16,8 +16,8 @@ que el frontend usa directamente.
 
 | Superficie | Cantidad |
 |---|---|
-| Comandos registrados en `invoke_handler` | **130** |
-| Handlers `#[tauri::command]` hallados | 130 |
+| Comandos registrados en `invoke_handler` | **131** |
+| Handlers `#[tauri::command]` hallados | 131 |
 | Handlers sin registrar | 0 |
 | Invocados desde el frontend sin registrar | 0 |
 | Registrados sin ningún llamador en `src/` | 1 |
@@ -283,6 +283,12 @@ variante del enum.
 | `bundle_create` | `id`: `String`<br>`name`: `String`<br>`description`: `Option<String>` *(opcional)*<br>`soul_id`: `Option<String>` *(opcional)*<br>`mode`: `Option<String>` *(opcional)*<br>`agents`: `Option<serde_json::Value>` *(opcional)* | `profile_bundle.create` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `bundle_list` | — | `profile_bundle.list` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
 | `bundle_remove` | `id`: `String` | `profile_bundle.remove` | 60 s | `Result<serde_json::Value, CommandError>` | — | `services/engine.ts` |
+
+### migration — `commands/migration.rs` (1)
+
+| Comando | Argumentos | Método del Engine | Plazo | Devuelve | Efectos de host | Llamado desde |
+|---|---|---|---|---|---|---|
+| `migration_export` | `preferences`: `BTreeMap<String, String>` | — | — | `Result<MigrationStatus, String>` | — | `platform/tauri.ts` |
 
 ## Qué falta para declarar paridad
 

@@ -39,6 +39,7 @@ export type DesktopCommand =
   | 'mcp_remove'
   | 'mcp_set_enabled'
   | 'mcp_test'
+  | 'migration_export'
   | 'model_add'
   | 'model_alias'
   | 'model_discover'
@@ -172,6 +173,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   'mcp_remove',
   'mcp_set_enabled',
   'mcp_test',
+  'migration_export',
   'model_add',
   'model_alias',
   'model_discover',
@@ -280,6 +282,7 @@ export type HostOnlyCommand =
   | 'engine_start'
   | 'engine_status'
   | 'initial_open_request'
+  | 'migration_export'
   | 'workspace_file_open'
 
 export const HOST_ONLY_COMMANDS: readonly HostOnlyCommand[] = [
@@ -288,6 +291,7 @@ export const HOST_ONLY_COMMANDS: readonly HostOnlyCommand[] = [
   'engine_start',
   'engine_status',
   'initial_open_request',
+  'migration_export',
   'workspace_file_open',
 ] as const
 

@@ -1,0 +1,672 @@
+{
+  "generated_at": "2026-09-20T02:39:04.451Z",
+  "platform": "win32-x64",
+  "agent_revision": "411d3a57affd371c6b716d58bc3f49e35aa7dc65",
+  "cli_revision": "1b5469cb7c68aaf618b3bb85df5942ed6e52a5a9",
+  "steps": [
+    {
+      "id": "V1",
+      "title": "Electron crea una WebContentsView en blanco con contexto de sesión registrado",
+      "status": "ok",
+      "detail": "contexto de ses_01M2YASKRH9GBY9T7Z8Z76G19X con un target en about:blank",
+      "evidence": {
+        "contextId": "e8a0a8c2-f673-448f-8f8d-362b30f513e6",
+        "targetId": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "url": "about:blank"
+      }
+    },
+    {
+      "id": "V2",
+      "title": "Un turno del Engine navega al fixture mediante el backend nativo",
+      "status": "ok",
+      "detail": "la vista que existía ya está en http://127.0.0.1:54754/fixture; no se creó otra",
+      "evidence": {
+        "turn": "turn.completed",
+        "tool": true,
+        "url": "http://127.0.0.1:54754/fixture",
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.navigate",
+          "tool.started:browser.navigate",
+          "tool.completed:browser.navigate"
+        ],
+        "events": [
+          "turn.started",
+          "turn.preparing",
+          "model.started",
+          "model.completed",
+          "tool.requested",
+          "tool.started",
+          "approval.requested",
+          "approval.resolved",
+          "tool.completed",
+          "governor.progress",
+          "model.content.delta",
+          "model.content.completed",
+          "verification.started",
+          "verification.completed",
+          "turn.completed"
+        ]
+      }
+    },
+    {
+      "id": "V2d",
+      "title": "Network observa el documento inicial desde antes de navegar",
+      "status": "ok",
+      "detail": "el request del documento inicial quedó en el buffer temprano",
+      "evidence": {
+        "events": 2,
+        "fixtureUrl": "http://127.0.0.1:54754/fixture"
+      }
+    },
+    {
+      "id": "BR10",
+      "title": "La página remota no alcanza Node, preload, broker ni app://rinari",
+      "status": "ok",
+      "detail": "sin rinariDesktop/require/process; popup y navegación al renderer privilegiado bloqueados",
+      "evidence": {
+        "bridge": "undefined",
+        "require": "undefined",
+        "process": "undefined",
+        "popupBlocked": true,
+        "beforePrivilegedNavigation": "http://127.0.0.1:54754/fixture",
+        "afterPrivilegedNavigation": "http://127.0.0.1:54754/fixture"
+      }
+    },
+    {
+      "id": "V2b",
+      "title": "El Engine sigue atendiendo su canal de control tras una operación de browser",
+      "status": "ok",
+      "detail": "responde a engine.info: la espera del broker no bloqueó el loop de stdio (§5.4)"
+    },
+    {
+      "id": "V2p",
+      "title": "Con control del agente, mouse y teclado físicos no alcanzan la página",
+      "status": "ok",
+      "detail": "clicks 0 → 0; campo sin cambios: true",
+      "evidence": {
+        "clicksAtStart": 0,
+        "clicksAfterPhysical": 0,
+        "fieldAtStart": "",
+        "fieldAfterPhysical": ""
+      }
+    },
+    {
+      "id": "V2c",
+      "title": "Un click por CDP sobre esta vista llega a la página",
+      "status": "ok",
+      "detail": "el mecanismo funciona en esta ventana: 0 → 1",
+      "evidence": {
+        "clicksAtStart": 0,
+        "clicksAfterDirect": 1,
+        "painted": true,
+        "windowVisibleAtStart": false,
+        "windowVisibleNow": true
+      }
+    },
+    {
+      "id": "V3",
+      "title": "El Engine lee snapshot, llena un campo y hace click; el DOM cambia en la misma vista",
+      "status": "ok",
+      "detail": "la vista visible muestra «aplicado: vertical-1789871842912», con el valor que escribió la herramienta",
+      "evidence": {
+        "tools": [
+          "capability.activate",
+          "browser.snapshot",
+          "browser.fill",
+          "browser.click"
+        ],
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.snapshot",
+          "tool.started:browser.snapshot",
+          "tool.completed:browser.snapshot",
+          "tool.requested:browser.fill",
+          "tool.started:browser.fill",
+          "tool.completed:browser.fill",
+          "tool.requested:browser.click",
+          "tool.started:browser.click",
+          "tool.completed:browser.click"
+        ],
+        "dom": {
+          "state": "applied",
+          "text": "aplicado: vertical-1789871842912",
+          "value": "vertical-1789871842912"
+        },
+        "typed": "vertical-1789871842912"
+      }
+    },
+    {
+      "id": "V4",
+      "title": "La screenshot es de esta página y de esta sesión, no sólo bytes",
+      "status": "ok",
+      "detail": "11781 bytes, 760×560, sha256 verificado, contenido del fixture, target de esta sesión",
+      "evidence": {
+        "bytes": 11781,
+        "sha256": "6261d1c56342ad0b71b6953063c5bbe23cddbb3905a5bfff2249006418f52c1e",
+        "hashMatches": true,
+        "size": {
+          "width": 760,
+          "height": 560
+        },
+        "expected": {
+          "width": 760,
+          "height": 560
+        },
+        "looksLikeFixture": true,
+        "targetId": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "targetIsOurs": true
+      }
+    },
+    {
+      "id": "V4b",
+      "title": "Una pestaña que no se está presentando se puede capturar igual",
+      "status": "ok",
+      "detail": "captura de 8703 bytes de un target sin presentar: ocultar no detiene el recurso",
+      "evidence": {
+        "hiddenBytes": 8703,
+        "outcome": "completed",
+        "targetId": "72375337-a20b-4932-82ca-423eeead3203"
+      }
+    },
+    {
+      "id": "V4c",
+      "title": "Consola y red del target se observan por el host",
+      "status": "ok",
+      "detail": "el agente leyó el mensaje de consola y la petición que lanzó la página",
+      "evidence": {
+        "sawLog": true,
+        "sawRequest": true,
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.console",
+          "tool.started:browser.console",
+          "tool.completed:browser.console",
+          "tool.requested:browser.network",
+          "tool.started:browser.network",
+          "tool.completed:browser.network"
+        ]
+      }
+    },
+    {
+      "id": "V4d",
+      "title": "Las cookies son de la partición del contexto y su valor no sale",
+      "status": "ok",
+      "detail": "la cookie vertical1789871854528 está en su partición y sólo viajan nombre, dominio y banderas",
+      "evidence": {
+        "found": true,
+        "leaksValue": false,
+        "total": 1
+      }
+    },
+    {
+      "id": "RETURN-AGENT-RACE",
+      "title": "Return to Agent retira la superficie antes de reabrir mutaciones",
+      "status": "ok",
+      "detail": "main bajó la vista a 1×1 antes de esperar al Engine; el click inmediato sólo corrió después del traspaso seguro",
+      "evidence": {
+        "floorBeforeEngineReply": {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1
+        },
+        "physicallyRetired": true,
+        "raceCompleted": true,
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.click",
+          "tool.started:browser.click",
+          "tool.completed:browser.click"
+        ]
+      }
+    },
+    {
+      "id": "RETURN-AGENT-FOCUS",
+      "title": "Return to Agent revoca el foco de la página remota",
+      "status": "ok",
+      "detail": "el foco volvió a Rinari y «XYZ» no llegó al input remoto",
+      "evidence": {
+        "remoteFocusedAfterReturn": false,
+        "valueAfterReturnTyping": "manual1789871856728",
+        "expected": "manual1789871856728",
+        "physicalMeasured": true
+      }
+    },
+    {
+      "id": "V5",
+      "title": "Control manual: sin mutaciones concurrentes, y la edición manual se observa al devolverlo",
+      "status": "ok",
+      "detail": "con el usuario al mando el click se rechazó (CONFLICT); tecleado real en el campo, y al devolver el control el agente lo leyó por a11y",
+      "evidence": {
+        "typedLive": "manual1789871856728",
+        "typedForReal": true,
+        "requestedState": "user",
+        "requestedOwnerAtReply": "user",
+        "takenRevision": 2,
+        "returnedRevision": 3,
+        "blockedError": "CONFLICT",
+        "blockedTrace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.click",
+          "tool.started:browser.click",
+          "tool.failed:browser.click(CONFLICT)"
+        ],
+        "sawManualEdit": true
+      }
+    },
+    {
+      "id": "V6",
+      "title": "Una segunda sesión con la misma URL no comparte almacenamiento ni targets",
+      "status": "ok",
+      "detail": "particiones distintas: la segunda sesión no ve el almacenamiento de la primera, y su target no se resuelve desde el contexto ajeno",
+      "evidence": {
+        "ownRead": "sesion-a-1789871864711",
+        "crossRead": null,
+        "partitions": [
+          "rinari-browser-e8a0a8c2-f673-448f-8f8d-362b30f513e6",
+          "rinari-browser-00499d2f-64bd-4fbe-a1bf-97ffb4439d96"
+        ],
+        "crossTargetResolved": false
+      }
+    },
+    {
+      "id": "V7a",
+      "title": "Con dos pestañas, la operación por defecto va a la que se ve",
+      "status": "ok",
+      "detail": "una pestaña nueva pasa a ser la activa y la operación por defecto la sigue; al volver a la primera, también; cerrar la inactiva no mueve la selección ni recarga la superviviente",
+      "evidence": {
+        "created": "56ce34e9-3091-43fa-8464-be88a07543eb",
+        "firstTarget": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "defaultAfterCreate": "56ce34e9-3091-43fa-8464-be88a07543eb",
+        "defaultAfterSelect": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "survivor": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "visibleCount": 1,
+        "urlPreserved": true
+      }
+    },
+    {
+      "id": "V7",
+      "title": "Reducir el área visible recorta sin cambiar el viewport del documento",
+      "status": "ok",
+      "detail": "el recorte pasó a 200×140 y el viewport sigue en 760×560",
+      "evidence": {
+        "before": [
+          760,
+          560
+        ],
+        "after": [
+          760,
+          560
+        ]
+      }
+    },
+    {
+      "id": "V7b",
+      "title": "Un click destinado al overlay no atraviesa hasta la página",
+      "status": "ok",
+      "detail": "con la superposición delante, el click del sistema no llegó a la página (4 → 4)",
+      "evidence": {
+        "pageBefore": 4,
+        "pageAfter": 4,
+        "spot": {
+          "x": 864,
+          "y": 586
+        }
+      }
+    },
+    {
+      "id": "V7c",
+      "title": "La superposición es la superficie frontal del contenedor",
+      "status": "ok",
+      "detail": "la barrera es el último hijo, así que una página creada después no se pone delante",
+      "evidence": {
+        "barrierOnTop": true
+      }
+    },
+    {
+      "id": "V9",
+      "title": "Cerrar el panel retira la vista de la ventana y la página sigue usable",
+      "status": "ok",
+      "detail": "presentada en 520×380, al soltar el slot baja a 1×1 conservando el viewport en 760×560 y capturando 11678 bytes, y vuelve al reservarlo otra vez",
+      "evidence": {
+        "boundsBefore": {
+          "x": 24,
+          "y": 120,
+          "width": 520,
+          "height": 380
+        },
+        "boundsAfter": {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1
+        },
+        "boundsAgain": {
+          "x": 24,
+          "y": 120,
+          "width": 520,
+          "height": 380
+        },
+        "aliveWhileHidden": true,
+        "viewportWhileHidden": [
+          760,
+          560
+        ],
+        "hiddenShotBytes": 11678,
+        "hiddenFailure": "",
+        "urlWhileHidden": "http://127.0.0.1:54754/fixture"
+      }
+    },
+    {
+      "id": "V10",
+      "title": "Un contexto que nunca se presentó maqueta y se puede capturar",
+      "status": "ok",
+      "detail": "sin haber abierto el panel nunca, la página maqueta en 1280×800 y captura 11078 bytes",
+      "evidence": {
+        "loneViewport": [
+          1280,
+          800
+        ],
+        "loneBytes": 11078,
+        "loneFailure": ""
+      }
+    },
+    {
+      "id": "V11",
+      "title": "El agente sube un fichero y el input de la página lo recibe",
+      "status": "ok",
+      "detail": "el input tiene 1 fichero y la página lo llama «subida-1789871869117.txt», con sha256 y tamaño en la procedencia",
+      "evidence": {
+        "inPage": {
+          "files": 1,
+          "name": "subida-1789871869117.txt"
+        },
+        "provenance": {
+          "path": "<RINARI_CLI>\\subida-1789871869117.txt",
+          "bytes": 31,
+          "sha256": "71a7a2b60910fd317e316165d62f984606cb3c7d2430895946c74ee3a46e6eb8"
+        },
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:fs.write",
+          "tool.started:fs.write",
+          "tool.completed:fs.write",
+          "tool.requested:browser.upload",
+          "tool.started:browser.upload",
+          "tool.completed:browser.upload"
+        ]
+      }
+    },
+    {
+      "id": "V12",
+      "title": "Una descarga con nombre hostil aterriza saneada en los artefactos",
+      "status": "ok",
+      "detail": "«../../CON.txt» se guardó como «_.._CON.txt» dentro de <RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X, 29 bytes",
+      "evidence": {
+        "savedPath": "<RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X\\_.._CON.txt",
+        "savedDir": "<RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X",
+        "savedName": "_.._CON.txt",
+        "artifactRoot": "<RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X",
+        "onDisk": [
+          "screenshot-1789871847.png",
+          "screenshot-1789871850.png",
+          "_.._CON.txt"
+        ],
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.download",
+          "tool.started:browser.download",
+          "tool.failed:browser.download(TIMEOUT)",
+          "tool.requested:browser.click",
+          "tool.started:browser.click",
+          "tool.completed:browser.click",
+          "tool.requested:browser.download",
+          "tool.started:browser.download",
+          "tool.completed:browser.download"
+        ]
+      }
+    },
+    {
+      "id": "BR13",
+      "title": "Cien ciclos devuelven todos los recursos contables al baseline",
+      "status": "ok",
+      "detail": "100/100 ciclos limpios; listeners duplicados: 0; tendencia heap 8910628 → 9339780",
+      "evidence": {
+        "lifecycleBaseline": {
+          "registry": {
+            "contexts": 2,
+            "targets": 2,
+            "liveWebContents": 2,
+            "attachedDebuggers": 2,
+            "debugMessageListeners": 2,
+            "downloadListeners": 2,
+            "barriers": 0,
+            "bufferedEvents": 7,
+            "bufferedBytes": 1911
+          },
+          "host": {
+            "inFlight": 0,
+            "requestLedger": 23
+          },
+          "layout": {
+            "layoutSlots": 1
+          }
+        },
+        "lifecycleAfter": {
+          "registry": {
+            "contexts": 2,
+            "targets": 2,
+            "liveWebContents": 2,
+            "attachedDebuggers": 2,
+            "debugMessageListeners": 2,
+            "downloadListeners": 2,
+            "barriers": 0,
+            "bufferedEvents": 7,
+            "bufferedBytes": 1911
+          },
+          "host": {
+            "inFlight": 0,
+            "requestLedger": 23
+          },
+          "layout": {
+            "layoutSlots": 1
+          }
+        },
+        "duplicateConsoleEvents": 0,
+        "heapBefore": 8910628,
+        "heapAfter": 9339780
+      }
+    },
+    {
+      "id": "BR14",
+      "title": "Frames grandes y Stop no bloquean el Engine ni repiten mutaciones inciertas",
+      "status": "ok",
+      "detail": "B1–B4 pasan; Stop 1 ms, 4 ms, 1 ms (objetivo ≤2 s)",
+      "evidence": {
+        "stopLatencies": [
+          1.1144999999960419,
+          3.6031000000002678,
+          1.1261000000085915
+        ],
+        "stopObjective": true,
+        "bufferedBeforeStop": {
+          "contexts": 2,
+          "targets": 2,
+          "liveWebContents": 2,
+          "attachedDebuggers": 2,
+          "debugMessageListeners": 2,
+          "downloadListeners": 2,
+          "barriers": 0,
+          "bufferedEvents": 508,
+          "bufferedBytes": 59070
+        },
+        "oversizedError": "RESOURCE_EXHAUSTED",
+        "taking": {
+          "backend": "electron-native",
+          "state": "connected",
+          "context_id": "50f018bec34e0da7a45350c90315ecfd",
+          "session_id": "ses_01M2YASKRH9GBY9T7Z8Z76G19X",
+          "control": "agent",
+          "control_state": "taking-user-control",
+          "control_revision": 3,
+          "outstanding_mutations": 1
+        },
+        "settledEarly": false,
+        "grantedEarly": false,
+        "settledLate": true,
+        "uncertain": true,
+        "retried": false,
+        "host": {
+          "inFlight": 0,
+          "requestLedger": 27
+        }
+      }
+    },
+    {
+      "id": "V8",
+      "title": "Matar el Engine con una mutación en vuelo: binding nuevo y sin replay",
+      "status": "ok",
+      "detail": "binding nuevo tras el reinicio; el Engine nuevo lee y muta **la misma vista** por el broker —misma URL, marca nueva en el DOM— y la mutación en vuelo no se reprodujo (5 → 5)",
+      "evidence": {
+        "clicksBefore": 5,
+        "clicksAfterRestart": 5,
+        "bindingChanged": true,
+        "worksAfterRestart": true,
+        "readBack": true,
+        "mutatedAgain": true,
+        "samePage": true,
+        "terminal": "turn.completed",
+        "sessionFree": false,
+        "eventNames": [
+          "turn.started",
+          "turn.preparing",
+          "model.started",
+          "model.completed",
+          "tool.requested",
+          "tool.started",
+          "approval.requested",
+          "approval.resolved",
+          "tool.completed",
+          "governor.progress",
+          "model.content.delta",
+          "model.content.completed",
+          "verification.started",
+          "verification.completed",
+          "turn.completed"
+        ],
+        "urlBeforeRestart": "http://127.0.0.1:54754/fixture",
+        "domAfterRestart": {
+          "text": "aplicado: tras-reinicio-1789871921170",
+          "url": "http://127.0.0.1:54754/fixture"
+        },
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.snapshot",
+          "tool.started:browser.snapshot",
+          "tool.completed:browser.snapshot",
+          "tool.requested:browser.fill",
+          "tool.started:browser.fill",
+          "tool.completed:browser.fill",
+          "tool.requested:browser.click",
+          "tool.started:browser.click",
+          "tool.completed:browser.click"
+        ]
+      }
+    },
+    {
+      "id": "TOAST-REAL",
+      "title": "Toast Sonner real queda visible y clicable sobre el browser nativo",
+      "status": "ok",
+      "detail": "pila real 356×111; acción ejecutada, sin click-through y geometría restaurada",
+      "evidence": {
+        "toastRect": {
+          "x": 908,
+          "y": 732.625,
+          "width": 356,
+          "height": 111.375
+        },
+        "measuredOcclusions": [
+          {
+            "x": 908,
+            "y": 732,
+            "width": 356,
+            "height": 112
+          }
+        ],
+        "nativeDuringToast": {
+          "x": 8,
+          "y": 8,
+          "width": 1264,
+          "height": 724
+        },
+        "toastSeparated": true,
+        "actionAfter": 1,
+        "clickThrough": false,
+        "sameTarget": true,
+        "sameUrl": true,
+        "sameDom": true,
+        "restoredToastGeometry": true,
+        "ownership": "user",
+        "physicalClick": true
+      }
+    },
+    {
+      "id": "RESTART-USER",
+      "title": "Reiniciar el Engine revoca control manual y conserva la misma página",
+      "status": "ok",
+      "detail": "la vista bajó a 1×1, perdió foco y no aceptó tecleo físico; el Engine nuevo reusó target/URL/DOM y volvió a operar",
+      "evidence": {
+        "flooredOnLoss": true,
+        "focusedAfterLoss": false,
+        "physicalMeasured": true,
+        "physicalProtected": true,
+        "valueBeforeUserRestart": "restart-user-1789871932216",
+        "valueAfterUserRestart": "restart-user-1789871932216",
+        "bindingBefore": "65eb8cb1c842acbb5b550b23e3d47d1f",
+        "bindingAfter": "be08935a4f501480138ac54c62acb2ef",
+        "sameTarget": true,
+        "sameUrl": true,
+        "sameDom": true,
+        "userControlPreserved": false,
+        "toolsOk": true,
+        "trace": [
+          "tool.requested:capability.activate",
+          "tool.started:capability.activate",
+          "tool.completed:capability.activate",
+          "tool.requested:browser.snapshot",
+          "tool.started:browser.snapshot",
+          "tool.completed:browser.snapshot",
+          "tool.requested:browser.fill",
+          "tool.started:browser.fill",
+          "tool.completed:browser.fill",
+          "tool.requested:browser.click",
+          "tool.started:browser.click",
+          "tool.completed:browser.click"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total": 29,
+    "ok": 29,
+    "failed": 0,
+    "skipped": 0
+  }
+}

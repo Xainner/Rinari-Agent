@@ -184,23 +184,32 @@ child.on('exit', async (code) => {
   if (process.env.RINARI_VERTICAL_REPORT) {
     const revision = (directory) =>
       execFileSync('git', ['-C', directory, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
-    let serialized = JSON.stringify({
+    const payload = {
       generated_at: new Date().toISOString(),
       platform: `${process.platform}-${process.arch}`,
       agent_revision: revision(ROOT),
       cli_revision: revision(CLI),
       ...report,
-    }, null, 2)
+    }
     // La evidencia es reproducible y publicable: las rutas locales no forman
     // parte del resultado y no deben quedar grabadas en el repositorio.
-    for (const [local, portable] of [
+    const replacements = [
       [CLI, '<RINARI_CLI>'],
       [home, '<RINARI_HOME>'],
       [userData, '<ELECTRON_PROFILE>'],
       [process.env.USERPROFILE, '<USER_HOME>'],
-    ]) {
-      if (local) serialized = serialized.split(local).join(portable)
-    }
+    ]
+    const serialized = JSON.stringify(
+      payload,
+      (_key, value) =>
+        typeof value === 'string'
+          ? replacements.reduce(
+              (current, [local, portable]) => local ? current.split(local).join(portable) : current,
+              value,
+            )
+          : value,
+      2,
+    )
     writeFileSync(
       process.env.RINARI_VERTICAL_REPORT,
       `${serialized}\n`,

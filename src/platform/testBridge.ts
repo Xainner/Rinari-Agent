@@ -15,6 +15,7 @@ import type {
   EngineStatus,
   EngineEventMessage,
   NativeBrowserContext,
+  NativeBrowserControl,
   NativeBrowserPreview,
   NativeBrowserSlotLayout,
   NotificationSupport,
@@ -58,6 +59,8 @@ export interface TestBridge extends DesktopBridge {
   /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
   browserContext: NativeBrowserContext | null
   browserPreview: NativeBrowserPreview | null
+  /** Respuesta opcional de la próxima transición de control. */
+  browserControlResult: NativeBrowserControl | null
   /** Intenciones de browser pedidas, en orden. */
   readonly browserCalls: Array<Record<string, unknown>>
   /** Geometrías enviadas, para comprobar el recorte sin una ventana. */
@@ -95,6 +98,7 @@ export function createTestBridge(): TestBridge {
     engineCalls: [],
     browserContext: null,
     browserPreview: null,
+    browserControlResult: null,
     browserCalls: [],
     browserLayouts: [],
     emitBrowserContext(view) {
@@ -215,6 +219,7 @@ export function createTestBridge(): TestBridge {
       },
       async setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number) {
         bridge.browserCalls.push({ kind: 'setControl', sessionId, owner, expectedRevision })
+        if (bridge.browserControlResult) return bridge.browserControlResult
         return { control: owner, control_state: owner, control_revision: (expectedRevision ?? 1) + 1 }
       },
       async navigate(sessionId: string, url: string) {
@@ -310,6 +315,7 @@ export function createTestBridge(): TestBridge {
       bridge.update = null
       bridge.browserContext = null
       bridge.browserPreview = null
+      bridge.browserControlResult = null
       bridge.browserCalls.length = 0
       bridge.browserLayouts.length = 0
       browserListeners.clear()

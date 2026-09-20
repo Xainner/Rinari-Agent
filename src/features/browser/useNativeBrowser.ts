@@ -284,6 +284,24 @@ export function useNativeBrowser(
     }
   }, [])
 
+  const applyControlReply = useCallback(
+    (result: { control: 'agent' | 'user'; control_state: string; control_revision: number }) => {
+      const state = result.control_state
+      if (!['agent', 'taking-user-control', 'user', 'uncertain'].includes(state)) return
+      setContext((current) =>
+        current && current.session_id === sessionId
+          ? {
+              ...current,
+              control: result.control,
+              control_state: state as NonNullable<NativeBrowserContext['control_state']>,
+              control_revision: result.control_revision,
+            }
+          : current,
+      )
+    },
+    [sessionId],
+  )
+
   return {
     context,
     preview,
@@ -295,13 +313,25 @@ export function useNativeBrowser(
       }),
     selectTarget: (targetId) => guard(() => platform().browser.selectTarget(sessionId, targetId)),
     takeControl: () =>
-      guard(() =>
-        platform().browser.setControl(sessionId, 'user', context?.control_revision),
-      ),
+      guard(async () => {
+        const result = await platform().browser.setControl(
+          sessionId,
+          'user',
+          context?.control_revision,
+        )
+        // La respuesta ya cerró la admisión de mutaciones. Se refleja ahora,
+        // sin esperar el evento final que confirmará `user` después del drain.
+        applyControlReply(result)
+      }),
     returnControl: () =>
-      guard(() =>
-        platform().browser.setControl(sessionId, 'agent', context?.control_revision),
-      ),
+      guard(async () => {
+        const result = await platform().browser.setControl(
+          sessionId,
+          'agent',
+          context?.control_revision,
+        )
+        applyControlReply(result)
+      }),
     navigate: (url) => guard(() => platform().browser.navigate(sessionId, url)),
     slotRef,
   }

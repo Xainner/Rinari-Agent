@@ -141,6 +141,20 @@ cambios. En la misma vista retirada, `V2c` manda un click por CDP y llega 0 → 
 una mutación concurrente con `CONFLICT` y el agente observa la edición al
 recuperar el control.
 
+La devolución User → Agent invierte el orden peligroso: main retira primero la
+presentación al suelo 1×1 y enfoca el renderer confiable; sólo después pide el
+cambio al Engine. Si esa petición falla, restaura la presentación únicamente
+si siguen vigentes el mismo contexto, binding y transición. `RETURN-AGENT-RACE`
+comprueba el suelo antes de que termine la petición, y
+`RETURN-AGENT-FOCUS` escribe físicamente `XYZ` sin otro click y confirma que no
+llega al input remoto.
+
+Una concesión manual tampoco sobrevive al Engine que la emitió. Al perder el
+binding, main cambia todos los contextos a presentación segura, retira el foco
+y olvida su identidad de Engine, conservando target, URL, DOM, storage y slot.
+`RESTART-USER` lo comprueba con entrada física durante el reinicio y luego hace
+snapshot, fill y click desde el Engine nuevo sobre la misma página.
+
 La captura de presentación no crea otro browser ni recarga la URL: sale de
 `capturePage()` sobre el target activo. El floor conserva viewport,
 `loading="lazy"` y capturas aunque el dock no se haya abierto (`V10`).
@@ -158,6 +172,15 @@ main recorta la vista al mayor rectángulo contiguo que no la invada, conserva
 los bounds lógicos de la página y baja al floor si no queda un área útil. Al
 desaparecer la pila vuelve exactamente la geometría anterior. No hay una
 segunda ventana transparente ni otro preload privilegiado.
+
+La oclusión no usa 176 px como verdad del producto. El `ref` público de
+`Toaster`, `ResizeObserver` y `getClientRects()` producen la unión de las cajas
+realmente pintadas, sin selectores ni clases internas de Sonner. El valor de
+176 px queda sólo como fallback previo a la primera medida. En `TOAST-REAL`, el
+toast multilínea con acción midió **356×111 DIP**: la vista quedó recortada sin
+solape, el click físico ejecutó la acción una vez, la página no recibió el
+click y al salir el toast se restauró la geometría exacta, conservando target,
+URL, DOM y ownership.
 
 ## 4. CDP: transporte sí, superficie pública no
 
@@ -231,6 +254,10 @@ página que el usuario tiene delante.
 | V6 | Segunda sesión, misma URL | no ve su `localStorage` y su target no se resuelve desde el contexto ajeno |
 | V7 | Recorte y overlay | el recorte baja a 200×140 y el viewport sigue en 760×560 |
 | V8 | Matar el Engine | tras reiniciarlo el contador de clicks de la página no subió |
+| RETURN-AGENT-RACE | Devolver control | la vista baja a 1×1 antes de que el Engine vuelva a admitir la mutación |
+| RETURN-AGENT-FOCUS | Revocar foco | tecleo físico posterior no cambia el input remoto |
+| TOAST-REAL | Toast Sonner sobre vista nativa | rect real, acción física, sin click-through y restauración exacta |
+| RESTART-USER | Restart bajo control manual | revoca user, cambia binding y opera el mismo target/URL/DOM desde el Engine nuevo |
 
 Tres comprobaciones más, que no son pasos del §3 pero sin las cuales los demás
 no significan lo que parecen:
@@ -261,7 +288,8 @@ no significan lo que parecen:
 - **BR-14** — captura cercana al límite, buffers ruidosos, respuesta que excede
   8 MiB y mutación lenta contra Stop. El Engine sigue respondiendo, el exceso
   termina en `RESOURCE_EXHAUSTED`, la mutación queda incierta sin retry y el
-  control manual no se concede antes del settlement. Stop midió ~1 ms.
+  control manual no se concede antes del settlement. Stop se mantuvo dentro
+  del objetivo operativo del gate.
 - **BR-10** — además del paso real, los tests fijan que el contrato público no
   contenga canales `host.browser.*`, que frames privados malformados se
   consuman antes del renderer y que un target de otra sesión no se resuelva.
@@ -338,7 +366,7 @@ resultado tardío; el settlement sólo libera la retención interna. Los leases 
 una mutación semántica completa comparten esa contabilidad, de modo que un
 click sigue cubierto desde la lectura de coordenadas hasta el último
 `mouseReleased`. SETTLE-01…05 fijan las carreras reply/timeout/cancelación y el
-traspaso de control; la prueba vertical pasa 25/25 pasos con este Engine.
+traspaso de control; la prueba vertical pasa 29/29 pasos con este Engine.
 
 ### Observación temprana y buffers acotados
 
@@ -357,6 +385,11 @@ dependen de entrada física real permanecen en el gate manual de Windows; el
 broker, la frontera remota, aislamiento, lifecycle, backpressure, restart,
 uploads y downloads sí corren en CI. La ejecución local final usó
 `1b5469cb7c68aaf618b3bb85df5942ed6e52a5a9`, el mismo SHA que fija el manifest.
+
+La contabilidad se informa por plataforma: el gate físico de Windows pasa
+**29/29**. En Linux/Xvfb pasan **27**, se omiten únicamente `V2p` y `V7b` por
+requerir entrada física del sistema, y hay **0 fallidos**. Un skipped físico no
+se cuenta como passed ni se describe como 29/29.
 
 ## 7. Lo que esta etapa no probó
 
@@ -383,6 +416,8 @@ Se listan para que nadie los dé por cubiertos:
    agent la vista queda a 1×1 con preview del mismo target; en user se restaura
    tras confirmación. Una herramienta mutable con el usuario al mando recibe
    `CONFLICT`, no se ejecuta ni reintenta.
+   Return-to-Agent retira la vista y el foco antes de pedir el cambio; perder
+   el Engine revoca toda concesión manual sin destruir la página.
 4. Broker con allowlist semántica. `Target.*` y `Browser.*` no se exponen: la
    enumeración la sirve la registry.
 5. Suscripción a `detach` del debugger como pérdida de control, con pendientes
@@ -393,4 +428,5 @@ Se listan para que nadie los dé por cubiertos:
 7. Runtime/Network están activos antes de la primera navegación real; listeners
    y buffers tienen ciclo de vida y límites medidos.
 8. Toasts se colocan fuera de superficies nativas o main recorta temporalmente
-   la vista bajo su región.
+   la vista bajo la región real medida de la pila, y restaura la geometría al
+   terminar la animación de salida.

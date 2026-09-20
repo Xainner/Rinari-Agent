@@ -7,9 +7,9 @@
 //
 //   npm run browser:vertical
 
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -96,7 +96,7 @@ console.log(`modelo falso en ${model.origin}`)
 
 // Pasos que el gate exige ver. Un informe al que le falte uno no es un PASS
 // con menos cobertura: es un informe que no prueba lo que dice probar.
-const REQUIRED_STEPS = ['V1', 'V2', 'V2d', 'BR10', 'V2b', 'V2p', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'V6', 'V7a', 'V7', 'V7b', 'V7c', 'V9', 'V10', 'V11', 'V12', 'BR13', 'BR14', 'V8']
+const REQUIRED_STEPS = ['V1', 'V2', 'V2d', 'BR10', 'V2b', 'V2p', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'RETURN-AGENT-RACE', 'RETURN-AGENT-FOCUS', 'V6', 'V7a', 'V7', 'V7b', 'V7c', 'V9', 'V10', 'V11', 'V12', 'BR13', 'BR14', 'V8', 'TOAST-REAL', 'RESTART-USER']
 
 // Perfil de Electron propio, no sólo home del Engine: el renderer guarda
 // drafts y preferencias, y la sonda no debe tocar los del usuario.
@@ -181,6 +181,32 @@ child.on('exit', async (code) => {
     process.exit(1)
   }
   const report = JSON.parse(line.slice('RINARI_BROWSER_VERTICAL '.length))
+  if (process.env.RINARI_VERTICAL_REPORT) {
+    const revision = (directory) =>
+      execFileSync('git', ['-C', directory, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+    let serialized = JSON.stringify({
+      generated_at: new Date().toISOString(),
+      platform: `${process.platform}-${process.arch}`,
+      agent_revision: revision(ROOT),
+      cli_revision: revision(CLI),
+      ...report,
+    }, null, 2)
+    // La evidencia es reproducible y publicable: las rutas locales no forman
+    // parte del resultado y no deben quedar grabadas en el repositorio.
+    for (const [local, portable] of [
+      [CLI, '<RINARI_CLI>'],
+      [home, '<RINARI_HOME>'],
+      [userData, '<ELECTRON_PROFILE>'],
+      [process.env.USERPROFILE, '<USER_HOME>'],
+    ]) {
+      if (local) serialized = serialized.split(local).join(portable)
+    }
+    writeFileSync(
+      process.env.RINARI_VERTICAL_REPORT,
+      `${serialized}\n`,
+      'utf8',
+    )
+  }
 
   if (report.fatal) {
     console.error(`la prueba abortó: ${report.fatal}`)

@@ -206,12 +206,21 @@ describe('el slot reserva el hueco y lo reporta', () => {
 describe('control desde la toolbar (§7)', () => {
   it('pide tomar el control con la revisión que conoce', async () => {
     bridge.browserContext = nativeContext({ control_revision: 4 })
+    bridge.browserControlResult = {
+      control: 'agent',
+      control_state: 'taking-user-control',
+      control_revision: 5,
+    }
     paint()
     await userEvent.click(await screen.findByRole('button', { name: /tomar control|take control/i }))
     await waitFor(() => {
       const call = bridge.browserCalls.find((entry) => entry.kind === 'setControl')
       expect(call).toMatchObject({ owner: 'user', expectedRevision: 4 })
     })
+    // La respuesta inmediata se refleja sin esperar el evento final.
+    expect(
+      await screen.findByRole('button', { name: /tomando el control|taking control/i }),
+    ).toBeTruthy()
   })
 
   it('durante la transición no se puede volver a pulsar', async () => {

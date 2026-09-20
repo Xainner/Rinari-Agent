@@ -58,6 +58,7 @@ export interface VerticalDeps {
     isVisible(): boolean
     isMinimized(): boolean
     getBounds(): { x: number; y: number; width: number; height: number }
+    getContentBounds(): { x: number; y: number; width: number; height: number }
   }
   /**
    * Los servicios que el IPC del renderer invoca para reservar y soltar la
@@ -75,8 +76,14 @@ export interface VerticalDeps {
       shown: boolean
       layout_revision: number
       overlay_depth: number
+      occlusions?: Array<{ x: number; y: number; width: number; height: number }>
     }): Promise<void>
     detachSlot(slotId: string): Promise<void>
+    setControl(
+      sessionId: string,
+      owner: 'agent' | 'user',
+      expectedRevision?: number,
+    ): Promise<unknown>
     diagnostics(): { layoutSlots: number }
   }
   /**
@@ -85,10 +92,20 @@ export interface VerticalDeps {
    * así que daría por buena cualquier superposición.
    */
   physicalClick?: (x: number, y: number, text?: string) => Promise<void>
+  /** Escritura física sobre el foco actual, sin moverlo con otro click. */
+  physicalType?: (text: string) => Promise<void>
+  /** Renderer real de Rinari para el gate de Sonner/WebContentsView. */
+  renderer: {
+    evaluate<T>(code: string): Promise<T>
+  }
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
+const overlaps = (
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 
 /** Tamaño lógico del slot, en DIP. La captura sale en físicos (§8.2). */
 const LOGICAL_SIZE = { width: 760, height: 560 }
@@ -789,12 +806,64 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     await sleep(400)
     const typedLive = await read<string>(view, "document.getElementById('field').value")
 
-    await call('browser.control.set', {
-      session_id: sessionId,
-      owner: 'agent',
-      expected_revision: taken.control_revision,
-    })
+    // User → Agent pasa por el servicio real de main. Este retira la vista y
+    // devuelve el foco al renderer **antes** de pedir el cambio al Engine.
+    const returnPromise = deps.services.setControl(
+      sessionId,
+      'agent',
+      taken.control_revision,
+    )
+    const floorBeforeEngineReply = context.container.getBounds()
+    const physicallyRetired =
+      floorBeforeEngineReply.width <= 1 && floorBeforeEngineReply.height <= 1
+    const remoteFocusedAfterReturn = view.webContents.isFocused()
+
+    const focusSuffix = 'XYZ'
+    if (deps.physicalType) await deps.physicalType(focusSuffix)
+    await sleep(250)
+    const valueAfterReturnTyping = await read<string>(view, "document.getElementById('field').value")
+
+    // Se lanza una mutación sin esperar la respuesta del cambio. Puede entrar
+    // sólo cuando el Engine confirme agent; para entonces la vista ya estaba
+    // físicamente en el suelo.
+    await script([{ tool: 'browser.click', args: { selector: '#go' } }, { text: 'race' }])
+    const racingTurn = runTurn(sessionId, 'click inmediato al devolver control', 45_000)
+    await returnPromise
     const returned = await awaitControl('agent')
+    const raced = await racingTurn
+    const racedTool = raced.tools.find((tool) => tool.tool === 'browser.click')
+    const raceCompleted = racedTool?.outcome === 'completed' && racedTool.ok === true
+
+    record({
+      id: 'RETURN-AGENT-RACE',
+      title: 'Return to Agent retira la superficie antes de reabrir mutaciones',
+      status: physicallyRetired && raceCompleted ? 'ok' : 'failed',
+      detail:
+        physicallyRetired && raceCompleted
+          ? 'main bajó la vista a 1×1 antes de esperar al Engine; el click inmediato sólo corrió después del traspaso seguro'
+          : `suelo previo ${JSON.stringify(floorBeforeEngineReply)}; click ${racedTool?.outcome ?? 'ausente'}`,
+      evidence: { floorBeforeEngineReply, physicallyRetired, raceCompleted, trace: raced.trace },
+    })
+
+    record({
+      id: 'RETURN-AGENT-FOCUS',
+      title: 'Return to Agent revoca el foco de la página remota',
+      status:
+        !remoteFocusedAfterReturn && (!deps.physicalType || valueAfterReturnTyping === manual)
+          ? 'ok'
+          : 'failed',
+      detail: !remoteFocusedAfterReturn && (!deps.physicalType || valueAfterReturnTyping === manual)
+        ? deps.physicalType
+          ? `el foco volvió a Rinari y «${focusSuffix}» no llegó al input remoto`
+          : 'el foco lógico volvió a Rinari; el gate Windows añade tecleo físico sin click'
+        : `focused=${remoteFocusedAfterReturn}; valor remoto «${valueAfterReturnTyping}»`,
+      evidence: {
+        remoteFocusedAfterReturn,
+        valueAfterReturnTyping,
+        expected: manual,
+        physicalMeasured: Boolean(deps.physicalType),
+      },
+    })
 
     // El agente observa el **valor vivo** por a11y, no el HTML serializado:
     // escribir en un campo no cambia su atributo, así que un snapshot no lo
@@ -1648,6 +1717,290 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         trace: afterRestart.trace,
       },
     })
+
+    // ── V13 / TOAST-REAL: Sonner real, renderer real y WebContentsView real.
+    // El browser cubre casi todo el contenido, así que no hay un carril libre:
+    // la oclusión medida debe recortar la vista nativa antes del click.
+    await deps.services.setControl(sessionId, 'user')
+    for (let attempt = 0; attempt < 100 && context.control !== 'user'; attempt += 1) {
+      await sleep(100)
+    }
+    const toastLease = await deps.services.attachSlot(sessionId)
+    const viewport = await deps.renderer.evaluate<{ width: number; height: number }>(
+      '({ width: innerWidth, height: innerHeight })',
+    )
+    const toastLogical = {
+      x: 8,
+      y: 8,
+      width: Math.max(320, viewport.width - 16),
+      height: Math.max(240, viewport.height - 16),
+    }
+    const toastVisible = { ...toastLogical }
+    await deps.services.updateSlot({
+      slot_id: toastLease.slot_id,
+      logical_bounds: toastLogical,
+      visible_bounds: toastVisible,
+      shown: true,
+      layout_revision: 1,
+      overlay_depth: 0,
+      occlusions: [],
+    })
+    await sleep(300)
+
+    const toastTargetBefore = deps.registry.target(context.contextId, null)?.targetId ?? null
+    const toastUrlBefore = view.webContents.getURL()
+    const toastMarker = `toast-${Date.now()}`
+    await read(view, `(document.body.dataset.toastMarker = ${JSON.stringify(toastMarker)}, true)`)
+    const clicksBeforeToast = await read<number>(view, 'window.__probe.clicks')
+    await deps.renderer.evaluate(`window.dispatchEvent(new CustomEvent(
+      'rinari:browser-vertical-toast-start',
+      { detail: ${JSON.stringify({
+        slotId: toastLease.slot_id,
+        logicalBounds: toastLogical,
+        visibleBounds: toastVisible,
+        layoutRevision: 1,
+      })} }
+    ))`)
+
+    type ToastUi = {
+      rect: { x: number; y: number; width: number; height: number } | null
+      button: { x: number; y: number; width: number; height: number } | null
+      occlusions: Array<{ x: number; y: number; width: number; height: number }>
+      action: number
+    }
+    let toastUi: ToastUi = { rect: null, button: null, occlusions: [], action: 0 }
+    let stableToastFrames = 0
+    let previousToastRect = ''
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      toastUi = await deps.renderer.evaluate<ToastUi>(`(() => {
+        const toast = document.querySelector('[data-testid="browser-vertical-toast"]')
+        const button = toast?.querySelector('button')
+        const box = toast?.getBoundingClientRect()
+        const action = button?.getBoundingClientRect()
+        let occlusions = []
+        try { occlusions = JSON.parse(document.documentElement.dataset.rinariVerticalToastOcclusions || '[]') } catch {}
+        return {
+          rect: box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null,
+          button: action ? { x: action.x, y: action.y, width: action.width, height: action.height } : null,
+          occlusions,
+          action: Number(document.documentElement.dataset.rinariVerticalToastAction || '0'),
+        }
+      })()`)
+      const rectKey = toastUi.rect ? JSON.stringify(toastUi.rect) : ''
+      stableToastFrames = rectKey && rectKey === previousToastRect ? stableToastFrames + 1 : 0
+      previousToastRect = rectKey
+      const measuredOcclusion = Boolean(
+        toastUi.rect &&
+          toastUi.occlusions.some(
+            (block) =>
+              Math.abs(block.x - toastUi.rect!.x) <= 3 &&
+              Math.abs(block.y - toastUi.rect!.y) <= 3 &&
+              Math.abs(block.width - toastUi.rect!.width) <= 3 &&
+              Math.abs(block.height - toastUi.rect!.height) <= 3,
+          ),
+      )
+      const fullyVisible = Boolean(
+        toastUi.rect &&
+          toastUi.rect.x >= 0 &&
+          toastUi.rect.y >= 0 &&
+          toastUi.rect.x + toastUi.rect.width <= viewport.width + 1 &&
+          toastUi.rect.y + toastUi.rect.height <= viewport.height + 1,
+      )
+      if (toastUi.button && measuredOcclusion && fullyVisible && stableToastFrames >= 2) break
+      await sleep(100)
+    }
+
+    const nativeDuringToast = context.container.getBounds()
+    const toastSeparated = Boolean(toastUi.rect && !overlaps(nativeDuringToast, toastUi.rect))
+    if (toastUi.button) {
+      if (deps.physicalClick) {
+        deps.window.show()
+        deps.window.focus()
+        await sleep(300)
+        const content = deps.window.getContentBounds()
+        await deps.physicalClick(
+          Math.round(content.x + toastUi.button.x + toastUi.button.width / 2),
+          Math.round(content.y + toastUi.button.y + toastUi.button.height / 2),
+        )
+      } else {
+        await deps.renderer.evaluate(
+          `document.querySelector('[data-testid="browser-vertical-toast"] button')?.click()`,
+        )
+      }
+    }
+    await sleep(300)
+    const actionAfter = await deps.renderer.evaluate<number>(
+      `Number(document.documentElement.dataset.rinariVerticalToastAction || '0')`,
+    )
+    const clicksAfterToast = await read<number>(view, 'window.__probe.clicks')
+
+    await deps.renderer.evaluate(
+      `window.dispatchEvent(new Event('rinari:browser-vertical-toast-stop'))`,
+    )
+    let restoredToastGeometry = false
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const bounds = context.container.getBounds()
+      restoredToastGeometry =
+        bounds.x === toastVisible.x &&
+        bounds.y === toastVisible.y &&
+        bounds.width === toastVisible.width &&
+        bounds.height === toastVisible.height
+      if (restoredToastGeometry) break
+      await sleep(100)
+    }
+    const toastTargetAfter = deps.registry.target(context.contextId, null)?.targetId ?? null
+    const toastUrlAfter = view.webContents.getURL()
+    const toastMarkerAfter = await read<string>(view, 'document.body.dataset.toastMarker')
+    const toastOk =
+      Boolean(toastUi.rect && toastUi.rect.height > 0) &&
+      toastSeparated &&
+      actionAfter === 1 &&
+      clicksAfterToast === clicksBeforeToast &&
+      toastTargetAfter === toastTargetBefore &&
+      toastUrlAfter === toastUrlBefore &&
+      toastMarkerAfter === toastMarker &&
+      restoredToastGeometry &&
+      context.control === 'user'
+    record({
+      id: 'TOAST-REAL',
+      title: 'Toast Sonner real queda visible y clicable sobre el browser nativo',
+      status: toastOk ? 'ok' : 'failed',
+      detail: toastOk
+        ? `pila real ${Math.round(toastUi.rect!.width)}×${Math.round(toastUi.rect!.height)}; acción ejecutada, sin click-through y geometría restaurada`
+        : `rect=${JSON.stringify(toastUi.rect)} native=${JSON.stringify(nativeDuringToast)} action=${actionAfter} clicks=${clicksBeforeToast}→${clicksAfterToast} restored=${restoredToastGeometry}`,
+      evidence: {
+        toastRect: toastUi.rect,
+        measuredOcclusions: toastUi.occlusions,
+        nativeDuringToast,
+        toastSeparated,
+        actionAfter,
+        clickThrough: clicksAfterToast !== clicksBeforeToast,
+        sameTarget: toastTargetAfter === toastTargetBefore,
+        sameUrl: toastUrlAfter === toastUrlBefore,
+        sameDom: toastMarkerAfter === toastMarker,
+        restoredToastGeometry,
+        ownership: context.control,
+        physicalClick: Boolean(deps.physicalClick),
+      },
+    })
+
+    // ── RESTART-USER: un permiso manual nunca sobrevive al Engine que lo
+    // concedió. La página, en cambio, sí: mismo target, URL, DOM y partición.
+    const restartTargetBefore = deps.registry.target(context.contextId, null)?.targetId ?? null
+    const restartUrlBefore = view.webContents.getURL()
+    const restartMarker = `restart-user-${Date.now()}`
+    await read(view, "(document.getElementById('field').value = '', true)")
+    const restartField = await read<{ x: number; y: number }>(
+      view,
+      `(() => { const r = document.getElementById('field').getBoundingClientRect();
+                return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
+    )
+    if (deps.physicalClick) {
+      deps.window.show()
+      deps.window.focus()
+      await sleep(300)
+      const content = deps.window.getContentBounds()
+      const presented = context.container.getBounds()
+      await deps.physicalClick(
+        Math.round(content.x + presented.x + restartField.x),
+        Math.round(content.y + presented.y + restartField.y),
+        restartMarker,
+      )
+    } else {
+      view.webContents.focus()
+      for (const type of ['mouseDown', 'mouseUp'] as const) {
+        view.webContents.sendInputEvent({
+          type,
+          x: restartField.x,
+          y: restartField.y,
+          button: 'left',
+          clickCount: 1,
+        })
+      }
+      for (const char of restartMarker) {
+        view.webContents.sendInputEvent({ type: 'char', keyCode: char })
+      }
+    }
+    await sleep(250)
+    const valueBeforeUserRestart = await read<string>(view, "document.getElementById('field').value")
+    const restartBindingBefore = deps.host.bindingId
+    const restartUserPromise = deps.engine.restart()
+    let flooredOnLoss = false
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const bounds = context.container.getBounds()
+      flooredOnLoss = bounds.width <= 1 && bounds.height <= 1 && context.control === 'agent'
+      if (flooredOnLoss) break
+      await sleep(50)
+    }
+    const focusedAfterLoss = view.webContents.isFocused()
+    if (deps.physicalType) await deps.physicalType('RST')
+    await restartUserPromise
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      if (deps.host.registered && deps.host.bindingId !== restartBindingBefore) break
+      await sleep(100)
+    }
+    const valueAfterUserRestart = await read<string>(view, "document.getElementById('field').value")
+    const restartBindingAfter = deps.host.bindingId
+    const restartTargetAfter = deps.registry.target(context.contextId, null)?.targetId ?? null
+
+    const agentMarker = `agent-after-user-restart-${Date.now()}`
+    await script([
+      { tool: 'browser.snapshot', args: {} },
+      { tool: 'browser.fill', args: { selector: '#field', value: agentMarker } },
+      { tool: 'browser.click', args: { selector: '#go' } },
+      { text: 'restored' },
+    ])
+    const afterUserRestart = await runTurn(sessionId, 'opera tras reiniciar con usuario al mando', 90_000)
+    const afterUserDom = await read<{ field: string; result: string; url: string }>(
+      view,
+      `({ field: document.getElementById('field').value,
+          result: document.getElementById('result').textContent,
+          url: location.href })`,
+    )
+    const restartToolsOk = ['browser.snapshot', 'browser.fill', 'browser.click'].every((name) =>
+      afterUserRestart.tools.some((tool) => tool.tool === name && tool.outcome === 'completed'),
+    )
+    const physicalProtected = deps.physicalType
+      ? valueAfterUserRestart === valueBeforeUserRestart
+      : true
+    const restartUserOk =
+      valueBeforeUserRestart === restartMarker &&
+      flooredOnLoss &&
+      !focusedAfterLoss &&
+      physicalProtected &&
+      restartBindingAfter !== null &&
+      restartBindingAfter !== restartBindingBefore &&
+      restartTargetAfter === restartTargetBefore &&
+      afterUserDom.url === restartUrlBefore &&
+      afterUserDom.field === agentMarker &&
+      afterUserDom.result.includes(agentMarker) &&
+      restartToolsOk &&
+      context.control === 'agent'
+    record({
+      id: 'RESTART-USER',
+      title: 'Reiniciar el Engine revoca control manual y conserva la misma página',
+      status: restartUserOk ? 'ok' : 'failed',
+      detail: restartUserOk
+        ? 'la vista bajó a 1×1, perdió foco y no aceptó tecleo físico; el Engine nuevo reusó target/URL/DOM y volvió a operar'
+        : `typed=${valueBeforeUserRestart === restartMarker}; floor=${flooredOnLoss}; focus=${focusedAfterLoss}; physical=${physicalProtected}; binding=${restartBindingBefore}→${restartBindingAfter}; target=${restartTargetBefore}→${restartTargetAfter}; tools=${restartToolsOk}`,
+      evidence: {
+        flooredOnLoss,
+        focusedAfterLoss,
+        physicalMeasured: Boolean(deps.physicalType),
+        physicalProtected,
+        valueBeforeUserRestart,
+        valueAfterUserRestart,
+        bindingBefore: restartBindingBefore,
+        bindingAfter: restartBindingAfter,
+        sameTarget: restartTargetAfter === restartTargetBefore,
+        sameUrl: afterUserDom.url === restartUrlBefore,
+        sameDom: afterUserDom.result.includes(agentMarker),
+        userControlPreserved: context.control === 'user',
+        toolsOk: restartToolsOk,
+        trace: afterUserRestart.trace,
+      },
+    })
+    await deps.services.detachSlot(toastLease.slot_id)
   } catch (error) {
     // ¿Sigue vivo el Engine? Distingue «se bloqueó el loop de stdio» de «se
     // bloqueó esta operación», que llevan a sitios muy distintos.

@@ -216,6 +216,8 @@ const api = {
    * página: el renderer solo registra su sonda cuando esto es cierto.
    */
   parityMode: process.env.RINARI_PARITY === '1',
+  /** Habilita únicamente el adaptador de aceptación UI del browser. */
+  browserVerticalMode: process.env.RINARI_BROWSER_VERTICAL === '1',
 } as const
 
 export type RinariDesktopApi = typeof api

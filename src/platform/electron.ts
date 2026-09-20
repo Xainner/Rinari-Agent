@@ -30,6 +30,8 @@ import type {
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
 interface DesktopHostApi {
+  parityMode?: boolean
+  browserVerticalMode?: boolean
   engine: {
     status(): Promise<EngineStatus>
     start(): Promise<EngineStatus>

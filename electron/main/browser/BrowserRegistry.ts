@@ -868,11 +868,19 @@ export class BrowserRegistry {
    * `binding_id` y el `engine_instance_id`, que se comprueban antes, y el
    * contexto lo resuelve la sesión, no el id que venga.
    */
-  resetEngineBindings(): void {
+  resetForEngineLoss(): { manualControlRevoked: boolean } {
+    let manualControlRevoked = false
     for (const context of this.contexts.values()) {
+      manualControlRevoked ||= context.control === 'user'
+      // Un permiso manual pertenecía a la instancia que desapareció. La
+      // nueva empieza en agent y no puede heredar una superficie remota aún
+      // enfocada/presentada por la anterior.
+      context.control = 'agent'
       context.engineContextId = null
       context.generation = 0
+      this.applyGeometry(context)
     }
+    return { manualControlRevoked }
   }
 
   /** Metadata pública de los targets de un contexto (§5.3). */

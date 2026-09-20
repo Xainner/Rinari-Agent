@@ -8,9 +8,10 @@
 # Guarda y restaura la posición del cursor: la sonda no deja el puntero movido.
 
 param(
-  [Parameter(Mandatory = $true)][int]$X,
-  [Parameter(Mandatory = $true)][int]$Y,
-  [string]$Text = ''
+  [int]$X = 0,
+  [int]$Y = 0,
+  [string]$Text = '',
+  [switch]$NoClick
 )
 
 Add-Type -TypeDefinition @'
@@ -34,12 +35,14 @@ public class RinariProbeInput {
 $origin = New-Object RinariProbeInput+POINT
 [void][RinariProbeInput]::GetCursorPos([ref]$origin)
 
-[void][RinariProbeInput]::SetCursorPos($X, $Y)
-Start-Sleep -Milliseconds 120
-[RinariProbeInput]::mouse_event([RinariProbeInput]::LEFTDOWN, 0, 0, 0, [IntPtr]::Zero)
-Start-Sleep -Milliseconds 60
-[RinariProbeInput]::mouse_event([RinariProbeInput]::LEFTUP, 0, 0, 0, [IntPtr]::Zero)
-Start-Sleep -Milliseconds 120
+if (-not $NoClick) {
+  [void][RinariProbeInput]::SetCursorPos($X, $Y)
+  Start-Sleep -Milliseconds 120
+  [RinariProbeInput]::mouse_event([RinariProbeInput]::LEFTDOWN, 0, 0, 0, [IntPtr]::Zero)
+  Start-Sleep -Milliseconds 60
+  [RinariProbeInput]::mouse_event([RinariProbeInput]::LEFTUP, 0, 0, 0, [IntPtr]::Zero)
+  Start-Sleep -Milliseconds 120
+}
 
 if ($Text.Length -gt 0) {
   Add-Type -AssemblyName System.Windows.Forms
@@ -48,4 +51,4 @@ if ($Text.Length -gt 0) {
 }
 
 [void][RinariProbeInput]::SetCursorPos($origin.X, $origin.Y)
-Write-Output "clicked $X $Y and typed $($Text.Length) chars"
+Write-Output "click=$(-not $NoClick) x=$X y=$Y typed=$($Text.Length)"

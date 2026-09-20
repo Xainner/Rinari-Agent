@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import AdaptiveToaster from './components/AdaptiveToaster'
+import { registerBrowserVerticalUiProbe } from './services/browserVerticalUiProbe'
 import { registerParityProbe } from "./services/parityProbe";
 import "./styles/index.css";
 
@@ -10,6 +11,10 @@ import "./styles/index.css";
 registerParityProbe(
   (window as { rinariDesktop?: { parityMode?: boolean } }).rinariDesktop?.parityMode === true,
 );
+registerBrowserVerticalUiProbe(
+  (window as { rinariDesktop?: { browserVerticalMode?: boolean } }).rinariDesktop
+    ?.browserVerticalMode === true,
+)
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

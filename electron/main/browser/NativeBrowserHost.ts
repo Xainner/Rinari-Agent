@@ -17,7 +17,7 @@
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 
-import { BrowserRegistry, type ContextEntry } from './BrowserRegistry'
+import type { BrowserRegistry, ContextEntry } from './BrowserRegistry'
 import {
   RequestLedger,
   fingerprintOf,
@@ -63,6 +63,8 @@ export interface NativeBrowserHostDeps {
   onError?: (message: string, detail?: unknown) => void
   /** Algo cambió en el contexto de esta sesión y la UI debe refrescarse. */
   onContextChanged?: (sessionId: string) => void
+  /** Retira el foco de cualquier página remota y lo devuelve al renderer. */
+  focusTrustedRenderer?: () => void
 }
 
 /** Lo que produjo una ejecución: resultado o error, nunca ambos. */
@@ -103,6 +105,8 @@ export class NativeBrowserHost {
    * vez», y el §5.4 dice justamente que un éxito no se reconstruye.
    */
   private readonly seen = new RequestLedger<ExecutionOutcome>()
+  /** Transiciones User → Agent que ya retiraron físicamente la vista. */
+  private readonly returningToAgent = new Map<string, symbol>()
 
   constructor(private readonly deps: NativeBrowserHostDeps) {}
 
@@ -129,7 +133,11 @@ export class NativeBrowserHost {
    * booleano tampoco lo habría detectado.
    */
   onEngineLost(reason: string): void {
-    if (this.binding === null && this.registering === null) return
+    const hadBinding = this.binding !== null || this.registering !== null
+    const reset = this.deps.registry.resetForEngineLoss()
+    this.returningToAgent.clear()
+    if (reset.manualControlRevoked) this.deps.focusTrustedRenderer?.()
+    if (!hadBinding) return
     this.epoch += 1
     this.binding = null
     this.registering = null
@@ -140,7 +148,6 @@ export class NativeBrowserHost {
     // esto, el Engine nuevo acuña otro `context_id`, deja de coincidir con el
     // recordado y **la vista viva queda inalcanzable**: cada herramienta
     // recibe `TARGET_NOT_FOUND` sobre una página que está ahí delante.
-    this.deps.registry.resetEngineBindings()
     // Los contextos siguen existiendo como vistas, pero ya no tienen
     // autoridad: su próxima solicitud llegará con un binding que el Engine
     // nuevo no reconoce, y se rechaza antes de tocar la página.
@@ -213,15 +220,71 @@ export class NativeBrowserHost {
     const context = this.deps.registry.contextForSession(sessionId)
     if (!context) return
     if (state === 'user') {
+      this.returningToAgent.delete(sessionId)
       this.deps.registry.setControl(context, 'user')
       return
     }
     if (state === 'agent') {
+      this.returningToAgent.delete(sessionId)
       this.deps.registry.setControl(context, 'agent')
+      this.deps.focusTrustedRenderer?.()
       return
     }
     // `uncertain`: no se pudo garantizar exclusión, así que el control sigue
     // siendo del agente y **no** se habilita la entrada manual.
+  }
+
+  /**
+   * Devuelve el control al agente sin abrir una ventana de doble autoridad.
+   *
+   * La vista remota se retira y pierde el foco **antes** de que el Engine
+   * vuelva a admitir mutaciones. Si la petición falla mientras sigue vivo el
+   * mismo binding, se restaura la presentación manual anterior. Una pérdida
+   * del Engine invalida el permiso y nunca hace rollback a `user`.
+   */
+  async setControl(
+    sessionId: string,
+    owner: 'agent' | 'user',
+    expectedRevision?: number,
+  ): Promise<unknown> {
+    const params = {
+      session_id: sessionId,
+      owner,
+      ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
+    }
+    if (owner === 'user') return this.deps.request('browser.control.set', params)
+
+    const context = this.deps.registry.contextForSession(sessionId)
+    if (!context || context.control !== 'user') {
+      // Un segundo click ya ve la presentación retirada. Invalida el token de
+      // la primera petición para que un fallo tardío suyo no restaure `user`
+      // después de que esta transición más nueva haya tomado el relevo.
+      this.returningToAgent.delete(sessionId)
+      this.deps.focusTrustedRenderer?.()
+      return this.deps.request('browser.control.set', params)
+    }
+
+    const token = Symbol(sessionId)
+    const bindingId = this.binding?.binding_id ?? null
+    this.returningToAgent.set(sessionId, token)
+    this.deps.registry.setControl(context, 'agent')
+    this.deps.focusTrustedRenderer?.()
+
+    try {
+      return await this.deps.request('browser.control.set', params)
+    } catch (error) {
+      const sameTransition = this.returningToAgent.get(sessionId) === token
+      const sameBinding = bindingId !== null && this.binding?.binding_id === bindingId
+      const sameContext = this.deps.registry.contextForSession(sessionId) === context
+      if (sameTransition && sameBinding && sameContext) {
+        this.deps.registry.setControl(context, 'user')
+      }
+      throw error
+    } finally {
+      if (this.returningToAgent.get(sessionId) === token) {
+        this.returningToAgent.delete(sessionId)
+      }
+    }
   }
 
   /** Captura acotada del target activo para el modo seguro del agente. */

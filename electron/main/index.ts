@@ -284,12 +284,10 @@ function browserServices(): HostServices['browser'] {
       return { active_target_id: targetId }
     },
 
-    setControl: (sessionId, owner, expectedRevision) =>
-      engine.request('browser.control.set', {
-        session_id: sessionId,
-        owner,
-        ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
-      }),
+    setControl: (sessionId, owner, expectedRevision) => {
+      if (!browserHost) throw new Error('the browser host is not ready')
+      return browserHost.setControl(sessionId, owner, expectedRevision)
+    },
 
     // Navegación de la toolbar: es del usuario sobre su propia página, no una
     // herramienta del agente. Se cierra el esquema igual que para el contenido
@@ -457,6 +455,10 @@ function openWindow(): void {
     request: (method, params) => engine.request(method, params),
     onError: (message, detail) => console.error(`[rinari-browser] ${message}`, detail ?? ''),
     onContextChanged: (sessionId) => publishBrowserContext(sessionId),
+    focusTrustedRenderer: () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return
+      mainWindow.webContents.focus()
+    },
   })
 
   // La autorización es del contenido: si navega fuera, se revoca hasta que
@@ -534,6 +536,10 @@ function attachVerticalProof(): void {
         // el panel de verdad.
         services: browserServices(),
         physicalClick: physicalClicker(),
+        physicalType: physicalTyper(),
+        renderer: {
+          evaluate: <T>(code: string) => window.webContents.executeJavaScript(code, true) as Promise<T>,
+        },
       }),
     )
     .then((report) => {
@@ -562,6 +568,25 @@ function physicalClicker(): ((x: number, y: number, text?: string) => Promise<vo
             '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script,
             '-X', `${x}`, '-Y', `${y}`,
             ...(text ? ['-Text', text] : []),
+          ],
+          (error) => (error ? reject(error) : resolve()),
+        )
+      })
+    })
+}
+
+/** Tecleo real sobre el foco actual, sin introducir un click que lo cambie. */
+function physicalTyper(): ((text: string) => Promise<void>) | undefined {
+  const script = process.env.RINARI_PROBE_PS1
+  if (process.platform !== 'win32' || !script) return undefined
+  return (text) =>
+    new Promise<void>((resolve, reject) => {
+      void import('node:child_process').then(({ execFile }) => {
+        execFile(
+          'powershell.exe',
+          [
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script,
+            '-NoClick', '-Text', text,
           ],
           (error) => (error ? reject(error) : resolve()),
         )

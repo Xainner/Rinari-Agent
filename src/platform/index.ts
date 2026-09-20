@@ -28,6 +28,8 @@ export type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  MigrationState,
+  MigrationStatus,
 } from './contract'
 export { DESKTOP_COMMANDS, ENGINE_BACKED_COMMANDS, HOST_ONLY_COMMANDS } from './contract'
 

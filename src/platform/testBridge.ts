@@ -25,6 +25,7 @@ import type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  MigrationStatus,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -56,6 +57,7 @@ export interface TestBridge extends DesktopBridge {
   readonly openedUrls: string[]
   update: UpdateAvailable | null
   desktop: boolean
+  migrationStatus: MigrationStatus
   /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
   browserContext: NativeBrowserContext | null
   browserPreview: NativeBrowserPreview | null
@@ -121,6 +123,7 @@ export function createTestBridge(): TestBridge {
     nextFileSelection: null,
     update: null,
     desktop: true,
+    migrationStatus: { state: 'not_started', pending: false },
 
     mockCommand(name, handler) {
       handlers.set(name, handler)
@@ -274,6 +277,13 @@ export function createTestBridge(): TestBridge {
       async installAndRelaunch() {},
     },
 
+    migration: {
+      async status() { return bridge.migrationStatus },
+      async importPending() { return bridge.migrationStatus },
+      async retry() { return bridge.migrationStatus },
+      async exportForElectron() { return bridge.migrationStatus },
+    },
+
     isDesktop: () => bridge.desktop,
 
     emitEngineEvent(event) {
@@ -321,6 +331,7 @@ export function createTestBridge(): TestBridge {
       browserListeners.clear()
       slotCounter = 0
       bridge.desktop = true
+      bridge.migrationStatus = { state: 'not_started', pending: false }
     },
   }
 

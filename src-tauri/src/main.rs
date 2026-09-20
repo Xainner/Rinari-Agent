@@ -73,6 +73,7 @@ pub fn run() {
             commands::engine::engine_restart,
             commands::engine::snapshot_get,
             commands::engine::initial_open_request,
+            commands::migration::migration_export,
             commands::sessions::session_list,
             commands::sessions::session_open,
             commands::sessions::session_get,

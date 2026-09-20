@@ -12,6 +12,7 @@ const HOST_ONLY = new Set([
   'engine_shutdown',
   'engine_restart',
   'initial_open_request',
+  'migration_export',
   'workspace_file_open',
 ])
 

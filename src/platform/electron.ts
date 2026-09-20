@@ -26,6 +26,7 @@ import type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  MigrationStatus,
 } from './contract'
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
@@ -82,6 +83,14 @@ interface DesktopHostApi {
     onActivated(callback: (target: NotificationTarget) => void): Unsubscribe
   }
   updates: { check(): Promise<UpdateAvailable | null>; installAndRelaunch(): Promise<void> }
+  migration: {
+    status(): Promise<MigrationStatus>
+    stage(): Promise<{ token: string; status: MigrationStatus; preferences: Record<string, string> } | null>
+    commit(token: string, preferences: Record<string, string>): Promise<MigrationStatus>
+    verify(token: string): Promise<MigrationStatus>
+    fail(token: string | undefined, message: string): Promise<MigrationStatus>
+    retry(): Promise<MigrationStatus>
+  }
   handoff: {
     initial(): Promise<OpenRequest>
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
@@ -201,6 +210,42 @@ export const electronBridge: DesktopBridge = {
   updates: {
     check: () => required().updates.check(),
     installAndRelaunch: () => required().updates.installAndRelaunch(),
+  },
+
+  migration: {
+    status: () => required().migration.status(),
+    async importPending(): Promise<MigrationStatus> {
+      const api = required().migration
+      const stage = await api.stage()
+      if (!stage) return api.status()
+      const before = new Map<string, string | null>()
+      try {
+        for (const [key, value] of Object.entries(stage.preferences)) {
+          before.set(key, window.localStorage.getItem(key))
+          window.localStorage.setItem(key, value)
+        }
+        const applied: Record<string, string> = Object.create(null) as Record<string, string>
+        for (const [key, value] of Object.entries(stage.preferences)) {
+          const current = window.localStorage.getItem(key)
+          if (current !== value) throw new Error(`could not verify imported preference: ${key}`)
+          applied[key] = current
+        }
+        await api.commit(stage.token, applied)
+        return await api.verify(stage.token)
+      } catch (error) {
+        for (const [key, value] of before) {
+          if (value === null) window.localStorage.removeItem(key)
+          else window.localStorage.setItem(key, value)
+        }
+        const message = error instanceof Error ? error.message : String(error)
+        await api.fail(stage.token, message).catch(() => undefined)
+        throw error
+      }
+    },
+    retry: () => required().migration.retry(),
+    async exportForElectron(): Promise<MigrationStatus> {
+      throw new Error('Electron does not export the Tauri transition artifact.')
+    },
   },
 
   isDesktop: () => hostApi() !== undefined,

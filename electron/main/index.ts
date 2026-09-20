@@ -21,6 +21,7 @@ import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry, originOf } from './ipc/validateSender'
 import { canPush } from './ipc/pushGuard'
 import { QuitCoordinator } from './lifecycle/QuitCoordinator'
+import { defaultMigrationDirectory, MigrationService } from './migration/MigrationService'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
@@ -55,6 +56,7 @@ let unregisterIpc: (() => void) | null = null
 const TRUSTED_ORIGIN = DEV_SERVER ? (originOf(DEV_SERVER) ?? APP_ORIGIN) : APP_ORIGIN
 const registry = new SenderRegistry(TRUSTED_ORIGIN)
 const handoff = new HandoffQueue()
+const migration = new MigrationService(defaultMigrationDirectory())
 
 function send(channel: string, payload: unknown): void {
   // Solo al renderer de confianza, y solo mientras siga en su origen: si
@@ -371,6 +373,7 @@ function buildServices(): HostServices {
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
     updates: createUpdates(),
+    migration,
     handoff: { initial: () => parseOpenRequest(process.argv, app.isPackaged ? 1 : 2) },
   }
 }

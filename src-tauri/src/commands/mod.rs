@@ -29,6 +29,7 @@ pub mod agents;
 pub mod desktop;
 pub mod ecosystem;
 pub mod engine;
+pub mod migration;
 pub mod models;
 pub mod peers;
 pub mod projects;

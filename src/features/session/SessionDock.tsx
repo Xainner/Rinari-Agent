@@ -6,6 +6,7 @@ import type { BrowserView as BrowserFrame } from '../../types/protocol.generated
 import { FileViewer, useFileWorkspace } from '../files/FileWorkspace'
 import BrowserSurface from '../browser/BrowserSurface'
 import WorkspaceView from '../workspace/WorkspaceView'
+import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
 
@@ -48,6 +49,7 @@ export default function SessionDock({
   browser,
 }: SessionDockProps) {
   const { t } = useI18n()
+  const overlayDepth = useOverlayStore(selectOverlayDepth)
   const files = useFileWorkspace()
   const openFiles = files?.tabs.length ?? 0
   const browserConnected = browser.frame?.state === 'connected'
@@ -107,7 +109,19 @@ export default function SessionDock({
         {surface === 'workspace' ? (
           <WorkspaceView session={session} embedded tab={workspaceTab} onTabChange={onWorkspaceTabChange} sharedRoot={sharedRoot} />
         ) : surface === 'browser' ? (
-          <BrowserSurface frame={browser.frame} error={browser.error} targetId={browser.targetId} onTargetChange={browser.onTargetChange} />
+          <BrowserSurface
+            sessionId={sessionId}
+            frame={browser.frame}
+            error={browser.error}
+            targetId={browser.targetId}
+            onTargetChange={browser.onTargetChange}
+            // La superficie sólo se presenta cuando es la pestaña a la vista:
+            // ocultarla retira la presentación, no cierra el contexto (§8.3).
+            shown={surface === 'browser'}
+            // Y se retira también mientras haya un modal encima. El recuento
+            // es de la ventana, no de la sesión: un diálogo tapa todo.
+            overlayDepth={overlayDepth}
+          />
         ) : (
           <FileViewer />
         )}

@@ -17,6 +17,9 @@ import type {
   EngineStatus,
   EngineEventMessage,
   NotificationSupport,
+  NativeBrowserContext,
+  NativeBrowserControl,
+  NativeBrowserPreview,
   NotificationTarget,
   OpenFilesOptions,
   OpenRequest,
@@ -27,6 +30,8 @@ import type {
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
 interface DesktopHostApi {
+  parityMode?: boolean
+  browserVerticalMode?: boolean
   engine: {
     status(): Promise<EngineStatus>
     start(): Promise<EngineStatus>
@@ -42,6 +47,31 @@ interface DesktopHostApi {
     requestClose(): Promise<void>
     clampToWorkArea(): Promise<void>
     onState(callback: (state: unknown) => void): Unsubscribe
+  }
+  /** Browser nativo. Los nombres van en snake_case: es el borde del puente. */
+  browser: {
+    context(sessionId: string): Promise<NativeBrowserContext>
+    prepare(sessionId: string): Promise<NativeBrowserContext>
+    attachSlot(sessionId: string): Promise<{ slot_id: string; session_id: string }>
+    updateSlot(layout: {
+      slot_id: string
+      logical_bounds: { x: number; y: number; width: number; height: number }
+      visible_bounds: { x: number; y: number; width: number; height: number }
+      shown: boolean
+      layout_revision: number
+      overlay_depth: number
+      occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+    }): Promise<void>
+    detachSlot(slotId: string): Promise<void>
+    selectTarget(sessionId: string, targetId: string): Promise<unknown>
+    setControl(
+      sessionId: string,
+      owner: 'agent' | 'user',
+      expectedRevision?: number,
+    ): Promise<NativeBrowserControl>
+    navigate(sessionId: string, url: string): Promise<unknown>
+    preview(sessionId: string): Promise<NativeBrowserPreview | null>
+    onContextChanged(callback: (view: NativeBrowserContext) => void): Unsubscribe
   }
   dialog: { openFiles(options?: OpenFilesOptions): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
@@ -116,6 +146,38 @@ export const electronBridge: DesktopBridge = {
 
   window: {
     clampToWorkArea: () => required().window.clampToWorkArea(),
+  },
+
+  // Browser nativo: se delega tal cual. El adaptador no añade lógica porque
+  // no debe: quien valida geometría, control y destino es main.
+  browser: {
+    context: (sessionId) => required().browser.context(sessionId),
+    prepare: (sessionId) => required().browser.prepare(sessionId),
+    attachSlot: async (sessionId) => {
+      const lease = await required().browser.attachSlot(sessionId)
+      return { slotId: lease.slot_id }
+    },
+    updateSlot: (layout) =>
+      required().browser.updateSlot({
+        slot_id: layout.slotId,
+        logical_bounds: layout.logicalBounds,
+        visible_bounds: layout.visibleBounds,
+        shown: layout.shown,
+        layout_revision: layout.layoutRevision,
+        overlay_depth: layout.overlayDepth,
+        occlusions: layout.occlusions,
+      }),
+    detachSlot: (slotId) => required().browser.detachSlot(slotId),
+    selectTarget: async (sessionId, targetId) => {
+      await required().browser.selectTarget(sessionId, targetId)
+    },
+    setControl: (sessionId, owner, expectedRevision) =>
+      required().browser.setControl(sessionId, owner, expectedRevision),
+    navigate: async (sessionId, url) => {
+      await required().browser.navigate(sessionId, url)
+    },
+    preview: (sessionId) => required().browser.preview(sessionId),
+    onContextChanged: async (callback) => required().browser.onContextChanged(callback),
   },
 
   dialog: {

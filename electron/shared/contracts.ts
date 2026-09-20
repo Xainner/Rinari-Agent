@@ -29,6 +29,20 @@ export const CHANNEL = {
   updatesInstall: 'rinari:updates.installAndRelaunch',
   /** El renderer pide el handoff pendiente del arranque en frío. */
   initialOpenRequest: 'rinari:handoff.initial',
+
+  // Browser nativo (documento 03 §6.1). Intenciones estrechas: metadata,
+  // presentación, pestaña, control y navegación autorizada. **No** hay canal
+  // para `host.browser.*` ni para `debugger.sendCommand`: el broker es de
+  // main, y una respuesta suya no es un permiso que el renderer pueda guardar.
+  browserContext: 'rinari:browser.context',
+  browserPrepare: 'rinari:browser.prepare',
+  browserAttachSlot: 'rinari:browser.attachSlot',
+  browserUpdateSlot: 'rinari:browser.updateSlot',
+  browserDetachSlot: 'rinari:browser.detachSlot',
+  browserSelectTarget: 'rinari:browser.selectTarget',
+  browserSetControl: 'rinari:browser.setControl',
+  browserNavigate: 'rinari:browser.navigate',
+  browserPreview: 'rinari:browser.preview',
 } as const
 
 /** Canales de main hacia el renderer (unidireccionales). */
@@ -42,6 +56,12 @@ export const PUSH = {
   contextMenuAction: 'rinari:push.contextMenuAction',
   /** El usuario pulsó una notificación: el renderer resuelve el destino. */
   notificationActivated: 'rinari:push.notificationActivated',
+  /**
+   * Cambió el contexto del browser de una sesión: pestañas, control o estado.
+   * Se empuja para que la toolbar no tenga que sondear —el §10 limita el poll
+   * al visor de capturas, y el nativo no lo necesita—.
+   */
+  browserContextChanged: 'rinari:push.browserContext',
 } as const
 
 export type RequestChannel = (typeof CHANNEL)[keyof typeof CHANNEL]
@@ -135,4 +155,65 @@ export interface OpenFilesRequest {
   multiple?: boolean
   directory?: boolean
   title?: string
+}
+
+// -- browser nativo (documento 03 §6.1) --------------------------------------
+
+/** Una pestaña del contexto. Metadata segura: nada operable desde fuera. */
+export interface BrowserTargetView {
+  target_id: string
+  url: string
+  title: string
+  active: boolean
+}
+
+/**
+ * Lo que la UI puede saber del browser de una sesión.
+ *
+ * Soporte del protocolo, binding vivo y contexto listo son **tres cosas
+ * distintas** (§5.2): anunciar `ready` por tener binding haría que la UI
+ * mostrara un browser que aún no puede enseñar nada.
+ */
+export interface BrowserContextView {
+  session_id: string
+  supported: boolean
+  host_registered: boolean
+  context_state: 'absent' | 'creating' | 'ready' | 'disconnected' | 'disposed'
+  available: boolean
+  backend: string | null
+  control?: 'agent' | 'user'
+  control_state?: 'agent' | 'taking-user-control' | 'user' | 'uncertain'
+  control_revision?: number
+  active_target_id?: string | null
+  targets?: BrowserTargetView[]
+}
+
+export interface BrowserControlView {
+  control: 'agent' | 'user'
+  control_state: string
+  control_revision: number
+}
+
+export interface BrowserPreviewView {
+  target_id: string
+  url: string
+  image: string
+  width: number
+  height: number
+}
+
+/** Geometría que el renderer reserva; main decide dónde se pinta. */
+export interface BrowserSlotLayoutRequest {
+  slot_id: string
+  logical_bounds: { x: number; y: number; width: number; height: number }
+  visible_bounds: { x: number; y: number; width: number; height: number }
+  shown: boolean
+  layout_revision: number
+  overlay_depth: number
+  occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+}
+
+export interface BrowserSlotLease {
+  slot_id: string
+  session_id: string
 }

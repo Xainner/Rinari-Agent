@@ -2,9 +2,23 @@ import * as React from 'react'
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import { cn } from '../../lib/utils'
 import { buttonVariants } from './button'
+import { useBlockingOverlay } from '../../stores/overlay'
 
 const AlertDialog = AlertDialogPrimitive.Root
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
+
+/**
+ * Retira las vistas nativas mientras el diálogo está **abierto**.
+ *
+ * Va aquí dentro y no en `AlertDialogContent` porque ese se renderiza siempre —los
+ * consumidores escriben `<AlertDialog open={x}><AlertDialogContent/>`— y sólo los hijos
+ * del `Portal` montan con la apertura. Colgado del componente de fuera, el
+ * navegador se habría quedado escondido mientras la pantalla existiera.
+ */
+function BlockNativeViews() {
+  useBlockingOverlay()
+  return null
+}
 
 function AlertDialogContent({
   className,
@@ -13,6 +27,7 @@ function AlertDialogContent({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
   return (
     <AlertDialogPrimitive.Portal>
+      <BlockNativeViews />
       <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-[luma-fade-in_.15s_ease-out]" />
       <AlertDialogPrimitive.Content
         className={cn(

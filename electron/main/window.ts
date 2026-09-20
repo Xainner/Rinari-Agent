@@ -142,9 +142,41 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   window.on('focus', push)
   window.on('blur', push)
 
-  window.once('ready-to-show', () => {
+  /**
+   * Mostrar la ventana, una sola vez.
+   *
+   * La ruta buena es `ready-to-show`, que espera al primer pintado y evita el
+   * parpadeo en blanco. Pero ese evento **no llega si la página no llega a
+   * pintar** —un error en el arranque de React, por ejemplo—, y entonces la
+   * aplicación se queda sin ventana: el proceso vivo, el renderer cargado y
+   * nada en pantalla. Un fallo así no puede dejar al usuario sin nada que
+   * mirar, ni sin poder abrir DevTools para ver qué pasó.
+   */
+  let shown = false
+  const reveal = (reason: string) => {
+    if (shown || window.isDestroyed()) return
+    shown = true
+    if (reason !== 'ready-to-show') {
+      console.error(`[rinari] la ventana se muestra por ${reason}: la página no llegó a pintar`)
+    }
     window.show()
     push()
+  }
+  window.once('ready-to-show', () => reveal('ready-to-show'))
+  // Respaldo: la página terminó de cargar pero no pintó.
+  window.webContents.once('did-finish-load', () => setTimeout(() => reveal('did-finish-load'), 1_500))
+  // Y si ni siquiera carga, se muestra igual para poder diagnosticar.
+  window.webContents.once('did-fail-load', (_event, code, description) =>
+    reveal(`did-fail-load ${code}: ${description}`),
+  )
+
+  // Errores del renderer al proceso principal: sin esto, una excepción en el
+  // arranque de React no aparece en ningún sitio que se pueda leer.
+  window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) console.error(`[renderer] ${message} (${sourceId}:${line})`)
+  })
+  window.webContents.on('render-process-gone', (_event, details) => {
+    console.error(`[renderer] el proceso se fue: ${details.reason}`)
   })
 
   window.on('close', (event) => {

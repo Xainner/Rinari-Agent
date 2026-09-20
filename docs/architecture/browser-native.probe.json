@@ -1,0 +1,354 @@
+{
+  "platform": "win32 x64",
+  "electron": "44.4.1",
+  "chrome": "152.0.7977.78",
+  "scaleFactor": 1,
+  "geometry": {
+    "window": {
+      "width": 900,
+      "height": 700
+    },
+    "clip": {
+      "x": 60,
+      "y": 80,
+      "width": 400,
+      "height": 300
+    },
+    "logical": {
+      "width": 760,
+      "height": 560
+    }
+  },
+  "checks": [
+    {
+      "id": "CLIP-00",
+      "question": "¿Se puede anidar una WebContentsView dentro de una View contenedora?",
+      "status": "ok",
+      "finding": "Sí: `new View()` admite `addChildView` y acepta una WebContentsView."
+    },
+    {
+      "id": "CLIP-01",
+      "question": "¿El viewport del documento conserva los bounds lógicos aunque el recorte visible sea menor?",
+      "status": "ok",
+      "finding": "Sí: el recorte de 400×300 no encogió el viewport, que sigue en 760×560.",
+      "detail": {
+        "clip": {
+          "x": 60,
+          "y": 80,
+          "width": 400,
+          "height": 300
+        },
+        "logical": {
+          "width": 760,
+          "height": 560
+        },
+        "innerSize": [
+          760,
+          560
+        ],
+        "devicePixelRatio": 1
+      }
+    },
+    {
+      "id": "CLIP-02",
+      "question": "¿La superficie nativa queda dentro del slot en la composición real?",
+      "status": "ok",
+      "finding": "Sí: la página ocupa ~109279 px de captura, compatible con el recorte de 120000 px y muy por debajo de los 425600 px del área lógica. La View contenedora recorta.",
+      "detail": {
+        "captureSize": {
+          "width": 900,
+          "height": 700
+        },
+        "captureScale": 1,
+        "slotPixels": 109279,
+        "backdropPixels": 510000,
+        "expectedClipPixels": 120000,
+        "expectedLogicalPixels": 425600
+      }
+    },
+    {
+      "id": "DPI-01",
+      "question": "¿En qué unidad habla `setBounds` frente a los píxeles de la captura?",
+      "status": "ok",
+      "finding": "`setBounds` y `window.innerWidth` coinciden en 760; son DIP/CSS. La captura sale en píxeles físicos (760×560) con factor 1. No se multiplica por devicePixelRatio al colocar la vista; sí al interpretar la imagen.",
+      "detail": {
+        "displayScaleFactor": 1,
+        "viewBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 760,
+          "height": 560
+        },
+        "innerSize": [
+          760,
+          560
+        ],
+        "devicePixelRatio": 1,
+        "capturePageSize": {
+          "width": 760,
+          "height": 560
+        }
+      }
+    },
+    {
+      "id": "CDP-01",
+      "question": "¿Qué dominios CDP page-level responden por `webContents.debugger`?",
+      "status": "ok",
+      "finding": "Responden 6/6: Page.enable, DOM.enable, Runtime.enable, Accessibility.enable, Network.enable, Input.setIgnoreInputEvents.",
+      "detail": {
+        "supported": [
+          "Page.enable",
+          "DOM.enable",
+          "Runtime.enable",
+          "Accessibility.enable",
+          "Network.enable",
+          "Input.setIgnoreInputEvents"
+        ],
+        "unsupported": {}
+      }
+    },
+    {
+      "id": "CDP-02",
+      "question": "¿Alcanza el debugger page-level a las APIs browser-level que usa el manager?",
+      "status": "ok",
+      "finding": "Alcanzables desde la sesión page-level: Target.getTargets, Browser.getVersion, Browser.setDownloadBehavior. Rechazadas: ninguna. Las alcanzables exponen ámbito mayor que el target y no deben pasarse a la herramienta sin acotar.",
+      "detail": {
+        "reachable": [
+          "Target.getTargets",
+          "Browser.getVersion",
+          "Browser.setDownloadBehavior"
+        ],
+        "rejected": {}
+      }
+    },
+    {
+      "id": "CDP-03",
+      "question": "¿`Page.captureScreenshot` devuelve el target visible con tamaño identificable?",
+      "status": "ok",
+      "finding": "Sí: 5281 bytes PNG de 760×560, del target adjunto.",
+      "detail": {
+        "bytes": 5281,
+        "size": {
+          "width": 760,
+          "height": 560
+        }
+      }
+    },
+    {
+      "id": "CDP-04",
+      "question": "¿Abrir DevTools sobre la página desengancha el debugger del broker?",
+      "status": "ok",
+      "finding": "No en esta versión: el debugger siguió adjunto tras abrir DevTools. Aun así el evento `detach` es la señal a la que hay que suscribirse.",
+      "detail": {
+        "detachReason": null,
+        "stillAttached": true
+      }
+    },
+    {
+      "id": "INPUT-01",
+      "question": "¿`before-input-event` con `preventDefault` impide que la tecla llegue a la página?",
+      "status": "ok",
+      "finding": "Sí: sin bloqueo la página contó 1 keydown; con bloqueo, 0. El teclado se puede cerrar por webContents.",
+      "detail": {
+        "openKeys": 1,
+        "blockedKeys": 0,
+        "beforeInputFired": 3
+      }
+    },
+    {
+      "id": "INPUT-02",
+      "question": "¿Existe `before-mouse-event` y bloquea el click en la versión fijada?",
+      "status": "ok",
+      "finding": "Sí: se disparó 4 veces y con `preventDefault` el click no llegó (1 sin bloqueo, 0 con bloqueo).",
+      "detail": {
+        "fired": 4,
+        "openClicksWidget": 1,
+        "blockedClicksWidget": 0
+      }
+    },
+    {
+      "id": "INPUT-03",
+      "question": "¿El input del agente por CDP es independiente de las barreras de webContents?",
+      "status": "failed",
+      "finding": "No: sin barrera el click por CDP llegó (1), con barrera no (0). Las dos rutas comparten intercepción; cerrar la entrada del usuario cerraría también la del agente.",
+      "detail": {
+        "openClicksCdp": 1,
+        "blockedClicksCdp": 0
+      }
+    },
+    {
+      "id": "INPUT-04",
+      "question": "¿`Input.setIgnoreInputEvents` separa la entrada del usuario de la del agente?",
+      "status": "failed",
+      "finding": "No: con `ignore: true` la vía del widget dio 0 y la de CDP 0. No separa las dos rutas.",
+      "detail": {
+        "widgetUnderIgnore": 0,
+        "cdpUnderIgnore": 0,
+        "afterRelease": 1
+      }
+    },
+    {
+      "id": "BARRIER-02",
+      "question": "¿Pasa el input del agente por CDP con la barrera nativa montada encima?",
+      "status": "ok",
+      "finding": "Sí: con la barrera montada el click por CDP llegó igual (1). La barrera separa las dos rutas y puede quedarse puesta mientras el agente trabaja.",
+      "detail": {
+        "agentUnderBarrier": 1,
+        "agentWithout": 1
+      }
+    },
+    {
+      "id": "BARRIER-01",
+      "question": "¿Una vista nativa superpuesta intercepta el click del usuario?",
+      "status": "ok",
+      "finding": "Sí: sin barrera 1 click, con barrera 0 en la página y 1 en la superposición, y 1 al retirarla. Una vista nativa hermana por encima es una barrera real: no hay click-through y el click va a quien está delante.",
+      "detail": {
+        "baseline": 1,
+        "underBarrier": 0,
+        "onBarrier": 1,
+        "afterRemoval": 1,
+        "target": {
+          "x": 1090,
+          "y": 626
+        }
+      }
+    },
+    {
+      "id": "ISO-01",
+      "question": "¿Dos sesiones con la misma URL comparten almacenamiento?",
+      "status": "ok",
+      "finding": "No: con particiones distintas, la segunda sesión no ve el localStorage de la primera pese a cargar la misma URL.",
+      "detail": {
+        "marker": "marca-1789741998313",
+        "ownRead": "marca-1789741998313",
+        "readBack": null,
+        "partitions": [
+          "probe-session-a",
+          "probe-session-b"
+        ]
+      }
+    },
+    {
+      "id": "ISO-02",
+      "question": "¿`Target.getTargets` desde una sesión ve los targets de la otra?",
+      "status": "failed",
+      "finding": "Sí: la enumeración devolvió 3 targets del fixture, incluidos los de otra partición. El broker no puede exponer `Target.getTargets` a la herramienta; tiene que servir su propia registry (§5.3).",
+      "detail": {
+        "total": 3,
+        "fixtureTargets": 3
+      }
+    }
+  ],
+  "summary": {
+    "total": 16,
+    "ok": 13,
+    "failed": 3,
+    "inconclusive": 0
+  },
+  "scaleSweep": [
+    {
+      "forcedScaleFactor": 1,
+      "reportedScaleFactor": 1,
+      "dpi": {
+        "status": "ok",
+        "detail": {
+          "displayScaleFactor": 1,
+          "viewBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 760,
+            "height": 560
+          },
+          "innerSize": [
+            760,
+            560
+          ],
+          "devicePixelRatio": 1,
+          "capturePageSize": {
+            "width": 760,
+            "height": 560
+          }
+        }
+      },
+      "logicalViewportHeld": true
+    },
+    {
+      "forcedScaleFactor": 1.25,
+      "reportedScaleFactor": 1.25,
+      "dpi": {
+        "status": "ok",
+        "detail": {
+          "displayScaleFactor": 1.25,
+          "viewBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 760,
+            "height": 560
+          },
+          "innerSize": [
+            760,
+            560
+          ],
+          "devicePixelRatio": 1.25,
+          "capturePageSize": {
+            "width": 950,
+            "height": 700
+          }
+        }
+      },
+      "logicalViewportHeld": true
+    },
+    {
+      "forcedScaleFactor": 1.5,
+      "reportedScaleFactor": 1.5,
+      "dpi": {
+        "status": "ok",
+        "detail": {
+          "displayScaleFactor": 1.5,
+          "viewBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 760,
+            "height": 560
+          },
+          "innerSize": [
+            760,
+            560
+          ],
+          "devicePixelRatio": 1.5,
+          "capturePageSize": {
+            "width": 1140,
+            "height": 840
+          }
+        }
+      },
+      "logicalViewportHeld": true
+    },
+    {
+      "forcedScaleFactor": 2,
+      "reportedScaleFactor": 2,
+      "dpi": {
+        "status": "ok",
+        "detail": {
+          "displayScaleFactor": 2,
+          "viewBounds": {
+            "x": 0,
+            "y": 0,
+            "width": 760,
+            "height": 560
+          },
+          "innerSize": [
+            760,
+            560
+          ],
+          "devicePixelRatio": 2,
+          "capturePageSize": {
+            "width": 1520,
+            "height": 1120
+          }
+        }
+      },
+      "logicalViewportHeld": true
+    }
+  ]
+}

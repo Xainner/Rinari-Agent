@@ -20,6 +20,8 @@ import {
   type ContextMenuItemWire,
   type ContextMenuRequest,
   type ContextMenuRole,
+  type BrowserSlotLayoutRequest,
+  type BrowserSlotLease,
   type OpenExternalFileRequest,
   type OpenFilesRequest,
   type SystemNotificationRequest,
@@ -59,6 +61,22 @@ export interface HostServices {
   }
   updates: { check(): Promise<unknown>; installAndRelaunch(): Promise<void> }
   handoff: { initial(): { project: string | null; session: string | null } }
+  /**
+   * Browser nativo (documento 03 §6.1). Intenciones, no primitivas: el
+   * renderer no nombra una ventana, un `webContentsId` ni un método CDP.
+   */
+  browser: {
+    context(sessionId: string): Promise<unknown>
+    prepare(sessionId: string): Promise<unknown>
+    attachSlot(sessionId: string): Promise<BrowserSlotLease>
+    updateSlot(request: BrowserSlotLayoutRequest): Promise<void>
+    detachSlot(slotId: string): Promise<void>
+    selectTarget(sessionId: string, targetId: string): Promise<unknown>
+    setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number): Promise<unknown>
+    navigate(sessionId: string, url: string): Promise<unknown>
+    preview(sessionId: string): Promise<unknown>
+    diagnostics(): { layoutSlots: number }
+  }
 }
 
 function failure(code: string, message: string): BridgeResult<never> {
@@ -176,6 +194,76 @@ function assertOpenFiles(value: unknown): OpenFilesRequest {
   }
 }
 
+function assertRect(value: unknown, field: string): {
+  x: number
+  y: number
+  width: number
+  height: number
+} {
+  if (!value || typeof value !== 'object') throw new ValidationError(`${field} must be an object`)
+  const raw = value as Record<string, unknown>
+  return {
+    x: assertFiniteNumber(raw.x, `${field}.x`),
+    y: assertFiniteNumber(raw.y, `${field}.y`),
+    width: assertFiniteNumber(raw.width, `${field}.width`),
+    height: assertFiniteNumber(raw.height, `${field}.height`),
+  }
+}
+
+/**
+ * Geometría del slot. Se valida aquí **y** en el coordinador: este extremo
+ * comprueba la forma, y aquel las reglas de admisión —revisión creciente,
+ * dentro de la ventana—. Ninguno confía en que el otro lo haya hecho.
+ */
+function assertSlotLayout(value: unknown): BrowserSlotLayoutRequest {
+  if (!value || typeof value !== 'object') throw new ValidationError('layout must be an object')
+  const raw = value as Record<string, unknown>
+  const revision = assertFiniteNumber(raw.layout_revision, 'layout_revision')
+  const depth = assertFiniteNumber(raw.overlay_depth, 'overlay_depth')
+  if (!Number.isInteger(revision) || revision < 0) {
+    throw new ValidationError('layout_revision must be a non-negative integer')
+  }
+  if (!Number.isInteger(depth) || depth < 0) {
+    throw new ValidationError('overlay_depth must be a non-negative integer')
+  }
+  if (typeof raw.shown !== 'boolean') throw new ValidationError('shown must be a boolean')
+  const occlusions = raw.occlusions
+  if (occlusions !== undefined && (!Array.isArray(occlusions) || occlusions.length > 6)) {
+    throw new ValidationError('occlusions must be an array of at most 6 rectangles')
+  }
+  const parsedOcclusions = Array.isArray(occlusions)
+    ? occlusions.map((rect, index) => assertRect(rect, `occlusions[${index}]`))
+    : undefined
+  if (parsedOcclusions?.some((rect) => rect.width <= 0 || rect.height <= 0)) {
+    throw new ValidationError('occlusions must have positive area')
+  }
+  return {
+    slot_id: assertString(raw.slot_id, 'slot_id', 128),
+    logical_bounds: assertRect(raw.logical_bounds, 'logical_bounds'),
+    visible_bounds: assertRect(raw.visible_bounds, 'visible_bounds'),
+    shown: raw.shown,
+    layout_revision: revision,
+    overlay_depth: depth,
+    occlusions: parsedOcclusions,
+  }
+}
+
+function assertControlOwner(value: unknown): 'agent' | 'user' {
+  if (value !== 'agent' && value !== 'user') {
+    throw new ValidationError('owner must be "agent" or "user"')
+  }
+  return value
+}
+
+function assertExpectedRevision(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined
+  // `true` es un número en muchas comprobaciones laxas; aquí no.
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new ValidationError('expected_revision must be a non-negative integer')
+  }
+  return value
+}
+
 /** Registra todos los canales. Devuelve la función que los retira. */
 export function registerIpc(registry: SenderRegistry, services: HostServices): () => void {
   const handlers: Array<[string, Parameters<typeof ipcMain.handle>[1]]> = [
@@ -217,6 +305,73 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
     [CHANNEL.updatesInstall, guarded(registry, () => services.updates.installAndRelaunch())],
     [CHANNEL.initialOpenRequest, guarded(registry, () => services.handoff.initial())],
+
+    // Browser nativo. Cada canal lleva una intención y nada más: no hay
+    // passthrough de métodos, ni de canales, ni de identificadores del host.
+    [
+      CHANNEL.browserContext,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.context(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserPrepare,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.prepare(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserAttachSlot,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.attachSlot(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserUpdateSlot,
+      guarded(registry, (_event, layout) => services.browser.updateSlot(assertSlotLayout(layout))),
+    ],
+    [
+      CHANNEL.browserDetachSlot,
+      guarded(registry, (_event, slotId) =>
+        services.browser.detachSlot(assertString(slotId, 'slot_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserSelectTarget,
+      guarded(registry, (_event, sessionId, targetId) =>
+        services.browser.selectTarget(
+          assertString(sessionId, 'session_id', 128),
+          assertString(targetId, 'target_id', 256),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserSetControl,
+      guarded(registry, (_event, sessionId, owner, expectedRevision) =>
+        services.browser.setControl(
+          assertString(sessionId, 'session_id', 128),
+          assertControlOwner(owner),
+          assertExpectedRevision(expectedRevision),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserNavigate,
+      guarded(registry, (_event, sessionId, url) =>
+        services.browser.navigate(
+          assertString(sessionId, 'session_id', 128),
+          // Mismo filtro de esquemas que la toolbar necesita; a dónde se puede
+          // navegar lo sigue decidiendo la policy de red del Engine.
+          assertOpenableUrl(url),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserPreview,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.preview(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
   ]
 
   for (const [channel, handler] of handlers) ipcMain.handle(channel, handler)

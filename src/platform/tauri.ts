@@ -27,6 +27,8 @@ import type {
   EngineBackedCommand,
   EngineStatus,
   EngineEventMessage,
+  NativeBrowserContext,
+  NativeBrowserControl,
   OpenFilesOptions,
   OpenRequest,
   Unsubscribe,
@@ -77,6 +79,43 @@ export const tauriBridge: DesktopBridge = {
     onMenuAction: (callback: (action: string) => void) => subscribe<string>(MENU_EVENT, callback),
     onOpenRequest: (callback: (request: OpenRequest) => void) =>
       subscribe<OpenRequest>(OPEN_REQUEST_EVENT, callback),
+  },
+
+  /**
+   * El host Tauri no tiene browser nativo, y lo dice.
+   *
+   * Fingir soporte haría que la UI enseñara una superficie que nunca aparece;
+   * con `supported: false` cae al visor de capturas, que es lo que este host
+   * sí puede mostrar (§10).
+   */
+  browser: {
+    async context(sessionId: string) {
+      return unsupportedBrowser(sessionId)
+    },
+    async prepare(sessionId: string) {
+      return unsupportedBrowser(sessionId)
+    },
+    async attachSlot(): Promise<{ slotId: string }> {
+      throw new Error('the Tauri host has no native browser surface')
+    },
+    async updateSlot(): Promise<void> {},
+    async detachSlot(): Promise<void> {},
+    async selectTarget(): Promise<void> {
+      throw new Error('the Tauri host has no native browser surface')
+    },
+    async setControl(): Promise<NativeBrowserControl> {
+      throw new Error('the Tauri host has no native browser surface')
+    },
+    async navigate(): Promise<void> {
+      throw new Error('the Tauri host has no native browser surface')
+    },
+    async preview() {
+      return null
+    },
+    async onContextChanged(): Promise<Unsubscribe> {
+      // Nunca cambia: no hay contexto nativo del que informar.
+      return () => {}
+    },
   },
 
   window: {
@@ -169,4 +208,18 @@ export const tauriBridge: DesktopBridge = {
   },
 
   isDesktop: () => isTauri(),
+}
+
+/** Estado honesto de un host sin browser nativo (documento 03 §10). */
+function unsupportedBrowser(sessionId: string): NativeBrowserContext {
+  return {
+    session_id: sessionId,
+    supported: false,
+    host_registered: false,
+    context_state: 'absent',
+    available: false,
+    backend: null,
+    targets: [],
+    active_target_id: null,
+  }
 }

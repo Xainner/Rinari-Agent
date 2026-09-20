@@ -19,7 +19,10 @@ include!(concat!(env!("OUT_DIR"), "/embedded_payload.rs"));
 
 const APP_ID: &str = "com.rinari.agent";
 const PRODUCT: &str = "Rinari Agent";
-const SETUP_VERSION: &str = env!("CARGO_PKG_VERSION");
+const SETUP_VERSION: &str = match option_env!("RINARI_SETUP_VERSION") {
+    Some(version) => version,
+    None => env!("CARGO_PKG_VERSION"),
+};
 const MARKER: &str = ".rinari-install.json";
 const LOG_NAME: &str = "install.log";
 static CANCELLED: AtomicBool = AtomicBool::new(false);
@@ -439,6 +442,49 @@ pub fn silent_plan(operation: SetupOperation, install_dir: String) -> SetupPlan 
             remove_cache: false,
             remove_shortcuts: operation == SetupOperation::Uninstall,
         },
+    }
+}
+
+fn update_plan_from_record(record: InstallRecord) -> SetupPlan {
+    SetupPlan {
+        operation: SetupOperation::Update,
+        options: InstallOptions {
+            install_dir: record.install_dir,
+            scope: record.scope,
+            start_menu: record.start_menu,
+            desktop: record.desktop,
+            cli_path: record.cli_path,
+            remove_cache: false,
+            remove_shortcuts: false,
+        },
+    }
+}
+
+/**
+ * Plan que usa `electron-updater` al ejecutar el setup con `--updated`.
+ * Conserva exactamente alcance e integraciones; un update no vuelve a aplicar
+ * los defaults del instalador ni añade accesos que el usuario quitó.
+ */
+pub fn updater_plan() -> Result<SetupPlan> {
+    let record = installed_record()
+        .ok_or_else(|| SetupError("No owned Rinari Agent installation was found".into()))?;
+    Ok(update_plan_from_record(record))
+}
+
+/**
+ * `electron-updater` arranca el setup y acto seguido termina Electron. El
+ * bootstrapper espera ese cierre antes de renombrar el directorio activo.
+ */
+pub fn wait_for_agent_closed(timeout: Duration) -> Result<()> {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        match ensure_agent_closed() {
+            Ok(()) => return Ok(()),
+            Err(_) if std::time::Instant::now() < deadline => {
+                thread::sleep(Duration::from_millis(250));
+            }
+            Err(error) => return Err(error),
+        }
     }
 }
 
@@ -1634,6 +1680,29 @@ mod tests {
         assert_eq!(plan.options.scope, InstallScope::Machine);
         assert!(plan.options.remove_shortcuts);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn updater_preserves_the_existing_scope_and_integrations() {
+        let record = InstallRecord {
+            app_id: APP_ID.into(),
+            version: "0.2.0".into(),
+            install_dir: r"C:\Program Files\Rinari Agent".into(),
+            scope: InstallScope::Machine,
+            start_menu: false,
+            desktop: true,
+            cli_path: true,
+            cli_entry: Some(r"C:\Program Files\Rinari Agent\cli".into()),
+            alias_hard_link: true,
+        };
+        let plan = update_plan_from_record(record);
+        assert_eq!(plan.operation, SetupOperation::Update);
+        assert_eq!(plan.options.scope, InstallScope::Machine);
+        assert!(!plan.options.start_menu);
+        assert!(plan.options.desktop);
+        assert!(plan.options.cli_path);
+        assert!(!plan.options.remove_cache);
+        assert!(!plan.options.remove_shortcuts);
     }
 
     #[test]

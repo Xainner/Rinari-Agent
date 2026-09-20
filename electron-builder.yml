@@ -17,6 +17,8 @@ extraResources:
     to: engine-dist
     filter:
       - "**/*"
+  - from: build/app-update.yml
+    to: app-update.yml
 afterPack: build/afterPack.cjs
 artifactName: Rinari-Agent-Payload-${version}-${arch}.${ext}
 forceCodeSigning: false

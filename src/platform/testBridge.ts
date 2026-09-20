@@ -274,7 +274,18 @@ export function createTestBridge(): TestBridge {
       async check() {
         return bridge.update
       },
-      async installAndRelaunch() {},
+      async download() {
+        return {
+          phase: 'downloaded' as const,
+          current_version: '0.2.0',
+          available_version: bridge.update?.version ?? null,
+          progress: null,
+          message: null,
+          unsigned: bridge.update?.unsigned ?? true,
+        }
+      },
+      async apply() {},
+      async onState() { return () => {} },
     },
 
     migration: {

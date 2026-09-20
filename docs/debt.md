@@ -182,10 +182,11 @@ documentado; lo demás no se presenta como terminado.
   respaldados por el Engine. Los otros 112 tienen cobertura de traducción por
   unidad e invariantes (método válido, renombrados, tabla completa), no
   ejercicio individual contra un Engine vivo.
-- **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
-  `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
-  el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un
-  permiso ausente se muestra ausente, no como éxito simulado.
+- **Updater de Electron** — `DONE` para el canal unsigned acordado. Electron
+  0.2.x consume `latest.yml`, descarga solo por acción explícita, valida el
+  SHA-512 y aplica por la autoridad única de lifecycle después de confirmar y
+  cerrar el Engine. Tauri 0.1.x conserva su `latest.json` firmado. La identidad
+  Authenticode sigue pendiente y la UI identifica el canal como unsigned.
 - **Trabajo activo al cerrar** — `PARTIAL`. Se pregunta siempre que el Engine
   esté en marcha, que peca de prudente; saber si hay turnos vivos exige
   preguntárselo al Engine y está pendiente.
@@ -199,8 +200,11 @@ documentado; lo demás no se presenta como terminado.
   hay deduplicación de 10 s y el clic **solo** enfoca y resuelve el destino:
   no envía, no reanuda, no aprueba. Bajo Tauri se sigue declarando no
   soportado, porque este build no incluye `tauri-plugin-notification`.
-- **Empaquetado** — `OPEN`. `electron-builder`, el sidecar del Engine en
-  recursos y el instalador NSIS son del documento 04 (entrega G).
+- **Empaquetado** — `DONE` para Windows x64 unsigned. `electron-builder`
+  produce la aplicación ASAR con el Engine en `extraResources`; el bootstrapper
+  personalizado instala, repara, modifica, actualiza y desinstala mediante una
+  transacción con staging y rollback. Firma Authenticode y matrices macOS/Linux
+  permanecen fuera de esta entrega.
 
 ### Boards y mensajería entre paneles (2026-09-15)
 

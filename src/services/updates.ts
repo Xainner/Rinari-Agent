@@ -1,4 +1,4 @@
-import { platform, type UpdateAvailable } from '../platform'
+import { platform, type UpdateAvailable, type UpdateState, type Unsubscribe } from '../platform'
 
 export type { UpdateAvailable }
 
@@ -7,6 +7,14 @@ export function checkForUpdates(): Promise<UpdateAvailable | null> {
   return platform().updates.check()
 }
 
-export function installUpdateAndRelaunch(): Promise<void> {
-  return platform().updates.installAndRelaunch()
+export function downloadUpdate(): Promise<UpdateState> {
+  return platform().updates.download()
+}
+
+export function applyUpdate(): Promise<void> {
+  return platform().updates.apply()
+}
+
+export function onUpdateState(callback: (state: UpdateState) => void): Promise<Unsubscribe> {
+  return platform().updates.onState(callback)
 }

@@ -35,7 +35,10 @@
     "package:engine": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-engine.ps1 -OutDir engine-dist",
     "package:hashes": "node scripts/hash-package-inputs.mjs",
     "package:payload": "npm run build && npm run desktop:build && electron-builder --win dir --x64 --publish never && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-setup-payload.ps1",
-    "package:win": "npm run installer:art && npm run package:engine && npm run package:hashes && npm run package:payload && npm run setup:build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/finalize-setup.ps1"
+    "package:update-metadata": "node scripts/generate-update-metadata.mjs",
+    "updater:e2e": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1",
+    "package:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1",
+    "package:win:staged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1 -SkipEngine"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.23",

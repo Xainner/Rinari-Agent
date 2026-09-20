@@ -4,7 +4,7 @@ import { ArrowUpRight, Check, Code2, Copy, Cpu, Download, GitBranch, Layers, Loa
 import { copyText } from '../../lib/clipboard'
 import { useI18n } from '../../i18n'
 import { engineApi, type EngineStatus } from '../../services/engine'
-import { checkForUpdates, installUpdateAndRelaunch } from '../../services/updates'
+import { checkForUpdates, downloadUpdate } from '../../services/updates'
 import { platform } from '../../platform'
 import './about.css'
 import engineManifest from '../../../engine-manifest.json'
@@ -82,10 +82,9 @@ export default function AboutSettings({ version }: { version: string }) {
       }
       toast(t('update.available', { v: found.version }), {
         action: {
-          label: t('update.install'),
+          label: t('update.download'),
           onClick: () => {
-            toast.loading(t('update.installing'))
-            void installUpdateAndRelaunch().catch((err: unknown) =>
+            void downloadUpdate().catch((err: unknown) =>
               toast.error(
                 t('update.failed', {
                   detail: err instanceof Error ? err.message : String(err),

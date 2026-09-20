@@ -7,7 +7,7 @@
  */
 
 import { app, protocol, BrowserWindow, Menu, dialog, shell } from 'electron'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
@@ -25,12 +25,16 @@ import { defaultMigrationDirectory, MigrationService } from './migration/Migrati
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
-import { createContextMenu, createDialogs, createOpener, createUpdates } from './native/services'
+import { createContextMenu, createDialogs, createOpener } from './native/services'
+import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
 const isDev = Boolean(DEV_SERVER)
+const UPDATE_E2E_ENABLED = process.env.RINARI_BUILD_UPDATE_E2E === '1'
+const updateE2EProfile = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_PROFILE : undefined
+if (updateE2EProfile) app.setPath('userData', updateE2EProfile)
 
 /** Raíz del renderer construido: en los recursos si está empaquetado. */
 function rendererRoot(): string {
@@ -374,7 +378,7 @@ function buildServices(): HostServices {
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
-    updates: createUpdates(),
+    updates,
     migration,
     handoff: { initial: () => parseOpenRequest(process.argv, app.isPackaged ? 1 : 2) },
   }
@@ -393,16 +397,17 @@ const quitCoordinator = new QuitCoordinator({
   // preguntárselo al Engine. Mientras tanto se pregunta siempre que esté en
   // marcha, que peca de prudente en vez de matar un turno en silencio.
   shouldConfirm: () => engine.status().state === 'ready',
-  async confirm() {
+  async confirm(reason) {
     const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
     const options = {
       type: 'question' as const,
       buttons: ['Cerrar Rinari', 'Cancelar'],
       defaultId: 1,
       cancelId: 1,
-      message: '¿Cerrar Rinari Agent?',
-      detail:
-        'El Engine se detendrá. Los turnos en ejecución se interrumpen y los procesos administrados se cierran.',
+      message: reason === 'update' ? '¿Aplicar la actualización ahora?' : '¿Cerrar Rinari Agent?',
+      detail: reason === 'update'
+        ? 'Rinari cerrará el Engine y reiniciará con la versión descargada. Los turnos y procesos activos se interrumpen.'
+        : 'El Engine se detendrá. Los turnos en ejecución se interrumpen y los procesos administrados se cierran.',
     }
     const { response } = target
       ? await dialog.showMessageBox(target, options)
@@ -410,10 +415,11 @@ const quitCoordinator = new QuitCoordinator({
     return response === 0
   },
   shutdown: () => engine.shutdown().then(() => undefined),
-  commit() {
+  commit(reason) {
     unregisterIpc?.()
     unregisterIpc = null
-    app.quit()
+    if (reason === 'update') updates.commitInstall()
+    else app.quit()
   },
   onShutdownError(error, reason) {
     // Ni se fuerza la salida ni se oculta: queda registrado y se puede
@@ -421,6 +427,46 @@ const quitCoordinator = new QuitCoordinator({
     console.error(`[rinari] el cierre del Engine falló (${reason}):`, error)
   },
 })
+
+const updates = createUpdates({
+  requestApply: () => quitCoordinator.requestQuit('update'),
+  onState: (state) => send(PUSH.updateState, state),
+})
+
+/** Ensayo instalado y sin UI del canal local 0.2.0 → 0.2.1. */
+async function runUpdateE2E(resultPath: string): Promise<void> {
+  const expected = process.env.RINARI_UPDATE_E2E_EXPECTED
+  const expectFailure = process.env.RINARI_UPDATE_E2E_EXPECT_FAILURE === '1'
+  const current = app.getVersion()
+  const finish = async (body: Record<string, unknown>, code: number) => {
+    await writeFile(resultPath, JSON.stringify(body, null, 2), 'utf8')
+    app.exit(code)
+  }
+  if (!expected) {
+    await finish({ ok: false, current, error: 'RINARI_UPDATE_E2E_EXPECTED is missing' }, 1)
+    return
+  }
+  if (!expectFailure && current === expected) {
+    await finish({ ok: true, current, expected, stage: 'relaunched' }, 0)
+    return
+  }
+  try {
+    const available = await updates.check()
+    if (!available || available.version !== expected) {
+      throw new Error(`expected update ${expected}, got ${available?.version ?? 'none'}`)
+    }
+    await updates.download()
+    if (expectFailure) {
+      await finish({ ok: false, current, expected, error: 'the altered update was accepted' }, 1)
+      return
+    }
+    await updates.apply()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (expectFailure) await finish({ ok: true, current, expected, stage: 'rejected', error: message }, 0)
+    else await finish({ ok: false, current, expected, stage: 'failed', error: message }, 1)
+  }
+}
 
 function openWindow(): void {
   const preloadPath = join(__dirname, 'preload.cjs')
@@ -700,6 +746,11 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   void app.whenReady().then(() => {
+    const updateE2EResult = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_RESULT : undefined
+    if (updateE2EResult) {
+      void runUpdateE2E(updateE2EResult)
+      return
+    }
     if (!isDev) registerAppScheme(rendererRoot())
     Menu.setApplicationMenu(
       buildApplicationMenu({

@@ -14,7 +14,7 @@
 export type QuitState = 'idle' | 'confirming' | 'shutting-down' | 'committed'
 
 /** Por dónde entró la petición; solo para diagnóstico. */
-export type QuitReason = 'window-close' | 'app' | 'menu' | 'window-all-closed' | 'parity'
+export type QuitReason = 'window-close' | 'app' | 'menu' | 'window-all-closed' | 'update' | 'parity'
 
 export interface QuitDeps {
   /** ¿Hay que preguntar? Hoy: el Engine está en marcha. */
@@ -24,7 +24,7 @@ export interface QuitDeps {
   /** Cierre coordinado del Engine. Se espera antes del cierre final. */
   shutdown(): Promise<void>
   /** Todo cerrado: retirar IPC y terminar. Se llama una sola vez. */
-  commit(): void
+  commit(reason: QuitReason): void
   /** Un cierre que falló; se registra y el coordinador vuelve a ser usable. */
   onShutdownError?(error: unknown, reason: QuitReason): void
 }
@@ -82,7 +82,7 @@ export class QuitCoordinator {
       }
 
       this.state = 'committed'
-      this.deps.commit()
+      this.deps.commit(reason)
       return true
     }
 

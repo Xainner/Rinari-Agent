@@ -26,6 +26,7 @@ import type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  UpdateState,
   MigrationStatus,
 } from './contract'
 
@@ -82,7 +83,12 @@ interface DesktopHostApi {
     send(notification: SystemNotification): Promise<boolean>
     onActivated(callback: (target: NotificationTarget) => void): Unsubscribe
   }
-  updates: { check(): Promise<UpdateAvailable | null>; installAndRelaunch(): Promise<void> }
+  updates: {
+    check(): Promise<UpdateAvailable | null>
+    download(): Promise<UpdateState>
+    apply(): Promise<void>
+    onState(callback: (state: UpdateState) => void): Unsubscribe
+  }
   migration: {
     status(): Promise<MigrationStatus>
     stage(): Promise<{ token: string; status: MigrationStatus; preferences: Record<string, string> } | null>
@@ -209,7 +215,9 @@ export const electronBridge: DesktopBridge = {
 
   updates: {
     check: () => required().updates.check(),
-    installAndRelaunch: () => required().updates.installAndRelaunch(),
+    download: () => required().updates.download(),
+    apply: () => required().updates.apply(),
+    onState: (callback) => ready(required().updates.onState(callback)),
   },
 
   migration: {

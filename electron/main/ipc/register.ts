@@ -87,7 +87,11 @@ export interface HostServices {
     support(): { canSend: boolean; canActivateTarget: boolean }
     send(notification: SystemNotificationRequest): boolean
   }
-  updates: { check(): Promise<unknown>; installAndRelaunch(): Promise<void> }
+  updates: {
+    check(): Promise<unknown>
+    download(): Promise<unknown>
+    apply(): Promise<void>
+  }
   migration: {
     status(): Promise<unknown>
     stage(): Promise<unknown>
@@ -339,7 +343,8 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, request) => services.notifications.send(assertNotification(request))),
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
-    [CHANNEL.updatesInstall, guarded(registry, () => services.updates.installAndRelaunch())],
+    [CHANNEL.updatesDownload, guarded(registry, () => services.updates.download())],
+    [CHANNEL.updatesApply, guarded(registry, () => services.updates.apply())],
     [CHANNEL.migrationStatus, guarded(registry, () => services.migration.status())],
     [CHANNEL.migrationStage, guarded(registry, () => services.migration.stage())],
     [

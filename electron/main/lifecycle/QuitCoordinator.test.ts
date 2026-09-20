@@ -8,7 +8,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { QuitCoordinator, type QuitDeps } from './QuitCoordinator'
 
 function coordinator(overrides: Partial<QuitDeps> = {}) {
-  const calls = { confirm: 0, shutdown: 0, commit: 0, errors: [] as unknown[] }
+  const calls = {
+    confirm: 0,
+    shutdown: 0,
+    commit: 0,
+    commitReasons: [] as string[],
+    errors: [] as unknown[],
+  }
   const deps: QuitDeps = {
     shouldConfirm: () => true,
     confirm: async () => {
@@ -18,8 +24,9 @@ function coordinator(overrides: Partial<QuitDeps> = {}) {
     shutdown: async () => {
       calls.shutdown += 1
     },
-    commit: () => {
+    commit: (reason) => {
       calls.commit += 1
+      calls.commitReasons.push(reason)
     },
     onShutdownError: (error) => calls.errors.push(error),
     ...overrides,
@@ -89,6 +96,12 @@ describe('QUIT-02/04 — confirmar detiene una sola vez', () => {
     await expect(quit.requestQuit('app')).resolves.toBe(true)
     expect(calls.confirm).toBe(0)
     expect(calls.shutdown).toBe(1)
+  })
+
+  it('conserva update como razón hasta la autoridad de instalación', async () => {
+    const { quit, calls } = coordinator()
+    await expect(quit.requestQuit('update')).resolves.toBe(true)
+    expect(calls.commitReasons).toEqual(['update'])
   })
 })
 

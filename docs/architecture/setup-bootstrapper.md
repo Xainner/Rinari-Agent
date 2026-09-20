@@ -89,13 +89,15 @@ release/installer/
   setup.sha256.json                                hash, size and signed=false
 ```
 
-`npm run package:win` builds the art, pinned Engine, Electron app, payload and bootstrapper in that order. It never publishes. PR artifacts are explicitly unsigned. The legacy release workflow accepts only `v0.1.*`; a `v0.2.*` tag fails closed until G3 provides and verifies Authenticode/Azure Trusted Signing and the Electron `latest.yml` channel.
+`npm run package:win` builds the art, pinned Engine, Electron app, payload, bootstrapper and Electron `latest.yml` in that order. It never publishes. PR artifacts are explicitly unsigned. The release workflow keeps Tauri `v0.1.*` on its signed `latest.json` channel and builds Electron `v0.2.*` as an explicitly unsigned draft with SHA-512 transport integrity. Windows therefore shows an unknown-publisher warning until an Authenticode identity exists.
 
 ## Test boundary
 
 The Windows CI job builds the real pinned Engine and Electron payload, compiles setup, installs into a path containing spaces and Unicode, checks the bundled Engine, runs the installed Electron smoke with isolated Engine/profile homes, uninstalls and waits for exact owned-directory cleanup. Rust tests cover ownership binding, traversal, numeric versions, payload corruption and elevated-plan tampering. DPI and keyboard evidence covers all six screens at 100, 125, 150 and 200 percent; that physical-display matrix remains a manual Windows release gate because CI cannot change host DPI without changing system settings.
 
-Updater channel handling, signed update verification, active-work coordination and 0.2.0 → 0.2.1 rollback belong to G3.
+G3 adds `electron-updater`, full-installer updates through this same bootstrapper, active-work confirmation and the single Engine shutdown path. The setup receives `--updated /S --force-run`, preserves the exact owned scope and integrations, waits for the running app to exit, and reuses the staging, verification, atomic rename and rollback transaction. Differential downloads are disabled because this custom setup has no NSIS blockmap.
+
+The installed-app test proves 0.2.0 → 0.2.1, relaunch and ownership marker update. It also proves that altered metadata and corrupted setup bytes are rejected by SHA-512. These hashes establish integrity only; they do not identify a publisher. Authenticode remains pending by product decision and is not presented as complete.
 
 ## Local review evidence
 

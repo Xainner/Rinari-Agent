@@ -356,7 +356,7 @@ ejecuta el vertical bajo Xvfb con home y perfil efímeros. Los pasos que
 dependen de entrada física real permanecen en el gate manual de Windows; el
 broker, la frontera remota, aislamiento, lifecycle, backpressure, restart,
 uploads y downloads sí corren en CI. La ejecución local final usó
-`94dc4b1419bcd9c725b9c8e9ba9d909fc43e11fe`, el mismo SHA que fija el manifest.
+`1b5469cb7c68aaf618b3bb85df5942ed6e52a5a9`, el mismo SHA que fija el manifest.
 
 ## 7. Lo que esta etapa no probó
 

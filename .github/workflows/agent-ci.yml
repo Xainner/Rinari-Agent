@@ -15,6 +15,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run electron:install
       - run: npm run protocol:check
       # Inventario de paridad desktop (documento 02 §2): si un comando aparece
       # o cambia de firma sin regenerarlo, el host Electron se construiría
@@ -97,6 +98,10 @@ jobs:
         run: test "$(git -C Rinari-CLI rev-parse HEAD)" = "${{ steps.engine.outputs.sha }}"
       - run: python -m pip install uv
       - run: npm ci
+      # Electron 44 distribuye el instalador como binario explícito; el paquete
+      # npm ya no declara postinstall. Descargamos el runtime antes de exigir
+      # el helper SUID y de ejecutar la prueba nativa.
+      - run: npm run electron:install
       - run: npm run build
       - run: npm run desktop:build
       - name: Fix the Electron sandbox helper permissions

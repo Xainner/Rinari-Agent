@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
+    "electron:install": "node node_modules/electron/install.js",
     "typecheck:electron": "tsc -p tsconfig.electron.json",
     "desktop:build": "node scripts/build-desktop.mjs",
     "desktop:dev": "node scripts/desktop-dev.mjs",

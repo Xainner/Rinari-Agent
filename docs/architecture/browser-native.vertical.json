@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-09-20T02:39:04.451Z",
+  "generated_at": "2026-09-20T03:21:17.973Z",
   "platform": "win32-x64",
-  "agent_revision": "411d3a57affd371c6b716d58bc3f49e35aa7dc65",
+  "agent_revision": "97f91648e46177af2d69dbed1ffa44690d2253ed",
   "cli_revision": "1b5469cb7c68aaf618b3bb85df5942ed6e52a5a9",
   "steps": [
     {
       "id": "V1",
       "title": "Electron crea una WebContentsView en blanco con contexto de sesión registrado",
       "status": "ok",
-      "detail": "contexto de ses_01M2YASKRH9GBY9T7Z8Z76G19X con un target en about:blank",
+      "detail": "contexto de ses_01M2YD6XHCX2EXY6GETDFABJ9W con un target en about:blank",
       "evidence": {
-        "contextId": "e8a0a8c2-f673-448f-8f8d-362b30f513e6",
-        "targetId": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "contextId": "9c209f87-a84c-4526-85dd-4f756d2a234b",
+        "targetId": "060b03dd-1cc1-4276-a388-5ec808f17465",
         "url": "about:blank"
       }
     },
@@ -19,11 +19,11 @@
       "id": "V2",
       "title": "Un turno del Engine navega al fixture mediante el backend nativo",
       "status": "ok",
-      "detail": "la vista que existía ya está en http://127.0.0.1:54754/fixture; no se creó otra",
+      "detail": "la vista que existía ya está en http://127.0.0.1:53963/fixture; no se creó otra",
       "evidence": {
         "turn": "turn.completed",
         "tool": true,
-        "url": "http://127.0.0.1:54754/fixture",
+        "url": "http://127.0.0.1:53963/fixture",
         "trace": [
           "tool.requested:capability.activate",
           "tool.started:capability.activate",
@@ -58,7 +58,7 @@
       "detail": "el request del documento inicial quedó en el buffer temprano",
       "evidence": {
         "events": 2,
-        "fixtureUrl": "http://127.0.0.1:54754/fixture"
+        "fixtureUrl": "http://127.0.0.1:53963/fixture"
       }
     },
     {
@@ -71,8 +71,8 @@
         "require": "undefined",
         "process": "undefined",
         "popupBlocked": true,
-        "beforePrivilegedNavigation": "http://127.0.0.1:54754/fixture",
-        "afterPrivilegedNavigation": "http://127.0.0.1:54754/fixture"
+        "beforePrivilegedNavigation": "http://127.0.0.1:53963/fixture",
+        "afterPrivilegedNavigation": "http://127.0.0.1:53963/fixture"
       }
     },
     {
@@ -110,7 +110,7 @@
       "id": "V3",
       "title": "El Engine lee snapshot, llena un campo y hace click; el DOM cambia en la misma vista",
       "status": "ok",
-      "detail": "la vista visible muestra «aplicado: vertical-1789871842912», con el valor que escribió la herramienta",
+      "detail": "la vista visible muestra «aplicado: vertical-1789874375866», con el valor que escribió la herramienta",
       "evidence": {
         "tools": [
           "capability.activate",
@@ -134,20 +134,20 @@
         ],
         "dom": {
           "state": "applied",
-          "text": "aplicado: vertical-1789871842912",
-          "value": "vertical-1789871842912"
+          "text": "aplicado: vertical-1789874375866",
+          "value": "vertical-1789874375866"
         },
-        "typed": "vertical-1789871842912"
+        "typed": "vertical-1789874375866"
       }
     },
     {
       "id": "V4",
       "title": "La screenshot es de esta página y de esta sesión, no sólo bytes",
       "status": "ok",
-      "detail": "11781 bytes, 760×560, sha256 verificado, contenido del fixture, target de esta sesión",
+      "detail": "11979 bytes, 760×560, sha256 verificado, contenido del fixture, target de esta sesión",
       "evidence": {
-        "bytes": 11781,
-        "sha256": "6261d1c56342ad0b71b6953063c5bbe23cddbb3905a5bfff2249006418f52c1e",
+        "bytes": 11979,
+        "sha256": "0bc449bf5fcf7d80b2a79324603fd7e42e57728ded7d7a73345659b8252b3712",
         "hashMatches": true,
         "size": {
           "width": 760,
@@ -158,7 +158,7 @@
           "height": 560
         },
         "looksLikeFixture": true,
-        "targetId": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "targetId": "060b03dd-1cc1-4276-a388-5ec808f17465",
         "targetIsOurs": true
       }
     },
@@ -170,7 +170,7 @@
       "evidence": {
         "hiddenBytes": 8703,
         "outcome": "completed",
-        "targetId": "72375337-a20b-4932-82ca-423eeead3203"
+        "targetId": "7e4a6e86-3fa4-4949-befc-9d31413768c4"
       }
     },
     {
@@ -198,7 +198,7 @@
       "id": "V4d",
       "title": "Las cookies son de la partición del contexto y su valor no sale",
       "status": "ok",
-      "detail": "la cookie vertical1789871854528 está en su partición y sólo viajan nombre, dominio y banderas",
+      "detail": "la cookie vertical1789874387623 está en su partición y sólo viajan nombre, dominio y banderas",
       "evidence": {
         "found": true,
         "leaksValue": false,
@@ -236,8 +236,8 @@
       "detail": "el foco volvió a Rinari y «XYZ» no llegó al input remoto",
       "evidence": {
         "remoteFocusedAfterReturn": false,
-        "valueAfterReturnTyping": "manual1789871856728",
-        "expected": "manual1789871856728",
+        "valueAfterReturnTyping": "manual1789874389807",
+        "expected": "manual1789874389807",
         "physicalMeasured": true
       }
     },
@@ -247,7 +247,7 @@
       "status": "ok",
       "detail": "con el usuario al mando el click se rechazó (CONFLICT); tecleado real en el campo, y al devolver el control el agente lo leyó por a11y",
       "evidence": {
-        "typedLive": "manual1789871856728",
+        "typedLive": "manual1789874389807",
         "typedForReal": true,
         "requestedState": "user",
         "requestedOwnerAtReply": "user",
@@ -271,11 +271,11 @@
       "status": "ok",
       "detail": "particiones distintas: la segunda sesión no ve el almacenamiento de la primera, y su target no se resuelve desde el contexto ajeno",
       "evidence": {
-        "ownRead": "sesion-a-1789871864711",
+        "ownRead": "sesion-a-1789874397638",
         "crossRead": null,
         "partitions": [
-          "rinari-browser-e8a0a8c2-f673-448f-8f8d-362b30f513e6",
-          "rinari-browser-00499d2f-64bd-4fbe-a1bf-97ffb4439d96"
+          "rinari-browser-9c209f87-a84c-4526-85dd-4f756d2a234b",
+          "rinari-browser-d5ca89be-2d43-471b-aa9b-2dd6f7735fca"
         ],
         "crossTargetResolved": false
       }
@@ -286,11 +286,11 @@
       "status": "ok",
       "detail": "una pestaña nueva pasa a ser la activa y la operación por defecto la sigue; al volver a la primera, también; cerrar la inactiva no mueve la selección ni recarga la superviviente",
       "evidence": {
-        "created": "56ce34e9-3091-43fa-8464-be88a07543eb",
-        "firstTarget": "01509d64-c3c7-4591-b1c5-fbc68353608c",
-        "defaultAfterCreate": "56ce34e9-3091-43fa-8464-be88a07543eb",
-        "defaultAfterSelect": "01509d64-c3c7-4591-b1c5-fbc68353608c",
-        "survivor": "01509d64-c3c7-4591-b1c5-fbc68353608c",
+        "created": "60cc508d-edd9-4b93-9e76-4c982e18073b",
+        "firstTarget": "060b03dd-1cc1-4276-a388-5ec808f17465",
+        "defaultAfterCreate": "60cc508d-edd9-4b93-9e76-4c982e18073b",
+        "defaultAfterSelect": "060b03dd-1cc1-4276-a388-5ec808f17465",
+        "survivor": "060b03dd-1cc1-4276-a388-5ec808f17465",
         "visibleCount": 1,
         "urlPreserved": true
       }
@@ -338,7 +338,7 @@
       "id": "V9",
       "title": "Cerrar el panel retira la vista de la ventana y la página sigue usable",
       "status": "ok",
-      "detail": "presentada en 520×380, al soltar el slot baja a 1×1 conservando el viewport en 760×560 y capturando 11678 bytes, y vuelve al reservarlo otra vez",
+      "detail": "presentada en 520×380, al soltar el slot baja a 1×1 conservando el viewport en 760×560 y capturando 11997 bytes, y vuelve al reservarlo otra vez",
       "evidence": {
         "boundsBefore": {
           "x": 24,
@@ -363,9 +363,9 @@
           760,
           560
         ],
-        "hiddenShotBytes": 11678,
+        "hiddenShotBytes": 11997,
         "hiddenFailure": "",
-        "urlWhileHidden": "http://127.0.0.1:54754/fixture"
+        "urlWhileHidden": "http://127.0.0.1:53963/fixture"
       }
     },
     {
@@ -386,14 +386,14 @@
       "id": "V11",
       "title": "El agente sube un fichero y el input de la página lo recibe",
       "status": "ok",
-      "detail": "el input tiene 1 fichero y la página lo llama «subida-1789871869117.txt», con sha256 y tamaño en la procedencia",
+      "detail": "el input tiene 1 fichero y la página lo llama «subida-1789874402066.txt», con sha256 y tamaño en la procedencia",
       "evidence": {
         "inPage": {
           "files": 1,
-          "name": "subida-1789871869117.txt"
+          "name": "subida-1789874402066.txt"
         },
         "provenance": {
-          "path": "<RINARI_CLI>\\subida-1789871869117.txt",
+          "path": "<RINARI_CLI>\\subida-1789874402066.txt",
           "bytes": 31,
           "sha256": "71a7a2b60910fd317e316165d62f984606cb3c7d2430895946c74ee3a46e6eb8"
         },
@@ -414,15 +414,15 @@
       "id": "V12",
       "title": "Una descarga con nombre hostil aterriza saneada en los artefactos",
       "status": "ok",
-      "detail": "«../../CON.txt» se guardó como «_.._CON.txt» dentro de <RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X, 29 bytes",
+      "detail": "«../../CON.txt» se guardó como «_.._CON.txt» dentro de <RINARI_HOME>\\artifacts\\ses_01M2YD6XHCX2EXY6GETDFABJ9W, 29 bytes",
       "evidence": {
-        "savedPath": "<RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X\\_.._CON.txt",
-        "savedDir": "<RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X",
+        "savedPath": "<RINARI_HOME>\\artifacts\\ses_01M2YD6XHCX2EXY6GETDFABJ9W\\_.._CON.txt",
+        "savedDir": "<RINARI_HOME>\\artifacts\\ses_01M2YD6XHCX2EXY6GETDFABJ9W",
         "savedName": "_.._CON.txt",
-        "artifactRoot": "<RINARI_HOME>\\artifacts\\ses_01M2YASKRH9GBY9T7Z8Z76G19X",
+        "artifactRoot": "<RINARI_HOME>\\artifacts\\ses_01M2YD6XHCX2EXY6GETDFABJ9W",
         "onDisk": [
-          "screenshot-1789871847.png",
-          "screenshot-1789871850.png",
+          "screenshot-1789874380.png",
+          "screenshot-1789874383.png",
           "_.._CON.txt"
         ],
         "trace": [
@@ -445,7 +445,7 @@
       "id": "BR13",
       "title": "Cien ciclos devuelven todos los recursos contables al baseline",
       "status": "ok",
-      "detail": "100/100 ciclos limpios; listeners duplicados: 0; tendencia heap 8910628 → 9339780",
+      "detail": "100/100 ciclos limpios; listeners duplicados: 0; tendencia heap 8314204 → 9945192",
       "evidence": {
         "lifecycleBaseline": {
           "registry": {
@@ -488,20 +488,20 @@
           }
         },
         "duplicateConsoleEvents": 0,
-        "heapBefore": 8910628,
-        "heapAfter": 9339780
+        "heapBefore": 8314204,
+        "heapAfter": 9945192
       }
     },
     {
       "id": "BR14",
       "title": "Frames grandes y Stop no bloquean el Engine ni repiten mutaciones inciertas",
       "status": "ok",
-      "detail": "B1–B4 pasan; Stop 1 ms, 4 ms, 1 ms (objetivo ≤2 s)",
+      "detail": "B1–B4 pasan; Stop 18 ms, 1 ms, 1 ms (objetivo ≤2 s)",
       "evidence": {
         "stopLatencies": [
-          1.1144999999960419,
-          3.6031000000002678,
-          1.1261000000085915
+          18.04200000000128,
+          1.1968000000051688,
+          1.204700000002049
         ],
         "stopObjective": true,
         "bufferedBeforeStop": {
@@ -519,8 +519,8 @@
         "taking": {
           "backend": "electron-native",
           "state": "connected",
-          "context_id": "50f018bec34e0da7a45350c90315ecfd",
-          "session_id": "ses_01M2YASKRH9GBY9T7Z8Z76G19X",
+          "context_id": "003a139052ba22d0bda4b8b5a42326fe",
+          "session_id": "ses_01M2YD6XHCX2EXY6GETDFABJ9W",
           "control": "agent",
           "control_state": "taking-user-control",
           "control_revision": 3,
@@ -569,10 +569,10 @@
           "verification.completed",
           "turn.completed"
         ],
-        "urlBeforeRestart": "http://127.0.0.1:54754/fixture",
+        "urlBeforeRestart": "http://127.0.0.1:53963/fixture",
         "domAfterRestart": {
-          "text": "aplicado: tras-reinicio-1789871921170",
-          "url": "http://127.0.0.1:54754/fixture"
+          "text": "aplicado: tras-reinicio-1789874454521",
+          "url": "http://127.0.0.1:53963/fixture"
         },
         "trace": [
           "tool.requested:capability.activate",
@@ -610,6 +610,7 @@
             "height": 112
           }
         ],
+        "firstFrameProtected": true,
         "nativeDuringToast": {
           "x": 8,
           "y": 8,
@@ -637,10 +638,10 @@
         "focusedAfterLoss": false,
         "physicalMeasured": true,
         "physicalProtected": true,
-        "valueBeforeUserRestart": "restart-user-1789871932216",
-        "valueAfterUserRestart": "restart-user-1789871932216",
-        "bindingBefore": "65eb8cb1c842acbb5b550b23e3d47d1f",
-        "bindingAfter": "be08935a4f501480138ac54c62acb2ef",
+        "valueBeforeUserRestart": "restart-user-1789874465705",
+        "valueAfterUserRestart": "restart-user-1789874465705",
+        "bindingBefore": "ffce647213269fc1020fcece7d5f5e50",
+        "bindingAfter": "085e1b0af7be4d4aca8c2d049a5304c4",
         "sameTarget": true,
         "sameUrl": true,
         "sameDom": true,

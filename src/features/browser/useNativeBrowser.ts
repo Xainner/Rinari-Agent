@@ -25,8 +25,20 @@ interface Rect {
 
 function rectOf(element: Element): Rect {
   const box = element.getBoundingClientRect()
-  return { x: box.left, y: box.top, width: box.width, height: box.height }
+  return {
+    x: Math.round(box.left),
+    y: Math.round(box.top),
+    width: Math.round(box.width),
+    height: Math.round(box.height),
+  }
 }
+
+const roundedRect = (rect: Rect): Rect => ({
+  x: Math.round(rect.x),
+  y: Math.round(rect.y),
+  width: Math.round(rect.width),
+  height: Math.round(rect.height),
+})
 
 function intersect(a: Rect, b: Rect): Rect {
   const left = Math.max(a.x, b.x)
@@ -91,6 +103,7 @@ export function useNativeBrowser(
   const element = useRef<HTMLElement | null>(null)
   const revision = useRef(0)
   const frame = useRef<number | null>(null)
+  const lastPublished = useRef<string | null>(null)
   // Los últimos valores, para que el bucle de publicación no dependa del
   // ciclo de render: una geometría se envía por movimiento, no por re-render.
   const shownRef = useRef(shown)
@@ -108,9 +121,19 @@ export function useNativeBrowser(
       const node = element.current
       const slot = slotId.current
       if (!node || !slot) return
-      revision.current += 1
       const logicalBounds = rectOf(node)
-      const visibleBounds = visibleRectOf(node)
+      const visibleBounds = roundedRect(visibleRectOf(node))
+      const occlusions = occlusionsRef.current.map(roundedRect)
+      const key = JSON.stringify({
+        logicalBounds,
+        visibleBounds,
+        shown: shownRef.current,
+        overlayDepth: overlayRef.current,
+        occlusions,
+      })
+      if (lastPublished.current === key) return
+      lastPublished.current = key
+      revision.current += 1
       setSurface(slot, shownRef.current ? visibleBounds : null)
       void platform()
         .browser.updateSlot({
@@ -120,11 +143,12 @@ export function useNativeBrowser(
           shown: shownRef.current,
           layoutRevision: revision.current,
           overlayDepth: overlayRef.current,
-          occlusions: occlusionsRef.current,
+          occlusions,
         })
         .catch(() => {
           // Una geometría perdida se corrige en el siguiente movimiento; no
           // merece romper el panel.
+          if (lastPublished.current === key) lastPublished.current = null
         })
     })
   }, [setSurface])
@@ -182,6 +206,7 @@ export function useNativeBrowser(
         }
         slotId.current = lease.slotId
         revision.current = 0
+        lastPublished.current = null
         publish()
       })
       .catch((reason) => {
@@ -192,6 +217,7 @@ export function useNativeBrowser(
       alive = false
       const slot = slotId.current
       slotId.current = null
+      lastPublished.current = null
       if (slot) setSurface(slot, null)
       if (slot) void platform().browser.detachSlot(slot)
     }

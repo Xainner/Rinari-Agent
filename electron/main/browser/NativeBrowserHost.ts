@@ -15,7 +15,6 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { statSync, type Stats } from 'node:fs'
 import { isAbsolute } from 'node:path'
 
 import { BrowserRegistry, type ContextEntry } from './BrowserRegistry'
@@ -28,6 +27,7 @@ import {
   resolveOperation,
   type HostRequest,
 } from './operations'
+import { verifyUploadFile } from './uploadProvenance'
 
 export type { HostRequest }
 
@@ -527,19 +527,15 @@ export class NativeBrowserHost {
         if (!Array.isArray(files) || files.length !== 1 || typeof files[0] !== 'string') {
           throw new OperationError('INVALID_ARGUMENT', 'exactly one file path is expected')
         }
-        const filePath = files[0]
-        if (!isAbsolute(filePath)) {
+        const requestedPath = files[0]
+        if (!isAbsolute(requestedPath)) {
           throw new OperationError('INVALID_ARGUMENT', 'the file path has to be absolute')
         }
-        let stats: Stats
-        try {
-          stats = statSync(filePath)
-        } catch {
-          throw new OperationError('TARGET_NOT_FOUND', 'that file does not exist')
+        const verified = await verifyUploadFile(requestedPath, request.params.provenance)
+        if (!verified.ok) {
+          throw new OperationError('UPLOAD_CHANGED', verified.reason)
         }
-        if (!stats.isFile()) {
-          throw new OperationError('INVALID_ARGUMENT', 'only a regular file can be uploaded')
-        }
+        const filePath = verified.path
 
         const entry = registry.target(context.contextId, request.target_id)
         if (!entry || entry.view.webContents.isDestroyed()) {

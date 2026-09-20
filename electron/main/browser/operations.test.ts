@@ -5,6 +5,7 @@
 // existen, qué cuenta como solicitud del broker, y qué destino puede tomar una
 // página del agente.
 import { describe, expect, it } from 'vitest'
+import { CHANNEL } from '../../shared/contracts'
 
 import {
   CONTEXT_OPERATIONS,
@@ -225,6 +226,16 @@ describe('PRIVATE-01 — el canal privado se clasifica por namespace', () => {
     ['nada', null],
   ])('%s no pertenece', (_label, value) => {
     expect(isHostChannelEvent(value)).toBe(false)
+  })
+})
+
+describe('BR-10 — el renderer no posee el broker privado', () => {
+  it('ningún canal público registra, responde ni publica por host.browser', () => {
+    const exposed = Object.values(CHANNEL)
+    expect(exposed.some((name) => name.includes('host.browser'))).toBe(false)
+    expect('hostBrowserRegister' in CHANNEL).toBe(false)
+    expect('hostBrowserReply' in CHANNEL).toBe(false)
+    expect('hostBrowserEvent' in CHANNEL).toBe(false)
   })
 })
 

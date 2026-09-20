@@ -223,6 +223,7 @@ página que el usuario tiene delante.
 | V1 | Vista en blanco con contexto registrado | el contexto es de esa sesión y su target está en `about:blank` |
 | V2 | Un turno navega al fixture | la vista **que ya existía** queda en la URL; no se creó otra |
 | V2d | Red inicial | el request del documento aparece porque Runtime/Network se habilitan antes de la navegación real |
+| BR10 | Frontera de privilegio | la página remota no tiene preload/Node/broker y no navega ni abre `app://rinari` |
 | V2p | Exclusión física del agente | mouse y teclado del sistema no alcanzan la página retirada |
 | V3 | Snapshot, llenar y click | `#result` pasa a `applied` con el valor que escribió la herramienta, leído del webContents |
 | V4 | Screenshot con tamaño y target | bytes > 0 y el target es el de esta sesión |
@@ -247,7 +248,9 @@ no significan lo que parecen:
 - **V10** — un contexto que **nunca** se presentó maqueta y se captura igual.
   Es el caso extremo del §8.3 y el que llegó desde uso real.
 - **V11** — el agente escribe un fichero y lo sube; el `input` de la página
-  acaba con él. Se mira el DOM, no el `ok` de la herramienta.
+  acaba con él. Se mira el DOM, no el `ok` de la herramienta. El Engine fija
+  ruta, bytes y SHA-256 después del sandbox; el host resuelve de nuevo la ruta
+  y revalida esa identidad justo antes de entregarla al contenido remoto.
 - **V12** — una descarga cuyo `Content-Disposition` propone
   `../../CON.txt` aterriza dentro del directorio de artefactos y con un nombre
   que es un componente de ruta. Es BR-09 en el camino real.
@@ -258,7 +261,15 @@ no significan lo que parecen:
 - **BR-14** — captura cercana al límite, buffers ruidosos, respuesta que excede
   8 MiB y mutación lenta contra Stop. El Engine sigue respondiendo, el exceso
   termina en `RESOURCE_EXHAUSTED`, la mutación queda incierta sin retry y el
-  control manual no se concede antes del settlement. Stop midió 1–2 ms.
+  control manual no se concede antes del settlement. Stop midió ~1 ms.
+- **BR-10** — además del paso real, los tests fijan que el contrato público no
+  contenga canales `host.browser.*`, que frames privados malformados se
+  consuman antes del renderer y que un target de otra sesión no se resuelva.
+- **BR-11** — una integración peer A → B contra un contexto nativo intenta
+  navigate, click, evaluate, set-cookie, upload y download. Las seis terminan
+  en `POLICY_DENIED`, sin approval y sin emitir `host.browser.request`. La
+  clasificación de upload conserva las dos autoridades: `fs.read` y
+  `browser.mutate`.
 
 ### Descargas: deny por defecto, y Chromium sanea antes que tú
 
@@ -327,7 +338,7 @@ resultado tardío; el settlement sólo libera la retención interna. Los leases 
 una mutación semántica completa comparten esa contabilidad, de modo que un
 click sigue cubierto desde la lectura de coordenadas hasta el último
 `mouseReleased`. SETTLE-01…05 fijan las carreras reply/timeout/cancelación y el
-traspaso de control; la prueba vertical pasa 24/24 pasos con este Engine.
+traspaso de control; la prueba vertical pasa 25/25 pasos con este Engine.
 
 ### Observación temprana y buffers acotados
 
@@ -336,6 +347,16 @@ debugger, habilita Runtime/Network y sólo entonces hace la primera navegación
 real. Un detach repite attach + enable sobre el mismo listener. Los eventos se
 sanean antes de guardarlos y cada buffer se limita a 500 entradas y 512 KiB;
 no se conservan headers, cuerpos, object handles ni valores de cookies.
+
+### Gate cross-repo
+
+`browser-integration` en `agent-ci.yml` lee el SHA de `engine-manifest.json`,
+hace checkout de esa revisión exacta de Rinari-CLI, la compara con `HEAD` y
+ejecuta el vertical bajo Xvfb con home y perfil efímeros. Los pasos que
+dependen de entrada física real permanecen en el gate manual de Windows; el
+broker, la frontera remota, aislamiento, lifecycle, backpressure, restart,
+uploads y downloads sí corren en CI. La ejecución local final usó
+`94dc4b1419bcd9c725b9c8e9ba9d909fc43e11fe`, el mismo SHA que fija el manifest.
 
 ## 7. Lo que esta etapa no probó
 

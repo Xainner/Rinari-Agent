@@ -174,6 +174,19 @@ describe('el slot reserva el hueco y lo reporta', () => {
     expect(layout.overlayDepth).toBe(0)
   })
 
+  it('cincuenta avisos con geometría idéntica producen un solo IPC', async () => {
+    bridge.browserContext = nativeContext()
+    paint()
+    await waitFor(() => expect(bridge.browserLayouts.length).toBeGreaterThan(0))
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    const baseline = bridge.browserLayouts.length
+    for (let index = 0; index < 50; index += 1) {
+      window.dispatchEvent(new Event('scroll'))
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    expect(bridge.browserLayouts.length).toBe(baseline)
+  })
+
   it('un overlay encima viaja en la geometría', async () => {
     bridge.browserContext = nativeContext()
     paint({ overlayDepth: 2 })

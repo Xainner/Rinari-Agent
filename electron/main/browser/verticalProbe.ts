@@ -388,6 +388,42 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       evidence: { events: earlyNetwork.length, fixtureUrl: deps.fixtureUrl },
     })
 
+    // ── BR-10: la página remota no hereda el preload privilegiado y tampoco
+    //    puede navegar hacia el renderer interno de Rinari.
+    const remoteBoundary = await read<{
+      bridge: string
+      require: string
+      process: string
+      popupBlocked: boolean
+    }>(
+      view,
+      `({
+        bridge: typeof window.rinariDesktop,
+        require: typeof window.require,
+        process: typeof window.process,
+        popupBlocked: window.open('app://rinari/index.html') === null,
+      })`,
+    )
+    const beforePrivilegedNavigation = view.webContents.getURL()
+    await read(view, "location.href = 'app://rinari/index.html'; true").catch(() => false)
+    await sleep(250)
+    const afterPrivilegedNavigation = view.webContents.getURL()
+    const isolated =
+      remoteBoundary.bridge === 'undefined' &&
+      remoteBoundary.require === 'undefined' &&
+      remoteBoundary.process === 'undefined' &&
+      remoteBoundary.popupBlocked &&
+      beforePrivilegedNavigation === afterPrivilegedNavigation
+    record({
+      id: 'BR10',
+      title: 'La página remota no alcanza Node, preload, broker ni app://rinari',
+      status: isolated ? 'ok' : 'failed',
+      detail: isolated
+        ? 'sin rinariDesktop/require/process; popup y navegación al renderer privilegiado bloqueados'
+        : 'la página remota observó una superficie privilegiada o cambió al renderer interno',
+      evidence: { ...remoteBoundary, beforePrivilegedNavigation, afterPrivilegedNavigation },
+    })
+
     // Sonda de vida entre pasos: si el loop de stdio se bloquea, conviene
     // saber tras qué turno, no sólo que se bloqueó.
     const liveness: Record<string, string> = {}

@@ -66,3 +66,44 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - working-directory: src-tauri
         run: cargo test
+
+  browser-integration:
+    # Gate reproducible del Documento 03: usa el checkout exacto que declara
+    # engine-manifest.json y datos efímeros. La entrada física queda para el
+    # runner Windows/manual; broker, targets, aislamiento, restart, BR-10,
+    # lifecycle y backpressure corren aquí.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: engine
+        name: Read the pinned Engine revision
+        shell: bash
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + require('./engine-manifest.json').engine_git_sha + '\n')"
+      - uses: actions/checkout@v4
+        with:
+          repository: Xainner/Rinari-CLI
+          ref: ${{ steps.engine.outputs.sha }}
+          path: Rinari-CLI
+      - name: Verify the Engine checkout is exact
+        shell: bash
+        run: test "$(git -C Rinari-CLI rev-parse HEAD)" = "${{ steps.engine.outputs.sha }}"
+      - run: python -m pip install uv
+      - run: npm ci
+      - run: npm run build
+      - run: npm run desktop:build
+      - name: Fix the Electron sandbox helper permissions
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+      - name: Native browser vertical against the pinned Engine
+        env:
+          RINARI_CLI: ${{ github.workspace }}/Rinari-CLI
+        run: xvfb-run -a npm run browser:vertical

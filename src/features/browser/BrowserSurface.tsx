@@ -98,6 +98,7 @@ export default function BrowserSurface({
           context={context}
           slotRef={native.slotRef}
           onPrepare={() => void native.prepare()}
+          preview={native.preview}
         />
       ) : (
         <ScreenshotBrowserFallback frame={frame} connected={Boolean(connected)} />

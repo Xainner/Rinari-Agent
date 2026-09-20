@@ -74,6 +74,8 @@ export interface HostServices {
     selectTarget(sessionId: string, targetId: string): Promise<unknown>
     setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number): Promise<unknown>
     navigate(sessionId: string, url: string): Promise<unknown>
+    preview(sessionId: string): Promise<unknown>
+    diagnostics(): { layoutSlots: number }
   }
 }
 
@@ -225,6 +227,16 @@ function assertSlotLayout(value: unknown): BrowserSlotLayoutRequest {
     throw new ValidationError('overlay_depth must be a non-negative integer')
   }
   if (typeof raw.shown !== 'boolean') throw new ValidationError('shown must be a boolean')
+  const occlusions = raw.occlusions
+  if (occlusions !== undefined && (!Array.isArray(occlusions) || occlusions.length > 6)) {
+    throw new ValidationError('occlusions must be an array of at most 6 rectangles')
+  }
+  const parsedOcclusions = Array.isArray(occlusions)
+    ? occlusions.map((rect, index) => assertRect(rect, `occlusions[${index}]`))
+    : undefined
+  if (parsedOcclusions?.some((rect) => rect.width <= 0 || rect.height <= 0)) {
+    throw new ValidationError('occlusions must have positive area')
+  }
   return {
     slot_id: assertString(raw.slot_id, 'slot_id', 128),
     logical_bounds: assertRect(raw.logical_bounds, 'logical_bounds'),
@@ -232,6 +244,7 @@ function assertSlotLayout(value: unknown): BrowserSlotLayoutRequest {
     shown: raw.shown,
     layout_revision: revision,
     overlay_depth: depth,
+    occlusions: parsedOcclusions,
   }
 }
 
@@ -351,6 +364,12 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
           // navegar lo sigue decidiendo la policy de red del Engine.
           assertOpenableUrl(url),
         ),
+      ),
+    ],
+    [
+      CHANNEL.browserPreview,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.preview(assertString(sessionId, 'session_id', 128)),
       ),
     ],
   ]

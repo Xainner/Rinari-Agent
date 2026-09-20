@@ -43,6 +43,8 @@ export interface SlotLayout {
   layoutRevision: number
   /** Cuántos overlays hay encima ahora mismo; >0 esconde la superficie. */
   overlayDepth: number
+  /** Rectángulos DOM que deben quedar por encima de la superficie nativa. */
+  occlusions?: Rect[]
 }
 
 /** Lo que main coloca de verdad. */
@@ -82,7 +84,8 @@ function finite(rect: Rect): boolean {
  * slot recortado por la izquierda volvía a enseñar el principio de la página.
  */
 export function resolveLayout(layout: SlotLayout): ResolvedLayout {
-  const { logicalBounds: logical, visibleBounds: visible } = layout
+  const { logicalBounds: logical } = layout
+  const visible = largestUnoccluded(layout.visibleBounds, layout.occlusions ?? [])
   return {
     container: { ...visible },
     page: {
@@ -93,8 +96,69 @@ export function resolveLayout(layout: SlotLayout): ResolvedLayout {
     },
     // Un overlay encima esconde la superficie **antes** de que el modal sea
     // interactivo; un `z-index` del renderer no tapa una vista nativa (§8.3).
-    visible: layout.shown && layout.overlayDepth === 0 && visible.width > 0 && visible.height > 0,
+    visible: layout.shown && layout.overlayDepth === 0 && visible.width >= 64 && visible.height >= 64,
   }
+}
+
+function area(rect: Rect): number {
+  return Math.max(0, rect.width) * Math.max(0, rect.height)
+}
+
+/** Conserva el mayor rectángulo contiguo; nunca estira ni mueve el viewport. */
+export function largestUnoccluded(source: Rect, occlusions: Rect[]): Rect {
+  const right = source.x + source.width
+  const bottom = source.y + source.height
+  const relevant = occlusions.filter(
+    (block) =>
+      block.x < right &&
+      block.x + block.width > source.x &&
+      block.y < bottom &&
+      block.y + block.height > source.y,
+  )
+  const xs = [
+    ...new Set([
+      source.x,
+      right,
+      ...relevant.flatMap((block) => [
+        Math.max(source.x, block.x),
+        Math.min(right, block.x + block.width),
+      ]),
+    ]),
+  ].sort((a, b) => a - b)
+  const ys = [
+    ...new Set([
+      source.y,
+      bottom,
+      ...relevant.flatMap((block) => [
+        Math.max(source.y, block.y),
+        Math.min(bottom, block.y + block.height),
+      ]),
+    ]),
+  ].sort((a, b) => a - b)
+
+  let best: Rect = { x: source.x, y: source.y, width: 0, height: 0 }
+  for (let leftIndex = 0; leftIndex < xs.length - 1; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < xs.length; rightIndex += 1) {
+      for (let topIndex = 0; topIndex < ys.length - 1; topIndex += 1) {
+        for (let bottomIndex = topIndex + 1; bottomIndex < ys.length; bottomIndex += 1) {
+          const candidate = {
+            x: xs[leftIndex]!,
+            y: ys[topIndex]!,
+            width: xs[rightIndex]! - xs[leftIndex]!,
+            height: ys[bottomIndex]! - ys[topIndex]!,
+          }
+          const blocked = relevant.some((block) =>
+            candidate.x < block.x + block.width &&
+            candidate.x + candidate.width > block.x &&
+            candidate.y < block.y + block.height &&
+            candidate.y + candidate.height > block.y,
+          )
+          if (!blocked && area(candidate) > area(best)) best = candidate
+        }
+      }
+    }
+  }
+  return best
 }
 
 /**
@@ -163,6 +227,10 @@ export class ViewLayoutCoordinator {
     return slotId ? this.slots.get(slotId) : undefined
   }
 
+  get size(): number {
+    return this.slots.size
+  }
+
   /**
    * Admite una actualización de geometría, o dice por qué no.
    *
@@ -180,6 +248,7 @@ export class ViewLayoutCoordinator {
     if (
       !finite(layout.logicalBounds) ||
       !finite(layout.visibleBounds) ||
+      (layout.occlusions ?? []).some((rect) => !finite(rect)) ||
       !Number.isFinite(layout.layoutRevision) ||
       !Number.isInteger(layout.layoutRevision) ||
       layout.layoutRevision < 0
@@ -197,7 +266,8 @@ export class ViewLayoutCoordinator {
       layout.logicalBounds.width > MAX_EDGE ||
       layout.logicalBounds.height > MAX_EDGE ||
       layout.visibleBounds.width > MAX_EDGE ||
-      layout.visibleBounds.height > MAX_EDGE
+      layout.visibleBounds.height > MAX_EDGE ||
+      (layout.occlusions ?? []).some((rect) => rect.width > MAX_EDGE || rect.height > MAX_EDGE)
     ) {
       return { ok: false, reason: 'too-large' }
     }

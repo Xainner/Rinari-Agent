@@ -96,7 +96,7 @@ console.log(`modelo falso en ${model.origin}`)
 
 // Pasos que el gate exige ver. Un informe al que le falte uno no es un PASS
 // con menos cobertura: es un informe que no prueba lo que dice probar.
-const REQUIRED_STEPS = ['V1', 'V2', 'V2b', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'V6', 'V7a', 'V7', 'V7c', 'V9', 'V10', 'V11', 'V12', 'V8']
+const REQUIRED_STEPS = ['V1', 'V2', 'V2d', 'V2b', 'V2p', 'V2c', 'V3', 'V4', 'V4b', 'V4c', 'V4d', 'V5', 'V6', 'V7a', 'V7', 'V7b', 'V7c', 'V9', 'V10', 'V11', 'V12', 'BR13', 'BR14', 'V8']
 
 // Perfil de Electron propio, no sólo home del Engine: el renderer guarda
 // drafts y preferencias, y la sonda no debe tocar los del usuario.
@@ -126,7 +126,11 @@ const child = spawn(electronBin, [MAIN, `--user-data-dir=${userData}`], {
 })
 
 let output = ''
-child.stdout.on('data', (chunk) => (output += chunk.toString()))
+child.stdout.on('data', (chunk) => {
+  const text = chunk.toString()
+  output += text
+  if (text.includes('RINARI_BROWSER_')) process.stdout.write(text)
+})
 child.stderr.on('data', (chunk) => (output += chunk.toString()))
 
 /**
@@ -163,10 +167,10 @@ async function cleanup() {
 
 const timer = setTimeout(async () => {
   child.kill()
-  console.error('la prueba vertical no reportó en 300 s; salida:\n' + output.slice(-4000))
+  console.error('la prueba vertical no reportó en 900 s; salida:\n' + output.slice(-4000))
   await cleanup()
   process.exit(1)
-}, 300_000)
+}, 900_000)
 
 child.on('exit', async (code) => {
   clearTimeout(timer)

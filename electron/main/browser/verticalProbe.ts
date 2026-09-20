@@ -42,7 +42,7 @@ export interface VerticalDeps {
     request(method: string, params?: unknown, timeoutMs?: number): Promise<unknown>
   }
   registry: BrowserRegistry
-  host: Pick<NativeBrowserHost, 'registered' | 'bindingId'>
+  host: Pick<NativeBrowserHost, 'registered' | 'bindingId' | 'diagnostics'>
   /** Se registra un observador de eventos del Engine y se devuelve su retirada. */
   onEngineEvent(listener: (event: Record<string, unknown>) => void): () => void
   fixtureUrl: string
@@ -77,13 +77,14 @@ export interface VerticalDeps {
       overlay_depth: number
     }): Promise<void>
     detachSlot(slotId: string): Promise<void>
+    diagnostics(): { layoutSlots: number }
   }
   /**
    * Click real del sistema. Sin él no se puede probar el click-through: una
    * entrada sintética va dirigida a un webContents y se salta el hit-testing,
    * así que daría por buena cualquier superposición.
    */
-  physicalClick?: (x: number, y: number) => Promise<void>
+  physicalClick?: (x: number, y: number, text?: string) => Promise<void>
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -99,6 +100,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
   const steps: StepResult[] = []
   const record = (result: StepResult) => {
     steps.push(result)
+    console.log(`RINARI_BROWSER_STEP ${result.id} ${result.status}`)
     return result
   }
 
@@ -139,6 +141,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     'browser.network',
     'browser.upload',
     'browser.download',
+    'browser.evaluate',
     // Para V11: el agente escribe el fichero que va a subir, así la ruta pasa
     // por el mismo sandbox que después resuelve la subida.
     'fs.write',
@@ -214,6 +217,42 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       await sleep(150)
     }
     throw new Error(`el turno no terminó en ${timeoutMs} ms`)
+  }
+
+  /** Inicia una herramienta, pide Stop cuando ya empezó y comprueba vida. */
+  const stopDuring = async (
+    sessionId: string,
+    toolName: string,
+    entries: unknown[],
+    prompt: string,
+    timeoutMs = 30_000,
+  ) => {
+    await script(entries)
+    const before = events.length
+    await call('session.turn.start', { session_id: sessionId, message: prompt })
+    const startedDeadline = Date.now() + timeoutMs
+    while (Date.now() < startedDeadline) {
+      const started = events.slice(before).find((entry) => {
+        const payload = entry.payload as Record<string, unknown> | undefined
+        return entry.event === 'tool.started' && payload?.tool === toolName
+      })
+      if (started) break
+      await sleep(20)
+    }
+    const stopAt = performance.now()
+    const stopReply = await call('session.turn.cancel', { session_id: sessionId })
+    const stopMs = performance.now() - stopAt
+    const terminalDeadline = Date.now() + timeoutMs
+    let terminal: Record<string, unknown> | undefined
+    while (Date.now() < terminalDeadline) {
+      terminal = events.slice(before).find((entry) =>
+        ['turn.completed', 'turn.failed', 'turn.cancelled'].includes(String(entry.event)),
+      )
+      if (terminal) break
+      await sleep(50)
+    }
+    await deps.engine.request('engine.info', {}, 5_000)
+    return { stopMs, stopReply, terminal, slice: events.slice(before) }
   }
 
   /** Lee del webContents de la vista, que es la prueba de «la misma página». */
@@ -294,6 +333,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const target = deps.registry.createTarget(context)
     view = target.view
     await view.webContents.loadURL('about:blank')
+    await deps.registry.attach(target)
     const blankUrl = view.webContents.getURL()
     record({
       id: 'V1',
@@ -329,6 +369,25 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       },
     })
 
+    const earlyNetwork = deps.registry.drainObserved(target, 'network', 1_000) as Array<{
+      method?: string
+      params?: { request?: { url?: string } }
+    }>
+    const sawInitialDocument = earlyNetwork.some(
+      (event) =>
+        event.method === 'Network.requestWillBeSent' &&
+        event.params?.request?.url === deps.fixtureUrl,
+    )
+    record({
+      id: 'V2d',
+      title: 'Network observa el documento inicial desde antes de navegar',
+      status: sawInitialDocument ? 'ok' : 'failed',
+      detail: sawInitialDocument
+        ? 'el request del documento inicial quedó en el buffer temprano'
+        : 'el documento inicial se perdió antes de habilitar Network',
+      evidence: { events: earlyNetwork.length, fixtureUrl: deps.fixtureUrl },
+    })
+
     // Sonda de vida entre pasos: si el loop de stdio se bloquea, conviene
     // saber tras qué turno, no sólo que se bloqueó.
     const liveness: Record<string, string> = {}
@@ -359,6 +418,30 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     // estuviera compuesta y el click no llegaba a ninguna parte.
     const painted = await awaitPainted(view)
     const clicksAtStart = await read<number>(view, 'window.__probe.clicks')
+    const fieldAtStart = await read<string>(view, "document.getElementById('field').value")
+    if (deps.physicalClick) {
+      const bounds = deps.window.getBounds()
+      deps.window.show()
+      deps.window.focus()
+      await sleep(300)
+      await deps.physicalClick(bounds.x + 24 + 80, bounds.y + 120 + 120, 'fisico-bloqueado')
+      await sleep(300)
+    }
+    const clicksAfterPhysical = await read<number>(view, 'window.__probe.clicks')
+    const fieldAfterPhysical = await read<string>(view, "document.getElementById('field').value")
+    record({
+      id: 'V2p',
+      title: 'Con control del agente, mouse y teclado físicos no alcanzan la página',
+      status: deps.physicalClick
+        ? clicksAfterPhysical === clicksAtStart && fieldAfterPhysical === fieldAtStart
+          ? 'ok'
+          : 'failed'
+        : 'skipped',
+      detail: deps.physicalClick
+        ? `clicks ${clicksAtStart} → ${clicksAfterPhysical}; campo sin cambios: ${fieldAfterPhysical === fieldAtStart}`
+        : 'la síntesis física sólo está disponible en la sonda de Windows',
+      evidence: { clicksAtStart, clicksAfterPhysical, fieldAtStart, fieldAfterPhysical },
+    })
     const debug = view.webContents.debugger
     if (!debug.isAttached()) debug.attach('1.3')
     for (const type of ['mousePressed', 'mouseReleased'] as const) {
@@ -513,6 +596,8 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     //    el plazo, y el §8.3 dice que ocultar no puede romper una herramienta
     //    que esté usando ese target.
     const hiddenTarget = deps.registry.createTarget(context)
+    await hiddenTarget.view.webContents.loadURL('about:blank')
+    await deps.registry.attach(hiddenTarget)
     await hiddenTarget.view.webContents.loadURL(deps.fixtureUrl)
     // Vuelve a la primera: la recién creada queda viva pero sin presentar.
     deps.registry.setActiveTarget(context, target.targetId)
@@ -647,17 +732,23 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
                 return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`,
     )
     await read(view, "(document.getElementById('field').value = '', true)")
-    view.webContents.focus()
-    for (const type of ['mouseDown', 'mouseUp'] as const) {
-      view.webContents.sendInputEvent({ type, x: rect.x, y: rect.y, button: 'left', clickCount: 1 })
-    }
-    await sleep(200)
-
     const manual = `manual${Date.now()}`
-    for (const char of manual) {
-      view.webContents.sendInputEvent({ type: 'keyDown', keyCode: char })
-      view.webContents.sendInputEvent({ type: 'char', keyCode: char })
-      view.webContents.sendInputEvent({ type: 'keyUp', keyCode: char })
+    if (deps.physicalClick) {
+      const bounds = deps.window.getBounds()
+      deps.window.show()
+      deps.window.focus()
+      await sleep(300)
+      await deps.physicalClick(bounds.x + 24 + rect.x, bounds.y + 120 + rect.y, manual)
+    } else {
+      view.webContents.focus()
+      for (const type of ['mouseDown', 'mouseUp'] as const) {
+        view.webContents.sendInputEvent({ type, x: rect.x, y: rect.y, button: 'left', clickCount: 1 })
+      }
+      for (const char of manual) {
+        view.webContents.sendInputEvent({ type: 'keyDown', keyCode: char })
+        view.webContents.sendInputEvent({ type: 'char', keyCode: char })
+        view.webContents.sendInputEvent({ type: 'keyUp', keyCode: char })
+      }
     }
     await sleep(400)
     const typedLive = await read<string>(view, "document.getElementById('field').value")
@@ -722,6 +813,8 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     secondSessionId = secondCreated.session.id
     const secondContext = deps.registry.ensureContext(secondSessionId)
     const secondTarget = deps.registry.createTarget(secondContext)
+    await secondTarget.view.webContents.loadURL('about:blank')
+    await deps.registry.attach(secondTarget)
     await secondTarget.view.webContents.loadURL(deps.fixtureUrl)
     await sleep(500)
 
@@ -760,6 +853,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const first = deps.registry.target(context.contextId, null)
     const second = deps.registry.createTarget(context)
     await second.view.webContents.loadURL('about:blank')
+    await deps.registry.attach(second)
     await second.view.webContents.executeJavaScript("document.title = 'segunda', true")
     await sleep(300)
 
@@ -808,6 +902,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     // ── Paso 7: geometría. Se reduce el área visible y se comprueba que el
     //    viewport del documento **no** se encoge, y que una superficie por
     //    encima no deja pasar clicks.
+    deps.registry.setControl(context, 'user')
     const before = await read<[number, number]>(view, '[window.innerWidth, window.innerHeight]')
     deps.registry.setGeometry(context, {
       container: { x: 24, y: 120, width: 200, height: 140 },
@@ -827,6 +922,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         : `el viewport cambió de ${before.join('×')} a ${after.join('×')} al recortar`,
       evidence: { before, after },
     })
+    deps.registry.setControl(context, 'agent')
 
     // ── V7b: overlay y click-through, que es otra cosa que el recorte.
     //
@@ -902,6 +998,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     //    Y se exige lo que el §8.3 pide además de esconder: que no cierre
     //    nada. La página tiene que seguir viva y volver al reaparecer el slot.
     const lease = await deps.services.attachSlot(sessionId)
+    deps.registry.setControl(context, 'user')
     const slotVisible = { x: 24, y: 120, width: 520, height: 380 }
     const slotLogical = { x: 24, y: 120, ...LOGICAL_SIZE }
     await deps.services.updateSlot({
@@ -989,6 +1086,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         urlWhileHidden,
       },
     })
+    deps.registry.setControl(context, 'agent')
 
     // ── V10: el contexto que **nunca** tuvo panel.
     //
@@ -1005,7 +1103,8 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const loneSession = `${sessionId}-sin-panel`
     const loneContext = deps.registry.ensureContext(loneSession)
     const loneTarget = deps.registry.createTarget(loneContext)
-    deps.registry.attach(loneTarget)
+    await loneTarget.view.webContents.loadURL('about:blank')
+    await deps.registry.attach(loneTarget)
     await loneTarget.view.webContents.loadURL(deps.fixtureUrl)
     await awaitPainted(loneTarget.view)
     const loneViewport = await read<[number, number]>(
@@ -1140,6 +1239,255 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         ? `«../../CON.txt» se guardó como «${savedName}» dentro de ${savedDir}, ${String(downloadObservation?.bytes ?? '?')} bytes`
         : `guardado en ${savedPath || 'ningún sitio'}; nombre ${savedName || 'ninguno'}; dentro del directorio: ${stayedInside} — ${errorCodeOf(lastDownload) ?? lastDownload?.outcome ?? 'sin evento'}`,
       evidence: { savedPath, savedDir, savedName, artifactRoot, onDisk, trace: downloaded.trace },
+    })
+
+    // ── BR-13: cien ciclos reales de lifecycle. La memoria es sólo una
+    //    tendencia; el gate son recursos contables que vuelven al baseline.
+    const lifecycleBaseline = {
+      registry: deps.registry.diagnostics(),
+      host: deps.host.diagnostics(),
+      layout: deps.services.diagnostics(),
+    }
+    const heapBefore = process.memoryUsage().heapUsed
+    let lifecycleFailure = ''
+    let duplicateConsoleEvents = 0
+    for (let cycle = 0; cycle < 100 && !lifecycleFailure; cycle += 1) {
+      const soakSession = `${sessionId}-br13-${cycle}`
+      const soak = deps.registry.ensureContext(soakSession)
+      const one = deps.registry.createTarget(soak)
+      await one.view.webContents.loadURL('about:blank')
+      await deps.registry.attach(one)
+      const two = deps.registry.createTarget(soak)
+      await two.view.webContents.loadURL('about:blank')
+      await deps.registry.attach(two)
+
+      const lease = await deps.services.attachSlot(soakSession)
+      deps.registry.setControl(soak, 'user')
+      await deps.services.updateSlot({
+        slot_id: lease.slot_id,
+        logical_bounds: { x: 24, y: 120, width: 320, height: 220 },
+        visible_bounds: { x: 24, y: 120, width: 320, height: 220 },
+        shown: true,
+        layout_revision: 1,
+        overlay_depth: 0,
+      })
+
+      // attach → detach → attach no puede multiplicar el listener.
+      if (one.view.webContents.debugger.isAttached()) one.view.webContents.debugger.detach()
+      await deps.registry.attach(one)
+      deps.registry.drainObserved(one, 'console', 1_000)
+      const marker = `br13-${cycle}`
+      await one.view.webContents.debugger.sendCommand('Runtime.evaluate', {
+        expression: `console.log(${JSON.stringify(marker)})`,
+      })
+      await sleep(20)
+      const consoleEvents = deps.registry.drainObserved(one, 'console', 1_000)
+      const copies = JSON.stringify(consoleEvents).split(marker).length - 1
+      if (copies !== 1) duplicateConsoleEvents += 1
+
+      const downloadRoot = process.env.RINARI_HOME
+        ? resolvePath(process.env.RINARI_HOME, 'br13-downloads')
+        : resolvePath(process.cwd(), '.rinari-br13-downloads')
+      deps.registry.beginDownload(soak, downloadRoot)
+      await deps.services.updateSlot({
+        slot_id: lease.slot_id,
+        logical_bounds: { x: 24, y: 120, width: 320, height: 220 },
+        visible_bounds: { x: 24, y: 120, width: 320, height: 220 },
+        shown: false,
+        layout_revision: 2,
+        overlay_depth: 0,
+      })
+      await deps.services.updateSlot({
+        slot_id: lease.slot_id,
+        logical_bounds: { x: 24, y: 120, width: 320, height: 220 },
+        visible_bounds: { x: 24, y: 120, width: 320, height: 220 },
+        shown: true,
+        layout_revision: 3,
+        overlay_depth: 0,
+      })
+      deps.registry.closeTarget(soak, two.targetId)
+      await deps.services.detachSlot(lease.slot_id)
+      deps.registry.disposeContext(soak.contextId)
+
+      const now = {
+        registry: deps.registry.diagnostics(),
+        host: deps.host.diagnostics(),
+        layout: deps.services.diagnostics(),
+      }
+      if (JSON.stringify(now) !== JSON.stringify(lifecycleBaseline)) {
+        lifecycleFailure = `ciclo ${cycle + 1}: ${JSON.stringify(now)}`
+      }
+      if ((cycle + 1) % 10 === 0) console.log(`RINARI_BROWSER_BR13 ${cycle + 1}/100`)
+    }
+    const heapAfter = process.memoryUsage().heapUsed
+    const lifecycleAfter = {
+      registry: deps.registry.diagnostics(),
+      host: deps.host.diagnostics(),
+      layout: deps.services.diagnostics(),
+    }
+    const lifecycleOk =
+      !lifecycleFailure &&
+      duplicateConsoleEvents === 0 &&
+      JSON.stringify(lifecycleAfter) === JSON.stringify(lifecycleBaseline)
+    record({
+      id: 'BR13',
+      title: 'Cien ciclos devuelven todos los recursos contables al baseline',
+      status: lifecycleOk ? 'ok' : 'failed',
+      detail: lifecycleOk
+        ? `100/100 ciclos limpios; listeners duplicados: 0; tendencia heap ${heapBefore} → ${heapAfter}`
+        : `${lifecycleFailure || 'los contadores finales no coinciden'}; ciclos con evento duplicado: ${duplicateConsoleEvents}`,
+      evidence: { lifecycleBaseline, lifecycleAfter, duplicateConsoleEvents, heapBefore, heapAfter },
+    })
+
+    // ── BR-14: frames grandes y Stop por Engine + broker reales.
+    const paintNoise = async (width: number, height: number) => {
+      deps.registry.setGeometry(context, {
+        container: { x: 24, y: 120, width: 520, height: 380 },
+        page: { x: 0, y: 0, width, height },
+        visible: true,
+      })
+      await read(
+        view!,
+        `(() => {
+          let canvas = document.getElementById('__br14');
+          if (!canvas) { canvas = document.createElement('canvas'); canvas.id = '__br14'; document.body.prepend(canvas); }
+          canvas.width = ${width}; canvas.height = ${height};
+          const ctx = canvas.getContext('2d'); const image = ctx.createImageData(${width}, ${height});
+          let seed = 123456789;
+          for (let i = 0; i < image.data.length; i += 4) {
+            seed = (seed * 1664525 + 1013904223) >>> 0;
+            image.data[i] = seed & 255; image.data[i + 1] = (seed >>> 8) & 255;
+            image.data[i + 2] = (seed >>> 16) & 255; image.data[i + 3] = 255;
+          }
+          ctx.putImageData(image, 0, 0); return true;
+        })()`,
+      )
+      await sleep(250)
+    }
+
+    await paintNoise(1_500, 900)
+    const b1 = await stopDuring(
+      sessionId,
+      'browser.screenshot',
+      [{ tool: 'browser.screenshot', args: {} }, { text: 'capturado' }],
+      'captura grande y espera',
+      45_000,
+    )
+
+    await read(
+      view,
+      `(() => { for (let i = 0; i < 3000; i += 1) console.log('br14-noise-' + i);
+                return fetch(${JSON.stringify(`${deps.fixtureUrl}?br14=1`)}).then(() => true); })()`,
+    )
+    const bufferedBeforeStop = deps.registry.diagnostics()
+    const b2 = await stopDuring(
+      sessionId,
+      'browser.console',
+      [{ tool: 'browser.console', args: { limit: 200 } }, { text: 'observado' }],
+      'lee el ruido y detente',
+      30_000,
+    )
+
+    await paintNoise(2_200, 1_600)
+    await script([{ tool: 'browser.screenshot', args: {} }, { text: 'capturado' }])
+    const oversized = await runTurn(sessionId, 'captura demasiado grande', 60_000)
+    const oversizedTool = oversized.tools.find((tool) => tool.tool === 'browser.screenshot')
+    const oversizedRejected = errorCodeOf(oversizedTool) === 'RESOURCE_EXHAUSTED'
+    await deps.engine.request('engine.info', {}, 5_000)
+
+    deps.registry.setGeometry(context, {
+      container: { x: 24, y: 120, width: 520, height: 380 },
+      page: { x: 0, y: 0, width: LOGICAL_SIZE.width, height: LOGICAL_SIZE.height },
+      visible: true,
+    })
+    await script([
+      {
+        tool: 'browser.evaluate',
+        args: {
+          expression: `new Promise(resolve => setTimeout(() => { window.__br14Settled = true; resolve('settled') }, 3000))`,
+          await_promise: true,
+        },
+      },
+      { text: 'terminado' },
+    ])
+    const beforeSlow = events.length
+    await call('session.turn.start', { session_id: sessionId, message: 'inicia la mutación lenta' })
+    const slowDeadline = Date.now() + 15_000
+    while (Date.now() < slowDeadline) {
+      const started = events.slice(beforeSlow).some((entry) => {
+        const payload = entry.payload as Record<string, unknown> | undefined
+        return entry.event === 'tool.started' && payload?.tool === 'browser.evaluate'
+      })
+      if (started) break
+      await sleep(20)
+    }
+    const b4StopAt = performance.now()
+    await call('session.turn.cancel', { session_id: sessionId })
+    const b4StopMs = performance.now() - b4StopAt
+    const taking = (await call('browser.control.set', {
+      session_id: sessionId,
+      owner: 'user',
+    })) as { control_state?: string; control_revision?: number }
+    await sleep(500)
+    const settledEarly = await read<boolean>(view, 'window.__br14Settled === true')
+    const grantedEarly = events.slice(beforeSlow).some((entry) => {
+      const payload = entry.payload as Record<string, unknown> | undefined
+      return entry.event === 'browser.control.changed' && payload?.control_state === 'user'
+    })
+    await sleep(3_500)
+    const settledLate = await read<boolean>(view, 'window.__br14Settled === true')
+    const slowSlice = events.slice(beforeSlow)
+    const slowWire = JSON.stringify(slowSlice)
+    const uncertain = slowWire.includes('unknown') || slowWire.includes('uncertain')
+    const retried = slowWire.includes('"retryable":true')
+    const userEvent = [...slowSlice].reverse().find((entry) => {
+      const payload = entry.payload as Record<string, unknown> | undefined
+      return entry.event === 'browser.control.changed' && payload?.control_state === 'user'
+    })
+    if (userEvent) {
+      const payload = userEvent.payload as Record<string, unknown>
+      await call('browser.control.set', {
+        session_id: sessionId,
+        owner: 'agent',
+        expected_revision: payload.control_revision,
+      })
+      await awaitControl('agent')
+    }
+    await deps.engine.request('engine.info', {}, 5_000)
+
+    const stopLatencies = [b1.stopMs, b2.stopMs, b4StopMs]
+    const stopObjective = stopLatencies.every((latency) => latency <= 2_000)
+    const br14Ok =
+      Boolean(b1.terminal) &&
+      Boolean(b2.terminal) &&
+      oversizedRejected &&
+      taking.control_state === 'taking-user-control' &&
+      !settledEarly &&
+      !grantedEarly &&
+      settledLate &&
+      uncertain &&
+      !retried &&
+      deps.host.diagnostics().inFlight === 0
+    record({
+      id: 'BR14',
+      title: 'Frames grandes y Stop no bloquean el Engine ni repiten mutaciones inciertas',
+      status: br14Ok ? 'ok' : 'failed',
+      detail: br14Ok
+        ? `B1–B4 pasan; Stop ${stopLatencies.map((value) => `${Math.round(value)} ms`).join(', ')}${stopObjective ? ' (objetivo ≤2 s)' : ' (por encima del objetivo ≤2 s)'}`
+        : `B1 terminal ${Boolean(b1.terminal)}; B2 terminal ${Boolean(b2.terminal)}; sobrelímite ${oversizedRejected}; taking ${taking.control_state}; grant temprano ${grantedEarly}; settlement ${settledLate}; incierto ${uncertain}; retry ${retried}; in-flight ${deps.host.diagnostics().inFlight}`,
+      evidence: {
+        stopLatencies,
+        stopObjective,
+        bufferedBeforeStop,
+        oversizedError: errorCodeOf(oversizedTool),
+        taking,
+        settledEarly,
+        grantedEarly,
+        settledLate,
+        uncertain,
+        retried,
+        host: deps.host.diagnostics(),
+      },
     })
 
     // ── Paso 8: se mata el Engine con una mutación en vuelo.

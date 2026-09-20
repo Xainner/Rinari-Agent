@@ -169,6 +169,8 @@ export interface DesktopBridge {
     ): Promise<NativeBrowserControl>
     /** Navegación pedida por el usuario desde la toolbar. */
     navigate(sessionId: string, url: string): Promise<void>
+    /** Captura del mismo target mientras la superficie física está retirada. */
+    preview(sessionId: string): Promise<NativeBrowserPreview | null>
     /** Cambios de pestañas, control o estado. Sin sondeo. */
     onContextChanged(
       callback: (view: NativeBrowserContext) => void,
@@ -255,6 +257,14 @@ export interface NativeBrowserControl {
   control_revision: number
 }
 
+export interface NativeBrowserPreview {
+  target_id: string
+  url: string
+  image: string
+  width: number
+  height: number
+}
+
 /**
  * Geometría del hueco reservado.
  *
@@ -271,4 +281,6 @@ export interface NativeBrowserSlotLayout {
   layoutRevision: number
   /** Overlays encima ahora mismo; >0 esconde la superficie nativa (§8.3). */
   overlayDepth: number
+  /** Regiones DOM temporales que una vista nativa no puede tapar. */
+  occlusions?: Array<{ x: number; y: number; width: number; height: number }>
 }

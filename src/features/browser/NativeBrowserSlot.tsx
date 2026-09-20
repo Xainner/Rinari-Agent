@@ -1,10 +1,11 @@
 import { useI18n } from '../../i18n'
-import type { NativeBrowserContext } from '../../platform/contract'
+import type { NativeBrowserContext, NativeBrowserPreview } from '../../platform/contract'
 
 export interface NativeBrowserSlotProps {
   context: NativeBrowserContext
   slotRef: (element: HTMLElement | null) => void
   onPrepare: () => void
+  preview?: NativeBrowserPreview | null
 }
 
 /**
@@ -18,7 +19,7 @@ export interface NativeBrowserSlotProps {
  * que se está creando, uno desconectado, o uno que aún no existe. Enseñar un
  * hueco vacío sin explicación haría pensar que el browser está roto.
  */
-export default function NativeBrowserSlot({ context, slotRef, onPrepare }: NativeBrowserSlotProps) {
+export default function NativeBrowserSlot({ context, slotRef, onPrepare, preview }: NativeBrowserSlotProps) {
   const { t } = useI18n()
   const state = context.context_state
 
@@ -30,7 +31,18 @@ export default function NativeBrowserSlot({ context, slotRef, onPrepare }: Nativ
       data-mode="native"
       data-state={state}
     >
-      {state === 'ready' ? null : state === 'creating' ? (
+      {state === 'ready' && context.control_state !== 'user' ? (
+        preview ? (
+          <img
+            src={preview.image}
+            alt={t('browser.frameAlt')}
+            className="h-full w-full object-contain object-top"
+            data-testid="browser-agent-preview"
+          />
+        ) : (
+          <p className="p-4 text-xs text-[var(--text-muted)]">{t('browser.nativePreparing')}</p>
+        )
+      ) : state === 'ready' ? null : state === 'creating' ? (
         <p className="p-4 text-xs text-[var(--text-muted)]">{t('browser.nativePreparing')}</p>
       ) : state === 'disconnected' || state === 'disposed' ? (
         <p className="p-4 text-xs text-[var(--text-muted)]">{t('browser.nativeDisconnected')}</p>

@@ -109,6 +109,9 @@ export const tauriBridge: DesktopBridge = {
     async navigate(): Promise<void> {
       throw new Error('the Tauri host has no native browser surface')
     },
+    async preview() {
+      return null
+    },
     async onContextChanged(): Promise<Unsubscribe> {
       // Nunca cambia: no hay contexto nativo del que informar.
       return () => {}

@@ -25,6 +25,7 @@ import {
   PUSH,
   type BridgeResult,
   type BrowserContextView,
+  type BrowserPreviewView,
   type BrowserControlView,
   type BrowserSlotLayoutRequest,
   type BrowserSlotLease,
@@ -203,6 +204,8 @@ const api = {
       call<BrowserControlView>(CHANNEL.browserSetControl, sessionId, owner, expectedRevision),
     navigate: (sessionId: string, url: string) =>
       call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
+    preview: (sessionId: string) =>
+      call<BrowserPreviewView | null>(CHANNEL.browserPreview, sessionId),
     /** Cambios de pestañas, control o estado, empujados por main. */
     onContextChanged: (callback: (view: BrowserContextView) => void) =>
       subscribe<BrowserContextView>(PUSH.browserContextChanged, callback),

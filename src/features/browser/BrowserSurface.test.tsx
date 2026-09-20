@@ -83,6 +83,33 @@ describe('qué presentación se elige', () => {
     )
   })
 
+  it('con el agente al mando muestra la captura del mismo target', async () => {
+    bridge.browserContext = nativeContext()
+    bridge.browserPreview = {
+      target_id: 't1',
+      url: 'https://example.com/a',
+      image: 'data:image/png;base64,AAAA',
+      width: 760,
+      height: 560,
+    }
+    paint()
+    expect(await screen.findByTestId('browser-agent-preview')).toBeTruthy()
+  })
+
+  it('con el usuario al mando deja el hueco para la vista viva', async () => {
+    bridge.browserContext = nativeContext({ control: 'user', control_state: 'user' })
+    bridge.browserPreview = {
+      target_id: 't1',
+      url: 'https://example.com/a',
+      image: 'data:image/png;base64,AAAA',
+      width: 760,
+      height: 560,
+    }
+    paint()
+    await screen.findByTestId('browser-view-slot')
+    expect(screen.queryByTestId('browser-agent-preview')).toBeNull()
+  })
+
   it('soporte sin contexto todavía no es «nativo listo»', async () => {
     // §5.2: soporte, binding y contexto son tres cosas. El slot se enseña,
     // pero diciendo que aún no hay página y ofreciendo crearla.

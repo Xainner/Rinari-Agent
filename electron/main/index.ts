@@ -225,6 +225,7 @@ function browserServices(): HostServices['browser'] {
       if (context && context.order.length === 0) {
         const target = browserRegistry!.createTarget(context)
         await target.view.webContents.loadURL('about:blank')
+        await browserRegistry!.attach(target)
         browserHost?.publishTargets(context.contextId)
       }
       return view
@@ -244,6 +245,7 @@ function browserServices(): HostServices['browser'] {
         shown: request.shown,
         layoutRevision: request.layout_revision,
         overlayDepth: request.overlay_depth,
+        occlusions: request.occlusions,
       })
       // Una geometría rechazada —atrasada, fuera de la ventana, imposible— se
       // descarta en silencio: es una actualización perdida, no un error que
@@ -304,11 +306,15 @@ function browserServices(): HostServices['browser'] {
       requireUserControl(context, 'navigating')
       const entry = browserRegistry!.target(context.contextId, null)
       if (!entry) throw Object.assign(new Error('this context has no page'), { code: 'NOT_FOUND' })
+      await browserRegistry!.attach(entry)
       await entry.view.webContents.loadURL(url)
       browserHost?.publishTargets(context.contextId)
       publishBrowserContext(sessionId)
       return { url }
     },
+
+    preview: (sessionId) => browserHost?.preview(sessionId) ?? Promise.resolve(null),
+    diagnostics: () => ({ layoutSlots: layoutCoordinator?.size ?? 0 }),
   }
 }
 
@@ -544,15 +550,19 @@ function attachVerticalProof(): void {
  * Click real del sistema para la prueba de click-through, cuando la
  * plataforma lo permite. El script lo aporta el runner.
  */
-function physicalClicker(): ((x: number, y: number) => Promise<void>) | undefined {
+function physicalClicker(): ((x: number, y: number, text?: string) => Promise<void>) | undefined {
   const script = process.env.RINARI_PROBE_PS1
   if (process.platform !== 'win32' || !script) return undefined
-  return (x, y) =>
+  return (x, y, text) =>
     new Promise<void>((resolve, reject) => {
       void import('node:child_process').then(({ execFile }) => {
         execFile(
           'powershell.exe',
-          ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-X', `${x}`, '-Y', `${y}`],
+          [
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script,
+            '-X', `${x}`, '-Y', `${y}`,
+            ...(text ? ['-Text', text] : []),
+          ],
           (error) => (error ? reject(error) : resolve()),
         )
       })

@@ -116,75 +116,48 @@ multiplicar todo por `devicePixelRatio` sin saber qué unidad pide cada API:
 Coordenadas de pantalla para entrada del sistema: `screen.dipToScreenPoint`.
 No se compone a mano con el factor de escala.
 
-## 3. Input y arbitraje: la barrera es nativa, y no por descarte cómodo
+## 3. Input y arbitraje: presentación segura por propietario
 
-Esta es la decisión que el §7 deja explícitamente a esta prueba: «Si no se
-puede distinguir con garantías en la implementación escogida, canalizar el
-control por una barrera nativa y decidirlo en la prueba vertical».
+Las mediciones originales siguen siendo útiles: `before-input-event`,
+`before-mouse-event` e `Input.setIgnoreInputEvents` bloquean también el input
+que el broker manda por CDP. Una vista superpuesta separó las rutas en una
+`BaseWindow`, pero en la `BrowserWindow` de producto bloqueó también el click
+CDP. Esa contradicción no se usa ya como base de seguridad.
 
-**Se puede bloquear al usuario. El problema es que las mismas barreras bloquean
-al agente.**
+La solución adoptada es el modo de presentación por propietario recomendado en
+el correctivo:
 
-| Mecanismo | ¿Cierra la entrada del usuario? | ¿Deja pasar la del agente por CDP? |
-|---|---|---|
-| `before-input-event` + `preventDefault` | Sí (`INPUT-01`: 1 → 0 keydown) | **No** (`INPUT-03`) |
-| `before-mouse-event` + `preventDefault` | Sí (`INPUT-02`: 1 → 0 clicks) | **No** (`INPUT-03`) |
-| `Input.setIgnoreInputEvents` | Sí (`INPUT-04`: 1 → 0) | **No** (`INPUT-04`: 0) |
-| **Vista nativa superpuesta** | **Sí** (`BARRIER-01`) | **Sí**, no la toca |
+- con control **agent**, la `WebContentsView` real sigue viva y compuesta en un
+  suelo de 1×1 DIP; el renderer muestra capturas acotadas del **mismo target**;
+- con control **user**, y sólo tras la revisión confirmada por el Engine, main
+  restaura esa misma vista a los bounds del slot;
+- al devolver el control, main la retira otra vez sin navegar, recrear ni
+  cambiar el DOM.
 
-`INPUT-03` está medido con línea base a los dos lados: sin barrera el click por
-`Input.dispatchMouseEvent` llegó, con barrera no. `INPUT-04` igual, y su
-`afterRelease` volvió a 1, lo que descarta que los ceros vinieran de una página
-rota en vez del propio flag.
+Así no existe una superficie remota bajo el cursor mientras opera el agente.
+`V2p` lo prueba con mouse y teclado reales del sistema: clicks 0 → 0 y campo sin
+cambios. En la misma vista retirada, `V2c` manda un click por CDP y llega 0 → 1.
+`V5` toma control, restaura la vista, escribe mediante entrada física, rechaza
+una mutación concurrente con `CONFLICT` y el agente observa la edición al
+recuperar el control.
 
-**Una superposición nativa sí para al usuario.** `BARRIER-01`, con entrada real
-del sistema: sin barrera 1 click en la página; con barrera 0 en la página y 1 en
-la superposición; al retirarla, 1 otra vez. No hay click-through y el click va a
-quien está delante.
+La captura de presentación no crea otro browser ni recarga la URL: sale de
+`capturePage()` sobre el target activo. El floor conserva viewport,
+`loading="lazy"` y capturas aunque el dock no se haya abierto (`V10`).
 
-**Pero no está decidido que pueda estar montada mientras el agente trabaja.**
-Las dos mediciones se contradicen y la discrepancia está **sin resolver**:
+Los overlays modales siguen retirando la superficie antes de ser interactivos.
+La barrera nativa se conserva sólo como sonda de hit-testing (`V7b`), no como
+autoridad de control ni como bypass temporal.
 
-| Dónde | Barrera montada | ¿Llega el click del agente por CDP? |
-|---|---|---|
-| Sonda aislada, `BaseWindow` (`BARRIER-02`) | sí | **sí** (1 click) |
-| Prueba vertical, ventana de la aplicación (`V2c`) | sí | **no** (0 clicks) |
-| Prueba vertical, misma ventana, barrera retirada | no | **sí** (1 click) |
+### 3.1 Toasts sobre superficies nativas
 
-La segunda es la configuración que importa, así que manda: **el contexto no
-nace con barrera**. Se monta sólo cuando alguien la pide explícitamente, hoy
-para probar overlays y modales (§8.3). Mientras la discrepancia no se explique,
-no se puede afirmar que la barrera separe las dos rutas.
-
-Lo que la prueba vertical **sí** demuestra es que la exclusión funciona en el
-Engine: con el usuario al mando, `browser.click` termina en `tool.failed` con
-`CONFLICT` y no toca la página (`V5`). Eso cumple el §7 en lo que pide de
-verdad —«una herramienta mutable debe recibir un estado de intervención/no
-disponible, no ejecutarse a escondidas ni quedarse en retry infinito»— sin
-depender de una barrera cuyo comportamiento no está fijado.
-
-Queda abierto, y bloquea la entrega F: qué distingue las dos configuraciones
-—`BaseWindow` frente a `BrowserWindow`, la URL de la superposición, el foco— y,
-en consecuencia, qué impide al usuario tocar la página mientras una herramienta
-ejecuta. Sin esa respuesta no se puede anunciar exclusión mutua.
-
-Ese último punto exige una nota sobre el método. Las comprobaciones `INPUT-*`
-usan `sendInputEvent`, que va dirigido a un webContents concreto y **se salta el
-hit-testing**: sirve para medir intercepción, no geometría. Una barrera
-superpuesta medida así habría salido buena sin demostrar nada. Por eso
-`BARRIER-01` sintetiza un click de ratón del sistema
-(`electron/probe/physicalClick.ps1`, que guarda y restaura la posición del
-cursor).
-
-**Consecuencia.** Se descarta alternar la barrera para cada acción del agente:
-sería justo la «ventana global de bypass» que el §7 prohíbe, y además con
-carrera.
-
-Para el §8.3 y BR-07 la medición basta tal cual: un modal que invada el área
-del browser se presenta como superficie nativa por encima y **no** deja pasar
-clicks. Ahí no hay conflicto, porque mientras el modal está delante el agente
-tampoco debe estar tocando la página. Ocultar la vista durante el overlay sigue
-siendo válido; ya no es la única opción probada.
+Los toasts usan una sola renderer y la API pública de Sonner. `AdaptiveToaster`
+elige entre seis posiciones que no solapen slots nativos y congela la posición
+mientras la pila está activa. Si ninguna cabe, publica una oclusión acotada;
+main recorta la vista al mayor rectángulo contiguo que no la invada, conserva
+los bounds lógicos de la página y baja al floor si no queda un área útil. Al
+desaparecer la pila vuelve exactamente la geometría anterior. No hay una
+segunda ventana transparente ni otro preload privilegiado.
 
 ## 4. CDP: transporte sí, superficie pública no
 
@@ -249,6 +222,8 @@ página que el usuario tiene delante.
 |---|---|---|
 | V1 | Vista en blanco con contexto registrado | el contexto es de esa sesión y su target está en `about:blank` |
 | V2 | Un turno navega al fixture | la vista **que ya existía** queda en la URL; no se creó otra |
+| V2d | Red inicial | el request del documento aparece porque Runtime/Network se habilitan antes de la navegación real |
+| V2p | Exclusión física del agente | mouse y teclado del sistema no alcanzan la página retirada |
 | V3 | Snapshot, llenar y click | `#result` pasa a `applied` con el valor que escribió la herramienta, leído del webContents |
 | V4 | Screenshot con tamaño y target | bytes > 0 y el target es el de esta sesión |
 | V5 | Control manual | con el usuario al mando `browser.click` acaba en `tool.failed` con `CONFLICT`; al devolver el control el agente lee la edición manual |
@@ -276,6 +251,14 @@ no significan lo que parecen:
 - **V12** — una descarga cuyo `Content-Disposition` propone
   `../../CON.txt` aterriza dentro del directorio de artefactos y con un nombre
   que es un componente de ruta. Es BR-09 en el camino real.
+- **BR-13** — 100 ciclos con dos targets, reattach del debugger, consola/red,
+  descargas, show/hide, detach y dispose. Contextos, targets, webContents,
+  debuggers, listeners, slots, ledger e in-flight vuelven al baseline; un log
+  tras reattach produce exactamente un evento.
+- **BR-14** — captura cercana al límite, buffers ruidosos, respuesta que excede
+  8 MiB y mutación lenta contra Stop. El Engine sigue respondiendo, el exceso
+  termina en `RESOURCE_EXHAUSTED`, la mutación queda incierta sin retry y el
+  control manual no se concede antes del settlement. Stop midió 1–2 ms.
 
 ### Descargas: deny por defecto, y Chromium sanea antes que tú
 
@@ -344,34 +327,41 @@ resultado tardío; el settlement sólo libera la retención interna. Los leases 
 una mutación semántica completa comparten esa contabilidad, de modo que un
 click sigue cubierto desde la lectura de coordenadas hasta el último
 `mouseReleased`. SETTLE-01…05 fijan las carreras reply/timeout/cancelación y el
-traspaso de control; la prueba vertical conserva 20/20 pasos con este Engine.
+traspaso de control; la prueba vertical pasa 24/24 pasos con este Engine.
+
+### Observación temprana y buffers acotados
+
+Cada target carga primero `about:blank`, instala una sola vez su listener del
+debugger, habilita Runtime/Network y sólo entonces hace la primera navegación
+real. Un detach repite attach + enable sobre el mismo listener. Los eventos se
+sanean antes de guardarlos y cada buffer se limita a 500 entradas y 512 KiB;
+no se conservan headers, cuerpos, object handles ni valores de cookies.
 
 ## 7. Lo que esta etapa no probó
 
 Se listan para que nadie los dé por cubiertos:
 
 - **Cobertura de entrada más allá del click y la tecla.** El §7 nombra wheel,
-  IME, touch, drag/drop y menús. `before-mouse-event` bloquea el click; del
-  resto no hay medición. Mientras no la haya, la barrera nativa es el mecanismo
-  —no la intercepción por evento—, que es precisamente lo que la hace la opción
-  segura: no depende de enumerar canales.
+  IME, touch, drag/drop y menús. No hay medición específica de cada canal. El
+  modo agent no presenta la vista en el rectángulo del panel, así que la
+  exclusión no depende de interceptarlos uno por uno; falta validar esas rutas
+  al ampliar la matriz de plataformas.
 - **Otras plataformas.** `BARRIER-01` usa síntesis de entrada de Windows. El
   criterio de aceptación de la entrega E es Windows; macOS y Linux quedan por
   medir antes de afirmar nada allí.
 - **Multi-monitor y cambio de monitor en caliente.** El barrido de escala fuerza
   el factor por proceso; mover la ventana entre monitores de distinta densidad
   no está medido.
-- **Carga y ciclos.** BR-13 (100 ciclos mostrar/ocultar/cerrar) y BR-14 (frames
-  grandes contra Stop) son de la entrega F.
 
 ## 8. Qué queda fijado para la entrega F
 
 1. `View` contenedora con el rectángulo visible; `WebContentsView` hija con
    bounds lógicos. Un `webContents`, una vista (§6.2, [E3]).
 2. Geometría en DIP; imágenes rotuladas con tamaño y escala.
-3. El arbitraje lo hace cumplir el Engine: una herramienta mutable con el
-   usuario al mando recibe `CONFLICT`, no se ejecuta ni reintenta. La barrera
-   nativa queda para overlays, y **no** montada por defecto.
+3. El Engine arbitra las mutaciones y main arbitra la presentación física: en
+   agent la vista queda a 1×1 con preview del mismo target; en user se restaura
+   tras confirmación. Una herramienta mutable con el usuario al mando recibe
+   `CONFLICT`, no se ejecuta ni reintenta.
 4. Broker con allowlist semántica. `Target.*` y `Browser.*` no se exponen: la
    enumeración la sirve la registry.
 5. Suscripción a `detach` del debugger como pérdida de control, con pendientes
@@ -379,7 +369,7 @@ Se listan para que nadie los dé por cubiertos:
    correlación hasta una reply tardía o una pérdida definitiva del recurso.
 6. Ningún handler de protocolo espera al host. Lo que necesite al host va en
    un worker o en segundo plano.
-
-Y una cosa que **no** queda fijada y hay que resolver antes de F: qué impide
-que el usuario toque la página mientras una herramienta ejecuta (§3 de este
-documento).
+7. Runtime/Network están activos antes de la primera navegación real; listeners
+   y buffers tienen ciclo de vida y límites medidos.
+8. Toasts se colocan fuera de superficies nativas o main recorta temporalmente
+   la vista bajo su región.

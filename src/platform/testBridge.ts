@@ -15,6 +15,7 @@ import type {
   EngineStatus,
   EngineEventMessage,
   NativeBrowserContext,
+  NativeBrowserPreview,
   NativeBrowserSlotLayout,
   NotificationSupport,
   NotificationTarget,
@@ -56,6 +57,7 @@ export interface TestBridge extends DesktopBridge {
   desktop: boolean
   /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
   browserContext: NativeBrowserContext | null
+  browserPreview: NativeBrowserPreview | null
   /** Intenciones de browser pedidas, en orden. */
   readonly browserCalls: Array<Record<string, unknown>>
   /** Geometrías enviadas, para comprobar el recorte sin una ventana. */
@@ -92,6 +94,7 @@ export function createTestBridge(): TestBridge {
     calls: [],
     engineCalls: [],
     browserContext: null,
+    browserPreview: null,
     browserCalls: [],
     browserLayouts: [],
     emitBrowserContext(view) {
@@ -217,6 +220,9 @@ export function createTestBridge(): TestBridge {
       async navigate(sessionId: string, url: string) {
         bridge.browserCalls.push({ kind: 'navigate', sessionId, url })
       },
+      async preview() {
+        return bridge.browserPreview
+      },
       async onContextChanged(callback): Promise<Unsubscribe> {
         browserListeners.add(callback)
         return () => browserListeners.delete(callback)
@@ -303,6 +309,7 @@ export function createTestBridge(): TestBridge {
       bridge.nextFileSelection = null
       bridge.update = null
       bridge.browserContext = null
+      bridge.browserPreview = null
       bridge.browserCalls.length = 0
       bridge.browserLayouts.length = 0
       browserListeners.clear()

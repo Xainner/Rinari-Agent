@@ -33,6 +33,12 @@ export type { HostRequest }
 
 /** Capabilities que este host anuncia al registrarse (§5.2). */
 export const HOST_CAPABILITIES = ['browser_native_view_v1'] as const
+const MAX_REPLY_BYTES = 8 * 1024 * 1024
+const REPLY_ENVELOPE_BYTES = 1_024
+
+function encodedPngBytes(bytes: number): number {
+  return Math.ceil(bytes / 3) * 4 + REPLY_ENVELOPE_BYTES
+}
 
 /**
  * La que el Engine tiene que anunciar para que registrarse tenga sentido.
@@ -99,6 +105,10 @@ export class NativeBrowserHost {
   private readonly seen = new RequestLedger<ExecutionOutcome>()
 
   constructor(private readonly deps: NativeBrowserHostDeps) {}
+
+  diagnostics(): { inFlight: number; requestLedger: number } {
+    return { inFlight: this.inFlight, requestLedger: this.seen.size }
+  }
 
   get registered(): boolean {
     return this.binding !== null
@@ -212,6 +222,36 @@ export class NativeBrowserHost {
     }
     // `uncertain`: no se pudo garantizar exclusión, así que el control sigue
     // siendo del agente y **no** se habilita la entrada manual.
+  }
+
+  /** Captura acotada del target activo para el modo seguro del agente. */
+  async preview(sessionId: string): Promise<{
+    target_id: string
+    url: string
+    image: string
+    width: number
+    height: number
+  } | null> {
+    const context = this.deps.registry.contextForSession(sessionId)
+    if (!context || context.control !== 'agent') return null
+    const entry = this.deps.registry.target(context.contextId, null)
+    if (!entry || entry.view.webContents.isDestroyed() || !this.deps.registry.isComposited(context)) {
+      return null
+    }
+    const image = await entry.view.webContents.capturePage()
+    if (image.isEmpty()) return null
+    const size = image.getSize()
+    const preview = size.width > 1280 ? image.resize({ width: 1280, quality: 'good' }) : image
+    const png = preview.toPNG()
+    if (png.length === 0 || encodedPngBytes(png.length) > MAX_REPLY_BYTES) return null
+    const dimensions = preview.getSize()
+    return {
+      target_id: entry.targetId,
+      url: entry.view.webContents.getURL(),
+      image: `data:image/png;base64,${png.toString('base64')}`,
+      width: dimensions.width,
+      height: dimensions.height,
+    }
   }
 
   handleEngineEvent(event: unknown): boolean {
@@ -441,6 +481,12 @@ export class NativeBrowserHost {
             `the capture came back empty (${width}×${height}): this page has never been composited`,
           )
         }
+        if (encodedPngBytes(png.length) > MAX_REPLY_BYTES) {
+          throw new OperationError(
+            'RESOURCE_EXHAUSTED',
+            `the screenshot would exceed the ${MAX_REPLY_BYTES}-byte broker reply limit`,
+          )
+        }
         // Misma forma que devolvía CDP, para que el manager no cambie.
         return { data: png.toString('base64') }
       }
@@ -455,7 +501,7 @@ export class NativeBrowserHost {
         if (!entry || entry.view.webContents.isDestroyed()) {
           throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
         }
-        registry.attach(entry)
+        await registry.attach(entry)
         const limit = Number(request.params.limit)
         const kind = request.operation === 'page.consoleEvents' ? 'console' : 'network'
         return {
@@ -499,7 +545,7 @@ export class NativeBrowserHost {
         if (!entry || entry.view.webContents.isDestroyed()) {
           throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
         }
-        registry.attach(entry)
+        await registry.attach(entry)
         const debug = entry.view.webContents.debugger
         // El elemento se resuelve aquí y no en el Engine: así no viaja ningún
         // `objectId` por el broker, que sería un handle a un nodo de la página
@@ -577,6 +623,12 @@ export class NativeBrowserHost {
           throw new OperationError('INVALID_ARGUMENT', `the desktop browser will not open ${url}`)
         }
         const entry = registry.createTarget(context)
+        await entry.view.webContents.loadURL('about:blank')
+        await registry.attach(entry)
+        if (url === 'about:blank') {
+          this.publishTargets(context.contextId)
+          return { target_id: entry.targetId, url }
+        }
         await entry.view.webContents.loadURL(url)
         this.publishTargets(context.contextId)
         return { target_id: entry.targetId, url }
@@ -640,7 +692,7 @@ export class NativeBrowserHost {
       }
     }
 
-    this.deps.registry.attach(entry)
+    await this.deps.registry.attach(entry)
     try {
       const value = await entry.view.webContents.debugger.sendCommand(method, request.params)
       // Navegar cambia la URL y el título que la toolbar enseña; sin esto la

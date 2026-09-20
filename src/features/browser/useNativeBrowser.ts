@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { platform } from '../../platform'
-import type { NativeBrowserContext } from '../../platform/contract'
+import type { NativeBrowserContext, NativeBrowserPreview } from '../../platform/contract'
+import { useNativeSurfaces } from '../../stores/nativeSurfaces'
 
 /**
  * Browser nativo de una sesión (documento 03 §6.1 y §8.1).
@@ -63,6 +64,7 @@ function visibleRectOf(element: HTMLElement): Rect {
 
 export interface NativeBrowserState {
   context: NativeBrowserContext | null
+  preview: NativeBrowserPreview | null
   error: string
   /** Prepara el contexto y su página en blanco. Acción explícita. */
   prepare(): Promise<void>
@@ -80,7 +82,10 @@ export function useNativeBrowser(
 ): NativeBrowserState {
   const { shown, overlayDepth = 0 } = options
   const [context, setContext] = useState<NativeBrowserContext | null>(null)
+  const [preview, setPreview] = useState<NativeBrowserPreview | null>(null)
   const [error, setError] = useState('')
+  const toastOcclusions = useNativeSurfaces((state) => state.toastOcclusions)
+  const setSurface = useNativeSurfaces((state) => state.setSurface)
 
   const slotId = useRef<string | null>(null)
   const element = useRef<HTMLElement | null>(null)
@@ -90,8 +95,10 @@ export function useNativeBrowser(
   // ciclo de render: una geometría se envía por movimiento, no por re-render.
   const shownRef = useRef(shown)
   const overlayRef = useRef(overlayDepth)
+  const occlusionsRef = useRef(toastOcclusions)
   shownRef.current = shown
   overlayRef.current = overlayDepth
+  occlusionsRef.current = toastOcclusions
 
   /** Publica la geometría, agrupada por animation frame (§8.1). */
   const publish = useCallback(() => {
@@ -102,21 +109,25 @@ export function useNativeBrowser(
       const slot = slotId.current
       if (!node || !slot) return
       revision.current += 1
+      const logicalBounds = rectOf(node)
+      const visibleBounds = visibleRectOf(node)
+      setSurface(slot, shownRef.current ? visibleBounds : null)
       void platform()
         .browser.updateSlot({
           slotId: slot,
-          logicalBounds: rectOf(node),
-          visibleBounds: visibleRectOf(node),
+          logicalBounds,
+          visibleBounds,
           shown: shownRef.current,
           layoutRevision: revision.current,
           overlayDepth: overlayRef.current,
+          occlusions: occlusionsRef.current,
         })
         .catch(() => {
           // Una geometría perdida se corrige en el siguiente movimiento; no
           // merece romper el panel.
         })
     })
-  }, [])
+  }, [setSurface])
 
   const slotRef = useCallback(
     (node: HTMLElement | null) => {
@@ -181,9 +192,10 @@ export function useNativeBrowser(
       alive = false
       const slot = slotId.current
       slotId.current = null
+      if (slot) setSurface(slot, null)
       if (slot) void platform().browser.detachSlot(slot)
     }
-  }, [sessionId, publish])
+  }, [sessionId, publish, setSurface])
 
   // Todo lo que mueve el slot: su propio tamaño, el scroll de un antepasado,
   // la ventana, y los cambios de visibilidad u overlay.
@@ -209,7 +221,33 @@ export function useNativeBrowser(
     }
   }, [publish, context?.context_state])
 
-  useEffect(publish, [publish, shown, overlayDepth])
+  useEffect(publish, [publish, shown, overlayDepth, toastOcclusions])
+
+  // En control del agente no se presenta la WebContentsView: queda compuesta
+  // a 1×1 y este panel enseña una captura del mismo target. El sondeo está
+  // acotado al panel visible y se detiene en cuanto el usuario toma control.
+  useEffect(() => {
+    if (!shown || context?.context_state !== 'ready' || context.control_state === 'user') {
+      setPreview(null)
+      return
+    }
+    let alive = true
+    let timer: number | undefined
+    const refresh = async () => {
+      try {
+        const next = await platform().browser.preview(sessionId)
+        if (alive) setPreview(next)
+      } catch {
+        // La captura siguiente vuelve a intentar; el target sigue vivo.
+      }
+      if (alive) timer = window.setTimeout(refresh, 1_200)
+    }
+    void refresh()
+    return () => {
+      alive = false
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [sessionId, shown, context?.context_state, context?.control_state, context?.active_target_id])
 
   const guard = useCallback(async (action: () => Promise<unknown>) => {
     try {
@@ -222,6 +260,7 @@ export function useNativeBrowser(
 
   return {
     context,
+    preview,
     error,
     prepare: () =>
       guard(async () => {

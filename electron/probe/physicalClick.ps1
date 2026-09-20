@@ -9,7 +9,8 @@
 
 param(
   [Parameter(Mandatory = $true)][int]$X,
-  [Parameter(Mandatory = $true)][int]$Y
+  [Parameter(Mandatory = $true)][int]$Y,
+  [string]$Text = ''
 )
 
 Add-Type -TypeDefinition @'
@@ -40,5 +41,11 @@ Start-Sleep -Milliseconds 60
 [RinariProbeInput]::mouse_event([RinariProbeInput]::LEFTUP, 0, 0, 0, [IntPtr]::Zero)
 Start-Sleep -Milliseconds 120
 
+if ($Text.Length -gt 0) {
+  Add-Type -AssemblyName System.Windows.Forms
+  [System.Windows.Forms.SendKeys]::SendWait($Text)
+  Start-Sleep -Milliseconds 120
+}
+
 [void][RinariProbeInput]::SetCursorPos($origin.X, $origin.Y)
-Write-Output "clicked $X $Y"
+Write-Output "clicked $X $Y and typed $($Text.Length) chars"

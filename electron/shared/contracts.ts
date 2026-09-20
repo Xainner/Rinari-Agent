@@ -42,6 +42,7 @@ export const CHANNEL = {
   browserSelectTarget: 'rinari:browser.selectTarget',
   browserSetControl: 'rinari:browser.setControl',
   browserNavigate: 'rinari:browser.navigate',
+  browserPreview: 'rinari:browser.preview',
 } as const
 
 /** Canales de main hacia el renderer (unidireccionales). */
@@ -193,6 +194,14 @@ export interface BrowserControlView {
   control_revision: number
 }
 
+export interface BrowserPreviewView {
+  target_id: string
+  url: string
+  image: string
+  width: number
+  height: number
+}
+
 /** Geometría que el renderer reserva; main decide dónde se pinta. */
 export interface BrowserSlotLayoutRequest {
   slot_id: string
@@ -201,6 +210,7 @@ export interface BrowserSlotLayoutRequest {
   shown: boolean
   layout_revision: number
   overlay_depth: number
+  occlusions?: Array<{ x: number; y: number; width: number; height: number }>
 }
 
 export interface BrowserSlotLease {

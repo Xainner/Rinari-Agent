@@ -87,6 +87,22 @@ describe('cuándo se esconde la superficie (§8.3)', () => {
       resolveLayout(layout({ visibleBounds: { x: 100, y: 80, width: 0, height: 560 } })).visible,
     ).toBe(false)
   })
+
+  it('un toast recorta sólo la parte solapada y conserva el viewport', () => {
+    const result = resolveLayout(
+      layout({ occlusions: [{ x: 600, y: 464, width: 260, height: 176 }] }),
+    )
+    expect(result.container).toEqual({ x: 100, y: 80, width: 760, height: 384 })
+    expect(result.page).toEqual({ x: 0, y: 0, width: 760, height: 560 })
+    expect(result.visible).toBe(true)
+  })
+
+  it('una oclusión total retira la superficie', () => {
+    const result = resolveLayout(
+      layout({ occlusions: [{ x: 0, y: 0, width: 1_280, height: 860 }] }),
+    )
+    expect(result.visible).toBe(false)
+  })
 })
 
 describe('leases y admisión', () => {

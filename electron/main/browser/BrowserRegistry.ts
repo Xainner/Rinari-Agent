@@ -70,12 +70,6 @@ const LAYOUT_FLOOR = { x: 0, y: 0, width: 1, height: 1 }
 
 /** Métodos CDP que se bufferizan para consola y red (§6.3). */
 const CONSOLE_METHODS = new Set(['Runtime.consoleAPICalled', 'Runtime.exceptionThrown'])
-const NETWORK_METHODS = new Set([
-  'Network.requestWillBeSent',
-  'Network.responseReceived',
-  'Network.loadingFailed',
-])
-
 /**
  * Tope del buffer por clase y target.
  *
@@ -84,8 +78,110 @@ const NETWORK_METHODS = new Set([
  * es lo que una herramienta que consulta lo reciente quiere de todos modos.
  */
 const MAX_BUFFERED = 500
+const MAX_BUFFERED_BYTES = 512 * 1024
+const MAX_OBSERVED_TEXT = 2_000
 
-interface TargetEntry {
+interface ObservedBuffer {
+  items: Array<Record<string, unknown>>
+  bytes: number
+}
+
+const boundedText = (value: unknown, limit = MAX_OBSERVED_TEXT): string =>
+  String(value ?? '').slice(0, limit)
+
+function observedBytes(value: Record<string, unknown>): number {
+  return Buffer.byteLength(JSON.stringify(value), 'utf8')
+}
+
+function pushObserved(bucket: ObservedBuffer, value: Record<string, unknown>): void {
+  bucket.items.push(value)
+  bucket.bytes += observedBytes(value)
+  while (bucket.items.length > MAX_BUFFERED || bucket.bytes > MAX_BUFFERED_BYTES) {
+    const removed = bucket.items.shift()
+    if (!removed) break
+    bucket.bytes -= observedBytes(removed)
+  }
+}
+
+/** Sólo conserva los campos que consumen las herramientas públicas. */
+function sanitizeObserved(
+  method: string,
+  params: Record<string, unknown>,
+): Record<string, unknown> | null {
+  if (method === 'Runtime.consoleAPICalled') {
+    const args = Array.isArray(params.args) ? params.args : []
+    return {
+      method,
+      params: {
+        type: boundedText(params.type, 40),
+        args: args.slice(0, 50).map((raw) => {
+          const arg = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+          return {
+            type: boundedText(arg.type, 40),
+            ...(arg.value === undefined ? {} : { value: boundedText(arg.value) }),
+            ...(arg.description === undefined ? {} : { description: boundedText(arg.description) }),
+          }
+        }),
+      },
+    }
+  }
+  if (method === 'Runtime.exceptionThrown') {
+    const details =
+      params.exceptionDetails && typeof params.exceptionDetails === 'object'
+        ? (params.exceptionDetails as Record<string, unknown>)
+        : {}
+    const exception =
+      details.exception && typeof details.exception === 'object'
+        ? (details.exception as Record<string, unknown>)
+        : {}
+    return {
+      method,
+      params: {
+        exceptionDetails: {
+          text: boundedText(details.text),
+          exception: { description: boundedText(exception.description) },
+        },
+      },
+    }
+  }
+  const requestId = boundedText(params.requestId, 256)
+  if (method === 'Network.requestWillBeSent') {
+    const request =
+      params.request && typeof params.request === 'object'
+        ? (params.request as Record<string, unknown>)
+        : {}
+    return {
+      method,
+      params: {
+        requestId,
+        type: boundedText(params.type, 80),
+        request: { url: boundedText(request.url, 8_192), method: boundedText(request.method, 40) },
+      },
+    }
+  }
+  if (method === 'Network.responseReceived') {
+    const response =
+      params.response && typeof params.response === 'object'
+        ? (params.response as Record<string, unknown>)
+        : {}
+    return {
+      method,
+      params: {
+        requestId,
+        response: {
+          status: typeof response.status === 'number' ? response.status : 0,
+          mimeType: boundedText(response.mimeType, 256),
+        },
+      },
+    }
+  }
+  if (method === 'Network.loadingFailed') {
+    return { method, params: { requestId, errorText: boundedText(params.errorText) } }
+  }
+  return null
+}
+
+export interface TargetEntry {
   targetId: string
   view: WebContentsView
   /** Lo que hay que deshacer al cerrar; el §6.2 avisa de que quitar un nodo
@@ -99,8 +195,13 @@ interface TargetEntry {
    * métodos de la allowlist: escuchar todo sería observar la aplicación
    * entera, no esta página (§6.3).
    */
-  console: Array<Record<string, unknown>>
-  network: Array<Record<string, unknown>>
+  console: ObservedBuffer
+  network: ObservedBuffer
+  /** Un solo listener por vida del target, aunque el debugger se reenganche. */
+  debugListenerInstalled: boolean
+  debugEnabled: boolean
+  /** Comparte el intento de attach/enable entre callers concurrentes. */
+  debugReady: Promise<void> | null
 }
 
 export interface ContextEntry {
@@ -294,7 +395,16 @@ export class BrowserRegistry {
     })
 
     const targetId = randomUUID()
-    const entry: TargetEntry = { targetId, view, dispose: [], console: [], network: [] }
+    const entry: TargetEntry = {
+      targetId,
+      view,
+      dispose: [],
+      console: { items: [], bytes: 0 },
+      network: { items: [], bytes: 0 },
+      debugListenerInstalled: false,
+      debugEnabled: false,
+      debugReady: null,
+    }
     const contents = view.webContents
 
     // Nada de ventanas nuevas decididas por la página: un popup heredaría el
@@ -319,6 +429,7 @@ export class BrowserRegistry {
     // desengancha el debugger, pero el evento sigue siendo la señal correcta y
     // la versión puede cambiarlo. Se observa y se informa (§3 [E5]).
     const onDetach = (_event: unknown, reason: string) => {
+      entry.debugEnabled = false
       this.deps.onEvent({ kind: 'detached', contextId: context.contextId, targetId, detail: reason })
     }
     contents.debugger.on('detach', onDetach)
@@ -350,38 +461,49 @@ export class BrowserRegistry {
     return entry
   }
 
-  /** Adjunta el debugger si hace falta. Es la vía CDP page-level del §6.3. */
-  attach(entry: TargetEntry): void {
+  /**
+   * Adjunta el debugger y habilita observación antes de navegar.
+   *
+   * El listener se instala una sola vez por target. Un detach sólo obliga a
+   * repetir attach + enable; no añade otro listener que duplicaría eventos.
+   */
+  attach(entry: TargetEntry): Promise<void> {
     const debug = entry.view.webContents.debugger
-    if (debug.isAttached()) return
-    debug.attach('1.3')
-
-    // Observación de consola y red. Se recoge aquí porque el backend externo
-    // la toma del buffer de su `CdpSession` y aquí no hay ninguna. Sólo los
-    // métodos de la allowlist: escuchar todo sería observar la aplicación
-    // entera en vez de esta página (§6.3).
-    const onMessage = (_event: unknown, method: string, params: Record<string, unknown>) => {
-      const bucket = CONSOLE_METHODS.has(method)
-        ? entry.console
-        : NETWORK_METHODS.has(method)
-          ? entry.network
-          : null
-      if (!bucket) return
-      bucket.push({ method, params })
-      // Se descarta lo más viejo: una página que registra en bucle no puede
-      // crecer sin límite en el host.
-      if (bucket.length > MAX_BUFFERED) bucket.splice(0, bucket.length - MAX_BUFFERED)
+    if (!entry.debugListenerInstalled) {
+      const onMessage = (_event: unknown, method: string, params: Record<string, unknown>) => {
+        const observed = sanitizeObserved(method, params)
+        if (!observed) return
+        const bucket = CONSOLE_METHODS.has(method) ? entry.console : entry.network
+        pushObserved(bucket, observed)
+      }
+      debug.on('message', onMessage)
+      entry.dispose.push(() => debug.off('message', onMessage))
+      entry.debugListenerInstalled = true
     }
-    debug.on('message', onMessage)
-    entry.dispose.push(() => debug.off('message', onMessage))
-
-    // Sin habilitar los dominios no llega ningún evento.
-    for (const domain of ['Runtime', 'Network']) {
-      void debug.sendCommand(`${domain}.enable`, {}).catch(() => {
-        // Un dominio que no se puede habilitar deja su observación vacía, que
-        // es mejor que tumbar la operación que pidió adjuntar.
-      })
+    if (debug.isAttached() && entry.debugEnabled && entry.debugReady === null) {
+      return Promise.resolve()
     }
+    if (entry.debugReady) return entry.debugReady
+
+    const pending = (async () => {
+      if (!debug.isAttached()) debug.attach('1.3')
+      await Promise.all([
+        debug.sendCommand('Runtime.enable', {}),
+        debug.sendCommand('Network.enable', {}),
+      ])
+      entry.debugEnabled = true
+    })()
+    entry.debugReady = pending
+    void pending.then(
+      () => {
+        if (entry.debugReady === pending) entry.debugReady = null
+      },
+      () => {
+        entry.debugEnabled = false
+        if (entry.debugReady === pending) entry.debugReady = null
+      },
+    )
+    return pending
   }
 
   /**
@@ -392,7 +514,8 @@ export class BrowserRegistry {
    */
   drainObserved(entry: TargetEntry, kind: 'console' | 'network', limit: number): unknown[] {
     const bucket = entry[kind]
-    const taken = bucket.splice(0, Math.max(0, limit))
+    const taken = bucket.items.splice(0, Math.max(0, limit))
+    bucket.bytes = bucket.items.reduce((total, item) => total + observedBytes(item), 0)
     return taken
   }
 
@@ -592,7 +715,10 @@ export class BrowserRegistry {
     // Se aplica también sin geometría: antes esto volvía sin hacer nada, así
     // que un contexto que nadie había presentado dejaba sus vistas sin bounds
     // y la página sin viewport.
-    const presented = geometry !== null && geometry.visible
+    // Mientras manda el agente la página se conserva viva y compuesta en el
+    // suelo 1×1. La UI enseña una captura del MISMO target. No hay superficie
+    // física bajo el cursor que pueda recibir input humano accidental.
+    const presented = geometry !== null && geometry.visible && context.control === 'user'
     const container = presented ? geometry.container : LAYOUT_FLOOR
     // El tamaño lógico se conserva escondido: el §8.3 pide que ocultar el panel
     // no le cambie el viewport al documento, y reescribirlo lo cambiaría.
@@ -659,6 +785,7 @@ export class BrowserRegistry {
       context.barrier.webContents.close()
       context.barrier = null
     }
+    this.applyGeometry(context)
   }
 
   /** Devuelve la barrera al frente del contenedor. */
@@ -689,6 +816,37 @@ export class BrowserRegistry {
 
   disposeAll(): void {
     for (const contextId of [...this.contexts.keys()]) this.disposeContext(contextId)
+  }
+
+  diagnostics(): {
+    contexts: number
+    targets: number
+    liveWebContents: number
+    attachedDebuggers: number
+    debugMessageListeners: number
+    downloadListeners: number
+    barriers: number
+    bufferedEvents: number
+    bufferedBytes: number
+  } {
+    const targets = [...this.contexts.values()].flatMap((context) => [...context.targets.values()])
+    return {
+      contexts: this.contexts.size,
+      targets: targets.length,
+      liveWebContents: targets.filter((entry) => !entry.view.webContents.isDestroyed()).length,
+      attachedDebuggers: targets.filter((entry) => entry.view.webContents.debugger.isAttached()).length,
+      debugMessageListeners: targets.filter((entry) => entry.debugListenerInstalled).length,
+      downloadListeners: [...this.contexts.values()].filter((context) => context.downloads !== null).length,
+      barriers: [...this.contexts.values()].filter((context) => context.barrier !== null).length,
+      bufferedEvents: targets.reduce(
+        (sum, entry) => sum + entry.console.items.length + entry.network.items.length,
+        0,
+      ),
+      bufferedBytes: targets.reduce(
+        (sum, entry) => sum + entry.console.bytes + entry.network.bytes,
+        0,
+      ),
+    }
   }
 
   /**
@@ -765,4 +923,3 @@ export class BrowserRegistry {
     partition.setPermissionCheckHandler(() => false)
   }
 }
-

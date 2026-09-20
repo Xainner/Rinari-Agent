@@ -19,6 +19,7 @@ import type {
   NotificationSupport,
   NativeBrowserContext,
   NativeBrowserControl,
+  NativeBrowserPreview,
   NotificationTarget,
   OpenFilesOptions,
   OpenRequest,
@@ -57,6 +58,7 @@ interface DesktopHostApi {
       shown: boolean
       layout_revision: number
       overlay_depth: number
+      occlusions?: Array<{ x: number; y: number; width: number; height: number }>
     }): Promise<void>
     detachSlot(slotId: string): Promise<void>
     selectTarget(sessionId: string, targetId: string): Promise<unknown>
@@ -66,6 +68,7 @@ interface DesktopHostApi {
       expectedRevision?: number,
     ): Promise<NativeBrowserControl>
     navigate(sessionId: string, url: string): Promise<unknown>
+    preview(sessionId: string): Promise<NativeBrowserPreview | null>
     onContextChanged(callback: (view: NativeBrowserContext) => void): Unsubscribe
   }
   dialog: { openFiles(options?: OpenFilesOptions): Promise<string[] | null> }
@@ -160,6 +163,7 @@ export const electronBridge: DesktopBridge = {
         shown: layout.shown,
         layout_revision: layout.layoutRevision,
         overlay_depth: layout.overlayDepth,
+        occlusions: layout.occlusions,
       }),
     detachSlot: (slotId) => required().browser.detachSlot(slotId),
     selectTarget: async (sessionId, targetId) => {
@@ -170,6 +174,7 @@ export const electronBridge: DesktopBridge = {
     navigate: async (sessionId, url) => {
       await required().browser.navigate(sessionId, url)
     },
+    preview: (sessionId) => required().browser.preview(sessionId),
     onContextChanged: async (callback) => required().browser.onContextChanged(callback),
   },
 

@@ -48,9 +48,12 @@ def main():
     root = Path(__file__).resolve().parent.parent
     manifest = json.loads((root / "ocr-manifest.json").read_text(encoding="utf-8"))
     output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root / "src-tauri/engine-dist/ocr"
-    allowed = (root / "src-tauri").resolve()
-    if not output.is_relative_to(allowed) or output == allowed:
-        raise ValueError("OCR output must be inside this project's src-tauri directory")
+    allowed_outputs = {
+        (root / "src-tauri/engine-dist/ocr").resolve(),
+        (root / "engine-dist/ocr").resolve(),
+    }
+    if output not in allowed_outputs:
+        raise ValueError("OCR output must be one of the two fixed Engine bundle directories")
     cache = root / "src-tauri/target/ocr-downloads"
     cache.mkdir(parents=True, exist_ok=True)
     bootstrap = download(manifest["extractor"]["bootstrap"], cache)

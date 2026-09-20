@@ -45,7 +45,7 @@ import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 
-const APP_VERSION = '0.1.3'
+const APP_VERSION = '0.2.0'
 
 function App() {
   const view = useUIStore((s) => s.view)

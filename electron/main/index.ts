@@ -34,8 +34,10 @@ const isDev = Boolean(DEV_SERVER)
 
 /** Raíz del renderer construido: en los recursos si está empaquetado. */
 function rendererRoot(): string {
-  return app.isPackaged ? join(process.resourcesPath, 'app', 'dist') : join(__dirname, '..', 'dist')
+  return app.isPackaged ? join(app.getAppPath(), 'dist') : join(__dirname, '..', 'dist')
 }
+
+if (process.platform === 'win32') app.setAppUserModelId('com.rinari.agent')
 
 // El esquema propio debe declararse antes de que la app esté lista.
 protocol.registerSchemesAsPrivileged([

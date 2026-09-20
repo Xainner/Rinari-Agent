@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { MIGRATION_SCHEMA, canonicalPreferences } from '../../shared/migration'
-import { MigrationService } from './MigrationService'
+import { defaultMigrationDirectory, MigrationService } from './MigrationService'
 
 const directories: string[] = []
 
@@ -34,6 +34,19 @@ afterEach(async () => {
 })
 
 describe('MigrationService', () => {
+  it('resolves the same platform-neutral migration directory as the Tauri exporter', () => {
+    expect(defaultMigrationDirectory({ LOCALAPPDATA: String.raw`C:\Users\Rinari\AppData\Local` }, 'win32')).toBe(
+      String.raw`C:\Users\Rinari\AppData\Local\Rinari\migration`,
+    )
+    expect(defaultMigrationDirectory({ XDG_DATA_HOME: '/var/lib/rinari', HOME: '/ignored' }, 'linux')).toBe(
+      '/var/lib/rinari/Rinari/migration',
+    )
+    expect(defaultMigrationDirectory({ HOME: '/home/rinari' }, 'linux')).toBe(
+      '/home/rinari/.local/share/Rinari/migration',
+    )
+    expect(() => defaultMigrationDirectory({}, 'linux')).toThrow('local data directory is unavailable')
+  })
+
   it('stages, commits and archives a valid restricted export', async () => {
     const migration = await service()
     const preferences = { 'rinari.lang': 'es', 'rinari.theme': 'dark' }

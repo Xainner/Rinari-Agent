@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, posix, win32 } from 'node:path'
 
 import {
   MIGRATION_ALLOWED_KEYS,
@@ -200,8 +200,17 @@ export class MigrationService {
   }
 }
 
-export function defaultMigrationDirectory(): string {
-  const base = process.env.LOCALAPPDATA?.trim()
-  if (!base) throw new MigrationError('LOCALAPPDATA is unavailable')
-  return join(base, 'Rinari', 'migration')
+export function defaultMigrationDirectory(
+  environment: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const localAppData = environment.LOCALAPPDATA?.trim()
+  const xdgData = environment.XDG_DATA_HOME?.trim()
+  const home = environment.HOME?.trim()
+  const windows = platform === 'win32'
+  const base = windows
+    ? localAppData
+    : xdgData || (home ? posix.join(home, '.local', 'share') : undefined)
+  if (!base) throw new MigrationError('local data directory is unavailable')
+  return (windows ? win32 : posix).join(base, 'Rinari', 'migration')
 }

@@ -58,17 +58,30 @@ export function registerBrowserVerticalUiProbe(enabled: boolean): () => void {
     finishing = false
     useNativeSurfaces.getState().setSurface(SURFACE_ID, null)
     delete document.documentElement.dataset.rinariVerticalToastOcclusions
+    delete document.documentElement.dataset.rinariVerticalToastFirstFrameProtected
   }
 
   const publish = () => {
-    if (!current) return
+    const active = current
+    if (!active) return
     const occlusions = useNativeSurfaces.getState().toastOcclusions
     document.documentElement.dataset.rinariVerticalToastOcclusions = JSON.stringify(occlusions)
+    if (
+      occlusions.some(
+        (block) =>
+          block.x === active.visibleBounds.x &&
+          block.y === active.visibleBounds.y &&
+          block.width === active.visibleBounds.width &&
+          block.height === active.visibleBounds.height,
+      )
+    ) {
+      document.documentElement.dataset.rinariVerticalToastFirstFrameProtected = 'true'
+    }
     revision += 1
     const update = platform().browser.updateSlot({
-      slotId: current.slotId,
-      logicalBounds: current.logicalBounds,
-      visibleBounds: current.visibleBounds,
+      slotId: active.slotId,
+      logicalBounds: active.logicalBounds,
+      visibleBounds: active.visibleBounds,
       shown: true,
       layoutRevision: revision,
       overlayDepth: 0,
@@ -107,6 +120,7 @@ export function registerBrowserVerticalUiProbe(enabled: boolean): () => void {
       current = detail
       stopping = false
       revision = detail.layoutRevision
+      delete document.documentElement.dataset.rinariVerticalToastFirstFrameProtected
       useNativeSurfaces.getState().setSurface(SURFACE_ID, detail.visibleBounds)
       unsubscribe = useNativeSurfaces.subscribe(publish)
       publish()

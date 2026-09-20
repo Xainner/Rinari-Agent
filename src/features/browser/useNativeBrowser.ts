@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { platform } from '../../platform'
 import type { NativeBrowserContext, NativeBrowserPreview } from '../../platform/contract'
@@ -247,7 +247,10 @@ export function useNativeBrowser(
     }
   }, [publish, context?.context_state])
 
-  useEffect(publish, [publish, shown, overlayDepth, toastOcclusions])
+  // La oclusión de un toast se publica antes del siguiente paint. Así el
+  // primer frame protegido llega a main antes de que Sonner pueda quedar bajo
+  // una WebContentsView, incluso cuando aún no existe una medida real.
+  useLayoutEffect(publish, [publish, shown, overlayDepth, toastOcclusions])
 
   // En control del agente no se presenta la WebContentsView: queda compuesta
   // a 1×1 y este panel enseña una captura del mismo target. El sondeo está

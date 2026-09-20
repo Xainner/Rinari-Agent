@@ -1767,8 +1767,15 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       button: { x: number; y: number; width: number; height: number } | null
       occlusions: Array<{ x: number; y: number; width: number; height: number }>
       action: number
+      firstFrameProtected: boolean
     }
-    let toastUi: ToastUi = { rect: null, button: null, occlusions: [], action: 0 }
+    let toastUi: ToastUi = {
+      rect: null,
+      button: null,
+      occlusions: [],
+      action: 0,
+      firstFrameProtected: false,
+    }
     let stableToastFrames = 0
     let previousToastRect = ''
     for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -1784,6 +1791,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
           button: action ? { x: action.x, y: action.y, width: action.width, height: action.height } : null,
           occlusions,
           action: Number(document.documentElement.dataset.rinariVerticalToastAction || '0'),
+          firstFrameProtected: document.documentElement.dataset.rinariVerticalToastFirstFrameProtected === 'true',
         }
       })()`)
       const rectKey = toastUi.rect ? JSON.stringify(toastUi.rect) : ''
@@ -1853,6 +1861,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const toastMarkerAfter = await read<string>(view, 'document.body.dataset.toastMarker')
     const toastOk =
       Boolean(toastUi.rect && toastUi.rect.height > 0) &&
+      toastUi.firstFrameProtected &&
       toastSeparated &&
       actionAfter === 1 &&
       clicksAfterToast === clicksBeforeToast &&
@@ -1871,6 +1880,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       evidence: {
         toastRect: toastUi.rect,
         measuredOcclusions: toastUi.occlusions,
+        firstFrameProtected: toastUi.firstFrameProtected,
         nativeDuringToast,
         toastSeparated,
         actionAfter,

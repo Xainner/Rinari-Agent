@@ -107,6 +107,8 @@ export class NativeBrowserHost {
   private readonly seen = new RequestLedger<ExecutionOutcome>()
   /** Transiciones User → Agent que ya retiraron físicamente la vista. */
   private readonly returningToAgent = new Map<string, symbol>()
+  /** Una sola petición User → Agent por sesión; los duplicados la comparten. */
+  private readonly returnToAgentInFlight = new Map<string, Promise<unknown>>()
 
   constructor(private readonly deps: NativeBrowserHostDeps) {}
 
@@ -136,6 +138,7 @@ export class NativeBrowserHost {
     const hadBinding = this.binding !== null || this.registering !== null
     const reset = this.deps.registry.resetForEngineLoss()
     this.returningToAgent.clear()
+    this.returnToAgentInFlight.clear()
     if (reset.manualControlRevoked) this.deps.focusTrustedRenderer?.()
     if (!hadBinding) return
     this.epoch += 1
@@ -242,23 +245,54 @@ export class NativeBrowserHost {
    * mismo binding, se restaura la presentación manual anterior. Una pérdida
    * del Engine invalida el permiso y nunca hace rollback a `user`.
    */
-  async setControl(
+  setControl(
     sessionId: string,
     owner: 'agent' | 'user',
     expectedRevision?: number,
   ): Promise<unknown> {
+    if (owner === 'user') {
+      return this.deps.request('browser.control.set', {
+        session_id: sessionId,
+        owner,
+        ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
+      })
+    }
+
     const params = {
       session_id: sessionId,
-      owner,
+      owner: 'agent' as const,
       ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
     }
-    if (owner === 'user') return this.deps.request('browser.control.set', params)
+
+    // El renderer puede producir dos llamadas antes de recibir la primera
+    // respuesta. La primera ya retiró físicamente la vista, por lo que mirar
+    // sólo `context.control` haría que la segunda pareciera una transición
+    // nueva. Ambas deben compartir exactamente la misma operación del Engine.
+    const existing = this.returnToAgentInFlight.get(sessionId)
+    if (existing) return existing
+
+    const run = this.returnControlToAgent(sessionId, params).finally(() => {
+      if (this.returnToAgentInFlight.get(sessionId) === run) {
+        this.returnToAgentInFlight.delete(sessionId)
+      }
+    })
+    this.returnToAgentInFlight.set(sessionId, run)
+    return run
+  }
+
+  private async returnControlToAgent(
+    sessionId: string,
+    params: {
+      session_id: string
+      owner: 'agent'
+      expected_revision?: number
+    },
+  ): Promise<unknown> {
 
     const context = this.deps.registry.contextForSession(sessionId)
     if (!context || context.control !== 'user') {
-      // Un segundo click ya ve la presentación retirada. Invalida el token de
-      // la primera petición para que un fallo tardío suyo no restaure `user`
-      // después de que esta transición más nueva haya tomado el relevo.
+      // Una transición posterior, ya terminada la anterior, puede confirmar
+      // de nuevo el estado del Engine sin reabrir la presentación nativa.
       this.returningToAgent.delete(sessionId)
       this.deps.focusTrustedRenderer?.()
       return this.deps.request('browser.control.set', params)

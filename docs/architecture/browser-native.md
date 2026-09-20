@@ -147,7 +147,10 @@ cambio al Engine. Si esa petición falla, restaura la presentación únicamente
 si siguen vigentes el mismo contexto, binding y transición. `RETURN-AGENT-RACE`
 comprueba el suelo antes de que termine la petición, y
 `RETURN-AGENT-FOCUS` escribe físicamente `XYZ` sin otro click y confirma que no
-llega al input remoto.
+llega al input remoto. Las llamadas simultáneas de una sesión comparten una
+sola promesa y una sola petición al Engine; el rollback ocurre una vez. Al
+perder el binding se invalida ese single-flight y nunca se restaura un permiso
+manual de la instancia anterior.
 
 Una concesión manual tampoco sobrevive al Engine que la emitió. Al perder el
 binding, main cambia todos los contextos a presentación segura, retira el foco
@@ -175,12 +178,15 @@ segunda ventana transparente ni otro preload privilegiado.
 
 La oclusión no usa 176 px como verdad del producto. El `ref` público de
 `Toaster`, `ResizeObserver` y `getClientRects()` producen la unión de las cajas
-realmente pintadas, sin selectores ni clases internas de Sonner. El valor de
-176 px queda sólo como fallback previo a la primera medida. En `TOAST-REAL`, el
-toast multilínea con acción midió **356×111 DIP**: la vista quedó recortada sin
-solape, el click físico ejecutó la acción una vez, la página no recibió el
-click y al salir el toast se restauró la geometría exacta, conservando target,
-URL, DOM y ownership.
+realmente pintadas, sin selectores ni clases internas de Sonner. Mientras hay
+una pila activa pero aún no existe esa primera medida, se ocluye completa cada
+superficie nativa durante uno o pocos frames; el browser baja al suelo 1×1. La
+actualización se publica desde efectos de layout y, al llegar la medida, se
+sustituye por el recorte mínimo real. En `TOAST-REAL`, el toast multilínea con
+acción midió **356×111 DIP**: la evidencia confirma la protección inicial, la
+vista quedó recortada sin solape, el click físico ejecutó la acción una vez, la
+página no recibió el click y al salir el toast se restauró la geometría exacta,
+conservando target, URL, DOM y ownership.
 
 ## 4. CDP: transporte sí, superficie pública no
 
@@ -256,7 +262,7 @@ página que el usuario tiene delante.
 | V8 | Matar el Engine | tras reiniciarlo el contador de clicks de la página no subió |
 | RETURN-AGENT-RACE | Devolver control | la vista baja a 1×1 antes de que el Engine vuelva a admitir la mutación |
 | RETURN-AGENT-FOCUS | Revocar foco | tecleo físico posterior no cambia el input remoto |
-| TOAST-REAL | Toast Sonner sobre vista nativa | rect real, acción física, sin click-through y restauración exacta |
+| TOAST-REAL | Toast Sonner sobre vista nativa | primer frame protegido, rect real, acción física, sin click-through y restauración exacta |
 | RESTART-USER | Restart bajo control manual | revoca user, cambia binding y opera el mismo target/URL/DOM desde el Engine nuevo |
 
 Tres comprobaciones más, que no son pasos del §3 pero sin las cuales los demás

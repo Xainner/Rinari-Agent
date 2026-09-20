@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Toaster, useSonner } from 'sonner'
 
 import { useNativeSurfaces, type NativeRect } from '../stores/nativeSurfaces'
@@ -65,6 +65,23 @@ export function chooseToastLayout(
 }
 
 /**
+ * Antes de la primera medida no conocemos el tamaño real de la pila. Si hay
+ * una superficie nativa, retirarla completa durante ese intervalo evita que
+ * un toast más alto que el fallback quede por debajo de WebContentsView.
+ * Después de medir se vuelve al recorte mínimo calculado con la caja real.
+ */
+export function protectedToastOcclusions(
+  active: boolean,
+  surfaces: NativeRect[],
+  measured: NativeRect | null,
+  stable: NativeRect[],
+): NativeRect[] {
+  if (!active) return []
+  if (measured === null && surfaces.length > 0) return surfaces
+  return stable
+}
+
+/**
  * Unión de las cajas que pinta el árbol que Sonner entrega por su `ref`
  * público. No busca clases, atributos ni nodos privados: si Sonner cambia su
  * estructura, seguimos midiendo todos los elementos que realmente pinta.
@@ -116,11 +133,15 @@ export default function AdaptiveToaster() {
   }, [])
 
   const active = toasts.length > 0
+  const native = useMemo(() => Object.values(surfaces), [surfaces])
   const decision = useMemo(() => {
-    const native = Object.values(surfaces)
     const stack = measured ? { width: measured.width, height: measured.height } : undefined
     return chooseToastLayout(native, viewport, frozen.current, stack)
-  }, [surfaces, viewport, measured])
+  }, [native, viewport, measured])
+  const occlusions = useMemo(
+    () => protectedToastOcclusions(active, native, measured, decision.occlusions),
+    [active, native, measured, decision.occlusions],
+  )
 
   useEffect(() => {
     const root = toaster.current
@@ -175,11 +196,11 @@ export default function AdaptiveToaster() {
     }
   }, [active, toasts])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (active && measured && frozen.current === null) frozen.current = decision.chosen
     if (!active) frozen.current = null
-    setToastLayout(active ? (frozen.current ?? decision.chosen) : placement, active ? decision.occlusions : [])
-  }, [active, decision, measured, placement, setToastLayout])
+    setToastLayout(active ? (frozen.current ?? decision.chosen) : placement, occlusions)
+  }, [active, decision.chosen, measured, occlusions, placement, setToastLayout])
 
   return (
     <Toaster

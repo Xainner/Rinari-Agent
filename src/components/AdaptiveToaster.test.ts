@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 
-import { chooseToastLayout, measureToastStack, overlaps, toastLane } from './AdaptiveToaster'
+import {
+  chooseToastLayout,
+  measureToastStack,
+  overlaps,
+  protectedToastOcclusions,
+  toastLane,
+} from './AdaptiveToaster'
 
 const viewport = { width: 1_200, height: 800 }
 
@@ -50,6 +56,33 @@ describe('AdaptiveToaster', () => {
       chooseToastLayout([{ x: 800, y: 430, width: 390, height: 360 }], viewport, null, stack)
         .chosen,
     ).toBe('top-right')
+  })
+
+  it('retira toda superficie nativa antes de la primera medida', () => {
+    const surfaces = [{ x: 8, y: 8, width: 1_184, height: 784 }]
+    const fallback = [toastLane('bottom-right', viewport.width, viewport.height)]
+
+    expect(protectedToastOcclusions(true, surfaces, null, fallback)).toEqual(surfaces)
+  })
+
+  it('sustituye la protección inicial por la oclusión real medida', () => {
+    const surfaces = [{ x: 0, y: 0, ...viewport }]
+    const measured = { x: 800, y: 440, width: 384, height: 344 }
+    const stable = chooseToastLayout(
+      surfaces,
+      viewport,
+      'bottom-right',
+      { width: measured.width, height: measured.height },
+    ).occlusions
+
+    expect(protectedToastOcclusions(true, surfaces, measured, stable)).toEqual([
+      toastLane('bottom-right', viewport.width, viewport.height, measured),
+    ])
+  })
+
+  it('restaura toda la geometría al desaparecer la pila', () => {
+    const surfaces = [{ x: 8, y: 8, width: 1_184, height: 784 }]
+    expect(protectedToastOcclusions(false, surfaces, null, surfaces)).toEqual([])
   })
 
   it('mide la unión del árbol entregado por el ref público del Toaster', () => {

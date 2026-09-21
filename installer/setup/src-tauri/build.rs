@@ -2,6 +2,7 @@ use std::{env, fs, path::PathBuf};
 
 fn main() {
     tauri_build::build();
+    println!("cargo:rerun-if-env-changed=RINARI_SETUP_VERSION");
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let payload = manifest.join("resources/payload/Rinari-Agent-Payload.zip");
     println!("cargo:rerun-if-changed={}", payload.display());

@@ -26,7 +26,8 @@ export const CHANNEL = {
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
   updatesCheck: 'rinari:updates.check',
-  updatesInstall: 'rinari:updates.installAndRelaunch',
+  updatesDownload: 'rinari:updates.download',
+  updatesApply: 'rinari:updates.apply',
   migrationStatus: 'rinari:migration.status',
   migrationStage: 'rinari:migration.importPending',
   migrationCommit: 'rinari:migration.commit',
@@ -68,6 +69,8 @@ export const PUSH = {
    * al visor de capturas, y el nativo no lo necesita—.
    */
   browserContextChanged: 'rinari:push.browserContext',
+  /** Progreso y estados del updater Electron; nunca contiene rutas ni tokens. */
+  updateState: 'rinari:push.updateState',
 } as const
 
 export type RequestChannel = (typeof CHANNEL)[keyof typeof CHANNEL]
@@ -107,6 +110,24 @@ export interface OpenRequest {
 export interface UpdateAvailable {
   version: string
   body?: string
+  /** Hasta que exista Authenticode, la UI y evidencia deben decirlo. */
+  unsigned: boolean
+}
+
+export interface UpdateProgress {
+  percent: number
+  bytes_per_second: number
+  transferred: number
+  total: number
+}
+
+export interface UpdateState {
+  phase: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'applying' | 'error'
+  current_version: string
+  available_version: string | null
+  progress: UpdateProgress | null
+  message: string | null
+  unsigned: boolean
 }
 
 export type { MigrationStage, MigrationStatus } from './migration'

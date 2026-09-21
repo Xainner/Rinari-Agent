@@ -1,62 +1,97 @@
-# Releases y auto-update de Rinari Agent
+# Releases y actualizaciones de Rinari Agent
 
-Rinari Agent se auto-actualiza desde GitHub Releases (el
-instalador trae Agent + engine empaquetado; un update trae ambos).
+Rinari mantiene dos canales incompatibles durante la transición:
 
-## Cómo publicar una versión
+| Línea | Host | Metadata | Verificación | Estado |
+| --- | --- | --- | --- | --- |
+| 0.1.x | Tauri | `latest.json` | firma del updater Tauri | transición 0.1.3 |
+| 0.2.x | Electron | `latest.yml` | SHA-512 del instalador | unsigned por decisión actual |
 
-1. Subir versión en 4 lugares (deben coincidir):
-   - `package.json` → `version`
-   - `src-tauri/tauri.conf.json` → `version`
-   - `src-tauri/Cargo.toml` → `version`
-   - `src/App.tsx` → `APP_VERSION`
-2. Engine pineado: el release empaqueta el SHA de `engine-manifest.json`
-   (repo `Xainner/Rinari-CLI`). Para adoptar un engine nuevo, actualizar
-   `engine_git_sha` (+ `engine_version` si cambió) en ese archivo; el
-   workflow y `scripts/package-engine.ps1` fallan si no coinciden.
-3. Commit + push a `main`.
-4. Tag y push del tag: `git tag v0.1.2 && git push origin v0.1.2`
-   (el workflow valida que el tag coincida con `package.json`).
-5. GitHub Actions construye el instalador Windows + `latest.json`
-   firmado y deja el release en **draft**.
-6. Revisar el draft, publicar. A partir de ahí las apps instaladas
-   avisan solas (toast al abrir + botón en Ajustes → Acerca de).
+La primera migración Tauri → Electron es manual y guiada. Tauri nunca intenta
+instalar el bootstrapper Electron como si fuera uno de sus bundles. El detalle
+de datos se encuentra en [tauri-electron-transition.md](migration/tauri-electron-transition.md).
 
-## Claves de firma (updater)
+## Canal Electron 0.2.x
 
-- Privada: `C:/Users/Xainner/.tauri/rinari-code.key` (SOLO en esta
-  máquina, jamás al repo).
-- Password: `C:/Users/Xainner/.tauri/rinari-code.key.pw`.
-- Pública: en `tauri.conf.json` → `plugins.updater.pubkey`.
-- Secretos del repo (ya configurados con `gh secret set`):
-  `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
-- Si se pierde la privada, las apps ya instaladas NO aceptarán más
-  updates: hay que reinstalar a mano. Hacer backup.
+`electron-updater@6.8.9` consulta el release de GitHub y descarga el instalador
+completo descrito por `latest.yml`. No se usan descargas diferenciales porque el
+bootstrapper personalizado no produce blockmaps NSIS.
 
-## Notas
+La descarga puede continuar mientras hay trabajo activo. **Instalar y
+reiniciar** entra por la autoridad única de lifecycle: pide confirmación, cierra
+el Engine y después llama `quitAndInstall`. Cancelar conserva la actualización
+descargada y no interrumpe el Engine.
 
-- Migración de identidad y gates: [identity-migration.md](identity-migration.md).
-- Las rutas históricas de la clave privada se conservan deliberadamente; no generar
-  otra clave por el cambio de marca. Los secretos de GitHub conservan sus nombres.
+El bootstrapper recibe `--updated /S --force-run`, espera a que terminen
+`rinari-agent.exe` y el alias histórico, conserva el alcance, accesos directos y
+PATH registrados por esa instalación, y ejecuta la misma transacción de
+staging, verificación, activación atómica y rollback de una instalación manual.
+Al terminar relanza la versión instalada.
 
-- Endpoint del updater:
-  `https://github.com/Xainner/Rinari-Agent/releases/latest/download/latest.json`
-  (requiere repo público).
-- Sin releases publicados, `check()` falla en silencio: la app sigue
-  normal, sin toasts.
-- Firmar en local solo funciona en terminal en primer plano: el runner en
-  fondo no propaga `export` al build (los bundles salen igual, pero sin
-  `.sig`). Para releases, firmar siempre en CI.
-- Matriz actual: solo Windows. Ampliar a macOS/Linux cuando se necesite
-  (el sidecar Python empaquetado es por plataforma).
-- Boards (rama `feature/multiboard`): el pin del Engine apunta al commit de
-  `feature/session-peer-messaging` de Rinari-CLI. `npm run protocol:check`
-  en CI necesita ese SHA publicado en GitHub; en local se regenera con
-  `RINARI_ENGINE_SCHEMA=<ruta al schema del CLI>`. La capability
-  `session_peer_messaging_v1` es opcional: sin ella el board funciona sin
-  mensajería. Las notificaciones del sistema no van en este build (ver
-  `docs/debt.md`); el título de ventana usa `core:window:allow-set-title`.
-- `v0.1.1`: primera versión con updater. Incluye guards de sesión vacía
-  con versión en el mensaje + fail-fast en el frontend para separar bugs
-  de UI de bugs del puente (nota: se probó aceptar snake+camel en Rust y
-  se revirtió: dos params casi idénticos confunden al parser de Tauri).
+`latest.yml` incluye tamaño y SHA-512. Esto detecta metadata alterada o bytes
+corruptos durante la descarga, pero **no identifica al publicador**. Los
+artefactos 0.2.x muestran de forma explícita `rinariUnsigned: true`; Windows
+puede mostrar “Editor desconocido”. Authenticode/Azure Trusted Signing queda
+pendiente hasta que el proyecto disponga de certificado e identidad legal.
+
+## Construcción local
+
+La versión de `package.json` es la autoridad para el artefacto Electron:
+
+```powershell
+npm ci
+npm run package:win
+```
+
+El comando compone el arte, empaqueta el Engine fijado en
+`engine-manifest.json`, construye renderer y host, crea el payload y el
+bootstrapper, y genera:
+
+```text
+release/installer/Rinari-Agent-Setup-<version>-x64.exe
+release/installer/setup.sha256.json
+release/installer/latest.yml
+```
+
+Si el Engine ya fue empaquetado y verificado puede usarse
+`npm run package:win:staged`. `npm run package:update-metadata` regenera solo el
+`latest.yml` para la versión actual. Ninguno de estos comandos publica.
+
+El circuito instalado de actualización se ejecuta con:
+
+```powershell
+npm run updater:e2e
+```
+
+Construye 0.2.0 y una variante 0.2.1, instala 0.2.0 en un prefijo temporal,
+rechaza metadata y payload corruptos, aplica 0.2.1, comprueba la versión tras el
+relaunch y desinstala el entorno de prueba.
+
+## Workflow de release
+
+Un tag `v0.1.*` usa el job histórico de Tauri y sus secretos de firma. Un tag
+`v0.2.*` exige que el tag coincida con `package.json`, empaqueta el Engine fijado
+y crea un **draft** de GitHub explícitamente unsigned con el instalador,
+`latest.yml` y hashes. El draft requiere revisión y publicación manual.
+
+No crear ni publicar tags 0.2.x hasta decidir aceptar públicamente el aviso de
+editor desconocido o incorporar Authenticode. La disponibilidad del updater
+depende de que el draft se publique; una compilación PR no consulta ni publica
+un canal alternativo.
+
+## Firma pendiente
+
+El canal Tauri conserva su clave histórica y sus secretos actuales. No se
+reutilizan para firmar ejecutables Electron: el updater Tauri y Authenticode
+resuelven problemas distintos.
+
+Para retirar el estado unsigned se necesitará un certificado Authenticode de
+una entidad confiable o Azure Trusted Signing, configuración de CI y una prueba
+instalada que valide firma y cadena antes de publicar. Hasta entonces no se
+afirma identidad criptográfica del editor.
+
+## Matriz de plataformas
+
+Windows x64 es la única plataforma construida y probada en esta entrega.
+macOS y Linux permanecen `NOT_RUN`; requieren empaquetado, firma y updater
+propios antes de anunciar soporte.

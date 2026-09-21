@@ -55,6 +55,23 @@ export interface OpenRequest {
 export interface UpdateAvailable {
   version: string
   body?: string
+  unsigned: boolean
+}
+
+export interface UpdateProgress {
+  percent: number
+  bytes_per_second: number
+  transferred: number
+  total: number
+}
+
+export interface UpdateState {
+  phase: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'applying' | 'error'
+  current_version: string
+  available_version: string | null
+  progress: UpdateProgress | null
+  message: string | null
+  unsigned: boolean
 }
 
 /** Un elemento del menú contextual nativo. */
@@ -209,8 +226,11 @@ export interface DesktopBridge {
   updates: {
     /** `null` si no hay actualización. Lanza si el canal no está disponible. */
     check(): Promise<UpdateAvailable | null>
-    /** Descarga, instala y reinicia. */
-    installAndRelaunch(): Promise<void>
+    /** Descarga y valida el SHA-512; no interrumpe el trabajo activo. */
+    download(): Promise<UpdateState>
+    /** Pide confirmación, cierra el Engine y aplica lo ya descargado. */
+    apply(): Promise<void>
+    onState(callback: (state: UpdateState) => void): Promise<Unsubscribe>
   }
 
   migration: {

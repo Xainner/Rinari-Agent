@@ -4,6 +4,7 @@ mod operations;
 
 use operations::{SetupOperation, SetupPlan, SetupProgress, SetupStatus};
 use std::path::PathBuf;
+use std::time::Duration;
 use tauri::{Emitter, Manager, WindowEvent};
 
 #[tauri::command]
@@ -88,6 +89,15 @@ fn silent_plan(args: &[String]) -> Option<Result<SetupPlan, String>> {
     Some(Ok(operations::silent_plan(operation, install_dir)))
 }
 
+fn updater_request(args: &[String]) -> Option<bool> {
+    args.iter()
+        .any(|arg| arg.eq_ignore_ascii_case("--updated"))
+        .then(|| {
+            args.iter()
+                .any(|arg| arg.eq_ignore_ascii_case("--force-run"))
+        })
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("--worker") {
@@ -115,6 +125,27 @@ fn main() {
                 1
             }
         });
+    }
+    if let Some(force_run) = updater_request(&args) {
+        let result = operations::wait_for_agent_closed(Duration::from_secs(45))
+            .and_then(|_| operations::updater_plan())
+            .and_then(|plan| operations::execute(plan, |_| {}));
+        let code = match result {
+            Ok(()) => {
+                if force_run {
+                    if let Err(error) = operations::launch_agent() {
+                        eprintln!("{error}");
+                        std::process::exit(1);
+                    }
+                }
+                0
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                1
+            }
+        };
+        std::process::exit(code);
     }
     if let Some(plan) = silent_plan(&args) {
         let code = match plan

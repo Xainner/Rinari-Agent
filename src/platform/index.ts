@@ -28,6 +28,8 @@ export type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  UpdateProgress,
+  UpdateState,
   MigrationState,
   MigrationStatus,
 } from './contract'

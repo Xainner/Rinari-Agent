@@ -8,7 +8,7 @@
 
 import { BrowserWindow, Menu, dialog, shell, type MenuItemConstructorOptions } from 'electron'
 
-import type { ContextMenuRequest, OpenFilesRequest, UpdateAvailable } from '../../shared/contracts'
+import type { ContextMenuRequest, OpenFilesRequest } from '../../shared/contracts'
 
 /** Diálogos nativos: selección explícita del usuario, no permisos persistentes. */
 export function createDialogs(getWindow: () => BrowserWindow | null) {
@@ -63,32 +63,6 @@ export function createContextMenu(getWindow: () => BrowserWindow | null, onActio
       await new Promise<void>((resolve) => {
         menu.popup({ window, x: Math.round(request.x), y: Math.round(request.y), callback: () => resolve() })
       })
-    },
-  }
-}
-
-export class UpdatesUnavailable extends Error {
-  readonly code = 'UPDATES_UNAVAILABLE'
-}
-
-/**
- * Actualizaciones.
- *
- * El canal de Electron tiene otro contrato de metadata y de firma que el
- * `latest.json` de Tauri, y reutilizar el texto de una firma Tauri como firma
- * Electron no es una actualización validada. Mientras el canal firmado no
- * exista (documento 04 §8, entrega G), esto se declara **no disponible**: un
- * permiso ausente se muestra como ausente, no como éxito simulado.
- */
-export function createUpdates() {
-  return {
-    async check(): Promise<UpdateAvailable | null> {
-      throw new UpdatesUnavailable(
-        'The Electron update channel is not configured yet; update manually from the release page.',
-      )
-    },
-    async installAndRelaunch(): Promise<void> {
-      throw new UpdatesUnavailable('The Electron update channel is not configured yet.')
     },
   }
 }

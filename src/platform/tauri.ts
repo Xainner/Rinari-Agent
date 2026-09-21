@@ -33,6 +33,7 @@ import type {
   OpenRequest,
   Unsubscribe,
   UpdateAvailable,
+  UpdateState,
   MigrationStatus,
 } from './contract'
 import { collectAllowedPreferences } from '../../electron/shared/migration'
@@ -40,6 +41,22 @@ import { collectAllowedPreferences } from '../../electron/shared/migration'
 const ENGINE_EVENT = 'rinari-engine-event'
 const MENU_EVENT = 'rinari-menu-action'
 const OPEN_REQUEST_EVENT = 'rinari-open-request'
+let pendingTauriUpdate: NonNullable<Awaited<ReturnType<typeof check>>> | null = null
+const tauriUpdateListeners = new Set<(state: UpdateState) => void>()
+let tauriUpdateState: UpdateState = {
+  phase: 'idle',
+  current_version: '0.1.3',
+  available_version: null,
+  progress: null,
+  message: null,
+  unsigned: false,
+}
+
+function publishTauriUpdate(patch: Partial<UpdateState>): UpdateState {
+  tauriUpdateState = { ...tauriUpdateState, ...patch }
+  for (const listener of tauriUpdateListeners) listener(tauriUpdateState)
+  return tauriUpdateState
+}
 
 /** `listen` resuelve tras registrar; el contrato devuelve la baja ya lista. */
 async function subscribe<T>(event: string, callback: (payload: T) => void): Promise<Unsubscribe> {
@@ -197,15 +214,53 @@ export const tauriBridge: DesktopBridge = {
 
   updates: {
     async check(): Promise<UpdateAvailable | null> {
+      publishTauriUpdate({ phase: 'checking', message: null, progress: null })
       const update = await check()
-      if (!update) return null
-      return { version: update.version, body: update.body ?? undefined }
+      pendingTauriUpdate = update
+      if (!update) {
+        publishTauriUpdate({ phase: 'idle', available_version: null })
+        return null
+      }
+      publishTauriUpdate({
+        phase: 'available',
+        current_version: update.currentVersion,
+        available_version: update.version,
+      })
+      return { version: update.version, body: update.body ?? undefined, unsigned: false }
     },
-    async installAndRelaunch(): Promise<void> {
-      const update = await check()
-      if (!update) return
-      await update.downloadAndInstall()
+    async download(): Promise<UpdateState> {
+      const update = pendingTauriUpdate ?? await check()
+      if (!update) throw new Error('No update is available to download.')
+      pendingTauriUpdate = update
+      let transferred = 0
+      let total = 0
+      publishTauriUpdate({ phase: 'downloading', progress: null })
+      await update.download((event) => {
+        if (event.event === 'Started') total = event.data.contentLength ?? 0
+        if (event.event === 'Progress') transferred += event.data.chunkLength
+        publishTauriUpdate({
+          phase: event.event === 'Finished' ? 'downloaded' : 'downloading',
+          progress: event.event === 'Finished' ? null : {
+            percent: total > 0 ? (transferred / total) * 100 : 0,
+            bytes_per_second: 0,
+            transferred,
+            total,
+          },
+        })
+      })
+      return tauriUpdateState
+    },
+    async apply(): Promise<void> {
+      if (!pendingTauriUpdate || tauriUpdateState.phase !== 'downloaded') {
+        throw new Error('Download the update before applying it.')
+      }
+      publishTauriUpdate({ phase: 'applying' })
+      await pendingTauriUpdate.install({ restartAfterInstall: false })
       await relaunch()
+    },
+    async onState(callback): Promise<Unsubscribe> {
+      tauriUpdateListeners.add(callback)
+      return () => tauriUpdateListeners.delete(callback)
     },
   },
 

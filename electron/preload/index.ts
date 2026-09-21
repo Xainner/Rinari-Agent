@@ -38,6 +38,7 @@ import {
   type OpenRequest,
   type SystemNotificationRequest,
   type UpdateAvailable,
+  type UpdateState,
   type WindowState,
 } from '../shared/contracts'
 import type { MigrationStage, MigrationStatus } from '../shared/migration'
@@ -166,7 +167,10 @@ const api = {
 
   updates: {
     check: () => call<UpdateAvailable | null>(CHANNEL.updatesCheck),
-    installAndRelaunch: () => call<void>(CHANNEL.updatesInstall),
+    download: () => call<UpdateState>(CHANNEL.updatesDownload),
+    apply: () => call<void>(CHANNEL.updatesApply),
+    onState: (callback: (state: UpdateState) => void) =>
+      subscribe<UpdateState>(PUSH.updateState, callback),
   },
 
   migration: {

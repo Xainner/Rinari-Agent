@@ -115,7 +115,7 @@ jobs:
 
   setup-bootstrapper:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -176,9 +176,17 @@ jobs:
           $deadline = (Get-Date).AddSeconds(20)
           while ((Test-Path -LiteralPath $install) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
           if (Test-Path -LiteralPath $install) { throw 'uninstall did not remove the owned installation' }
+      - name: Build isolated 0.2.0/0.2.1 fixtures and run installed updater
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1 `
+            -EvidenceDir release/evidence/updater-e2e
+          npm run package:win:staged
       - uses: actions/upload-artifact@v4
         with:
           name: rinari-agent-setup-unsigned
           path: |
             release/installer/Rinari-Agent-Setup-0.2.0-x64.exe
+            release/installer/latest.yml
             release/installer/setup.sha256.json
+            release/evidence/updater-e2e/*.json

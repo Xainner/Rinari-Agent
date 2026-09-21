@@ -69,8 +69,9 @@ relaunch y desinstala el entorno de prueba.
 
 ## Workflow de release
 
-Un tag `v0.1.*` usa el job histórico de Tauri y sus secretos de firma. Un tag
-`v0.2.*` exige que el tag coincida con `package.json`, empaqueta el Engine fijado
+La fuente del último canal `v0.1.3` se conserva en el commit histórico indicado
+por la guía de transición; el workflow activo ya no construye el host retirado.
+Un tag `v0.2.*` exige que el tag coincida con `package.json`, empaqueta el Engine fijado
 y crea un **draft** de GitHub explícitamente unsigned con el instalador,
 `latest.yml` y hashes. El draft requiere revisión y publicación manual.
 
@@ -81,9 +82,8 @@ un canal alternativo.
 
 ## Firma pendiente
 
-El canal Tauri conserva su clave histórica y sus secretos actuales. No se
-reutilizan para firmar ejecutables Electron: el updater Tauri y Authenticode
-resuelven problemas distintos.
+La clave histórica del canal Tauri no se reutiliza para firmar ejecutables
+Electron: el updater Tauri y Authenticode resuelven problemas distintos.
 
 Para retirar el estado unsigned se necesitará un certificado Authenticode de
 una entidad confiable o Azure Trusted Signing, configuración de CI y una prueba

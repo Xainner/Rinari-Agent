@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { invoke } from '@tauri-apps/api/core'
 import CommandPalette from '../../components/CommandPalette'
 import { I18nProvider } from '../../i18n'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
@@ -9,8 +10,6 @@ import ProcessesDock from './ProcessesDock'
 import SessionWorkspace from '../session/SessionWorkspace'
 import { resetSessionDockForTests, useSessionDockStore } from '../../stores/sessionDock'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
 vi.mock('../workspace/WorkspaceView', () => ({ default: () => <div data-testid="workspace-view" /> }))
 if (typeof window !== 'undefined' && typeof window.ResizeObserver === 'undefined') {
   window.ResizeObserver = class {

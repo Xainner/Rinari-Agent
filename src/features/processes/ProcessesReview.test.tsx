@@ -1,15 +1,13 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke, openUrl } = installMockPlatform()
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { invoke } from '@tauri-apps/api/core'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
 import ProcessesDock, { RECENT_SUCCESS_MS } from './ProcessesDock'
 import { useComposerStore } from '../../stores/composer'
 import { I18nProvider } from '../../i18n'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }))
 vi.mock('../../lib/clipboard', () => ({ copyText: vi.fn(async () => true) }))
 afterEach(() => {
   cleanup()

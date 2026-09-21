@@ -47,14 +47,13 @@ def main():
         raise RuntimeError("This resource bundle targets Windows x86_64")
     root = Path(__file__).resolve().parent.parent
     manifest = json.loads((root / "ocr-manifest.json").read_text(encoding="utf-8"))
-    output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root / "src-tauri/engine-dist/ocr"
+    output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root / "engine-dist/ocr"
     allowed_outputs = {
-        (root / "src-tauri/engine-dist/ocr").resolve(),
         (root / "engine-dist/ocr").resolve(),
     }
     if output not in allowed_outputs:
-        raise ValueError("OCR output must be one of the two fixed Engine bundle directories")
-    cache = root / "src-tauri/target/ocr-downloads"
+        raise ValueError("OCR output must be the fixed Electron Engine bundle directory")
+    cache = root / "build/ocr-downloads"
     cache.mkdir(parents=True, exist_ok=True)
     bootstrap = download(manifest["extractor"]["bootstrap"], cache)
     archive = download(manifest["extractor"]["archive"], cache)

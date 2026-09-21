@@ -8,17 +8,17 @@
       -CliRepo C:/Users/Xainner/Documents/DEV/Rinari-CLI `
       -PythonVersion 3.12.10
 
-  Salida: src-tauri/engine-dist/
+  Salida: engine-dist/
     python.exe, Lib/site-packages/rinari..., ENGINE_VERSION
 
-  El desktop lo descubre vía resource_dir (ver main.rs: sidecar primero,
+  El desktop lo descubre vía `process.resourcesPath` (bundle primero,
   RINARI_ENGINE_BIN/PATH como fallback de desarrollo).
 #>
 param(
   [string]$CliRepo = (Join-Path (Split-Path $PSScriptRoot -Parent) "..\\..\\Rinari-CLI"),
   [string]$PythonVersion = "3.12.10",
   [switch]$Development,
-  [string]$OutDir = (Join-Path $PSScriptRoot "..\\src-tauri\\engine-dist")
+  [string]$OutDir = (Join-Path $PSScriptRoot "..\\engine-dist")
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,12 +38,9 @@ $getPipUrl = "https://bootstrap.pypa.io/get-pip.py"
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "rinari-engine-pkg"
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $resolvedOut = [System.IO.Path]::GetFullPath($OutDir)
-$allowedOutputs = @(
-  [System.IO.Path]::GetFullPath((Join-Path $repoRoot "src-tauri\engine-dist")),
-  [System.IO.Path]::GetFullPath((Join-Path $repoRoot "engine-dist"))
-)
-if (-not ($allowedOutputs -contains $resolvedOut)) {
-  throw "OutDir debe ser exactamente src-tauri/engine-dist o engine-dist dentro del repositorio"
+$allowedOutput = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "engine-dist"))
+if ($allowedOutput -ne $resolvedOut) {
+  throw "OutDir debe ser exactamente engine-dist dentro del repositorio"
 }
 if (Test-Path -LiteralPath $resolvedOut) {
   Remove-Item -LiteralPath $resolvedOut -Recurse -Force

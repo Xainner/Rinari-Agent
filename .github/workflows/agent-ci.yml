@@ -42,32 +42,6 @@ jobs:
       # display, de ahí xvfb (documento 02 §8).
       - run: xvfb-run -a npm run desktop:smoke
 
-  rust:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - name: Prepare optional engine resource directory
-        shell: bash
-        run: mkdir -p src-tauri/engine-dist
-      - name: Install Tauri system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - working-directory: src-tauri
-        run: cargo fmt --check
-      - working-directory: src-tauri
-        run: cargo clippy --all-targets -- -D warnings
-      - working-directory: src-tauri
-        run: cargo test
-
   browser-integration:
     # Gate reproducible del Documento 03: usa el checkout exacto que declara
     # engine-manifest.json y datos efímeros. La entrada física queda para el
@@ -138,6 +112,7 @@ jobs:
           path: Rinari-CLI
       - uses: astral-sh/setup-uv@v5
       - run: npm ci
+      - run: npm ci --prefix installer/setup
       - run: npm run setup:web:build
       - working-directory: installer/setup/src-tauri
         run: cargo fmt --check

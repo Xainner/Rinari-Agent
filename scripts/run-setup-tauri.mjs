@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const cli = join(root, 'node_modules', '@tauri-apps', 'cli', 'tauri.js')
+const cli = join(root, 'installer', 'setup', 'node_modules', '@tauri-apps', 'cli', 'tauri.js')
 const child = spawn(process.execPath, [cli, ...process.argv.slice(2)], {
   cwd: join(root, 'installer', 'setup'),
   env: process.env,

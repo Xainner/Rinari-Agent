@@ -53,5 +53,6 @@ mismo namespace. Desinstalar cualquiera de los hosts no borra esos datos.
 ## Contrato de plataforma
 
 El renderer usa `migration.status()`, `migration.importPending()` y
-`migration.retry()`. `migration.exportForElectron()` existe solo durante la
-ventana de transición de Tauri 0.1.3 y se retira junto con Tauri en el cutover.
+`migration.retry()`. El exportador existió solo en Tauri 0.1.3 y quedó retirado
+del runtime activo durante el cutover. Su fuente exacta y commit se conservan
+en [transition-0.1.3](transition-0.1.3/README.md) para recuperación.

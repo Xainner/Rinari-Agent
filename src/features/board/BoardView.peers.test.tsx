@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-const invoke = vi.fn()
-vi.mock('@tauri-apps/api/core', () => ({ invoke: (...args: unknown[]) => invoke(...args) }))
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 vi.mock('../../services/desktop', () => ({
   desktopApi: { questions: vi.fn(async () => ({ questions: [] })), readFile: vi.fn(), answer: vi.fn() },
 }))

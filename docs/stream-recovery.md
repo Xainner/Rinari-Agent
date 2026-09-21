@@ -18,7 +18,7 @@ El motor local contiene cambios sin commit, se identifica como desarrollo y
 exige reiniciar el proceso de desarrollo para cargarlos. Desde este directorio:
 
 ```powershell
-npm run tauri -- dev
+npm run desktop:dev
 ```
 
 El informe del motor está en `Rinari-CLI/docs/stream-recovery.md`: incluye la prueba

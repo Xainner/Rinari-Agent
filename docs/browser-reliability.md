@@ -21,13 +21,13 @@ Validation on Windows:
 - Protocol generation check and Rust library tests passed. The running desktop
   executable was left open; an installer was not rebuilt or installed.
 
-Restart `npm run tauri -- dev` to load the updated engine. The packaged
+Restart `npm run desktop:dev` to load the updated engine. The packaged
 `ENGINE_SOURCE.json` marks this as a development build with local changes.
 
 Repeat the native bridge smoke test after packaging:
 
 ```text
-cargo test --manifest-path src-tauri/Cargo.toml --lib packaged_engine_browser_catalog_roundtrip -- --ignored
+npm run browser:vertical
 ```
 
 The browser test verifies a controlled fixture, not the user's game or a live

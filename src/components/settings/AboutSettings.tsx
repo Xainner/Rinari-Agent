@@ -5,7 +5,6 @@ import { copyText } from '../../lib/clipboard'
 import { useI18n } from '../../i18n'
 import { engineApi, type EngineStatus } from '../../services/engine'
 import { checkForUpdates, downloadUpdate } from '../../services/updates'
-import { platform } from '../../platform'
 import './about.css'
 import engineManifest from '../../../engine-manifest.json'
 
@@ -15,8 +14,6 @@ export default function AboutSettings({ version }: { version: string }) {
   const [status, setStatus] = useState<EngineStatus | null>(null)
   const [checking, setChecking] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [canExportMigration, setCanExportMigration] = useState(false)
-  const [exportingMigration, setExportingMigration] = useState(false)
 
   useEffect(() => {
     if (!copied) return
@@ -49,28 +46,6 @@ export default function AboutSettings({ version }: { version: string }) {
       alive = false
     }
   }, [])
-
-  useEffect(() => {
-    let alive = true
-    void platform().migration.status().then((value) => {
-      if (alive) setCanExportMigration(value.can_export === true)
-    }).catch(() => undefined)
-    return () => { alive = false }
-  }, [])
-
-  async function onExportMigration() {
-    setExportingMigration(true)
-    try {
-      await platform().migration.exportForElectron()
-      toast.success(t('settings.about.migrationReady'))
-    } catch (error) {
-      toast.error(t('settings.about.migrationFailed', {
-        detail: error instanceof Error ? error.message : String(error),
-      }))
-    } finally {
-      setExportingMigration(false)
-    }
-  }
 
   async function onCheckUpdates() {
     setChecking(true)
@@ -153,19 +128,6 @@ export default function AboutSettings({ version }: { version: string }) {
           {checking ? t('update.checking') : t('update.check')}
         </button>
       </section>
-
-      {canExportMigration && (
-        <section className="about-update" aria-labelledby="about-migration-title">
-          <div>
-            <h3 id="about-migration-title">{t('settings.about.migration')}</h3>
-            <p>{t('settings.about.migrationHint')}</p>
-          </div>
-          <button className="about-update-button" type="button" disabled={exportingMigration} onClick={() => void onExportMigration()}>
-            {exportingMigration ? <LoaderCircle className="motion-safe:animate-spin" size={15} aria-hidden="true" /> : <Download size={15} aria-hidden="true" />}
-            {t(exportingMigration ? 'settings.about.migrationPreparing' : 'settings.about.migrationPrepare')}
-          </button>
-        </section>
-      )}
 
       <a className="about-repository" href="https://github.com/Xainner/Rinari-Agent" target="_blank" rel="noreferrer">
         <span className="about-repository-icon"><Code2 size={20} aria-hidden="true" /></span>

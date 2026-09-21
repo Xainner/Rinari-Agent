@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { openUrl } = installMockPlatform()
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import HtmlPreview, { isolatedPreviewUrl } from './HtmlPreview'
 import { desktopApi } from '../../services/desktop'
-import { openUrl } from '@tauri-apps/plugin-opener'
 
 const file = {
   path: 'C:/my repo/snake.html',
@@ -28,9 +29,6 @@ vi.mock('../../services/desktop', () => ({
     stopPreview: vi.fn(),
     readFile: vi.fn(),
   },
-}))
-vi.mock('@tauri-apps/plugin-opener', () => ({
-  openUrl: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../../lib/highlight', () => ({
   highlightToHtml: vi.fn().mockResolvedValue(null),

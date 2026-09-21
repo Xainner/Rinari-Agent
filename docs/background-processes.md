@@ -70,6 +70,6 @@ se resuelven contra la sesión solicitada antes de leer o detener, y el
 frontend los trata como opacos. Las definiciones TypeScript y Rust se
 generan desde el esquema del engine.
 
-Reinicia `npm run tauri -- dev` tras actualizar el engine incluido y
-el puente Rust. Los servidores desacoplados previamente deben
+Reinicia `npm run desktop:dev` tras actualizar el Engine incluido y
+el puente Electron. Los servidores desacoplados previamente deben
 reiniciarse con una herramienta gestionada para aparecer.

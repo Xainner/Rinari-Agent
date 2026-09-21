@@ -11,7 +11,7 @@ utility, and Spanish, English and orientation language data. Each download must
 match its SHA-256 before use. The Tesseract installer is extracted, never run.
 The resulting `engine-dist/ocr` directory includes the executable, DLLs, language
 data, license documentation and an `OCR_SOURCE.json` resource checksum manifest.
-Build-only downloads remain under `src-tauri/target` and are not shipped.
+Build-only downloads remain under `build/ocr-downloads` and are not shipped.
 
 Build OCR independently from the repository root:
 

@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 // Doc 01 §4: una respuesta final canónica, una sola vez, con los mismos
 // metadatos en Normal y Boards (UX-03, UX-04, UX-05).
+import { installMockPlatform } from '../../test/mockPlatform'
+installMockPlatform()
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 vi.mock('../../services/desktop', () => ({
   desktopApi: { questions: vi.fn(async () => ({ questions: [] })), readFile: vi.fn(), answer: vi.fn() },
 }))

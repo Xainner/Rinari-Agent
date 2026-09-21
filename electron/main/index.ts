@@ -687,8 +687,26 @@ function attachParityProbe(window: BrowserWindow): void {
     void window.webContents
       // La sonda vive en el renderer y usa `engineApi`/`desktopApi`: así
       // recorre `src/services` y `src/platform`, que es justo el tramo que
-      // una llamada directa a `window.rinariDesktop` se saltaba.
-      .executeJavaScript('window.__rinariParityProbe ? window.__rinariParityProbe() : Promise.resolve({ error: "probe not registered" })')
+      // una llamada directa a `window.rinariDesktop` se saltaba. El bootstrap
+      // valida primero una posible migración, así que `did-finish-load` no
+      // implica que el módulo de la sonda ya esté registrado.
+      .executeJavaScript(`
+        new Promise((resolve) => {
+          const deadline = Date.now() + 15_000
+          const run = () => {
+            if (window.__rinariParityProbe) {
+              Promise.resolve(window.__rinariParityProbe()).then(resolve)
+              return
+            }
+            if (Date.now() >= deadline) {
+              resolve({ error: 'probe not registered before deadline' })
+              return
+            }
+            setTimeout(run, 50)
+          }
+          run()
+        })
+      `)
       .then((report: Record<string, unknown>) => {
         console.log(`RINARI_PARITY ${JSON.stringify(report)}`)
         void finishProbe(0)

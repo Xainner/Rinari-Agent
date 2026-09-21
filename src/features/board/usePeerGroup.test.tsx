@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { cleanup, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it } from 'vitest'
 
-const invoke = vi.fn()
-vi.mock('@tauri-apps/api/core', () => ({ invoke: (...args: unknown[]) => invoke(...args) }))
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) }))
 
 import { I18nProvider } from '../../i18n'
 import { useBoardStore, defaultBoard } from '../../stores/board'

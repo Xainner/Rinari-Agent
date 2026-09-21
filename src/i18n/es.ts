@@ -1245,12 +1245,6 @@ export const es = {
   'settings.general.board.title': 'Boards',
   'settings.general.board.softLimit': 'Aviso de paneles',
   'settings.general.board.softLimitHint': 'Avisa al superar este número de paneles (0 desactiva el aviso). No limita las sesiones.',
-  'settings.about.migration': 'Transición a Electron',
-  'settings.about.migrationHint': 'Prepara tus preferencias de interfaz para Rinari Agent 0.2.0. No incluye credenciales, cookies, permisos ni datos del Engine.',
-  'settings.about.migrationPrepare': 'Preparar transición',
-  'settings.about.migrationPreparing': 'Preparando…',
-  'settings.about.migrationReady': 'La transición quedó preparada. Instala Rinari Agent 0.2.0 cuando esté disponible.',
-  'settings.about.migrationFailed': 'No se pudo preparar la transición: {detail}',
 } as const
 
 export type I18nKey = keyof typeof es

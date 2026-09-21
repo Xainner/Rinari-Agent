@@ -1,7 +1,7 @@
 /**
  * Transporte NDJSON sobre el stdio del proceso del Engine (documento 02 §4).
  *
- * Port de `src-tauri/src/engine/transport.rs` con lo que el §4.2 añade para
+ * Transporte equivalente al host 0.1.3, con lo que el §4.2 añade para
  * este host: decodificación UTF-8 incremental, LF y CRLF, límite de bytes por
  * línea, un solo escritor con contrapresión, drenaje de stderr desde el primer
  * byte y época de conexión para no confundir una respuesta tardía de la

@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke, openFiles: openFolderDialog } = installMockPlatform()
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 
-import { invoke } from '@tauri-apps/api/core'
-import { open as openFolderDialog } from '@tauri-apps/plugin-dialog'
 import { useBoardStore, defaultBoard } from '../../stores/board'
 import AddPaneDialog from './AddPaneDialog'
 import { BoardHarness, engineFixture, projectFixture, sessionFixture } from './testUtils'
@@ -50,7 +47,7 @@ it('warns before adding a second pane on a root already present and only creates
 })
 
 it('registers a picked folder with project.add and never calls project.open', async () => {
-  vi.mocked(openFolderDialog).mockResolvedValue('/repo/new')
+  vi.mocked(openFolderDialog).mockResolvedValue(['/repo/new'])
   vi.mocked(invoke).mockImplementation(async (command: string) => {
     if (command === 'project_add') return { project: projectFixture('proj_new', 'Nuevo', { root: '/repo/new', canonical_root: '/repo/new' }), created: true }
     return {}

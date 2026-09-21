@@ -1,7 +1,7 @@
 /**
  * Engine Protocol v1, lado desktop (documento 02 §4).
  *
- * Port de `src-tauri/src/engine/protocol.rs`. Es NDJSON con hello, envolturas
+ * Contrato conservado del host 0.1.3. Es NDJSON con hello, envolturas
  * de petición/respuesta y eventos: **no** es JSON-RPC estándar por tener ids,
  * y tratarlo como tal rompería la compatibilidad con el Engine.
  *

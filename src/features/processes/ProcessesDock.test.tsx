@@ -1,15 +1,14 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const { invoke } = installMockPlatform()
 import { StrictMode } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { invoke } from '@tauri-apps/api/core'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
 import ProcessesDock, { PROCESSES_AUTO_CLOSE_MS, RECENT_SUCCESS_MS, shouldAutoCloseInspector } from './ProcessesDock'
 import { I18nProvider } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 function row(id: string, command: string, extra: Record<string, unknown> = {}) {

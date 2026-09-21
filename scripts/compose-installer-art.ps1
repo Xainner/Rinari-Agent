@@ -62,7 +62,10 @@ foreach ($name in $characters) {
     $manifest[$name] = [ordered]@{ width = $image.Width; height = $image.Height }
   } finally { $image.Dispose() }
 }
-Copy-Item -LiteralPath (Join-Path $repo 'public\brand\icon-no-bg.png') -Destination (Join-Path $output 'rinari-icon.png') -Force
+# El icono del chrome del instalador sale de la **misma** fuente canónica que
+# `build/icon.ico`, no de la ilustración de marca del renderer: los dos son
+# identidad de aplicación y tienen que cambiar juntos.
+Copy-Item -LiteralPath (Join-Path $repo 'build\icon-source.png') -Destination (Join-Path $output 'rinari-icon.png') -Force
 
 $assetNames = @($characters) + @('rinari-icon.png', 'studio-master.png')
 foreach ($name in ($assetNames | Sort-Object)) {

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { dispatchAction, resolveContextualAction, type DesktopAction } from './services/actions'
 import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
@@ -29,7 +29,7 @@ import {
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import { requestDockToggle } from './features/session/SessionWorkspace'
-import { useSessionDockStore } from './stores/sessionDock'
+import { dockNamespaceKey, nextDockIntent, useSessionDockStore, type DockSurface, type SessionDockState } from './stores/sessionDock'
 import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
@@ -267,6 +267,48 @@ function App() {
     return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
   }
   const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
+
+  // Destino del dock: una sola regla para barra superior, acciones, menú y
+  // paleta. En Boards es el panel enfocado y **nunca** todos los docks
+  // montados; en Normal, la sesión activa.
+  const dockTargetSessionId = (view === 'board' ? focusedBoardPane?.sessionId : session.activeSession) || null
+  // Se selecciona la superficie, no el layout. `layoutFor` devuelve un objeto
+  // **nuevo** cuando la sesión todavía no tiene layout guardado, y un selector
+  // que devuelve una referencia nueva en cada llamada hace que el store
+  // entregue un snapshot distinto cada render: la aplicación entra en un bucle
+  // y la ventana se queda en blanco. Una cadena o `null` no tiene ese problema.
+  const dockSurface = useSessionDockStore(
+    useCallback(
+      (state: SessionDockState) => {
+        if (!dockTargetSessionId) return null
+        const layout = state.layouts[dockNamespaceKey(state.homeId, dockTargetSessionId)]
+        return layout?.visible ? layout.activeSurface : null
+      },
+      [dockTargetSessionId],
+    ),
+  )
+
+  /**
+   * Abre, cambia o cierra el dock de la sesión destino.
+   *
+   * Una sola semántica para los cuatro caminos que llegan aquí: cerrado abre
+   * en esa superficie, abierto en otra cambia de pestaña sin cerrar, y abierto
+   * en la misma cierra. Se envía por la acción tipada existente —que nombra su
+   * destinatario— en vez de tocar el store de cada sesión montada.
+   */
+  const toggleDockSurface = useCallback(
+    (surface: DockSurface) => {
+      if (!dockTargetSessionId) return
+      const layout = useSessionDockStore.getState().layoutFor(dockTargetSessionId)
+      if (nextDockIntent(layout, surface) === 'close') {
+        // Sin superficie, la acción alterna la visibilidad: la cierra.
+        requestDockToggle({ sessionId: dockTargetSessionId })
+        return
+      }
+      requestDockToggle({ sessionId: dockTargetSessionId, surface })
+    },
+    [dockTargetSessionId],
+  )
   // El layout del dock se guarda por Engine home + sesión: la identidad estable
   // viene del hello (`home_id`), nunca del instance id que cambia al arrancar.
   const homeId = session.status?.home_id ?? null
@@ -326,21 +368,14 @@ function App() {
         case 'about': goSettings('about'); break
         case 'engine': goEngine(); break
         case 'sidebar': toggleSidebarCollapsed(); break
-        case 'files': {
-          // Destinatario explícito: la sesión del panel enfocado en Boards o la
-          // sesión Normal; nunca todos los providers montados.
-          const target = view === 'board' ? focusedBoardPane?.sessionId : session.activeSession
-          if (target) requestDockToggle({ sessionId: target, surface: 'files' })
-          break
-        }
-        case 'browser': {
-          // Mismo dock y mismo destinatario explícito que Archivos: el
-          // navegador es otra superficie del panel de la sesión, no una
-          // ventana aparte (documento 03 §1).
-          const target = view === 'board' ? focusedBoardPane?.sessionId : session.activeSession
-          if (target) requestDockToggle({ sessionId: target, surface: 'browser' })
-          break
-        }
+        // Las tres superficies del dock comparten destino y semántica: abrir,
+        // cambiar de pestaña o cerrar según lo que ya esté visible. El
+        // navegador es otra superficie del panel de la sesión, no una ventana
+        // aparte (documento 03 §1), y «Panel de Workspace» es la pestaña del
+        // dock, no la vista global.
+        case 'files': toggleDockSurface('files'); break
+        case 'browser': toggleDockSurface('browser'); break
+        case 'workspace-panel': toggleDockSurface('workspace'); break
         case 'commands': setPaletteOpen(true); break
         case 'processes':
           if (session.activeSession) {
@@ -423,7 +458,6 @@ function App() {
         sidebar={
           <AppSidebar
             collapsed={sidebarCollapsed}
-            onToggleCollapse={toggleSidebarCollapsed}
             onSearch={() => setPaletteOpen(true)}
             onOpenSettings={() => goSettings()}
             onOpenEngine={goEngine}
@@ -505,8 +539,11 @@ function App() {
             boardAttentionCount={boardCounts.attentionPaneCount}
             attentionMenu={<BoardAttentionMenu labelFor={boardLabelFor} goBoard={goBoard} disabled={!session.ready} />}
             onOpenMobileSidebar={() => setSidebarOpen(true)}
-            onExpandSidebar={toggleSidebarCollapsed}
+            onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}
+            dockSurface={dockSurface}
+            dockTargetAvailable={Boolean(dockTargetSessionId)}
+            onToggleDockSurface={toggleDockSurface}
           />
         }
       >

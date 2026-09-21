@@ -58,7 +58,7 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
       </AnimatePresence>
     </div>
     <AnimatePresence initial={false} mode="popLayout">
-    {!conversationActive && !pane && <motion.footer key="footer" exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.14 }} className="home-footer"><p>“Better tools for brighter minds.”</p><span className="home-footer-rule" /><img src="/brand/icon-no-bg.png" alt="" />
+    {!conversationActive && !pane && <motion.footer key="footer" exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.14 }} className="home-footer"><p>“Better tools for brighter minds.”</p><span className="home-footer-rule" />
       <div className="home-status" role="status"><span className={engineReady ? 'engine-dot ready' : 'engine-dot'} />{t(engineReady ? 'home.ready' : 'home.unavailable')}<span className="home-motto">Code · Create · Explore · Together</span></div>
     </motion.footer>}
     </AnimatePresence>

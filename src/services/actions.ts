@@ -11,6 +11,14 @@ export type DesktopAction =
   | 'files'
   /** Abre el dock de la sesión en la superficie de navegador (doc 03 §1). */
   | 'browser'
+  /**
+   * Abre el dock de la sesión en la superficie **Workspace**.
+   *
+   * No es `view = 'workspace'`: la vista global y la pestaña del dock comparten
+   * nombre y son cosas distintas. Se llama `workspace-panel` para que el menú,
+   * la paleta y la barra superior compartan una ruta que no colisione con ella.
+   */
+  | 'workspace-panel'
   | 'commands'
   | 'processes'
   | 'undo'

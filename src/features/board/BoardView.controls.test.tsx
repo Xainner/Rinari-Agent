@@ -82,7 +82,7 @@ it('UX-01: the status bar shows identity and view state, never a model or mode e
         boardAttentionCount={0}
         attentionMenu={null}
         onOpenMobileSidebar={() => {}}
-        onExpandSidebar={() => {}}
+        onToggleSidebar={() => {}}
         sidebarCollapsed={false}
       />
     </I18nProvider>,

@@ -1,29 +1,17 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+const host = installMockPlatform()
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-
-type Listener = (wrapper: { payload: { type: string; event: string; payload: Record<string, unknown> } }) => void
-const listeners: Listener[] = []
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(async (_name: string, callback: Listener) => {
-    listeners.push(callback)
-    return () => {
-      const index = listeners.indexOf(callback)
-      if (index >= 0) listeners.splice(index, 1)
-    }
-  }),
-}))
 
 import { SESSION_REFRESH_DEBOUNCE_MS, SESSION_REFRESH_MAX_WAIT_MS, useTurnRuntime } from './useTurnRuntime'
 
 function emit(event: string, payload: Record<string, unknown>) {
-  for (const listener of [...listeners]) listener({ payload: { type: 'event', event, payload } })
+  host.bridge.emitEngineEvent({ type: 'event', event, payload })
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
-  listeners.length = 0
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -35,8 +23,6 @@ it('coalesces session-list refreshes from a burst of events into one call', asyn
   await act(async () => {
     await Promise.resolve()
   })
-  expect(listeners).toHaveLength(1)
-
   act(() => {
     for (const session of ['A', 'B', 'C']) {
       emit('turn.started', { turn_id: `t-${session}`, session_id: session })
@@ -85,5 +71,6 @@ it('stops the listener and pending timers on unmount', async () => {
     vi.advanceTimersByTime(SESSION_REFRESH_MAX_WAIT_MS)
   })
   expect(onSessionsChanged).not.toHaveBeenCalled()
-  expect(listeners).toHaveLength(0)
+  emit('turn.completed', { turn_id: 'after-unmount', session_id: 'A' })
+  expect(onSessionsChanged).not.toHaveBeenCalled()
 })

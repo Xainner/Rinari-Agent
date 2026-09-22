@@ -18,6 +18,7 @@ import type { Language } from '../types'
 import { dispatchAction } from '../services/actions'
 import type { Theme } from '../lib/theme'
 import { useI18n } from '../i18n'
+import { useBlockingOverlay } from '../stores/overlay'
 import type { SettingsSection } from '../stores/ui'
 
 interface CommandPaletteProps {
@@ -79,6 +80,11 @@ export default function CommandPalette({
     fn()
     onClose()
   }
+
+  // La paleta cubre la ventana, así que mientras está abierta las vistas
+  // nativas se retiran: si no, se dibuja debajo del navegador (§8.3). Aquí va
+  // condicionada a `open` porque el componente sigue montado cerrado.
+  useBlockingOverlay(open)
 
   const q = query.trim().toLowerCase()
   const filtered =
@@ -148,7 +154,7 @@ export default function CommandPalette({
                 ['mark-all-board-results-read', t('cmd.markAllBoardResultsRead')],
               ] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['view-normal', t('nav.normal')], ['view-boards', t('nav.boards')], ['view-flows', t('nav.flows')]] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
-              {([['open-folder', 'Abrir carpeta'], ['files', 'Panel de archivos'], ['sidebar', 'Barra lateral'], ['updates', 'Buscar actualizaciones'], ['about', 'Acerca de Rinari Agent']] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
+              {([['open-folder', 'Abrir carpeta'], ['files', 'Panel de archivos'], ['browser', 'Panel de navegador'], ['sidebar', 'Barra lateral'], ['updates', 'Buscar actualizaciones'], ['about', 'Acerca de Rinari Agent']] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               <Command.Item
                 value={t('engine.restart')}
                 onSelect={() => run(onEngineRestart)}

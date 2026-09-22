@@ -11,12 +11,12 @@ Los grupos distinguen lecturas y archivos exitosos informados por el Engine.
 Los resultados de las herramientas y sus datos de presentación son contratos
 separados. Los tipos generados corresponden al esquema local actualizado.
 
-El paquete `src-tauri/engine-dist` fue actualizado como desarrollo (no publicado).
+El paquete `engine-dist` fue actualizado como desarrollo (no publicado).
 `ENGINE_SOURCE.json` registra el commit base, hash de wheel y árbol de fuentes.
 Para probarlo, reinicia el proceso de desarrollo y ejecuta:
 
 ```powershell
-npm run tauri -- dev
+npm run desktop:dev
 ```
 
 Las pruebas y el catálogo habilitado están documentados en el repositorio Engine,

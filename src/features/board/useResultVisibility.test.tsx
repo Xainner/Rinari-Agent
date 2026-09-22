@@ -2,10 +2,11 @@
 // Doc 01 §4.4 / UX-10: un resultado se marca leído solo cuando su cuerpo real
 // está en pantalla con la ventana atendida y sin modal; nunca por enfocar la
 // sesión, cambiar de vista o mostrar una tarjeta resumida.
+import { installMockPlatform } from '../../test/mockPlatform'
+installMockPlatform()
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))
 
 import { I18nProvider } from '../../i18n'
 import { useBoardAttentionStore } from '../../stores/boardAttention'

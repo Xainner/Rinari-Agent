@@ -1,0 +1,36 @@
+appId: com.rinari.agent
+productName: Rinari Agent
+copyright: Copyright © 2026 Xainner
+asar: true
+compression: maximum
+npmRebuild: false
+allowMissingDependencies: false
+directories:
+  buildResources: build
+  output: release/electron
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+extraResources:
+  - from: engine-dist
+    to: engine-dist
+    filter:
+      - "**/*"
+  - from: build/app-update.yml
+    to: app-update.yml
+afterPack: build/afterPack.cjs
+artifactName: Rinari-Agent-Payload-${version}-${arch}.${ext}
+forceCodeSigning: false
+win:
+  target:
+    - target: dir
+      arch:
+        - x64
+  executableName: rinari-agent
+  icon: build/icon.ico
+publish:
+  provider: github
+  owner: Xainner
+  repo: Rinari-Agent
+  releaseType: draft

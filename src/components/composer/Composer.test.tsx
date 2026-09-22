@@ -2,10 +2,13 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
+import { installMockPlatform } from '../../test/mockPlatform'
 import { I18nProvider } from '../../i18n'
 import type { ModelSummary, ProviderSummary } from '../../services/engine'
 import Composer from './Composer'
 import { useUIStore } from '../../stores/ui'
+
+installMockPlatform()
 
 afterEach(cleanup)
 it('groups models by provider and closes each selector immediately on selection', async () => {

@@ -6,7 +6,7 @@ import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
-import { checkForUpdates, installUpdateAndRelaunch } from './services/updates'
+import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState } from './services/updates'
 import { useUIStore } from './stores/ui'
 import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
@@ -46,7 +46,7 @@ import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const FlowView = lazy(() => import('./features/flow/FlowView'))
 
-const APP_VERSION = '0.1.2'
+const APP_VERSION = '0.2.0'
 
 function App() {
   const view = useUIStore((s) => s.view)
@@ -157,6 +157,33 @@ function App() {
   // El footer + EngineConsole conservan el estado real y el reintento.
   const autoStarted = useRef(false)
   useEffect(() => {
+    const tr = (key: I18nKey, vars?: Record<string, string | number>) => translate(lang, key, vars)
+    let stop: (() => void) | undefined
+    let active = true
+    void onUpdateState((state) => {
+      if (state.phase === 'downloading') {
+        const percent = Math.max(0, Math.min(100, Math.round(state.progress?.percent ?? 0)))
+        toast.loading(tr('update.downloading', { percent }), { id: 'rinari-update' })
+      } else if (state.phase === 'downloaded') {
+        toast(tr('update.ready', { v: state.available_version ?? '' }), {
+          id: 'rinari-update',
+          description: state.unsigned ? tr('update.unsigned') : undefined,
+          action: { label: tr('update.install'), onClick: () => void applyUpdate().catch((error) => toast.error(String(error))) },
+        })
+      } else if (state.phase === 'error') {
+        toast.error(tr('update.failed', { detail: state.message ?? 'unknown error' }), { id: 'rinari-update' })
+      }
+    }).then((unsubscribe) => {
+      if (active) stop = unsubscribe
+      else unsubscribe()
+    })
+    return () => {
+      active = false
+      stop?.()
+    }
+  }, [lang])
+
+  useEffect(() => {
     if (!autoStarted.current) {
       autoStarted.current = true
       void session.startEngine()
@@ -168,11 +195,11 @@ function App() {
         .then((found) => {
           if (!found) return
           toast(tr('update.available', { v: found.version }), {
+            description: found.unsigned ? tr('update.unsigned') : undefined,
             action: {
-              label: tr('update.install'),
+              label: tr('update.download'),
               onClick: () => {
-                toast.loading(tr('update.installing'))
-                void installUpdateAndRelaunch().catch((err: unknown) =>
+                void downloadUpdate().catch((err: unknown) =>
                   toast.error(
                     tr('update.failed', {
                       detail: err instanceof Error ? err.message : String(err),
@@ -310,6 +337,14 @@ function App() {
           if (target) requestDockToggle({ sessionId: target, surface: 'files' })
           break
         }
+        case 'browser': {
+          // Mismo dock y mismo destinatario explícito que Archivos: el
+          // navegador es otra superficie del panel de la sesión, no una
+          // ventana aparte (documento 03 §1).
+          const target = view === 'board' ? focusedBoardPane?.sessionId : session.activeSession
+          if (target) requestDockToggle({ sessionId: target, surface: 'browser' })
+          break
+        }
         case 'commands': setPaletteOpen(true); break
         case 'processes':
           if (session.activeSession) {
@@ -320,7 +355,10 @@ function App() {
         case 'undo': case 'redo': document.execCommand(action); break
         case 'updates': void checkForUpdates().then(found => {
           if (!found) { toast.success('Rinari Agent está actualizado.'); return }
-          toast(`Nueva versión: ${found.version}`, { action: { label: 'Instalar', onClick: () => void installUpdateAndRelaunch().catch(error => toast.error(String(error))) } })
+          toast(`Nueva versión: ${found.version}`, {
+            description: found.unsigned ? 'Canal sin firma Authenticode; el SHA-512 se verificará antes de aplicar.' : undefined,
+            action: { label: 'Descargar', onClick: () => void downloadUpdate().catch(error => toast.error(String(error))) },
+          })
         }).catch(error => toast.error(String(error))); break
       }
     }

@@ -84,7 +84,7 @@ credenciales se referencian en memoria mediante variable de entorno, imágenes y
 sesiones de prueba son temporales. No se alteró la conversación de referencia.
 
 Se verificaron componentes y transporte, no una inspección manual de la ventana
-Windows en esta sesión. Para probar la aplicación, reiniciar npm run tauri -- dev
+Windows en esta sesión. Para probar la aplicación, reiniciar npm run desktop:dev
 es suficiente; el motor local empaquetado se actualiza con este trabajo.
 
 

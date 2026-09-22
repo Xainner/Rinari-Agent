@@ -38,7 +38,7 @@ be hidden with the dock; a newly connected engine browser is revealed only when
 that session is focused and its dock is closed, otherwise the tab shows an
 indicator. It is an observation surface labelled as a preview: manual
 interaction is available through **Abrir fuera**. It does not run a duplicate
-iframe page or expose Tauri commands to web content. Polling runs at capture
+iframe page or expose host commands to web content. Polling runs at capture
 cadence only while the surface is visible and at a low background cadence for
 the indicator.
 
@@ -49,8 +49,8 @@ The HTML file preview remains a separate feature for manually playing a local
 game inside Code.
 
 New capabilities: `agent_inheritance_v1`, `agent_activity_v1`, `browser_view_v1`.
-Update the packaged engine and restart `npm run tauri -- dev` to load the new
-Rust command and protocol. No commit or publication is included in this change.
+Update the packaged engine and restart `npm run desktop:dev` to load the new
+Electron host command and protocol. No publication is implied by this step.
 
 ## Subagents vs. peers of a session
 

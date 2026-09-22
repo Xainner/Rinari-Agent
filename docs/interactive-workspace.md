@@ -12,7 +12,7 @@
   lateral con pestañas, Markdown/fuente, resaltado, ruta y apertura externa.
   La lectura es del motor, limitada a 512 KiB y al workspace del turno original.
 - El pie del sidebar contiene el menú Rinari Agent. Archivo, Editar, Ver y Ayuda
-  son menús nativos de Tauri; los menús contextuales conservan edición y portapapeles.
+  son menús nativos de Electron; los menús contextuales conservan edición y portapapeles.
 
 El motor requiere `desktop_workspace_v1` e `interactive_questions_v1`. El esquema
 del motor genera los DTOs TypeScript/Rust. No hay una base de sesiones adicional.
@@ -20,7 +20,7 @@ del motor genera los DTOs TypeScript/Rust. No hay una base de sesiones adicional
 ## Validación
 
 Frontend: `npm test`, `npm run build`, `npm run protocol:check`.
-Rust: `cargo test --manifest-path src-tauri/Cargo.toml`.
+Host: `npm run typecheck:electron` y `npm run desktop:smoke`.
 Motor: `uv run pytest tests/unit/test_desktop_interactions.py` y suites de
 protocolo, historial, modos, sesiones y bloqueo de turnos.
 

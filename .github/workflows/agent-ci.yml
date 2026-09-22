@@ -15,6 +15,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run electron:install
       - run: npm run protocol:check
       # Inventario de paridad desktop (documento 02 §2): si un comando aparece
       # o cambia de firma sin regenerarlo, el host Electron se construiría
@@ -41,28 +42,126 @@ jobs:
       # display, de ahí xvfb (documento 02 §8).
       - run: xvfb-run -a npm run desktop:smoke
 
-  rust:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+  browser-integration:
+    # Gate reproducible del Documento 03: usa el checkout exacto que declara
+    # engine-manifest.json y datos efímeros. La entrada física queda para el
+    # runner Windows/manual; broker, targets, aislamiento, restart, BR-10,
+    # lifecycle y backpressure corren aquí.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: engine
+        name: Read the pinned Engine revision
+        shell: bash
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + require('./engine-manifest.json').engine_git_sha + '\n')"
+      - uses: actions/checkout@v4
+        with:
+          repository: Xainner/Rinari-CLI
+          ref: ${{ steps.engine.outputs.sha }}
+          path: Rinari-CLI
+      - name: Verify the Engine checkout is exact
+        shell: bash
+        run: test "$(git -C Rinari-CLI rev-parse HEAD)" = "${{ steps.engine.outputs.sha }}"
+      - run: python -m pip install uv
+      - run: npm ci
+      # Electron 44 distribuye el instalador como binario explícito; el paquete
+      # npm ya no declara postinstall. Descargamos el runtime antes de exigir
+      # el helper SUID y de ejecutar la prueba nativa.
+      - run: npm run electron:install
+      - run: npm run build
+      - run: npm run desktop:build
+      - name: Fix the Electron sandbox helper permissions
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+      - name: Native browser vertical against the pinned Engine
+        env:
+          RINARI_CLI: ${{ github.workspace }}/Rinari-CLI
+        run: xvfb-run -a npm run browser:vertical
+
+  setup-bootstrapper:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: Prepare optional engine resource directory
-        shell: bash
-        run: mkdir -p src-tauri/engine-dist
-      - name: Install Tauri system dependencies
-        if: runner.os == 'Linux'
+      - name: Read pinned Engine revision
+        id: engine
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - working-directory: src-tauri
+          $manifest = Get-Content engine-manifest.json -Raw | ConvertFrom-Json
+          "sha=$($manifest.engine_git_sha)" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          repository: Xainner/Rinari-CLI
+          ref: ${{ steps.engine.outputs.sha }}
+          path: Rinari-CLI
+      - uses: astral-sh/setup-uv@v5
+      - run: npm ci
+      - run: npm ci --prefix installer/setup
+      - run: npm run setup:web:build
+      - working-directory: installer/setup/src-tauri
         run: cargo fmt --check
-      - working-directory: src-tauri
+      - working-directory: installer/setup/src-tauri
         run: cargo clippy --all-targets -- -D warnings
-      - working-directory: src-tauri
+      - working-directory: installer/setup/src-tauri
         run: cargo test
+      - name: Build the unsigned review package
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-engine.ps1 `
+            -CliRepo "${{ github.workspace }}\Rinari-CLI" -OutDir engine-dist
+          npm run installer:art
+          npm run package:hashes
+          npm run package:payload
+          npm run setup:build
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/finalize-setup.ps1
+      - name: Install, launch, and uninstall from a Unicode path
+        shell: pwsh
+        run: |
+          $setup = Resolve-Path release/installer/Rinari-Agent-Setup-0.2.0-x64.exe
+          $install = Join-Path $env:RUNNER_TEMP 'Rinari revisión 你好'
+          $installed = Start-Process -FilePath $setup -ArgumentList @('--silent-install', ('"' + $install + '"')) -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "silent install failed: $($installed.ExitCode)" }
+          if (-not (Test-Path -LiteralPath (Join-Path $install 'rinari-agent.exe'))) { throw 'installed executable missing' }
+          if (-not (Test-Path -LiteralPath (Join-Path $install 'rinari-code.exe'))) { throw 'compatibility executable missing' }
+          if (-not (Test-Path -LiteralPath (Join-Path $install 'resources\engine-dist\python.exe'))) { throw 'installed Engine missing' }
+          $env:RINARI_SMOKE = '1'
+          $env:RINARI_HOME = Join-Path $env:RUNNER_TEMP 'rinari-smoke-engine-home'
+          $env:RINARI_KEYRING = '0'
+          $profile = Join-Path $env:RUNNER_TEMP 'rinari-smoke-profile'
+          $smoke = Start-Process -FilePath (Join-Path $install 'rinari-agent.exe') -ArgumentList ('--user-data-dir="' + $profile + '"') -Wait -PassThru
+          if ($smoke.ExitCode -ne 0) { throw "installed app smoke failed: $($smoke.ExitCode)" }
+          $removed = Start-Process -FilePath (Join-Path $install 'Rinari-Setup.exe') -ArgumentList @('--silent-uninstall', ('"' + $install + '"')) -Wait -PassThru
+          if ($removed.ExitCode -ne 0) { throw "silent uninstall failed: $($removed.ExitCode)" }
+          $deadline = (Get-Date).AddSeconds(20)
+          while ((Test-Path -LiteralPath $install) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
+          if (Test-Path -LiteralPath $install) { throw 'uninstall did not remove the owned installation' }
+      - name: Build isolated 0.2.0/0.2.1 fixtures and run installed updater
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1 `
+            -EvidenceDir release/evidence/updater-e2e
+          npm run package:win:staged
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rinari-agent-setup-unsigned
+          path: |
+            release/installer/Rinari-Agent-Setup-0.2.0-x64.exe
+            release/installer/latest.yml
+            release/installer/setup.sha256.json
+            release/evidence/updater-e2e/*.json

@@ -65,7 +65,7 @@ plugins sin trabajo adicional por plugin.
 
 Verificado 2026-09-08 en Windows (opción 1, Estrategia A):
 
-- `scripts/package-engine.ps1` produce `src-tauri/engine-dist/`: Python
+- `scripts/package-engine.ps1` produce `engine-dist/`: Python
   empaquetado 3.12.10 + `rinari 0.1.0` instalado vía wheel + `ENGINE_VERSION`.
   Nota: 3.12.11/3.12.12 no publican embed-amd64 en python.org; 3.12.10 sí.
 - Humo directo: `hello` + `engine.info` OK, `soul.list` trae
@@ -74,8 +74,8 @@ Verificado 2026-09-08 en Windows (opción 1, Estrategia A):
   paridad confirmada).
 - Roundtrip real vía supervisor (`engine_smoke` contra el empaquetado):
   `Ready`, protocolo 1. Turnos con provider quedan fuera del spike.
-- Desktop: `engine_start` usa el sidecar (`resource_dir/engine-dist`) salvo
-  override `RINARI_ENGINE_BIN`; `tauri.conf` incluye `engine-dist` en
-  `bundle.resources`; resolución cubierta con 2 tests unitarios.
+- Desktop: `engine.start()` usa el sidecar (`process.resourcesPath/engine-dist`)
+  salvo override `RINARI_ENGINE_BIN`; `electron-builder.yml` incluye
+  `engine-dist` mediante `extraResources`.
 - Pendiente: scripts macOS/Linux, firma del bundle, updater, smoke en
   máquina limpia (ver `docs/debt.md` Fase 12).

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinari.dev/schemas/desktop-preferences-v1.json",
+  "title": "Rinari desktop preferences transition v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "export_id", "source", "source_version", "engine_namespace", "created_at", "checksum", "preferences"],
+  "properties": {
+    "schema": { "const": "rinari.desktop-preferences.v1" },
+    "export_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "source": { "const": "tauri" },
+    "source_version": { "const": "0.1.3" },
+    "engine_namespace": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "created_at": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "checksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "preferences": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "enum": [
+          "rinari.board.v1", "rinari.board.attention.v1", "rinari.sessionUi.v1",
+          "rinari.sessionDock.v1", "rinari.composer.drafts.v1", "rinari.profile.v1",
+          "rinari.lang", "rinari.sidebarCollapsed", "rinari.shortcutBindings",
+          "rinari.enterToSend", "rinari.autoFollow", "rinari.showSuggestions",
+          "rinari.showTechnicalActivityNames", "rinari.theme", "rinari.accent",
+          "rinari.reduceMotion", "rinari.provider-wizard.v1", "rinari.files.width"
+        ]
+      },
+      "additionalProperties": { "type": "string", "maxLength": 2097152 }
+    }
+  }
+}

@@ -1,5 +1,13 @@
 # Rinari Agent — Master Implementation Work Plan
 
+> **Estado actual (entrega H, 2026-09-20):** el runtime de producto es
+> exclusivamente Electron. Las secciones históricas que describen Tauri sirven
+> como contexto del diseño original y no autorizan reintroducir `src-tauri`,
+> `@tauri-apps/*` ni un segundo adaptador activo. El bootstrapper personalizado
+> de `installer/setup` es una herramienta de distribución aislada y no es el
+> host de Rinari Agent. Desarrollo, pruebas y empaquetado de la aplicación usan
+> los scripts `desktop:*`, `package:*` y el contrato de `src/platform/electron.ts`.
+
 > **Status:** Implementation blueprint / source of truth for Rinari Agent v1
 > **Date:** 2026-09-08  
 > **Rinari-CLI baseline:** `Xainner/Rinari-CLI` @ `110ad4ee55dbea1f5bd1565b35af4b65f049dfd2`  \

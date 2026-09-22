@@ -14,6 +14,10 @@ import type {
   EngineBackedCommand,
   EngineStatus,
   EngineEventMessage,
+  NativeBrowserContext,
+  NativeBrowserControl,
+  NativeBrowserPreview,
+  NativeBrowserSlotLayout,
   NotificationSupport,
   NotificationTarget,
   OpenFilesOptions,
@@ -21,6 +25,7 @@ import type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  MigrationStatus,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -52,7 +57,33 @@ export interface TestBridge extends DesktopBridge {
   readonly openedUrls: string[]
   update: UpdateAvailable | null
   desktop: boolean
+  migrationStatus: MigrationStatus
+  /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
+  browserContext: NativeBrowserContext | null
+  browserPreview: NativeBrowserPreview | null
+  /** Respuesta opcional de la próxima transición de control. */
+  browserControlResult: NativeBrowserControl | null
+  /** Intenciones de browser pedidas, en orden. */
+  readonly browserCalls: Array<Record<string, unknown>>
+  /** Geometrías enviadas, para comprobar el recorte sin una ventana. */
+  readonly browserLayouts: NativeBrowserSlotLayout[]
+  /** Empuja un cambio de contexto a los suscriptores. */
+  emitBrowserContext(view: NativeBrowserContext): void
   reset(): void
+}
+
+/** Estado por defecto: este host de prueba no tiene browser nativo. */
+function absentBrowser(sessionId: string): NativeBrowserContext {
+  return {
+    session_id: sessionId,
+    supported: false,
+    host_registered: false,
+    context_state: 'absent',
+    available: false,
+    backend: null,
+    targets: [],
+    active_target_id: null,
+  }
 }
 
 export function createTestBridge(): TestBridge {
@@ -61,10 +92,20 @@ export function createTestBridge(): TestBridge {
   const menuListeners = new Set<(action: string) => void>()
   const openListeners = new Set<(request: OpenRequest) => void>()
   const notificationListeners = new Set<(target: NotificationTarget) => void>()
+  const browserListeners = new Set<(view: NativeBrowserContext) => void>()
+  let slotCounter = 0
 
   const bridge: TestBridge = {
     calls: [],
     engineCalls: [],
+    browserContext: null,
+    browserPreview: null,
+    browserControlResult: null,
+    browserCalls: [],
+    browserLayouts: [],
+    emitBrowserContext(view) {
+      for (const listener of browserListeners) listener(view)
+    },
     engineStatus: {
       state: 'stopped',
       engine_version: null,
@@ -82,6 +123,7 @@ export function createTestBridge(): TestBridge {
     nextFileSelection: null,
     update: null,
     desktop: true,
+    migrationStatus: { state: 'not_started', pending: false },
 
     mockCommand(name, handler) {
       handlers.set(name, handler)
@@ -151,6 +193,50 @@ export function createTestBridge(): TestBridge {
       async clampToWorkArea() {},
     },
 
+    /**
+     * Browser nativo de mentira, pero con la misma forma.
+     *
+     * Por defecto dice que no hay soporte —que es lo honesto en un host de
+     * prueba—; un test que quiera la rama nativa asigna `browserContext`.
+     */
+    browser: {
+      async context(sessionId: string) {
+        return bridge.browserContext ?? absentBrowser(sessionId)
+      },
+      async prepare(sessionId: string) {
+        bridge.browserCalls.push({ kind: 'prepare', sessionId })
+        return bridge.browserContext ?? absentBrowser(sessionId)
+      },
+      async attachSlot(sessionId: string) {
+        bridge.browserCalls.push({ kind: 'attachSlot', sessionId })
+        return { slotId: `slot-${++slotCounter}` }
+      },
+      async updateSlot(layout) {
+        bridge.browserLayouts.push(layout)
+      },
+      async detachSlot(slotId: string) {
+        bridge.browserCalls.push({ kind: 'detachSlot', slotId })
+      },
+      async selectTarget(sessionId: string, targetId: string) {
+        bridge.browserCalls.push({ kind: 'selectTarget', sessionId, targetId })
+      },
+      async setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number) {
+        bridge.browserCalls.push({ kind: 'setControl', sessionId, owner, expectedRevision })
+        if (bridge.browserControlResult) return bridge.browserControlResult
+        return { control: owner, control_state: owner, control_revision: (expectedRevision ?? 1) + 1 }
+      },
+      async navigate(sessionId: string, url: string) {
+        bridge.browserCalls.push({ kind: 'navigate', sessionId, url })
+      },
+      async preview() {
+        return bridge.browserPreview
+      },
+      async onContextChanged(callback): Promise<Unsubscribe> {
+        browserListeners.add(callback)
+        return () => browserListeners.delete(callback)
+      },
+    },
+
     dialog: {
       async openFiles(_options: OpenFilesOptions = {}) {
         return bridge.nextFileSelection
@@ -188,7 +274,24 @@ export function createTestBridge(): TestBridge {
       async check() {
         return bridge.update
       },
-      async installAndRelaunch() {},
+      async download() {
+        return {
+          phase: 'downloaded' as const,
+          current_version: '0.2.0',
+          available_version: bridge.update?.version ?? null,
+          progress: null,
+          message: null,
+          unsigned: bridge.update?.unsigned ?? true,
+        }
+      },
+      async apply() {},
+      async onState() { return () => {} },
+    },
+
+    migration: {
+      async status() { return bridge.migrationStatus },
+      async importPending() { return bridge.migrationStatus },
+      async retry() { return bridge.migrationStatus },
     },
 
     isDesktop: () => bridge.desktop,
@@ -230,7 +333,15 @@ export function createTestBridge(): TestBridge {
       bridge.openedUrls.length = 0
       bridge.nextFileSelection = null
       bridge.update = null
+      bridge.browserContext = null
+      bridge.browserPreview = null
+      bridge.browserControlResult = null
+      bridge.browserCalls.length = 0
+      bridge.browserLayouts.length = 0
+      browserListeners.clear()
+      slotCounter = 0
       bridge.desktop = true
+      bridge.migrationStatus = { state: 'not_started', pending: false }
     },
   }
 

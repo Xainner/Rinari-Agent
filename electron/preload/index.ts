@@ -24,6 +24,11 @@ import {
   CHANNEL,
   PUSH,
   type BridgeResult,
+  type BrowserContextView,
+  type BrowserPreviewView,
+  type BrowserControlView,
+  type BrowserSlotLayoutRequest,
+  type BrowserSlotLease,
   type ContextMenuRequest,
   type EngineStatus,
   type NotificationSupport,
@@ -33,8 +38,10 @@ import {
   type OpenRequest,
   type SystemNotificationRequest,
   type UpdateAvailable,
+  type UpdateState,
   type WindowState,
 } from '../shared/contracts'
+import type { MigrationStage, MigrationStatus } from '../shared/migration'
 import type { EngineEvent as EngineEventMessage } from '../shared/protocol'
 
 class BridgeError extends Error {
@@ -160,7 +167,21 @@ const api = {
 
   updates: {
     check: () => call<UpdateAvailable | null>(CHANNEL.updatesCheck),
-    installAndRelaunch: () => call<void>(CHANNEL.updatesInstall),
+    download: () => call<UpdateState>(CHANNEL.updatesDownload),
+    apply: () => call<void>(CHANNEL.updatesApply),
+    onState: (callback: (state: UpdateState) => void) =>
+      subscribe<UpdateState>(PUSH.updateState, callback),
+  },
+
+  migration: {
+    status: () => call<MigrationStatus>(CHANNEL.migrationStatus),
+    stage: () => call<MigrationStage | null>(CHANNEL.migrationStage),
+    commit: (token: string, preferences: Record<string, string>) =>
+      call<MigrationStatus>(CHANNEL.migrationCommit, token, preferences),
+    verify: (token: string) => call<MigrationStatus>(CHANNEL.migrationVerify, token),
+    fail: (token: string | undefined, message: string) =>
+      call<MigrationStatus>(CHANNEL.migrationFail, token, message),
+    retry: () => call<MigrationStatus>(CHANNEL.migrationRetry),
   },
 
   handoff: {
@@ -175,10 +196,44 @@ const api = {
   },
 
   /**
+   * Browser nativo (documento 03 §6.1).
+   *
+   * Intenciones, no primitivas. Aquí **no** hay nada de `host.browser.*`, ni
+   * `debugger.sendCommand`, ni forma de nombrar un `webContentsId`: el broker
+   * es de main, y una respuesta suya no es un permiso que la página pueda
+   * guardar o reproducir (§5.2).
+   */
+  browser: {
+    /** Consulta sin efectos: mirar el estado no abre un navegador. */
+    context: (sessionId: string) => call<BrowserContextView>(CHANNEL.browserContext, sessionId),
+    /** Creación explícita del contexto y su primera página en blanco. */
+    prepare: (sessionId: string) => call<BrowserContextView>(CHANNEL.browserPrepare, sessionId),
+    /** Reserva el hueco del panel. El identificador lo acuña main. */
+    attachSlot: (sessionId: string) => call<BrowserSlotLease>(CHANNEL.browserAttachSlot, sessionId),
+    /** Geometría del hueco. Main valida y decide dónde se pinta. */
+    updateSlot: (layout: BrowserSlotLayoutRequest) => call<void>(CHANNEL.browserUpdateSlot, layout),
+    /** Retira la presentación. No cierra el contexto ni cancela el turno. */
+    detachSlot: (slotId: string) => call<void>(CHANNEL.browserDetachSlot, slotId),
+    selectTarget: (sessionId: string, targetId: string) =>
+      call<{ active_target_id: string }>(CHANNEL.browserSelectTarget, sessionId, targetId),
+    setControl: (sessionId: string, owner: 'agent' | 'user', expectedRevision?: number) =>
+      call<BrowserControlView>(CHANNEL.browserSetControl, sessionId, owner, expectedRevision),
+    navigate: (sessionId: string, url: string) =>
+      call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
+    preview: (sessionId: string) =>
+      call<BrowserPreviewView | null>(CHANNEL.browserPreview, sessionId),
+    /** Cambios de pestañas, control o estado, empujados por main. */
+    onContextChanged: (callback: (view: BrowserContextView) => void) =>
+      subscribe<BrowserContextView>(PUSH.browserContextChanged, callback),
+  },
+
+  /**
    * El host corre en modo paridad. Lo decide main por su entorno, no la
    * página: el renderer solo registra su sonda cuando esto es cierto.
    */
   parityMode: process.env.RINARI_PARITY === '1',
+  /** Habilita únicamente el adaptador de aceptación UI del browser. */
+  browserVerticalMode: process.env.RINARI_BROWSER_VERTICAL === '1',
 } as const
 
 export type RinariDesktopApi = typeof api

@@ -1,6 +1,6 @@
 {
   "engine_repository": "Xainner/Rinari-CLI",
-  "engine_git_sha": "27d29c21904f0d0d97104a843a68969234505251",
+  "engine_git_sha": "6de4827d58c829535fa9160a8a073423f86a049f",
   "engine_version": "0.1.0",
   "protocol_version": 1,
   "required_capabilities": [
@@ -29,7 +29,7 @@
     "turn_changeset_v1",
     "process_identity_v1",
     "session_peer_messaging_v1",
-    "project_flow_v1"
+    "browser_host_bridge_v1"
   ],
-  "development_build": true
+  "development_build": false
 }

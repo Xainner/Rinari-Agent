@@ -1,63 +1,68 @@
 name: release
 
-# Publica instaladores + artefactos del updater estilo Hermes:
-# tag v* -> build Windows -> release (draft) con latest.json firmado.
-# La app instalada detecta el release y se auto-actualiza sola.
+permissions:
+  contents: write
+
+# Electron 0.2.x usa latest.yml + SHA-512. El workflow prepara únicamente un
+# draft unsigned: no publica automáticamente y no acepta tags de la línea
+# Tauri 0.1.x, conservada en el commit histórico de transición.
 on:
   push:
-    tags: ['v*']
+    tags: ['v0.2.*']
 
 jobs:
-  build-windows:
+  electron-release-unsigned:
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-
-      - name: Read pinned engine SHA
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: astral-sh/setup-uv@v5
+      - name: Tag matches package version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($tag -ne $pkg) { throw "tag v$tag != package.json $pkg" }
+      - name: Read pinned Engine revision
         id: engine-pin
         shell: pwsh
         run: |
           $manifest = Get-Content engine-manifest.json -Raw | ConvertFrom-Json
           "sha=$($manifest.engine_git_sha)" >> $env:GITHUB_OUTPUT
-
-      - name: Checkout engine (Rinari-CLI)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: Xainner/Rinari-CLI
           ref: ${{ steps.engine-pin.outputs.sha }}
           path: Rinari-CLI
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: astral-sh/setup-uv@v5
-
-      - name: Tag matches package version
-        shell: pwsh
-        run: |
-          $tag = "${{ github.ref_name }}".TrimStart("v")
-          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          if ($tag -ne $pkg) { throw "tag v$tag != package.json $pkg" }
-
       - run: npm ci
-
-      - name: Package engine sidecar
+      - run: npm ci --prefix installer/setup
+      - name: Build unsigned Electron release candidate
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File scripts/package-engine.ps1 `
-            -CliRepo "${{ github.workspace }}/Rinari-CLI"
-
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-engine.ps1 `
+            -CliRepo "${{ github.workspace }}\Rinari-CLI" -OutDir engine-dist
+          npm run package:win:staged
+      - name: Verify release metadata is explicitly unsigned
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $setup = "release/installer/Rinari-Agent-Setup-$version-x64.exe"
+          if (-not (Test-Path -LiteralPath $setup)) { throw 'setup missing' }
+          $metadata = Get-Content release/installer/latest.yml -Raw
+          if ($metadata -notmatch 'rinariUnsigned: true') { throw 'unsigned disclosure missing' }
+      - uses: softprops/action-gh-release@v2
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Rinari Agent ${{ github.ref_name }}'
-          releaseDraft: true
-          includeUpdaterJson: true
+          draft: true
+          name: Rinari Agent ${{ github.ref_name }} (unsigned)
+          body: |
+            Unsigned Windows x64 release candidate. Windows will show an unknown-publisher warning.
+            `latest.yml` provides SHA-512 transport integrity; it is not Authenticode identity.
+          files: |
+            release/installer/Rinari-Agent-Setup-*-x64.exe
+            release/installer/latest.yml
+            release/installer/setup.sha256.json

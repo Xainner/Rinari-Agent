@@ -20,6 +20,8 @@ import {
   type ContextMenuItemWire,
   type ContextMenuRequest,
   type ContextMenuRole,
+  type BrowserSlotLayoutRequest,
+  type BrowserSlotLease,
   type OpenExternalFileRequest,
   type OpenFilesRequest,
   type SystemNotificationRequest,
@@ -33,6 +35,34 @@ import {
   assertString,
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
+import {
+  MIGRATION_ALLOWED_KEYS,
+  MIGRATION_MAX_ENTRIES,
+  MIGRATION_MAX_TOTAL_BYTES,
+  MIGRATION_MAX_VALUE_BYTES,
+} from '../../shared/migration'
+
+const MIGRATION_KEYS = new Set<string>(MIGRATION_ALLOWED_KEYS)
+
+function assertMigrationPreferences(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ValidationError('preferences must be an object')
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+  if (entries.length > MIGRATION_MAX_ENTRIES) throw new ValidationError('too many preference entries')
+  let total = 0
+  const result: Record<string, string> = Object.create(null) as Record<string, string>
+  for (const [key, raw] of entries) {
+    if (!MIGRATION_KEYS.has(key)) throw new ValidationError(`preference key is not allowed: ${key}`)
+    if (typeof raw !== 'string') throw new ValidationError(`preference value must be text: ${key}`)
+    const bytes = Buffer.byteLength(raw, 'utf8')
+    if (bytes > MIGRATION_MAX_VALUE_BYTES) throw new ValidationError(`preference value is too large: ${key}`)
+    total += bytes + Buffer.byteLength(key, 'utf8')
+    if (total > MIGRATION_MAX_TOTAL_BYTES) throw new ValidationError('preference export is too large')
+    result[key] = raw
+  }
+  return result
+}
 
 /** Lo que el main sabe hacer; lo aporta `index.ts` al registrar. */
 export interface HostServices {
@@ -57,8 +87,36 @@ export interface HostServices {
     support(): { canSend: boolean; canActivateTarget: boolean }
     send(notification: SystemNotificationRequest): boolean
   }
-  updates: { check(): Promise<unknown>; installAndRelaunch(): Promise<void> }
+  updates: {
+    check(): Promise<unknown>
+    download(): Promise<unknown>
+    apply(): Promise<void>
+  }
+  migration: {
+    status(): Promise<unknown>
+    stage(): Promise<unknown>
+    commit(token: string, preferences: Record<string, string>): Promise<unknown>
+    verify(token: string): Promise<unknown>
+    fail(token: string | undefined, message: string): Promise<unknown>
+    retry(): Promise<unknown>
+  }
   handoff: { initial(): { project: string | null; session: string | null } }
+  /**
+   * Browser nativo (documento 03 §6.1). Intenciones, no primitivas: el
+   * renderer no nombra una ventana, un `webContentsId` ni un método CDP.
+   */
+  browser: {
+    context(sessionId: string): Promise<unknown>
+    prepare(sessionId: string): Promise<unknown>
+    attachSlot(sessionId: string): Promise<BrowserSlotLease>
+    updateSlot(request: BrowserSlotLayoutRequest): Promise<void>
+    detachSlot(slotId: string): Promise<void>
+    selectTarget(sessionId: string, targetId: string): Promise<unknown>
+    setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number): Promise<unknown>
+    navigate(sessionId: string, url: string): Promise<unknown>
+    preview(sessionId: string): Promise<unknown>
+    diagnostics(): { layoutSlots: number }
+  }
 }
 
 function failure(code: string, message: string): BridgeResult<never> {
@@ -176,6 +234,76 @@ function assertOpenFiles(value: unknown): OpenFilesRequest {
   }
 }
 
+function assertRect(value: unknown, field: string): {
+  x: number
+  y: number
+  width: number
+  height: number
+} {
+  if (!value || typeof value !== 'object') throw new ValidationError(`${field} must be an object`)
+  const raw = value as Record<string, unknown>
+  return {
+    x: assertFiniteNumber(raw.x, `${field}.x`),
+    y: assertFiniteNumber(raw.y, `${field}.y`),
+    width: assertFiniteNumber(raw.width, `${field}.width`),
+    height: assertFiniteNumber(raw.height, `${field}.height`),
+  }
+}
+
+/**
+ * Geometría del slot. Se valida aquí **y** en el coordinador: este extremo
+ * comprueba la forma, y aquel las reglas de admisión —revisión creciente,
+ * dentro de la ventana—. Ninguno confía en que el otro lo haya hecho.
+ */
+function assertSlotLayout(value: unknown): BrowserSlotLayoutRequest {
+  if (!value || typeof value !== 'object') throw new ValidationError('layout must be an object')
+  const raw = value as Record<string, unknown>
+  const revision = assertFiniteNumber(raw.layout_revision, 'layout_revision')
+  const depth = assertFiniteNumber(raw.overlay_depth, 'overlay_depth')
+  if (!Number.isInteger(revision) || revision < 0) {
+    throw new ValidationError('layout_revision must be a non-negative integer')
+  }
+  if (!Number.isInteger(depth) || depth < 0) {
+    throw new ValidationError('overlay_depth must be a non-negative integer')
+  }
+  if (typeof raw.shown !== 'boolean') throw new ValidationError('shown must be a boolean')
+  const occlusions = raw.occlusions
+  if (occlusions !== undefined && (!Array.isArray(occlusions) || occlusions.length > 6)) {
+    throw new ValidationError('occlusions must be an array of at most 6 rectangles')
+  }
+  const parsedOcclusions = Array.isArray(occlusions)
+    ? occlusions.map((rect, index) => assertRect(rect, `occlusions[${index}]`))
+    : undefined
+  if (parsedOcclusions?.some((rect) => rect.width <= 0 || rect.height <= 0)) {
+    throw new ValidationError('occlusions must have positive area')
+  }
+  return {
+    slot_id: assertString(raw.slot_id, 'slot_id', 128),
+    logical_bounds: assertRect(raw.logical_bounds, 'logical_bounds'),
+    visible_bounds: assertRect(raw.visible_bounds, 'visible_bounds'),
+    shown: raw.shown,
+    layout_revision: revision,
+    overlay_depth: depth,
+    occlusions: parsedOcclusions,
+  }
+}
+
+function assertControlOwner(value: unknown): 'agent' | 'user' {
+  if (value !== 'agent' && value !== 'user') {
+    throw new ValidationError('owner must be "agent" or "user"')
+  }
+  return value
+}
+
+function assertExpectedRevision(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined
+  // `true` es un número en muchas comprobaciones laxas; aquí no.
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new ValidationError('expected_revision must be a non-negative integer')
+  }
+  return value
+}
+
 /** Registra todos los canales. Devuelve la función que los retira. */
 export function registerIpc(registry: SenderRegistry, services: HostServices): () => void {
   const handlers: Array<[string, Parameters<typeof ipcMain.handle>[1]]> = [
@@ -215,8 +343,101 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, request) => services.notifications.send(assertNotification(request))),
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
-    [CHANNEL.updatesInstall, guarded(registry, () => services.updates.installAndRelaunch())],
+    [CHANNEL.updatesDownload, guarded(registry, () => services.updates.download())],
+    [CHANNEL.updatesApply, guarded(registry, () => services.updates.apply())],
+    [CHANNEL.migrationStatus, guarded(registry, () => services.migration.status())],
+    [CHANNEL.migrationStage, guarded(registry, () => services.migration.stage())],
+    [
+      CHANNEL.migrationCommit,
+      guarded(registry, (_event, token, preferences) =>
+        services.migration.commit(
+          assertString(token, 'token', 128),
+          assertMigrationPreferences(preferences),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.migrationVerify,
+      guarded(registry, (_event, token) => services.migration.verify(assertString(token, 'token', 128))),
+    ],
+    [
+      CHANNEL.migrationFail,
+      guarded(registry, (_event, token, message) =>
+        services.migration.fail(
+          token === undefined ? undefined : assertString(token, 'token', 128),
+          assertString(message, 'message', 2_000),
+        ),
+      ),
+    ],
+    [CHANNEL.migrationRetry, guarded(registry, () => services.migration.retry())],
     [CHANNEL.initialOpenRequest, guarded(registry, () => services.handoff.initial())],
+
+    // Browser nativo. Cada canal lleva una intención y nada más: no hay
+    // passthrough de métodos, ni de canales, ni de identificadores del host.
+    [
+      CHANNEL.browserContext,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.context(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserPrepare,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.prepare(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserAttachSlot,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.attachSlot(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserUpdateSlot,
+      guarded(registry, (_event, layout) => services.browser.updateSlot(assertSlotLayout(layout))),
+    ],
+    [
+      CHANNEL.browserDetachSlot,
+      guarded(registry, (_event, slotId) =>
+        services.browser.detachSlot(assertString(slotId, 'slot_id', 128)),
+      ),
+    ],
+    [
+      CHANNEL.browserSelectTarget,
+      guarded(registry, (_event, sessionId, targetId) =>
+        services.browser.selectTarget(
+          assertString(sessionId, 'session_id', 128),
+          assertString(targetId, 'target_id', 256),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserSetControl,
+      guarded(registry, (_event, sessionId, owner, expectedRevision) =>
+        services.browser.setControl(
+          assertString(sessionId, 'session_id', 128),
+          assertControlOwner(owner),
+          assertExpectedRevision(expectedRevision),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserNavigate,
+      guarded(registry, (_event, sessionId, url) =>
+        services.browser.navigate(
+          assertString(sessionId, 'session_id', 128),
+          // Mismo filtro de esquemas que la toolbar necesita; a dónde se puede
+          // navegar lo sigue decidiendo la policy de red del Engine.
+          assertOpenableUrl(url),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserPreview,
+      guarded(registry, (_event, sessionId) =>
+        services.browser.preview(assertString(sessionId, 'session_id', 128)),
+      ),
+    ],
   ]
 
   for (const [channel, handler] of handlers) ipcMain.handle(channel, handler)

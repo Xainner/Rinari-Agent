@@ -4,10 +4,9 @@ import type { NotificationDeliverySupport, SystemPermission } from './notificati
 /**
  * Adaptador de notificaciones del sistema.
  *
- * Lo que el host puede hacer de verdad se pregunta al host: bajo Tauri este
- * build no incluye `tauri-plugin-notification` y se declara no soportado;
- * bajo Electron hay canal nativo y se usa. Un permiso ausente se muestra como
- * no disponible, nunca como éxito simulado (documento 02 §7).
+ * Lo que el host puede hacer de verdad se pregunta al host. Electron usa su
+ * canal nativo; un permiso ausente se muestra como no disponible, nunca como
+ * éxito simulado (documento 02 §7).
  *
  * El soporte se consulta una vez al arrancar y se guarda en un objeto que se
  * **muta en sitio**: los consumidores lo leen en el momento de decidir, así

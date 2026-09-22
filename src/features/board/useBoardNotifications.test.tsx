@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { installMockPlatform } from '../../test/mockPlatform'
+installMockPlatform()
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
@@ -7,8 +9,6 @@ vi.mock('sonner', () => {
   const fn = (text: string, options?: Record<string, unknown>) => { toastCalls.push({ text, options }) }
   return { toast: Object.assign(fn, { info: fn, success: fn, warning: fn, error: fn }) }
 })
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn().mockResolvedValue({}) }))
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) }))
 vi.mock('../../services/desktop', () => ({
   desktopApi: { questions: vi.fn(async () => ({ questions: [] })), readFile: vi.fn(), answer: vi.fn() },
 }))

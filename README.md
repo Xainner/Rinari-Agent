@@ -47,7 +47,7 @@ Rinari gives you the evidence to review a result. A generated answer is not a su
 
 ### Keep execution within reach.
 
-The browser panel shows captures of the page the engine is actually using. Choose a page, minimize the panel or open it externally for manual interaction. It is an observation view of the engine browser, not a second browser pretending to share its state.
+The browser panel embeds the native Chromium target the engine is actually using. Choose a page, take or return manual control, and keep the same target, storage partition and lifecycle inside the session dock.
 
 The processes panel shows session-owned background commands, logs and status, with controls to stop managed resources. Local HTML previews have their own viewing surface. Follow a development server or inspect its output without losing the conversation.
 
@@ -102,7 +102,7 @@ Upgrading from Rinari Code? Read the [identity and profile migration notes](docs
 - **Local desktop does not mean every task stays offline.** Cloud models and external tools can send data to their configured services. Credentials are owned by the engine, not stored in frontend browser storage.
 - **Capabilities are explicit.** Attachments have size and page limits; OCR and vision have distinct requirements. See [attachments, OCR and vision](docs/attachments.md).
 - **Process ownership matters.** The processes panel manages engine-owned session resources, not arbitrary operating-system processes, and does not promise recovery of running processes after an engine crash.
-- **Distribution is still maturing.** Windows NSIS/MSI packaging is implemented. Signed updates, upgrade paths and other platforms need release-specific validation; do not infer platform readiness from the use of Tauri alone.
+- **Distribution is still maturing.** The custom Windows x64 installer and Electron update flow are implemented and tested unsigned. Authenticode and other platforms need release-specific validation.
 
 ## One engine. Two ways to work.
 
@@ -116,11 +116,11 @@ flowchart LR
     Engine --> State["Sessions · Context · Artifacts"]
 ```
 
-The desktop uses **React 19 + TypeScript** for the interface and **Rust + Tauri 2** for the native host. A versioned protocol over stdio connects it to the Python engine. The compatible revision and required capabilities are pinned in [engine-manifest.json](engine-manifest.json).
+The desktop uses **React 19 + TypeScript + Electron**. A sandboxed preload exposes a narrow platform contract, and a versioned protocol over stdio connects the Electron main process to the Python engine. The compatible revision and required capabilities are pinned in [engine-manifest.json](engine-manifest.json).
 
 ## Build from source
 
-You will need Node.js compatible with the Vite toolchain, npm, Rust stable, your platform's Tauri build dependencies, and a compatible [Rinari CLI checkout](https://github.com/Xainner/Rinari-CLI). Running the engine from source also requires Python 3.11+ and uv. Windows requires WebView2.
+You will need Node.js 22.12 or newer, npm 10 and a compatible [Rinari CLI checkout](https://github.com/Xainner/Rinari-CLI). Running the engine from source also requires Python 3.11+ and uv. Rust is needed only when building the separate custom Windows setup bootstrapper.
 
 ```bash
 git clone https://github.com/Xainner/Rinari-Agent.git
@@ -134,7 +134,7 @@ Point the native host at your engine checkout, using the revision in the manifes
 $env:RINARI_ENGINE_BIN = "uv"
 $env:RINARI_ENGINE_ARGS = "run rinari"
 $env:RINARI_ENGINE_CWD = "C:\dev\Rinari-CLI"
-npm run tauri dev
+npm run desktop:dev
 ```
 
 Replace the checkout path with your own. The host also supports configured installations and packaged engine resources. A Vite-only preview is not a substitute for the native host and engine.
@@ -145,20 +145,22 @@ Replace the checkout path with your own. The host also supports configured insta
 ```bash
 npm test
 npm run protocol:check
+npm run parity:check
+npm run typecheck:electron
 npm run build
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path src-tauri/Cargo.toml
+npm run desktop:build
+npm run desktop:smoke
 ```
 
 Protocol checks require the matching engine schema. When changing the contract, update the engine first, regenerate the desktop types and validate both repositories.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package-engine.ps1 -CliRepo C:\dev\Rinari-CLI
-npm run tauri build
+powershell -ExecutionPolicy Bypass -File scripts/package-engine.ps1 -CliRepo C:\dev\Rinari-CLI -OutDir engine-dist
+npm ci --prefix installer/setup
+npm run package:win
 ```
 
-The packaging script builds the engine bundle; Tauri produces the installer. See the [packaging decision](docs/adr/0001-engine-packaging.md) and [release guide](docs/releases.md) for distribution and signing requirements.
+The packaging script builds the engine bundle and Electron payload; the isolated custom bootstrapper produces the installer. See the [packaging decision](docs/adr/0001-engine-packaging.md) and [release guide](docs/releases.md) for distribution and signing requirements.
 
 </details>
 
@@ -213,6 +215,6 @@ desvanece. Se respeta el movimiento reducido del sistema y de las preferencias.
 
 Los grupos de proveedores del selector de modelos se pueden contraer y expandir.
 Al buscar, los grupos coincidentes se muestran expandidos; al limpiar la búsqueda,
-recuperan su estado anterior. El icono de aplicación se genera con
-`npm run tauri -- icon src-tauri/icons/source/app-icon.png`, a partir del nuevo
-`icon.png` del concept.
+recuperan su estado anterior. El icono de aplicación está versionado en
+`build/icon.ico` y lo consumen tanto el payload Electron como el bootstrapper
+de instalación.

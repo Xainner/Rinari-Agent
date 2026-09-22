@@ -18,10 +18,24 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = join(ROOT, 'dist-electron')
 const WATCH = process.argv.includes('--watch')
+const UPDATE_E2E = process.env.RINARI_BUILD_UPDATE_E2E === '1'
+const UPDATE_E2E_TOKEN = 'process.env.RINARI_BUILD_UPDATE_E2E'
+
+const compileTimeFlags = {
+  name: 'rinari-compile-time-flags',
+  transform(code) {
+    if (!code.includes(UPDATE_E2E_TOKEN)) return null
+    return {
+      code: code.replaceAll(UPDATE_E2E_TOKEN, UPDATE_E2E ? JSON.stringify('1') : 'undefined'),
+      map: null,
+    }
+  },
+}
 
 /** Electron y los módulos de Node los resuelve el runtime, no el bundle. */
 const EXTERNAL = [
   'electron',
+  'electron-updater',
   /^node:/,
   ...['fs', 'path', 'url', 'child_process', 'events', 'os', 'crypto', 'stream', 'util'],
 ]
@@ -29,6 +43,13 @@ const EXTERNAL = [
 const TARGETS = [
   { name: 'main', input: join(ROOT, 'electron/main/index.ts'), file: join(OUT, 'main.cjs') },
   { name: 'preload', input: join(ROOT, 'electron/preload/index.ts'), file: join(OUT, 'preload.cjs') },
+  // Sonda de viabilidad del browser (documento 03 §3). Es un proceso Electron
+  // aparte, no parte de la app: entra aquí porque necesita el mismo empaquetado.
+  {
+    name: 'browser-probe',
+    input: join(ROOT, 'electron/probe/browserViability.ts'),
+    file: join(OUT, 'browser-probe.cjs'),
+  },
 ]
 
 async function buildOnce() {
@@ -39,6 +60,8 @@ async function buildOnce() {
       input: target.input,
       platform: 'node',
       external: EXTERNAL,
+      // El feed genérico y el runner headless no existen en un release.
+      plugins: [compileTimeFlags],
     })
     await bundle.write({
       file: target.file,

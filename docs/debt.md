@@ -90,18 +90,15 @@ documentado; lo demás no se presenta como terminado.
 
 ### Interfaz de plataforma (2026-09-17, plan 02, entrega C)
 
-- **Inventario de paridad** — `DONE`. `scripts/desktop-parity.mjs` lo genera del
-  código y `parity:check` corre en CI: 130 comandos, 3 eventos y las APIs de
-  `@tauri-apps` usadas directamente. No puede divergir del host.
-- **Imports de Tauri fuera del adaptador** — `DONE` para componentes y
-  servicios: solo `src/platform/tauri.ts` importa `@tauri-apps`, y
-  `parity:check` falla si reaparece uno. La suite quedó verde sin reescribir
-  tests, que es la prueba de que el adaptador conserva el comportamiento.
-- **Tests que montan el host directamente** — `OPEN`. Once archivos de test
-  siguen haciendo `vi.mock('@tauri-apps/…')` en vez de `createTestBridge()`.
-  Funciona porque la implementación Tauri pasa por esos módulos, pero dejará de
-  hacerlo cuando el host por defecto sea Electron (entrega D): entonces hay que
-  migrarlos o dejarán de probar el camino real.
+- **Inventario de paridad** — `DONE`. `scripts/desktop-parity.mjs` compara las
+  llamadas actuales con el contrato capturado de 0.1.3 y `parity:check` corre
+  en CI: 130 comandos, 124 del Engine, 6 del host y cero sin resolver.
+- **Imports de Tauri en el producto** — `DONE` (entrega H). El adaptador, las
+  dependencias raíz y el runtime activo fueron retirados; `parity:check` falla
+  si reaparece un import, paquete o ruta activa.
+- **Tests que montaban el host directamente** — `DONE` (entrega H). Los tests
+  heredados usan `createTestBridge()` y prueban el contrato de plataforma sin
+  simular módulos `@tauri-apps`.
 - **`mcp_get` sin llamador** — `OPEN`. Registrado en `invoke_handler` y expuesto
   al WebView, pero ningún archivo de `src/` lo invoca. Decidir si se retira
   antes de portarlo al host nuevo: es superficie que nadie usa.
@@ -204,10 +201,11 @@ documentado; lo demás no se presenta como terminado.
   respaldados por el Engine. Los otros 112 tienen cobertura de traducción por
   unidad e invariantes (método válido, renombrados, tabla completa), no
   ejercicio individual contra un Engine vivo.
-- **Updater de Electron** — `OPEN` declarado. `createUpdates()` lanza
-  `UPDATES_UNAVAILABLE`: el canal firmado tiene otro contrato de metadata que
-  el `latest.json` de Tauri y es trabajo del documento 04 §8 (entrega G). Un
-  permiso ausente se muestra ausente, no como éxito simulado.
+- **Updater de Electron** — `DONE` para el canal unsigned acordado. Electron
+  0.2.x consume `latest.yml`, descarga solo por acción explícita, valida el
+  SHA-512 y aplica por la autoridad única de lifecycle después de confirmar y
+  cerrar el Engine. Tauri 0.1.x conserva su `latest.json` firmado. La identidad
+  Authenticode sigue pendiente y la UI identifica el canal como unsigned.
 - **Trabajo activo al cerrar** — `PARTIAL`. Se pregunta siempre que el Engine
   esté en marcha, que peca de prudente; saber si hay turnos vivos exige
   preguntárselo al Engine y está pendiente.
@@ -219,17 +217,17 @@ documentado; lo demás no se presenta como terminado.
 - **Notificaciones del sistema** — `DONE` bajo Electron, y cierra la deuda que
   venía de Boards. `Notification.isSupported()` decide la disponibilidad real,
   hay deduplicación de 10 s y el clic **solo** enfoca y resuelve el destino:
-  no envía, no reanuda, no aprueba. Bajo Tauri se sigue declarando no
-  soportado, porque este build no incluye `tauri-plugin-notification`.
-- **Empaquetado** — `OPEN`. `electron-builder`, el sidecar del Engine en
-  recursos y el instalador NSIS son del documento 04 (entrega G).
+  no envía, no reanuda, no aprueba.
+- **Empaquetado** — `DONE` para Windows x64 unsigned. `electron-builder`
+  produce la aplicación ASAR con el Engine en `extraResources`; el bootstrapper
+  personalizado instala, repara, modifica, actualiza y desinstala mediante una
+  transacción con staging y rollback. Firma Authenticode y matrices macOS/Linux
+  permanecen fuera de esta entrega.
 
 ### Boards y mensajería entre paneles (2026-09-15)
 
-- **Notificaciones del sistema** — `PARTIAL`. Resueltas en Electron (ver
-  entrega D); bajo Tauri siguen sin canal nativo porque
-  `tauri-plugin-notification` es una dependencia nueva que requiere
-  autorización, y el ajuste lo muestra como no disponible.
+- **Notificaciones del sistema** — `DONE`. Resueltas en Electron; el runtime
+  anterior ya no forma parte del producto activo.
 - **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`. El
   Engine no serializa dos sesiones sobre el mismo root; el board solo avisa.
 - **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"

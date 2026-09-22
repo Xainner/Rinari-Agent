@@ -12,13 +12,7 @@ export function composeWindowTitle(attentionCount: number, base = BASE_WINDOW_TI
 }
 
 async function writeTitle(title: string): Promise<void> {
-  try {
-    if (typeof document !== 'undefined') document.title = title
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().setTitle(title)
-  } catch {
-    // Sin host Tauri (tests, navegador) o sin permiso: el badge in-app sigue.
-  }
+  if (typeof document !== 'undefined') document.title = title
 }
 
 export function setWindowTitle(title: string): Promise<void> {

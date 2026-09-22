@@ -53,5 +53,5 @@ uv run python -m pytest -q -p tests.tool_audit_plugin --tool-audit=tool-validati
 Run the packaged smoke from Rinari-Agent:
 
 ```powershell
-& ./src-tauri/engine-dist/python.exe scripts/check-engine-tools.py
+& ./engine-dist/python.exe scripts/check-engine-tools.py
 ```

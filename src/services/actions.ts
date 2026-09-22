@@ -9,6 +9,8 @@ export type DesktopAction =
   | 'about'
   | 'sidebar'
   | 'files'
+  /** Abre el dock de la sesión en la superficie de navegador (doc 03 §1). */
+  | 'browser'
   | 'commands'
   | 'processes'
   | 'undo'

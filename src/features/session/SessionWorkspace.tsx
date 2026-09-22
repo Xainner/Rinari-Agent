@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
 import { useI18n } from '../../i18n'
+import { platform } from '../../platform'
 import type { SessionSummary } from '../../services/engine'
 import {
   CHAT_MIN_DOCKED_WIDTH,
@@ -120,6 +121,48 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   }, [busy])
   const browserActive = layout.visible && layout.activeSurface === 'browser'
   const browser = useBrowserFrame(sessionId, { active: browserActive, targetId, enabled: browserEnabled, probe: browserProbe })
+  // Browser nativo: el panel se revela cuando el contexto pasa a estar listo,
+  // que es cuando el agente empieza a usarlo de verdad. Antes había que abrirlo
+  // a mano y no había forma de saber que hacía falta.
+  //
+  // Se revela **una vez por contexto**, no en cada aviso: si el usuario lo
+  // cierra, esa es su decisión y no se le vuelve a abrir hasta que haya un
+  // browser nuevo. Y sólo si el dock está cerrado: con el dock abierto en otra
+  // superficie, quitarle lo que está mirando sería peor. Presentarlo no es
+  // requisito para que las herramientas funcionen —la vista maqueta igual—,
+  // así que esto es comodidad, no corrección.
+  const nativeState = useRef<string | null>(null)
+  // El foco se lee por referencia: cambia a menudo y no puede resuscribir el
+  // aviso cada vez, que es justo cuando se pierde el que importa.
+  const focusedRef = useRef(focused)
+  focusedRef.current = focused
+  useEffect(() => {
+    if (!sessionId) return
+    let alive = true
+    let unsubscribe: (() => void) | undefined
+    void platform()
+      .browser.onContextChanged((view) => {
+        if (!alive || view.session_id !== sessionId) return
+        const previous = nativeState.current
+        nativeState.current = view.context_state
+        if (view.backend !== 'electron-native' || view.context_state !== 'ready') return
+        if (previous === 'ready') return
+        const current = useSessionDockStore.getState().layoutFor(sessionId)
+        if (focusedRef.current && !current.visible) reveal(sessionId, 'browser')
+      })
+      .then((stop) => {
+        if (alive) unsubscribe = stop
+        else stop()
+      })
+      .catch(() => {
+        // Un host sin browser nativo no tiene nada que revelar.
+      })
+    return () => {
+      alive = false
+      unsubscribe?.()
+    }
+  }, [sessionId, reveal])
+
   const revealedInstance = useRef<string | null>(null)
   useEffect(() => {
     const instance = browser.connectedInstance

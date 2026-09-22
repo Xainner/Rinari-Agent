@@ -1,0 +1,4 @@
+provider: github
+owner: Xainner
+repo: Rinari-Agent
+updaterCacheDirName: rinari-agent-updater

@@ -1,7 +1,7 @@
 /**
  * Menú de aplicación (documento 02 §5.2 y §7).
  *
- * Port de `src-tauri/src/menu.rs` con las mismas entradas, etiquetas y
+ * Menú compatible con el host 0.1.3, con las mismas entradas, etiquetas y
  * aceleradores. Dos decisiones del host anterior que se conservan porque son
  * de comportamiento, no de estilo:
  *
@@ -95,6 +95,10 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
         { type: 'separator' },
         item('sidebar', 'Barra lateral', 'CmdOrCtrl+B'),
         item('files', 'Panel de archivos', 'CmdOrCtrl+Shift+E'),
+        // El navegador vive en el mismo dock que los archivos, así que se abre
+        // igual. Sin esta entrada sólo se llegaba abriendo Archivos y cambiando
+        // de pestaña dentro, que no es «abrir Browser» (documento 03 §1).
+        item('browser', 'Panel de navegador', 'CmdOrCtrl+Shift+U'),
         item('commands', 'Paleta de comandos', 'CmdOrCtrl+K'),
         item('zoom-in', 'Acercar', 'CmdOrCtrl+Plus'),
         item('zoom-out', 'Alejar', 'CmdOrCtrl+-'),

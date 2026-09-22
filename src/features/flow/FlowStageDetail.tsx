@@ -11,7 +11,10 @@ export interface FlowStageDetailProps {
   onClose: () => void
   onGoToTurn: (stage: FlowStage) => void
   onOpenSession: (sessionId: string) => void
+  /** La etapa como tal: su acción principal va a la sesión del anchor. */
   onBoard: boolean
+  /** Cada fila responde por su propia sesión, no por la del anchor. */
+  isOnBoard: (sessionId: string) => boolean
 }
 
 function formatWhen(iso: string | null): string {
@@ -26,7 +29,7 @@ function formatWhen(iso: string | null): string {
  * verificaciones y checkpoints tal como los reporta el Engine. Foco al abrir,
  * Escape para cerrar, foco devuelto al cerrar.
  */
-export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, onOpenSession, onBoard }: FlowStageDetailProps) {
+export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, onOpenSession, onBoard, isOnBoard }: FlowStageDetailProps) {
   const { t } = useI18n()
   const root = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -80,15 +83,23 @@ export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, on
       <section aria-label={t('flow.detail.sessions')} className="flow-detail-section">
         <h3>{t('flow.detail.sessions')}</h3>
         <ul>
-          {stage.sessions.map((row) => (
-            <li key={row.session_id}>
-              <button type="button" className="flow-detail-link" onClick={() => onOpenSession(row.session_id)}>
-                {onBoard ? <Columns3 size={12} aria-hidden="true" /> : <ExternalLink size={12} aria-hidden="true" />}
-                <span className="truncate">{row.title}</span>
-                <span className="flow-detail-count">{t('flow.stage.turns', { n: row.turns })}</span>
-              </button>
-            </li>
-          ))}
+          {stage.sessions.map((row) => {
+            const rowOnBoard = isOnBoard(row.session_id)
+            return (
+              <li key={row.session_id}>
+                <button
+                  type="button"
+                  className="flow-detail-link"
+                  title={t(rowOnBoard ? 'flow.detail.sessionOnBoard' : 'flow.detail.sessionOpen')}
+                  onClick={() => onOpenSession(row.session_id)}
+                >
+                  {rowOnBoard ? <Columns3 size={12} aria-hidden="true" /> : <ExternalLink size={12} aria-hidden="true" />}
+                  <span className="truncate">{row.title}</span>
+                  <span className="flow-detail-count">{t('flow.stage.turns', { n: row.turns })}</span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </section>
       {(stage.executors.length > 0 || stage.agents.length > 0) && (
@@ -122,8 +133,23 @@ export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, on
                 <span className="flow-detail-count">{file.kind}</span>
               </li>
             ))}
-            {stage.files_more > 0 && <li className="flow-detail-row is-more">{t('flow.detail.filesMore', { n: stage.files_more })}</li>}
+            {stage.files_more > 0 && (
+              <li className="flow-detail-row is-more">
+                {t('flow.detail.filesMore', { n: stage.files_more })}
+              </li>
+            )}
           </ul>
+        )}
+        {/* El Engine acota la lista por etapa y no existe consulta paginada del
+            resto: se declara que la muestra es parcial, conservando el total
+            exacto, en vez de dejar creer que están todos. */}
+        {stage.files_more > 0 && (
+          <p className="flow-stage-nofiles" data-testid="flow-files-partial">
+            {t('flow.detail.filesPartial', {
+              shown: stage.files.length,
+              total: stage.files.length + stage.files_more,
+            })}
+          </p>
         )}
       </section>
       <footer className="flow-detail-actions">

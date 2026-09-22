@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowRight, FolderGit2, GitBranch, MessageSquare, RefreshCw, Workflow } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { AlertTriangle, Archive, ArrowRight, FolderGit2, GitBranch, MessageSquare, RefreshCw, Workflow } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { FlowStage } from '../../services/engine'
 import { useBoardStore } from '../../stores/board'
@@ -9,7 +9,7 @@ import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { requestTurnReveal, revealBoardAttention } from '../board/boardCommands'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { cn } from '../../lib/utils'
-import { groupByCycle, percent } from './flowModel'
+import { clockLabel, groupByCycle, percent, useFlowReducedMotion } from './flowModel'
 import FlowStageCard from './FlowStageCard'
 import FlowStageDetail from './FlowStageDetail'
 import { useFlow } from './useFlow'
@@ -23,15 +23,17 @@ import { useFlow } from './useFlow'
  */
 export default function FlowView() {
   const { t } = useI18n()
-  const reduced = useReducedMotion()
+  const reduced = useFlowReducedMotion()
   const data = useEngineData()
   const commands = useEngineCommands()
   const scope = useUIStore((s) => s.flowScope)
+  const scopeExplicit = useUIStore((s) => s.flowScopeExplicit)
   const setFlowScope = useUIStore((s) => s.setFlowScope)
   const goBoard = useUIStore((s) => s.goBoard)
   const goNormal = useUIStore((s) => s.goNormal)
   const boardPanes = useBoardStore((s) => s.panes)
   const boardSessionIds = useMemo(() => new Set(boardPanes.map((pane) => pane.sessionId)), [boardPanes])
+  const isOnBoard = useCallback((sessionId: string) => boardSessionIds.has(sessionId), [boardSessionIds])
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
 
   const projects = useMemo(() => data.projects.filter((project) => !project.archived), [data.projects])
@@ -42,53 +44,141 @@ export default function FlowView() {
     ? data.sessionsById[scope.id] ?? null
     : null
 
-  // Alcance por defecto: el proyecto de la sesión activa, si lo hay; si no, el
-  // primer proyecto; si no, la sesión activa. Nunca se inventa uno.
+  /**
+   * Alcance inicial. El orden importa y no es el obvio: un alcance elegido a
+   * mano manda, y por debajo va lo que se está trabajando ahora —no lo
+   * persistido—. Abrir Flujos desde una conversación suelta y encontrarse el
+   * primer proyecto registrado era el fallo: la vista respondía por un
+   * proyecto que nadie había pedido.
+   *
+   *   1. elección explícita de esta ejecución («Ver flujo» o el selector)
+   *   2. proyecto de la sesión activa
+   *   3. sesión activa suelta
+   *   4. alcance persistido que siga existiendo
+   *   5. primer proyecto
+   */
   useEffect(() => {
-    if (scope) {
-      const exists = scope.kind === 'project'
-        ? data.projects.some((project) => project.id === scope.id)
-        : data.sessionsById[scope.id] !== undefined || !data.sessionsLoaded
-      if (exists) return
+    // Sin el listado de sesiones no se sabe qué es válido: se deja lo que haya
+    // (típicamente lo persistido) en vez de elegir con datos incompletos.
+    if (!data.sessionsLoaded) return
+    const stillThere = (candidate: FlowScope | null): FlowScope | null => {
+      if (!candidate) return null
+      if (candidate.kind === 'project') {
+        return data.projects.some((project) => project.id === candidate.id) ? candidate : null
+      }
+      return data.sessionsById[candidate.id] ? candidate : null
     }
-    const active = data.sessionsById[data.activeSession]
+    if (scopeExplicit && stillThere(scope)) return
+    const active = data.sessionsById[data.activeSession] ?? null
     const activeProject = active?.project_id
       ? projects.find((project) => project.id === active.project_id) ?? null
-      : projects.find((project) => project.root === active?.project_root) ?? null
+      : active?.project_root
+        ? projects.find((project) => project.root === active.project_root) ?? null
+        : null
+    const loose = active && !active.project_id && !active.project_root ? active : null
     const next: FlowScope | null = activeProject
       ? { kind: 'project', id: activeProject.id }
-      : projects[0]
-        ? { kind: 'project', id: projects[0].id }
-        : active
-          ? { kind: 'session', id: active.id }
-          : null
-    if (next && (!scope || scope.id !== next.id)) setFlowScope(next)
-  }, [scope, data.projects, data.sessionsById, data.sessionsLoaded, data.activeSession, projects, setFlowScope])
+      : loose
+        ? { kind: 'session', id: loose.id }
+        : stillThere(scope)
+          ?? (projects[0]
+            ? { kind: 'project', id: projects[0].id }
+            // Sesión de un proyecto que no está registrado: su propio flujo es
+            // mejor respuesta que el de un proyecto ajeno.
+            : active
+              ? { kind: 'session', id: active.id }
+              : null)
+    if (next && (scope?.kind !== next.kind || scope.id !== next.id)) setFlowScope(next, false)
+  }, [scope, scopeExplicit, data.projects, data.sessionsById, data.sessionsLoaded, data.activeSession, projects, setFlowScope])
 
-  // Sin la capability no se llama a `flow.get`: se dice, no se adivina.
-  const supported = data.status?.state !== 'ready' || data.status.capabilities.project_flow_v1 === true
-  const flow = useFlow(scope, { enabled: data.ready && supported })
+  // Tres estados, no dos: mientras el Engine no está `ready` no se sabe si
+  // ofrece flujos. Darlo por soportado era adivinar, y adivinar bien la mayoría
+  // de las veces sigue siendo adivinar; se dice «comprobando».
+  const support: 'checking' | 'supported' | 'unsupported' =
+    data.status?.state !== 'ready'
+      ? 'checking'
+      : data.status.capabilities?.project_flow_v1 === true
+        ? 'supported'
+        : 'unsupported'
+  const flow = useFlow(scope, { enabled: support === 'supported' })
   const stages = flow.data?.stages ?? []
   const selected = stages.find((stage) => stage.id === selectedStageId) ?? null
   useEffect(() => {
     if (selectedStageId && !selected) setSelectedStageId(null)
   }, [selectedStageId, selected])
 
-  /** Ir al turno que abrió la etapa: al panel si está en el board, si no a Normal. */
-  const goToStage = useCallback((stage: FlowStage) => {
-    const { session_id: sessionId, turn_id: turnId } = stage.anchor
-    if (revealBoardAttention({ sessionId, turnId }, { goBoard })) return
-    void commands.selectSession(sessionId)
-    goNormal()
-    // ChatView consume la petición al montar la sesión y la conserva hasta que la fila exista.
-    requestTurnReveal({ sessionId, turnId })
+  /**
+   * Navegar a una sesión del flujo. El Engine incluye a propósito sesiones
+   * cerradas y archivadas, así que la que se ve en una tarjeta puede no ser
+   * abrible: se resuelve **antes** de cambiar de vista.
+   *
+   * Se usa `prepareSession` y no `selectSession` porque el primero dice por
+   * qué falla sin tocar la sesión activa. Cambiar a Normal y pedir el reveal
+   * sin esperar dejaba la petición sin consumidor cuando la sesión no abría,
+   * y el usuario en una vista que no era la suya.
+   */
+  const [restorePrompt, setRestorePrompt] = useState<
+    { sessionId: string; turnId: string | null; state: 'closed' | 'archived'; title: string } | null
+  >(null)
+  const [navError, setNavError] = useState<string | null>(null)
+  const [navigating, setNavigating] = useState(false)
+
+  const enterSession = useCallback(async (sessionId: string, turnId: string | null): Promise<void> => {
+    setNavError(null)
+    setRestorePrompt(null)
+    if (revealBoardAttention(turnId ? { sessionId, turnId } : { sessionId }, { goBoard })) return
+    setNavigating(true)
+    try {
+      const prepared = await commands.prepareSession(sessionId)
+      if (!prepared.ok) {
+        if (prepared.reason === 'closed' || prepared.reason === 'archived') {
+          setRestorePrompt({ sessionId, turnId, state: prepared.reason, title: prepared.message })
+        } else {
+          setNavError(prepared.message)
+        }
+        return
+      }
+      commands.setActiveSession(sessionId)
+      goNormal()
+      // ChatView consume la petición al montar la sesión y la conserva hasta que la fila exista.
+      if (turnId) requestTurnReveal({ sessionId, turnId })
+    } finally {
+      setNavigating(false)
+    }
   }, [commands, goBoard, goNormal])
 
+  /** Restaurar es una decisión del usuario, no un efecto colateral de pulsar «ir al turno». */
+  const confirmRestore = useCallback(async (): Promise<void> => {
+    const target = restorePrompt
+    if (!target) return
+    setNavigating(true)
+    setNavError(null)
+    try {
+      await commands.restoreSession(target.sessionId)
+      // `restoreSession` avisa por toast si falla; el estado real se vuelve a
+      // preguntar en vez de suponer que salió bien.
+      const prepared = await commands.prepareSession(target.sessionId)
+      if (!prepared.ok) {
+        setNavError(prepared.message)
+        return
+      }
+      setRestorePrompt(null)
+      commands.setActiveSession(target.sessionId)
+      goNormal()
+      if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+      void flow.refresh()
+    } finally {
+      setNavigating(false)
+    }
+  }, [commands, flow, goNormal, restorePrompt])
+
+  const goToStage = useCallback((stage: FlowStage) => {
+    void enterSession(stage.anchor.session_id, stage.anchor.turn_id)
+  }, [enterSession])
+
   const openSession = useCallback((sessionId: string) => {
-    if (revealBoardAttention({ sessionId }, { goBoard })) return
-    void commands.selectSession(sessionId)
-    goNormal()
-  }, [commands, goBoard, goNormal])
+    void enterSession(sessionId, null)
+  }, [enterSession])
 
   const summary = flow.data?.summary ?? null
   const overall = percent(summary?.progress ?? null)
@@ -168,28 +258,71 @@ export default function FlowView() {
             )}
           </div>
         )}
+        {scope && flow.stale && (
+          <div className="flow-notice is-stale" role="status" data-testid="flow-stale">
+            <AlertTriangle size={14} aria-hidden="true" />
+            <span>{t('flow.stale', { when: clockLabel(flow.updatedAt), reason: flow.error ?? '' })}</span>
+            <div className="flow-notice-actions">
+              <button type="button" className="flow-stage-action" onClick={() => void flow.refresh()} disabled={flow.loading}>
+                {t('flow.retry')}
+              </button>
+            </div>
+          </div>
+        )}
+        {restorePrompt && (
+          <div className="flow-notice" role="alert" data-testid="flow-restore">
+            <Archive size={14} aria-hidden="true" />
+            <span>
+              {t(restorePrompt.state === 'archived' ? 'flow.restore.archived' : 'flow.restore.closed', {
+                title: restorePrompt.title,
+              })}
+            </span>
+            <div className="flow-notice-actions">
+              <button type="button" className="flow-stage-action" onClick={() => void confirmRestore()} disabled={navigating}>
+                {t('flow.restore.confirm')}
+              </button>
+              <button type="button" className="flow-stage-action" onClick={() => setRestorePrompt(null)} disabled={navigating}>
+                {t('flow.restore.cancel')}
+              </button>
+            </div>
+          </div>
+        )}
+        {navError && (
+          <div className="flow-notice is-error" role="alert" data-testid="flow-nav-error">
+            <AlertTriangle size={14} aria-hidden="true" />
+            <span>{t('flow.navError', { reason: navError })}</span>
+          </div>
+        )}
       </header>
       <div className={cn('flow-body', selected && 'has-detail')}>
         <div className="flow-canvas" role="list" aria-label={t('flow.stages')} aria-busy={flow.loading || undefined}>
-          {!supported && (
+          {support === 'checking' && (
+            <div className="flow-empty" role="status" data-testid="flow-checking">
+              <RefreshCw size={22} className="motion-safe:animate-spin" aria-hidden="true" />
+              <p>{t('flow.checking')}</p>
+            </div>
+          )}
+          {support === 'unsupported' && (
             <div className="flow-empty" data-testid="flow-unsupported">
               <Workflow size={28} aria-hidden="true" />
               <p>{t('flow.unsupported')}</p>
             </div>
           )}
-          {supported && !scope && (
+          {support === 'supported' && !scope && (
             <div className="flow-empty">
               <Workflow size={28} aria-hidden="true" />
               <p>{t('flow.emptyScope')}</p>
             </div>
           )}
-          {scope && flow.error && (
+          {/* El error sustituye a los datos solo cuando no hay datos. Con datos
+              en pantalla el aviso es el de desactualizado, arriba. */}
+          {scope && flow.error && !flow.data && (
             <div role="alert" className="flow-empty is-error">
               <p>{flow.error}</p>
               <button type="button" className="flow-stage-action" onClick={() => void flow.refresh()}>{t('flow.retry')}</button>
             </div>
           )}
-          {scope && !flow.error && flow.data && stages.length === 0 && (
+          {scope && flow.data && stages.length === 0 && (
             <div className="flow-empty" data-testid="flow-empty">
               <Workflow size={28} aria-hidden="true" />
               <p>{scope.kind === 'project' ? t('flow.emptyProject') : t('flow.emptySession')}</p>
@@ -215,7 +348,7 @@ export default function FlowView() {
                 </motion.div>
               )}
               {group.stages.map((stage, index) => {
-                const order = stages.indexOf(stage)
+                const order = group.offset + index
                 return (
                   <Fragment key={stage.id}>
                     {index > 0 && (
@@ -248,7 +381,11 @@ export default function FlowView() {
             onClose={() => setSelectedStageId(null)}
             onGoToTurn={goToStage}
             onOpenSession={openSession}
+            // La acción principal de la etapa es la del anchor; cada fila de
+            // sesión responde por la suya. Una etapa con varias sesiones
+            // mostraba el icono y el destino de la primera para todas.
             onBoard={boardSessionIds.has(selected.anchor.session_id)}
+            isOnBoard={isOnBoard}
           />
         )}
       </div>

@@ -91,21 +91,42 @@ function readCollapsed(): boolean {
 }
 
 const FLOW_SCOPE_KEY = 'rinari.flowScope'
+/** Namespace mientras el hello no ha dicho cuál es el home real. */
+export const DEFAULT_FLOW_HOME = 'default'
 
-function readFlowScope(): FlowScope | null {
+/** Alcance guardado por Engine home: dos homes distintos tienen ids distintos. */
+export type FlowScopeByHome = Record<string, FlowScope>
+
+function asFlowScope(value: unknown): FlowScope | null {
+  const parsed = value as Partial<FlowScope> | null
+  if (!parsed || (parsed.kind !== 'project' && parsed.kind !== 'session')) return null
+  if (typeof parsed.id !== 'string' || !parsed.id) return null
+  return { kind: parsed.kind, id: parsed.id }
+}
+
+export function readFlowScopes(): FlowScopeByHome {
   try {
-    const parsed = JSON.parse(localStorage.getItem(FLOW_SCOPE_KEY) ?? 'null') as Partial<FlowScope> | null
-    if (!parsed || (parsed.kind !== 'project' && parsed.kind !== 'session') || typeof parsed.id !== 'string' || !parsed.id) return null
-    return { kind: parsed.kind, id: parsed.id }
+    const parsed = JSON.parse(localStorage.getItem(FLOW_SCOPE_KEY) ?? 'null') as unknown
+    if (!parsed || typeof parsed !== 'object') return {}
+    // Forma antigua: un único alcance sin home. Se adopta bajo el namespace
+    // por defecto en vez de tirarlo, y el hello lo reindexa al home real.
+    const flat = asFlowScope(parsed)
+    if (flat) return { [DEFAULT_FLOW_HOME]: flat }
+    const scopes: FlowScopeByHome = {}
+    for (const [home, value] of Object.entries(parsed as Record<string, unknown>)) {
+      const scope = asFlowScope(value)
+      if (home && scope) scopes[home] = scope
+    }
+    return scopes
   } catch {
-    return null
+    return {}
   }
 }
 
-function writeFlowScope(scope: FlowScope | null): void {
+function writeFlowScopes(scopes: FlowScopeByHome): void {
   try {
-    if (scope) localStorage.setItem(FLOW_SCOPE_KEY, JSON.stringify(scope))
-    else localStorage.removeItem(FLOW_SCOPE_KEY)
+    if (Object.keys(scopes).length === 0) localStorage.removeItem(FLOW_SCOPE_KEY)
+    else localStorage.setItem(FLOW_SCOPE_KEY, JSON.stringify(scopes))
   } catch {
     /* preferencia opcional */
   }
@@ -130,9 +151,25 @@ function writeShortcutBindings(bindings: ShortcutBindings): void {
 
 interface UIState {
   view: View
-  /** Alcance elegido en Flujos; se persiste como preferencia (`rinari.flowScope`). */
+  /**
+   * Alcance elegido en Flujos; se persiste como preferencia
+   * (`rinari.flowScope`) **por Engine home**: un id de proyecto solo
+   * significa algo dentro del home que lo emitió.
+   */
   flowScope: FlowScope | null
-  setFlowScope: (scope: FlowScope | null) => void
+  /**
+   * El alcance lo eligió una persona en esta ejecución («Ver flujo» o el
+   * selector). Un alcance sólo restaurado del disco no cuenta: la vista
+   * prefiere lo que se está trabajando ahora, y sólo cae en lo persistido
+   * cuando no hay nada activo que mostrar. En memoria, no se persiste.
+   */
+  flowScopeExplicit: boolean
+  /** Home al que pertenece el alcance actual; llega con el hello. */
+  flowHomeId: string
+  flowScopes: FlowScopeByHome
+  /** `explicit: false` para el alcance que resuelve la propia vista al abrirse. */
+  setFlowScope: (scope: FlowScope | null, explicit?: boolean) => void
+  setFlowHomeId: (homeId: string | null) => void
   goFlows: (scope?: FlowScope) => void
   /** Última vista de trabajo (Normal, Boards o Flujos); en memoria, no persistida. */
   lastWorkspaceView: WorkspaceView
@@ -213,15 +250,38 @@ export const useUIStore = create<UIState>((set) => ({
   goChat: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
   goNormal: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
   goBoard: () => set({ view: 'board', lastWorkspaceView: 'board', sidebarOpen: false, projectRoot: null }),
-  flowScope: typeof window === 'undefined' ? null : readFlowScope(),
-  setFlowScope: (flowScope) => {
-    writeFlowScope(flowScope)
-    set({ flowScope })
-  },
-  goFlows: (scope) => {
-    if (scope) writeFlowScope(scope)
-    set((s) => ({ view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null, flowScope: scope ?? s.flowScope }))
-  },
+  flowHomeId: DEFAULT_FLOW_HOME,
+  flowScopes: typeof window === 'undefined' ? {} : readFlowScopes(),
+  flowScope:
+    typeof window === 'undefined' ? null : readFlowScopes()[DEFAULT_FLOW_HOME] ?? null,
+  flowScopeExplicit: false,
+  setFlowScope: (flowScope, explicit = true) => set((s) => {
+    const scopes = { ...s.flowScopes }
+    if (flowScope) scopes[s.flowHomeId] = flowScope
+    else delete scopes[s.flowHomeId]
+    writeFlowScopes(scopes)
+    return { flowScope, flowScopes: scopes, flowScopeExplicit: explicit && flowScope !== null }
+  }),
+  setFlowHomeId: (homeId) => set((s) => {
+    const next = homeId || DEFAULT_FLOW_HOME
+    if (s.flowHomeId === next) return s
+    const scopes = { ...s.flowScopes }
+    // Lo elegido antes del hello quedó bajo el namespace por defecto: se
+    // adopta al home real, sin pisar lo que ese home ya tuviera.
+    if (s.flowHomeId === DEFAULT_FLOW_HOME && next !== DEFAULT_FLOW_HOME && scopes[DEFAULT_FLOW_HOME]) {
+      if (!scopes[next]) scopes[next] = scopes[DEFAULT_FLOW_HOME]
+      delete scopes[DEFAULT_FLOW_HOME]
+      writeFlowScopes(scopes)
+    }
+    // El alcance del home nuevo viene del disco, no de una elección de ahora.
+    return { flowHomeId: next, flowScopes: scopes, flowScope: scopes[next] ?? null, flowScopeExplicit: false }
+  }),
+  goFlows: (scope) => set((s) => {
+    if (!scope) return { view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null }
+    const scopes = { ...s.flowScopes, [s.flowHomeId]: scope }
+    writeFlowScopes(scopes)
+    return { view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null, flowScope: scope, flowScopes: scopes, flowScopeExplicit: true }
+  }),
   toggleBoards: () => set((s) => {
     const current = s.view === 'chat' || s.view === 'board' || s.view === 'flows' ? s.view : s.lastWorkspaceView
     const next: WorkspaceView = current === 'board' ? 'chat' : 'board'

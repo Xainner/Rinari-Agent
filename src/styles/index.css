@@ -913,6 +913,15 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .flow-stage-action { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; min-height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: var(--radius-control); font-size: 11px; font-weight: 600; color: var(--text-muted); }
 .flow-stage-action:hover { background: var(--bg-hover); color: var(--text); }
 .flow-stage-action.is-attend { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+/* Avisos de la vista: desactualizado, restaurar una sesión, error al navegar.
+   Van en la cabecera y no en el canvas, que desplaza en horizontal. */
+.flow-notice { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-subtle); font-size: 12px; color: var(--text-muted); }
+.flow-notice > span { flex: 1; min-width: 0; }
+.flow-notice svg { flex-shrink: 0; }
+.flow-notice.is-stale { border-color: color-mix(in srgb, var(--warning) 45%, transparent); color: var(--text); }
+.flow-notice.is-stale svg { color: var(--warning); }
+.flow-notice.is-error { border-color: color-mix(in srgb, var(--danger, #ef5f6a) 45%, transparent); color: var(--danger, #ef5f6a); }
+.flow-notice-actions { display: flex; flex-shrink: 0; gap: 6px; }
 .flow-empty { display: flex; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: 12px; align-self: stretch; padding: 32px 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
 .flow-empty svg { color: var(--accent); }
 .flow-empty.is-error { color: var(--danger, #ef5f6a); }

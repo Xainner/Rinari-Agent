@@ -275,6 +275,9 @@ function App() {
   const homeId = session.status?.home_id ?? null
   useEffect(() => {
     useSessionDockStore.getState().setHomeId(homeId)
+    // El alcance de Flujos es un id del Engine (proyecto o sesión) y se guarda
+    // por el mismo motivo: en otro home ese id no existe o es otra cosa.
+    useUIStore.getState().setFlowHomeId(homeId)
   }, [homeId])
   /** Elegir una sesión desde sidebar/paleta: en Boards enfoca o añade su panel; en Normal la selecciona. */
   const chooseSession = (id: string) => {

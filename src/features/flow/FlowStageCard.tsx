@@ -1,11 +1,11 @@
 import { memo } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Bot, Columns3, ExternalLink, FileText, Layers, MessageSquareShare, ShieldAlert, Timer } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { FlowStage, ModelSummary, ProviderSummary } from '../../services/engine'
 import ProviderLogo from '../../components/ProviderLogo'
 import { cn } from '../../lib/utils'
-import { STAGE_KIND_KEY, STAGE_STATUS_KEY, STAGE_STATUS_KIND, durationLabel, fileChipLabel, percent } from './flowModel'
+import { STAGE_KIND_KEY, STAGE_STATUS_KEY, STAGE_STATUS_KIND, durationLabel, fileChipLabel, percent, useFlowReducedMotion } from './flowModel'
 
 export interface FlowStageCardProps {
   stage: FlowStage
@@ -20,9 +20,24 @@ export interface FlowStageCardProps {
   onBoard: boolean
 }
 
-/** Resuelve un `model` registrado en los eventos contra el catálogo, si coincide. */
+/**
+ * Resuelve un `model` de los eventos contra el catálogo.
+ *
+ * `model.started` lleva el `model_id` del registro, que es la identidad
+ * canónica: se busca primero y en toda la lista. Probar id, alias y
+ * `provider_model_id` a la vez, modelo a modelo, dejaba ganar a un registro
+ * anterior cuyo alias coincidiera con el id de otro. Los dos criterios de
+ * respaldo no son únicos —dos proveedores pueden servir el mismo
+ * `provider_model_id`—, así que sólo valen cuando no hay ambigüedad: ante dos
+ * candidatos se prefiere no resolver y mostrar la cadena cruda.
+ */
 export function resolveExecutor(model: string, models: readonly ModelSummary[]): ModelSummary | null {
-  return models.find((item) => item.alias === model || item.id === model || item.provider_model_id === model) ?? null
+  const canonical = models.find((item) => item.id === model)
+  if (canonical) return canonical
+  const byProviderModel = models.filter((item) => item.provider_model_id === model)
+  if (byProviderModel.length === 1) return byProviderModel[0]
+  const byAlias = models.filter((item) => item.alias === model)
+  return byAlias.length === 1 ? byAlias[0] : null
 }
 
 /**
@@ -33,7 +48,7 @@ export function resolveExecutor(model: string, models: readonly ModelSummary[]):
  */
 function FlowStageCard({ stage, order, selected, models, providers, onOpen, onGoToTurn, onBoard }: FlowStageCardProps) {
   const { t } = useI18n()
-  const reduced = useReducedMotion()
+  const reduced = useFlowReducedMotion()
   const progress = percent(stage.progress)
   const duration = durationLabel(stage.duration_ms)
   const kindLabel = t(STAGE_KIND_KEY[stage.kind])

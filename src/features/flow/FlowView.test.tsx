@@ -11,11 +11,19 @@ vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(async () => () => {}) })
 
 const listeners = new Set<(event: { type: string; event: string; payload: Record<string, unknown> }) => void>()
 const flowGet = vi.fn()
+const sessionList = vi.fn()
 vi.mock('../../services/engine', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../services/engine')>()
   return {
     ...original,
-    engineApi: { ...original.engineApi, flowGet: (...args: unknown[]) => flowGet(...args) },
+    engineApi: {
+      ...original.engineApi,
+      flowGet: (...args: unknown[]) => flowGet(...args),
+      // La membresía del alcance se resuelve contra el Engine (F11-05): aquí
+      // se fija explícitamente para que «ajena» signifique ajena de verdad y
+      // no «la consulta falló».
+      sessions: (...args: unknown[]) => sessionList(...args),
+    },
     onEngineEvent: vi.fn(async (callback: (event: { type: string; event: string; payload: Record<string, unknown> }) => void) => {
       listeners.add(callback)
       return () => listeners.delete(callback)
@@ -48,6 +56,8 @@ beforeEach(() => {
   listeners.clear()
   flowGet.mockReset()
   flowGet.mockResolvedValue(projectFlowFixture())
+  sessionList.mockReset()
+  sessionList.mockResolvedValue({ sessions: [{ id: 'ses_a' }, { id: 'ses_b' }, { id: 'ses_c' }] })
   useBoardStore.getState().hydrate(defaultBoard())
   useUIStore.setState({ view: 'flows', flowScope: { kind: 'project', id: 'proj_a' } })
 })
@@ -92,16 +102,6 @@ it('FLOW-02: progress shows the engine number or "sin datos", never a guess; fil
   expect(screen.getByText('sin tareas registradas')).toBeTruthy()
 })
 
-it('FLOW-03/04: failed and needs_you stages keep distinct status and the attend action', async () => {
-  mount()
-  const stages = await screen.findAllByTestId('flow-stage')
-  expect(within(stages[2]!).getByRole('status').textContent).toBe('Falló')
-  expect(within(stages[2]!).getByText('Verificación 1 ok · 1 fallidas')).toBeTruthy()
-  expect(within(stages[3]!).getByRole('status').textContent).toBe('Te necesita')
-  expect(within(stages[3]!).getByRole('button', { name: 'Atender' })).toBeTruthy()
-  expect(within(stages[1]!).getByRole('button', { name: 'Ir al turno' })).toBeTruthy()
-})
-
 it('FLOW-02b: con todas las etapas conocidas sí hay total', async () => {
   // La contraparte del caso anterior: el número aparece cuando se puede
   // calcular de verdad, no por defecto.
@@ -114,6 +114,16 @@ it('FLOW-02b: con todas las etapas conocidas sí hay total', async () => {
   mount()
   await screen.findAllByTestId('flow-stage')
   expect(screen.getByTestId('flow-overall').textContent).toContain('% completado')
+})
+
+it('FLOW-03/04: failed and needs_you stages keep distinct status and the attend action', async () => {
+  mount()
+  const stages = await screen.findAllByTestId('flow-stage')
+  expect(within(stages[2]!).getByRole('status').textContent).toBe('Falló')
+  expect(within(stages[2]!).getByText('Verificación 1 ok · 1 fallidas')).toBeTruthy()
+  expect(within(stages[3]!).getByRole('status').textContent).toBe('Te necesita')
+  expect(within(stages[3]!).getByRole('button', { name: 'Atender' })).toBeTruthy()
+  expect(within(stages[1]!).getByRole('button', { name: 'Ir al turno' })).toBeTruthy()
 })
 
 it('FLOW-05: peer-originated turns are labelled as provenance, not as user orders', async () => {
@@ -162,12 +172,14 @@ it('FLOW-07: "Ir al turno" reveals the pane on the board, or selects the session
   // ses_a está en el board: expandir/enfocar el panel y revelar el turno.
   await user.click(within(stages[0]!).getByRole('button', { name: 'Ir al turno' }))
   expect(goBoard).toHaveBeenCalledTimes(1)
-  expect(engine.selectSession).not.toHaveBeenCalled()
+  expect(engine.prepareSession).not.toHaveBeenCalled()
   await waitFor(() => expect(revealed).toContainEqual({ sessionId: 'ses_a', turnId: 't1', requestId: undefined }))
 
-  // ses_c no está en el board: seleccionar la sesión en Normal y revelar.
+  // ses_c no está en el board: se resuelve la sesión **antes** de cambiar de
+  // vista, y sólo entonces se activa y se pide el reveal.
   await user.click(within(stages[3]!).getByRole('button', { name: 'Atender' }))
-  expect(engine.selectSession).toHaveBeenCalledWith('ses_c')
+  await waitFor(() => expect(engine.prepareSession).toHaveBeenCalledWith('ses_c'))
+  expect(engine.setActiveSession).toHaveBeenCalledWith('ses_c')
   expect(goNormal).toHaveBeenCalledTimes(1)
   await waitFor(() => expect(revealed.some((item) => item.sessionId === 'ses_c' && item.turnId === 't5')).toBe(true))
   // Navegar nunca cambia modelo, modo ni borrador.
@@ -244,9 +256,167 @@ it('FLOW-08: many stages keep fixed-width cards in a horizontally scrollable can
   expect(stages.every((stage) => stage.closest('.flow-stage-slot'))).toBe(true)
 })
 
-it('falls back to the active session\'s project when no scope is stored', async () => {
-  useUIStore.setState({ flowScope: null })
+it('F11-13: an active loose conversation opens its own flow, not the first project', async () => {
+  useUIStore.setState({ flowScope: null, flowScopeExplicit: false })
   mount(engineFixture({ sessions, projects, activeSession: 'ses_chat', status }))
-  // La sesión activa es un chat sin proyecto: se usa el primer proyecto registrado.
+  // Existen proyectos registrados, pero lo que la persona tiene delante es una
+  // conversación suelta: responder por `proj_a` era abrir un proyecto ajeno.
+  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ session_id: 'ses_chat' }))
+  expect(flowGet).not.toHaveBeenCalledWith({ project_id: 'proj_a' })
+})
+
+it('F11-13: the active session\'s project wins over a valid persisted scope', async () => {
+  // El alcance guardado existe y es válido, pero no es lo que se está
+  // trabajando: sólo se usa cuando no hay sesión activa que mande.
+  useUIStore.setState({ flowScope: { kind: 'project', id: 'proj_b' }, flowScopeExplicit: false })
+  mount(engineFixture({ sessions, projects, activeSession: 'ses_a', status }))
   await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_a' }))
+})
+
+it('F11-13: a scope chosen by hand survives, and only the persisted one gives way', async () => {
+  useUIStore.setState({ flowScope: { kind: 'project', id: 'proj_b' }, flowScopeExplicit: true })
+  mount(engineFixture({ sessions, projects, activeSession: 'ses_a', status }))
+  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_b' }))
+  expect(flowGet).not.toHaveBeenCalledWith({ project_id: 'proj_a' })
+})
+
+it('F11-13: without projects or sessions the persisted scope is the last thing standing', async () => {
+  useUIStore.setState({ flowScope: { kind: 'project', id: 'proj_b' }, flowScopeExplicit: false })
+  mount(engineFixture({ sessions: [], projects, activeSession: '', status }))
+  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_b' }))
+})
+
+it('F11-13: the capability has three states and "checking" is not "supported"', async () => {
+  // Con el Engine arrancando no se sabe si ofrece flujos. Darlo por bueno
+  // llamaba a `flow.get` contra un motor que podía no tenerlo.
+  mount(engineFixture({
+    sessions,
+    projects,
+    activeSession: 'ses_a',
+    status: { state: 'starting', engine_version: null, protocol_version: null, detail: null, capabilities: {} },
+  }))
+  expect(await screen.findByTestId('flow-checking')).toBeTruthy()
+  expect(screen.queryByTestId('flow-unsupported')).toBeNull()
+  expect(flowGet).not.toHaveBeenCalled()
+})
+
+it('F11-08: a closed session offers restore instead of leaving an orphan reveal', async () => {
+  // El Engine incluye a propósito sesiones cerradas y archivadas, así que la
+  // que se ve en una tarjeta puede no ser abrible. Antes se cambiaba a Normal
+  // y se pedía el reveal igualmente: la petición se quedaba sin consumidor y
+  // la persona, en una vista que no había pedido.
+  const goNormal = vi.fn()
+  useUIStore.setState({ goNormal })
+  const engine = engineFixture({ sessions, projects, activeSession: 'ses_a', status })
+  engine.prepareSession = vi.fn(async () => ({ ok: false as const, reason: 'archived' as const, message: 'Infra' }))
+  mount(engine)
+  const user = userEvent.setup()
+  const revealed: string[] = []
+  const onReveal = (event: Event) => revealed.push((event as CustomEvent<{ sessionId: string }>).detail.sessionId)
+  window.addEventListener(REVEAL_TURN_EVENT, onReveal)
+  const stages = await screen.findAllByTestId('flow-stage')
+
+  await user.click(within(stages[3]!).getByRole('button', { name: 'Atender' }))
+  const prompt = await screen.findByTestId('flow-restore')
+  expect(prompt.textContent).toContain('Infra')
+  expect(prompt.textContent).toContain('archivada')
+  expect(goNormal).not.toHaveBeenCalled()
+  expect(engine.setActiveSession).not.toHaveBeenCalled()
+  expect(revealed).toHaveLength(0)
+
+  // Restaurar es una decisión explícita; después sí se abre y se revela.
+  engine.prepareSession = vi.fn(async () => ({ ok: true as const, session: sessions[2]! }))
+  await user.click(within(prompt).getByRole('button', { name: 'Restaurar y abrir' }))
+  await waitFor(() => expect(engine.restoreSession).toHaveBeenCalledWith('ses_c'))
+  await waitFor(() => expect(goNormal).toHaveBeenCalledTimes(1))
+  expect(revealed).toContain('ses_c')
+  window.removeEventListener(REVEAL_TURN_EVENT, onReveal)
+})
+
+it('F11-08: if the session cannot be opened the view stays in Flujos and says why', async () => {
+  const goNormal = vi.fn()
+  useUIStore.setState({ goNormal })
+  const engine = engineFixture({ sessions, projects, activeSession: 'ses_a', status })
+  engine.prepareSession = vi.fn(async () => ({ ok: false as const, reason: 'unavailable' as const, message: 'engine unavailable' }))
+  mount(engine)
+  const user = userEvent.setup()
+  const stages = await screen.findAllByTestId('flow-stage')
+  await user.click(within(stages[3]!).getByRole('button', { name: 'Atender' }))
+  const error = await screen.findByTestId('flow-nav-error')
+  expect(error.textContent).toContain('engine unavailable')
+  expect(goNormal).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('flow-restore')).toBeNull()
+})
+
+it('F11-09: each session row answers for itself, not for the stage anchor', async () => {
+  // La etapa 2 tiene dos sesiones y su anchor es ses_a. Con un único `onBoard`
+  // calculado desde el anchor, «Docs» mostraba icono y destino de «Backend API».
+  useBoardStore.getState().addPane('ses_a')
+  mount()
+  const user = userEvent.setup()
+  const stages = await screen.findAllByTestId('flow-stage')
+  await user.click(within(stages[1]!).getByRole('button', { name: 'implementa las rutas' }))
+  const detail = screen.getByRole('complementary', { name: /Detalle de la etapa/ })
+  expect(within(detail).getByRole('button', { name: /Backend API/ }).getAttribute('title')).toBe('Abrir en su panel del board')
+  expect(within(detail).getByRole('button', { name: /Docs/ }).getAttribute('title')).toBe('Abrir en Normal')
+})
+
+it('F11-12: a failed refresh marks the flow as stale instead of replacing it with an error', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    mount()
+    await screen.findAllByTestId('flow-stage')
+    flowGet.mockRejectedValue(new Error('engine unavailable'))
+    act(() => emit('turn.completed', { session_id: 'ses_a', turn_id: 't9' }))
+    await act(async () => {
+      vi.advanceTimersByTime(FLOW_REFRESH_DEBOUNCE_MS * 2)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const stale = await screen.findByTestId('flow-stale')
+    expect(stale.textContent).toContain('engine unavailable')
+    // Los datos siguen, rotulados como de antes; no se presentan como actuales
+    // ni desaparecen porque un refresco fallara.
+    expect(screen.getAllByTestId('flow-stage').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('alert')).toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('excerpts are inert text: no HTML and no active Markdown', async () => {
+  flowGet.mockResolvedValue(
+    flowFixture([stageFixture({ id: 'stg_x', index: 1, title: '', excerpt: '<b>ojo</b> **negrita**' })]),
+  )
+  mount()
+  const stage = await screen.findByTestId('flow-stage')
+  expect(within(stage).getAllByText('<b>ojo</b> **negrita**').length).toBeGreaterThan(0)
+  expect(stage.querySelector('b')).toBeNull()
+})
+
+it('keyboard: stage cards are reachable and Enter opens the detail', async () => {
+  mount()
+  const user = userEvent.setup()
+  const stages = await screen.findAllByTestId('flow-stage')
+  const title = within(stages[1]!).getByRole('button', { name: 'implementa las rutas' })
+  title.focus()
+  expect(document.activeElement).toBe(title)
+  await user.keyboard('{Enter}')
+  expect(screen.getByRole('complementary', { name: /Detalle de la etapa/ })).toBeTruthy()
+  // El foco entra al detalle y vuelve al cerrarlo con Escape.
+  await waitFor(() => expect(document.activeElement).not.toBe(title))
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('complementary')).toBeNull())
+})
+
+it('reduced motion: the app preference counts, not only the OS one', async () => {
+  // «El ajuste del sistema siempre se respeta» dice Ajustes; el conmutador de
+  // la app no hacía nada en esta vista porque sólo se leía `useReducedMotion`.
+  useUIStore.setState({ reduceMotion: true })
+  mount()
+  const stages = await screen.findAllByTestId('flow-stage')
+  // Sin animación de entrada la tarjeta es visible desde el primer render, en
+  // vez de aparecer en opacidad 0 a la espera de que corra la animación.
+  expect(stages[0]!.style.opacity === '' || stages[0]!.style.opacity === '1').toBe(true)
+  useUIStore.setState({ reduceMotion: false })
 })

@@ -1,0 +1,240 @@
+{
+  "steps": [
+    {
+      "name": "F11-13: comprobando al arrancar NO capturado",
+      "engine_at_click": "ready"
+    },
+    {
+      "name": "perfil temporal",
+      "isolated": true
+    },
+    {
+      "name": "engine ready",
+      "project_flow_v1": true
+    },
+    {
+      "name": "turnos sembrados",
+      "turns": [
+        [
+          "Backend",
+          "plan",
+          "completed"
+        ],
+        [
+          "Backend",
+          "build",
+          "completed"
+        ],
+        [
+          "Docs",
+          "build",
+          "completed"
+        ],
+        [
+          "Backend",
+          "review",
+          "completed"
+        ],
+        [
+          "Backend",
+          "plan",
+          "completed"
+        ],
+        [
+          "Charla suelta",
+          "build",
+          "completed"
+        ]
+      ]
+    },
+    {
+      "name": "Docs archivada"
+    },
+    {
+      "name": "flow.get del proyecto",
+      "stages": [
+        "planning/plan",
+        "implementation/build",
+        "review/review",
+        "planning/plan"
+      ]
+    },
+    {
+      "name": "Backend añadida al board por la UI"
+    },
+    {
+      "name": "F11-13: sesión de proyecto activa",
+      "scope": "project:prj_01M35QFFJKK7J01K8MB6V2C944",
+      "expected": "project:prj_01M35QFFJKK7J01K8MB6V2C944"
+    },
+    {
+      "name": "captura 01-flujos-proyecto.png"
+    },
+    {
+      "name": "F11-09: filas del detalle",
+      "rows": [
+        {
+          "text": "Backend1 turnos",
+          "title": "Abrir en su panel del board"
+        },
+        {
+          "text": "Docs1 turnos",
+          "title": "Abrir en Normal"
+        }
+      ]
+    },
+    {
+      "name": "captura 02-detalle-sesiones.png"
+    },
+    {
+      "name": "F11-08: sesión archivada",
+      "prompt": "«Docs» está archivada. Restáurala para abrir el turno.Restaurar y abrirQuedarme en Flujos",
+      "still_in_flows": true
+    },
+    {
+      "name": "captura 03-restaurar.png"
+    },
+    {
+      "name": "F11-08: restaurada y abierta",
+      "docs_state": "active"
+    },
+    {
+      "name": "captura 04-restaurada-normal.png"
+    },
+    {
+      "name": "F11-13: conversación suelta activa",
+      "scope": "session:ses_01M35QFFPX9X74VFSS3VQ7ZG7T"
+    },
+    {
+      "name": "captura 05-conversacion-suelta.png"
+    },
+    {
+      "name": "reinicio del Engine",
+      "outcome": {
+        "done": true,
+        "ok": true,
+        "state": "ready"
+      },
+      "host_states_seen": [
+        "restarting",
+        "handshaking",
+        "ready"
+      ],
+      "ui_showed_checking": false,
+      "revision_before": "798b8317af41cc49",
+      "revision_after": "798b8317af41cc49",
+      "stages_before": 4,
+      "stages_after": 4,
+      "same_projection": true
+    },
+    {
+      "name": "Engine terminado a la fuerza",
+      "pid": "47648",
+      "host_state": "degraded",
+      "ui_says_ready": true,
+      "ui_flow_checking": false
+    },
+    {
+      "name": "captura 07-engine-muerto.png"
+    }
+  ],
+  "console_errors": [],
+  "facts": {
+    "project_flow": {
+      "revision": "1f62f60eff5a5683",
+      "stages": [
+        {
+          "index": 1,
+          "kind": "planning",
+          "mode": "plan",
+          "cycle": 1,
+          "status": "done",
+          "sessions": [
+            "Backend"
+          ],
+          "anchor_is_backend": true
+        },
+        {
+          "index": 2,
+          "kind": "implementation",
+          "mode": "build",
+          "cycle": 1,
+          "status": "done",
+          "sessions": [
+            "Backend",
+            "Docs"
+          ],
+          "anchor_is_backend": true
+        },
+        {
+          "index": 3,
+          "kind": "review",
+          "mode": "review",
+          "cycle": 1,
+          "status": "done",
+          "sessions": [
+            "Backend"
+          ],
+          "anchor_is_backend": true
+        },
+        {
+          "index": 4,
+          "kind": "planning",
+          "mode": "plan",
+          "cycle": 2,
+          "status": "done",
+          "sessions": [
+            "Backend"
+          ],
+          "anchor_is_backend": true
+        }
+      ],
+      "summary": {
+        "stages_total": 4,
+        "stages_done": 4,
+        "stages_active": 0,
+        "turns_total": 5,
+        "turns_failed": 0,
+        "files_changed": 0,
+        "tasks": {
+          "total": 0,
+          "done": 0,
+          "open": 0
+        },
+        "progress": null,
+        "progress_coverage": {
+          "known_stages": 2,
+          "total_stages": 4,
+          "partial_progress": 1
+        },
+        "started_at": "2026-09-22T23:33:37.636Z",
+        "last_activity_at": "2026-09-22T23:33:41.184Z"
+      }
+    },
+    "restart": {
+      "outcome": {
+        "done": true,
+        "ok": true,
+        "state": "ready"
+      },
+      "host_states_seen": [
+        "restarting",
+        "handshaking",
+        "ready"
+      ],
+      "ui_showed_checking": false,
+      "revision_before": "798b8317af41cc49",
+      "revision_after": "798b8317af41cc49",
+      "stages_before": 4,
+      "stages_after": 4,
+      "same_projection": true
+    },
+    "engine_killed": {
+      "pid": "47648",
+      "host_state": "degraded",
+      "ui_says_ready": true,
+      "ui_flow_checking": false
+    }
+  },
+  "ok": true
+}

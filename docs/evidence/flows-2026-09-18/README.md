@@ -1,5 +1,11 @@
 # Evidencia — vista Flujos (2026-09-18)
 
+> **Superada por [`../flows-2026-09-22/`](../flows-2026-09-22/README.md).** Se
+> tomó sobre la base anterior a la migración y antes de la revisión M02: aquí
+> «Ir al turno» selecciona sin esperar, el alcance cae en el primer proyecto
+> y la capability se da por buena mientras el Engine arranca. Se conserva
+> como registro histórico; no describe el comportamiento actual.
+
 Smoke real del host **Electron** en desarrollo (`dist-electron/main.cjs` +
 Vite en `:1420`) con el Engine integrado (`Rinari-CLI` rama
 `feat/project-flow`, `27d29c2`), en Windows 11 con un `RINARI_HOME` temporal y

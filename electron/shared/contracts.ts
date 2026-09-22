@@ -41,6 +41,11 @@ export const CHANNEL = {
   // presentación, pestaña, control y navegación autorizada. **No** hay canal
   // para `host.browser.*` ni para `debugger.sendCommand`: el broker es de
   // main, y una respuesta suya no es un permiso que el renderer pueda guardar.
+  // Flujos (`project_flow_v1`). Va como intención y **no** como
+  // `DesktopCommand`: el inventario de comandos es la captura histórica de
+  // Tauri 0.1.3, y `flow.get` no existía entonces. Añadirlo allí sería
+  // afirmar un comando que nunca hubo.
+  flowGet: 'rinari:flow.get',
   browserContext: 'rinari:browser.context',
   browserPrepare: 'rinari:browser.prepare',
   browserAttachSlot: 'rinari:browser.attachSlot',
@@ -229,6 +234,19 @@ export interface BrowserPreviewView {
   image: string
   width: number
   height: number
+}
+
+/**
+ * Alcance de un flujo: exactamente un id, y el cursor opcional.
+ *
+ * `before` es el id de una etapa. La respuesta dice si truncó y por dónde
+ * seguir; el cliente no compone índices, que se recalculan en cada
+ * proyección.
+ */
+export interface FlowScopeRequest {
+  project_id?: string | null
+  session_id?: string | null
+  before?: string | null
 }
 
 /** Geometría que el renderer reserva; main decide dónde se pinta. */

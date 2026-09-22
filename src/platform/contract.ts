@@ -19,6 +19,8 @@
  */
 
 import type { EngineBackedCommand } from './commands.generated'
+import type { FlowScopeRequest } from '../../electron/shared/contracts'
+import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { MigrationStatus } from '../../electron/shared/migration'
 
@@ -32,6 +34,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
+export type { FlowScopeRequest } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
@@ -167,6 +170,16 @@ export interface DesktopBridge {
    * Un host sin browser nativo lo dice —`supported: false`— en vez de fingir
    * soporte: la superficie cae al visor de capturas y se rotula como tal.
    */
+  /**
+   * Flujos de un proyecto o de una sesión (`project_flow_v1`).
+   *
+   * Es una **intención**, no un `DesktopCommand`: el inventario de comandos
+   * es la captura histórica de Tauri 0.1.3 y `flow.get` no existía entonces,
+   * así que meterlo ahí sería afirmar un comando que nunca hubo.
+   */
+  flow: {
+    get(scope: FlowScopeRequest): Promise<FlowResult>
+  }
   browser: {
     /** Consulta sin efectos. Mirar el estado no abre un navegador. */
     context(sessionId: string): Promise<NativeBrowserContext>

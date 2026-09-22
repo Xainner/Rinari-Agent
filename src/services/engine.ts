@@ -507,11 +507,22 @@ export const engineApi = {
       "workspace_file_search",
       { session_id: sessionId, query, limit },
     ),
-  /** Etapas de un proyecto o de una sesión (`project_flow_v1`); exactamente un id. */
-  flowGet: (scope: { project_id: string } | { session_id: string }) =>
-    platform().command<FlowResult>("flow_get", {
+  /**
+   * Etapas de un proyecto o de una sesión (`project_flow_v1`).
+   *
+   * Va por la **intención** `flow.get` y no por `command()`: los nombres que
+   * `command()` acepta son el inventario de paridad capturado de Tauri 0.1.3,
+   * y `flow_get` no existía entonces. Añadirlo a esa captura sería afirmar un
+   * comando que nunca hubo; el camino de una capacidad nueva es una intención
+   * estrecha, igual que el browser nativo.
+   *
+   * `before` pide el tramo anterior cuando la respuesta truncó.
+   */
+  flowGet: (scope: { project_id: string } | { session_id: string }, before?: string | null) =>
+    platform().flow.get({
       project_id: 'project_id' in scope ? scope.project_id : null,
       session_id: 'session_id' in scope ? scope.session_id : null,
+      before: before ?? null,
     }),
   taskTree: (path: string) =>
     platform().command<{ tasks: TaskItem[]; depths: Record<string, number> }>("task_tree", {

@@ -13,10 +13,14 @@ export function stageFixture(overrides: Partial<FlowStage> & Pick<FlowStage, 'id
     completed_at: '2026-09-17T10:10:00.000Z',
     duration_ms: 600_000,
     progress: 1,
+    current_task_snapshot: null,
     turns: 1,
+    turns_failed: 0,
+    turns_stopped: 0,
     executors: [],
     agents: [],
     sessions: [{ session_id: 'ses_a', title: 'Backend API', turns: 1 }],
+    sessions_more: 0,
     files: [],
     files_more: 0,
     verification: null,
@@ -34,6 +38,10 @@ export function flowFixture(stages: FlowStage[], overrides: Partial<FlowResult> 
   const weight = known.reduce((sum, stage) => sum + stage.turns, 0)
   return {
     scope: { kind: 'project', id: 'proj_a', title: 'Backend', root: 'C:/repo/backend' },
+    revision: 'rev-fixture',
+    truncated: false,
+    stages_omitted: 0,
+    next_cursor: null,
     summary: {
       stages_total: stages.length,
       stages_done: done,
@@ -42,7 +50,19 @@ export function flowFixture(stages: FlowStage[], overrides: Partial<FlowResult> 
       turns_failed: stages.filter((stage) => stage.status === 'failed').length,
       files_changed: stages.reduce((sum, stage) => sum + stage.files.length + stage.files_more, 0),
       tasks: null,
-      progress: weight ? known.reduce((sum, stage) => sum + (stage.progress ?? 0) * stage.turns, 0) / weight : null,
+      // Misma regla que el Engine: si alguna etapa es desconocida no hay
+      // total, y el parcial va aparte rotulado como tal.
+      progress:
+        stages.length > 0 && known.length === stages.length && weight
+          ? known.reduce((sum, stage) => sum + (stage.progress ?? 0) * stage.turns, 0) / weight
+          : null,
+      progress_coverage: {
+        known_stages: known.length,
+        total_stages: stages.length,
+        partial_progress: weight
+          ? known.reduce((sum, stage) => sum + (stage.progress ?? 0) * stage.turns, 0) / weight
+          : null,
+      },
       started_at: stages[0]?.started_at ?? null,
       last_activity_at: stages.at(-1)?.completed_at ?? stages.at(-1)?.started_at ?? null,
     },

@@ -84,7 +84,11 @@ it('FLOW-02: progress shows the engine number or "sin datos", never a guess; fil
   expect(within(stages[1]!).getByRole('list', { name: '8 archivos' })).toBeTruthy()
   expect(within(stages[1]!).getByText('+4')).toBeTruthy()
   expect(within(stages[0]!).getByText('Sin archivos cambiados')).toBeTruthy()
-  expect(screen.getByTestId('flow-overall').textContent).toContain('% completado')
+  // El fixture tiene una etapa sin progreso conocido, así que **no hay
+  // total**: enseñar un porcentaje aquí era decir «terminado» de algo a
+  // medias. La vista lo dice en vez de rellenarlo.
+  expect(screen.getByTestId('flow-overall').textContent).toContain('Progreso no calculable')
+  expect(screen.getByTestId('flow-overall').textContent).not.toContain('% completado')
   expect(screen.getByText('sin tareas registradas')).toBeTruthy()
 })
 
@@ -96,6 +100,20 @@ it('FLOW-03/04: failed and needs_you stages keep distinct status and the attend 
   expect(within(stages[3]!).getByRole('status').textContent).toBe('Te necesita')
   expect(within(stages[3]!).getByRole('button', { name: 'Atender' })).toBeTruthy()
   expect(within(stages[1]!).getByRole('button', { name: 'Ir al turno' })).toBeTruthy()
+})
+
+it('FLOW-02b: con todas las etapas conocidas sí hay total', async () => {
+  // La contraparte del caso anterior: el número aparece cuando se puede
+  // calcular de verdad, no por defecto.
+  flowGet.mockResolvedValue(
+    flowFixture([
+      stageFixture({ id: 'stg_1', index: 1, kind: 'planning', progress: 1, turns: 1 }),
+      stageFixture({ id: 'stg_2', index: 2, progress: 0.5, turns: 1 }),
+    ]),
+  )
+  mount()
+  await screen.findAllByTestId('flow-stage')
+  expect(screen.getByTestId('flow-overall').textContent).toContain('% completado')
 })
 
 it('FLOW-05: peer-originated turns are labelled as provenance, not as user orders', async () => {

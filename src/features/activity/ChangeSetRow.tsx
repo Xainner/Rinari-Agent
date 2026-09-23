@@ -88,7 +88,7 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
         {status && <span className="text-[var(--text-subtle)]">· {status}</span>}
       </div>
       {hasPartialCoverage(item) && (
-        <div className="mt-2 flex gap-2 text-amber-300"><ShieldAlert size={13} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{t('changes.coverage.withFiles')}</span></div>
+        <div className="mt-2 flex gap-2 text-amber-400"><ShieldAlert size={13} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{t('changes.coverage.withFiles')}</span></div>
       )}
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => void review()} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)]">{lang === 'es' ? 'Revisar' : 'Review'}</button>

@@ -40,7 +40,9 @@ import {
   type UpdateAvailable,
   type UpdateState,
   type WindowState,
+  type FlowScopeRequest,
 } from '../shared/contracts'
+import type { FlowResult } from '../../src/types/protocol.generated'
 import type { MigrationStage, MigrationStatus } from '../shared/migration'
 import type { EngineEvent as EngineEventMessage } from '../shared/protocol'
 
@@ -126,6 +128,10 @@ const api = {
     openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
   },
 
+  clipboard: {
+    writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
+  },
+
   contextMenu: {
     /**
      * Muestra el menú nativo. Las acciones propias no son serializables, así
@@ -203,6 +209,13 @@ const api = {
    * es de main, y una respuesta suya no es un permiso que la página pueda
    * guardar o reproducir (§5.2).
    */
+  flow: {
+    /**
+     * Etapas de un proyecto o de una sesión. Exactamente un id, y el cursor
+     * opcional para pedir el tramo anterior cuando la respuesta truncó.
+     */
+    get: (scope: FlowScopeRequest) => call<FlowResult>(CHANNEL.flowGet, scope),
+  },
   browser: {
     /** Consulta sin efectos: mirar el estado no abre un navegador. */
     context: (sessionId: string) => call<BrowserContextView>(CHANNEL.browserContext, sessionId),

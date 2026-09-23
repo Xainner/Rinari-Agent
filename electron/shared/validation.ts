@@ -8,6 +8,7 @@
  */
 
 import { DESKTOP_COMMANDS, type DesktopCommand } from '../../src/platform/commands.generated'
+import type { FlowScopeRequest } from './contracts'
 
 export { DESKTOP_COMMANDS }
 export type { DesktopCommand }
@@ -83,4 +84,61 @@ export function assertOpenableUrl(value: unknown): string {
     throw new ValidationError(`refusing to open ${parsed.protocol} from the renderer`)
   }
   return parsed.toString()
+}
+
+/** Techo del texto que el renderer puede copiar al portapapeles del sistema. */
+export const MAX_CLIPBOARD_BYTES = 1024 * 1024
+
+/**
+ * Texto para `rinari:clipboard.writeText`: cadena y, como mucho, 1 MiB medido
+ * en bytes UTF-8 (no en unidades UTF-16, que infravaloran emojis y CJK).
+ */
+export function assertClipboardText(value: unknown): string {
+  if (typeof value !== 'string') throw new ValidationError('clipboard text must be a string')
+  if (Buffer.byteLength(value, 'utf8') > MAX_CLIPBOARD_BYTES) {
+    throw new ValidationError('clipboard text exceeds 1 MiB')
+  }
+  return value
+}
+
+/** Techo de un id del Engine (proyecto, sesión, etapa) en un canal de intención. */
+export const MAX_ENGINE_ID_LENGTH = 128
+
+/**
+ * Un id opcional: ausente es `null`; presente tiene que ser una cadena no
+ * vacía y acotada. La cadena vacía no se lee como «ausente»: contaría como
+ * ausente al decidir «exactamente uno» y como presente al llegar al Engine.
+ */
+function assertOptionalId(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null
+  const id = assertString(value, field, MAX_ENGINE_ID_LENGTH)
+  if (id.length === 0) throw new ValidationError(`${field} must not be empty`)
+  return id
+}
+
+const FLOW_SCOPE_KEYS = new Set(['project_id', 'session_id', 'before'])
+
+/**
+ * Alcance de un flujo (`rinari:flow.get`): exactamente un id, y un cursor
+ * opcional.
+ *
+ * Se valida en main porque el renderer es el lado que se puede modificar: el
+ * tipo de TypeScript describe la intención, no la hace cumplir. Una clave que
+ * no pertenece al alcance se rechaza en vez de descartarse, igual que el
+ * resto de esta frontera.
+ */
+export function assertFlowScope(value: unknown): FlowScopeRequest {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ValidationError('the flow scope has to be an object')
+  }
+  const raw = value as Record<string, unknown>
+  for (const key of Object.keys(raw)) {
+    if (!FLOW_SCOPE_KEYS.has(key)) throw new ValidationError(`unknown flow scope field: ${key}`)
+  }
+  const project = assertOptionalId(raw.project_id, 'project_id')
+  const session = assertOptionalId(raw.session_id, 'session_id')
+  if ((project === null) === (session === null)) {
+    throw new ValidationError('a flow needs exactly one of project_id or session_id')
+  }
+  return { project_id: project, session_id: session, before: assertOptionalId(raw.before, 'before') }
 }

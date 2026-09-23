@@ -26,15 +26,19 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
+import ProviderDetails from './ProviderDetails'
+import ProviderUsagePanel from './ProviderUsagePanel'
 import ModelCatalog from './ModelCatalog'
 
 /** Ajustes > Proveedores: tarjetas con estado, probar, usar, editar y eliminar. */
 export default function ProvidersView({
   providers,
   onChanged,
+  engineCapabilities,
 }: {
   providers: ProviderSummary[]
   onChanged: () => void
+  engineCapabilities?: Record<string, boolean>
 }) {
   const { t } = useI18n()
   const [dialog, setDialog] = useState<
@@ -62,7 +66,7 @@ export default function ProvidersView({
       ...initialForm(),
       alias: provider.alias,
       endpoint: provider.endpoint ?? '',
-      auth: provider.auth_method === 'none' ? 'none' : 'api-key',
+      auth: provider.auth_method === 'oauth' ? 'oauth' : provider.auth_method === 'none' ? 'none' : 'api-key',
       credentialSource: 'literal',
       secret: '',
       secret_env: '',
@@ -89,14 +93,16 @@ export default function ProvidersView({
           alias,
           provider_type: form.preset.provider_type,
           auth_method: form.auth,
+          settings: { product_id: form.preset.id },
           endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
           account_hint: form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
           // Solo viaja el campo de la fuente activa; el incompatible queda vacío.
-          ...(form.credentialSource === 'env'
+          ...(form.auth !== 'api-key' ? {} : form.credentialSource === 'env'
             ? { secret_env: form.secret_env === '' ? undefined : form.secret_env }
             : { secret: form.secret === '' ? undefined : form.secret }),
         })
         toast.success(t('wizard.saved'))
+        setExpanded(alias)
       } else if (dialog?.mode === 'edit') {
         const patch: {
           alias?: string
@@ -209,7 +215,10 @@ export default function ProvidersView({
             }
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-subtle)]">
-              <span className="font-mono">{provider.type}</span>
+              <span>{provider.product_name ?? provider.type}</span>
+              {provider.experimental && <span>{t('providers.experimental')}</span>}
+              {provider.account_hint && <span>{provider.account_hint}</span>}
+              {provider.model_count !== undefined && <span>{t('providers.savedModelCount', { n: provider.model_count })}</span>}
               {provider.endpoint && <span className="truncate font-mono">{provider.endpoint}</span>}
               <span>
                 {provider.has_credential ? t('providers.credentialOk') : t('providers.noCredential')}
@@ -229,6 +238,7 @@ export default function ProvidersView({
                   : t('providers.healthFail', { detail: h.detail })}
               </p>
             )}
+            {!isOpen && engineCapabilities?.provider_usage_v1 && <ProviderUsagePanel key={`${provider.id}:${provider.updated_at}`} providerAlias={provider.alias} compact />}
             <div className="flex flex-wrap gap-2">
               {!provider.active && (
                 <button
@@ -252,7 +262,7 @@ export default function ProvidersView({
                 onClick={() => setExpanded(isOpen ? null : provider.alias)}
                 className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
               >
-                {t('providers.models')}
+                {t('providers.details')}
               </button>
               <button
                 type="button"
@@ -272,7 +282,9 @@ export default function ProvidersView({
                 {t('providers.delete')}
               </button>
             </div>
-            {isOpen && <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />}
+            {isOpen && (engineCapabilities?.provider_catalog_v1
+              ? <ProviderDetails key={`${provider.id}:${provider.updated_at}`} provider={provider} onChanged={onChanged} />
+              : <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />)}
           </Section>
         )
       })}

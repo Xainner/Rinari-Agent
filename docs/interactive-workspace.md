@@ -300,3 +300,91 @@ Validación: `features/activity/TurnResult.test.tsx` (UX-03/04/05),
 `components/ChatView.scroll.test.tsx` (UX-06), `services/notificationPolicy.test.ts`,
 `features/board/useBoardNotifications.test.tsx`,
 `hooks/useWindowTitle.test.ts`.
+
+# Flujos: avance del proyecto y cómo intervino la IA (`project_flow_v1`)
+
+- Tercera vista de trabajo, **Normal | Boards | Flujos** (`view='flows'`,
+  atajo `Ctrl+Shift+L`, menú nativo Ver › Flujos, paleta «Abrir Flujos» y
+  «Ver flujo» en el menú de cada proyecto y sesión del sidebar). Cambiar a
+  Flujos no inicia, cancela ni modifica turnos, modelos, modos ni borradores.
+- **Todo lo derivado viene del Engine.** `engineApi.flowGet({ project_id } |
+  { session_id })` llama a `flow.get` (una sola petición por alcance; nunca
+  `session.timeline` por sesión desde React). Una etapa es una racha contigua
+  de turnos con el mismo modo a través de todas las sesiones del proyecto;
+  cada PLAN abre un ciclo. La vista no estima nada: progreso `null` se rotula
+  «sin datos», un grafo de tareas vacío o ausente «sin tareas registradas»,
+  duración sin ambos tiempos «Duración no disponible». Nunca un porcentaje
+  inventado a partir del número de turnos.
+- Alcance (`flowScope` en `stores/ui`, persistido en `rinari.flowScope`
+  **por Engine home**: un id de proyecto sólo significa algo dentro del home
+  que lo emitió, y lo guardado antes del hello se reindexa al home real).
+  Ofrece proyectos registrados no archivados, la sesión de proyecto abierta
+  desde el sidebar (grupo «Sesiones del proyecto») y las conversaciones
+  sueltas. El orden al abrir la vista es: elección explícita de esta ejecución
+  («Ver flujo» o el selector) → proyecto de la sesión activa → sesión activa
+  suelta → alcance persistido que siga existiendo → primer proyecto. Lo
+  persistido va **por debajo** de lo que se está trabajando: abrir Flujos
+  desde una conversación suelta abre esa conversación, no el primer proyecto
+  registrado. Un alcance que dejó de existir se sustituye, nunca se inventa.
+- Canvas horizontal con columnas en píxeles (como Boards): tarjetas de 300 px
+  con paso, tipo, estado (`pane-header-status[data-kind]`, misma paleta que
+  los paneles), título (encabezado del plan o primer mensaje), extracto,
+  progreso, duración, turnos, ejecutores (`ProviderLogo` por modelo) y
+  agentes, hasta 4 archivos + «+n», sesiones implicadas y turnos de origen
+  peer rotulados como procedencia. Separador «Ciclo n» entre ciclos. El
+  detalle (`FlowStageDetail`) es un drawer **dentro de la vista**
+  (`role="complementary"`, foco al abrir, Escape cierra), no un overlay.
+- «Ir al turno» / «Atender» reutilizan las primitivas de avisos: si la sesión
+  está en el board, `revealBoardAttention` (Boards, expandir, enfocar,
+  revelar). Si no, la sesión se **resuelve antes de cambiar de vista** con
+  `prepareSession`, y sólo cuando abre se activa, se va a Normal y se pide
+  `requestTurnReveal`, que deja la petición **en cola** para que `ChatView` la
+  consuma al montar esa sesión y la conserve hasta que la fila exista. El
+  Engine incluye a propósito sesiones cerradas y archivadas: ésas ofrecen
+  restaurar de forma explícita (`flow-restore`) y sólo después se abren; si no
+  se puede abrir, la vista se queda en Flujos y lo dice (`flow-nav-error`).
+  Nunca queda una petición de reveal sin consumidor. Revelar no marca leído.
+- Cada fila de sesión del detalle responde por **su** sesión (`isOnBoard`); la
+  acción principal de la etapa es la del anchor.
+- Refresco: `useFlow` escucha los dieciséis eventos que el Engine proyecta
+  (`FLOW_EVENT_TYPES`: `turn.*`, `model.started`, `model.content.completed`,
+  `agent.started`, `turn.changes.completed`, `verification.completed`,
+  `approval.*`, `question.*`), más `flow.invalidated` —restaurar un checkpoint
+  reescribe hechos sin producir ningún turno— y `session.moved`, que cambia la
+  pertenencia de dos alcances. Vuelve a pedir `flow.get` con 500 ms de
+  debounce y descarta respuestas de un alcance o una petición anteriores; una
+  respuesta con la misma `revision` no reemplaza el objeto mostrado.
+- **La pertenencia la decide el Engine**, no las etapas cargadas: `useFlow`
+  pregunta `session_list` del proyecto (cerradas y archivadas incluidas), así
+  que una sesión sin turnos también es miembro. Derivarla de las etapas tenía
+  dos caras del mismo fallo: un proyecto vacío no tenía miembros y aceptaba
+  eventos de cualquier sesión del Engine, y una sesión nueva del proyecto no
+  entraba hasta un refresco manual. Un id desconocido no se descarta ni se
+  acepta: se re-resuelve una vez y se recuerda la respuesta.
+- Un refresco fallido **no borra ni disfraza** lo leído: con datos en pantalla
+  el estado es «desactualizado» (`flow-stale`, con la hora de la última
+  lectura buena y reintento); el error sustituye a los datos sólo cuando no
+  hay datos.
+- La capability tiene tres estados. Mientras el Engine no está `ready` no se
+  sabe si ofrece flujos y se dice «comprobando» (`flow-checking`) sin llamar a
+  `flow.get`; `project_flow_v1` ausente da `flow-unsupported`. El botón y el
+  atajo siguen existiendo para que el aviso sea visible.
+- La lista de archivos por etapa está acotada por el Engine y no hay consulta
+  paginada del resto: el detalle declara «muestra parcial» con el total
+  exacto. Los ejecutores se resuelven por identidad canónica (`model_id`) y,
+  ante un alias ambiguo, se muestra la cadena cruda antes que atribuir las
+  llamadas a un modelo que quizá no corrió. Los extractos son texto inerte.
+- Movimiento reducido: cuenta la preferencia de la app **y** la del sistema
+  (`useFlowReducedMotion`), como en el resto del producto.
+
+Validación: `src/features/flow/FlowView.test.tsx` (FLOW-01…09, FLOW-11,
+F11-08/09/12/13), `src/features/flow/useFlow.test.tsx` (membresía,
+invalidación, revisión y desactualizado, separadas de las visuales),
+`src/features/flow/flowModel.test.ts` (identidad canónica y agrupación),
+`src/stores/ui.test.ts` (alcance por home),
+`src/components/ChatView.scroll.test.tsx` (FLOW-10, revelado en cola),
+`electron/main/ipc/security.test.ts` (`assertFlowScope`: exactamente un id,
+cadena vacía rechazada, claves ajenas rechazadas, cotas), y en el Engine
+`tests/unit/test_engine_flow.py`. Evidencia real en
+`docs/evidence/flows-2026-09-22/` (la de `flows-2026-09-18/` es anterior a la
+revisión M02 y queda como registro histórico).

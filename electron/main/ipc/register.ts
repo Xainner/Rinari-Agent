@@ -1,9 +1,9 @@
 /**
  * Registro de los canales IPC del main (documento 02 §3.1 y §6.1).
  *
- * El despachador genérico vive **aquí**, no en el preload: acepta solo métodos
- * de la allowlist del inventario de paridad y valida sus argumentos en
- * ejecución. No es una puerta pública para cualquier canal o método que
+ * El despachador genérico vive **aquí**, no en el preload: acepta solo
+ * comandos del inventario vigente (AGENTS.md, «Comandos e intenciones») y
+ * valida sus argumentos en ejecución. No es una puerta pública para cualquier canal o método que
  * llegue desde una página.
  *
  * Todo handler comprueba primero el emisor, y después los datos. Un fallo
@@ -25,12 +25,15 @@ import {
   type OpenExternalFileRequest,
   type OpenFilesRequest,
   type SystemNotificationRequest,
+  type FlowScopeRequest,
 } from '../../shared/contracts'
 import {
   ValidationError,
+  assertClipboardText,
   assertCommandName,
   assertCommandParams,
   assertFiniteNumber,
+  assertFlowScope,
   assertOpenableUrl,
   assertString,
 } from '../../shared/validation'
@@ -82,6 +85,7 @@ export interface HostServices {
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
   files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
+  clipboard: { writeText(text: string): void | Promise<void> }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
     support(): { canSend: boolean; canActivateTarget: boolean }
@@ -101,6 +105,8 @@ export interface HostServices {
     retry(): Promise<unknown>
   }
   handoff: { initial(): { project: string | null; session: string | null } }
+  /** Flujos de un proyecto o de una sesión (`project_flow_v1`). */
+  flow: { get(scope: FlowScopeRequest): Promise<unknown> }
   /**
    * Browser nativo (documento 03 §6.1). Intenciones, no primitivas: el
    * renderer no nombra una ventana, un `webContentsId` ni un método CDP.
@@ -215,6 +221,7 @@ function assertOpenExternal(value: unknown): OpenExternalFileRequest {
     turn_id: raw.turn_id === undefined || raw.turn_id === null ? undefined : assertString(raw.turn_id, 'turn_id', 128),
   }
 }
+
 
 function assertOpenFiles(value: unknown): OpenFilesRequest {
   if (value === undefined || value === null) return {}
@@ -334,6 +341,10 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, request) => services.files.openExternal(assertOpenExternal(request))),
     ],
     [
+      CHANNEL.clipboardWriteText,
+      guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
+    ],
+    [
       CHANNEL.contextMenuShow,
       guarded(registry, (_event, request) => services.contextMenu.show(assertContextMenu(request))),
     ],
@@ -371,6 +382,14 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     ],
     [CHANNEL.migrationRetry, guarded(registry, () => services.migration.retry())],
     [CHANNEL.initialOpenRequest, guarded(registry, () => services.handoff.initial())],
+
+    // Flujos. El renderer nombra un alcance, no un método del Engine: si
+    // pudiera nombrarlo, `command()` volvería a ser un `invoke` con otro
+    // nombre. Los ids se validan aquí, no se confía en el tipo de TypeScript.
+    [
+      CHANNEL.flowGet,
+      guarded(registry, (_event, scope) => services.flow.get(assertFlowScope(scope))),
+    ],
 
     // Browser nativo. Cada canal lleva una intención y nada más: no hay
     // passthrough de métodos, ni de canales, ni de identificadores del host.

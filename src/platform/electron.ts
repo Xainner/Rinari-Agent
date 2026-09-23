@@ -10,6 +10,7 @@
  * parezca funcionar.
  */
 
+import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
@@ -51,6 +52,7 @@ interface DesktopHostApi {
     onState(callback: (state: unknown) => void): Unsubscribe
   }
   /** Browser nativo. Los nombres van en snake_case: es el borde del puente. */
+  flow: { get(scope: unknown): Promise<unknown> }
   browser: {
     context(sessionId: string): Promise<NativeBrowserContext>
     prepare(sessionId: string): Promise<NativeBrowserContext>
@@ -102,6 +104,7 @@ interface DesktopHostApi {
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
   files: { openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void> }
+  clipboard: { writeText(text: string): Promise<void> }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
 
@@ -153,6 +156,10 @@ export const electronBridge: DesktopBridge = {
     openExternal: (input) => required().files.openExternal(input),
   },
 
+  clipboard: {
+    writeText: (text) => required().clipboard.writeText(text),
+  },
+
   events: {
     onEngineEvent: (callback) => ready(required().engine.onEvent(callback)),
     onMenuAction: (callback) => ready(required().menu.onAction(callback)),
@@ -161,6 +168,12 @@ export const electronBridge: DesktopBridge = {
 
   window: {
     clampToWorkArea: () => required().window.clampToWorkArea(),
+  },
+
+  // Flujos: se delega tal cual. Quien valida el alcance es main, que es el
+  // lado que no se puede modificar desde el renderer.
+  flow: {
+    get: (scope) => required().flow.get(scope) as Promise<FlowResult>,
   },
 
   // Browser nativo: se delega tal cual. El adaptador no añade lógica porque

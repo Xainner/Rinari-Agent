@@ -17,6 +17,7 @@ import {
   Pencil,
   Pin,
   Search,
+  Workflow,
 } from 'lucide-react'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
@@ -24,6 +25,7 @@ import { buildWorkspaceModel, projectDisplayName, groupRecentChats } from '../..
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
+import { copyText } from '../../lib/clipboard'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +71,8 @@ export interface AppSidebarProps {
   boardSignalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
   /** Añade la sesión al board (o la enfoca) y va a Boards. */
   onOpenInBoard?: (id: string) => void
+  /** Abre Flujos con ese alcance (proyecto o conversación). */
+  onViewFlow?: (scope: { kind: 'project' | 'session'; id: string }) => void
   onSelectSession: (id: string) => void
   /** Ir al home del proyecto (vista workspace). */
   onOpenProject: (root: string) => void
@@ -128,6 +132,7 @@ export function AppSidebar({
   boardSessionIds,
   boardSignalBySession,
   onOpenInBoard,
+  onViewFlow,
   onSelectSession,
   onOpenProject,
   onCloseSession,
@@ -315,12 +320,12 @@ export function AppSidebar({
             <DropdownMenuContent align="end" className="w-48">
               <div className="px-2.5 py-1.5 font-mono text-[10px] break-all text-[var(--text-subtle)]">{session.id}</div>
               <DropdownMenuItem onSelect={() => {
-                void navigator.clipboard.writeText(session.id).then(() => toast.success('ID de sesión copiado')).catch(() => toast.error('No se pudo copiar el ID de sesión'))
-              }}><Copy size={13} /> Copiar ID de sesión</DropdownMenuItem>
+                void copyText(session.id).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
+              }}><Copy size={13} /> {t('sidebar.copySessionId')}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => {
                 const reference = `Sesión: ${session.id}\nTítulo: ${sessionLabel(session, t('sidebar.newChat'))}${session.project_id ? `\nProyecto: ${session.project_id}` : ''}${session.project_root ? `\nWorkspace: ${session.project_root}` : ''}`
-                void navigator.clipboard.writeText(reference).then(() => toast.success('Referencia de sesión copiada')).catch(() => toast.error('No se pudo copiar la referencia'))
-              }}><Copy size={13} /> Copiar referencia</DropdownMenuItem>
+                void copyText(reference).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionReferenceCopied' : 'sidebar.sessionReferenceCopyFailed')))
+              }}><Copy size={13} /> {t('sidebar.copySessionReference')}</DropdownMenuItem>
               {opts?.closed ? (
                 <DropdownMenuItem onSelect={() => onRestoreSession(session.id)}>
                   <ArchiveRestore size={13} /> {t('sidebar.restore')}
@@ -339,6 +344,9 @@ export function AppSidebar({
                   </DropdownMenuSubContent></DropdownMenuSub>}
                   {onOpenInBoard && <DropdownMenuItem onSelect={() => onOpenInBoard(session.id)}>
                     <Columns3 size={13} /> {t('sidebar.openInBoard')}
+                  </DropdownMenuItem>}
+                  {onViewFlow && <DropdownMenuItem onSelect={() => onViewFlow(session.project_id && session.kind === 'PROJECT' ? { kind: 'project', id: session.project_id } : { kind: 'session', id: session.id })}>
+                    <Workflow size={13} /> {t('sidebar.viewFlow')}
                   </DropdownMenuItem>}
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
                     <GitFork size={13} /> {t('sidebar.fork')}
@@ -478,6 +486,9 @@ export function AppSidebar({
                     <DropdownMenuItem onSelect={() => onUpdateProject(project.id, { pinned: !project.pinned })}>
                       <Pin size={13} /> {project.pinned ? t('project.unpin') : t('project.pin')}
                     </DropdownMenuItem>
+                    {onViewFlow && <DropdownMenuItem onSelect={() => onViewFlow({ kind: 'project', id: project.id })}>
+                      <Workflow size={13} /> {t('sidebar.viewFlow')}
+                    </DropdownMenuItem>}
                     <DropdownMenuItem onSelect={() => onOpenProject(project.root)}>
                       <Pencil size={13} /> {t('project.edit')}
                     </DropdownMenuItem>

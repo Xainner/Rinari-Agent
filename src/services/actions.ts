@@ -27,6 +27,7 @@ export type DesktopAction =
   // solo el atajo alterna.
   | 'view-normal'
   | 'view-boards'
+  | 'view-flows'
   | 'toggle-boards'
   // Boards: colapso, modo foco y lectura masiva. Destino estable: el store
   // del board; tarjetas, menú y paleta despachan lo mismo.

@@ -12,6 +12,8 @@ dist
 dist-ssr
 # Bundles de main y preload del host Electron
 dist-electron
+m03-dist/
+m03-evidence/
 *.local
 src-tauri/target
 src-tauri/target-*/
@@ -52,3 +54,6 @@ fixes/
 # Python packaging helpers
 __pycache__/
 *.py[cod]
+
+evidence-dist/
+evidence/

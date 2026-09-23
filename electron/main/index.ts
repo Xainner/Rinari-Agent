@@ -6,7 +6,7 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, dialog, shell } from 'electron'
+import { app, protocol, BrowserWindow, Menu, clipboard, dialog, shell } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -27,7 +27,7 @@ import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
 import { createUpdates } from './updates/createUpdates'
-import { clampToWorkArea, createMainWindow } from './window'
+import { clampToWorkArea, createMainWindow, focusExistingWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
@@ -190,6 +190,24 @@ function retirePresentation(sessionId: string): void {
 }
 
 /**
+ * Flujos (`project_flow_v1`).
+ *
+ * El renderer manda un alcance; main lo traduce al método del Engine. No hay
+ * forma de nombrar el método desde el otro lado: si la hubiera, `command()`
+ * volvería a ser un `invoke` con otro nombre.
+ */
+function flowServices(): HostServices['flow'] {
+  return {
+    get: (scope) =>
+      engine.request('flow.get', {
+        project_id: scope.project_id ?? null,
+        session_id: scope.session_id ?? null,
+        ...(scope.before ? { before: scope.before } : {}),
+      }),
+  }
+}
+
+/**
  * Servicios del browser nativo (documento 03 §6.1).
  *
  * Todo lo que el renderer puede pedir está aquí, y es intención: metadata,
@@ -328,6 +346,7 @@ function buildServices(): HostServices {
   const getWindow = () => mainWindow
   return {
     browser: browserServices(),
+    flow: flowServices(),
     engine: {
       status: () => engine.status(),
       start: () => engine.start(),
@@ -375,6 +394,9 @@ function buildServices(): HostServices {
         const failure = await shell.openPath(approved)
         if (failure) throw new EngineCommandError('HOST_ERROR', failure)
       },
+    },
+    clipboard: {
+      writeText: (text) => clipboard.writeText(text),
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -719,6 +741,36 @@ function attachParityProbe(window: BrowserWindow): void {
 }
 
 /**
+ * Copia por el camino del producto: renderer → `window.rinariDesktop` →
+ * preload → IPC validado → `electron.clipboard`. En la app instalada (el smoke
+ * del CI) esto prueba la copia en el paquete, no sólo en desarrollo (M03 §8).
+ *
+ * Sólo se hace si se pide con `RINARI_SMOKE_CLIPBOARD=1`, y lo pide el CI,
+ * cuyo portapapeles es desechable. En la máquina de alguien no se toca porque
+ * no se puede devolver entero: `clipboard.read()` no ve todos los formatos (en
+ * Windows, el «HTML Format» de otra aplicación no aparece), así que guardar lo
+ * visible y restaurarlo perdía el resto en silencio.
+ */
+async function smokeClipboard(
+  window: BrowserWindow,
+): Promise<{ ok: boolean; skipped?: string; error?: string }> {
+  if (process.env.RINARI_SMOKE_CLIPBOARD !== '1') {
+    return { ok: true, skipped: 'RINARI_SMOKE_CLIPBOARD is not 1; clipboard left untouched' }
+  }
+  const marker = `rinari-smoke-${process.pid}-${Date.now()}`
+  try {
+    await window.webContents.executeJavaScript(
+      `window.rinariDesktop.clipboard.writeText(${JSON.stringify(marker)})`,
+    )
+    return { ok: (await clipboard.readText()) === marker }
+  } catch (error) {
+    return { ok: false, error: String(error) }
+  } finally {
+    clipboard.clear()
+  }
+}
+
+/**
  * Smoke de arranque (documento 02 §8): comprueba que el host abre de verdad y
  * que el renderer carga por el esquema propio con el puente puesto, y termina.
  * No sustituye a la matriz de paridad; solo evita declarar «Electron funciona»
@@ -733,7 +785,12 @@ function attachSmoke(window: BrowserWindow): void {
     report(false, { stage: 'load', code, description, url })
   })
   window.webContents.on('did-finish-load', () => {
-    void window.webContents
+    void (async () => {
+      const deadline = Date.now() + 5_000
+      while (!window.isVisible() && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 25))
+      }
+      return window.webContents
       .executeJavaScript(
         `({
            bridge: typeof window.rinariDesktop,
@@ -742,10 +799,19 @@ function attachSmoke(window: BrowserWindow): void {
            origin: window.location.origin,
            root: Boolean(document.getElementById('root')),
          })`,
-      )
-      .then((probe: Record<string, unknown>) => {
+      ) as Promise<Record<string, unknown>>
+    })()
+      .then(async (probe: Record<string, unknown>) => {
+        const visible = window.isVisible()
+        const maximized = window.isMaximized()
+        // En Linux bajo xvfb no hay gestor de ventanas: maximizar no deja estado
+        // y `isMaximized()` da false aunque todo esté bien. Se exige donde el
+        // sistema lo garantiza y en Linux sólo se informa.
+        const maximizeRequired = process.platform !== 'linux'
+        const copy = await smokeClipboard(window)
         const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false
-        report(ok, { stage: 'renderer', ...probe, engine: engine.status().state })
+          && visible && (maximized || !maximizeRequired) && copy.ok
+        report(ok, { stage: 'renderer', ...probe, visible, maximized, maximizeRequired, clipboard: copy, engine: engine.status().state })
       })
       .catch((error: unknown) => report(false, { stage: 'probe', error: String(error) }))
   })
@@ -757,10 +823,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', (_event, argv) => {
     handoff.push(parseOpenRequest(argv, app.isPackaged ? 1 : 2))
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+    if (mainWindow) focusExistingWindow(mainWindow)
   })
 
   void app.whenReady().then(() => {

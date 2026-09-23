@@ -8,6 +8,8 @@ import { useReadTracking } from '../board/useResultVisibility'
 import { cn } from '../../lib/utils'
 import { usePrepareRetry } from './usePrepareRetry'
 import type { TurnTimeline } from './types'
+import { presentedChangeSets } from './changeSetPresentation'
+import TokenUsage from './TokenUsageIndicator'
 
 export interface TurnMetaProps {
   timeline: TurnTimeline
@@ -49,13 +51,13 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
   if (!outcome) return null
 
   const unread = receipt?.state === 'unread'
-  const changeset = [...timeline.items].reverse().find((item) => item.type === 'changeset')
-  const filesChanged = changeset && changeset.type === 'changeset' ? changeset.files.length : null
+  const { latest: changeset, emptyPartial } = presentedChangeSets(timeline)
+  const filesChanged = changeset?.files.length ?? null
   const duration = timeline.completedAt !== undefined && timeline.startedAt > 0 ? Math.max(0, timeline.completedAt - timeline.startedAt) : null
   const finalItem = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
   const executor = finalItem && finalItem.type === 'model' ? finalItem.model ?? null : null
   const retryable = outcome === 'failed' || outcome === 'stopped' || outcome === 'cancelled'
-  if (!emphasis && !unread && filesChanged === null && !retryable) return null
+  if (!emphasis && !unread && filesChanged === null && !retryable && !timeline.usage) return null
 
   return (
     <div
@@ -67,8 +69,10 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
     >
       <span className="turn-meta-outcome">{t(`board.result.outcome.${outcome}`)}</span>
       {duration !== null && <><span aria-hidden="true">·</span><span>{elapsedLabel(duration)}</span></>}
+      {timeline.usage && <><span aria-hidden="true">·</span><TokenUsage usage={timeline.usage} /></>}
       {actions > 0 && <><span aria-hidden="true">·</span><span>{actions} {lang === 'es' ? 'acciones' : 'actions'}</span></>}
       {filesChanged !== null && <><span aria-hidden="true">·</span><span>{t('board.result.files', { n: filesChanged })}</span></>}
+      {emptyPartial.length > 0 && <><span aria-hidden="true">·</span><span>{t('changes.coverage.meta')}</span></>}
       {executor && <><span aria-hidden="true">·</span><span>{t('board.result.model', { model: executor })}</span></>}
       {outcome === 'stopped' && timeline.stopReason && <><span aria-hidden="true">·</span><span>{timeline.stopReason.message}</span></>}
       {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}

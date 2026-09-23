@@ -25,7 +25,7 @@ const HOST_ONLY = new Set([
   'workspace_file_open',
 ])
 
-describe('contrato de traducción conservado tras el cutover', () => {
+describe('inventario de comandos: traducción al Engine', () => {
   it('cada comando tiene método del protocolo o es explícitamente del host', () => {
     expect(contract.commands
       .filter((row) => !row.engine_method && !HOST_ONLY.has(row.command))

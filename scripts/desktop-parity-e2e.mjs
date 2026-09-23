@@ -32,8 +32,21 @@ if (!existsSync(join(CLI, 'pyproject.toml'))) {
 
 // Home temporal: la prueba no toca los datos del usuario.
 const home = mkdtempSync(join(tmpdir(), 'rinari-parity-'))
+// El perfil temporal se conserva sólo si la ejecución falla, que es cuando
+// sirve para diagnosticar; si no, se acumularía uno por ejecución.
+process.on('exit', (code) => {
+  if (code !== 0) {
+    console.error(`Perfil aislado conservado en ${home}`)
+    return
+  }
+  try {
+    rmSync(home, { recursive: true, force: true })
+  } catch (error) {
+    console.error(`No se pudo borrar el perfil ${home}: ${error.message}`)
+  }
+})
 const electronBin = (await import('electron')).default
-const child = spawn(electronBin, [MAIN], {
+const child = spawn(electronBin, [MAIN, `--user-data-dir=${join(home, 'profile')}`], {
   cwd: ROOT,
   env: {
     ...process.env,
@@ -53,13 +66,11 @@ child.stderr.on('data', (chunk) => (output += chunk.toString()))
 const timer = setTimeout(() => {
   child.kill()
   console.error('la sonda no reportó en 240 s; salida:\n' + output.slice(-3000))
-  rmSync(home, { recursive: true, force: true })
   process.exit(1)
 }, 240_000)
 
 child.on('exit', () => {
   clearTimeout(timer)
-  rmSync(home, { recursive: true, force: true })
   const line = output.split('\n').find((entry) => entry.startsWith('RINARI_PARITY '))
   if (!line) {
     console.error('el host no reportó; salida:\n' + output.slice(-3000))
@@ -82,6 +93,15 @@ child.on('exit', () => {
     problems.push(`el turno no alcanzó un estado terminal: ${events.join(', ')}`)
   }
 
+  // `flow.get` es un intent de `src/platform`, no un comando del inventario, y
+  // se le exige proyectar el turno que acaba de correr: aceptar la llamada y
+  // devolver una proyección vacía sería indistinguible de que funcione.
+  const flow = report.flow
+  if (!flow) problems.push('la sonda no informó de flow.get')
+  else if (flow.error) problems.push(`flow.get: ${flow.error}`)
+  else if (flow.turns < 1) problems.push('flow.get respondió sin el turno que acababa de correr')
+  else if (!flow.revision) problems.push('flow.get respondió sin revisión')
+
   if (problems.length) {
     console.error('\nparidad fallida:')
     for (const problem of problems) console.error(`  ${problem}`)
@@ -90,5 +110,9 @@ child.on('exit', () => {
   console.log(
     `\n${report.calls.length} comandos de los doce módulos respondieron por el puente, y un turno real ` +
       `recorrió ${events.join(' → ')} contra un proveedor falso.`,
+  )
+  console.log(
+    `flow.get proyectó el ámbito ${flow.scope} con ${flow.stages} etapa(s), ` +
+      `${flow.turns} turno(s) —${flow.turns_failed} fallido(s)— y revisión ${flow.revision}.`,
   )
 })

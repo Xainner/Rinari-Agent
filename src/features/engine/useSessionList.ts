@@ -23,6 +23,8 @@ export interface CreateSessionOptions {
   title?: string
 }
 
+export type HistoryPhase = 'unloaded' | 'loading' | 'loaded' | 'error'
+
 const EMPTY_SEARCH = { root: '', files: [] as Array<{ path: string; relative_path: string; name: string }> }
 
 /**
@@ -59,11 +61,11 @@ export function useSessionList(options: {
   const historyLoaded = useRef(new Set<string>())
   /** Un refresco obsoleto que resuelve tarde no debe sobrescribir uno más nuevo. */
   const refreshSeq = useRef(0)
-  /** Cargas de historial en curso por sesión (estado: la UI distingue
-   * "cargando" de "vacía" y no muestra el home de forma transitoria). */
-  const [historyPending, setHistoryPending] = useState<Record<string, boolean>>({})
+  /** Estado autoritativo de hidratación por sesión. Vacío no significa cargado. */
+  const [historyPhases, setHistoryPhases] = useState<Record<string, HistoryPhase>>({})
   /** Cargas de historial en vuelo, compartidas entre callers. */
   const historyInFlight = useRef(new Map<string, Promise<void>>())
+  const historyRequests = useRef(new Map<string, symbol>())
   /** Preparaciones en vuelo, compartidas entre la vista Normal y los paneles. */
   const prepareInFlight = useRef(new Map<string, Promise<PrepareSessionResult>>())
   /** Generación de selección Normal: una respuesta tardía no revierte una selección posterior. */
@@ -73,14 +75,18 @@ export function useSessionList(options: {
   useEffect(() => {
     if (generationRef.current === engineGeneration) return
     generationRef.current = engineGeneration
+    ++selectionGeneration.current
     historyLoaded.current.clear()
     historyInFlight.current.clear()
+    historyRequests.current.clear()
     prepareInFlight.current.clear()
+    setHistoryPhases({})
+    setHistoryInfo({})
   }, [engineGeneration])
 
-  const clearHistoryPending = useCallback((id: string) => {
-    setHistoryPending((prev) => {
-      if (!prev[id]) return prev
+  const clearHistoryPhase = useCallback((id: string) => {
+    setHistoryPhases((prev) => {
+      if (!(id in prev)) return prev
       const next = { ...prev }
       delete next[id]
       return next
@@ -93,7 +99,7 @@ export function useSessionList(options: {
    * para cambios de sesión Normal (ver select/restore/fork/create). */
   const activate = useCallback((id: string) => {
     if (id !== '' && !historyLoaded.current.has(id)) {
-      setHistoryPending((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
+      setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
     }
     setActiveSession(id)
   }, [])
@@ -133,6 +139,13 @@ export function useSessionList(options: {
       const { visible, closed, archived } = partitionSessions(result.sessions)
       const normalized = visible
       rememberRows(result.sessions)
+      setHistoryPhases((current) => {
+        const next = { ...current }
+        for (const row of result.sessions) {
+          if (!(row.id in next) && !historyLoaded.current.has(row.id)) next[row.id] = 'unloaded'
+        }
+        return next
+      })
       setRecentSessionIds(normalized.map((item) => item.id))
       setClosedSessions(closed)
       setArchivedSessions(archived)
@@ -155,13 +168,18 @@ export function useSessionList(options: {
       if (!id) return Promise.resolve()
       if (historyLoaded.current.has(id)) return historyInFlight.current.get(id) ?? Promise.resolve()
       historyLoaded.current.add(id)
-      setHistoryPending((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
+      const generation = generationRef.current
+      const request = Symbol(id)
+      historyRequests.current.set(id, request)
+      const isCurrent = () => generationRef.current === generation && historyRequests.current.get(id) === request
+      setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
       const job = (async () => {
         try {
           const [history, timeline] = await Promise.all([
             engineApi.sessionHistory(id),
             timelineEnabled ? engineApi.sessionTimeline(id).catch(() => null) : Promise.resolve(null),
           ])
+          if (!isCurrent()) return
           setHistoryInfo((prev) => ({
             ...prev,
             [id]: { total: history.total, hasMore: history.has_more },
@@ -170,24 +188,33 @@ export function useSessionList(options: {
           // Lo vivo siempre gana a un fetch de historial que llega tarde.
           dispatch({ type: 'history/loaded', sessionId: id, messages: persisted })
           if (timeline) dispatch({ type: 'timeline/loaded', sessionId: id, turns: timeline.turns })
+          setHistoryPhases((prev) => ({ ...prev, [id]: 'loaded' }))
         } catch (err) {
+          if (!isCurrent()) return
           historyLoaded.current.delete(id)
+          setHistoryPhases((prev) => ({ ...prev, [id]: 'error' }))
           toast.error(commandMessage(err))
-        } finally {
-          historyInFlight.current.delete(id)
-          clearHistoryPending(id)
         }
       })()
       historyInFlight.current.set(id, job)
+      void job.finally(() => {
+        if (historyInFlight.current.get(id) === job) historyInFlight.current.delete(id)
+      })
       return job
     },
-    [clearHistoryPending, dispatch, timelineEnabled],
+    [dispatch, timelineEnabled],
   )
+
+  const retrySessionHistory = useCallback((id: string): Promise<void> => {
+    historyLoaded.current.delete(id)
+    historyInFlight.current.delete(id)
+    return loadSessionHistory(id)
+  }, [loadSessionHistory])
 
   useEffect(() => {
     if (!engineReady || activeSession === '') return
     void loadSessionHistory(activeSession)
-  }, [engineReady, activeSession, loadSessionHistory])
+  }, [engineReady, activeSession, engineGeneration, loadSessionHistory])
 
   const reportWarnings = useCallback((id: string, opened: { session: SessionSummary; warnings?: string[] }) => {
     for (const warning of new Set(opened.warnings ?? [])) {
@@ -230,6 +257,8 @@ export function useSessionList(options: {
     (id: string): Promise<PrepareSessionResult> => {
       const pending = prepareInFlight.current.get(id)
       if (pending) return pending
+      const generation = generationRef.current
+      const stale = (): PrepareSessionResult => ({ ok: false, reason: 'unavailable', message: 'Engine restarted' })
       const job = (async (): Promise<PrepareSessionResult> => {
         let row: SessionSummary
         try {
@@ -240,14 +269,17 @@ export function useSessionList(options: {
           }
           return { ok: false, reason: 'unavailable', message: commandMessage(err) }
         }
+        if (generationRef.current !== generation) return stale()
         rememberRows([row])
         if (row.state === 'closed') return { ok: false, reason: 'closed', message: row.title ?? row.id }
         if (row.state === 'archived') return { ok: false, reason: 'archived', message: row.title ?? row.id }
         try {
           const opened = await engineApi.openSession(id)
+          if (generationRef.current !== generation) return stale()
           rememberOpened(opened)
           reportWarnings(id, opened)
           await loadSessionHistory(id)
+          if (generationRef.current !== generation) return stale()
           return { ok: true, session: opened.session }
         } catch (err) {
           return { ok: false, reason: 'unavailable', message: commandMessage(err) }
@@ -267,23 +299,26 @@ export function useSessionList(options: {
     async (id: string): Promise<void> => {
       const previous = activeSession
       const generation = ++selectionGeneration.current
+      const engine = generationRef.current
       activate(id)
       try {
         const opened = await engineApi.openSession(id)
+        if (generationRef.current !== engine) return
         rememberOpened(opened)
         reportWarnings(id, opened)
       } catch (err) {
+        if (generationRef.current !== engine) return
         // A stale failure must not undo a newer selection.
         if (selectionGeneration.current === generation) {
           setActiveSession(previous)
-          clearHistoryPending(id)
+          clearHistoryPhase(id)
         }
         toast.error(commandMessage(err))
         return
       }
       await loadSessionHistory(id)
     },
-    [activate, activeSession, clearHistoryPending, loadSessionHistory, rememberOpened, reportWarnings],
+    [activate, activeSession, clearHistoryPhase, loadSessionHistory, rememberOpened, reportWarnings],
   )
 
   const createSession = useCallback(async (projectId?: string, options: CreateSessionOptions = {}): Promise<string | null> => {
@@ -299,6 +334,7 @@ export function useSessionList(options: {
       rememberRows([result.session])
       setRecentSessionIds((current) => [result.session.id, ...current.filter((item) => item !== result.session.id)])
       historyLoaded.current.add(result.session.id)
+      setHistoryPhases((current) => ({ ...current, [result.session.id]: 'loaded' }))
       if (shouldActivate) activate(result.session.id)
       void refreshSessions()
       return result.session.id
@@ -431,11 +467,12 @@ export function useSessionList(options: {
     sessionsLoaded,
     sessionsError,
     historyInfo,
-    historyPending,
+    historyPhases,
     closedSessions,
     archivedSessions,
     refreshSessions,
     loadSessionHistory,
+    retrySessionHistory,
     ensureHistoryLoaded: loadSessionHistory,
     prepareSession,
     selectSession,

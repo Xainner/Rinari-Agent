@@ -19,6 +19,7 @@
     "desktop:start": "electron dist-electron/main.cjs",
     "desktop:smoke": "node scripts/desktop-smoke.mjs",
     "desktop:parity": "node scripts/desktop-parity-e2e.mjs",
+    "desktop:m03": "node scripts/m03-regression.mjs",
     "protocol:generate": "node scripts/generate-protocol.mjs",
     "protocol:check": "node scripts/generate-protocol.mjs --check",
     "parity:inventory": "node scripts/desktop-parity.mjs",

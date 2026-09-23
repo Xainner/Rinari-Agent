@@ -1,7 +1,9 @@
 import type { I18nKey } from '../../i18n'
+import { useEffect, useState } from 'react'
+import { engineApi } from '../../services/engine'
 import type { ProviderBrandId } from '../../lib/providerBrand'
 
-export type ProviderAuth = 'api-key' | 'none'
+export type ProviderAuth = 'api-key' | 'none' | 'oauth'
 
 export interface ProviderPreset {
   id: string
@@ -12,6 +14,9 @@ export interface ProviderPreset {
   auth: ProviderAuth
   /** Marca con asset en public/logos; ausente cuando no existe logo. */
   brand?: ProviderBrandId
+  name?: string
+  experimental?: boolean
+  authMethods?: ProviderAuth[]
 }
 
 /**
@@ -113,3 +118,22 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     auth: 'api-key',
   },
 ]
+
+/** Legacy fallback for engines that predate catalog negotiation. */
+export function useProviderPresets() {
+  const [presets, setPresets] = useState(PROVIDER_PRESETS)
+  useEffect(() => {
+    let active = true
+    void engineApi.providerCatalog().then(({ presets: remote }) => {
+      if (!active) return
+      setPresets(remote.filter(p => p.enabled).map(p => ({
+        id: p.id, name: p.name, nameKey: 'providers.presetCustom', descKey: 'providers.presetCustomDesc',
+        provider_type: p.provider_type as ProviderPreset['provider_type'], endpoint: p.endpoint,
+        auth: p.auth_methods[0] as ProviderAuth, authMethods: p.auth_methods as ProviderAuth[],
+        experimental: p.experimental, brand: PROVIDER_PRESETS.find(local => local.id === p.id)?.brand,
+      })))
+    }).catch(() => { /* Old engines retain their existing API-key wizard. */ })
+    return () => { active = false }
+  }, [])
+  return presets
+}

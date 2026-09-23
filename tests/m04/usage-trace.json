@@ -1,0 +1,47 @@
+[
+  {
+    "input_tokens": 10840,
+    "output_tokens": 0,
+    "total_tokens": 10840,
+    "model_calls": 1,
+    "phase": "thinking",
+    "source": "estimated",
+    "revision": 1
+  },
+  {
+    "input_tokens": 11000,
+    "output_tokens": 500,
+    "total_tokens": 11500,
+    "model_calls": 1,
+    "phase": "thinking",
+    "source": "reported",
+    "revision": 4
+  },
+  {
+    "input_tokens": 21915,
+    "output_tokens": 500,
+    "total_tokens": 22415,
+    "model_calls": 2,
+    "phase": "thinking",
+    "source": "mixed",
+    "revision": 5
+  },
+  {
+    "input_tokens": 13500,
+    "output_tokens": 700,
+    "total_tokens": 14200,
+    "model_calls": 2,
+    "phase": "thinking",
+    "source": "reported",
+    "revision": 8
+  },
+  {
+    "input_tokens": 13500,
+    "output_tokens": 700,
+    "total_tokens": 14200,
+    "model_calls": 2,
+    "phase": "settled",
+    "source": "reported",
+    "revision": 9
+  }
+]

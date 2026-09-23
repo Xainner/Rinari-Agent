@@ -41,6 +41,8 @@ export interface SessionWorkspaceProps {
   sharedRoot?: boolean
   /** El Engine anuncia `browser_view_v1`; sin capability no se consulta. */
   browserEnabled?: boolean
+  /** Generación del Engine: al cambiar, el visor vuelve a inscribir sus watches. */
+  engineGeneration?: number
   /** La sesión ejecuta un turno: al terminar se sondea el navegador una vez. */
   busy?: boolean
 }
@@ -54,7 +56,7 @@ export interface SessionWorkspaceProps {
  * drawer dentro de este contenedor: no reaparece ninguna superficie flotante
  * global.
  */
-export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, busy = false }: SessionWorkspaceProps) {
+export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, busy = false, engineGeneration }: SessionWorkspaceProps) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
@@ -176,7 +178,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   }, [browser.connectedInstance, focused, reveal, sessionId])
 
   return (
-    <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile}>
+    <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? dockLayout : 'hidden'}>
         <div className="session-workspace-chat">{children}</div>
         {layout.visible && (

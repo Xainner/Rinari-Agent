@@ -82,6 +82,15 @@ child.on('exit', () => {
     problems.push(`el turno no alcanzó un estado terminal: ${events.join(', ')}`)
   }
 
+  // `flow.get` es un intent de `src/platform`, no un comando del inventario, y
+  // se le exige proyectar el turno que acaba de correr: aceptar la llamada y
+  // devolver una proyección vacía sería indistinguible de que funcione.
+  const flow = report.flow
+  if (!flow) problems.push('la sonda no informó de flow.get')
+  else if (flow.error) problems.push(`flow.get: ${flow.error}`)
+  else if (flow.turns < 1) problems.push('flow.get respondió sin el turno que acababa de correr')
+  else if (!flow.revision) problems.push('flow.get respondió sin revisión')
+
   if (problems.length) {
     console.error('\nparidad fallida:')
     for (const problem of problems) console.error(`  ${problem}`)
@@ -90,5 +99,9 @@ child.on('exit', () => {
   console.log(
     `\n${report.calls.length} comandos de los doce módulos respondieron por el puente, y un turno real ` +
       `recorrió ${events.join(' → ')} contra un proveedor falso.`,
+  )
+  console.log(
+    `flow.get proyectó el ámbito ${flow.scope} con ${flow.stages} etapa(s), ` +
+      `${flow.turns} turno(s) —${flow.turns_failed} fallido(s)— y revisión ${flow.revision}.`,
   )
 })

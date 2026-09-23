@@ -510,11 +510,9 @@ export const engineApi = {
   /**
    * Etapas de un proyecto o de una sesión (`project_flow_v1`).
    *
-   * Va por la **intención** `flow.get` y no por `command()`: los nombres que
-   * `command()` acepta son el inventario de paridad capturado de Tauri 0.1.3,
-   * y `flow_get` no existía entonces. Añadirlo a esa captura sería afirmar un
-   * comando que nunca hubo; el camino de una capacidad nueva es una intención
-   * estrecha, igual que el browser nativo.
+   * Va por la **intención** `flow.get` y no por `command()`: main valida el
+   * alcance campo a campo, y la vía de comandos todavía sólo valida nombre y
+   * forma de los parámetros (AGENTS.md, «Comandos e intenciones»).
    *
    * `before` pide el tramo anterior cuando la respuesta truncó.
    */

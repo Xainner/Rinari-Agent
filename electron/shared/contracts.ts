@@ -41,10 +41,11 @@ export const CHANNEL = {
   // presentación, pestaña, control y navegación autorizada. **No** hay canal
   // para `host.browser.*` ni para `debugger.sendCommand`: el broker es de
   // main, y una respuesta suya no es un permiso que el renderer pueda guardar.
-  // Flujos (`project_flow_v1`). Va como intención y **no** como
-  // `DesktopCommand`: el inventario de comandos es la captura histórica de
-  // Tauri 0.1.3, y `flow.get` no existía entonces. Añadirlo allí sería
-  // afirmar un comando que nunca hubo.
+  // Flujos (`project_flow_v1`). Por la regla de AGENTS.md es una llamada al
+  // Engine y podría ir en el inventario de comandos; va como intención porque
+  // main valida su alcance campo a campo (`assertFlowScope`), cosa que la vía
+  // de comandos todavía no hace. Cuando el schema del Engine declare los
+  // parámetros de cada método, puede pasar al inventario.
   flowGet: 'rinari:flow.get',
   browserContext: 'rinari:browser.context',
   browserPrepare: 'rinari:browser.prepare',

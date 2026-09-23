@@ -1,9 +1,9 @@
 /**
  * Registro de los canales IPC del main (documento 02 §3.1 y §6.1).
  *
- * El despachador genérico vive **aquí**, no en el preload: acepta solo métodos
- * de la allowlist del inventario de paridad y valida sus argumentos en
- * ejecución. No es una puerta pública para cualquier canal o método que
+ * El despachador genérico vive **aquí**, no en el preload: acepta solo
+ * comandos del inventario vigente (AGENTS.md, «Comandos e intenciones») y
+ * valida sus argumentos en ejecución. No es una puerta pública para cualquier canal o método que
  * llegue desde una página.
  *
  * Todo handler comprueba primero el emisor, y después los datos. Un fallo

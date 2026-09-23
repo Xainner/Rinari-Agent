@@ -6,6 +6,8 @@ import MessageBubble from '../../components/MessageBubble'
 import { useResultVisibility } from '../board/useResultVisibility'
 import { ChangeSetRow } from './ChangeSetRow'
 import type { TurnTimeline } from './types'
+import { presentedChangeSets } from './changeSetPresentation'
+import { CoverageWarning } from './CoverageWarning'
 
 export interface TurnResultProps {
   timeline: TurnTimeline
@@ -32,11 +34,11 @@ const ACTIVE = new Set(['running', 'approval', 'cancelling'])
 function TurnResult({ timeline, planActions }: TurnResultProps) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
-  const changeSets = timeline.items.filter((item) => item.type === 'changeset')
+  const { changes: changeSets, emptyPartial } = presentedChangeSets(timeline)
   const terminal = TERMINAL.has(timeline.status)
   const ref = useResultVisibility(timeline.turnId, terminal)
   const failed = timeline.status === 'failed'
-  if (!final && changeSets.length === 0 && !failed) return null
+  if (!final && changeSets.length === 0 && emptyPartial.length === 0 && !failed) return null
   return (
     <div ref={ref} data-testid="turn-result" data-turn-id={timeline.turnId} data-status={timeline.status} className="space-y-3">
       {final?.type === 'model' && (timeline.mode === 'plan'
@@ -49,6 +51,7 @@ function TurnResult({ timeline, planActions }: TurnResultProps) {
         )
         : <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />)}
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={ACTIVE.has(timeline.status)} />)}
+      {emptyPartial.length > 0 && <CoverageWarning warnings={emptyPartial.flatMap(item => item.warnings)} />}
       {failed && (
         <div role="alert" className="flex items-center gap-2 py-1 text-[13px] text-red-400">
           <CircleAlert size={13} />{timeline.error || (lang === 'es' ? 'El turno falló' : 'Turn failed')}

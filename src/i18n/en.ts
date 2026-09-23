@@ -1,6 +1,14 @@
 import type { I18nKey } from './es'
 
 export const en: Record<I18nKey, string> = {
+  'changes.coverage.empty': 'No file changes were observed.',
+  'changes.coverage.partial': 'Coverage was partial for an operation capable of modifying files.',
+  'changes.coverage.details': 'Coverage details',
+  'changes.coverage.withFiles': 'These changes were observed, but coverage was partial; other unattributed changes may exist.',
+  'changes.coverage.meta': 'partial change coverage',
+  'changes.coverage.shell': 'A command or process may have modified paths outside the bounded observation.',
+  'changes.coverage.budget': 'The workspace scan exceeded the attribution budget.',
+  'changes.coverage.other': 'The Engine recorded an additional coverage limitation.',
   'questions.region': 'Rinari questions',
   'questions.waiting': 'Waiting for your response',
   'questions.restore': 'Show questions',

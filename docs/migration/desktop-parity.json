@@ -1,7 +1,12 @@
 {
   "schema": "rinari.desktop-parity.electron.v1",
-  "contract_source": "docs/migration/desktop-command-contract.json",
-  "captured_commit": "06fadb40334289c12f63a6cb202c546cdcce7d70",
+  "inventory_source": "docs/migration/desktop-command-contract.json",
+  "origin": {
+    "note": "Inventario vigente de comandos de Electron. Las 130 filas iniciales salieron de la captura de Tauri 0.1.3 hecha para la paridad de la migración; esa foto se conserva en introduced_in.",
+    "captured_from": "Tauri 0.1.3",
+    "captured_commit": "06fadb40334289c12f63a6cb202c546cdcce7d70",
+    "introduced_in": "45552c9d85529315f078962ce17f5c659170fe21"
+  },
   "commands": [
     {
       "command": "agent_config_get",

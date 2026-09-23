@@ -1,8 +1,10 @@
 # Paridad desktop Electron
 
-Inventario posterior al cutover H. La fuente de compatibilidad es el contrato
-capturado de Tauri 0.1.3; el runtime activo y todas las llamadas del producto
-son Electron.
+Inventario vigente de los comandos que el renderer puede pedir con `command()`.
+Se genera desde `docs/migration/desktop-command-contract.json`; las filas
+iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
+desde entonces el fichero es el inventario de Electron. La regla para añadir
+un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
 - Comandos: **130**
 - Respaldados por Engine: **124**

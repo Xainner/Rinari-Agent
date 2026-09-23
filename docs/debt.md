@@ -93,6 +93,9 @@ documentado; lo demás no se presenta como terminado.
 - **Inventario de paridad** — `DONE`. `scripts/desktop-parity.mjs` compara las
   llamadas actuales con el contrato capturado de 0.1.3 y `parity:check` corre
   en CI: 130 comandos, 124 del Engine, 6 del host y cero sin resolver.
+  Desde el 2026-09-23 ese fichero es el inventario vigente de comandos de
+  Electron, no una captura; la regla para ampliarlo está en `AGENTS.md`,
+  «Comandos e intenciones».
 - **Imports de Tauri en el producto** — `DONE` (entrega H). El adaptador, las
   dependencias raíz y el runtime activo fueron retirados; `parity:check` falla
   si reaparece un import, paquete o ruta activa.

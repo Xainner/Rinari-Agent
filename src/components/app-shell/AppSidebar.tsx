@@ -27,6 +27,7 @@ import { buildWorkspaceModel, projectDisplayName, groupRecentChats } from '../..
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
+import { copyText } from '../../lib/clipboard'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -323,12 +324,12 @@ export function AppSidebar({
             <DropdownMenuContent align="end" className="w-48">
               <div className="px-2.5 py-1.5 font-mono text-[10px] break-all text-[var(--text-subtle)]">{session.id}</div>
               <DropdownMenuItem onSelect={() => {
-                void navigator.clipboard.writeText(session.id).then(() => toast.success('ID de sesión copiado')).catch(() => toast.error('No se pudo copiar el ID de sesión'))
-              }}><Copy size={13} /> Copiar ID de sesión</DropdownMenuItem>
+                void copyText(session.id).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
+              }}><Copy size={13} /> {t('sidebar.copySessionId')}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => {
                 const reference = `Sesión: ${session.id}\nTítulo: ${sessionLabel(session, t('sidebar.newChat'))}${session.project_id ? `\nProyecto: ${session.project_id}` : ''}${session.project_root ? `\nWorkspace: ${session.project_root}` : ''}`
-                void navigator.clipboard.writeText(reference).then(() => toast.success('Referencia de sesión copiada')).catch(() => toast.error('No se pudo copiar la referencia'))
-              }}><Copy size={13} /> Copiar referencia</DropdownMenuItem>
+                void copyText(reference).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionReferenceCopied' : 'sidebar.sessionReferenceCopyFailed')))
+              }}><Copy size={13} /> {t('sidebar.copySessionReference')}</DropdownMenuItem>
               {opts?.closed ? (
                 <DropdownMenuItem onSelect={() => onRestoreSession(session.id)}>
                   <ArchiveRestore size={13} /> {t('sidebar.restore')}

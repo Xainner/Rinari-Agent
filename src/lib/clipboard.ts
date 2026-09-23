@@ -1,27 +1,10 @@
-/**
- * Copiar texto con fallback para contextos no seguros (http:// en LAN),
- * donde `navigator.clipboard` no existe.
- */
+import { platform } from '../platform'
+
+/** Copia texto solo después de que el host nativo confirme la escritura. */
 export async function copyText(text: string): Promise<boolean> {
   try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    /* cae al fallback */
-  }
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    const ok = document.execCommand('copy')
-    ta.remove()
-    return ok
+    await platform().clipboard.writeText(text)
+    return true
   } catch {
     return false
   }

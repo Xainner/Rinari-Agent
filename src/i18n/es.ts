@@ -7,6 +7,10 @@ export const es = {
   'usage.estimated': 'Estimado',
   'usage.mixed': 'Reportado y estimado',
   'usage.reported': 'Reportado por el proveedor',
+  'files.refresh': 'Recargar archivo',
+  'files.deleted': 'El archivo fue eliminado.',
+  'files.changedSinceTurn': 'Modificado después de este turno.',
+  'files.stale': 'La vista conserva la última versión disponible.',
   "providers.routeUnsupported": "Este modelo requiere una ruta todavía no implementada en Rinari.",
   "providers.contextTokens": "Contexto: {n} tokens",
   "providers.visionCapability": "Visión",
@@ -188,6 +192,12 @@ export const es = {
 
   /* Sidebar */
   'sidebar.newChat': 'Nueva conversación',
+  'sidebar.copySessionId': 'Copiar ID de sesión',
+  'sidebar.sessionIdCopied': 'ID de sesión copiado',
+  'sidebar.sessionIdCopyFailed': 'No se pudo copiar el ID de sesión',
+  'sidebar.copySessionReference': 'Copiar referencia',
+  'sidebar.sessionReferenceCopied': 'Referencia de sesión copiada',
+  'sidebar.sessionReferenceCopyFailed': 'No se pudo copiar la referencia',
   'sidebar.chats': 'Conversaciones',
   'sidebar.newGeneralChat': 'Nueva conversación sin proyecto',
   'sidebar.sessionWorking': 'Sesión en curso',
@@ -742,6 +752,8 @@ export const es = {
   'activity.running': 'en curso',
   'activity.done': 'listo',
   'history.hasMore': '+{n} mensajes anteriores',
+  'history.loadFailed': 'No se pudo cargar la conversación.',
+  'history.retry': 'Reintentar',
 
   /* Modos (Fase 5) */
   'mode.plan': 'PLAN',

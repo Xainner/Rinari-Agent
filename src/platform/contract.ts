@@ -173,9 +173,11 @@ export interface DesktopBridge {
   /**
    * Flujos de un proyecto o de una sesión (`project_flow_v1`).
    *
-   * Es una **intención**, no un `DesktopCommand`: el inventario de comandos
-   * es la captura histórica de Tauri 0.1.3 y `flow.get` no existía entonces,
-   * así que meterlo ahí sería afirmar un comando que nunca hubo.
+   * Es una **intención** y no un `DesktopCommand` porque main valida su
+   * alcance campo a campo (exactamente un id, sin cadenas vacías ni claves
+   * ajenas), y la vía de comandos sólo valida nombre y forma. Por la regla de
+   * AGENTS.md es una llamada al Engine: puede pasar al inventario cuando el
+   * schema declare los parámetros de cada método.
    */
   flow: {
     get(scope: FlowScopeRequest): Promise<FlowResult>

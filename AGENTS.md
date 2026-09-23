@@ -8,6 +8,33 @@
 > host de Rinari Agent. Desarrollo, pruebas y empaquetado de la aplicación usan
 > los scripts `desktop:*`, `package:*` y el contrato de `src/platform/electron.ts`.
 
+> **Comandos e intenciones (regla vigente, 2026-09-23).** El renderer habla con
+> el host por dos vías, y cada capacidad nueva elige una:
+>
+> - **Llamada al Engine** (sesiones, proveedores, flujos, tareas…): una fila en
+>   `docs/migration/desktop-command-contract.json`, el inventario vigente de
+>   comandos, y la llamada con `platform().command()`. `npm run
+>   parity:inventory` regenera la allowlist y la traducción; `parity:check`
+>   falla ante una llamada desconocida, un comando duplicado, una clave ajena al
+>   inventario o un adaptador manual ausente, y `commandMap.test.ts` exige que
+>   el método exista en el protocolo del Engine fijado. El inventario **ya no es
+>   la captura de Tauri 0.1.3**: sus filas iniciales vinieron de ahí, y la foto
+>   original está en el commit de `origin.introduced_in`.
+> - **El host hace algo propio** (ventanas, diálogos, navegador nativo,
+>   notificaciones, integración con el sistema): una intención estrecha en
+>   `src/platform`, con canal propio, validación en main y test bridge.
+>
+> Una fila nueva lleva `command`, `module`, `args` (nombre y `optional` de cada
+> parámetro del renderer), `engine_method`, `engine_params` (`key` del Engine ←
+> `from` del renderer), `manual` (si es `true`, con adaptador en
+> `electron/main/engine/commandAdapters.ts`), `passthrough` y `host_effects`.
+> `args[].type` y `returns` son informativos, heredados de la captura. Todo va
+> en `commands`: no hay listas paralelas.
+>
+> main valida el nombre del comando y la forma de sus parámetros; los campos
+> los valida el Engine. Validarlos campo a campo en main requiere que el schema
+> del Engine declare los parámetros de cada método, y es el paso siguiente.
+
 > **Status:** Implementation blueprint / source of truth for Rinari Agent v1
 > **Date:** 2026-09-08  
 > **Rinari-CLI baseline:** `Xainner/Rinari-CLI` @ `110ad4ee55dbea1f5bd1565b35af4b65f049dfd2`  \

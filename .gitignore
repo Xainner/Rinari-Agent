@@ -46,6 +46,8 @@ build/installer/package-inputs.sha256.json
 build/installer/path-entry.ps1
 build/installer/rinari-ui.nsh
 build/installer/rinari.cmd
+# Caché de descargas del OCR (scripts/package-ocr.py), por hash
+build/ocr-downloads/
 src-tauri/2
 
 # Local review/fix notes (never commit)

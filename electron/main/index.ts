@@ -190,6 +190,24 @@ function retirePresentation(sessionId: string): void {
 }
 
 /**
+ * Flujos (`project_flow_v1`).
+ *
+ * El renderer manda un alcance; main lo traduce al método del Engine. No hay
+ * forma de nombrar el método desde el otro lado: si la hubiera, `command()`
+ * volvería a ser un `invoke` con otro nombre.
+ */
+function flowServices(): HostServices['flow'] {
+  return {
+    get: (scope) =>
+      engine.request('flow.get', {
+        project_id: scope.project_id ?? null,
+        session_id: scope.session_id ?? null,
+        ...(scope.before ? { before: scope.before } : {}),
+      }),
+  }
+}
+
+/**
  * Servicios del browser nativo (documento 03 §6.1).
  *
  * Todo lo que el renderer puede pedir está aquí, y es intención: metadata,
@@ -328,6 +346,7 @@ function buildServices(): HostServices {
   const getWindow = () => mainWindow
   return {
     browser: browserServices(),
+    flow: flowServices(),
     engine: {
       status: () => engine.status(),
       start: () => engine.start(),

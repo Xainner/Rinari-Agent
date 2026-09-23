@@ -1,4 +1,4 @@
-import { Columns3, MessageSquare } from 'lucide-react'
+import { Columns3, MessageSquare, Workflow } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { WorkspaceView } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -15,7 +15,7 @@ interface WorkspaceViewSwitcherProps {
 }
 
 /**
- * Selector Normal / Boards: grupo accesible de dos botones con selección
+ * Selector Normal / Boards / Flujos: grupo accesible con selección
  * idempotente (pulsar el activo no alterna). Su estado viene de la
  * navegación, nunca de una preferencia aparte.
  */
@@ -30,6 +30,7 @@ export default function WorkspaceViewSwitcher({
   const options: Array<{ view: WorkspaceView; label: string; icon: typeof MessageSquare }> = [
     { view: 'chat', label: t('nav.normal'), icon: MessageSquare },
     { view: 'board', label: t('nav.boards'), icon: Columns3 },
+    { view: 'flows', label: t('nav.flows'), icon: Workflow },
   ]
   return (
     <div role="group" aria-label={t('topbar.workspaceView')} className="view-switcher">

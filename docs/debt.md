@@ -107,6 +107,28 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
+### Vista Flujos (2026-09-18, plan 06)
+
+- **Derivación del flujo en el Engine** — `DONE`. `flow.get`
+  (`project_flow_v1`) agrupa turnos en etapas y ciclos; React solo presenta
+  (`FlowView.test.tsx`, `test_engine_flow.py`).
+- **Progreso honesto** — `DONE`. `null` → «sin datos»; tareas vacías → «sin
+  tareas registradas»; nunca un ratio de turnos.
+- **Revelado del turno tras cambiar de sesión** — `DONE`. La petición se
+  encola (`requestTurnReveal`) y `ChatView` la consume al montar la sesión
+  (FLOW-10); antes se perdía si el evento llegaba antes del montaje.
+- **Detalle por turno dentro de una etapa** — `OPEN` declarado (fase 2). El
+  drawer muestra la etapa; abrir cada turno en el detalle exigiría
+  `session.timeline` bajo demanda.
+- **Títulos de etapa generados por IA** — fuera de alcance deliberado. El
+  título es el encabezado del plan o el primer mensaje del usuario, sin
+  llamadas al modelo.
+- **`ResultSummaryCard` como resumen fuera del chat** — sin consumidor; la
+  tarjeta de etapa no la reutiliza porque resume una racha, no un turno.
+- **Cargo bloqueado localmente** — `NOT_RUN`. Control de aplicaciones impide
+  `rustc`/`cargo-clippy` en la máquina de desarrollo; `rustfmt --check` sí
+  corre y CI cubre `cargo test`/`clippy`.
+
 ### Cierre del ciclo de vida de salida (2026-09-18)
 
 - **Salir podía detener el Engine antes de preguntar** — `DONE`. `Cmd+Q`, el

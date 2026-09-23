@@ -52,3 +52,6 @@ fixes/
 # Python packaging helpers
 __pycache__/
 *.py[cod]
+
+evidence-dist/
+evidence/

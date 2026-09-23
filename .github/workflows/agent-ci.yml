@@ -4,8 +4,43 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `labeled`: poner `ci:full` a un PR lanza el empaquetado completo sin
+    # esperar a otro push.
+    types: [opened, synchronize, reopened, labeled]
+  # A mano, desde Actions: corre todo.
+  workflow_dispatch:
+
+# Un push nuevo a un PR cancela la ejecución anterior, que ya no comprueba el
+# head actual. En `main` no se cancela nada: cada merge se verifica entero.
+concurrency:
+  group: agent-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Qué partes del empaquetado de Windows hacen falta (scripts/ci-scope.mjs).
+  # En push a main, workflow_dispatch y con la etiqueta `ci:full` corre todo.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      bootstrapper: ${{ steps.scope.outputs.bootstrapper }}
+      package: ${{ steps.scope.outputs.package }}
+      updater: ${{ steps.scope.outputs.updater }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: scope
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          FULL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+        run: node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT"
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -87,7 +122,13 @@ jobs:
           RINARI_CLI: ${{ github.workspace }}/Rinari-CLI
         run: xvfb-run -a npm run browser:vertical
 
-  setup-bootstrapper:
+  # Empaquetado de Windows. Antes se llamaba `setup-bootstrapper`, pero el Rust
+  # del bootstrapper es sólo una parte (~4 min). El resto es el paquete con
+  # el sidecar del Engine y su smoke instalado (~8 min) y el E2E del updater
+  # (~13 min). Cada parte corre sólo si `changes` dice que puede romperse.
+  windows-package:
+    needs: changes
+    if: needs.changes.outputs.package == 'true'
     runs-on: windows-latest
     timeout-minutes: 75
     steps:
@@ -114,11 +155,16 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix installer/setup
       - run: npm run setup:web:build
-      - working-directory: installer/setup/src-tauri
+      # Comprobaciones del bootstrapper: sólo si cambió `installer/setup/**`.
+      # El paquete de abajo lo compila igualmente (`setup:build`).
+      - if: needs.changes.outputs.bootstrapper == 'true'
+        working-directory: installer/setup/src-tauri
         run: cargo fmt --check
-      - working-directory: installer/setup/src-tauri
+      - if: needs.changes.outputs.bootstrapper == 'true'
+        working-directory: installer/setup/src-tauri
         run: cargo clippy --all-targets -- -D warnings
-      - working-directory: installer/setup/src-tauri
+      - if: needs.changes.outputs.bootstrapper == 'true'
+        working-directory: installer/setup/src-tauri
         run: cargo test
       - name: Build the unsigned review package
         shell: pwsh
@@ -152,6 +198,7 @@ jobs:
           while ((Test-Path -LiteralPath $install) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
           if (Test-Path -LiteralPath $install) { throw 'uninstall did not remove the owned installation' }
       - name: Build isolated 0.2.0/0.2.1 fixtures and run installed updater
+        if: needs.changes.outputs.updater == 'true'
         shell: pwsh
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1 `

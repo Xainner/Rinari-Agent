@@ -82,6 +82,7 @@ export interface HostServices {
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
   files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
+  clipboard: { writeText(text: string): void | Promise<void> }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
     support(): { canSend: boolean; canActivateTarget: boolean }
@@ -216,6 +217,16 @@ function assertOpenExternal(value: unknown): OpenExternalFileRequest {
   }
 }
 
+export const MAX_CLIPBOARD_BYTES = 1024 * 1024
+
+export function assertClipboardText(value: unknown): string {
+  if (typeof value !== 'string') throw new ValidationError('clipboard text must be a string')
+  if (Buffer.byteLength(value, 'utf8') > MAX_CLIPBOARD_BYTES) {
+    throw new ValidationError('clipboard text exceeds 1 MiB')
+  }
+  return value
+}
+
 function assertOpenFiles(value: unknown): OpenFilesRequest {
   if (value === undefined || value === null) return {}
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -332,6 +343,10 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.filesOpenExternal,
       guarded(registry, (_event, request) => services.files.openExternal(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.clipboardWriteText,
+      guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
     ],
     [
       CHANNEL.contextMenuShow,

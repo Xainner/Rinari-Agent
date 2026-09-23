@@ -102,6 +102,7 @@ interface DesktopHostApi {
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
   files: { openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void> }
+  clipboard: { writeText(text: string): Promise<void> }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
 
@@ -151,6 +152,10 @@ export const electronBridge: DesktopBridge = {
 
   files: {
     openExternal: (input) => required().files.openExternal(input),
+  },
+
+  clipboard: {
+    writeText: (text) => required().clipboard.writeText(text),
   },
 
   events: {

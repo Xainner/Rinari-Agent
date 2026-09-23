@@ -51,6 +51,12 @@ function summary(id: string, state: SessionSummary['state'] = 'active'): Session
   }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
 function setup() {
   openSession.mockReset()
   sessions.mockReset()
@@ -62,6 +68,36 @@ function setup() {
 }
 
 describe('useSessionList session visibility', () => {
+  it('a retry supersedes an in-flight history request in the same generation', async () => {
+    const { result } = setup()
+    const old = deferred<{ session_id: string; messages: []; total: number; has_more: boolean }>()
+    sessionHistory.mockReturnValueOnce(old.promise)
+    let job!: Promise<void>
+    act(() => { job = result.current.loadSessionHistory('a') })
+    await act(async () => { await result.current.retrySessionHistory('a') })
+    expect(result.current.historyInfo.a.total).toBe(0)
+    await act(async () => {
+      old.resolve({ session_id: 'a', messages: [], total: 99, has_more: true })
+      await job
+    })
+    expect(result.current.historyInfo.a.total).toBe(0)
+    expect(result.current.historyPhases.a).toBe('loaded')
+  })
+
+  it('reloads the active history when engine generation changes without changing session', async () => {
+    sessionHistory.mockReset()
+    sessionHistory.mockResolvedValue({ session_id: 'a', messages: [], total: 0, has_more: false })
+    const dispatch = vi.fn()
+    const hook = renderHook(({ generation }) => useSessionList({
+      dispatch, engineReady: true, timelineEnabled: false, engineGeneration: generation,
+    }), { initialProps: { generation: 1 } })
+    await act(async () => { hook.result.current.setActiveSession('a') })
+    expect(sessionHistory).toHaveBeenCalledTimes(1)
+    await act(async () => { hook.rerender({ generation: 2 }) })
+    expect(sessionHistory).toHaveBeenCalledTimes(2)
+    expect(hook.result.current.historyPhases.a).toBe('loaded')
+  })
+
   it.each(['interrupted', 'stopped'] as const)(
     'keeps a selected %s session visible without moving selection',
     async (state) => {
@@ -145,6 +181,31 @@ describe('useSessionList session visibility', () => {
     expect(sessionHistory).toHaveBeenCalledTimes(1)
   })
 
+  it('distinguishes unloaded, loading, loaded-empty and error histories', async () => {
+    const { result } = setup()
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    await act(async () => { await result.current.refreshSessions() })
+    expect(result.current.historyPhases.a).toBe('unloaded')
+
+    let resolveHistory!: (value: { session_id: string; messages: []; total: number; has_more: boolean }) => void
+    sessionHistory.mockImplementationOnce(() => new Promise((resolve) => { resolveHistory = resolve }))
+    let loading!: Promise<void>
+    act(() => { loading = result.current.loadSessionHistory('a') })
+    expect(result.current.historyPhases.a).toBe('loading')
+    await act(async () => {
+      resolveHistory({ session_id: 'a', messages: [], total: 0, has_more: false })
+      await loading
+    })
+    expect(result.current.historyPhases.a).toBe('loaded')
+
+    sessionHistory.mockRejectedValueOnce(new Error('history failed'))
+    await act(async () => { await result.current.retrySessionHistory('a') })
+    expect(result.current.historyPhases.a).toBe('error')
+    sessionHistory.mockResolvedValueOnce({ session_id: 'a', messages: [], total: 0, has_more: false })
+    await act(async () => { await result.current.retrySessionHistory('a') })
+    expect(result.current.historyPhases.a).toBe('loaded')
+  })
+
   it('ignores a stale refresh that resolves after a newer one', async () => {
     const { result } = setup()
     let resolveStale!: (value: { sessions: SessionSummary[] }) => void
@@ -163,5 +224,34 @@ describe('useSessionList session visibility', () => {
       await first
     })
     expect(result.current.sessions.map((s) => s.id)).toEqual(['fresh'])
+  })
+
+  it('ignores history responses from an earlier engine generation', async () => {
+    const dispatch = vi.fn()
+    const first = deferred<{ session_id: string; messages: []; total: number; has_more: boolean }>()
+    const second = deferred<{ session_id: string; messages: []; total: number; has_more: boolean }>()
+    sessionHistory.mockReset()
+    sessionHistory.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const hook = renderHook(
+      ({ generation }) => useSessionList({ dispatch, engineReady: false, timelineEnabled: false, engineGeneration: generation }),
+      { initialProps: { generation: 1 } },
+    )
+    let oldJob!: Promise<void>
+    act(() => { oldJob = hook.result.current.loadSessionHistory('a') })
+    await act(async () => { hook.rerender({ generation: 2 }) })
+    let newJob!: Promise<void>
+    act(() => { newJob = hook.result.current.loadSessionHistory('a') })
+    await act(async () => {
+      first.resolve({ session_id: 'a', messages: [], total: 0, has_more: false })
+      await oldJob
+    })
+    expect(hook.result.current.historyPhases.a).toBe('loading')
+    expect(dispatch).not.toHaveBeenCalled()
+    await act(async () => {
+      second.resolve({ session_id: 'a', messages: [], total: 0, has_more: false })
+      await newJob
+    })
+    expect(hook.result.current.historyPhases.a).toBe('loaded')
+    expect(dispatch).toHaveBeenCalledTimes(1)
   })
 })

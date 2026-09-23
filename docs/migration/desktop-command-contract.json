@@ -4058,5 +4058,73 @@
       "passthrough": null,
       "host_effects": []
     }
+  ],
+  "electron_commands": [
+    {
+      "command": "workspace_file_watch",
+      "module": "electron",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "turn_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "FileWatch",
+      "manual": false,
+      "engine_method": "workspace.file.watch",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "workspace_file_unwatch",
+      "module": "electron",
+      "args": [
+        {
+          "name": "watch_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "FileUnwatch",
+      "manual": false,
+      "engine_method": "workspace.file.unwatch",
+      "engine_params": [
+        {
+          "key": "watch_id",
+          "from": "watch_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    }
   ]
 }

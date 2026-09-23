@@ -139,6 +139,11 @@ export interface DesktopBridge {
     openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
   }
 
+  clipboard: {
+    /** Escribe texto mediante el host nativo; nunca pide permisos web. */
+    writeText(text: string): Promise<void>
+  }
+
   events: {
     /** Todos los eventos del Engine, por un único canal. */
     onEngineEvent(callback: (event: EngineEventMessage) => void): Promise<Unsubscribe>

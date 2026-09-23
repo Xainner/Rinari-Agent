@@ -10,6 +10,19 @@ import { platform } from '../platform'
 export type { WebPreview } from '../types/protocol.generated'
 export type { QuestionRequest, FilePreview } from '../types/protocol.generated'
 
+export interface FileWatch {
+  watch_id: string
+  preview: FilePreview
+}
+
+export interface FileChangedEvent {
+  watch_id: string
+  session_id: string
+  path: string
+  revision: number
+  state: 'changed' | 'deleted' | 'recreated'
+}
+
 export const desktopApi = {
   startPreview: (
     session_id: string,
@@ -42,6 +55,10 @@ export const desktopApi = {
     }),
   readFile: (session_id: string, path: string, turn_id?: string) =>
     platform().command<FilePreview>('workspace_file_read', { session_id, path, turn_id }),
+  watchFile: (session_id: string, path: string, turn_id?: string) =>
+    platform().command<FileWatch>('workspace_file_watch', { session_id, path, turn_id }),
+  unwatchFile: (watch_id: string) =>
+    platform().command<Record<string, never>>('workspace_file_unwatch', { watch_id }),
   questions: (session_id: string) =>
     platform().command<{ questions: QuestionRequest[] }>('question_list', { session_id }),
   answer: (

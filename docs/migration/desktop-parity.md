@@ -4,8 +4,8 @@ Inventario posterior al cutover H. La fuente de compatibilidad es el contrato
 capturado de Tauri 0.1.3; el runtime activo y todas las llamadas del producto
 son Electron.
 
-- Comandos: **130**
-- Respaldados por Engine: **124**
+- Comandos: **132**
+- Respaldados por Engine: **126**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -136,6 +136,8 @@ son Electron.
 | `workspace_file_open` | host | — | **ninguno** |
 | `workspace_file_read` | engine | `workspace.file.read` | `src/services/desktop.ts` |
 | `workspace_file_search` | engine | `workspace.file.search` | **ninguno** |
+| `workspace_file_unwatch` | engine | `workspace.file.unwatch` | `src/services/desktop.ts` |
+| `workspace_file_watch` | engine | `workspace.file.watch` | `src/services/desktop.ts` |
 | `workspace_preview_start` | engine | `workspace.preview.start` | `src/services/desktop.ts` |
 | `workspace_preview_status` | engine | `workspace.preview.status` | `src/services/desktop.ts` |
 | `workspace_preview_stop` | engine | `workspace.preview.stop` | `src/services/desktop.ts` |

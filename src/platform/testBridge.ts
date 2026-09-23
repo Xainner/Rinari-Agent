@@ -52,6 +52,8 @@ export interface TestBridge extends DesktopBridge {
   initialHandoff: OpenRequest
   /** Archivos que se pidió abrir con la aplicación del sistema. */
   readonly openedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
+  /** Textos que el host de prueba confirmó en el portapapeles. */
+  readonly copiedTexts: string[]
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
@@ -116,6 +118,7 @@ export function createTestBridge(): TestBridge {
     },
     initialHandoff: { project: null, session: null },
     openedFiles: [],
+    copiedTexts: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -171,6 +174,12 @@ export function createTestBridge(): TestBridge {
     files: {
       async openExternal(input) {
         bridge.openedFiles.push(input)
+      },
+    },
+
+    clipboard: {
+      async writeText(text) {
+        bridge.copiedTexts.push(text)
       },
     },
 
@@ -326,6 +335,7 @@ export function createTestBridge(): TestBridge {
       }
       bridge.initialHandoff = { project: null, session: null }
       bridge.openedFiles.length = 0
+      bridge.copiedTexts.length = 0
       bridge.menus.length = 0
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }

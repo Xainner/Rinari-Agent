@@ -1,4 +1,8 @@
 export const es = {
+  'files.refresh': 'Recargar archivo',
+  'files.deleted': 'El archivo fue eliminado.',
+  'files.changedSinceTurn': 'Modificado después de este turno.',
+  'files.stale': 'La vista conserva la última versión disponible.',
   "home.fixedTheme": "Esta versión utiliza el tema oscuro violeta de Rinari. Tus preferencias anteriores se conservan.",
   "home.settings": "Configuración",
   "home.minimize": "Minimizar",
@@ -131,6 +135,12 @@ export const es = {
 
   /* Sidebar */
   'sidebar.newChat': 'Nueva conversación',
+  'sidebar.copySessionId': 'Copiar ID de sesión',
+  'sidebar.sessionIdCopied': 'ID de sesión copiado',
+  'sidebar.sessionIdCopyFailed': 'No se pudo copiar el ID de sesión',
+  'sidebar.copySessionReference': 'Copiar referencia',
+  'sidebar.sessionReferenceCopied': 'Referencia de sesión copiada',
+  'sidebar.sessionReferenceCopyFailed': 'No se pudo copiar la referencia',
   'sidebar.chats': 'Conversaciones',
   'sidebar.newGeneralChat': 'Nueva conversación sin proyecto',
   'sidebar.sessionWorking': 'Sesión en curso',
@@ -685,6 +695,8 @@ export const es = {
   'activity.running': 'en curso',
   'activity.done': 'listo',
   'history.hasMore': '+{n} mensajes anteriores',
+  'history.loadFailed': 'No se pudo cargar la conversación.',
+  'history.retry': 'Reintentar',
 
   /* Modos (Fase 5) */
   'mode.plan': 'PLAN',

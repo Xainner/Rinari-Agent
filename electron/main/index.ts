@@ -6,7 +6,7 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, dialog, shell } from 'electron'
+import { app, protocol, BrowserWindow, Menu, clipboard, dialog, shell } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -27,7 +27,7 @@ import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
 import { createUpdates } from './updates/createUpdates'
-import { clampToWorkArea, createMainWindow } from './window'
+import { clampToWorkArea, createMainWindow, focusExistingWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
@@ -375,6 +375,9 @@ function buildServices(): HostServices {
         const failure = await shell.openPath(approved)
         if (failure) throw new EngineCommandError('HOST_ERROR', failure)
       },
+    },
+    clipboard: {
+      writeText: (text) => clipboard.writeText(text),
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -733,7 +736,12 @@ function attachSmoke(window: BrowserWindow): void {
     report(false, { stage: 'load', code, description, url })
   })
   window.webContents.on('did-finish-load', () => {
-    void window.webContents
+    void (async () => {
+      const deadline = Date.now() + 5_000
+      while (!window.isVisible() && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 25))
+      }
+      return window.webContents
       .executeJavaScript(
         `({
            bridge: typeof window.rinariDesktop,
@@ -742,10 +750,13 @@ function attachSmoke(window: BrowserWindow): void {
            origin: window.location.origin,
            root: Boolean(document.getElementById('root')),
          })`,
-      )
+      ) as Promise<Record<string, unknown>>
+    })()
       .then((probe: Record<string, unknown>) => {
-        const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false
-        report(ok, { stage: 'renderer', ...probe, engine: engine.status().state })
+        const visible = window.isVisible()
+        const maximized = window.isMaximized()
+        const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false && visible && maximized
+        report(ok, { stage: 'renderer', ...probe, visible, maximized, engine: engine.status().state })
       })
       .catch((error: unknown) => report(false, { stage: 'probe', error: String(error) }))
   })
@@ -757,10 +768,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', (_event, argv) => {
     handoff.push(parseOpenRequest(argv, app.isPackaged ? 1 : 2))
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+    if (mainWindow) focusExistingWindow(mainWindow)
   })
 
   void app.whenReady().then(() => {

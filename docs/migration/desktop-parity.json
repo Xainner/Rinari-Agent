@@ -1038,6 +1038,24 @@
       "callers": []
     },
     {
+      "command": "workspace_file_unwatch",
+      "kind": "engine",
+      "method": "workspace.file.unwatch",
+      "manual": false,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
+      "command": "workspace_file_watch",
+      "kind": "engine",
+      "method": "workspace.file.watch",
+      "manual": false,
+      "callers": [
+        "src/services/desktop.ts"
+      ]
+    },
+    {
       "command": "workspace_preview_start",
       "kind": "engine",
       "method": "workspace.preview.start",
@@ -1093,8 +1111,8 @@
     }
   ],
   "summary": {
-    "commands": 130,
-    "engine_backed": 124,
+    "commands": 132,
+    "engine_backed": 126,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 41

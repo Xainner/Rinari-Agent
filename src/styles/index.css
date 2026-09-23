@@ -493,17 +493,53 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
   .composer-model-controls { grid-column: 1 / -1; grid-row: 2; }
   .composer-model-controls > button:first-child { margin-right: auto; max-width: 55%; }
 }
-.home-welcome { height: 100%; overflow-y: auto; display: flex; flex-direction: column; padding: 24px 28px 0; background: radial-gradient(ellipse at 50% 28%, #2c10441a, transparent 62%); }
-.home-main { width: 100%; max-width: 1280px; margin: auto; flex-shrink: 0; position: relative; display: flex; flex-direction: column; align-items: center; }
+.conversation-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+  container-name: welcome;
+  scrollbar-gutter: stable both-edges;
+  background: radial-gradient(ellipse at 50% 28%, #2c10441a, transparent 62%);
+}
+.conversation-shell.is-empty { overflow-y: auto; padding-top: 24px; }
+.conversation-shell.is-conversation { overflow: hidden; }
+.conversation-content {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.conversation-shell.is-empty .conversation-content { margin: auto; flex: 0 0 auto; }
+.conversation-shell.is-conversation .conversation-content { max-width: none; flex: 1; }
+.conversation-visual-slot { position: relative; }
+.is-conversation .conversation-visual-slot { display: flex; flex: 1; min-height: 0; }
+.is-conversation .conversation-visual-slot > .home-hero { position: absolute; inset: 0 0 auto; pointer-events: none; }
+.home-hero { width: 100%; }
 .home-art { width: 100%; height: clamp(160px, calc(100dvh - 480px), 520px); flex-shrink: 0; position: relative; overflow: hidden; }
 .home-art img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(to bottom, black 65%, transparent 100%); }
 .home-greeting { position: relative; margin-top: -18px; text-align: center; z-index: 1; }
 .home-greeting h1 { font-family: var(--font-sans); font-size: clamp(23px, 2.2vw, 30px); font-weight: 700; letter-spacing: -.035em; }
 .home-greeting p { margin-top: 4px; color: var(--text-muted); font-size: 14px; }
-.home-composer { width: 100%; max-width: 1080px; margin-top: 16px; }
-.home-composer .composer-root > p { display: none; }
-.home-composer textarea { min-height: 42px; }
-.home-suggestions { width: 100%; max-width: 1080px; margin-top: 24px; }
+.conversation-composer-slot {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: min(calc(100% - 32px), 1080px);
+  margin-inline: auto;
+}
+.conversation-shell.is-empty .conversation-composer-slot { margin-top: 16px; }
+.conversation-shell.is-empty .conversation-composer-slot .composer-root > p { display: none; }
+.conversation-shell.is-empty .conversation-composer-slot textarea { min-height: 42px; }
+.conversation-shell.is-conversation .conversation-composer-slot {
+  padding: 12px 0 16px;
+  max-height: calc(100dvh - 200px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.home-suggestions { width: min(calc(100% - 32px), 1080px); margin: 24px auto 0; }
 .home-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .home-card { display: flex; align-items: center; gap: 10px; padding: 13px; min-height: 76px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: linear-gradient(120deg, #171222, #111019); text-align: left; transition: border-color .15s, background .15s; }
 .home-card:hover:not(:disabled) { border-color: var(--accent); background: var(--bg-hover); }
@@ -514,45 +550,27 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .home-more { display: flex; align-items: center; gap: 6px; margin: 10px 0 0 auto; color: var(--text-subtle); font-size: 11px; padding: 4px; }
 .home-more:hover:not(:disabled) { color: var(--accent-2); }
 .home-more:disabled { opacity: .4; }
-.home-footer { flex-shrink: 0; width: 100%; margin-top: 0; padding: 22px 0 14px; text-align: center; color: var(--text-subtle); font-size: 11px; }
+.home-footer { flex-shrink: 0; width: 100%; padding: 22px 0 14px; text-align: center; color: var(--text-subtle); font-size: 11px; }
 .home-footer > p { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; }
 .home-footer-rule { display: block; width: 32px; height: 1px; background: var(--border-strong); margin: 13px auto; }
-.home-footer > img { width: 22px; height: 22px; object-fit: contain; margin: auto; }
 .home-status { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; font-size: 11px; }
 .engine-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
 .engine-dot.ready { background: var(--success); }
 .home-motto { border-left: 1px solid var(--border-strong); padding-left: 20px; margin-left: 12px; }
-@media (max-width: 1250px) { .home-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .home-art { height: clamp(145px, calc(100dvh - 520px), 400px); } }
-@media (max-height: 740px) { .home-footer > p, .home-footer-rule, .home-footer > img { display: none; } .home-footer { padding-top: 10px; } .home-suggestions { margin-top: 16px; } }
-@media (max-width: 600px) { .home-welcome { padding: 32px 16px 0; } .home-card-grid { grid-template-columns: 1fr; gap: 8px; } .home-motto { display: none; } .home-card { min-height: 64px; padding: 10px; } }
-
-.home-hero { width: 100%; }
-.conversation-layout { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.conversation-main { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; }
-.conversation-transcript { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
-/* Entrada del contenido de la conversación: animación CSS atada al
- * montaje (clave por sesión/estado), así juega siempre sobre el
- * contenido ya insertado. El esqueleto de carga aparece directo. */
+.conversation-transcript { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 140px; }
 .conversation-enter { animation: conversation-enter-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes conversation-enter-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.conversation-composer { position: relative; flex-shrink: 0; width: min(100% - 32px, 1080px); margin: 0 auto; padding: 12px 0 16px; z-index: 2; }
-/* Presupuesto vertical (§4.5): en alturas extremas la zona inferior hace
- * scroll interno antes que expulsar al composer o dejar sin transcript.
- * En pantallas normales no tiene efecto. */
-.conversation-composer { max-height: 720px; max-height: calc(100dvh - 200px); overflow-y: auto; overscroll-behavior: contain; }
-.conversation-transcript { min-height: 140px; }
-.home-composer { position: relative; z-index: 2; }
-.home-welcome { container-type: inline-size; container-name: welcome; }
+@media (max-width: 1250px) { .home-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .home-art { height: clamp(145px, calc(100dvh - 520px), 400px); } }
+@media (max-height: 740px) { .home-footer > p, .home-footer-rule { display: none; } .home-footer { padding-top: 10px; } .home-suggestions { margin-top: 16px; } }
+@media (max-width: 600px) { .conversation-shell.is-empty { padding-top: 32px; } .home-card-grid { grid-template-columns: 1fr; gap: 8px; } .home-motto { display: none; } .home-card { min-height: 64px; padding: 10px; } }
 @container welcome (max-width: 900px) { .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container welcome (max-width: 460px) { .home-card-grid { grid-template-columns: 1fr; } }
-
-.conversation-layout .home-suggestions { pointer-events: none; }
 
 /* Procesos integrados en la conversación (§3-§4 del plan de Procesos).
  * La franja hereda el ancho del composer; el inspector crece hacia arriba
  * sin tapar el input. Sin sombras fuertes ni animaciones permanentes. */
 .processes-dock { container-type: inline-size; position: static; margin-bottom: 8px; max-height: 460px; max-height: min(460px, 48dvh); overflow-y: auto; overscroll-behavior: contain; }
-.conversation-composer .processes-dock { flex-shrink: 0; }
+.conversation-composer-slot .processes-dock { flex-shrink: 0; }
 /* Fundido de salida del teardown final: la raíz persiste ~260ms tras
  * retirarse lo último visible para que el fundido se vea completo. */
 .processes-dock.is-leaving { opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .18s ease, transform .22s cubic-bezier(.22, 1, .36, 1); }
@@ -723,12 +741,12 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 @media (prefers-reduced-motion: reduce) { .view-switcher-button, .app-topbar-icon { transition: none; } }
 
 /* -- HomeWelcome variant=pane (empty pane inside a board) ----------------- */
-.home-welcome.variant-pane { padding: 16px 16px 0; container-type: inline-size; }
+.conversation-shell.variant-pane.is-empty { padding-top: 16px; container-type: inline-size; }
 .variant-pane .home-art { height: clamp(96px, 22cqw, 180px); }
 .variant-pane .home-greeting { margin-top: -6px; }
 .variant-pane .home-greeting h1 { font-size: clamp(17px, 4cqw, 22px); }
 .variant-pane .home-greeting p { font-size: 12px; }
-.variant-pane .home-composer { margin-top: 10px; }
+.variant-pane .conversation-composer-slot { margin-top: 10px; }
 .variant-pane .home-suggestions { margin-top: 14px; }
 .variant-pane .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .variant-pane .home-card { min-height: 60px; padding: 9px; }

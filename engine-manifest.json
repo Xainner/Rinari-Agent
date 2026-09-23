@@ -29,7 +29,8 @@
     "turn_changeset_v1",
     "process_identity_v1",
     "session_peer_messaging_v1",
-    "browser_host_bridge_v1"
+    "browser_host_bridge_v1",
+    "workspace_file_watch_v1"
   ],
   "development_build": false
 }

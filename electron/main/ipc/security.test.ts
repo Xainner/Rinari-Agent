@@ -10,6 +10,7 @@ import {
   assertCommandParams,
   assertOpenableUrl,
 } from '../../shared/validation'
+import { MAX_CLIPBOARD_BYTES, assertClipboardText } from './register'
 
 const ORIGIN = 'app://rinari'
 const TRUSTED = { id: 7, isMainFrame: true, url: 'app://rinari/index.html' }
@@ -152,5 +153,17 @@ describe('apertura de enlaces externos (SEC-03)', () => {
   it('rechaza lo que no es una URL', () => {
     expect(() => assertOpenableUrl('no es una url')).toThrow(/not valid/)
     expect(() => assertOpenableUrl(42)).toThrow(/must be a string/)
+  })
+})
+
+describe('portapapeles nativo', () => {
+  it('acepta texto UTF-8 hasta 1 MiB', () => {
+    expect(assertClipboardText('Rinari')).toBe('Rinari')
+    expect(assertClipboardText('a'.repeat(MAX_CLIPBOARD_BYTES))).toHaveLength(MAX_CLIPBOARD_BYTES)
+  })
+
+  it('rechaza valores no string y límites medidos en bytes UTF-8', () => {
+    expect(() => assertClipboardText(42)).toThrow(/must be a string/)
+    expect(() => assertClipboardText('😀'.repeat(MAX_CLIPBOARD_BYTES / 2))).toThrow(/exceeds 1 MiB/)
   })
 })

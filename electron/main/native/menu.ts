@@ -91,6 +91,7 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
         // Selección idempotente y sin acelerador nativo a propósito.
         item('view-normal', 'Normal'),
         item('view-boards', 'Boards'),
+        item('view-flows', 'Flujos'),
         { type: 'separator' },
         item('sidebar', 'Barra lateral', 'CmdOrCtrl+B'),
         item('files', 'Panel de archivos', 'CmdOrCtrl+Shift+E'),

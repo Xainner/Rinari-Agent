@@ -8,6 +8,7 @@ import {
   ValidationError,
   assertCommandName,
   assertCommandParams,
+  assertFlowScope,
   assertOpenableUrl,
 } from '../../shared/validation'
 
@@ -152,5 +153,48 @@ describe('apertura de enlaces externos (SEC-03)', () => {
   it('rechaza lo que no es una URL', () => {
     expect(() => assertOpenableUrl('no es una url')).toThrow(/not valid/)
     expect(() => assertOpenableUrl(42)).toThrow(/must be a string/)
+  })
+})
+
+describe('alcance de un flujo (rinari:flow.get)', () => {
+  // El renderer nombra un alcance, no un método del Engine; lo que valida esto
+  // es lo único que impide que el canal se convierta en un `invoke` con otro
+  // nombre. Hasta ahora no tenía ninguna prueba.
+  it('acepta exactamente un id y normaliza el ausente a null', () => {
+    expect(assertFlowScope({ project_id: 'proj_a' })).toEqual({ project_id: 'proj_a', session_id: null, before: null })
+    expect(assertFlowScope({ project_id: null, session_id: 'ses_a', before: 'stg_9' })).toEqual({
+      project_id: null,
+      session_id: 'ses_a',
+      before: 'stg_9',
+    })
+  })
+
+  it('rechaza ningún id y los dos a la vez', () => {
+    expect(() => assertFlowScope({})).toThrow(ValidationError)
+    expect(() => assertFlowScope({ project_id: null, session_id: null })).toThrow(/exactly one/)
+    expect(() => assertFlowScope({ project_id: 'proj_a', session_id: 'ses_a' })).toThrow(/exactly one/)
+  })
+
+  it('una cadena vacía no es un id ausente', () => {
+    // Contaba como ausente al decidir «exactamente uno» y llegaba al Engine
+    // como presente: `{ project_id: '', session_id: 'ses' }` pasaba.
+    expect(() => assertFlowScope({ project_id: '', session_id: 'ses_a' })).toThrow(/must not be empty/)
+    expect(() => assertFlowScope({ project_id: 'proj_a', before: '' })).toThrow(/must not be empty/)
+  })
+
+  it('rechaza claves que no son del alcance en vez de descartarlas', () => {
+    expect(() => assertFlowScope({ project_id: 'proj_a', method: 'session.delete' })).toThrow(/unknown flow scope field/)
+  })
+
+  it('rechaza tipos que no son cadenas e ids desmedidos', () => {
+    expect(() => assertFlowScope({ project_id: 42 })).toThrow(/must be a string/)
+    expect(() => assertFlowScope({ session_id: 'x'.repeat(129) })).toThrow(/too long/)
+    expect(assertFlowScope({ session_id: 'x'.repeat(128) }).session_id).toHaveLength(128)
+  })
+
+  it('no acepta lo que no es un objeto', () => {
+    for (const value of [null, undefined, 'proj_a', ['proj_a'], 7]) {
+      expect(() => assertFlowScope(value)).toThrow(/has to be an object/)
+    }
   })
 })

@@ -10,6 +10,7 @@
  * parezca funcionar.
  */
 
+import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
@@ -51,6 +52,7 @@ interface DesktopHostApi {
     onState(callback: (state: unknown) => void): Unsubscribe
   }
   /** Browser nativo. Los nombres van en snake_case: es el borde del puente. */
+  flow: { get(scope: unknown): Promise<unknown> }
   browser: {
     context(sessionId: string): Promise<NativeBrowserContext>
     prepare(sessionId: string): Promise<NativeBrowserContext>
@@ -161,6 +163,12 @@ export const electronBridge: DesktopBridge = {
 
   window: {
     clampToWorkArea: () => required().window.clampToWorkArea(),
+  },
+
+  // Flujos: se delega tal cual. Quien valida el alcance es main, que es el
+  // lado que no se puede modificar desde el renderer.
+  flow: {
+    get: (scope) => required().flow.get(scope) as Promise<FlowResult>,
   },
 
   // Browser nativo: se delega tal cual. El adaptador no añade lógica porque

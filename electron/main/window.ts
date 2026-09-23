@@ -39,6 +39,29 @@ export interface WindowDeps {
   isQuitCommitted: () => boolean
 }
 
+type RevealWindow = Pick<BrowserWindow, 'isDestroyed' | 'isVisible' | 'maximize' | 'show'>
+
+/**
+ * Maximizar es la operación de revelado. Electron muestra una ventana oculta
+ * al maximizarla; `show()` queda únicamente como respaldo del siguiente tick.
+ */
+export function revealMaximized(window: RevealWindow, publish: () => void): void {
+  window.maximize()
+  setImmediate(() => {
+    if (window.isDestroyed()) return
+    if (!window.isVisible()) window.show()
+    publish()
+  })
+}
+
+type ExistingWindow = Pick<BrowserWindow, 'isMinimized' | 'restore' | 'focus'>
+
+/** Una segunda instancia conserva la elección de tamaño del usuario. */
+export function focusExistingWindow(window: ExistingWindow): void {
+  if (window.isMinimized()) window.restore()
+  window.focus()
+}
+
 function stateOf(window: BrowserWindow): WindowState {
   return {
     maximized: window.isMaximized(),
@@ -159,8 +182,7 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     if (reason !== 'ready-to-show') {
       console.error(`[rinari] la ventana se muestra por ${reason}: la página no llegó a pintar`)
     }
-    window.show()
-    push()
+    revealMaximized(window, push)
   }
   window.once('ready-to-show', () => reveal('ready-to-show'))
   // Respaldo: la página terminó de cargar pero no pintó.

@@ -29,6 +29,7 @@ import TurnMeta from './TurnMeta'
 import TurnResult from './TurnResult'
 import { commandMessage, engineApi } from '../../services/engine'
 import { formatTool, toolCategory } from './formatActivity'
+import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 
@@ -278,7 +279,7 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
   const command = typeof presentation.command === 'string' ? presentation.command : undefined
   const displayCommand = argv ? `argv ${JSON.stringify(argv)}` : command
   const copy = () => {
-    if (displayCommand) void navigator.clipboard?.writeText(argv ? JSON.stringify(argv) : displayCommand)
+    if (displayCommand) void copyText(argv ? JSON.stringify(argv) : displayCommand)
   }
   const exitCode = presentation.exit_code
   const failed = presentation.status === 'failed' || (typeof exitCode === 'number' && exitCode !== 0)

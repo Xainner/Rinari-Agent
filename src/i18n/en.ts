@@ -1,6 +1,10 @@
 import type { I18nKey } from './es'
 
 export const en: Record<I18nKey, string> = {
+  'files.refresh': 'Reload file',
+  'files.deleted': 'The file was deleted.',
+  'files.changedSinceTurn': 'Modified after this turn.',
+  'files.stale': 'Showing the last available version.',
   "providers.routeUnsupported": "This model requires a route not yet implemented by Rinari.",
   "providers.contextTokens": "Context: {n} tokens",
   "providers.visionCapability": "Vision",
@@ -177,6 +181,12 @@ export const en: Record<I18nKey, string> = {
     'The administrator has not configured the server yet. Ask an admin to complete the setup in their administration panel.',
 
   'sidebar.newChat': 'New conversation',
+  'sidebar.copySessionId': 'Copy session ID',
+  'sidebar.sessionIdCopied': 'Session ID copied',
+  'sidebar.sessionIdCopyFailed': 'Could not copy the session ID',
+  'sidebar.copySessionReference': 'Copy reference',
+  'sidebar.sessionReferenceCopied': 'Session reference copied',
+  'sidebar.sessionReferenceCopyFailed': 'Could not copy the session reference',
   'sidebar.chats': 'Conversations',
   'sidebar.newGeneralChat': 'New conversation without a project',
   'sidebar.sessionWorking': 'Session in progress',
@@ -716,6 +726,8 @@ export const en: Record<I18nKey, string> = {
   'activity.running': 'running',
   'activity.done': 'done',
   'history.hasMore': '+{n} earlier messages',
+  'history.loadFailed': 'Could not load the conversation.',
+  'history.retry': 'Retry',
 
   /* Modes (Phase 5) */
   'mode.plan': 'PLAN',

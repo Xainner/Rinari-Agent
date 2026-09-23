@@ -34,14 +34,24 @@ describe('turn token aggregates', () => {
     state = turnTimelineReducer(state,event('model.completed',report))
     expect(state.timelines.t1.usage?.total_tokens).toBe(90)
   })
-  it.each(['es','en'] as const)('formats compact values and exposes full accessible details (%s)', lang => {
-    for (const n of [999,1000,12400,1000000]) {
+  it.each([
+    ['en', ['999', '1.0K', '12.4K', '1.0M']],
+    ['es', ['999', '1,0 mil', '12,4 mil', '1,0 M']],
+  ] as const)('formats compact values and exposes full accessible details (%s)', (lang, compact) => {
+    [999,1000,12400,1000000].forEach((n, i) => {
+      expect(formatTokens(n, lang)).toBe(compact[i])
       const view=render(<I18nProvider lang={lang}><TokenUsage usage={usage(1,n)} /></I18nProvider>)
-      expect(screen.getByTestId('token-usage').textContent).toBe(`~${formatTokens(n,lang)} tokens`)
-      expect(screen.getByTestId('token-usage').getAttribute('aria-label')).toContain(new Intl.NumberFormat(lang).format(n))
-      expect(screen.getByTestId('token-usage').closest('[aria-live]')).toBeNull()
+      const visible = screen.getByTestId('token-usage')
+      expect(visible.textContent).toBe(`~${compact[i]} tokens`)
+      // The compact number is hidden from assistive technology; the full
+      // breakdown is real text, not an aria-label on a generic span.
+      expect(visible.getAttribute('aria-hidden')).toBe('true')
+      const details = visible.parentElement!.querySelector('.sr-only')!
+      expect(details.textContent).toContain(`${new Intl.NumberFormat(lang).format(n)} tokens`)
+      expect(details.textContent).toContain(lang === 'es' ? 'Llamadas' : 'Model calls')
+      expect(visible.closest('[aria-live]')).toBeNull()
       view.unmount()
-    }
+    })
   })
   it('removes the approximation only for fully reported totals', () => {
     const view=render(<I18nProvider lang="en"><TokenUsage usage={{...usage(),source:'mixed'}} /></I18nProvider>)

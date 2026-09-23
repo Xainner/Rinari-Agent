@@ -44,6 +44,11 @@ export function legacyTokenUsage(calls: NonNullable<TurnTimeline['legacyUsage']>
   }
 }
 
+/**
+ * 999, 1.0K, 12.4K, 1.0M (1,0 mil and 1,0 M in Spanish): always one decimal
+ * once compact, so the counter keeps its width as it grows (§6.1).
+ */
 export function formatTokens(total: number, lang: string): string {
-  return new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(total)
+  if (total < 1000) return new Intl.NumberFormat(lang).format(total)
+  return new Intl.NumberFormat(lang, { notation: 'compact', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(total)
 }

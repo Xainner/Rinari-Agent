@@ -23,3 +23,6 @@ are subsets, displayed only in the breakdown. No prices or billing estimates are
 The counter remains in terminal metadata, including short and cancelled turns. Usage
 revisions deduplicate snapshots, history and live events; content deltas still do not
 create rows or announcements. Session totals (`usage.get`) remain independent.
+An Engine without `turn_token_usage_v1` falls back to `model.completed.usage`,
+deduplicated per agent and model call. The full breakdown is visually hidden text
+next to the compact number, outside any live region.

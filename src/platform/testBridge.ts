@@ -7,6 +7,7 @@
  * convierte un fallo de integración en un test verde.
  */
 
+import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
@@ -26,6 +27,7 @@ import type {
   Unsubscribe,
   UpdateAvailable,
   MigrationStatus,
+  FlowScopeRequest,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -62,6 +64,10 @@ export interface TestBridge extends DesktopBridge {
   migrationStatus: MigrationStatus
   /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
   browserContext: NativeBrowserContext | null
+  /** Flujo que devuelve `flow.get`; por defecto, uno vacío. */
+  flowResult: FlowResult | null
+  /** Alcances consultados, en orden. */
+  readonly flowCalls: FlowScopeRequest[]
   browserPreview: NativeBrowserPreview | null
   /** Respuesta opcional de la próxima transición de control. */
   browserControlResult: NativeBrowserControl | null
@@ -95,12 +101,37 @@ export function createTestBridge(): TestBridge {
   const openListeners = new Set<(request: OpenRequest) => void>()
   const notificationListeners = new Set<(target: NotificationTarget) => void>()
   const browserListeners = new Set<(view: NativeBrowserContext) => void>()
+
+/** Un alcance sin etapas: lo honesto cuando el test no dijo otra cosa. */
+function emptyFlow(scope: FlowScopeRequest): FlowResult {
+  return {
+    scope: {
+      kind: scope.project_id ? 'project' : 'session',
+      id: scope.project_id ?? scope.session_id ?? '',
+      title: '',
+      root: null,
+    },
+    summary: {
+      stages_total: 0, stages_done: 0, stages_active: 0, turns_total: 0,
+      turns_failed: 0, files_changed: 0, tasks: null, progress: null,
+      progress_coverage: { known_stages: 0, total_stages: 0, partial_progress: null },
+      started_at: null, last_activity_at: null,
+    },
+    stages: [],
+    revision: 'vacio',
+    truncated: false,
+    stages_omitted: 0,
+    next_cursor: null,
+  } as FlowResult
+}
   let slotCounter = 0
 
   const bridge: TestBridge = {
     calls: [],
     engineCalls: [],
     browserContext: null,
+    flowResult: null,
+    flowCalls: [],
     browserPreview: null,
     browserControlResult: null,
     browserCalls: [],
@@ -208,6 +239,17 @@ export function createTestBridge(): TestBridge {
      * Por defecto dice que no hay soporte —que es lo honesto en un host de
      * prueba—; un test que quiera la rama nativa asigna `browserContext`.
      */
+    /**
+     * Flujos. Por defecto un flujo vacío: un test que quiera etapas asigna
+     * `flowResult`, igual que `browserContext`.
+     */
+    flow: {
+      async get(scope: FlowScopeRequest) {
+        bridge.flowCalls.push(scope)
+        return bridge.flowResult ?? emptyFlow(scope)
+      },
+    },
+
     browser: {
       async context(sessionId: string) {
         return bridge.browserContext ?? absentBrowser(sessionId)

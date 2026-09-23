@@ -1,7 +1,12 @@
 {
   "schema": "rinari.desktop-parity.electron.v1",
-  "contract_source": "docs/migration/desktop-command-contract.json",
-  "captured_commit": "06fadb40334289c12f63a6cb202c546cdcce7d70",
+  "inventory_source": "docs/migration/desktop-command-contract.json",
+  "origin": {
+    "note": "Inventario vigente de comandos de Electron. Las 130 filas iniciales salieron de la captura de Tauri 0.1.3 hecha para la paridad de la migración; esa foto se conserva en introduced_in.",
+    "captured_from": "Tauri 0.1.3",
+    "captured_commit": "06fadb40334289c12f63a6cb202c546cdcce7d70",
+    "introduced_in": "45552c9d85529315f078962ce17f5c659170fe21"
+  },
   "commands": [
     {
       "command": "agent_config_get",
@@ -565,9 +570,61 @@
       ]
     },
     {
+      "command": "provider_auth_cancel",
+      "kind": "engine",
+      "method": "provider.auth.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_auth_get",
+      "kind": "engine",
+      "method": "provider.auth.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_auth_logout",
+      "kind": "engine",
+      "method": "provider.auth.logout",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_auth_start",
+      "kind": "engine",
+      "method": "provider.auth.start",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_catalog_get",
+      "kind": "engine",
+      "method": "provider.catalog.get",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "provider_create",
       "kind": "engine",
       "method": "provider.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_diagnostics_get",
+      "kind": "engine",
+      "method": "provider.diagnostics.get",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -619,6 +676,15 @@
       "kind": "engine",
       "method": "provider.update",
       "manual": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_usage_get",
+      "kind": "engine",
+      "method": "provider.usage.get",
+      "manual": false,
       "callers": [
         "src/services/engine.ts"
       ]
@@ -1111,10 +1177,10 @@
     }
   ],
   "summary": {
-    "commands": 132,
-    "engine_backed": 126,
+    "commands": 139,
+    "engine_backed": 133,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 41
+    "without_callers": 42
   }
 }

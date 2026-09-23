@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelSummary, ProviderSummary } from '../services/engine'
@@ -16,7 +16,7 @@ import Questions from '../features/questions/Questions'
 import ProcessesDock from '../features/processes/ProcessesDock'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
-import { REVEAL_TURN_EVENT } from '../features/board/boardCommands'
+import { REVEAL_TURN_EVENT, takeQueuedTurnReveal } from '../features/board/boardCommands'
 import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../features/engine/scrollAnchors'
 import ScrollToBottom from './chat/ScrollToBottom'
 import type { HistoryPhase } from '../features/engine/useSessionList'
@@ -224,21 +224,38 @@ function ChatView({
     }
   }, [stream, historyPhase])
 
-  // «Ir al resultado» desde un aviso: mostrar el turno sin marcarlo leído (eso
-  // solo ocurre cuando su bloque queda visible).
+  // «Ir al resultado» desde un aviso o desde Flujos: mostrar el turno sin
+  // marcarlo leído (eso solo ocurre cuando su bloque queda visible). Si la
+  // fila aún no existe (historial cargando), la petición espera a que llegue.
+  const pendingRevealRef = useRef<string | null>(null)
+  const revealTurn = useCallback((turnId: string): boolean => {
+    const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.message.turnId === turnId)
+    if (index < 0) return false
+    followRef.current = false
+    setAtBottom(false)
+    restoreRef.current = null
+    virtRef.current?.scrollToIndex(index, { align: 'start' })
+    return true
+  }, [])
   useEffect(() => {
     function onReveal(event: Event) {
       const detail = (event as CustomEvent<{ sessionId: string; turnId: string }>).detail
       if (!detail || detail.sessionId !== sessionId) return
-      const index = stream.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === detail.turnId : row.message.turnId === detail.turnId)
-      if (index < 0) return
-      followRef.current = false
-      setAtBottom(false)
-      virtRef.current?.scrollToIndex(index, { align: 'start' })
+      takeQueuedTurnReveal(sessionId)
+      pendingRevealRef.current = revealTurn(detail.turnId) ? null : detail.turnId
     }
     window.addEventListener(REVEAL_TURN_EVENT, onReveal)
     return () => window.removeEventListener(REVEAL_TURN_EVENT, onReveal)
-  }, [sessionId, stream])
+  }, [sessionId, revealTurn])
+  useEffect(() => {
+    const pending = pendingRevealRef.current
+    if (pending && revealTurn(pending)) pendingRevealRef.current = null
+  }, [stream, revealTurn])
+  useEffect(() => {
+    // Al cambiar de sesión solo sobrevive la petición en cola para esta sesión.
+    const queued = takeQueuedTurnReveal(sessionId)
+    pendingRevealRef.current = queued && !revealTurn(queued) ? queued : null
+  }, [sessionId, revealTurn])
 
   useEffect(() => {
     const content = contentRef.current

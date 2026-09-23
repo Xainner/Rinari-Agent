@@ -18,6 +18,9 @@ export interface ParityReport {
   started: string
   calls: Array<{ name: string; ok: boolean; code?: string; message?: string }>
   turn: { session: boolean; events: string[] } | { error: string }
+  flow:
+    | { scope: string; stages: number; turns: number; turns_failed: number; revision: string }
+    | { error: string }
 }
 
 async function step(
@@ -61,6 +64,7 @@ export async function runParityProbe(): Promise<ParityReport> {
   // Turno real contra un proveedor falso: acepta y falla al conectar, que es
   // el pipeline entero sin salir de la máquina.
   let turn: ParityReport['turn']
+  let sessionId = ''
   try {
     await engineApi.providerCreate({
       alias: 'falso',
@@ -71,7 +75,7 @@ export async function runParityProbe(): Promise<ParityReport> {
     await engineApi.modelAdd({ provider: 'falso', provider_model_id: 'fake-1', alias: 'fake' })
     await engineApi.modelUse('fake')
     const created = await engineApi.createSession({ chat: true, title: 'paridad' })
-    const sessionId = (created as { session?: { id?: string }; id?: string }).session?.id ??
+    sessionId = (created as { session?: { id?: string }; id?: string }).session?.id ??
       (created as { id?: string }).id ?? ''
     const events: string[] = []
     await onEngineEvent((event) => {
@@ -85,7 +89,30 @@ export async function runParityProbe(): Promise<ParityReport> {
     turn = { error: `${reason?.code ?? 'ERROR'}: ${reason?.message ?? String(error)}` }
   }
 
-  return { started, calls, turn }
+  // `flow.get` no es un comando del inventario sino un intent de `src/platform`,
+  // así que no lo cubre ninguno de los pasos de arriba. Va después del turno y
+  // sobre la sesión que acaba de fallar, y se informa **lo que proyectó**: un
+  // `ok` a secas no distingue «el canal responde» de «responde vacío», que es
+  // el modo en que una proyección rota pasa por buena.
+  let flow: ParityReport['flow']
+  if (!sessionId) flow = { error: 'sin sesión de la que proyectar' }
+  else {
+    try {
+      const result = await engineApi.flowGet({ session_id: sessionId })
+      flow = {
+        scope: result.scope.kind,
+        stages: result.stages.length,
+        turns: result.summary.turns_total,
+        turns_failed: result.summary.turns_failed,
+        revision: result.revision,
+      }
+    } catch (error) {
+      const reason = error as { code?: string; message?: string }
+      flow = { error: `${reason?.code ?? 'ERROR'}: ${reason?.message ?? String(error)}` }
+    }
+  }
+
+  return { started, calls, turn, flow }
 }
 
 declare global {

@@ -11,6 +11,7 @@ import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import { useComposerHeight } from './useComposerHeight'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 
@@ -265,12 +266,7 @@ export default function Composer({
     if (acceptsGlobalFocus) textareaRef.current?.focus()
   }, [placement, acceptsGlobalFocus])
 
-  function autosize() {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 240)}px`
-  }
+  const { armSendReset, cancelSendReset } = useComposerHeight(textareaRef, text, draftKey, placement, reducePillMotion)
 
   async function handleSend() {
     // Capture identity and content before any await: focus or view changes
@@ -286,26 +282,26 @@ export default function Composer({
     if (direct && onSendToTarget) {
       // Mensaje directo a otro panel: solo texto; los adjuntos se quedan en el borrador.
       if (!direct.message) return
+      armSendReset()
       setTextFor(submissionSessionKey, '')
-      autosize()
       textareaRef.current?.focus()
       setIsSubmitting(true)
       try {
         const ok = await onSendToTarget(direct.target.id, direct.message)
         if (!ok) {
           setTextFor(submissionSessionKey, content)
-          requestAnimationFrame(autosize)
+          cancelSendReset()
         }
       } catch {
         setTextFor(submissionSessionKey, content)
-        requestAnimationFrame(autosize)
+        cancelSendReset()
       } finally {
         setIsSubmitting(false)
       }
       return
     }
+    armSendReset()
     store.clearFor(submissionSessionKey)
-    autosize()
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
@@ -313,11 +309,11 @@ export default function Composer({
       if (ok) removeAttachmentsById(attachmentIds)
       if (!ok) {
         restoreSubmission(submissionSessionKey, attachmentIds, content)
-        requestAnimationFrame(autosize)
+        cancelSendReset()
       }
     } catch {
       restoreSubmission(submissionSessionKey, attachmentIds, content)
-      requestAnimationFrame(autosize)
+      cancelSendReset()
     } finally {
       setIsSubmitting(false)
     }
@@ -443,7 +439,6 @@ export default function Composer({
     setText(next)
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
-      autosize()
     })
   }
 
@@ -452,7 +447,6 @@ export default function Composer({
     setFileMatches([])
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
-      autosize()
     })
   }
 
@@ -460,7 +454,6 @@ export default function Composer({
     addAttachment({ id: `att_${Date.now().toString(36)}_${file.path}`, path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
     setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
     setFileMatches([])
-    requestAnimationFrame(autosize)
   }
 
   return (
@@ -530,7 +523,6 @@ export default function Composer({
           placeholder={isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
           onChange={(e) => {
             setText(e.target.value)
-            autosize()
           }}
           onPaste={handlePaste}
           onKeyDown={(e) => {

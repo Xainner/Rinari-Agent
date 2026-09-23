@@ -87,10 +87,10 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     const quoted = message.origin?.kind === 'user' ? message.origin.quoted_source : null
     const quotedSession = quoted && typeof quoted.session_id === 'string' ? quoted.session_id : null
     return (
-      <div className="flex flex-col items-end gap-1">
+      <div data-testid="user-message-row" className="flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
-        <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-[var(--text)]">
+        <div className="flex w-full min-w-0 justify-end">
+        <div data-testid="user-message-bubble" className="w-fit min-w-0 max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]">
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             {message.attachments.map((attachment) => <HistoricalAttachment key={attachment.id} attachment={attachment} />)}
           </div>}
@@ -163,8 +163,8 @@ function PeerBubble({ message }: { message: ChatMessage }) {
   const label = (sourceId && navigation?.labelFor(sourceId)) || origin.source_label || sourceId || t('board.peers.unknown')
   const canNavigate = Boolean(sourceId && navigation?.labelFor(sourceId))
   return (
-    <div className="flex justify-start" data-testid="peer-bubble">
-      <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-[var(--accent-2)]/40 bg-[var(--accent-2)]/10 px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text)]">
+    <div className="flex w-full min-w-0 justify-start" data-testid="peer-bubble">
+      <div className="w-fit min-w-0 max-w-[85%] [overflow-wrap:anywhere] rounded-2xl rounded-bl-md border border-[var(--accent-2)]/40 bg-[var(--accent-2)]/10 px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text)]">
         <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--accent-2)]">
           <MessageSquareShare size={13} aria-hidden="true" />
           <span className="truncate">{t('board.peers.incoming', { label })}</span>

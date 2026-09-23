@@ -4,12 +4,13 @@ import { useI18n } from '../../i18n'
 import { useUIStore, type ShortcutAction } from '../../stores/ui'
 import { Section } from './parts'
 
-const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.boards' | 'settings.shortcuts.collapsePane' | 'settings.shortcuts.expandPane' }> = [
+const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.boards' | 'settings.shortcuts.flows' | 'settings.shortcuts.collapsePane' | 'settings.shortcuts.expandPane' }> = [
   { id: 'newChat', label: 'settings.shortcuts.new' },
   { id: 'palette', label: 'settings.shortcuts.palette' },
   { id: 'settings', label: 'settings.shortcuts.settings' },
   { id: 'sidebar', label: 'settings.shortcuts.sidebar' },
   { id: 'boards', label: 'settings.shortcuts.boards' },
+  { id: 'flows', label: 'settings.shortcuts.flows' },
   { id: 'collapsePane', label: 'settings.shortcuts.collapsePane' },
   { id: 'expandPane', label: 'settings.shortcuts.expandPane' },
 ]

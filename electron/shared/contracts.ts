@@ -41,6 +41,12 @@ export const CHANNEL = {
   // presentación, pestaña, control y navegación autorizada. **No** hay canal
   // para `host.browser.*` ni para `debugger.sendCommand`: el broker es de
   // main, y una respuesta suya no es un permiso que el renderer pueda guardar.
+  // Flujos (`project_flow_v1`). Por la regla de AGENTS.md es una llamada al
+  // Engine y podría ir en el inventario de comandos; va como intención porque
+  // main valida su alcance campo a campo (`assertFlowScope`), cosa que la vía
+  // de comandos todavía no hace. Cuando el schema del Engine declare los
+  // parámetros de cada método, puede pasar al inventario.
+  flowGet: 'rinari:flow.get',
   browserContext: 'rinari:browser.context',
   browserPrepare: 'rinari:browser.prepare',
   browserAttachSlot: 'rinari:browser.attachSlot',
@@ -229,6 +235,19 @@ export interface BrowserPreviewView {
   image: string
   width: number
   height: number
+}
+
+/**
+ * Alcance de un flujo: exactamente un id, y el cursor opcional.
+ *
+ * `before` es el id de una etapa. La respuesta dice si truncó y por dónde
+ * seguir; el cliente no compone índices, que se recalculan en cada
+ * proyección.
+ */
+export interface FlowScopeRequest {
+  project_id?: string | null
+  session_id?: string | null
+  before?: string | null
 }
 
 /** Geometría que el renderer reserva; main decide dónde se pinta. */

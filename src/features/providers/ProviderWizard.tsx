@@ -18,7 +18,8 @@ import {
 } from '../../components/ui/dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
 import ModelCatalog from './ModelCatalog'
-import { PROVIDER_PRESETS } from './presets'
+import { useProviderPresets } from './presets'
+import ProviderAuthPanel from './ProviderAuthPanel'
 
 type Step = 'preset' | 'fields' | 'testing' | 'models' | 'done'
 const WIZARD_DRAFT_KEY = 'rinari.provider-wizard.v1'
@@ -89,6 +90,7 @@ export default function ProviderWizard({
   onClose: (finished: boolean) => void
 }) {
   const { t } = useI18n()
+  const presets = useProviderPresets()
   const [draft] = useState(() => loadWizardDraft())
   const [step, setStep] = useState<Step>(draft?.step ?? 'preset')
   const [form, setForm] = useState<ProviderFormData>(() => draft?.form ?? initialForm())
@@ -141,6 +143,7 @@ export default function ProviderWizard({
         alias,
         provider_type: preset.provider_type,
         auth_method: form.auth,
+        settings: { product_id: preset.id },
         endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
         account_hint:
           form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
@@ -243,6 +246,10 @@ export default function ProviderWizard({
         const persisted = await persist()
         if (cancelled) return
         if (!persisted) return
+        if (form.auth === 'oauth') {
+          const account = await engineApi.providerGet(persisted)
+          if (!account.provider.has_credential) return
+        }
         const result = await engineApi.providerTest(persisted)
         if (cancelled) return
         setHealth(result)
@@ -328,7 +335,7 @@ export default function ProviderWizard({
           <div className="space-y-3">
             <p className="text-sm text-[var(--text-muted)]">{t('wizard.welcome')}</p>
             <div className="grid gap-2">
-              {PROVIDER_PRESETS.map((preset) => (
+              {presets.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
@@ -353,10 +360,10 @@ export default function ProviderWizard({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-[var(--text)]">
-                      {t(preset.nameKey)}
+                      {preset.name ?? t(preset.nameKey)}
                     </span>
                     <span className="block truncate text-xs text-[var(--text-subtle)]">
-                      {t(preset.descKey)}
+                      {preset.experimental ? t('providers.experimental') : preset.endpoint || t(preset.descKey)}
                     </span>
                   </span>
                 </button>
@@ -412,6 +419,7 @@ export default function ProviderWizard({
 
         {step === 'testing' && (
           <div className="space-y-3">
+            {form.auth === 'oauth' && createdAlias && <ProviderAuthPanel providerAlias={createdAlias} onConnected={() => void retryTest()} />}
             <p className="text-sm text-[var(--text-muted)]">
               {working ? t('providers.testing') : (health ? t('providers.healthFail', { detail: health.detail }) : '')}
             </p>

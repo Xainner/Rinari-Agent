@@ -92,6 +92,27 @@ export interface BoardAttentionTarget {
 
 export const REVEAL_TURN_EVENT = 'rinari:reveal-turn'
 
+let queuedReveal: { sessionId: string; turnId: string } | null = null
+
+/**
+ * Pedir que el transcript de Normal muestre un turno. Si esa sesión ya está
+ * montada, el evento basta; si la app aún está cambiando de sesión (p. ej.
+ * «Ir al turno» desde Flujos), la petición queda en cola y `ChatView` la
+ * consume al montar esa sesión, con lo que no se pierde por la carrera.
+ */
+export function requestTurnReveal(detail: { sessionId: string; turnId: string }): void {
+  queuedReveal = detail
+  window.dispatchEvent(new CustomEvent(REVEAL_TURN_EVENT, { detail }))
+}
+
+/** Consumir (y vaciar) la petición en cola dirigida a `sessionId`, si la hay. */
+export function takeQueuedTurnReveal(sessionId: string): string | null {
+  if (!queuedReveal || queuedReveal.sessionId !== sessionId) return null
+  const { turnId } = queuedReveal
+  queuedReveal = null
+  return turnId
+}
+
 /**
  * Acción tipada de un aviso interno: comprobar pertenencia, ir a Boards,
  * expandir/enfocar el panel y pedir al transcript que muestre el turno. La

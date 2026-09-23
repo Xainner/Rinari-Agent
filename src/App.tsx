@@ -6,7 +6,7 @@ import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
-import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState } from './services/updates'
+import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
 import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
@@ -160,7 +160,10 @@ function App() {
     const tr = (key: I18nKey, vars?: Record<string, string | number>) => translate(lang, key, vars)
     let stop: (() => void) | undefined
     let active = true
+    let previous: Parameters<typeof reportsUpdateError>[0] = null
     void onUpdateState((state) => {
+      const before = previous
+      previous = state.phase
       if (state.phase === 'downloading') {
         const percent = Math.max(0, Math.min(100, Math.round(state.progress?.percent ?? 0)))
         toast.loading(tr('update.downloading', { percent }), { id: 'rinari-update' })
@@ -170,7 +173,7 @@ function App() {
           description: state.unsigned ? tr('update.unsigned') : undefined,
           action: { label: tr('update.install'), onClick: () => void applyUpdate().catch((error) => toast.error(String(error))) },
         })
-      } else if (state.phase === 'error') {
+      } else if (state.phase === 'error' && reportsUpdateError(before)) {
         toast.error(tr('update.failed', { detail: state.message ?? 'unknown error' }), { id: 'rinari-update' })
       }
     }).then((unsubscribe) => {

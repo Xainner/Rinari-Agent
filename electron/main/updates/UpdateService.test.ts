@@ -117,6 +117,33 @@ describe('UpdateService', () => {
     expect(fixture.updater.downloadUpdate).not.toHaveBeenCalled()
   })
 
+  // electron-updater emite `error` y después rechaza `checkForUpdates()`.
+  function rejectCheck(fixture: ReturnType<typeof service>, message: string, code?: string) {
+    const error = Object.assign(new Error(message), code ? { code } : {})
+    fixture.updater.checkForUpdates.mockImplementationOnce(async () => {
+      fixture.updater.emit('error', error)
+      throw error
+    })
+  }
+
+  it.each([
+    ['an empty releases feed', 'ERR_XML_MISSED_ELEMENT'],
+    ['releases without a tag', 'ERR_UPDATER_NO_PUBLISHED_VERSIONS'],
+  ])('treats %s as up to date, not as a failure', async (_case, code) => {
+    const fixture = service()
+    rejectCheck(fixture, 'No published versions on GitHub', code)
+    await expect(fixture.service.check()).resolves.toBeNull()
+    expect(fixture.states).toEqual(['checking', 'idle'])
+    expect(fixture.service.snapshot()).toMatchObject({ phase: 'idle', message: null, available_version: null })
+  })
+
+  it('still reports a check that could not reach the provider', async () => {
+    const fixture = service()
+    rejectCheck(fixture, 'net::ERR_INTERNET_DISCONNECTED')
+    await expect(fixture.service.check()).rejects.toThrow('net::ERR_INTERNET_DISCONNECTED')
+    expect(fixture.service.snapshot()).toMatchObject({ phase: 'error', message: 'net::ERR_INTERNET_DISCONNECTED' })
+  })
+
   it('surfaces a corrupt download and never marks it ready', async () => {
     const fixture = service()
     fixture.updater.result = { isUpdateAvailable: true, updateInfo: { version: '0.2.1' } }

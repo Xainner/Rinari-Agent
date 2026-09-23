@@ -741,6 +741,36 @@ function attachParityProbe(window: BrowserWindow): void {
 }
 
 /**
+ * Copia por el camino del producto: renderer → `window.rinariDesktop` →
+ * preload → IPC validado → `electron.clipboard`. En la app instalada (el smoke
+ * del CI) esto prueba la copia en el paquete, no sólo en desarrollo (M03 §8).
+ *
+ * Sólo se hace si se pide con `RINARI_SMOKE_CLIPBOARD=1`, y lo pide el CI,
+ * cuyo portapapeles es desechable. En la máquina de alguien no se toca porque
+ * no se puede devolver entero: `clipboard.read()` no ve todos los formatos (en
+ * Windows, el «HTML Format» de otra aplicación no aparece), así que guardar lo
+ * visible y restaurarlo perdía el resto en silencio.
+ */
+async function smokeClipboard(
+  window: BrowserWindow,
+): Promise<{ ok: boolean; skipped?: string; error?: string }> {
+  if (process.env.RINARI_SMOKE_CLIPBOARD !== '1') {
+    return { ok: true, skipped: 'RINARI_SMOKE_CLIPBOARD is not 1; clipboard left untouched' }
+  }
+  const marker = `rinari-smoke-${process.pid}-${Date.now()}`
+  try {
+    await window.webContents.executeJavaScript(
+      `window.rinariDesktop.clipboard.writeText(${JSON.stringify(marker)})`,
+    )
+    return { ok: (await clipboard.readText()) === marker }
+  } catch (error) {
+    return { ok: false, error: String(error) }
+  } finally {
+    clipboard.clear()
+  }
+}
+
+/**
  * Smoke de arranque (documento 02 §8): comprueba que el host abre de verdad y
  * que el renderer carga por el esquema propio con el puente puesto, y termina.
  * No sustituye a la matriz de paridad; solo evita declarar «Electron funciona»
@@ -771,11 +801,17 @@ function attachSmoke(window: BrowserWindow): void {
          })`,
       ) as Promise<Record<string, unknown>>
     })()
-      .then((probe: Record<string, unknown>) => {
+      .then(async (probe: Record<string, unknown>) => {
         const visible = window.isVisible()
         const maximized = window.isMaximized()
-        const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false && visible && maximized
-        report(ok, { stage: 'renderer', ...probe, visible, maximized, engine: engine.status().state })
+        // En Linux bajo xvfb no hay gestor de ventanas: maximizar no deja estado
+        // y `isMaximized()` da false aunque todo esté bien. Se exige donde el
+        // sistema lo garantiza y en Linux sólo se informa.
+        const maximizeRequired = process.platform !== 'linux'
+        const copy = await smokeClipboard(window)
+        const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false
+          && visible && (maximized || !maximizeRequired) && copy.ok
+        report(ok, { stage: 'renderer', ...probe, visible, maximized, maximizeRequired, clipboard: copy, engine: engine.status().state })
       })
       .catch((error: unknown) => report(false, { stage: 'probe', error: String(error) }))
   })

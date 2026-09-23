@@ -76,12 +76,24 @@ async function run() {
   if (!window.isVisible()) await new Promise<void>(resolve => window.once('show', () => resolve()))
   assert(window.isMaximized())
   assert(visibleStates.length === 1 && visibleStates.every(Boolean),'first visible frame must be maximized')
+  const [maximizedWidth] = window.getContentSize()
   window.unmaximize()
   focusExistingWindow(window)
   assert(!window.isMaximized(),'second instance must preserve normal size')
   if (process.env.M03_NARROW === '1') {
+    // La restauración termina después de `unmaximize` (el renderer aún mide el
+    // tamaño maximizado) y pisaba el `setContentSize`: «narrow» medía 1280 px.
+    // Se espera a que host y renderer hayan salido del tamaño maximizado.
+    const deadline = Date.now() + 10000
+    for (;;) {
+      const [width] = window.getContentSize()
+      if (width !== maximizedWidth && await evaluate('innerWidth') === width) break
+      if (Date.now() > deadline) throw new Error('Timed out: restore after unmaximize')
+      await new Promise(r => setTimeout(r, 20))
+    }
     window.setMinimumSize(480, 600)
     window.setContentSize(640, 760)
+    await wait('Math.abs(innerWidth - 640) <= 2')
   }
   if (process.env.M03_REDUCED === '1') await evaluate('window.m03.reducedMotion()')
   await evaluate('window.m03.create()')

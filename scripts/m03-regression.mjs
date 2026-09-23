@@ -1,10 +1,12 @@
 // Isolated Electron integration test. Never loads the user's profile or provider.
+// It does use the system clipboard: the copy check overwrites it and cannot
+// restore it in full (clipboard.read() does not see every format).
 import { build } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwind from '@tailwindcss/vite'
 import { rolldown } from 'rolldown'
 import { spawn } from 'node:child_process'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve,join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,4 +28,7 @@ const child=spawn(electron,args,{cwd:root,stdio:'inherit',env:{
   RINARI_ENGINE_CWD:root,
 }})
 process.exitCode=await new Promise(resolve=>{child.on('exit',code=>resolve(code??1));child.on('error',error=>{console.error(error);resolve(1)})})
-console.log('Isolated test profile retained at '+profile)
+// The profile is kept only when the run fails, to diagnose it; otherwise one
+// accumulated per run.
+if (process.exitCode===0) rmSync(profile,{recursive:true,force:true})
+else console.log('Isolated test profile retained at '+profile)

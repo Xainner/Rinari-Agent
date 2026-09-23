@@ -219,3 +219,20 @@ it('the metadata row stays out of ordinary short turns and appears for unread on
   expect(meta.dataset.unread).toBe('true')
   expect(meta.textContent).toContain('Nuevo')
 })
+
+it('M04: Normal and Boards use one terminal token indicator even after a short turn',()=>{
+ const engine=engineFixture({sessions,activeSession:'ses_a'})
+ completeTurn(engine,'ses_a','usage','Tokens verificados')
+ engine.runtime.getState().dispatch(event('usage.updated',{session_id:'ses_a',turn_id:'usage',revision:2,input_tokens:100,output_tokens:20,total_tokens:120,model_calls:2,source:'reported',phase:'settled'}))
+ const verify=(container:HTMLElement)=>{
+  const counters=within(container).getAllByTestId('token-usage')
+  expect(counters).toHaveLength(1)
+  expect(counters[0].textContent).toBe('120 tokens')
+  expect(counters[0].closest('[aria-live]')).toBeNull()
+ }
+ const normal=render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={()=>{}}/></BoardHarness>)
+ verify(normal.container);normal.unmount()
+ useBoardStore.getState().addPane('ses_a')
+ render(<BoardHarness engine={engine}><BoardView/></BoardHarness>)
+ verify(screen.getByRole('region',{name:'Backend API'}))
+})

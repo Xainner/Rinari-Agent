@@ -1,4 +1,12 @@
 export const es = {
+  'usage.input': 'Entrada',
+  'usage.output': 'Salida',
+  'usage.cache': 'Caché de entrada',
+  'usage.reasoning': 'Razonamiento',
+  'usage.calls': 'Llamadas',
+  'usage.estimated': 'Estimado',
+  'usage.mixed': 'Reportado y estimado',
+  'usage.reported': 'Reportado por el proveedor',
   "home.fixedTheme": "Esta versión utiliza el tema oscuro violeta de Rinari. Tus preferencias anteriores se conservan.",
   "home.settings": "Configuración",
   "home.minimize": "Minimizar",

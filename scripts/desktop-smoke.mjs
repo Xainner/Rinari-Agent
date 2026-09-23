@@ -8,7 +8,8 @@
 // Necesita un display; en Linux sin sesión gráfica, `xvfb-run -a`.
 
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -27,9 +28,10 @@ for (const [path, hint] of [
 }
 
 const electronBin = (await import('electron')).default
-const child = spawn(electronBin, [MAIN], {
+const home = mkdtempSync(join(tmpdir(), 'rinari-smoke-'))
+const child = spawn(electronBin, [MAIN, `--user-data-dir=${join(home, 'profile')}`], {
   cwd: ROOT,
-  env: { ...process.env, RINARI_SMOKE: '1' },
+  env: { ...process.env, RINARI_SMOKE: '1', RINARI_HOME: join(home, 'engine') },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 
@@ -45,6 +47,7 @@ const timer = setTimeout(() => {
 
 child.on('exit', (code) => {
   clearTimeout(timer)
+  console.log(`Perfil aislado conservado en ${home}`)
   const line = output.split('\n').find((entry) => entry.startsWith('RINARI_SMOKE '))
   if (!line) {
     console.error('el host no reportó el smoke; salida:\n' + output.slice(-2000))

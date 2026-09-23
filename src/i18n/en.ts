@@ -1,6 +1,14 @@
 import type { I18nKey } from './es'
 
 export const en: Record<I18nKey, string> = {
+  'usage.input': 'Input',
+  'usage.output': 'Output',
+  'usage.cache': 'Cached input',
+  'usage.reasoning': 'Reasoning',
+  'usage.calls': 'Model calls',
+  'usage.estimated': 'Estimated',
+  'usage.mixed': 'Reported and estimated',
+  'usage.reported': 'Provider reported',
   "home.fixedTheme": "This version uses Rinari’s dark violet theme. Your previous preferences are preserved.",
   "home.settings": "Settings",
   "home.minimize": "Minimize",

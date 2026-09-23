@@ -570,9 +570,61 @@
       ]
     },
     {
+      "command": "provider_auth_cancel",
+      "kind": "engine",
+      "method": "provider.auth.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_auth_get",
+      "kind": "engine",
+      "method": "provider.auth.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_auth_logout",
+      "kind": "engine",
+      "method": "provider.auth.logout",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_auth_start",
+      "kind": "engine",
+      "method": "provider.auth.start",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_catalog_get",
+      "kind": "engine",
+      "method": "provider.catalog.get",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "provider_create",
       "kind": "engine",
       "method": "provider.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_diagnostics_get",
+      "kind": "engine",
+      "method": "provider.diagnostics.get",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -624,6 +676,15 @@
       "kind": "engine",
       "method": "provider.update",
       "manual": true,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_usage_get",
+      "kind": "engine",
+      "method": "provider.usage.get",
+      "manual": false,
       "callers": [
         "src/services/engine.ts"
       ]
@@ -1098,10 +1159,10 @@
     }
   ],
   "summary": {
-    "commands": 130,
-    "engine_backed": 124,
+    "commands": 137,
+    "engine_backed": 131,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 41
+    "without_callers": 42
   }
 }

@@ -126,11 +126,9 @@ documentado; lo demás no se presenta como terminado.
 - **Títulos de etapa generados por IA** — fuera de alcance deliberado. El
   título es el encabezado del plan o el primer mensaje del usuario, sin
   llamadas al modelo.
-- **`ResultSummaryCard` como resumen fuera del chat** — sin consumidor; la
-  tarjeta de etapa no la reutiliza porque resume una racha, no un turno.
-- **Cargo bloqueado localmente** — `NOT_RUN`. Control de aplicaciones impide
-  `rustc`/`cargo-clippy` en la máquina de desarrollo; `rustfmt --check` sí
-  corre y CI cubre `cargo test`/`clippy`.
+- **Tarjeta de etapa propia** — decisión. La etapa no reutiliza una tarjeta de
+  resultado de turno porque resume una racha de turnos, no uno.
+  (`ResultSummaryCard` ya se retiró; ver su entrada `WONTFIX` arriba.)
 
 ### Cierre del ciclo de vida de salida (2026-09-18)
 

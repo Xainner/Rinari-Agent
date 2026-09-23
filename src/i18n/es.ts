@@ -1,4 +1,12 @@
 export const es = {
+  'usage.input': 'Entrada',
+  'usage.output': 'Salida',
+  'usage.cache': 'Caché de entrada',
+  'usage.reasoning': 'Razonamiento',
+  'usage.calls': 'Llamadas',
+  'usage.estimated': 'Estimado',
+  'usage.mixed': 'Reportado y estimado',
+  'usage.reported': 'Reportado por el proveedor',
   'files.refresh': 'Recargar archivo',
   'files.deleted': 'El archivo fue eliminado.',
   'files.changedSinceTurn': 'Modificado después de este turno.',

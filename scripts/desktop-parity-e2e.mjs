@@ -12,7 +12,7 @@
 // Necesita un display; en Linux sin sesión gráfica, `xvfb-run -a`.
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,7 +33,7 @@ if (!existsSync(join(CLI, 'pyproject.toml'))) {
 // Home temporal: la prueba no toca los datos del usuario.
 const home = mkdtempSync(join(tmpdir(), 'rinari-parity-'))
 const electronBin = (await import('electron')).default
-const child = spawn(electronBin, [MAIN, `--user-data-dir=${join(home, 'profile')}`], {
+const child = spawn(electronBin, [MAIN], {
   cwd: ROOT,
   env: {
     ...process.env,
@@ -53,13 +53,13 @@ child.stderr.on('data', (chunk) => (output += chunk.toString()))
 const timer = setTimeout(() => {
   child.kill()
   console.error('la sonda no reportó en 240 s; salida:\n' + output.slice(-3000))
-  console.error(`Perfil aislado conservado en ${home}`)
+  rmSync(home, { recursive: true, force: true })
   process.exit(1)
 }, 240_000)
 
 child.on('exit', () => {
   clearTimeout(timer)
-  console.log(`Perfil aislado conservado en ${home}`)
+  rmSync(home, { recursive: true, force: true })
   const line = output.split('\n').find((entry) => entry.startsWith('RINARI_PARITY '))
   if (!line) {
     console.error('el host no reportó; salida:\n' + output.slice(-3000))

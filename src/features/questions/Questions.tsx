@@ -22,6 +22,10 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   const pointerAdvance = useRef({ index: -1, until: 0 })
   const heading = useRef<HTMLHeadingElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
+  // Focus moves after the user's own step, Other or restore. A card that just
+  // arrived only takes focus if nobody has it: taking it from the composer, or
+  // from another Boards pane, would send the next keystrokes into this card.
+  const focusRequested = useRef(!document.activeElement || document.activeElement === document.body)
   const question = request.questions[index]
   const selected = question ? selectionFor(question, drafts) : undefined
   const other = selected?.kind === 'other'
@@ -30,13 +34,15 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   const last = index === request.questions.length - 1
   const position = t('questions.progress', { n: index + 1, total: request.questions.length })
   useLayoutEffect(() => {
-    if (minimized) return
+    if (minimized || !focusRequested.current) return
+    focusRequested.current = false
     if (other) input.current?.focus()
     else heading.current?.focus()
   }, [index, other, minimized])
 
   function go(next: number) {
     if (sendingRef.current) return
+    focusRequested.current = true
     indexRef.current = Math.max(0, Math.min(next, request.questions.length - 1))
     setIndex(indexRef.current)
   }
@@ -45,6 +51,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
     // A second pointer click may land on a newly mounted option and arrive
     // with detail=1. Keep that gesture from answering the next question.
     if (detail > 0 && pointerAdvance.current.index === index && Date.now() < pointerAdvance.current.until) return
+    focusRequested.current = true
     setDrafts(current => ({ ...current, selections: { ...current.selections, [question.id]: selection } }))
     if (selection.kind === 'option' && !last) {
       if (detail > 0) pointerAdvance.current = { index: index + 1, until: Date.now() + 250 }
@@ -67,7 +74,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
     }
   }
   if (!question) return null
-  if (minimized) return <button disabled={sending} className="mb-3 flex items-center gap-2 text-sm" onClick={() => setMinimized(false)}>
+  if (minimized) return <button disabled={sending} className="mb-3 flex items-center gap-2 text-sm" onClick={() => { focusRequested.current = true; setMinimized(false) }}>
     <CircleHelp size={16} /> {t('questions.waiting')} · {t('questions.restore')}
   </button>
   const syntheticMetadata = question.options?.find(option => isOther(option.label))

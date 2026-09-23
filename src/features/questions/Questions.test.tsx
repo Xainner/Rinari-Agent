@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, expect, it, onTestFinished, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { QuestionCard } from './Questions'
 import { desktopApi, type QuestionRequest } from '../../services/desktop'
@@ -123,6 +123,27 @@ it('normalizes model Other options and auto-focuses free-only questions', () => 
   expect(screen.getByRole('radio').textContent).toBe('Otra')
   expect(document.activeElement).toBe(screen.getByRole('textbox'))
   expect((screen.getByText('Enviar respuesta') as HTMLButtonElement).disabled).toBe(true)
+})
+
+it('does not take focus from the composer when it arrives, only after the user acts', async () => {
+  const composer = document.createElement('textarea')
+  document.body.appendChild(composer)
+  onTestFinished(() => composer.remove())
+  composer.focus()
+  const free = {...request,questions:[{id:'free',title:'Pregunta libre',options:[]}]}
+  const view = render(<QuestionCard request={free} onResolved={vi.fn()} />)
+  // An arriving card must not capture the user's next keystrokes.
+  expect(document.activeElement).toBe(composer)
+  view.unmount()
+  const two = {...request,questions:[
+    { id: 'a', title: 'Primera', options: [{ label: 'Uno' }] },
+    { id: 'b', title: 'Segunda', options: [{ label: 'Dos' }] },
+  ]}
+  render(<QuestionCard request={two} onResolved={vi.fn()} />)
+  expect(document.activeElement).toBe(composer)
+  await userEvent.click(screen.getByRole('radio', { name: 'Uno' }))
+  expect(document.activeElement).toBe(screen.getByRole('heading'))
+  expect(screen.getByRole('heading').textContent).toBe('Segunda')
 })
 
 it('selects a duplicate label by index and supports Space and Enter', async () => {

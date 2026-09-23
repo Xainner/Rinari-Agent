@@ -657,7 +657,12 @@ export const engineApi = {
   visionSettingsGet: () => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   contextCompact: (sessionId: string) => platform().command('context_compact', { sessionId }),
-  contextStatus: (modelId: string) => platform().command<import('../types/protocol.generated').ContextStatus>('context_status', { modelId }),
+  /** Capacity of a saved model, or of a session's model plus its measured use. */
+  contextStatus: (target: { model_id?: string; session_id?: string }) =>
+    platform().command<import('../types/protocol.generated').ContextStatus>('context_status', target),
+  /** Every saved model's capacity in one call; `refresh` drops the discovery cache first. */
+  contextModels: (refresh = false) =>
+    platform().command<{ models: import('../features/context/contextStatus').ModelContext[] }>('context_models', { refresh }),
   contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
   visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
   sessionImageSupport: (session_id: string | null, model_id?: string) => platform().command<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),

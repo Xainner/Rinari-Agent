@@ -339,7 +339,7 @@ function mergeEventItem(
       sessionId: text(payload.session_id) || undefined,
       error: text(payload.error) || undefined,
       reason: text(payload.reason) || undefined,
-      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source },
+      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source, checks: payload.checks, duration: payload.duration_ms, dropped: payload.dropped_messages },
       activitySeq,
       occurredAt,
       status:

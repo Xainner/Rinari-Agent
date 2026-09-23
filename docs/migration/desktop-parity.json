@@ -194,6 +194,15 @@
       ]
     },
     {
+      "command": "context_models",
+      "kind": "engine",
+      "method": "context.models",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "context_settings_get",
       "kind": "engine",
       "method": "context.settings.get",
@@ -1177,8 +1186,8 @@
     }
   ],
   "summary": {
-    "commands": 139,
-    "engine_backed": 133,
+    "commands": 140,
+    "engine_backed": 134,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 42

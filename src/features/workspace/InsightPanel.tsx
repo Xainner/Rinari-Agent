@@ -8,6 +8,7 @@ import {
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
+import SessionContextStatus from '../context/SessionContextStatus'
 
 /** Inspector de contexto y uso de la sesión: estado real del engine. */
 export default function InsightPanel({ sessionId }: { sessionId: string }) {
@@ -36,6 +37,10 @@ export default function InsightPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="space-y-4">
+      <Section title={t('context.session')}>
+        <SessionContextStatus sessionId={sessionId} />
+      </Section>
+
       <Section title={t('insight.context')}>
         {!context && (
           <p className="text-sm text-[var(--text-subtle)]">{t('insight.loading')}</p>

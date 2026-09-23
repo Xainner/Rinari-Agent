@@ -2288,8 +2288,13 @@
       "args": [
         {
           "name": "model_id",
-          "type": "String",
-          "optional": false
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -2299,7 +2304,35 @@
         {
           "key": "model_id",
           "from": "model_id",
-          "optional": false
+          "optional": true
+        },
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "context_models",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "refresh",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "ContextModels",
+      "manual": false,
+      "engine_method": "context.models",
+      "engine_params": [
+        {
+          "key": "refresh",
+          "from": "refresh",
+          "optional": true
         }
       ],
       "passthrough": null,

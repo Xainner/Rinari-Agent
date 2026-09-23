@@ -26,6 +26,7 @@ import { FileLink } from '../files/FileWorkspace'
 import MessageBubble from '../../components/MessageBubble'
 import { usePeerNavigation } from '../board/PeerNavigationContext'
 import TurnMeta from './TurnMeta'
+import CompactionDetails from '../context/CompactionDetails'
 import TokenUsage from './TokenUsageIndicator'
 import TurnResult from './TurnResult'
 import { commandMessage, engineApi } from '../../services/engine'
@@ -207,7 +208,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     <div className="flex items-center gap-2">{item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}{item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}
       {(item.status === 'failed' || item.status === 'cancelled') && item.sessionId && <button className="underline" onClick={() => { void engineApi.contextCompact(item.sessionId!).catch(e => toast.error(commandMessage(e))) }}>{lang === 'es' ? 'Reintentar compactación' : 'Retry compaction'}</button>}
     </div>
-    {(item.error || item.contextDetails) && <details className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<StructuredValue value={item.contextDetails} /></details>}
+    {(item.error || item.contextDetails) && <details className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<CompactionDetails details={item.contextDetails} /></details>}
   </div>
   const Icon = item.type === 'verification' ? Check : Sparkles
   return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" />{labels}</div>

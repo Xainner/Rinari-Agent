@@ -66,6 +66,11 @@ describe('testBridge', () => {
     await expect(platform().dialog.openFiles({ directory: true })).resolves.toEqual(['C:/repo'])
   })
 
+  it('confirma el portapapeles nativo y conserva el último texto en el doble', async () => {
+    await platform().clipboard.writeText('Sesión: ses_a')
+    expect(bridge.copiedTexts).toEqual(['Sesión: ses_a'])
+  })
+
   it('el menú contextual conserva roles y acciones propias', async () => {
     const run = vi.fn()
     await platform().contextMenu.show(

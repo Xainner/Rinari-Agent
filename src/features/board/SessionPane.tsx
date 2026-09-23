@@ -227,6 +227,7 @@ function SessionPane({
           focused={focused}
           sharedRoot={sharedRoot}
           browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+          engineGeneration={data.engineGeneration}
           busy={session.busy}
         >
           <ReadTrackingContext.Provider value={readTracking}>
@@ -265,6 +266,8 @@ function SessionPane({
               onPermissionChange={session.setPermission}
               onSearchFiles={session.searchFiles}
               historyNote={data.historyInfo[pane.sessionId] ?? null}
+              historyPhase={data.historyPhases?.[pane.sessionId] ?? 'unloaded'}
+              onRetryHistory={() => void commands.retryHistoryFor(pane.sessionId)}
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
               onReviewChanges={reviewChanges}

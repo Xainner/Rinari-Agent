@@ -282,8 +282,9 @@ export function useEngineSession() {
 
   /** Vista Normal: "cargando historial" se distingue de "vacía" para no
    * mostrar el home de forma transitoria (esqueleto de sesión). */
-  const historyLoading =
-    sessions.activeSession !== '' ? (sessions.historyPending[sessions.activeSession] ?? false) : false
+  const historyPhase = sessions.activeSession !== ''
+    ? (sessions.historyPhases[sessions.activeSession] ?? 'unloaded')
+    : 'loaded'
   const activeGitStatus = activeProjectRoot ? (projects.statusByRoot[activeProjectRoot] ?? null) : null
   const activeGitError = activeProjectRoot
     ? (projects.statusErrorByRoot[activeProjectRoot] ?? null)
@@ -319,6 +320,8 @@ export function useEngineSession() {
     prepareSession: sessions.prepareSession,
     ensureSessionReady: sessions.prepareSession,
     ensureHistoryLoaded: sessions.ensureHistoryLoaded,
+    retryHistoryFor: sessions.retrySessionHistory,
+    retryHistory: () => sessions.retrySessionHistory(sessions.activeSession),
     send,
     sendTo,
     prepareAttachments,
@@ -351,7 +354,8 @@ export function useEngineSession() {
     searchFiles: sessions.searchFiles,
     searchFilesFor: sessions.searchFilesFor,
     historyInfo: sessions.historyInfo,
-    historyLoading,
+    historyPhases: sessions.historyPhases,
+    historyPhase,
     closedSessions: sessions.closedSessions,
     archivedSessions: sessions.archivedSessions,
     closeSession: sessions.closeSession,

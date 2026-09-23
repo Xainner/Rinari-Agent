@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "types": ["node", "electron", "vite/client"] },
+  "include": ["main.ts", "renderer.tsx"],
+  "references": []
+}

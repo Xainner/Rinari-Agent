@@ -26,9 +26,11 @@ import { FileLink } from '../files/FileWorkspace'
 import MessageBubble from '../../components/MessageBubble'
 import { usePeerNavigation } from '../board/PeerNavigationContext'
 import TurnMeta from './TurnMeta'
+import TokenUsage from './TokenUsageIndicator'
 import TurnResult from './TurnResult'
 import { commandMessage, engineApi } from '../../services/engine'
 import { formatTool, toolCategory } from './formatActivity'
+import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 
@@ -278,7 +280,7 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
   const command = typeof presentation.command === 'string' ? presentation.command : undefined
   const displayCommand = argv ? `argv ${JSON.stringify(argv)}` : command
   const copy = () => {
-    if (displayCommand) void navigator.clipboard?.writeText(argv ? JSON.stringify(argv) : displayCommand)
+    if (displayCommand) void copyText(argv ? JSON.stringify(argv) : displayCommand)
   }
   const exitCode = presentation.exit_code
   const failed = presentation.status === 'failed' || (typeof exitCode === 'number' && exitCode !== 0)
@@ -417,12 +419,16 @@ export default function TurnTimelineView({ timeline, user, now, onResolveApprova
         ) : <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
         <VisualProgress items={visualItems} status={timeline.status} onResolveApproval={onResolveApproval} />
         {waiting && timeline.status !== 'approval' && !timeline.items.some(item => item.type === 'question' && item.request.status === 'pending') && (
-          <div role="status" aria-live="polite" className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
+          <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
             <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
-            <span>{timeline.status === 'cancelling' ? (lang === 'es' ? 'Cancelando…' : 'Cancelling…') : (lang === 'es' ? 'Pensando…' : 'Thinking…')}</span>
+            <span role="status" aria-live="polite">{timeline.status === 'cancelling' ? (lang === 'es' ? 'Cancelando…' : 'Cancelling…') : (lang === 'es' ? 'Pensando…' : 'Thinking…')}</span>
+            <TokenUsage usage={timeline.usage} />
             <span className="text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(duration)}</span>
           </div>
         )}
+        {timeline.usage && ['running', 'approval', 'cancelling'].includes(timeline.status) &&
+          (!waiting || timeline.status === 'approval' || timeline.items.some(item => item.type === 'question' && item.request.status === 'pending')) &&
+          <div className="py-1 text-xs text-[var(--text-subtle)]"><TokenUsage usage={timeline.usage} /></div>}
       </div>
       <TurnResult timeline={timeline} planActions={planActions} />
       <TurnMeta timeline={timeline} user={user} actions={significant.length} emphasis={emphasis} onReviewChanges={onReviewChanges} />

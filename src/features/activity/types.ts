@@ -164,6 +164,9 @@ export type TimelineItem =
   | SystemTimelineItem
 
 export interface TurnTimeline {
+  usage?: import('../../types/protocol.generated').TurnTokenUsage
+  /** Engine without turn aggregates: deduplicate reported calls locally. */
+  legacyUsage?: Record<string, Record<string, unknown>>
   mode?: string | null
   turnId: string
   sessionId: string

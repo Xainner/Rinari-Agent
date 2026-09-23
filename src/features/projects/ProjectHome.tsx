@@ -8,6 +8,7 @@ import type {
 } from '../../services/engine'
 import { projectDisplayName } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
+import { copyText } from '../../lib/clipboard'
 
 export interface ProjectHomeProps {
   root: string
@@ -64,7 +65,7 @@ export default function ProjectHome({
 
   const git = status?.status ?? null
   const copyPath = () => {
-    void navigator.clipboard?.writeText(root).catch(() => {})
+    void copyText(root)
   }
 
   const commands = intel

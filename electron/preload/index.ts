@@ -128,6 +128,10 @@ const api = {
     openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
   },
 
+  clipboard: {
+    writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
+  },
+
   contextMenu: {
     /**
      * Muestra el menú nativo. Las acciones propias no son serializables, así

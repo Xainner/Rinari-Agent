@@ -17,7 +17,7 @@ import type { RuntimeStore } from './runtimeStore'
 
 type CommandKeys =
   | 'startEngine' | 'shutdownEngine' | 'restartEngine' | 'refreshStatus' | 'refreshSessions'
-  | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded'
+  | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded' | 'retryHistoryFor' | 'retryHistory'
   | 'send' | 'sendTo' | 'prepareAttachments' | 'prepareAttachmentsFor'
   | 'cancelAttachmentPreparation' | 'cancelAttachmentPreparationFor'
   | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'resolveApproval'
@@ -31,7 +31,7 @@ type CommandKeys =
 
 const COMMAND_KEYS: readonly CommandKeys[] = [
   'startEngine', 'shutdownEngine', 'restartEngine', 'refreshStatus', 'refreshSessions',
-  'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded',
+  'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded', 'retryHistoryFor', 'retryHistory',
   'send', 'sendTo', 'prepareAttachments', 'prepareAttachmentsFor',
   'cancelAttachmentPreparation', 'cancelAttachmentPreparationFor',
   'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'resolveApproval',
@@ -49,7 +49,7 @@ export type EngineCommands = Pick<EngineSession, CommandKeys> & { runtime: Runti
 type DataKeys =
   | 'status' | 'ready' | 'engineGeneration'
   | 'sessions' | 'sessionsById' | 'activeSession' | 'sessionsLoaded' | 'sessionsError'
-  | 'historyInfo' | 'historyLoading' | 'closedSessions' | 'archivedSessions'
+  | 'historyInfo' | 'historyPhases' | 'historyPhase' | 'closedSessions' | 'archivedSessions'
   | 'providers' | 'models' | 'catalogLoaded' | 'catalogError' | 'activeModel'
   | 'projects' | 'archivedProjects' | 'projectsError'
   | 'projectStatusByRoot' | 'projectStatusErrorByRoot' | 'projectIntelByRoot'
@@ -88,7 +88,8 @@ export function EngineProvider({ session, children }: { session: EngineSession; 
     sessionsLoaded: session.sessionsLoaded,
     sessionsError: session.sessionsError,
     historyInfo: session.historyInfo,
-    historyLoading: session.historyLoading,
+    historyPhases: session.historyPhases,
+    historyPhase: session.historyPhase,
     closedSessions: session.closedSessions,
     archivedSessions: session.archivedSessions,
     providers: session.providers,
@@ -110,7 +111,7 @@ export function EngineProvider({ session, children }: { session: EngineSession; 
   }), [
     session.status, session.ready, session.engineGeneration,
     session.sessions, session.sessionsById, session.activeSession, session.sessionsLoaded, session.sessionsError,
-    session.historyInfo, session.historyLoading, session.closedSessions, session.archivedSessions,
+    session.historyInfo, session.historyPhases, session.historyPhase, session.closedSessions, session.archivedSessions,
     session.providers, session.models, session.catalogLoaded, session.catalogError, session.activeModel,
     session.projects, session.archivedProjects, session.projectsError,
     session.projectStatusByRoot, session.projectStatusErrorByRoot, session.projectIntelByRoot,

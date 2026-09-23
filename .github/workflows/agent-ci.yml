@@ -75,7 +75,10 @@ jobs:
       # Abre Electron de verdad: comprueba que el renderer carga por el
       # esquema propio con el puente puesto y sin fugas de Node. Necesita un
       # display, de ahí xvfb (documento 02 §8).
+      # El portapapeles del runner es desechable: aquí sí se prueba la copia.
       - run: xvfb-run -a npm run desktop:smoke
+        env:
+          RINARI_SMOKE_CLIPBOARD: '1'
 
   browser-integration:
     # Gate reproducible del Documento 03: usa el checkout exacto que declara
@@ -187,6 +190,7 @@ jobs:
           if (-not (Test-Path -LiteralPath (Join-Path $install 'rinari-code.exe'))) { throw 'compatibility executable missing' }
           if (-not (Test-Path -LiteralPath (Join-Path $install 'resources\engine-dist\python.exe'))) { throw 'installed Engine missing' }
           $env:RINARI_SMOKE = '1'
+          $env:RINARI_SMOKE_CLIPBOARD = '1'
           $env:RINARI_HOME = Join-Path $env:RUNNER_TEMP 'rinari-smoke-engine-home'
           $env:RINARI_KEYRING = '0'
           $profile = Join-Path $env:RUNNER_TEMP 'rinari-smoke-profile'

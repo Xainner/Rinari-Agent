@@ -22,6 +22,7 @@ export const CHANNEL = {
   dialogOpenFiles: 'rinari:dialog.openFiles',
   openerOpenUrl: 'rinari:opener.openUrl',
   filesOpenExternal: 'rinari:files.openExternal',
+  clipboardWriteText: 'rinari:clipboard.writeText',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',

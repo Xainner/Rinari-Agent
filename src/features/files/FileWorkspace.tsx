@@ -8,15 +8,16 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Copy, ExternalLink, FileText, X } from 'lucide-react'
+import { Copy, ExternalLink, FileText, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { desktopApi, type FilePreview } from '../../services/desktop'
-import { commandMessage, engineApi } from '../../services/engine'
+import { commandMessage, engineApi, isCommandError } from '../../services/engine'
 import { copyText } from '../../lib/clipboard'
 import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 
 import { platform } from '../../platform'
+import { useI18n } from '../../i18n'
 
 type OpenFile = (path: string, turnId?: string) => void
 const FileContext = createContext<OpenFile | null>(null)
@@ -86,6 +87,11 @@ export type FileTab = {
   target: string
   file?: FilePreview
   error?: string
+  watchId?: string
+  revision?: number
+  state?: 'changed' | 'deleted' | 'recreated'
+  stale?: boolean
+  syncError?: string
 }
 
 export interface FileWorkspaceController {
@@ -94,6 +100,7 @@ export interface FileWorkspaceController {
   selected: FileTab | undefined
   select: (key: string) => void
   close: (key: string) => void
+  refresh: (key: string) => void
   open: OpenFile
   source: boolean
   setSource: (next: boolean | ((current: boolean) => boolean)) => void
@@ -118,15 +125,24 @@ export function FileWorkspaceProvider({
   sessionId,
   children,
   onOpen,
+  engineGeneration,
 }: {
   sessionId: string
   children: ReactNode
   /** Se llama al abrir un archivo; el layout decide cómo mostrar el visor. */
   onOpen?: () => void
+  /**
+   * Generación del Engine (`EngineData.engineGeneration`). Los watches viven en
+   * el proceso del Engine: cuando cambia, las pestañas se vuelven a inscribir.
+   */
+  engineGeneration?: number
 }) {
   const [tabs, setTabs] = useState<FileTab[]>([])
   const [active, setActive] = useState('')
   const [source, setSource] = useState(false)
+  const tabsRef = useRef<FileTab[]>([])
+  // Identity survives refreshes, but never closing/reopening the same path.
+  const owners = useRef(new Map<string, { sequence: number }>())
   const onOpenRef = useRef(onOpen)
   useEffect(() => {
     onOpenRef.current = onOpen
@@ -134,17 +150,64 @@ export function FileWorkspaceProvider({
   const currentTabs = useMemo(() => tabs.filter((tab) => tab.sessionId === sessionId), [tabs, sessionId])
   const selected = currentTabs.find((tab) => tab.key === active) ?? currentTabs.at(-1)
 
+  const updateTabs = useCallback((update: (current: FileTab[]) => FileTab[]) => {
+    const next = update(tabsRef.current)
+    tabsRef.current = next
+    setTabs(next)
+  }, [])
+
+  const readCurrent = useCallback(async (key: string, state?: FileTab['state'], revision?: number) => {
+    const tab = tabsRef.current.find((candidate) => candidate.key === key)
+    const owner = owners.current.get(key)
+    if (!tab || !owner || tab.target.startsWith('artifact://')) return
+    if (revision !== undefined) {
+      if ((tab.revision ?? 0) >= revision) return
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? { ...candidate, state, revision }
+        : candidate))
+    }
+    const sequence = ++owner.sequence
+    const isCurrent = () => owners.current.get(key) === owner && owner.sequence === sequence
+    if (state === 'deleted') {
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? { ...candidate, state, revision, stale: true, syncError: undefined }
+        : candidate))
+      return
+    }
+    try {
+      const file = await desktopApi.readFile(tab.sessionId, tab.target, tab.turnId)
+      if (!isCurrent()) return
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? revision !== undefined && candidate.revision !== revision
+          ? candidate
+          : { ...candidate, file, error: undefined, syncError: undefined, stale: false, state, revision: revision ?? candidate.revision }
+        : candidate))
+    } catch (error) {
+      if (!isCurrent()) return
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? revision !== undefined && candidate.revision !== revision
+          ? candidate
+          : { ...candidate, stale: Boolean(candidate.file), syncError: commandMessage(error), state, revision: revision ?? candidate.revision }
+        : candidate))
+    }
+  }, [updateTabs])
+
   const open = useCallback(async (target: string, turnId?: string) => {
     const key = JSON.stringify([sessionId, turnId, target])
     onOpenRef.current?.()
     setActive(key)
-    setTabs((current) =>
-      current.some((t) => t.key === key)
-        ? current
-        : [...current, { key, sessionId, turnId, target }],
-    )
+    const existing = tabsRef.current.find((tab) => tab.key === key)
+    if (existing) {
+      if (existing.file) void readCurrent(key)
+      return
+    }
+    const owner = { sequence: 0 }
+    owners.current.set(key, owner)
+    const isCurrent = () => owners.current.get(key) === owner
+    updateTabs((current) => [...current, { key, sessionId, turnId, target }])
     try {
       let file: FilePreview
+      let watchId: string | undefined
       if (target.startsWith('artifact://')) {
         const result = await engineApi.artifactRead(target, 512 * 1024)
         if (result.truncated) throw new Error('La vista previa supera 512 KiB.')
@@ -155,31 +218,128 @@ export function FileWorkspaceProvider({
           language: target.split('.').at(-1) || '',
           size: result.text.length,
         }
-      } else file = await desktopApi.readFile(sessionId, target, turnId)
-      setTabs((current) =>
+      } else {
+        try {
+          const status = await platform().engine.status()
+          if (!isCurrent()) return
+          if (!status.capabilities?.workspace_file_watch_v1) {
+            throw Object.assign(new Error('legacy engine'), { code: 'UNKNOWN_METHOD' })
+          }
+          const watched = await desktopApi.watchFile(sessionId, target, turnId)
+          file = watched.preview
+          watchId = watched.watch_id
+        } catch (error) {
+          if (!isCommandError(error) || !['UNKNOWN_METHOD', 'UNKNOWN_COMMAND'].includes(error.code)) throw error
+          file = await desktopApi.readFile(sessionId, target, turnId)
+        }
+      }
+      if (!isCurrent()) {
+        if (watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(sessionId, watchId).catch(() => {})
+        return
+      }
+      updateTabs((current) =>
         current.map((tab) =>
-          tab.key === key ? { ...tab, file, error: undefined } : tab,
+          tab.key === key ? { ...tab, file, watchId, error: undefined } : tab,
         ),
       )
+      // Covers changes emitted between watch registration and its response.
+      if (watchId) void readCurrent(key)
     } catch (error) {
-      setTabs((current) =>
+      if (!isCurrent()) return
+      updateTabs((current) =>
         current.map((tab) =>
           tab.key === key ? { ...tab, error: commandMessage(error) } : tab,
         ),
       )
     }
-  }, [sessionId])
+  }, [readCurrent, sessionId, updateTabs])
+
+  useEffect(() => {
+    let disposed = false
+    let unsubscribe: (() => void) | undefined
+    void platform().events.onEngineEvent((message) => {
+      if (message.event !== 'workspace.file.changed') return
+      const payload = message.payload
+      if (payload.session_id !== sessionId || typeof payload.watch_id !== 'string') return
+      const tab = tabsRef.current.find((candidate) => candidate.watchId === payload.watch_id)
+      if (!tab) return
+      if (!Number.isSafeInteger(payload.revision) || (payload.revision as number) <= 0) return
+      const state = payload.state
+      if (state !== 'changed' && state !== 'deleted' && state !== 'recreated') return
+      void readCurrent(tab.key, state, typeof payload.revision === 'number' ? payload.revision : undefined)
+    }).then((stop) => { if (disposed) stop(); else unsubscribe = stop })
+    return () => { disposed = true; unsubscribe?.() }
+  }, [readCurrent, sessionId])
+
+  /**
+   * El registro de watches vive en el proceso del Engine y se pierde al
+   * reiniciarlo: sin esto, las pestañas abiertas dejaban de sincronizarse sin
+   * decirlo. Con cada Engine nuevo se vuelven a inscribir. Las revisiones
+   * empiezan de nuevo, así que la monotonía se reinicia con el watch nuevo; si
+   * el Engine nuevo no ofrece watches se recae en la lectura manual, y lo que
+   * falle queda rotulado como desactualizado con su error.
+   */
+  const rewatch = useCallback(async (key: string) => {
+    const tab = tabsRef.current.find((candidate) => candidate.key === key)
+    const owner = owners.current.get(key)
+    if (!tab || !owner) return
+    const sequence = ++owner.sequence
+    const isCurrent = () => owners.current.get(key) === owner && owner.sequence === sequence
+    try {
+      const watched = await desktopApi.watchFile(tab.sessionId, tab.target, tab.turnId)
+      if (!isCurrent()) {
+        void desktopApi.unwatchFile(tab.sessionId, watched.watch_id).catch(() => {})
+        return
+      }
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? { ...candidate, file: watched.preview, watchId: watched.watch_id, revision: 0, state: undefined, stale: false, syncError: undefined, error: undefined }
+        : candidate))
+    } catch (error) {
+      if (!isCurrent()) return
+      const legacy = isCommandError(error) && ['UNKNOWN_METHOD', 'UNKNOWN_COMMAND'].includes(error.code)
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? { ...candidate, watchId: undefined, revision: 0, ...(legacy ? {} : { stale: Boolean(candidate.file), syncError: commandMessage(error) }) }
+        : candidate))
+      if (legacy) void readCurrent(key)
+    }
+  }, [readCurrent, updateTabs])
+
+  const seenGeneration = useRef(engineGeneration)
+  useEffect(() => {
+    const previous = seenGeneration.current
+    seenGeneration.current = engineGeneration
+    if (previous === undefined || engineGeneration === undefined || previous === engineGeneration) return
+    const watched = tabsRef.current.filter((tab) => tab.sessionId === sessionId && tab.watchId)
+    for (const tab of watched) void rewatch(tab.key)
+  }, [engineGeneration, rewatch, sessionId])
+
+  useEffect(() => () => {
+    const owned = tabsRef.current.filter((tab) => tab.sessionId === sessionId)
+    for (const tab of owned) owners.current.delete(tab.key)
+    updateTabs((current) => current.filter((tab) => tab.sessionId !== sessionId))
+    for (const tab of owned) {
+      if (tab.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(tab.sessionId, tab.watchId).catch(() => {})
+    }
+  }, [sessionId, updateTabs])
+
+  const close = useCallback((key: string) => {
+    const closing = tabsRef.current.find((tab) => tab.key === key)
+    owners.current.delete(key)
+    updateTabs((current) => current.filter((tab) => tab.key !== key))
+    if (closing?.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(closing.sessionId, closing.watchId).catch(() => {})
+  }, [updateTabs])
 
   const controller = useMemo<FileWorkspaceController>(() => ({
     sessionId,
     tabs: currentTabs,
     selected,
     select: setActive,
-    close: (key) => setTabs((current) => current.filter((t) => t.key !== key)),
+    close,
+    refresh: (key) => void readCurrent(key),
     open: (path, turnId) => void open(path, turnId),
     source,
     setSource,
-  }), [sessionId, currentTabs, selected, open, source])
+  }), [sessionId, currentTabs, selected, close, open, readCurrent, source])
 
   return (
     <FileWorkspaceContext.Provider value={controller}>
@@ -190,9 +350,10 @@ export function FileWorkspaceProvider({
 
 /** Presentación del visor: pestañas, ruta, acciones y contenido. */
 export function FileViewer({ onClose, className = '' }: { onClose?: () => void; className?: string }) {
+  const { t } = useI18n()
   const controller = useFileWorkspace()
   if (!controller) return null
-  const { tabs: currentTabs, selected, select, close, open, source, setSource } = controller
+  const { tabs: currentTabs, selected, select, close, refresh, open, source, setSource } = controller
   return (
     <div className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg-app)] text-sm ${className}`}>
       <div className="flex items-center border-b border-[var(--border)]">
@@ -246,6 +407,9 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
             >
               <Copy size={14} />
             </button>
+            <button aria-label={t('files.refresh')} onClick={() => refresh(selected.key)}>
+              <RefreshCw size={14} />
+            </button>
             {selected.file &&
               !selected.target.startsWith('artifact:') &&
               !['html', 'htm'].includes(selected.file.language) && (
@@ -261,6 +425,13 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
                 </button>
               )}
           </div>
+          {(selected.file?.changed_since_turn || selected.stale || selected.syncError) && (
+            <div role="status" className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              {selected.syncError ?? (selected.state === 'deleted'
+                ? t('files.deleted')
+                : selected.file?.changed_since_turn ? t('files.changedSinceTurn') : t('files.stale'))}
+            </div>
+          )}
           {selected.file?.language === 'md' && (
             <button
               className="self-start px-3 py-2 text-xs"
@@ -277,6 +448,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
               <p role="alert">{selected.error}</p>
             ) : selected.file &&
               ['html', 'htm'].includes(selected.file.language) &&
+              selected.file.provenance !== 'turn_changeset' &&
               !selected.target.startsWith('artifact:') ? (
               <HtmlPreview
                 key={selected.key}

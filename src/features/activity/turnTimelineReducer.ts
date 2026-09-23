@@ -1,4 +1,5 @@
 import type { ChatMessage, PendingApproval, TurnStopReason } from '../../types'
+import { mergeTokenUsage, newestUsage, legacyTokenUsage } from './tokenUsage'
 import type { EngineEventMsg, MessageOrigin, TimelineTurn, TurnChangedFile } from '../../services/engine'
 import type {
   ApprovalTimelineItem,
@@ -377,6 +378,8 @@ function mergeIntoTimeline(
   payload: Record<string, unknown>,
   now: number,
 ): TurnTimeline {
+  timeline = mergeTokenUsage(timeline, event, payload)
+  if (event === 'usage.updated') return timeline
   const id = itemId(event, payload)
   const index = timeline.items.findIndex((item) => item.id === id)
   const item = mergeEventItem(index >= 0 ? timeline.items[index] : undefined, event, payload, now)
@@ -470,6 +473,10 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
           errorDetails: incomingTerminal ? incoming.errorDetails : current.errorDetails,
           stopReason: incomingTerminal ? incoming.stopReason : current.stopReason,
           items: incoming.items,
+          usage: (newestUsage(current.usage, incoming.usage)?.revision ?? 0) > 0
+            ? newestUsage(current.usage, incoming.usage)
+            : legacyTokenUsage({ ...incoming.legacyUsage, ...current.legacyUsage }),
+          legacyUsage: { ...incoming.legacyUsage, ...current.legacyUsage },
         }
         for (const item of current.items) {
           const existing = merged.items.findIndex((value) => value.id === item.id)
@@ -656,6 +663,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
 export function engineEventAction(event: EngineEventMsg, now = Date.now()): TimelineAction | null {
   if (!event?.event || !event.payload) return null
   const relevant =
+    event.event === 'usage.updated' ||
     event.event.startsWith('turn.') ||
     event.event.startsWith('model.') ||
     event.event.startsWith('tool.') ||

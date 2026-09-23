@@ -19,6 +19,18 @@ import MessageBubble from './MessageBubble'
 import { REVEAL_TURN_EVENT, takeQueuedTurnReveal } from '../features/board/boardCommands'
 import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../features/engine/scrollAnchors'
 import ScrollToBottom from './chat/ScrollToBottom'
+import type { HistoryPhase } from '../features/engine/useSessionList'
+
+export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
+
+export function conversationPresentation(
+  historyPhase: HistoryPhase,
+  streamLength: number,
+): ConversationPresentation {
+  if (historyPhase === 'unloaded' || historyPhase === 'loading') return 'loading'
+  if (historyPhase === 'error') return 'error'
+  return streamLength === 0 ? 'empty' : 'conversation'
+}
 
 interface ChatViewProps {
   homeContext?: Omit<HomeContext, 'attachmentCount'>
@@ -52,9 +64,8 @@ interface ChatViewProps {
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
   processesOpenSignal?: number
-  /** Historial de la sesión activa aún cargando: se muestra esqueleto
-   * de conversación en vez del home transitorio. */
-  historyLoading?: boolean
+  historyPhase?: HistoryPhase
+  onRetryHistory?: () => void
   /** Instancia Normal del Composer (espejo legacy del borrador). Los paneles pasan `false`. */
   composerPrimary?: boolean
   /** Solo el panel enfocado recibe foco global/autofocus. */
@@ -103,7 +114,8 @@ function ChatView({
   onPermissionChange,
   onSearchFiles,
   processesOpenSignal = 0,
-  historyLoading = false,
+  historyPhase = 'loaded',
+  onRetryHistory,
   composerPrimary = true,
   composerAcceptsGlobalFocus = true,
   homeVariant = 'home',
@@ -130,11 +142,7 @@ function ChatView({
     () => buildChatStream(messages, timelines, sessionId),
     [messages, timelines, sessionId],
   )
-  const empty = stream.length === 0
-  // Historial en curso sin contenido aún: esqueleto de conversación en
-  // vez del home transitorio (el destello al cambiar de sesión). Sin
-  // engine no hay carga en curso: se muestra el home como antes.
-  const loadingHistory = historyLoading && empty && engineReady
+  const presentation = conversationPresentation(historyPhase, stream.length)
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
 
   useEffect(() => {
@@ -207,14 +215,14 @@ function ChatView({
       return
     }
     // La fila ya no existe en un transcript cargado: no hay a qué volver.
-    if (stream.length > 0 && !historyLoading) {
+    if (stream.length > 0 && historyPhase === 'loaded') {
       restoreRef.current = null
       followRef.current = true
       setAtBottom(true)
       anchorRef.current = { follow: true }
       virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
     }
-  }, [stream, historyLoading])
+  }, [stream, historyPhase])
 
   // «Ir al resultado» desde un aviso o desde Flujos: mostrar el turno sin
   // marcarlo leído (eso solo ocurre cuando su bloque queda visible). Si la
@@ -263,7 +271,7 @@ function ChatView({
     })
     observer.observe(content)
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [empty, autoFollow, sessionId])
+  }, [autoFollow, presentation, sessionId])
 
   // El dock de procesos vive en la zona inferior y su inspector expande
   // esa zona, encogiendo el transcript. Si el usuario ya estaba abajo,
@@ -286,7 +294,7 @@ function ChatView({
     })
     observer.observe(scroller)
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [autoFollow, sessionId, empty, stream.length])
+  }, [autoFollow, sessionId, presentation, stream.length])
 
   useEffect(() => {
     // Autoscroll inteligente: solo sigue si el usuario ya estaba abajo
@@ -298,7 +306,7 @@ function ChatView({
 
   const composer = (
     <Composer
-      placement={empty && !loadingHistory ? 'centered' : 'bottom'}
+      placement={presentation === 'empty' ? 'centered' : 'bottom'}
       onSend={onSend}
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
@@ -329,7 +337,7 @@ function ChatView({
   )
 
   return (
-    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={!empty || loadingHistory} variant={homeVariant} transcript={!empty ? (
+    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
             {historyNote?.hasMore && (
@@ -373,7 +381,7 @@ function ChatView({
             }}
           />
         </div>
-    ) : loadingHistory ? (
+    ) : presentation === 'loading' ? (
         <div key={sessionId + ':loading'} aria-busy="true" data-testid="chat-loading" className="flex min-h-full flex-col">
           {[72, 100, 86, 94].map((width, group) => (
             <div key={group} className="mx-auto w-full max-w-3xl space-y-2 px-4 pt-6">
@@ -382,12 +390,23 @@ function ChatView({
             </div>
           ))}
         </div>
+    ) : presentation === 'error' ? (
+        <div role="alert" data-testid="chat-history-error" className="m-auto flex max-w-md flex-col items-center gap-3 px-6 text-center">
+          <p className="text-sm text-[var(--text-muted)]">{t('history.loadFailed')}</p>
+          <button type="button" onClick={onRetryHistory} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm text-white">
+            {t('history.retry')}
+          </button>
+        </div>
     ) : undefined}>
-      {sessionId !== '' && (
+      {(presentation === 'empty' || presentation === 'conversation') && sessionId !== '' && (
         <ProcessesDock key={`processes:${sessionId}`} sessionId={sessionId} openSignal={processesOpenSignal} />
       )}
-      <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
-      {composer}
+      {(presentation === 'empty' || presentation === 'conversation') && (
+        <>
+          <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
+          {composer}
+        </>
+      )}
     </HomeWelcome>
   )
 }

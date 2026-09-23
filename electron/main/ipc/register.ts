@@ -29,6 +29,7 @@ import {
 } from '../../shared/contracts'
 import {
   ValidationError,
+  assertClipboardText,
   assertCommandName,
   assertCommandParams,
   assertFiniteNumber,
@@ -84,6 +85,7 @@ export interface HostServices {
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
   files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
+  clipboard: { writeText(text: string): void | Promise<void> }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
     support(): { canSend: boolean; canActivateTarget: boolean }
@@ -220,6 +222,7 @@ function assertOpenExternal(value: unknown): OpenExternalFileRequest {
   }
 }
 
+
 function assertOpenFiles(value: unknown): OpenFilesRequest {
   if (value === undefined || value === null) return {}
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -336,6 +339,10 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.filesOpenExternal,
       guarded(registry, (_event, request) => services.files.openExternal(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.clipboardWriteText,
+      guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
     ],
     [
       CHANNEL.contextMenuShow,

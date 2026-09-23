@@ -4061,6 +4061,185 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "provider_catalog_get",
+      "module": "providers",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.catalog.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_usage_get",
+      "module": "providers",
+      "args": [
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "refresh",
+          "type": "bool",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.usage.get",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        },
+        {
+          "key": "refresh",
+          "from": "refresh",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_diagnostics_get",
+      "module": "providers",
+      "args": [
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.diagnostics.get",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_auth_start",
+      "module": "providers",
+      "args": [
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "method",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.auth.start",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        },
+        {
+          "key": "method",
+          "from": "method",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_auth_get",
+      "module": "providers",
+      "args": [
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "operation_id",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.auth.get",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        },
+        {
+          "key": "operation_id",
+          "from": "operation_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_auth_cancel",
+      "module": "providers",
+      "args": [
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.auth.cancel",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_auth_logout",
+      "module": "providers",
+      "args": [
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.auth.logout",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

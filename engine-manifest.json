@@ -1,6 +1,6 @@
 {
   "engine_repository": "Xainner/Rinari-CLI",
-  "engine_git_sha": "aae9976d40d6d4ae7fa66b28046f0029d882ea24",
+  "engine_git_sha": "a3a3da65e54ab36f1adef3f00186a83de4f8f64e",
   "engine_version": "0.1.0",
   "protocol_version": 1,
   "required_capabilities": [
@@ -30,7 +30,10 @@
     "process_identity_v1",
     "session_peer_messaging_v1",
     "browser_host_bridge_v1",
-    "project_flow_v1"
+    "project_flow_v1",
+    "provider_catalog_v1",
+    "provider_usage_v1"
   ],
-  "development_build": false
+  "development_build": false,
+  "_pin_note": "TEMPORAL: cabeza de Xainner/Rinari-CLI#12 (codex/providers-cli). Antes de fusionar este PR hay que fijar el SHA de merge alcanzable desde main del CLI y repetir los gates."
 }

@@ -1,4 +1,8 @@
 import type {
+  ProviderPreset as ProtocolProviderPreset,
+  ProviderUsageSnapshot,
+  ProviderAuthSnapshot,
+  ProviderIdentity,
   Attachment as ProtocolAttachment,
   FlowResult,
   FlowStage,
@@ -161,7 +165,7 @@ export interface TurnUndoPreview {
   conflicts: Array<{ path: string; absolute_path: string; reason: string }>
 }
 
-export interface ProviderSummary {
+export interface ProviderSummary extends Partial<ProviderIdentity> {
   id: string;
   alias: string;
   type: string;
@@ -843,6 +847,13 @@ export const engineApi = {
     platform().command<{ providers: ProviderSummary[]; active_alias: string | null }>(
       "provider_list",
     ),
+  providerCatalog: () => platform().command<{ presets: ProtocolProviderPreset[]; version: string }>('provider_catalog_get'),
+  providerUsage: (ref: string, refresh = false) => platform().command<ProviderUsageSnapshot>('provider_usage_get', { ref, refresh }),
+  providerDiagnostics: (ref: string) => platform().command<Record<string, unknown>>('provider_diagnostics_get', { ref }),
+  providerAuthStart: (ref: string, method: 'browser' | 'device') => platform().command<ProviderAuthSnapshot>('provider_auth_start', { ref, method }),
+  providerAuthGet: (ref: string, operation_id?: string) => platform().command<ProviderAuthSnapshot>('provider_auth_get', { ref, operation_id }),
+  providerAuthCancel: (ref: string) => platform().command<ProviderAuthSnapshot>('provider_auth_cancel', { ref }),
+  providerAuthLogout: (ref: string) => platform().command<ProviderAuthSnapshot>('provider_auth_logout', { ref }),
   providerCreate: (input: {
     alias: string;
     provider_type: string;
@@ -851,6 +862,7 @@ export const engineApi = {
     account_hint?: string;
     secret?: string;
     secret_env?: string;
+    settings?: Record<string, unknown>;
   }) =>
     platform().command<{ provider: ProviderSummary }>("provider_create", {
       alias: input.alias,
@@ -860,7 +872,7 @@ export const engineApi = {
       account_hint: input.account_hint ?? null,
       secret: input.secret ?? null,
       secret_env: input.secret_env ?? null,
-      settings: null,
+      settings: input.settings ?? null,
     }),
   providerGet: (reference: string) =>
     platform().command<{ provider: ProviderSummary }>("provider_get", { reference }),
@@ -903,12 +915,12 @@ export const engineApi = {
       reference,
       provider: provider ?? null,
     }),
-  modelAdd: (input: { provider: string; provider_model_id: string; alias: string }) =>
+  modelAdd: (input: { provider: string; provider_model_id: string; alias: string; capabilities?: Record<string, unknown> | null }) =>
     platform().command<{ model: ModelSummary }>("model_add", {
       provider: input.provider,
       provider_model_id: input.provider_model_id,
       alias: input.alias,
-      capabilities: null,
+      capabilities: input.capabilities ?? null,
       settings: null,
     }),
   modelAlias: (reference: string, newAlias: string, provider?: string) =>

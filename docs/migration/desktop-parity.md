@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **130**
-- Respaldados por Engine: **124**
+- Comandos: **137**
+- Respaldados por Engine: **131**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -81,13 +81,20 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `project_status` | engine | `project.status` | `src/services/engine.ts` |
 | `project_trust` | engine | `project.trust` | **ninguno** |
 | `project_update` | engine | `project.update` | `src/services/engine.ts` |
+| `provider_auth_cancel` | engine | `provider.auth.cancel` | `src/services/engine.ts` |
+| `provider_auth_get` | engine | `provider.auth.get` | `src/services/engine.ts` |
+| `provider_auth_logout` | engine | `provider.auth.logout` | `src/services/engine.ts` |
+| `provider_auth_start` | engine | `provider.auth.start` | `src/services/engine.ts` |
+| `provider_catalog_get` | engine | `provider.catalog.get` | **ninguno** |
 | `provider_create` | engine | `provider.create` | `src/services/engine.ts` |
+| `provider_diagnostics_get` | engine | `provider.diagnostics.get` | `src/services/engine.ts` |
 | `provider_discover` | engine | `provider.discover` | `src/services/engine.ts` |
 | `provider_get` | engine | `provider.get` | `src/services/engine.ts` |
 | `provider_list` | engine | `provider.list` | **ninguno** |
 | `provider_remove` | engine | `provider.remove` | **ninguno** |
 | `provider_test` | engine | `provider.test` | `src/services/engine.ts` |
 | `provider_update` | engine | `provider.update` | `src/services/engine.ts` |
+| `provider_usage_get` | engine | `provider.usage.get` | `src/services/engine.ts` |
 | `provider_use` | engine | `provider.use` | **ninguno** |
 | `question_list` | engine | `question.list` | `src/services/desktop.ts` |
 | `question_resolve` | engine | `question.resolve` | `src/services/desktop.ts` |

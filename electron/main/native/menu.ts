@@ -99,6 +99,9 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
         // igual. Sin esta entrada sólo se llegaba abriendo Archivos y cambiando
         // de pestaña dentro, que no es «abrir Browser» (documento 03 §1).
         item('browser', 'Panel de navegador', 'CmdOrCtrl+Shift+U'),
+        // Sin atajo propio: comparte ruta con la barra superior y la paleta,
+        // y no compite con la vista global de Workspace.
+        item('workspace-panel', 'Panel de Workspace'),
         item('commands', 'Paleta de comandos', 'CmdOrCtrl+K'),
         item('zoom-in', 'Acercar', 'CmdOrCtrl+Plus'),
         item('zoom-out', 'Alejar', 'CmdOrCtrl+-'),

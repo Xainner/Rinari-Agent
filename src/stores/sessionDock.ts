@@ -95,7 +95,7 @@ export function dockNamespaceKey(homeId: string | null | undefined, sessionId: s
   return `${homeId || DEFAULT_HOME}::${sessionId}`
 }
 
-interface SessionDockState {
+export interface SessionDockState {
   homeId: string | null
   layouts: Record<string, SessionDockLayout>
   foreign: Record<string, unknown>
@@ -186,6 +186,22 @@ export function selectDockLayout(sessionId: string) {
 const DEFAULT_LAYOUT = defaultDockLayout()
 
 /** Solo tests. */
+/**
+ * Qué hacer cuando alguien pulsa una superficie del dock.
+ *
+ * Una sola regla para los cuatro caminos que la piden —barra superior, acción
+ * tipada, menú y paleta—: con el dock cerrado se abre en esa superficie; con
+ * otra superficie visible se cambia de pestaña **sin cerrar**; y con la misma
+ * superficie ya visible se cierra. Vive aquí, y no dentro del componente, para
+ * que la regla se pueda leer y probar sin montar la aplicación entera.
+ */
+export function nextDockIntent(
+  layout: Pick<SessionDockLayout, 'visible' | 'activeSurface'>,
+  surface: DockSurface,
+): 'close' | 'reveal' {
+  return layout.visible && layout.activeSurface === surface ? 'close' : 'reveal'
+}
+
 export function resetSessionDockForTests(): void {
   useSessionDockStore.setState({ homeId: null, layouts: {}, foreign: {} })
 }

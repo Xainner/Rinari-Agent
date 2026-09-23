@@ -12,6 +12,7 @@ import { BrowserWindow, shell, type WebContents } from 'electron'
 import { screen } from 'electron'
 
 import { APP_ORIGIN, contentSecurityPolicy } from './appScheme'
+import { CHROME_BACKGROUND, CHROME_OVERLAY_HEIGHT, CHROME_SYMBOL } from '../shared/chrome'
 import type { WindowState } from '../shared/contracts'
 
 export interface WindowDeps {
@@ -121,7 +122,15 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { trafficLightPosition: { x: 12, y: 14 } }
-      : { titleBarOverlay: { color: '#0b0b0f', symbolColor: '#e6e6ea', height: 36 } }),
+      : {
+          titleBarOverlay: {
+            // El mismo color que `.app-topbar`, no uno parecido: la franja de
+            // los controles nativos es la continuación de esa barra.
+            color: CHROME_BACKGROUND,
+            symbolColor: CHROME_SYMBOL,
+            height: CHROME_OVERLAY_HEIGHT,
+          },
+        }),
     webPreferences: {
       preload: deps.preloadPath,
       nodeIntegration: false,

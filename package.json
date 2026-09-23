@@ -26,6 +26,7 @@
     "parity:check": "node scripts/desktop-parity.mjs --check",
     "browser:probe": "node scripts/browser-probe.mjs",
     "browser:vertical": "node scripts/browser-vertical.mjs",
+    "icon:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-icon.ps1",
     "installer:art": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/compose-installer-art.ps1",
     "setup:web:build": "npm run installer:art && vite build --config installer/setup/vite.config.ts",
     "setup:web:dev": "npm run installer:art && vite --config installer/setup/vite.config.ts",

@@ -51,6 +51,9 @@
   --bg-app: #09090b;
   --bg-sidebar: #0c0c0f;
   --bg-elevated: #111116;
+  /* Ojo: esta declaración **no** es la que se aplica. Más abajo, el bloque
+     «Rinari concept foundation» vuelve a declarar `--bg-subtle` sobre `:root`
+     y gana por orden de cascada. El valor efectivo está allí. */
   --bg-subtle: #15151b;
   --bg-hover: #1b1b22;
   --border: rgba(255, 255, 255, 0.08);
@@ -445,6 +448,12 @@ input[type='password']::-ms-clear {
   --bg-app: #08080d;
   --bg-sidebar: #0c0b13;
   --bg-elevated: #12101c;
+  /* Fondo de `.app-topbar`, y el valor que gana la cascada. El host pinta con
+     este mismo color la franja de los controles nativos
+     (`electron/shared/chrome.ts`), así que cambiarlo aquí sin cambiarlo allí
+     devuelve la banda de color bajo minimizar, maximizar y cerrar. Hay una
+     prueba que compara los dos y que lee **esta** declaración, no la de
+     arriba. */
   --bg-subtle: #14111f;
   --bg-hover: #1c162b;
   --bg-active: #291946;
@@ -680,6 +689,13 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .app-topbar-summary { overflow: hidden; text-overflow: ellipsis; }
 .app-topbar-icon { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); padding: 7px; color: var(--text-muted); transition: background-color 120ms, color 120ms; }
 .app-topbar-icon:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+.app-topbar-dock { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; padding: 0 4px; }
+.app-topbar-dock-button { position: relative; }
+.app-topbar-dock-button:disabled { opacity: .38; cursor: default; }
+/* El estado activo no se distingue sólo por color: el botón gana fondo **y**
+   una barra inferior, para que se lea también sin percepción de color. */
+.app-topbar-dock-button[data-active] { background: var(--bg-hover); color: var(--text); }
+.app-topbar-dock-button[data-active]::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 2px; height: 2px; border-radius: 999px; background: var(--accent); }
 .app-topbar-attention { position: relative; }
 .app-topbar-attention-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--warning); color: #1a1226; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
 .sidebar-signal { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; }

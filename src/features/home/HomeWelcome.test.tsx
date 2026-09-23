@@ -72,3 +72,20 @@ it('switching sessions remounts the conversation view so the enter transition re
   // entrada (transcript + composer) vuelve a ejecutarse.
   expect(screen.getByRole('textbox', {name:'Ancla'})).not.toBe(composerA)
 })
+
+// M01 §3.2 — el pie conserva el lema y ya no lleva miniatura.
+//
+// La imagen decorativa bajo el lema repetía la marca que el home ya muestra
+// arriba. Lo que se fija aquí es que se fue **sólo ella**: el lema, el
+// separador y el estado del Engine siguen.
+it('el pie del home conserva el lema y no renderiza una imagen decorativa', () => {
+  const { container } = render(welcome())
+  const footer = container.querySelector('.home-footer')
+  expect(footer).toBeTruthy()
+  expect(footer!.textContent).toContain('Better tools for brighter minds.')
+  expect(footer!.querySelector('img')).toBeNull()
+  // Lo que acompaña al lema no se tocó.
+  expect(footer!.querySelector('.home-footer-rule')).toBeTruthy()
+  expect(footer!.querySelector('.home-status')).toBeTruthy()
+  expect(footer!.querySelector('.home-motto')).toBeTruthy()
+})

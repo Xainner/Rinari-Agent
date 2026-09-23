@@ -12,8 +12,6 @@ import {
   MessageSquare,
   LoaderCircle,
   MoreHorizontal,
-  PanelLeftOpen,
-  PanelLeftClose,
   Plus,
   GitFork,
   Pencil,
@@ -50,7 +48,6 @@ import ApplicationMenu from './ApplicationMenu'
 
 export interface AppSidebarProps {
   collapsed: boolean
-  onToggleCollapse: () => void
   onSearch: () => void
   onOpenSettings: () => void
   onOpenEngine: () => void
@@ -118,7 +115,6 @@ function RailButton({
 
 export function AppSidebar({
   collapsed,
-  onToggleCollapse,
   onSearch,
   onOpenEngine,
   onOpenProjectHome,
@@ -398,9 +394,6 @@ export function AppSidebar({
         </RailButton>
         <div className="flex-1" />
         <ApplicationMenu collapsed />
-        <RailButton label={t('shell.expand')} onClick={onToggleCollapse}>
-          <PanelLeftOpen size={17} />
-        </RailButton>
       </div>
     )
   }
@@ -421,17 +414,16 @@ export function AppSidebar({
       </div>
       </div>
 
-        <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5 transition-colors focus-within:border-[var(--border-strong)]">
-          <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
-          <input
-            aria-label={t('sidebar.searchWorkspace')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('sidebar.searchWorkspace')}
-            className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
-          />
-        <button type="button" onClick={onToggleCollapse} aria-label={t('shell.collapse')} title={t('shell.collapse')} className="hidden rounded-lg p-1 text-[var(--text-subtle)] hover:text-[var(--text)] lg:block"><PanelLeftClose size={15} /></button>
-        </div>
+      <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5 transition-colors focus-within:border-[var(--border-strong)]">
+        <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
+        <input
+          aria-label={t('sidebar.searchWorkspace')}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('sidebar.searchWorkspace')}
+          className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
+        />
+      </div>
       <div className={cn('sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
 
         <section aria-label={t('sidebar.projects')}>

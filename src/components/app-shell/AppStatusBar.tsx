@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Menu, PanelLeft } from 'lucide-react'
+import { FileText, Globe, LayoutPanelLeft, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { EngineState } from '../../services/engine'
+import type { DockSurface } from '../../stores/sessionDock'
 import type { WorkspaceView } from '../../stores/ui'
 import WorkspaceViewSwitcher from './WorkspaceViewSwitcher'
 
@@ -19,13 +20,39 @@ interface AppStatusBarProps {
   /** Sesiones del board con atención pendiente (badge del selector). */
   boardAttentionCount?: number
   onOpenMobileSidebar: () => void
-  onExpandSidebar: () => void
+  /**
+   * Alterna el sidebar. Es la **única** autoridad visible en desktop: antes la
+   * barra sólo sabía expandir y colapsar estaba escondido dentro del campo de
+   * búsqueda, así que el control que se espera aquí parecía roto.
+   */
+  onToggleSidebar: () => void
   sidebarCollapsed: boolean
+  /**
+   * Superficie del dock visible ahora mismo en la sesión destino, o `null` si
+   * el dock está cerrado. Llega resuelta: este componente no lee el store.
+   */
+  dockSurface?: DockSurface | null
+  /** Hay sesión sobre la que actuar: la activa en Normal, el panel enfocado en Boards. */
+  dockTargetAvailable?: boolean
+  onToggleDockSurface?: (surface: DockSurface) => void
   /** Durante el splash la barra puede pintarse con controles deshabilitados. */
   disabled?: boolean
   /** Lista de pendientes del board (menú accesible), junto al resumen. */
   attentionMenu?: ReactNode
 }
+
+/**
+ * Las tres superficies del dock de sesión, en el orden del propio dock.
+ *
+ * «Workspace» aquí es `DockSurface = 'workspace'`, la pestaña del dock — no la
+ * vista global de Workspace. Son cosas distintas y comparten nombre, así que
+ * el tooltip lo dice: «Panel de Workspace».
+ */
+const DOCK_LAUNCHERS = [
+  { surface: 'files', icon: FileText, label: 'dock.files' },
+  { surface: 'browser', icon: Globe, label: 'dock.browser' },
+  { surface: 'workspace', icon: LayoutPanelLeft, label: 'dock.workspacePanel' },
+] as const
 
 /**
  * Barra superior de estado de la aplicación (48–52 px), bajo la decoración
@@ -42,8 +69,11 @@ export default function AppStatusBar({
   attentionCount,
   boardAttentionCount = 0,
   onOpenMobileSidebar,
-  onExpandSidebar,
+  onToggleSidebar,
   sidebarCollapsed,
+  dockSurface = null,
+  dockTargetAvailable = false,
+  onToggleDockSurface,
   disabled = false,
   attentionMenu,
 }: AppStatusBarProps) {
@@ -68,18 +98,17 @@ export default function AppStatusBar({
         >
           <Menu size={18} />
         </button>
-        {sidebarCollapsed && (
-          <button
-            type="button"
-            onClick={onExpandSidebar}
-            aria-label={t('shell.expand')}
-            title={t('shell.expand')}
-            className="app-topbar-icon hidden lg:inline-flex"
-            disabled={disabled}
-          >
-            <PanelLeft size={17} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label={sidebarCollapsed ? t('shell.expand') : t('shell.collapse')}
+          title={sidebarCollapsed ? t('shell.expand') : t('shell.collapse')}
+          aria-pressed={!sidebarCollapsed}
+          className="app-topbar-icon hidden lg:inline-flex"
+          disabled={disabled}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+        </button>
         <div className="app-topbar-context">{context}</div>
       </div>
       <div className="app-topbar-center">
@@ -90,6 +119,28 @@ export default function AppStatusBar({
           attentionCount={boardAttentionCount}
           disabled={disabled}
         />
+      </div>
+      <div className="app-topbar-dock" role="group" aria-label={t('topbar.dockGroup')}>
+        {DOCK_LAUNCHERS.map(({ surface, icon: Icon, label }) => {
+          const active = dockSurface === surface
+          return (
+            <button
+              key={surface}
+              type="button"
+              onClick={() => onToggleDockSurface?.(surface)}
+              aria-label={t(label)}
+              // Sin sesión destino se dice por qué, en vez de dejar un botón
+              // apagado que no explica nada.
+              title={dockTargetAvailable ? t(label) : t('topbar.dockNeedsSession')}
+              aria-pressed={active}
+              data-active={active || undefined}
+              className="app-topbar-icon app-topbar-dock-button"
+              disabled={disabled || !dockTargetAvailable}
+            >
+              <Icon size={16} />
+            </button>
+          )
+        })}
       </div>
       <div className="app-topbar-trailing" role="status" aria-live="polite">
         <span className={engineState === 'ready' ? 'engine-dot ready' : 'engine-dot'} aria-hidden="true" />

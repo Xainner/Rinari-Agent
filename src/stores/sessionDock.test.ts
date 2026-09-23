@@ -3,15 +3,7 @@
 // home; nunca se persiste ejecución y los layouts de versiones futuras se
 // conservan intactos.
 import { beforeEach, describe, expect, it } from 'vitest'
-import {
-  DOCK_MAX_WIDTH,
-  DOCK_MIN_WIDTH,
-  SESSION_DOCK_STORAGE_KEY,
-  dockNamespaceKey,
-  normalizeDockLayout,
-  resetSessionDockForTests,
-  useSessionDockStore,
-} from './sessionDock'
+import { DOCK_MAX_WIDTH, DOCK_MIN_WIDTH, SESSION_DOCK_STORAGE_KEY, dockNamespaceKey, nextDockIntent, normalizeDockLayout, resetSessionDockForTests, useSessionDockStore } from './sessionDock'
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -96,5 +88,23 @@ describe('session dock layout', () => {
     useSessionDockStore.getState().forget('ses_a')
     expect(useSessionDockStore.getState().layoutFor('ses_a').visible).toBe(false)
     expect(JSON.parse(window.localStorage.getItem(SESSION_DOCK_STORAGE_KEY) ?? '{}')).toEqual({})
+  })
+})
+
+// M01 §3.5 — la semántica que comparten barra superior, acción, menú y paleta.
+describe('pulsar una superficie del dock', () => {
+  it('abre el dock cuando está cerrado', () => {
+    expect(nextDockIntent({ visible: false, activeSurface: 'files' }, 'files')).toBe('reveal')
+    expect(nextDockIntent({ visible: false, activeSurface: 'workspace' }, 'browser')).toBe('reveal')
+  })
+
+  it('cambia de pestaña sin cerrar cuando la visible es otra', () => {
+    expect(nextDockIntent({ visible: true, activeSurface: 'files' }, 'browser')).toBe('reveal')
+    expect(nextDockIntent({ visible: true, activeSurface: 'browser' }, 'workspace')).toBe('reveal')
+  })
+
+  it('cierra el dock cuando ya se está viendo esa misma superficie', () => {
+    expect(nextDockIntent({ visible: true, activeSurface: 'files' }, 'files')).toBe('close')
+    expect(nextDockIntent({ visible: true, activeSurface: 'workspace' }, 'workspace')).toBe('close')
   })
 })

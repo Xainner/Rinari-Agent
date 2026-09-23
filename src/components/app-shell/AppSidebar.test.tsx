@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -56,7 +56,6 @@ function session(
 function renderSidebar(overrides: Partial<AppSidebarProps> = {}) {
   const props: AppSidebarProps = {
     collapsed: false,
-    onToggleCollapse: vi.fn(),
     onSearch: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenEngine: vi.fn(),
@@ -182,7 +181,6 @@ describe('transición al cambiar de conversación', () => {
   function renderSwitchable(activeId: string) {
     const props: AppSidebarProps = {
       collapsed: false,
-      onToggleCollapse: vi.fn(),
       onSearch: vi.fn(),
       onOpenSettings: vi.fn(),
       onOpenEngine: vi.fn(),
@@ -215,7 +213,6 @@ describe('transición al cambiar de conversación', () => {
     view.rerender(
       <I18nProvider lang="es"><AppSidebar
         collapsed={false}
-        onToggleCollapse={vi.fn()}
         onSearch={vi.fn()}
         onOpenSettings={vi.fn()}
         onOpenEngine={vi.fn()}
@@ -359,4 +356,27 @@ describe('interrupted sessions', () => {
     renderSidebar()
     expect(screen.queryByTestId('session-interrupted-dot')).toBeNull()
   })
+})
+
+// M01 §3.4 — el sidebar ya no reparte el colapso entre tres sitios.
+//
+// Había un colapsador incrustado al final del campo de búsqueda y otro
+// expansor al pie del rail. Con la barra superior como autoridad única, los
+// dos sobran; repartir una acción entre tres lugares es lo que hacía parecer
+// roto el control de la title bar.
+it('no ofrece colapsar dentro de la búsqueda ni al pie del rail', () => {
+  renderSidebar({ collapsed: false })
+  expect(screen.queryByRole('button', { name: 'Colapsar barra' })).toBeNull()
+  // La búsqueda se queda intacta: mismo campo, misma etiqueta y sigue
+  // filtrando. El botón que salió de aquí no se llevó nada consigo.
+  const buscar = screen.getByRole('textbox', { name: 'Buscar proyectos y sesiones…' })
+  expect(screen.queryByText('Research')).toBeTruthy()
+  fireEvent.change(buscar, { target: { value: 'governor' } })
+  expect((buscar as HTMLInputElement).value).toBe('governor')
+  expect(screen.queryByText('Research')).toBeNull()
+  expect(screen.queryByText('Fix governor')).toBeTruthy()
+
+  cleanup()
+  renderSidebar({ collapsed: true })
+  expect(screen.queryByRole('button', { name: 'Expandir barra' })).toBeNull()
 })

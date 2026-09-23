@@ -26,12 +26,14 @@ export default function SettingsView({
   providers,
   models,
   activeSessionId,
+  engineCapabilities,
   onCatalogChanged,
 }: {
   appVersion: string
   providers: ProviderSummary[]
   models: ModelSummary[]
   activeSessionId: string | null
+  engineCapabilities?: Record<string, boolean>
   onCatalogChanged: () => void
 }) {
   const { lang } = useI18n()
@@ -48,7 +50,7 @@ export default function SettingsView({
       {section === 'shortcuts' && <ShortcutsSettings />}
       {section === 'appearance' && <AppearanceSettings />}
       {section === 'providers' && (
-        <ProvidersView providers={providers} onChanged={onCatalogChanged} />
+        <ProvidersView providers={providers} onChanged={onCatalogChanged} engineCapabilities={engineCapabilities} />
       )}
       {section === 'vision' && <VisionSettings models={models} providers={providers} />}
       {section === 'context' && <ContextSettings models={models} providers={providers} />}

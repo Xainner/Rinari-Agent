@@ -4,13 +4,13 @@ import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../components/settings/parts'
 import { brandForProvider, providerBrand } from '../../lib/providerBrand'
 import ProviderLogo from '../../components/ProviderLogo'
-import { PROVIDER_PRESETS, type ProviderPreset } from './presets'
+import { PROVIDER_PRESETS, useProviderPresets, type ProviderPreset, type ProviderAuth } from './presets'
 
 export interface ProviderFormData {
   preset: ProviderPreset
   alias: string
   endpoint: string
-  auth: 'api-key' | 'none'
+  auth: ProviderAuth
   credentialSource: 'literal' | 'env'
   secret: string
   secret_env: string
@@ -44,6 +44,7 @@ export default function ProviderForm({
   isEdit: boolean
 }) {
   const { t } = useI18n()
+  const presets = useProviderPresets()
   const [showSecret, setShowSecret] = useState(false)
   // El logo se resuelve con los datos reales del formulario (válido también en
   // edición, donde el preset queda neutro); el preset solo aporta su marca.
@@ -71,20 +72,22 @@ export default function ProviderForm({
               value={form.preset.id}
               onChange={(e) => {
                 const preset =
-                  PROVIDER_PRESETS.find((p) => p.id === e.target.value) ?? PROVIDER_PRESETS[0]
+                  presets.find((p) => p.id === e.target.value) ?? presets[0]
                 setForm({
                   ...form,
                   preset,
                   alias: form.alias === form.preset.id ? preset.id : form.alias,
                   endpoint: preset.endpoint,
                   auth: preset.auth,
+                  secret: '',
+                  secret_env: '',
                 })
               }}
               className={`${inputClass} flex-1`}
             >
-              {PROVIDER_PRESETS.map((p) => (
+              {presets.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {t(p.nameKey)} — {t(p.descKey)}
+                  {p.name ?? t(p.nameKey)}{p.experimental ? ` · ${t('providers.experimental')}` : ''}
                 </option>
               ))}
             </select>
@@ -113,7 +116,7 @@ export default function ProviderForm({
         />
       </div>
 
-      {form.preset.id === 'custom' && (
+      {(form.preset.id === 'custom' || isEdit) && (
         <div>
           <label className={labelClass} htmlFor="provider-endpoint">
             {t('providers.endpoint')}
@@ -133,7 +136,7 @@ export default function ProviderForm({
       <div>
         <span className={labelClass}>{t('providers.auth')}</span>
         <div className="flex gap-2">
-          {(['api-key', 'none'] as const).map((mode) => (
+          {(isEdit ? [form.auth] : form.preset.authMethods ?? ['api-key', 'none'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
@@ -145,7 +148,7 @@ export default function ProviderForm({
                   : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
-              {mode === 'api-key' ? t('providers.authKey') : t('providers.authNone')}
+              {mode === 'oauth' ? t('providers.login') : mode === 'api-key' ? t('providers.authKey') : t('providers.authNone')}
             </button>
           ))}
         </div>

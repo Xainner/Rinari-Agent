@@ -67,6 +67,25 @@ Construye 0.2.0 y una variante 0.2.1, instala 0.2.0 en un prefijo temporal,
 rechaza metadata y payload corruptos, aplica 0.2.1, comprueba la versión tras el
 relaunch y desinstala el entorno de prueba.
 
+## Empaquetado en CI (`agent-ci.yml`)
+
+`frontend` y `browser-integration` corren siempre; `frontend` incluye el smoke
+de la app construida por `app://`. El empaquetado de Windows
+(`windows-package`) tarda unos 27 minutos completo, y en un PR sólo ejecuta las
+partes que el cambio puede romper, según `scripts/ci-scope.mjs`:
+
+| Parte | ~min | Corre si cambia |
+|---|---|---|
+| `cargo fmt/clippy/test` del bootstrapper | 4 | `installer/setup/**` |
+| Paquete con el sidecar del Engine + instalar, arrancar y desinstalar | 8–10 | `electron/**`, `build/**`, `installer/**`, `engine-manifest.json`, `electron-builder.yml`, `package*.json`, los scripts de empaquetado, o cualquiera de las otras dos partes |
+| E2E del updater (0.2.0 → 0.2.1) y `package:win:staged` | 13 | `electron/main/updates/**`, `build/app-update.yml`, `electron-builder.yml`, `package*.json`, sus scripts |
+
+Un cambio sólo de documentación o sólo del renderer (`src/**`) omite el job.
+En push a `main`, en `workflow_dispatch` y con la etiqueta **`ci:full`** en un
+PR corre todo. Así, un fallo que sólo aparezca al empaquetar se detecta, como
+tarde, al fusionar. Cambiar el propio workflow o `ci-scope.mjs` también
+ejecuta todo. Un push nuevo a un PR cancela su ejecución anterior.
+
 ## Workflow de release
 
 La fuente del último canal `v0.1.3` se conserva en el commit histórico indicado

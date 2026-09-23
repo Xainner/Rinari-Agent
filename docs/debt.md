@@ -93,6 +93,9 @@ documentado; lo demás no se presenta como terminado.
 - **Inventario de paridad** — `DONE`. `scripts/desktop-parity.mjs` compara las
   llamadas actuales con el contrato capturado de 0.1.3 y `parity:check` corre
   en CI: 130 comandos, 124 del Engine, 6 del host y cero sin resolver.
+  Desde el 2026-09-23 ese fichero es el inventario vigente de comandos de
+  Electron, no una captura; la regla para ampliarlo está en `AGENTS.md`,
+  «Comandos e intenciones».
 - **Imports de Tauri en el producto** — `DONE` (entrega H). El adaptador, las
   dependencias raíz y el runtime activo fueron retirados; `parity:check` falla
   si reaparece un import, paquete o ruta activa.
@@ -106,6 +109,26 @@ documentado; lo demás no se presenta como terminado.
   `electron/shared/validation.ts` usa el mismo inventario generado como
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
+
+### Vista Flujos (2026-09-18, plan 06)
+
+- **Derivación del flujo en el Engine** — `DONE`. `flow.get`
+  (`project_flow_v1`) agrupa turnos en etapas y ciclos; React solo presenta
+  (`FlowView.test.tsx`, `test_engine_flow.py`).
+- **Progreso honesto** — `DONE`. `null` → «sin datos»; tareas vacías → «sin
+  tareas registradas»; nunca un ratio de turnos.
+- **Revelado del turno tras cambiar de sesión** — `DONE`. La petición se
+  encola (`requestTurnReveal`) y `ChatView` la consume al montar la sesión
+  (FLOW-10); antes se perdía si el evento llegaba antes del montaje.
+- **Detalle por turno dentro de una etapa** — `OPEN` declarado (fase 2). El
+  drawer muestra la etapa; abrir cada turno en el detalle exigiría
+  `session.timeline` bajo demanda.
+- **Títulos de etapa generados por IA** — fuera de alcance deliberado. El
+  título es el encabezado del plan o el primer mensaje del usuario, sin
+  llamadas al modelo.
+- **Tarjeta de etapa propia** — decisión. La etapa no reutiliza una tarjeta de
+  resultado de turno porque resume una racha de turnos, no uno.
+  (`ResultSummaryCard` ya se retiró; ver su entrada `WONTFIX` arriba.)
 
 ### Cierre del ciclo de vida de salida (2026-09-18)
 

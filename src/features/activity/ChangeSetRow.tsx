@@ -14,15 +14,19 @@ import {
 } from '../../components/ui/alert-dialog'
 import { commandMessage, engineApi, type TurnChangedFile, type TurnUndoPreview } from '../../services/engine'
 import type { TimelineItem } from './types'
+import { changeSetPresentation, hasPartialCoverage } from './changeSetPresentation'
+import { CoverageWarning } from './CoverageWarning'
 
 /** Changeset confirmado de un turno: revisión de archivos y undo con vista previa. */
 export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem, { type: 'changeset' }>; turnActive: boolean }) {
-  const { lang } = useI18n()
+  const { lang, t } = useI18n()
   const [reviewing, setReviewing] = useState(false)
   const [files, setFiles] = useState<TurnChangedFile[]>(item.files)
   const [preview, setPreview] = useState<TurnUndoPreview | null>(null)
   const [working, setWorking] = useState(false)
-  if (item.files.length === 0 && item.warnings.length === 0) return null
+  const presentation = changeSetPresentation(item)
+  if (presentation === 'hidden') return null
+  if (presentation === 'coverage-warning') return <CoverageWarning warnings={item.warnings} />
 
   async function review() {
     try {
@@ -83,8 +87,8 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
         <span className="font-mono text-[11px] text-red-400">-{item.deletions}</span>
         {status && <span className="text-[var(--text-subtle)]">· {status}</span>}
       </div>
-      {(!item.attributionComplete || item.warnings.length > 0) && (
-        <div className="mt-2 flex gap-2 text-amber-300"><ShieldAlert size={13} className="mt-0.5 shrink-0" /><span>{lang === 'es' ? 'La atribución es parcial; algunos cambios no se pueden deshacer con seguridad.' : 'Attribution is partial; some changes cannot be safely undone.'}</span></div>
+      {hasPartialCoverage(item) && (
+        <div className="mt-2 flex gap-2 text-amber-300"><ShieldAlert size={13} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{t('changes.coverage.withFiles')}</span></div>
       )}
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => void review()} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)]">{lang === 'es' ? 'Revisar' : 'Review'}</button>

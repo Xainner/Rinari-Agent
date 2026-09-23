@@ -1,4 +1,12 @@
 export const es = {
+  'changes.coverage.empty': 'No se observaron cambios de archivo.',
+  'changes.coverage.partial': 'La cobertura fue parcial para una operación con capacidad de modificar archivos.',
+  'changes.coverage.details': 'Detalles de cobertura',
+  'changes.coverage.withFiles': 'Se observaron estos cambios, pero la cobertura fue parcial; podrían existir otros cambios no atribuidos.',
+  'changes.coverage.meta': 'cobertura de cambios parcial',
+  'changes.coverage.shell': 'Un comando o proceso pudo modificar rutas fuera de la observación acotada.',
+  'changes.coverage.budget': 'El escaneo del workspace superó el presupuesto de atribución.',
+  'changes.coverage.other': 'El Engine registró una limitación adicional de cobertura.',
   "home.fixedTheme": "Esta versión utiliza el tema oscuro violeta de Rinari. Tus preferencias anteriores se conservan.",
   "home.settings": "Configuración",
   "home.minimize": "Minimizar",

@@ -219,3 +219,20 @@ it('the metadata row stays out of ordinary short turns and appears for unread on
   expect(meta.dataset.unread).toBe('true')
   expect(meta.textContent).toContain('Nuevo')
 })
+
+it.each([false,true])('M06: empty changesets keep the same coverage presentation in Normal and Boards (partial=%s)', partial => {
+  const engine=engineFixture({sessions,activeSession:'ses_a'})
+  completeTurn(engine,'ses_a','coverage','Respuesta final')
+  engine.runtime.getState().dispatch(event('turn.changes.completed',{session_id:'ses_a',turn_id:'coverage',id:'c',activity_seq:5,files:[],warnings:[],attribution_complete:!partial,additions:0,deletions:0,undoable:false}))
+  const verify=(container:HTMLElement)=>{
+    expect(within(container).queryAllByTestId('coverage-warning')).toHaveLength(partial?1:0)
+    expect(container.textContent).not.toMatch(/0 archivo|\+0|-0/)
+    expect(within(container).queryByRole('button',{name:'Revisar cambios'})).toBeNull()
+    expect(within(container).queryByRole('button',{name:'Deshacer'})).toBeNull()
+  }
+  const normal=render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={()=>{}}/></BoardHarness>)
+  verify(normal.container);normal.unmount()
+  useBoardStore.getState().addPane('ses_a')
+  render(<BoardHarness engine={engine}><BoardView/></BoardHarness>)
+  verify(screen.getByRole('region',{name:'Backend API'}))
+})

@@ -28,6 +28,7 @@ import {
 } from '../../shared/contracts'
 import {
   ValidationError,
+  assertClipboardText,
   assertCommandName,
   assertCommandParams,
   assertFiniteNumber,
@@ -217,15 +218,6 @@ function assertOpenExternal(value: unknown): OpenExternalFileRequest {
   }
 }
 
-export const MAX_CLIPBOARD_BYTES = 1024 * 1024
-
-export function assertClipboardText(value: unknown): string {
-  if (typeof value !== 'string') throw new ValidationError('clipboard text must be a string')
-  if (Buffer.byteLength(value, 'utf8') > MAX_CLIPBOARD_BYTES) {
-    throw new ValidationError('clipboard text exceeds 1 MiB')
-  }
-  return value
-}
 
 function assertOpenFiles(value: unknown): OpenFilesRequest {
   if (value === undefined || value === null) return {}

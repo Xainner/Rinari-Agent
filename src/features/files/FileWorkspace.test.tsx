@@ -90,7 +90,7 @@ it('opens the engine preview with turn provenance and deduplicates tabs', async 
   expect(await screen.findByText('# Planning document')).toBeTruthy()
   await user.click(screen.getByLabelText('Cerrar plan.md'))
   expect(screen.queryAllByRole('tab')).toHaveLength(0)
-  expect(desktopApi.unwatchFile).toHaveBeenCalledWith('watch-1')
+  expect(desktopApi.unwatchFile).toHaveBeenCalledWith('session', 'watch-1')
 })
 
 it('shows missing file errors without replacing the conversation', async () => {
@@ -176,7 +176,7 @@ it('releases a watch returned after its tab was closed and reopened', async () =
   await user.click(screen.getByText('Open plan'))
   await screen.findByRole('heading', { name: 'Planning document' })
   await act(async () => resolve({ watch_id: 'stale-watch', preview: preview('Obsolete') }))
-  expect(desktopApi.unwatchFile).toHaveBeenCalledWith('stale-watch')
+  expect(desktopApi.unwatchFile).toHaveBeenCalledWith('session', 'stale-watch')
   expect(screen.queryByRole('heading', { name: 'Obsolete' })).toBeNull()
 })
 
@@ -198,7 +198,67 @@ it('discards session tabs and releases watches on a session switch', async () =>
   await user.click(screen.getByText('Open plan'))
   await screen.findByRole('heading', { name: 'Planning document' })
   view.rerender(content('other'))
-  expect(desktopApi.unwatchFile).toHaveBeenCalledWith('watch-1')
+  // Cada watch se retira con la sesión que lo abrió, no con la nueva.
+  expect(desktopApi.unwatchFile).toHaveBeenCalledWith('session', 'watch-1')
   view.rerender(content('session'))
   expect(screen.queryAllByRole('tab')).toHaveLength(0)
+})
+
+it('re-registers open watches when the Engine restarts', async () => {
+  // El registro de watches vive en el proceso del Engine. Tras reiniciarlo, la
+  // pestaña seguía abierta pero ya no se sincronizaba, sin decirlo.
+  const user = userEvent.setup()
+  const content = (generation: number) => (
+    <FileWorkspaceProvider sessionId="session" engineGeneration={generation}>
+      <FileLink href="plan.md">Open plan</FileLink>
+      <FileViewer />
+    </FileWorkspaceProvider>
+  )
+  const view = render(content(1))
+  await user.click(screen.getByText('Open plan'))
+  await screen.findByRole('heading', { name: 'Planning document' })
+  expect(desktopApi.watchFile).toHaveBeenCalledTimes(1)
+  // El watch viejo llega a la revisión 3 antes del reinicio.
+  vi.mocked(desktopApi.readFile).mockResolvedValueOnce(preview('Before restart'))
+  act(() => changed(3))
+  await screen.findByRole('heading', { name: 'Before restart' })
+
+  vi.mocked(desktopApi.watchFile).mockResolvedValueOnce({ watch_id: 'watch-2', preview: preview('Rewatched') })
+  view.rerender(content(2))
+  await screen.findByRole('heading', { name: 'Rewatched' })
+  expect(desktopApi.watchFile).toHaveBeenCalledTimes(2)
+  expect(desktopApi.watchFile).toHaveBeenLastCalledWith('session', 'plan.md', undefined)
+
+  // Un evento del watch viejo ya no significa nada.
+  act(() => changed(5, 'deleted'))
+  expect(screen.queryByText('El archivo fue eliminado.')).toBeNull()
+  // El nuevo empieza sus revisiones en 1 y se atiende: la monotonía se reinició.
+  vi.mocked(desktopApi.readFile).mockResolvedValueOnce(preview('After restart'))
+  act(() => bridge.emitEngineEvent({ type: 'event', event: 'workspace.file.changed',
+    payload: { watch_id: 'watch-2', session_id: 'session', revision: 1, state: 'changed' } }))
+  await screen.findByRole('heading', { name: 'After restart' })
+
+  // La misma generación no vuelve a inscribir nada.
+  view.rerender(content(2))
+  expect(desktopApi.watchFile).toHaveBeenCalledTimes(2)
+})
+
+it('falls back to manual reads when the restarted Engine has no watches', async () => {
+  const user = userEvent.setup()
+  const content = (generation: number) => (
+    <FileWorkspaceProvider sessionId="session" engineGeneration={generation}>
+      <FileLink href="plan.md">Open plan</FileLink>
+      <FileViewer />
+    </FileWorkspaceProvider>
+  )
+  const view = render(content(1))
+  await user.click(screen.getByText('Open plan'))
+  await screen.findByRole('heading', { name: 'Planning document' })
+  vi.mocked(desktopApi.watchFile).mockRejectedValueOnce(
+    Object.assign(new Error('unknown method'), { code: 'UNKNOWN_METHOD' }),
+  )
+  vi.mocked(desktopApi.readFile).mockResolvedValueOnce(preview('Read manually'))
+  view.rerender(content(2))
+  await screen.findByRole('heading', { name: 'Read manually' })
+  expect(screen.queryByRole('alert')).toBeNull()
 })

@@ -57,8 +57,12 @@ export const desktopApi = {
     platform().command<FilePreview>('workspace_file_read', { session_id, path, turn_id }),
   watchFile: (session_id: string, path: string, turn_id?: string) =>
     platform().command<FileWatch>('workspace_file_watch', { session_id, path, turn_id }),
-  unwatchFile: (watch_id: string) =>
-    platform().command<Record<string, never>>('workspace_file_unwatch', { watch_id }),
+  /**
+   * El Engine sólo retira un watch de la sesión que lo abrió: en Boards un
+   * mismo renderer tiene watches de varias sesiones.
+   */
+  unwatchFile: (session_id: string, watch_id: string) =>
+    platform().command<Record<string, never>>('workspace_file_unwatch', { session_id, watch_id }),
   questions: (session_id: string) =>
     platform().command<{ questions: QuestionRequest[] }>('question_list', { session_id }),
   answer: (

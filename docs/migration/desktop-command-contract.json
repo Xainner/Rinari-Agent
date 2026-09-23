@@ -4108,6 +4108,11 @@
       "module": "electron",
       "args": [
         {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
           "name": "watch_id",
           "type": "String",
           "optional": false
@@ -4117,6 +4122,11 @@
       "manual": false,
       "engine_method": "workspace.file.unwatch",
       "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
         {
           "key": "watch_id",
           "from": "watch_id",

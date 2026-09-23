@@ -12,7 +12,7 @@
 // Necesita un display; en Linux sin sesión gráfica, `xvfb-run -a`.
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,6 +32,19 @@ if (!existsSync(join(CLI, 'pyproject.toml'))) {
 
 // Home temporal: la prueba no toca los datos del usuario.
 const home = mkdtempSync(join(tmpdir(), 'rinari-parity-'))
+// El perfil temporal se conserva sólo si la ejecución falla, que es cuando
+// sirve para diagnosticar; si no, se acumularía uno por ejecución.
+process.on('exit', (code) => {
+  if (code !== 0) {
+    console.error(`Perfil aislado conservado en ${home}`)
+    return
+  }
+  try {
+    rmSync(home, { recursive: true, force: true })
+  } catch (error) {
+    console.error(`No se pudo borrar el perfil ${home}: ${error.message}`)
+  }
+})
 const electronBin = (await import('electron')).default
 const child = spawn(electronBin, [MAIN, `--user-data-dir=${join(home, 'profile')}`], {
   cwd: ROOT,
@@ -53,13 +66,11 @@ child.stderr.on('data', (chunk) => (output += chunk.toString()))
 const timer = setTimeout(() => {
   child.kill()
   console.error('la sonda no reportó en 240 s; salida:\n' + output.slice(-3000))
-  console.error(`Perfil aislado conservado en ${home}`)
   process.exit(1)
 }, 240_000)
 
 child.on('exit', () => {
   clearTimeout(timer)
-  console.log(`Perfil aislado conservado en ${home}`)
   const line = output.split('\n').find((entry) => entry.startsWith('RINARI_PARITY '))
   if (!line) {
     console.error('el host no reportó; salida:\n' + output.slice(-3000))

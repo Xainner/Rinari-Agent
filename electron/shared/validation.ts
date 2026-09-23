@@ -84,3 +84,18 @@ export function assertOpenableUrl(value: unknown): string {
   }
   return parsed.toString()
 }
+
+/** Techo del texto que el renderer puede copiar al portapapeles del sistema. */
+export const MAX_CLIPBOARD_BYTES = 1024 * 1024
+
+/**
+ * Texto para `rinari:clipboard.writeText`: cadena y, como mucho, 1 MiB medido
+ * en bytes UTF-8 (no en unidades UTF-16, que infravaloran emojis y CJK).
+ */
+export function assertClipboardText(value: unknown): string {
+  if (typeof value !== 'string') throw new ValidationError('clipboard text must be a string')
+  if (Buffer.byteLength(value, 'utf8') > MAX_CLIPBOARD_BYTES) {
+    throw new ValidationError('clipboard text exceeds 1 MiB')
+  }
+  return value
+}

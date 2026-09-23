@@ -125,11 +125,17 @@ export function FileWorkspaceProvider({
   sessionId,
   children,
   onOpen,
+  engineGeneration,
 }: {
   sessionId: string
   children: ReactNode
   /** Se llama al abrir un archivo; el layout decide cómo mostrar el visor. */
   onOpen?: () => void
+  /**
+   * Generación del Engine (`EngineData.engineGeneration`). Los watches viven en
+   * el proceso del Engine: cuando cambia, las pestañas se vuelven a inscribir.
+   */
+  engineGeneration?: number
 }) {
   const [tabs, setTabs] = useState<FileTab[]>([])
   const [active, setActive] = useState('')
@@ -228,7 +234,7 @@ export function FileWorkspaceProvider({
         }
       }
       if (!isCurrent()) {
-        if (watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(watchId).catch(() => {})
+        if (watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(sessionId, watchId).catch(() => {})
         return
       }
       updateTabs((current) =>
@@ -265,20 +271,62 @@ export function FileWorkspaceProvider({
     return () => { disposed = true; unsubscribe?.() }
   }, [readCurrent, sessionId])
 
+  /**
+   * El registro de watches vive en el proceso del Engine y se pierde al
+   * reiniciarlo: sin esto, las pestañas abiertas dejaban de sincronizarse sin
+   * decirlo. Con cada Engine nuevo se vuelven a inscribir. Las revisiones
+   * empiezan de nuevo, así que la monotonía se reinicia con el watch nuevo; si
+   * el Engine nuevo no ofrece watches se recae en la lectura manual, y lo que
+   * falle queda rotulado como desactualizado con su error.
+   */
+  const rewatch = useCallback(async (key: string) => {
+    const tab = tabsRef.current.find((candidate) => candidate.key === key)
+    const owner = owners.current.get(key)
+    if (!tab || !owner) return
+    const sequence = ++owner.sequence
+    const isCurrent = () => owners.current.get(key) === owner && owner.sequence === sequence
+    try {
+      const watched = await desktopApi.watchFile(tab.sessionId, tab.target, tab.turnId)
+      if (!isCurrent()) {
+        void desktopApi.unwatchFile(tab.sessionId, watched.watch_id).catch(() => {})
+        return
+      }
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? { ...candidate, file: watched.preview, watchId: watched.watch_id, revision: 0, state: undefined, stale: false, syncError: undefined, error: undefined }
+        : candidate))
+    } catch (error) {
+      if (!isCurrent()) return
+      const legacy = isCommandError(error) && ['UNKNOWN_METHOD', 'UNKNOWN_COMMAND'].includes(error.code)
+      updateTabs((current) => current.map((candidate) => candidate.key === key
+        ? { ...candidate, watchId: undefined, revision: 0, ...(legacy ? {} : { stale: Boolean(candidate.file), syncError: commandMessage(error) }) }
+        : candidate))
+      if (legacy) void readCurrent(key)
+    }
+  }, [readCurrent, updateTabs])
+
+  const seenGeneration = useRef(engineGeneration)
+  useEffect(() => {
+    const previous = seenGeneration.current
+    seenGeneration.current = engineGeneration
+    if (previous === undefined || engineGeneration === undefined || previous === engineGeneration) return
+    const watched = tabsRef.current.filter((tab) => tab.sessionId === sessionId && tab.watchId)
+    for (const tab of watched) void rewatch(tab.key)
+  }, [engineGeneration, rewatch, sessionId])
+
   useEffect(() => () => {
     const owned = tabsRef.current.filter((tab) => tab.sessionId === sessionId)
     for (const tab of owned) owners.current.delete(tab.key)
     updateTabs((current) => current.filter((tab) => tab.sessionId !== sessionId))
-    for (const watchId of owned.map((tab) => tab.watchId).filter((id): id is string => Boolean(id))) {
-      if (typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(watchId).catch(() => {})
+    for (const tab of owned) {
+      if (tab.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(tab.sessionId, tab.watchId).catch(() => {})
     }
   }, [sessionId, updateTabs])
 
   const close = useCallback((key: string) => {
-    const watchId = tabsRef.current.find((tab) => tab.key === key)?.watchId
+    const closing = tabsRef.current.find((tab) => tab.key === key)
     owners.current.delete(key)
     updateTabs((current) => current.filter((tab) => tab.key !== key))
-    if (watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(watchId).catch(() => {})
+    if (closing?.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(closing.sessionId, closing.watchId).catch(() => {})
   }, [updateTabs])
 
   const controller = useMemo<FileWorkspaceController>(() => ({

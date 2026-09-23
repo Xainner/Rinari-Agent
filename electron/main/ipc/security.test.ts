@@ -9,8 +9,9 @@ import {
   assertCommandName,
   assertCommandParams,
   assertOpenableUrl,
+  MAX_CLIPBOARD_BYTES,
+  assertClipboardText,
 } from '../../shared/validation'
-import { MAX_CLIPBOARD_BYTES, assertClipboardText } from './register'
 
 const ORIGIN = 'app://rinari'
 const TRUSTED = { id: 7, isMainFrame: true, url: 'app://rinari/index.html' }

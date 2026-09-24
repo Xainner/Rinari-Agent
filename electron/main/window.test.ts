@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { focusExistingWindow, revealMaximized } from './window'
+import { focusExistingWindow, presentWindow, revealMaximized } from './window'
 
 describe('revealMaximized', () => {
   it('maximizes before publishing without an eager show', async () => {
@@ -51,6 +51,8 @@ describe('focusExistingWindow', () => {
   it('restores a minimized window and never maximizes it', () => {
     const calls: string[] = []
     focusExistingWindow({
+      isVisible: () => true,
+      show: () => calls.push('show'),
       isMinimized: () => true,
       restore: () => calls.push('restore'),
       focus: () => calls.push('focus'),
@@ -61,10 +63,54 @@ describe('focusExistingWindow', () => {
   it('only focuses a normally sized existing window', () => {
     const calls: string[] = []
     focusExistingWindow({
+      isVisible: () => true,
+      show: () => calls.push('show'),
       isMinimized: () => false,
       restore: () => calls.push('restore'),
       focus: () => calls.push('focus'),
     } as never)
     expect(calls).toEqual(['focus'])
+  })
+})
+
+describe('presentWindow (bandeja, notificación, segunda instancia)', () => {
+  function fakeWindow(visible: boolean) {
+    const calls: string[] = []
+    let shown = visible
+    return {
+      calls,
+      window: {
+        isDestroyed: () => false,
+        isVisible: () => shown,
+        isMinimized: () => false,
+        maximize: () => { calls.push('maximize'); shown = true },
+        show: () => { calls.push('show'); shown = true },
+        restore: () => calls.push('restore'),
+        focus: () => calls.push('focus'),
+      },
+    }
+  }
+
+  it('reveals a window that started hidden in the tray maximized, then only shows it', () => {
+    const { calls, window } = fakeWindow(false)
+    presentWindow(window as never)
+    expect(calls).toEqual(['maximize', 'focus'])
+    // Oculta de nuevo con la X: volver a abrirla no la maximiza otra vez.
+    calls.length = 0
+    window.isVisible = () => false
+    presentWindow(window as never)
+    expect(calls).toEqual(['show', 'focus'])
+  })
+
+  it('shows a hidden window before focusing it', () => {
+    const calls: string[] = []
+    focusExistingWindow({
+      isVisible: () => false,
+      show: () => calls.push('show'),
+      isMinimized: () => false,
+      restore: () => calls.push('restore'),
+      focus: () => calls.push('focus'),
+    } as never)
+    expect(calls).toEqual(['show', 'focus'])
   })
 })

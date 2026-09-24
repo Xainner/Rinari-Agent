@@ -14,7 +14,7 @@
 export type QuitState = 'idle' | 'confirming' | 'shutting-down' | 'committed'
 
 /** Por dónde entró la petición; solo para diagnóstico. */
-export type QuitReason = 'window-close' | 'app' | 'menu' | 'window-all-closed' | 'update' | 'parity'
+export type QuitReason = 'window-close' | 'app' | 'menu' | 'tray' | 'window-all-closed' | 'update' | 'parity'
 
 /**
  * Solo pregunta aplicar una actualización con el Engine en marcha: es un

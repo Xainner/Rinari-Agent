@@ -23,6 +23,9 @@ export const CHANNEL = {
   openerOpenUrl: 'rinari:opener.openUrl',
   filesOpenExternal: 'rinari:files.openExternal',
   clipboardWriteText: 'rinari:clipboard.writeText',
+  /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
+  appBackgroundGet: 'rinari:app.background.get',
+  appBackgroundSet: 'rinari:app.background.set',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
@@ -173,6 +176,21 @@ export interface NotificationSupport {
 export interface NotificationTarget {
   sessionId?: string
   turnId?: string
+}
+
+/** Segundo plano: la preferencia de main y la verdad del sistema. */
+export interface BackgroundSettings {
+  /** Cerrar la ventana la oculta en la bandeja en vez de salir. */
+  backgroundMode: boolean
+  /** El sistema abre la app al iniciar sesión (el usuario pudo cambiarlo fuera). */
+  launchAtLogin: boolean
+  /** Fuera de la app instalada no se registra el inicio de sesión. */
+  launchAtLoginSupported: boolean
+}
+
+export interface BackgroundPatch {
+  backgroundMode?: boolean
+  launchAtLogin?: boolean
 }
 
 export interface SystemNotificationRequest {

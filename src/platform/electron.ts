@@ -29,6 +29,8 @@ import type {
   UpdateAvailable,
   UpdateState,
   MigrationStatus,
+  BackgroundPatch,
+  BackgroundSettings,
 } from './contract'
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
@@ -105,6 +107,10 @@ interface DesktopHostApi {
   }
   files: { openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void> }
   clipboard: { writeText(text: string): Promise<void> }
+  app: {
+    background(): Promise<BackgroundSettings>
+    setBackground(patch: BackgroundPatch): Promise<BackgroundSettings>
+  }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
 
@@ -158,6 +164,11 @@ export const electronBridge: DesktopBridge = {
 
   clipboard: {
     writeText: (text) => required().clipboard.writeText(text),
+  },
+
+  app: {
+    backgroundSettings: () => required().app.background(),
+    setBackgroundSettings: (patch) => required().app.setBackground(patch),
   },
 
   events: {

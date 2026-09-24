@@ -23,6 +23,8 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import {
   CHANNEL,
   PUSH,
+  type BackgroundPatch,
+  type BackgroundSettings,
   type BridgeResult,
   type BrowserContextView,
   type BrowserPreviewView,
@@ -130,6 +132,11 @@ const api = {
 
   clipboard: {
     writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
+  },
+
+  app: {
+    background: () => call<BackgroundSettings>(CHANNEL.appBackgroundGet),
+    setBackground: (patch: BackgroundPatch) => call<BackgroundSettings>(CHANNEL.appBackgroundSet, patch),
   },
 
   contextMenu: {

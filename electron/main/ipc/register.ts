@@ -22,6 +22,8 @@ import {
   type ContextMenuRole,
   type BrowserSlotLayoutRequest,
   type BrowserSlotLease,
+  type BackgroundPatch,
+  type BackgroundSettings,
   type OpenExternalFileRequest,
   type OpenFilesRequest,
   type SystemNotificationRequest,
@@ -38,6 +40,7 @@ import {
   assertString,
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
+import { assertBackgroundPatch } from '../native/background'
 import {
   MIGRATION_ALLOWED_KEYS,
   MIGRATION_MAX_ENTRIES,
@@ -86,6 +89,11 @@ export interface HostServices {
   opener: { openUrl(url: string): Promise<void> }
   files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
   clipboard: { writeText(text: string): void | Promise<void> }
+  /** Bandeja al cerrar e inicio con el sistema: preferencias que main necesita antes que el renderer. */
+  app: {
+    background(): BackgroundSettings
+    setBackground(patch: BackgroundPatch): BackgroundSettings
+  }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
     support(): { canSend: boolean; canActivateTarget: boolean }
@@ -343,6 +351,11 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.clipboardWriteText,
       guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
+    ],
+    [CHANNEL.appBackgroundGet, guarded(registry, () => services.app.background())],
+    [
+      CHANNEL.appBackgroundSet,
+      guarded(registry, (_event, patch) => services.app.setBackground(assertBackgroundPatch(patch))),
     ],
     [
       CHANNEL.contextMenuShow,

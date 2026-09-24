@@ -38,6 +38,11 @@ export interface WindowDeps {
    * salida.
    */
   isQuitCommitted: () => boolean
+  /**
+   * Arranque al iniciar sesión con la bandeja activa: la ventana carga pero no
+   * se muestra hasta que el usuario la abre (`presentWindow`).
+   */
+  startHidden?: boolean
 }
 
 type RevealWindow = Pick<BrowserWindow, 'isDestroyed' | 'isVisible' | 'maximize' | 'show'>
@@ -55,12 +60,35 @@ export function revealMaximized(window: RevealWindow, publish: () => void): void
   })
 }
 
-type ExistingWindow = Pick<BrowserWindow, 'isMinimized' | 'restore' | 'focus'>
+type ExistingWindow = Pick<BrowserWindow, 'isMinimized' | 'restore' | 'focus' | 'isVisible' | 'show'>
 
-/** Una segunda instancia conserva la elección de tamaño del usuario. */
+/** Ventanas que ya se revelaron una vez (la primera vez se maximizan). */
+const revealed = new WeakSet<object>()
+
+/**
+ * Una segunda instancia, la bandeja o una notificación traen la ventana al
+ * frente: la muestran si estaba oculta en la bandeja y conservan la elección
+ * de tamaño del usuario.
+ */
 export function focusExistingWindow(window: ExistingWindow): void {
+  if (!window.isVisible()) window.show()
   if (window.isMinimized()) window.restore()
   window.focus()
+}
+
+/**
+ * Como `focusExistingWindow`, pero una ventana que arrancó oculta y nunca se
+ * mostró se revela maximizada, igual que en un arranque normal.
+ */
+export function presentWindow(window: ExistingWindow & RevealWindow, publish: () => void = () => {}): void {
+  if (window.isDestroyed()) return
+  if (!revealed.has(window)) {
+    revealed.add(window)
+    revealMaximized(window, publish)
+    window.focus()
+    return
+  }
+  focusExistingWindow(window)
 }
 
 function stateOf(window: BrowserWindow): WindowState {
@@ -191,6 +219,9 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     if (reason !== 'ready-to-show') {
       console.error(`[rinari] la ventana se muestra por ${reason}: la página no llegó a pintar`)
     }
+    // Arranque en la bandeja: se queda oculta hasta que el usuario la abra.
+    if (deps.startHidden) return
+    revealed.add(window)
     revealMaximized(window, push)
   }
   window.once('ready-to-show', () => reveal('ready-to-show'))

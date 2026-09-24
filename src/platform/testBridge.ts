@@ -28,6 +28,7 @@ import type {
   UpdateAvailable,
   MigrationStatus,
   FlowScopeRequest,
+  BackgroundSettings,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -56,6 +57,8 @@ export interface TestBridge extends DesktopBridge {
   readonly openedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
   /** Textos que el host de prueba confirmó en el portapapeles. */
   readonly copiedTexts: string[]
+  /** Ajustes de segundo plano del host de prueba. */
+  background: BackgroundSettings
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
@@ -150,6 +153,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     initialHandoff: { project: null, session: null },
     openedFiles: [],
     copiedTexts: [],
+    background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -211,6 +215,19 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     clipboard: {
       async writeText(text) {
         bridge.copiedTexts.push(text)
+      },
+    },
+
+    app: {
+      async backgroundSettings() {
+        return { ...bridge.background }
+      },
+      async setBackgroundSettings(patch) {
+        const next = { ...bridge.background }
+        if (patch.backgroundMode !== undefined) next.backgroundMode = patch.backgroundMode
+        if (patch.launchAtLogin !== undefined && next.launchAtLoginSupported) next.launchAtLogin = patch.launchAtLogin
+        bridge.background = next
+        return { ...next }
       },
     },
 

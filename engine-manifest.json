@@ -1,6 +1,6 @@
 {
   "engine_repository": "Xainner/Rinari-CLI",
-  "engine_git_sha": "829890e43580fda4b7037c98fa00149f58fce359",
+  "engine_git_sha": "2e536c6b57f6606fe50b561f5c35a8b98fb032ce",
   "engine_version": "0.1.0",
   "protocol_version": 1,
   "required_capabilities": [
@@ -37,6 +37,5 @@
     "turn_token_usage_v1",
     "context_status_v2"
   ],
-  "development_build": false,
-  "_pin_note": "Temporal: head de Xainner/Rinari-CLI fix/desktop-files-auth-models (PR pendiente). Se vuelve a fijar al merge de ese PR antes de fusionar este."
+  "development_build": false
 }

@@ -1342,6 +1342,11 @@
           "name": "allow_unconfirmed_vision",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "command",
+          "type": "Option<Value>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -1373,6 +1378,34 @@
           "from": "allow_unconfirmed_vision",
           "optional": false,
           "default": "false"
+        },
+        {
+          "key": "command",
+          "from": "command",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "command_list",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "command.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
         }
       ],
       "passthrough": null,

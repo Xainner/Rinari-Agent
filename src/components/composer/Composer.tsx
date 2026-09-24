@@ -15,6 +15,11 @@ import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
+import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
+import { useSlashCommands } from './useSlashCommands'
+import type { SlashCommand } from '../../services/engine'
+import type { SendOptions } from '../../features/engine/useEngineSession'
+import type { I18nKey } from '../../i18n'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -26,7 +31,12 @@ const permissionColors = {
 
 interface ComposerProps {
   placement: ComposerPlacement
-  onSend: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
+  onSend: (text: string, attachments?: AttachmentRef[], options?: SendOptions) => Promise<boolean>
+  /**
+   * Comandos `/` de interfaz (nueva, compactar, cambios…). `/help` y
+   * `/model` los resuelve el compositor; sin este manejador el resto no se ofrece.
+   */
+  onUiCommand?: (name: string, text: string) => boolean | Promise<boolean>
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   sessionId?: string
@@ -77,6 +87,28 @@ interface ComposerProps {
 
 const MODES = ['plan', 'build', 'review'] as const
 
+/** Comandos `/` de interfaz que resuelve el propio compositor. */
+const LOCAL_SLASH = new Set(['help', 'model'])
+
+/** Descripción localizada de los comandos integrados; el resto usa la del Engine. */
+const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
+  help: 'slash.help',
+  new: 'slash.new',
+  plan: 'slash.plan',
+  build: 'slash.build',
+  review: 'slash.review',
+  test: 'slash.test',
+  skill: 'slash.skill',
+  skills: 'slash.skills',
+  compact: 'slash.compact',
+  context: 'slash.context',
+  model: 'slash.model',
+  diff: 'slash.diff',
+  tasks: 'slash.tasks',
+  fork: 'slash.fork',
+  rename: 'slash.rename',
+}
+
 /**
  * Composer: una sola unidad visual (textarea + toolbar con modelo).
  * El borrador vive en el store y sobrevive al cambio centered ↔ bottom.
@@ -86,6 +118,7 @@ const MODES = ['plan', 'build', 'review'] as const
 export default function Composer({
   placement,
   onSend,
+  onUiCommand,
   onPrepareAttachments,
   onCancelAttachmentPreparation,
   sessionId,
@@ -201,6 +234,20 @@ export default function Composer({
   useEffect(() => {
     setPaneHighlight(0)
   }, [paneQuery])
+  // Comandos `/`: el catálogo llega del Engine al escribir la primera barra.
+  const [engineCommands, loadCommands] = useSlashCommands(sessionId)
+  const wantsCommands = text.startsWith('/')
+  useEffect(() => {
+    if (wantsCommands) loadCommands()
+  }, [wantsCommands, loadCommands])
+  const slashCommands = engineCommands.filter((command) => command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand))
+  const slashQ = slashQuery(text)
+  const slashMatches = slashQ !== null ? matchSlashCommands(slashQ, slashCommands) : []
+  const [slashHighlight, setSlashHighlight] = useState(0)
+  useEffect(() => {
+    setSlashHighlight(0)
+  }, [slashQ])
+  const [modelSignal, setModelSignal] = useState(0)
   const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
   const [visionRevision, setVisionRevision] = useState(0)
   useEffect(() => { const refresh = () => setVisionRevision(n => n + 1); window.addEventListener('rinari-vision-changed', refresh); return () => window.removeEventListener('rinari-vision-changed', refresh) }, [])
@@ -303,12 +350,26 @@ export default function Composer({
       }
       return
     }
+    // `/comando`: la interfaz lo resuelve aquí o viaja con el turno para que el
+    // Engine lo expanda. Un texto que empieza por `/` sin ser comando (una
+    // ruta) se envía tal cual.
+    const slash = content.startsWith('/') ? parseSlashCommand(content, slashCommands) : null
+    const plan = slash ? planSlash(slash.command, slash.text) : null
+    if (plan && plan.kind !== 'send') {
+      setTextFor(submissionSessionKey, '')
+      const handled = await runLocalSlash(plan)
+      if (!handled) setTextFor(submissionSessionKey, content)
+      textareaRef.current?.focus()
+      return
+    }
+    const sendOptions: SendOptions = plan?.kind === 'send' ? { command: { name: plan.name, text: plan.text } } : {}
     armSendReset()
     store.clearFor(submissionSessionKey)
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
-      const ok = await onSend(content.trim() || 'Revisa los archivos adjuntos.', outgoing)
+      const message = content.trim() || 'Revisa los archivos adjuntos.'
+      const ok = await (sendOptions.command ? onSend(message, outgoing, sendOptions) : onSend(message, outgoing))
       if (ok) removeAttachmentsById(attachmentIds)
       if (!ok) {
         restoreSubmission(submissionSessionKey, attachmentIds, content)
@@ -320,6 +381,43 @@ export default function Composer({
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  async function runLocalSlash(plan: Exclude<SlashPlan, { kind: 'send' }>): Promise<boolean> {
+    if (plan.kind === 'mode') {
+      onModeChange(plan.mode)
+      return true
+    }
+    if (plan.name === 'help') {
+      setText('/')
+      return true
+    }
+    if (plan.name === 'model') {
+      const wanted = plan.text ? models.find((model) => model.alias === plan.text || model.id === plan.text) : undefined
+      if (wanted) onUseModel(wanted)
+      else setModelSignal((value) => value + 1)
+      return true
+    }
+    if (!onUiCommand) return false
+    try {
+      return await onUiCommand(plan.name, plan.text)
+    } catch {
+      return false
+    }
+  }
+
+  function completeSlash(command: SlashCommand) {
+    setText(`/${command.name} `)
+    requestAnimationFrame(() => textareaRef.current?.focus())
+  }
+
+  function pickSlash(command: SlashCommand) {
+    if (!runsOnPick(command)) {
+      completeSlash(command)
+      return
+    }
+    setText(`/${command.name}`)
+    void handleSend()
   }
 
   const canSend = paneMention ? paneMention.message.length > 0 : (!!text.trim() || attachments.length > 0)
@@ -491,8 +589,32 @@ export default function Composer({
             <span className="text-[var(--text-subtle)]">· {paneMention.message ? t('composer.paneMention.hint') : t('composer.paneMention.empty')}</span>
           </div>
         )}
-        {(paneMatches.length > 0 || fileMatches.length > 0) && (
+        {(slashMatches.length > 0 || paneMatches.length > 0 || fileMatches.length > 0) && (
           <div className="absolute right-2 bottom-full left-2 z-30 mb-2 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl">
+            {slashMatches.length > 0 && (
+              <div role="listbox" aria-label={t('composer.slash.heading')} data-testid="slash-command-list">
+                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.slash.heading')}</p>
+                {slashMatches.map((command, index) => {
+                  const key = SLASH_DESCRIPTION_KEYS[command.name]
+                  return (
+                    <button
+                      key={command.name}
+                      type="button"
+                      role="option"
+                      aria-selected={index === slashHighlight}
+                      onMouseEnter={() => setSlashHighlight(index)}
+                      onClick={() => pickSlash(command)}
+                      className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${index === slashHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
+                    >
+                      <span className="shrink-0 font-mono text-[var(--text)]">/{command.name}</span>
+                      {command.args && <span className="shrink-0 font-mono text-[var(--text-subtle)]">{command.args}</span>}
+                      <span className="min-w-0 flex-1 truncate text-[var(--text-subtle)]">{command.source === 'builtin' && key ? t(key) : command.description}</span>
+                      {command.source === 'skill' && <span className="shrink-0 rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">{t('composer.slash.skill')}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             {paneMatches.length > 0 && (
               <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">
                 <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.paneMention.heading')}</p>
@@ -529,6 +651,13 @@ export default function Composer({
           }}
           onPaste={handlePaste}
           onKeyDown={(e) => {
+            if (slashMatches.length > 0 && !e.nativeEvent.isComposing) {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setSlashHighlight((index) => (index + 1) % slashMatches.length); return }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setSlashHighlight((index) => (index - 1 + slashMatches.length) % slashMatches.length); return }
+              if (e.key === 'Tab') { e.preventDefault(); completeSlash(slashMatches[slashHighlight] ?? slashMatches[0]); return }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pickSlash(slashMatches[slashHighlight] ?? slashMatches[0]); return }
+              if (e.key === 'Escape') { e.preventDefault(); setText(''); return }
+            }
             if (paneMatches.length > 0 && !e.nativeEvent.isComposing) {
               if (e.key === 'ArrowDown') { e.preventDefault(); setPaneHighlight((index) => (index + 1) % paneMatches.length); return }
               if (e.key === 'ArrowUp') { e.preventDefault(); setPaneHighlight((index) => (index - 1 + paneMatches.length) % paneMatches.length); return }
@@ -646,6 +775,7 @@ export default function Composer({
             onRefreshModels={onRefreshModels}
             onOpenProviders={onOpenProviders}
             disabled={isStreaming}
+            openSignal={modelSignal}
           />
           <Popover open={reasoningOpen} onOpenChange={setReasoningOpen}>
             <PopoverTrigger asChild>

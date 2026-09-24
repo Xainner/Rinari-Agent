@@ -1,3 +1,4 @@
+import { runUiCommand } from '../engine/slashUi'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
@@ -243,6 +244,12 @@ function SessionPane({
               isStreaming={session.busy}
               engineReady={data.ready}
               onSend={session.send}
+              onUiCommand={(name, text) => runUiCommand(name, text, {
+                sessionId: pane.sessionId,
+                reveal: revealDock,
+                fork: commands.forkSession,
+                rename: commands.renameSession,
+              })}
               onPrepareAttachments={session.prepareAttachments}
               onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
               onImplementPlan={session.implementPlan}

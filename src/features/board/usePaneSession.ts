@@ -1,3 +1,4 @@
+import type { SendOptions } from '../engine/useEngineSession'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AttachmentRef, ChatMessage, PendingApproval } from '../../types'
 import type { ModelSummary, ProjectSummary, ProjectStatus, SessionSummary } from '../../services/engine'
@@ -50,7 +51,7 @@ export interface PaneSession {
   markAllSeen: () => void
   reasoningEffort: ReasoningEffort
   setReasoningEffort: (effort: ReasoningEffort) => void
-  send: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
+  send: (text: string, attachments?: AttachmentRef[], options?: SendOptions) => Promise<boolean>
   stop: () => void
   setMode: (mode: string) => void
   setPermission: (profile: string) => void
@@ -118,7 +119,8 @@ export function usePaneSession(sessionId: string): PaneSession {
   const activeModel = useMemo(() => selectSessionModel(data.models, record), [data.models, record])
 
   const send = useCallback(
-    (text: string, attachments: AttachmentRef[] = []) => commands.sendTo(sessionId, text, attachments),
+    (text: string, attachments: AttachmentRef[] = [], options?: SendOptions) =>
+      options ? commands.sendTo(sessionId, text, attachments, options) : commands.sendTo(sessionId, text, attachments),
     [commands, sessionId],
   )
   const stop = useCallback(() => void commands.cancelTurnFor(sessionId), [commands, sessionId])

@@ -5,7 +5,7 @@
 // con el turno ya interrumpido.
 import { describe, expect, it, vi } from 'vitest'
 
-import { QuitCoordinator, type QuitDeps } from './QuitCoordinator'
+import { QuitCoordinator, confirmsQuit, type QuitDeps } from './QuitCoordinator'
 
 function coordinator(overrides: Partial<QuitDeps> = {}) {
   const calls = {
@@ -203,5 +203,31 @@ describe('no hay bucle entre cerrar y salir', () => {
     // Tras `app.quit()` la ventana recibe `close` otra vez.
     expect(await windowClose()).toBe('allow')
     expect(windowClose).toHaveBeenCalledTimes(2)
+  })
+})
+
+// Cerrar ya es la decisión de salir: solo un reinicio para actualizar pregunta.
+describe('confirmsQuit', () => {
+  it('no pregunta al cerrar la ventana, salir o cerrar la última ventana', () => {
+    for (const reason of ['window-close', 'app', 'menu', 'window-all-closed', 'parity'] as const) {
+      expect(confirmsQuit(reason, true)).toBe(false)
+    }
+  })
+
+  it('pregunta antes de reiniciar para actualizar con el Engine en marcha', () => {
+    expect(confirmsQuit('update', true)).toBe(true)
+    expect(confirmsQuit('update', false)).toBe(false)
+  })
+
+  it('al cerrar sin preguntar detiene el Engine antes de terminar', async () => {
+    const order: string[] = []
+    const quit = new QuitCoordinator({
+      shouldConfirm: (reason) => confirmsQuit(reason, true),
+      confirm: async () => { order.push('confirm'); return true },
+      shutdown: async () => { order.push('shutdown') },
+      commit: () => { order.push('commit') },
+    })
+    await expect(quit.requestQuit('window-close')).resolves.toBe(true)
+    expect(order).toEqual(['shutdown', 'commit'])
   })
 })

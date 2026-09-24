@@ -5,6 +5,7 @@ import { useBoardStore } from '../../stores/board'
 import { inputClass, Row, Section } from './parts'
 import { Switch } from '../ui/switch'
 import { notificationSupport } from '../../services/notifications'
+import BackgroundSettings from './BackgroundSettings'
 
 /** Settings > General (§19): idioma + comportamiento. Guardado inmediato. */
 export default function GeneralSettings({
@@ -83,6 +84,8 @@ export default function GeneralSettings({
           }
         />
       </Section>
+
+      <BackgroundSettings />
 
       <Section title={t('settings.general.sidebar')}>
         <Row

@@ -22,12 +22,14 @@ import { SenderRegistry, originOf } from './ipc/validateSender'
 import { canPush } from './ipc/pushGuard'
 import { QuitCoordinator, confirmsQuit } from './lifecycle/QuitCoordinator'
 import { defaultMigrationDirectory, MigrationService } from './migration/MigrationService'
+import { createBackground, HIDDEN_START_ARG, type Background } from './native/background'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
+import { createTrayController } from './native/tray'
 import { createUpdates } from './updates/createUpdates'
-import { clampToWorkArea, createMainWindow, focusExistingWindow } from './window'
+import { clampToWorkArea, createMainWindow, presentWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
@@ -59,6 +61,23 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null
 let unregisterIpc: (() => void) | null = null
+/** Segundo plano (bandeja, inicio con el sistema); se crea al estar listo `app`. */
+let background: Background | null = null
+
+/**
+ * Trae la ventana al frente desde la bandeja, una notificación o una segunda
+ * instancia: la muestra si estaba oculta o la revela si arrancó en la bandeja.
+ */
+function showMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) presentWindow(mainWindow)
+  else openWindow()
+}
+
+const tray = createTrayController({
+  onOpen: showMainWindow,
+  // «Salir» del icono entra por la misma autoridad que el menú y la X.
+  onQuit: () => void quitCoordinator.requestQuit('tray'),
+})
 /**
  * Origen del renderer de confianza: el esquema propio en producción y el del
  * dev server cuando lo hay. El registro del emisor usa **este** valor, no
@@ -146,9 +165,7 @@ const engine = new EngineSupervisor({
 const notifications = createNotifications({
   onActivate: (target) => send(PUSH.notificationActivated, target),
   focusWindow: () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
+    if (mainWindow && !mainWindow.isDestroyed()) presentWindow(mainWindow)
   },
 })
 
@@ -348,6 +365,11 @@ function browserServices(): HostServices['browser'] {
   }
 }
 
+function requireBackground(): Background {
+  if (!background) throw new EngineCommandError('HOST_ERROR', 'background settings are not ready')
+  return background
+}
+
 function buildServices(): HostServices {
   const getWindow = () => mainWindow
   return {
@@ -403,6 +425,10 @@ function buildServices(): HostServices {
     },
     clipboard: {
       writeText: (text) => clipboard.writeText(text),
+    },
+    app: {
+      background: () => requireBackground().settings(),
+      setBackground: (patch) => requireBackground().update(patch),
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -503,11 +529,26 @@ function openWindow(): void {
     trustedOrigin: TRUSTED_ORIGIN,
     cspMode: isDev ? 'development' : 'production',
     onState: (state) => send(PUSH.windowState, state),
-    onCloseRequested: () => {
+    onCloseRequested: (window) => {
+      // Con la bandeja activa, la X oculta: el Engine y los turnos siguen.
+      // La primera vez se dice dónde quedó la app y cómo salir de verdad.
+      const decision = background?.onCloseRequested() ?? { action: 'quit' as const, notice: false }
+      if (decision.action === 'hide') {
+        window.hide()
+        if (decision.notice) {
+          notifications.send({
+            title: 'Rinari sigue en la bandeja',
+            body: 'Ábrela desde su icono en la bandeja del sistema. Para salir, usa «Salir» en ese menú.',
+          })
+        }
+        return
+      }
       // El manejador de ventana no detiene el Engine por su cuenta: delega.
       void quitCoordinator.requestQuit('window-close')
     },
     isQuitCommitted: () => quitCoordinator.isCommitted(),
+    // Solo la primera ventana: el sistema la abrió al iniciar sesión.
+    startHidden: !mainWindow && (background?.startsHidden(process.argv) ?? false),
   })
 
   registry.trust(mainWindow.webContents.id)
@@ -826,7 +867,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', (_event, argv) => {
     handoff.push(parseOpenRequest(argv, app.isPackaged ? 1 : 2))
-    if (mainWindow) focusExistingWindow(mainWindow)
+    if (mainWindow) presentWindow(mainWindow)
   })
 
   void app.whenReady().then(() => {
@@ -844,12 +885,25 @@ if (!app.requestSingleInstanceLock()) {
         onQuit: () => void quitCoordinator.requestQuit('menu'),
       }),
     )
+    background = createBackground({
+      settingsPath: join(app.getPath('userData'), 'desktop-settings.json'),
+      // En desarrollo se registraría el electron.exe de la worktree.
+      loginItems: app.isPackaged
+        ? {
+            get: () => app.getLoginItemSettings({ args: [HIDDEN_START_ARG] }).openAtLogin,
+            set: (openAtLogin) => app.setLoginItemSettings({ openAtLogin, args: [HIDDEN_START_ARG] }),
+          }
+        : null,
+      onModeChanged: (enabled) => (enabled ? void tray.show() : tray.hide()),
+    })
+    if (background.backgroundMode) void tray.show()
     unregisterIpc = registerIpc(registry, buildServices())
     handoff.push(parseOpenRequest(process.argv, app.isPackaged ? 1 : 2))
     openWindow()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openWindow()
+      else showMainWindow()
     })
   })
 

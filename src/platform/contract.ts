@@ -19,7 +19,7 @@
  */
 
 import type { EngineBackedCommand } from './commands.generated'
-import type { FlowScopeRequest } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { MigrationStatus } from '../../electron/shared/migration'
@@ -34,7 +34,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { FlowScopeRequest } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
@@ -145,6 +145,12 @@ export interface DesktopBridge {
   clipboard: {
     /** Escribe texto mediante el host nativo; nunca pide permisos web. */
     writeText(text: string): Promise<void>
+  }
+
+  app: {
+    /** Seguir en la bandeja al cerrar e iniciar con el sistema. */
+    backgroundSettings(): Promise<BackgroundSettings>
+    setBackgroundSettings(patch: BackgroundPatch): Promise<BackgroundSettings>
   }
 
   events: {

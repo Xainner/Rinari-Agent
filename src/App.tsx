@@ -502,6 +502,9 @@ function App() {
             onOpenProject={(root) => goProject(root)}
             onCloseSession={(id) => void session.closeSession(id)}
             onRenameSession={(id, title) => void session.renameSession(id, title)}
+            onPinSession={session.status?.capabilities.session_pins_v1 === true
+              ? (id, pinned) => void session.pinSession(id, pinned)
+              : undefined}
             onArchiveSession={(id) => void session.archiveSession(id)}
             onRestoreSession={(id) => void session.restoreSession(id).then(() => goChat())}
             onForkSession={(id) => void session.forkSession(id).then((created) => created && goChat())}

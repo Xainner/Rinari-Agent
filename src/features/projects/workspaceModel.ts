@@ -10,12 +10,23 @@ export interface ProjectSection {
   sessions: SessionSummary[]
 }
 
+export interface PinnedEntry {
+  session: SessionSummary
+  /** Proyecto de la conversación, para mostrar su nombre; null si es suelta. */
+  project: ProjectSummary | null
+}
+
 export interface WorkspaceModel {
+  /** Conversaciones fijadas, la más reciente primero. No se repiten abajo. */
+  pinned: PinnedEntry[]
   /** Una sección por proyecto reciente (aunque no tenga sesiones). */
   sections: ProjectSection[]
   /** CHATs + sesiones sin proyecto resoluble. */
   chats: SessionSummary[]
 }
+
+/** Fijadas visibles antes de «Ver más». */
+export const PINNED_VISIBLE_LIMIT = 8
 
 /** Nombre de display: última parte de la ruta. Solo presentación. */
 export function projectDisplayName(root: string): string {
@@ -32,6 +43,7 @@ export function buildWorkspaceModel(
   const byRoot = new Map(projects.map((p) => [p.root, p] as const))
   const buckets = new Map<string, SessionSummary[]>()
   const chats: SessionSummary[] = []
+  const pinned: PinnedEntry[] = []
 
   for (const session of sessions) {
     let projectId: string | null = null
@@ -40,7 +52,10 @@ export function buildWorkspaceModel(
     } else if (session.project_root && byRoot.has(session.project_root)) {
       projectId = byRoot.get(session.project_root)!.id
     }
-    if (session.kind === 'PROJECT' && projectId) {
+    if (session.pinned_at) {
+      // Sale de su proyecto o de los chats: una fijada se ve una sola vez.
+      pinned.push({ session, project: projectId ? byId.get(projectId)! : null })
+    } else if (session.kind === 'PROJECT' && projectId) {
       const bucket = buckets.get(projectId) ?? []
       bucket.push(session)
       buckets.set(projectId, bucket)
@@ -49,15 +64,17 @@ export function buildWorkspaceModel(
     }
   }
 
+  pinned.sort((left, right) => (right.session.pinned_at ?? '').localeCompare(left.session.pinned_at ?? ''))
   const normalizedQuery = query.trim().toLocaleLowerCase()
   const sections = projects.map((project) => ({
       project,
       sessions: buckets.get(project.id) ?? [],
     }))
-  if (!normalizedQuery) return { sections, chats }
+  if (!normalizedQuery) return { pinned, sections, chats }
   const includes = (value: string | null | undefined) =>
     value?.toLocaleLowerCase().includes(normalizedQuery) ?? false
   return {
+    pinned: pinned.filter((entry) => includes(entry.session.title) || includes(entry.project?.name)),
     sections: sections
       .map((section) => {
         const projectMatches = includes(section.project.name)

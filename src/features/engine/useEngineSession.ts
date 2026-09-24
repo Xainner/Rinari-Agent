@@ -361,6 +361,7 @@ export function useEngineSession() {
     archivedSessions: sessions.archivedSessions,
     closeSession: sessions.closeSession,
     renameSession: sessions.renameSession,
+    pinSession: sessions.pinSession,
     archiveSession: sessions.archiveSession,
     restoreSession: sessions.restoreSession,
     forkSession: sessions.forkSession,

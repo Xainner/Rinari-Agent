@@ -116,6 +116,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "session_open": {"method":"session.open","params":[{"key":"ref","from":"reference","optional":false}]},
   "session_permission_get": {"method":"session.permission.get","params":[{"key":"ref","from":"reference","optional":false}]},
   "session_permission_set": {"method":"session.permission.set","params":[{"key":"ref","from":"reference","optional":false},{"key":"permission_profile","from":"permission_profile","optional":false}]},
+  "session_pin": {"method":"session.pin","params":[{"key":"ref","from":"reference","optional":false},{"key":"pinned","from":"pinned","optional":false}]},
   "session_rename": {"method":"session.rename","params":[{"key":"ref","from":"reference","optional":false},{"key":"title","from":"title","optional":false}]},
   "session_restore": {"method":"session.restore","params":[{"key":"ref","from":"reference","optional":false}]},
   "session_timeline": {"method":"session.timeline","params":[{"key":"ref","from":"reference","optional":false},{"key":"before_turn_index","from":null,"optional":true},{"key":"limit","from":"limit","optional":true}],"manual":true},

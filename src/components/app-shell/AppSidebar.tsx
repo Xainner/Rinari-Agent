@@ -16,12 +16,15 @@ import {
   GitFork,
   Pencil,
   Pin,
+  PinOff,
   Search,
+  Trash2,
   Workflow,
+  X,
 } from 'lucide-react'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
-import { buildWorkspaceModel, projectDisplayName, groupRecentChats } from '../../features/projects/workspaceModel'
+import { buildWorkspaceModel, projectDisplayName, groupRecentChats, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -78,6 +81,8 @@ export interface AppSidebarProps {
   onOpenProject: (root: string) => void
   onCloseSession: (id: string) => void
   onRenameSession: (id: string, title: string) => void
+  /** Fijar/desfijar; ausente si el Engine no anuncia `session_pins_v1`. */
+  onPinSession?: (id: string, pinned: boolean) => void
   onArchiveSession: (id: string) => void
   onRestoreSession: (id: string) => void
   onForkSession: (id: string) => void
@@ -137,6 +142,7 @@ export function AppSidebar({
   onOpenProject,
   onCloseSession,
   onRenameSession,
+  onPinSession,
   onArchiveSession,
   onRestoreSession,
   onForkSession,
@@ -154,6 +160,7 @@ export function AppSidebar({
   const [showClosed, setShowClosed] = useState(false)
   const [showArchivedProjects, setShowArchivedProjects] = useState(false)
   const [showArchivedSessions, setShowArchivedSessions] = useState(false)
+  const [showAllPinned, setShowAllPinned] = useState(false)
   const [query, setQuery] = useState('')
   const [sessionMenu, setSessionMenu] = useState<string | null>(null)
   const [projectMenu, setProjectMenu] = useState<string | null>(null)
@@ -247,7 +254,7 @@ export function AppSidebar({
     setCascade(false)
   }
 
-  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean }) => {
+  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
@@ -292,6 +299,11 @@ export function AppSidebar({
             >
               {sessionLabel(session, t('sidebar.newChat'))}
             </span>
+            {opts?.projectName && (
+              <span title={opts.projectName} className="max-w-[40%] shrink-0 truncate text-[11px] text-[var(--text-subtle)]">
+                {opts.projectName}
+              </span>
+            )}
             {(session.state === 'interrupted' || session.state === 'stopped') && (
               <span
                 role="img"
@@ -332,6 +344,9 @@ export function AppSidebar({
                 </DropdownMenuItem>
               ) : (
                 <>
+                  {onPinSession && <DropdownMenuItem onSelect={() => onPinSession(session.id, !session.pinned_at)}>
+                    {session.pinned_at ? <PinOff size={13} /> : <Pin size={13} />} {t(session.pinned_at ? 'sidebar.unpin' : 'sidebar.pin')}
+                  </DropdownMenuItem>}
                   <DropdownMenuItem onSelect={() => {
                     setRenameTitle(sessionLabel(session, t('sidebar.newChat')))
                     setRenameTarget(session)
@@ -355,7 +370,7 @@ export function AppSidebar({
                     <Archive size={13} /> {t('sidebar.archive')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => onCloseSession(session.id)}>
-                    {t('sidebar.close')}
+                    <X size={13} /> {t('sidebar.close')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -366,7 +381,7 @@ export function AppSidebar({
                 }}
                 className="text-red-500 focus:text-red-500"
               >
-                {t('sidebar.delete')}
+                <Trash2 size={13} /> {t('sidebar.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -425,6 +440,28 @@ export function AppSidebar({
         />
       </div>
       <div className={cn('sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
+
+        {model.pinned.length > 0 && (
+          <section aria-label={t('sidebar.pinned')}>
+            <p className="mb-1 pl-2 text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
+              {t('sidebar.pinned')}
+            </p>
+            <ul className="space-y-0.5">
+              {(showAllPinned || query ? model.pinned : model.pinned.slice(0, PINNED_VISIBLE_LIMIT)).map(({ session, project }) =>
+                row(session, { projectName: project ? project.name || projectDisplayName(project.root) : undefined }))}
+            </ul>
+            {!query && model.pinned.length > PINNED_VISIBLE_LIMIT && (
+              <button
+                type="button"
+                onClick={() => setShowAllPinned((value) => !value)}
+                aria-expanded={showAllPinned}
+                className="mt-0.5 px-2 text-[11px] text-[var(--text-subtle)] transition-colors hover:text-[var(--text-muted)]"
+              >
+                {showAllPinned ? t('sidebar.showLess') : t('sidebar.showMore', { n: model.pinned.length - PINNED_VISIBLE_LIMIT })}
+              </button>
+            )}
+          </section>
+        )}
 
         <section aria-label={t('sidebar.projects')}>
           <div className="mb-1 flex items-center justify-between pl-2">

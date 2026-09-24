@@ -380,3 +380,65 @@ it('no ofrece colapsar dentro de la búsqueda ni al pie del rail', () => {
   renderSidebar({ collapsed: true })
   expect(screen.queryByRole('button', { name: 'Expandir barra' })).toBeNull()
 })
+
+describe('conversaciones fijadas', () => {
+  const pinned = (base: SessionSummary, at: string): SessionSummary => ({ ...base, pinned_at: at })
+
+  it('muestra Fijados arriba, con el proyecto en pequeño y sin repetirla abajo', () => {
+    renderSidebar({
+      sessions: [
+        pinned(session('project-session', 'Fix governor', 'project'), '2026-09-24T10:00:00Z'),
+        session('chat', 'Research'),
+      ],
+    })
+    const section = screen.getByRole('region', { name: 'Fijados' })
+    expect(within(section).getByText('Fix governor')).toBeTruthy()
+    expect(within(section).getByText('Rinari CLI')).toBeTruthy()
+    expect(screen.getAllByText('Fix governor')).toHaveLength(1)
+    const projects = screen.getByRole('region', { name: 'Proyectos' })
+    expect(within(projects).queryByText('Fix governor')).toBeNull()
+  })
+
+  it('fija y desfija desde el menú, y sin la capacidad del Engine no lo ofrece', async () => {
+    const onPinSession = vi.fn()
+    renderSidebar({
+      onPinSession,
+      sessions: [pinned(session('chat', 'Research'), '2026-09-24T10:00:00Z'), session('other', 'Notes')],
+    })
+    const user = userEvent.setup()
+    const pinnedRegion = screen.getByRole('region', { name: 'Fijados' })
+    await user.click(within(pinnedRegion).getByRole('button', { name: 'Opciones de sesión' }))
+    await user.click(screen.getByRole('menuitem', { name: /Desfijar conversación/ }))
+    expect(onPinSession).toHaveBeenCalledWith('chat', false)
+
+    const chats = screen.getByRole('region', { name: 'Conversaciones' })
+    await user.click(within(chats).getByRole('button', { name: 'Opciones de sesión' }))
+    await user.click(screen.getByRole('menuitem', { name: /Fijar conversación/ }))
+    expect(onPinSession).toHaveBeenCalledWith('other', true)
+    cleanup()
+
+    renderSidebar()
+    await user.click(screen.getAllByRole('button', { name: 'Opciones de sesión' })[0])
+    expect(screen.queryByRole('menuitem', { name: /Fijar conversación/ })).toBeNull()
+  })
+
+  it('muestra 8 y el resto con «Ver más»', async () => {
+    const many = Array.from({ length: 10 }, (_, index) =>
+      pinned(session(`p${index}`, `Fijada ${index}`), `2026-09-24T10:${String(index).padStart(2, '0')}:00Z`))
+    renderSidebar({ sessions: many })
+    const section = screen.getByRole('region', { name: 'Fijados' })
+    expect(within(section).getAllByRole('listitem')).toHaveLength(8)
+    // La más reciente primero.
+    expect(within(section).getAllByRole('listitem')[0].textContent).toContain('Fijada 9')
+    await userEvent.click(within(section).getByRole('button', { name: 'Ver más · 2' }))
+    expect(within(section).getAllByRole('listitem')).toHaveLength(10)
+  })
+
+  it('Cerrar y Eliminar llevan icono como el resto del menú', async () => {
+    renderSidebar()
+    await userEvent.click(screen.getAllByRole('button', { name: 'Opciones de sesión' })[0])
+    for (const name of [/^Cerrar$/, /^Eliminar$/]) {
+      expect(screen.getByRole('menuitem', { name }).querySelector('svg')).not.toBeNull()
+    }
+  })
+})

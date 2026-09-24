@@ -3025,6 +3025,314 @@
       "host_effects": []
     },
     {
+      "command": "skill_list",
+      "module": "skills",
+      "args": [
+        {
+          "name": "project_root",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.list",
+      "engine_params": [
+        {
+          "key": "project_root",
+          "from": "project_root",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_get",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "project_root",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.get",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "project_root",
+          "from": "project_root",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_read",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "offset",
+          "type": "Option<u32>",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.read",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "offset",
+          "from": "offset",
+          "optional": true
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_enable",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.enable",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_disable",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.disable",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_remove",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.remove",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_write",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.write",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "content",
+          "from": "content",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_import_scan",
+      "module": "skills",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.import.scan",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_job_start",
+      "module": "skills",
+      "args": [
+        {
+          "name": "action",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "source",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "expected_hash",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "force",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.job.start",
+      "engine_params": [
+        {
+          "key": "action",
+          "from": "action",
+          "optional": false
+        },
+        {
+          "key": "source",
+          "from": "source",
+          "optional": true
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "expected_hash",
+          "from": "expected_hash",
+          "optional": true
+        },
+        {
+          "key": "force",
+          "from": "force",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_job_get",
+      "module": "skills",
+      "args": [
+        {
+          "name": "job_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.job.get",
+      "engine_params": [
+        {
+          "key": "job_id",
+          "from": "job_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "tool_list",
       "module": "ecosystem",
       "args": [],

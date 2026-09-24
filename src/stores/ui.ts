@@ -37,6 +37,7 @@ export type SettingsSection =
   | 'context'
   | 'agents'
   | 'soul'
+  | 'skills'
   | 'mcp'
   | 'plugins'
   | 'tools'

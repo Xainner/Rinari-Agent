@@ -337,6 +337,102 @@ export interface SessionDeleteResult {
   };
 }
 
+/** Biblioteca de skills (`skill_library_v1`). */
+export type SkillOrigin = 'rinari' | 'installed' | 'learned' | 'project'
+
+export interface SkillIssue {
+  code: string
+  message: string
+}
+
+export interface SkillFinding {
+  code: string
+  severity: 'danger' | 'warning'
+  file: string
+  line: number | null
+  excerpt: string
+}
+
+export interface SkillReview {
+  verdict: 'ok' | 'warning' | 'danger'
+  content_hash: string
+  files: number
+  size: number
+  findings: SkillFinding[]
+}
+
+export interface SkillEntry {
+  name: string
+  description: string
+  version: string | null
+  format: 'rinari' | 'standard' | null
+  risk: string | null
+  origin: SkillOrigin
+  enabled: boolean
+  status: string
+  valid: boolean
+  error: SkillIssue | null
+  issues: SkillIssue[]
+  /** Origen de la skill con el mismo nombre que esta reemplaza. */
+  shadows: SkillOrigin | null
+  editable: boolean
+  /** Editada tras instalarla; null si no aplica. */
+  modified: boolean | null
+  provenance: {
+    source_kind: string | null
+    source: string | null
+    installed_at: string | null
+    updated_at: string | null
+    learned_from: string | null
+  }
+}
+
+export interface SkillDetail extends SkillEntry {
+  path: string
+  /** SKILL.md completo, con frontmatter: de ahí parte el editor. */
+  skill_md: string
+  review: SkillReview
+  body: string
+  references: string[]
+  triggers?: string[]
+  required_tools?: string[]
+  optional_tools?: string[]
+  allowed_tools?: string[]
+  license?: string
+  compatibility?: string
+  metadata?: Record<string, string>
+}
+
+export interface SkillCandidate {
+  name: string
+  description: string
+  version: string | null
+  format: string | null
+  path: string
+  error: SkillIssue | null
+  review: SkillReview
+  installed: { origin: SkillOrigin; source: string | null } | null
+  /** Solo en la importación: claude | codex | agents. */
+  kind?: string
+}
+
+export interface SkillPage {
+  name: string
+  path: string
+  text: string
+  offset: number
+  total_lines: number
+  next_offset: number | null
+}
+
+export type SkillJobAction = 'inspect' | 'install' | 'update'
+
+export interface SkillJobError {
+  code: string
+  message: string
+  details: Record<string, unknown>
+}
+
 export interface McpServer {
   name: string;
   transport: string;
@@ -655,6 +751,36 @@ export const engineApi = {
   pluginDiagnostics: () =>
     platform().command<{ reports: Array<{ name: string; source: string; diagnostics: Array<{ code: string; message: string }> }> }>(
       "plugin_diagnostics",
+    ),
+  skillList: () => platform().command<{ skills: SkillEntry[] }>('skill_list'),
+  skillGet: (name: string) => platform().command<{ skill: SkillDetail }>('skill_get', { name }),
+  skillRead: (name: string, path: string, offset?: number) =>
+    platform().command<SkillPage>('skill_read', { name, path, offset: offset ?? null }),
+  skillSetEnabled: (name: string, enabled: boolean) =>
+    platform().command<{ skill: SkillDetail }>(enabled ? 'skill_enable' : 'skill_disable', { name }),
+  skillRemove: (name: string) => platform().command<{ removed: boolean }>('skill_remove', { name }),
+  skillWrite: (name: string, content: string) =>
+    platform().command<{ skill: SkillDetail }>('skill_write', { name, content }),
+  skillImportScan: () => platform().command<{ candidates: SkillCandidate[] }>('skill_import_scan'),
+  /** Inspeccionar e instalar pueden descargar: el Engine responde con un job y termina con `skill.job.*`. */
+  skillJobStart: (input: {
+    action: SkillJobAction
+    source?: string
+    name?: string
+    expectedHash?: string
+    force?: boolean
+  }) =>
+    platform().command<{ job_id: string; action: SkillJobAction; status: string }>('skill_job_start', {
+      action: input.action,
+      source: input.source ?? null,
+      name: input.name ?? null,
+      expected_hash: input.expectedHash ?? null,
+      force: input.force ?? null,
+    }),
+  skillJobGet: (jobId: string) =>
+    platform().command<{ job: { job_id: string; status: string; result?: unknown; error?: SkillJobError } }>(
+      'skill_job_get',
+      { job_id: jobId },
     ),
   toolList: () => platform().command<{ tools: NativeTool[] }>("tool_list"),
   policyGet: () =>

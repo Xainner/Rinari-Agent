@@ -69,6 +69,19 @@ function errorMessage(error: unknown): string {
 }
 
 /**
+ * Sin ningún release publicado no hay nada que instalar: se está al día, no es
+ * un fallo. `GitHubProvider` de electron-updater 6.8.9 lo señala de dos formas:
+ * con el feed de releases vacío, `ERR_XML_MISSED_ELEMENT` al buscar su primera
+ * entrada; con entradas pero ninguna con tag, `ERR_UPDATER_NO_PUBLISHED_VERSIONS`.
+ */
+const NO_RELEASE_CODES = new Set(['ERR_XML_MISSED_ELEMENT', 'ERR_UPDATER_NO_PUBLISHED_VERSIONS'])
+
+function isNoRelease(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code
+  return typeof code === 'string' && NO_RELEASE_CODES.has(code)
+}
+
+/**
  * Máquina de estados del canal Electron 0.2.x.
  *
  * `electron-updater` valida el SHA-512 de `latest.yml` durante la descarga.
@@ -112,6 +125,8 @@ export class UpdateService {
       })
     })
     updater.on('error', (error: Error) => {
+      // `check()` recibe el mismo error al rechazarse y lo trata como "al día".
+      if (isNoRelease(error)) return
       this.publish({ phase: 'error', message: errorMessage(error) })
     })
   }
@@ -140,6 +155,12 @@ export class UpdateService {
         this.publish({ phase: 'available', available_version: info.version })
         return this.available
       } catch (error) {
+        if (isNoRelease(error)) {
+          this.available = null
+          this.downloaded = false
+          this.publish({ phase: 'idle', available_version: null, message: null })
+          return null
+        }
         this.publish({ phase: 'error', message: errorMessage(error) })
         throw error
       }

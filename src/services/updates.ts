@@ -18,3 +18,13 @@ export function applyUpdate(): Promise<void> {
 export function onUpdateState(callback: (state: UpdateState) => void): Promise<Unsubscribe> {
   return platform().updates.onState(callback)
 }
+
+/**
+ * Si el error que llega por el estado merece aviso global. Los de una
+ * comprobación los informa quien la pidió: la del arranque es silenciosa y la
+ * de Acerca de muestra el suyo. Sólo se avisa aquí del que corta una descarga
+ * o una instalación en curso.
+ */
+export function reportsUpdateError(previous: UpdateState['phase'] | null): boolean {
+  return previous === 'downloading' || previous === 'downloaded' || previous === 'applying'
+}

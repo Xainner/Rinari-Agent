@@ -1089,6 +1089,7 @@ fn apply_integrations(record: &InstallRecord) -> Result<()> {
             registry::set_shortcut(record.scope, "start", &executable, true)?;
         }
         registry::register_uninstaller(record, &setup)?;
+        registry::refresh_shell_icons();
     }
     Ok(())
 }
@@ -1216,6 +1217,7 @@ impl PathEq for Path {
 #[cfg(windows)]
 mod registry {
     use super::*;
+    use windows_sys::Win32::UI::Shell::{SHChangeNotify, SHCNE_ASSOCCHANGED, SHCNF_IDLIST};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_SETTINGCHANGE,
     };
@@ -1478,6 +1480,20 @@ mod registry {
         .map_err(|e| SetupError(e.to_string()))?;
         broadcast_environment_change();
         Ok(())
+    }
+
+    /// Los accesos apuntan siempre a la misma ruta, así que el Explorador
+    /// seguiría mostrando el icono que tenía en caché para ella. Este aviso le
+    /// hace releerlo cuando una actualización trae un icono nuevo.
+    pub fn refresh_shell_icons() {
+        unsafe {
+            SHChangeNotify(
+                SHCNE_ASSOCCHANGED as i32,
+                SHCNF_IDLIST,
+                std::ptr::null(),
+                std::ptr::null(),
+            );
+        }
     }
 
     fn broadcast_environment_change() {

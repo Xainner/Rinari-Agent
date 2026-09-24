@@ -41,7 +41,13 @@ function rendererRoot(): string {
   return app.isPackaged ? join(app.getAppPath(), 'dist') : join(__dirname, '..', 'dist')
 }
 
-if (process.platform === 'win32') app.setAppUserModelId('com.rinari.agent')
+// La identidad de Windows agrupa la ventana en la barra de tareas y le da el
+// icono de su acceso del menú Inicio. En desarrollo es otra: Electron deja un
+// `Electron.lnk` para el `electron.exe` con la identidad que reciba, y si fuese
+// la de la app instalada, la barra mostraría el icono de Electron para ambas.
+if (process.platform === 'win32') {
+  app.setAppUserModelId(app.isPackaged ? 'com.rinari.agent' : 'com.rinari.agent.dev')
+}
 
 // El esquema propio debe declararse antes de que la app esté lista.
 protocol.registerSchemesAsPrivileged([

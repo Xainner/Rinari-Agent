@@ -6,7 +6,7 @@ empaquetado local; no constituyen una versión publicada ni un push.
 
 ## Cobertura verificable
 
-El [inventario generado](tool-contracts-inventory.json) contiene las **105 herramientas**,
+El [inventario generado](tool-contracts-inventory.json) (regenerado el 2026-09-24) contiene las **111 herramientas**,
 sus schemas de entrada/salida, efectos, idempotencia declarada, disponibilidad de
 plataforma y soporte de request_id. La [auditoría original](tool-optimization-audit.md)
 conserva el diagnóstico previo y las propuestas, no el estado de ejecución actual.

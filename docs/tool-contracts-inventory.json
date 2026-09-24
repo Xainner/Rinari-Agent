@@ -1,6 +1,6 @@
 {
-  "generated_on": "2026-09-10",
-  "catalog_count": 105,
+  "generated_on": "2026-09-24",
+  "catalog_count": 111,
   "scope": "Built-in inspection catalog; live permissions remain engine-owned",
   "tools": [
     {
@@ -2146,6 +2146,64 @@
       }
     },
     {
+      "name": "fs.read_image",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 16000,
+            "description": "Specific visual question to inspect, if needed"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
       "name": "fs.read_lines",
       "input_schema": {
         "type": "object",
@@ -3132,6 +3190,11 @@
           "id": {
             "type": "string"
           },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "revision from recall; required for user memory"
+          },
           "request_id": {
             "type": "string",
             "minLength": 1,
@@ -3329,6 +3392,11 @@
           "expected_version": {
             "type": "string",
             "description": "updated_at from recall; reject a concurrent update"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "revision from recall; required for user memory"
           },
           "text": {
             "type": "string"
@@ -3908,6 +3976,249 @@
       }
     },
     {
+      "name": "rinari.session",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "ses_… or 'current'."
+          },
+          "turns_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "session_id"
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "object"
+          },
+          "turns": {
+            "type": "array"
+          },
+          "turns_total": {
+            "type": "integer"
+          },
+          "turns_shown": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
+      "name": "rinari.sessions",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Text in the title or messages."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CHAT",
+              "PROJECT",
+              "chat",
+              "project"
+            ]
+          },
+          "since": {
+            "type": "string",
+            "description": "ISO date; last activity from it."
+          },
+          "model": {
+            "type": "string",
+            "description": "Model alias or id."
+          }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
+      "name": "rinari.status",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "include_models": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider alias or id."
+          }
+        },
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "engine": {
+            "type": "object"
+          },
+          "providers": {
+            "type": "array"
+          },
+          "models": {
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "models_total": {
+            "type": "integer"
+          },
+          "context": {
+            "type": "object"
+          },
+          "soul": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "skills": {
+            "type": "array"
+          },
+          "sessions_total": {
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
+      "name": "rinari.turn",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "turn_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string",
+            "description": "Needed for terminal turns (turn-index-…)."
+          },
+          "detail": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "events"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "turn_id"
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "tools": {
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "events": {
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
       "name": "search.files",
       "input_schema": {
         "type": "object",
@@ -4282,6 +4593,12 @@
           },
           "active": {
             "type": "boolean"
+          },
+          "tools_activated": {
+            "type": [
+              "array",
+              "null"
+            ]
           }
         },
         "additionalProperties": true
@@ -4362,6 +4679,70 @@
       }
     },
     {
+      "name": "skills.read",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "e.g. references/recipes.md"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 400
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total_lines": {
+            "type": "integer"
+          },
+          "next_offset": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
       "name": "skills.show",
       "input_schema": {
         "type": "object",
@@ -4391,6 +4772,12 @@
           },
           "optional_tools": {
             "type": "array"
+          },
+          "references": {
+            "type": [
+              "array",
+              "null"
+            ]
           }
         },
         "additionalProperties": true

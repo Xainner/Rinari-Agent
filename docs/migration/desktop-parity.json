@@ -814,6 +814,72 @@
       "callers": []
     },
     {
+      "command": "schedule_create",
+      "kind": "engine",
+      "method": "schedule.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "schedule_delete",
+      "kind": "engine",
+      "method": "schedule.delete",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "schedule_get",
+      "kind": "engine",
+      "method": "schedule.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "schedule_grant",
+      "kind": "engine",
+      "method": "schedule.grant",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "schedule_list",
+      "kind": "engine",
+      "method": "schedule.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "schedule_run_now",
+      "kind": "engine",
+      "method": "schedule.run_now",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "schedule_runs",
+      "kind": "engine",
+      "method": "schedule.runs",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "schedule_update",
+      "kind": "engine",
+      "method": "schedule.update",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "session_archive",
       "kind": "engine",
       "method": "session.archive",
@@ -1391,10 +1457,10 @@
     }
   ],
   "summary": {
-    "commands": 165,
-    "engine_backed": 159,
+    "commands": 173,
+    "engine_backed": 167,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 52
+    "without_callers": 55
   }
 }

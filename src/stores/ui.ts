@@ -16,7 +16,7 @@ import type { Language } from '../types'
  * Ambas son presentaciones del mismo Engine: cambiar de una a otra nunca
  * altera turnos, permisos, modelos ni borradores.
  */
-export type View = 'chat' | 'board' | 'flows' | 'settings' | 'engine' | 'workspace' | 'project'
+export type View = 'chat' | 'board' | 'flows' | 'settings' | 'engine' | 'workspace' | 'project' | 'schedules'
 /** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
 export type WorkspaceView = Extract<View, 'chat' | 'board' | 'flows'>
 
@@ -200,6 +200,8 @@ interface UIState {
   /** Alterna Normal ↔ Boards; desde una vista auxiliar entra a la alternativa de la última vista de trabajo. */
   toggleBoards: () => void
   goEngine: () => void
+  /** Tareas programadas (`scheduled_tasks_v1`). */
+  goSchedules: () => void
   goWorkspace: () => void
   goProject: (root: string) => void
   goSettings: (section?: SettingsSection) => void
@@ -289,6 +291,7 @@ export const useUIStore = create<UIState>((set) => ({
     return { view: next, lastWorkspaceView: next, sidebarOpen: false, projectRoot: null }
   }),
   goEngine: () => set({ view: 'engine', sidebarOpen: false, projectRoot: null }),
+  goSchedules: () => set({ view: 'schedules', sidebarOpen: false, projectRoot: null }),
   goWorkspace: () => set({ view: 'workspace', sidebarOpen: false, projectRoot: null }),
   goProject: (root) => set({ view: 'project', sidebarOpen: false, projectRoot: root }),
   goSettings: (section = 'general') =>

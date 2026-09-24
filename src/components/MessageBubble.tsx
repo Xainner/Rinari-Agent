@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, X } from 'lucide-react'
+import { ArrowUpRight, Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, X, CalendarClock } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
@@ -89,6 +89,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return (
       <div data-testid="user-message-row" className="flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
+        {message.origin?.kind === 'schedule' && <ScheduledBadge />}
         <div className="flex w-full min-w-0 justify-end">
         <div data-testid="user-message-bubble" className="w-fit min-w-0 max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]">
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
@@ -191,6 +192,17 @@ function PeerBubble({ message }: { message: ChatMessage }) {
 }
 
 /** El usuario reenvió a mano un texto de otro panel: se marca la cita, sin techo. */
+/** El prompt lo envió una tarea programada, no el usuario en ese momento. */
+function ScheduledBadge() {
+  const { t } = useI18n()
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
+      <CalendarClock size={11} aria-hidden="true" />
+      {t('schedules.fromTask')}
+    </span>
+  )
+}
+
 function ForwardedBadge({ sessionId }: { sessionId: string }) {
   const { t } = useI18n()
   const navigation = usePeerNavigation()

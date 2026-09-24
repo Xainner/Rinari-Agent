@@ -48,7 +48,7 @@ function text(value: unknown): string {
 function originOf(value: unknown): MessageOrigin | undefined {
   if (!value || typeof value !== 'object') return undefined
   const kind = (value as { kind?: unknown }).kind
-  if (kind !== 'peer' && kind !== 'user' && kind !== 'automation') return undefined
+  if (kind !== 'peer' && kind !== 'user' && kind !== 'automation' && kind !== 'schedule') return undefined
   return value as MessageOrigin
 }
 

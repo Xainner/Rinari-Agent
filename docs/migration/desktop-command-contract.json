@@ -5064,6 +5064,228 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "schedule_list",
+      "module": "schedule",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_get",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.get",
+      "engine_params": [
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_create",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.create",
+      "engine_params": [
+        {
+          "key": "task",
+          "from": "task",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_update",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "patch",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.update",
+      "engine_params": [
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": false
+        },
+        {
+          "key": "patch",
+          "from": "patch",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_delete",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.delete",
+      "engine_params": [
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_runs",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.runs",
+      "engine_params": [
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": false
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_run_now",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.run_now",
+      "engine_params": [
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "schedule_grant",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "capability",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "target",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "task_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.grant",
+      "engine_params": [
+        {
+          "key": "capability",
+          "from": "capability",
+          "optional": false
+        },
+        {
+          "key": "target",
+          "from": "target",
+          "optional": true
+        },
+        {
+          "key": "task_id",
+          "from": "task_id",
+          "optional": true
+        },
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **165**
-- Respaldados por Engine: **159**
+- Comandos: **173**
+- Respaldados por Engine: **167**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -111,6 +111,14 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `queue_clear` | engine | `session.queue.clear` | **ninguno** |
 | `queue_list` | engine | `session.queue.list` | **ninguno** |
 | `queue_resume` | engine | `session.queue.resume` | **ninguno** |
+| `schedule_create` | engine | `schedule.create` | `src/services/engine.ts` |
+| `schedule_delete` | engine | `schedule.delete` | `src/services/engine.ts` |
+| `schedule_get` | engine | `schedule.get` | **ninguno** |
+| `schedule_grant` | engine | `schedule.grant` | `src/services/engine.ts` |
+| `schedule_list` | engine | `schedule.list` | **ninguno** |
+| `schedule_run_now` | engine | `schedule.run_now` | `src/services/engine.ts` |
+| `schedule_runs` | engine | `schedule.runs` | **ninguno** |
+| `schedule_update` | engine | `schedule.update` | `src/services/engine.ts` |
 | `session_archive` | engine | `session.archive` | `src/services/engine.ts` |
 | `session_close` | engine | `session.close` | `src/services/engine.ts` |
 | `session_create` | engine | `session.create` | **ninguno** |

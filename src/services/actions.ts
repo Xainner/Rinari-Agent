@@ -21,6 +21,8 @@ export type DesktopAction =
   | 'workspace-panel'
   /** Abre el dock de la sesión en la superficie **Terminal** (`desktop_terminal_v1`). */
   | 'terminal'
+  /** Tareas programadas (`scheduled_tasks_v1`). */
+  | 'schedules'
   | 'commands'
   | 'processes'
   | 'undo'

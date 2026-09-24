@@ -99,6 +99,14 @@ export type DesktopCommand =
   | "queue_clear"
   | "queue_list"
   | "queue_resume"
+  | "schedule_create"
+  | "schedule_delete"
+  | "schedule_get"
+  | "schedule_grant"
+  | "schedule_list"
+  | "schedule_run_now"
+  | "schedule_runs"
+  | "schedule_update"
   | "session_archive"
   | "session_close"
   | "session_create"
@@ -266,6 +274,14 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "schedule_create",
+  "schedule_delete",
+  "schedule_get",
+  "schedule_grant",
+  "schedule_list",
+  "schedule_run_now",
+  "schedule_runs",
+  "schedule_update",
   "session_archive",
   "session_close",
   "session_create",
@@ -448,6 +464,14 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "schedule_create",
+  "schedule_delete",
+  "schedule_get",
+  "schedule_grant",
+  "schedule_list",
+  "schedule_run_now",
+  "schedule_runs",
+  "schedule_update",
   "session_archive",
   "session_close",
   "session_create",

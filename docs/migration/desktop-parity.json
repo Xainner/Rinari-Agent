@@ -922,6 +922,88 @@
       "callers": []
     },
     {
+      "command": "skill_disable",
+      "kind": "engine",
+      "method": "skill.disable",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "skill_enable",
+      "kind": "engine",
+      "method": "skill.enable",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "skill_get",
+      "kind": "engine",
+      "method": "skill.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_import_scan",
+      "kind": "engine",
+      "method": "skill.import.scan",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_job_get",
+      "kind": "engine",
+      "method": "skill.job.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "skill_job_start",
+      "kind": "engine",
+      "method": "skill.job.start",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "skill_list",
+      "kind": "engine",
+      "method": "skill.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_read",
+      "kind": "engine",
+      "method": "skill.read",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_remove",
+      "kind": "engine",
+      "method": "skill.remove",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_write",
+      "kind": "engine",
+      "method": "skill.write",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "snapshot_get",
       "kind": "engine",
       "method": "runtime.snapshot.get",
@@ -1197,10 +1279,10 @@
     }
   ],
   "summary": {
-    "commands": 141,
-    "engine_backed": 135,
+    "commands": 151,
+    "engine_backed": 145,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 41
+    "without_callers": 45
   }
 }

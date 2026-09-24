@@ -111,6 +111,16 @@ export type DesktopCommand =
   | "session_rename"
   | "session_restore"
   | "session_timeline"
+  | "skill_disable"
+  | "skill_enable"
+  | "skill_get"
+  | "skill_import_scan"
+  | "skill_job_get"
+  | "skill_job_start"
+  | "skill_list"
+  | "skill_read"
+  | "skill_remove"
+  | "skill_write"
   | "snapshot_get"
   | "soul_activate"
   | "soul_create"
@@ -254,6 +264,16 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_rename",
   "session_restore",
   "session_timeline",
+  "skill_disable",
+  "skill_enable",
+  "skill_get",
+  "skill_import_scan",
+  "skill_job_get",
+  "skill_job_start",
+  "skill_list",
+  "skill_read",
+  "skill_remove",
+  "skill_write",
   "snapshot_get",
   "soul_activate",
   "soul_create",
@@ -412,6 +432,16 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_rename",
   "session_restore",
   "session_timeline",
+  "skill_disable",
+  "skill_enable",
+  "skill_get",
+  "skill_import_scan",
+  "skill_job_get",
+  "skill_job_start",
+  "skill_list",
+  "skill_read",
+  "skill_remove",
+  "skill_write",
   "snapshot_get",
   "soul_activate",
   "soul_create",

@@ -4658,7 +4658,13 @@
     {
       "name": "skills.list",
       "input_schema": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
       },
       "output_schema": {
         "type": "object",
@@ -4776,6 +4782,18 @@
           "references": {
             "type": [
               "array",
+              "null"
+            ]
+          },
+          "format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "folder": {
+            "type": [
+              "string",
               "null"
             ]
           }

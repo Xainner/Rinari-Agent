@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Box, Check, ChevronDown, Search } from 'lucide-react'
+import { Box, Check, ChevronDown, RefreshCw, Search } from 'lucide-react'
+import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
-import type { ModelSummary, ProviderSummary } from '../../services/engine'
+import { commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { brandForProvider } from '../../lib/providerBrand'
 import ProviderLogo from '../ProviderLogo'
@@ -17,12 +18,23 @@ export interface ModelPickerProps {
   /** Selección efectiva de esta sesión; el picker no decide default global ni sesión. */
   onUseModel: (model: ModelSummary) => void
   onDiscoverModels: () => void
+  /** Vuelve a leer los proveedores y guarda sus modelos nuevos; sin él no se ofrece. */
+  onRefreshModels?: () => Promise<ModelRefreshResult>
   onOpenProviders: () => void
   disabled?: boolean
   /** Header de panel: disparador más estrecho. */
   compact?: boolean
   /** Etiqueta cuando el modelo guardado no existe en el catálogo. */
   missingLabel?: string
+}
+
+/** Qué contar de un refresco: los alias añadidos y los proveedores que fallaron. */
+export function refreshSummary(result: ModelRefreshResult): { added: string[]; failed: string[] } {
+  const rows = Object.entries(result.providers)
+  return {
+    added: rows.flatMap(([, row]) => row.added ?? []),
+    failed: rows.filter(([, row]) => row.error).map(([alias, row]) => `${alias}: ${row.error}`),
+  }
 }
 
 /**
@@ -37,6 +49,7 @@ export default function ModelPicker({
   activeModel,
   onUseModel,
   onDiscoverModels,
+  onRefreshModels,
   onOpenProviders,
   disabled = false,
   compact = false,
@@ -46,6 +59,25 @@ export default function ModelPicker({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set())
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function refresh() {
+    if (!onRefreshModels || refreshing) return
+    setRefreshing(true)
+    try {
+      const { added, failed } = refreshSummary(await onRefreshModels())
+      const names = added.length > 3 ? `${added.slice(0, 3).join(', ')} +${added.length - 3}` : added.join(', ')
+      const description = [
+        added.length > 0 ? t('composer.refreshModels.added', { names }) : null,
+        failed.length > 0 ? t('composer.refreshModels.partial', { providers: failed.join(' · ') }) : null,
+      ].filter(Boolean).join(' · ')
+      toast(t('composer.refreshModels.done'), { id: 'rinari-model-refresh', description: description || undefined })
+    } catch (error) {
+      toast.error(t('composer.refreshModels.failed', { detail: commandMessage(error) }), { id: 'rinari-model-refresh' })
+    } finally {
+      setRefreshing(false)
+    }
+  }
   const providerGroups = [...new Set(models.map((model) => model.provider ?? 'Otros'))]
   const providerEndpoint = (alias: string | null | undefined) =>
     providers?.find((provider) => provider.alias === alias)?.endpoint ?? null
@@ -134,15 +166,29 @@ export default function ModelPicker({
               </button>
             ))}</section>)}
         </div>
-        {models.length > 0 && (
+        {(models.length > 0 || onRefreshModels) && (
           <div className="shrink-0 border-t border-[var(--border)] pt-1">
-            <button
-              type="button"
-              onClick={() => { setOpen(false); onOpenProviders() }}
-              className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-            >
-              {t('composer.manageModels')}
-            </button>
+            {onRefreshModels && (
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={refreshing}
+                aria-busy={refreshing}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:opacity-60"
+              >
+                <RefreshCw size={13} aria-hidden="true" className={refreshing ? 'animate-spin motion-reduce:animate-none' : ''} />
+                {refreshing ? t('composer.refreshingModels') : t('composer.refreshModels')}
+              </button>
+            )}
+            {models.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { setOpen(false); onOpenProviders() }}
+                className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+              >
+                {t('composer.manageModels')}
+              </button>
+            )}
           </div>
         )}
       </PopoverContent>

@@ -373,7 +373,9 @@
       "kind": "engine",
       "method": "model.refresh",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "model_remove",
@@ -1190,6 +1192,6 @@
     "engine_backed": 134,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 42
+    "without_callers": 41
   }
 }

@@ -4047,6 +4047,11 @@
           "name": "provider",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "add_new",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -4057,6 +4062,11 @@
           "key": "provider",
           "from": "provider",
           "optional": false
+        },
+        {
+          "key": "add_new",
+          "from": "add_new",
+          "optional": true
         }
       ],
       "passthrough": null,

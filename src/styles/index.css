@@ -370,8 +370,15 @@ html[data-theme='light'] body::after {
   max-width: 100%;
   border-radius: 10px;
 }
-/* Shiki trae su propio <pre> con fondo inline: transparentarlo al tema. */
-.md-body .shiki-wrap .shiki {
+/* Imagen de un artefacto: su proporción, nunca más ancha que el mensaje. */
+.artifact-image { display: block; max-width: 100%; height: auto; border-radius: 10px; object-fit: contain; }
+.artifact-image-open { display: inline-block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.artifact-image-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 12px; }
+.artifact-image-pending { display: inline-block; padding: 6px 10px; border: 1px dashed var(--border); border-radius: 10px; font-size: 12px; color: var(--text-subtle); }
+/* Shiki trae su propio <pre> con fondo inline y del ancho visible: al
+   desplazarse en horizontal, el resto de una línea larga quedaba fuera. Se
+   transparenta en todo bloque de código, no sólo en el Markdown del chat. */
+.shiki-wrap .shiki {
   background: transparent !important;
   margin: 0;
   padding: 0;
@@ -488,6 +495,8 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 .composer-tools, .composer-model-controls { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .composer-model-controls { justify-content: flex-end; }
 .composer-model-controls > button { min-width: 0; }
+.context-ring { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 999px; }
+.context-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .composer-model-controls > button:last-child { flex-shrink: 0; }
 .composer-model-controls > button:first-child { max-width: 175px; }
 .composer-modes { justify-self: center; }
@@ -510,7 +519,6 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
   container-type: inline-size;
   container-name: welcome;
   scrollbar-gutter: stable both-edges;
-  background: radial-gradient(ellipse at 50% 28%, #2c10441a, transparent 62%);
 }
 .conversation-shell.is-empty { overflow-y: auto; padding-top: 24px; }
 .conversation-shell.is-conversation { overflow: hidden; }
@@ -682,6 +690,12 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 
 /* -- App status bar (Normal / Boards) ------------------------------------- */
 .app-topbar { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+/* Con `titleBarStyle: 'hidden'` no hay otra zona para arrastrar la ventana:
+   lo es el fondo de la barra, no sus controles. A la derecha se reserva la
+   franja de los controles nativos (env() la da Electron cuando van
+   superpuestos; sin ellos queda el margen normal). */
+.app-topbar { -webkit-app-region: drag; app-region: drag; padding-right: max(12px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 6px)); }
+.app-topbar :is(button, a, input, select, textarea, summary, [role="button"], [role="combobox"], [role="menu"], [role="tab"], [tabindex]) { -webkit-app-region: no-drag; app-region: no-drag; }
 .app-topbar-leading { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0; }
 .app-topbar-context { display: flex; align-items: center; min-width: 0; flex: 1 1 0; font-size: 13px; color: var(--text-muted); }
 .app-topbar-center { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
@@ -887,7 +901,7 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 @media (prefers-reduced-motion: reduce) { .board-canvas { scroll-behavior: auto; } .board-add-button, .pane-header-icon, .add-pane-row { transition: none; } }
 
 /* -- Flujos: avance de un proyecto/chat como etapas (estilo home) ------------ */
-.flow-view { display: flex; flex-direction: column; height: 100%; min-height: 0; background: radial-gradient(ellipse at 50% 0%, #2c10441a, transparent 58%); }
+.flow-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .flow-header { display: flex; flex-direction: column; gap: 14px; padding: 18px 24px 12px; border-bottom: 1px solid var(--border); }
 .flow-scope { display: flex; align-items: center; gap: 10px; }
 .flow-scope-label { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle); }
@@ -918,6 +932,9 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .flow-stage.is-active { border-color: color-mix(in srgb, var(--accent-2) 55%, var(--border)); }
 .flow-stage.is-needs_you { border-color: color-mix(in srgb, var(--warning) 55%, var(--border)); }
 .flow-stage.is-failed { border-color: color-mix(in srgb, var(--danger, #ef5f6a) 45%, var(--border)); }
+/* Rutas, IDs y URLs sin espacios se parten dentro de la tarjeta en vez de
+   salirse de ella; la propiedad se hereda a título, extracto, chips y avisos. */
+.flow-stage, .flow-detail, .flow-notice, .flow-summary { min-width: 0; overflow-wrap: anywhere; }
 .flow-stage-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .flow-stage-step { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; }
 .flow-stage-status { font-size: 10px; }

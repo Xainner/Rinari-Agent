@@ -77,6 +77,7 @@ export default function SingleSessionView({
         activeModel={data.activeModel}
         onUseModel={(model: ModelSummary) => void commands.useModel(model)}
         onDiscoverModels={() => void commands.discoverCatalog()}
+        onRefreshModels={commands.refreshModels}
         sessionMode={record?.mode ?? null}
         historyPhase={data.historyPhase}
         onRetryHistory={() => void commands.retryHistory()}

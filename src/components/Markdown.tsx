@@ -7,7 +7,7 @@ import { highlightToHtml } from '../lib/highlight'
 import { containsMath } from '../lib/math-detect'
 import { copyText } from '../lib/clipboard'
 
-import { FileLink, fileUrlTransform } from '../features/files/FileWorkspace'
+import { ArtifactImage, FileLink, fileUrlTransform } from '../features/files/FileWorkspace'
 
 const MathMarkdown = lazy(() => import('./MathMarkdown'))
 
@@ -84,6 +84,13 @@ export const markdownComponents: ComponentProps<typeof ReactMarkdown>['component
     return (
       <FileLink href={props.href}>{children}</FileLink>
     )
+  },
+  // The renderer cannot load `artifact://`: an image the agent put in its
+  // message is read from the artifact store instead of rendering broken.
+  img({ src, alt }) {
+    return typeof src === 'string' && src.startsWith('artifact://')
+      ? <ArtifactImage uri={src} alt={alt ?? ''} />
+      : <img src={typeof src === 'string' ? src : undefined} alt={alt ?? ''} />
   },
   table({ children }) {
     return (

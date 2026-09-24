@@ -56,7 +56,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `model_discovery_start` | engine | `model.discovery.start` | **ninguno** |
 | `model_get` | engine | `model.get` | `src/services/engine.ts` |
 | `model_list` | engine | `model.list` | `src/services/engine.ts` |
-| `model_refresh` | engine | `model.refresh` | **ninguno** |
+| `model_refresh` | engine | `model.refresh` | `src/services/engine.ts` |
 | `model_remove` | engine | `model.remove` | **ninguno** |
 | `model_test` | engine | `model.test` | **ninguno** |
 | `model_use` | engine | `model.use` | **ninguno** |

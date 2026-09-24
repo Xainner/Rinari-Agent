@@ -254,6 +254,7 @@ function SessionPane({
               activeModel={session.activeModel}
               onUseModel={session.useModel}
               onDiscoverModels={() => void commands.discoverCatalog()}
+              onRefreshModels={commands.refreshModels}
               sessionMode={session.record?.mode ?? null}
               onModeChange={session.setMode}
               reasoningEffort={session.reasoningEffort}

@@ -53,7 +53,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "model_discovery_start": {"method":"model.discovery.start","params":[{"key":"provider","from":"provider","optional":false}]},
   "model_get": {"method":"model.get","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},
   "model_list": {"method":"model.list","params":[{"key":"provider","from":"provider","optional":false}]},
-  "model_refresh": {"method":"model.refresh","params":[{"key":"provider","from":"provider","optional":false}]},
+  "model_refresh": {"method":"model.refresh","params":[{"key":"provider","from":"provider","optional":false},{"key":"add_new","from":"add_new","optional":true}]},
   "model_remove": {"method":"model.remove","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},
   "model_test": {"method":"model.test","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},
   "model_use": {"method":"model.use","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},

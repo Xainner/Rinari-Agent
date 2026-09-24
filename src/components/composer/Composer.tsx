@@ -6,11 +6,12 @@ import { useI18n } from '../../i18n'
 import { useBlockingOverlay } from '../../stores/overlay'
 import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
-import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } from '../../services/engine'
+import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
@@ -54,6 +55,7 @@ interface ComposerProps {
   activeModel?: ModelSummary | null
   onUseModel: (model: ModelSummary) => void
   onDiscoverModels: () => void
+  onRefreshModels?: () => Promise<ModelRefreshResult>
   onOpenProviders: () => void
   sessionMode: string | null
   onModeChange: (mode: string) => void
@@ -98,6 +100,7 @@ export default function Composer({
   activeModel,
   onUseModel,
   onDiscoverModels,
+  onRefreshModels,
   onOpenProviders,
   sessionMode,
   onModeChange,
@@ -632,6 +635,7 @@ export default function Composer({
             })}
           </div>
           <div className="composer-model-controls">
+          <ContextRing sessionId={sessionId} modelId={activeModel?.id ?? null} />
           <ModelPicker
             models={models}
             providers={providers}
@@ -639,6 +643,7 @@ export default function Composer({
             activeModel={activeModel}
             onUseModel={onUseModel}
             onDiscoverModels={onDiscoverModels}
+            onRefreshModels={onRefreshModels}
             onOpenProviders={onOpenProviders}
             disabled={isStreaming}
           />

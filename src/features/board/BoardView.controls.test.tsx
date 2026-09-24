@@ -76,7 +76,6 @@ it('UX-01: the status bar shows identity and view state, never a model or mode e
         selectedView="board"
         onSelectView={() => {}}
         toggleShortcut="mod+b"
-        engineState="ready"
         workingCount={1}
         attentionCount={0}
         boardAttentionCount={0}

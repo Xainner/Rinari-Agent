@@ -315,6 +315,10 @@ function App() {
     },
     [dockTargetSessionId],
   )
+  /** El botón de la barra: abre el panel en su última pestaña, o lo cierra. */
+  const toggleDock = useCallback(() => {
+    if (dockTargetSessionId) requestDockToggle({ sessionId: dockTargetSessionId })
+  }, [dockTargetSessionId])
   // El layout del dock se guarda por Engine home + sesión: la identidad estable
   // viene del hello (`home_id`), nunca del instance id que cambia al arrancar.
   const homeId = session.status?.home_id ?? null
@@ -544,7 +548,6 @@ function App() {
             selectedView={view === 'chat' || view === 'board' || view === 'flows' ? view : null}
             onSelectView={(next) => (next === 'board' ? goBoard() : next === 'flows' ? goFlows() : goNormal())}
             toggleShortcut={shortcutBindings.boards}
-            engineState={session.status?.state ?? null}
             workingCount={session.busySessionIds.size}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
@@ -552,9 +555,9 @@ function App() {
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}
-            dockSurface={dockSurface}
+            dockOpen={dockSurface !== null}
             dockTargetAvailable={Boolean(dockTargetSessionId)}
-            onToggleDockSurface={toggleDockSurface}
+            onToggleDock={toggleDock}
           />
         }
       >

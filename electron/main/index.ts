@@ -20,7 +20,7 @@ import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry, originOf } from './ipc/validateSender'
 import { canPush } from './ipc/pushGuard'
-import { QuitCoordinator } from './lifecycle/QuitCoordinator'
+import { QuitCoordinator, confirmsQuit } from './lifecycle/QuitCoordinator'
 import { defaultMigrationDirectory, MigrationService } from './migration/MigrationService'
 import { HandoffQueue, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
@@ -416,26 +416,23 @@ function buildServices(): HostServices {
  * Salida de la aplicación (§4.3 y documento 04 §3.3).
  *
  * Una sola autoridad para el botón X, el menú Salir, `Cmd+Q`/`Alt+F4` y
- * `app.quit()`: se pregunta **antes** de detener el Engine, y cancelar no
- * toca nada. Antes había dos rutas y la de `before-quit` cerraba el Engine
- * antes del diálogo.
+ * `app.quit()`: todas detienen el Engine de forma coordinada antes de
+ * terminar. Cerrar no pregunta (`confirmsQuit`); solo aplicar una
+ * actualización lo hace, **antes** de detener nada, y cancelarla no toca el
+ * Engine. Antes había dos rutas y la de `before-quit` cerraba el Engine antes
+ * del diálogo.
  */
 const quitCoordinator = new QuitCoordinator({
-  // Aproximación deliberada: saber si hay trabajo realmente activo exige
-  // preguntárselo al Engine. Mientras tanto se pregunta siempre que esté en
-  // marcha, que peca de prudente en vez de matar un turno en silencio.
-  shouldConfirm: () => engine.status().state === 'ready',
-  async confirm(reason) {
+  shouldConfirm: (reason) => confirmsQuit(reason, engine.status().state === 'ready'),
+  async confirm() {
     const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
     const options = {
       type: 'question' as const,
-      buttons: ['Cerrar Rinari', 'Cancelar'],
+      buttons: ['Reiniciar y actualizar', 'Cancelar'],
       defaultId: 1,
       cancelId: 1,
-      message: reason === 'update' ? '¿Aplicar la actualización ahora?' : '¿Cerrar Rinari Agent?',
-      detail: reason === 'update'
-        ? 'Rinari cerrará el Engine y reiniciará con la versión descargada. Los turnos y procesos activos se interrumpen.'
-        : 'El Engine se detendrá. Los turnos en ejecución se interrumpen y los procesos administrados se cierran.',
+      message: '¿Aplicar la actualización ahora?',
+      detail: 'Rinari cerrará el Engine y reiniciará con la versión descargada. Los turnos y procesos activos se interrumpen.',
     }
     const { response } = target
       ? await dialog.showMessageBox(target, options)

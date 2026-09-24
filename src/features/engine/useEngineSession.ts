@@ -344,6 +344,7 @@ export function useEngineSession() {
     isBusy,
     refreshCatalog: catalog.refreshCatalog,
     discoverCatalog: catalog.discoverCatalog,
+    refreshModels: catalog.refreshModels,
     useModel,
     useModelFor,
     selectSession: sessions.selectSession,

@@ -5,6 +5,7 @@ import {
   engineApi,
   onEngineEvent,
   type DiscoveredModel,
+  type ModelRefreshResult,
   type ModelSummary,
   type ProviderSummary,
 } from '../../services/engine'
@@ -96,6 +97,17 @@ export function useCatalog() {
     }
   }, [mergeDiscovered])
 
+  /**
+   * Re-reads every provider: availability, capabilities and context windows
+   * of the saved models, plus the models a provider started offering, which
+   * are saved. The list is reloaded when it finishes.
+   */
+  const refreshModels = useCallback(async (): Promise<ModelRefreshResult> => {
+    const result = await engineApi.modelRefresh(undefined, true)
+    await refreshCatalog(false)
+    return result
+  }, [refreshCatalog])
+
   return {
     providers,
     models,
@@ -103,6 +115,7 @@ export function useCatalog() {
     catalogError,
     refreshCatalog,
     discoverCatalog: () => refreshCatalog(true),
+    refreshModels,
   }
 }
 

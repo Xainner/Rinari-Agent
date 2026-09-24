@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
-import type { ModelSummary, ProviderSummary } from '../services/engine'
+import type { ModelRefreshResult, ModelSummary, ProviderSummary } from '../services/engine'
 import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
 import { selectLatestTurn } from '../features/engine/sessionSelectors'
@@ -51,6 +51,7 @@ interface ChatViewProps {
   activeModel?: ModelSummary | null
   onUseModel: (model: ModelSummary) => void
   onDiscoverModels: () => void
+  onRefreshModels?: () => Promise<ModelRefreshResult>
   timelines: Record<string, TurnTimeline>
   onResolveApproval: (id: string, decision: string) => void
   historyNote: { total: number; hasMore: boolean } | null
@@ -101,6 +102,7 @@ function ChatView({
   activeModel,
   onUseModel,
   onDiscoverModels,
+  onRefreshModels,
   timelines,
   onResolveApproval,
   historyNote,
@@ -321,6 +323,7 @@ function ChatView({
       activeModel={activeModel}
       onUseModel={onUseModel}
       onDiscoverModels={onDiscoverModels}
+      onRefreshModels={onRefreshModels}
       sessionMode={sessionMode}
       onModeChange={onModeChange}
       reasoningEffort={reasoningEffort}

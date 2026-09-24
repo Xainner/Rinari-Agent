@@ -165,6 +165,21 @@ export interface TurnUndoPreview {
   conflicts: Array<{ path: string; absolute_path: string; reason: string }>
 }
 
+export interface ModelRefreshResult {
+  providers: Record<
+    string,
+    {
+      saved: number;
+      still_available: number;
+      marked_unavailable: number;
+      discovered: number;
+      /** Aliases saved by this refresh; absent from Engines before `add_new`. */
+      added?: string[];
+      error: string | null;
+    }
+  >;
+}
+
 export interface ProviderSummary extends Partial<ProviderIdentity> {
   id: string;
   alias: string;
@@ -956,19 +971,9 @@ export const engineApi = {
       cached: boolean;
       providers?: Record<string, DiscoveredModel[]>;
     }>('model_discovery_start', { provider: provider ?? null }),
-  modelRefresh: (provider?: string) =>
-    platform().command<{
-      providers: Record<
-        string,
-        {
-          saved: number;
-          still_available: number;
-          marked_unavailable: number;
-          discovered: number;
-          error: string | null;
-        }
-      >;
-    }>("model_refresh", { provider: provider ?? null }),
+  /** `addNew` also saves the models a provider started offering (desktop refresh). */
+  modelRefresh: (provider?: string, addNew = false) =>
+    platform().command<ModelRefreshResult>("model_refresh", { provider: provider ?? null, add_new: addNew }),
   modelTest: (reference: string, provider?: string) =>
     platform().command<{ ok: boolean; detail: string; model: ModelSummary }>("model_test", {
       reference,

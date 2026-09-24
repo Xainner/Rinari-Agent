@@ -16,9 +16,19 @@ export type QuitState = 'idle' | 'confirming' | 'shutting-down' | 'committed'
 /** Por dónde entró la petición; solo para diagnóstico. */
 export type QuitReason = 'window-close' | 'app' | 'menu' | 'window-all-closed' | 'update' | 'parity'
 
+/**
+ * Solo pregunta aplicar una actualización con el Engine en marcha: es un
+ * reinicio que no se pidió cerrando. Cerrar la ventana, Salir o Alt+F4 ya son
+ * la decisión de salir, así que no preguntan; el Engine se detiene igual de
+ * forma coordinada.
+ */
+export function confirmsQuit(reason: QuitReason, engineRunning: boolean): boolean {
+  return reason === 'update' && engineRunning
+}
+
 export interface QuitDeps {
-  /** ¿Hay que preguntar? Hoy: el Engine está en marcha. */
-  shouldConfirm(): boolean
+  /** ¿Hay que preguntar antes de salir por `reason`? Ver `confirmsQuit`. */
+  shouldConfirm(reason: QuitReason): boolean
   /** `true` si el usuario confirma. Solo se llama si `shouldConfirm()`. */
   confirm(reason: QuitReason): Promise<boolean>
   /** Cierre coordinado del Engine. Se espera antes del cierre final. */
@@ -60,7 +70,7 @@ export class QuitCoordinator {
     if (this.inFlight) return this.inFlight
 
     const run = async (): Promise<boolean> => {
-      if (this.deps.shouldConfirm()) {
+      if (this.deps.shouldConfirm(reason)) {
         this.state = 'confirming'
         const confirmed = await this.deps.confirm(reason)
         if (!confirmed) {

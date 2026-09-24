@@ -21,7 +21,7 @@ type CommandKeys =
   | 'send' | 'sendTo' | 'prepareAttachments' | 'prepareAttachmentsFor'
   | 'cancelAttachmentPreparation' | 'cancelAttachmentPreparationFor'
   | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'resolveApproval'
-  | 'refreshCatalog' | 'discoverCatalog' | 'useModel' | 'useModelFor'
+  | 'refreshCatalog' | 'discoverCatalog' | 'refreshModels' | 'useModel' | 'useModelFor'
   | 'selectSession' | 'setActiveSession' | 'setMode' | 'setModeFor' | 'setPermission' | 'setPermissionFor'
   | 'searchFiles' | 'searchFilesFor'
   | 'closeSession' | 'renameSession' | 'archiveSession' | 'restoreSession' | 'forkSession' | 'deleteSession'
@@ -35,7 +35,7 @@ const COMMAND_KEYS: readonly CommandKeys[] = [
   'send', 'sendTo', 'prepareAttachments', 'prepareAttachmentsFor',
   'cancelAttachmentPreparation', 'cancelAttachmentPreparationFor',
   'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'resolveApproval',
-  'refreshCatalog', 'discoverCatalog', 'useModel', 'useModelFor',
+  'refreshCatalog', 'discoverCatalog', 'refreshModels', 'useModel', 'useModelFor',
   'selectSession', 'setActiveSession', 'setMode', 'setModeFor', 'setPermission', 'setPermissionFor',
   'searchFiles', 'searchFilesFor',
   'closeSession', 'renameSession', 'archiveSession', 'restoreSession', 'forkSession', 'deleteSession',

@@ -15,6 +15,7 @@ import { commandMessage, engineApi, isCommandError } from '../../services/engine
 import { copyText } from '../../lib/clipboard'
 import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
+import { artifactImageUrl, isArtifactImage, useArtifactImage } from './artifactImage'
 
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
@@ -80,12 +81,34 @@ export function FileLink({
   )
 }
 
+/**
+ * An image artifact inside a message. It keeps its aspect ratio within the
+ * message width and opens in the file viewer; if it cannot be previewed it
+ * stays a link to the artifact.
+ */
+export function ArtifactImage({ uri, alt = '' }: { uri: string; alt?: string }) {
+  const open = useContext(FileContext)
+  const turnId = useContext(FileTurnContext)
+  const { t } = useI18n()
+  const { url, failed } = useArtifactImage(uri)
+  if (failed) return <FileLink href={uri}>{alt || uri.split('/').at(-1)}</FileLink>
+  if (!url) return <span className="artifact-image-pending" role="status">{t('files.imageLoading')}</span>
+  const image = <img src={url} alt={alt} className="artifact-image" />
+  return open ? (
+    <button type="button" className="artifact-image-open" title={t('files.openImage')} onClick={() => open(uri, turnId)}>
+      {image}
+    </button>
+  ) : image
+}
+
 export type FileTab = {
   key: string
   sessionId: string
   turnId?: string
   target: string
   file?: FilePreview
+  /** Data URL of an image artifact; `file` then only names it. */
+  image?: string
   error?: string
   watchId?: string
   revision?: number
@@ -208,7 +231,11 @@ export function FileWorkspaceProvider({
     try {
       let file: FilePreview
       let watchId: string | undefined
-      if (target.startsWith('artifact://')) {
+      let image: string | undefined
+      if (isArtifactImage(target)) {
+        image = await artifactImageUrl(target)
+        file = { path: target, name: target.split('/').at(-1) || 'Artifact', content: '', language: '', size: 0 } as FilePreview
+      } else if (target.startsWith('artifact://')) {
         const result = await engineApi.artifactRead(target, 512 * 1024)
         if (result.truncated) throw new Error('La vista previa supera 512 KiB.')
         file = {
@@ -239,7 +266,7 @@ export function FileWorkspaceProvider({
       }
       updateTabs((current) =>
         current.map((tab) =>
-          tab.key === key ? { ...tab, file, watchId, error: undefined } : tab,
+          tab.key === key ? { ...tab, file, image, watchId, error: undefined } : tab,
         ),
       )
       // Covers changes emitted between watch registration and its response.
@@ -446,6 +473,8 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
           >
             {selected.error ? (
               <p role="alert">{selected.error}</p>
+            ) : selected.image ? (
+              <img src={selected.image} alt={selected.file?.name ?? ''} className="artifact-image mx-auto" />
             ) : selected.file &&
               ['html', 'htm'].includes(selected.file.language) &&
               selected.file.provenance !== 'turn_changeset' &&

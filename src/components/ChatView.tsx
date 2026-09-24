@@ -1,3 +1,4 @@
+import type { SendOptions } from '../features/engine/useEngineSession'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
@@ -38,7 +39,9 @@ interface ChatViewProps {
   sessionId: string
   isStreaming: boolean
   engineReady: boolean
-  onSend: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
+  onSend: (text: string, attachments?: AttachmentRef[], options?: SendOptions) => Promise<boolean>
+  /** Comandos `/` de interfaz (nueva, compactar, cambios…). Sin él, esos comandos no se ofrecen. */
+  onUiCommand?: (name: string, text: string) => boolean | Promise<boolean>
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   onStop: () => void
@@ -91,6 +94,7 @@ function ChatView({
   isStreaming,
   engineReady,
   onSend,
+  onUiCommand,
   onPrepareAttachments,
   onCancelAttachmentPreparation,
   onStop,
@@ -310,6 +314,7 @@ function ChatView({
     <Composer
       placement={presentation === 'empty' ? 'centered' : 'bottom'}
       onSend={onSend}
+      onUiCommand={onUiCommand}
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
       sessionId={sessionId}

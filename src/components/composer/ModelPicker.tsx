@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Check, ChevronDown, RefreshCw, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -26,6 +26,8 @@ export interface ModelPickerProps {
   compact?: boolean
   /** Etiqueta cuando el modelo guardado no existe en el catálogo. */
   missingLabel?: string
+  /** Cada incremento abre el selector (comando `/model`). */
+  openSignal?: number
 }
 
 /** Qué contar de un refresco: los alias añadidos y los proveedores que fallaron. */
@@ -53,11 +55,20 @@ export default function ModelPicker({
   onOpenProviders,
   disabled = false,
   compact = false,
+  openSignal,
   missingLabel,
 }: ModelPickerProps) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  useEffect(() => {
+    if (!openSignal) return
+    setOpen(true)
+    setQuery('')
+    onDiscoverModels()
+    // Solo reacciona al incremento de la señal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSignal])
   const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set())
   const [refreshing, setRefreshing] = useState(false)
 

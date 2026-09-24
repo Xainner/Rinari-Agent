@@ -337,6 +337,23 @@ export interface SessionDeleteResult {
   };
 }
 
+/** Comando `/` del catálogo del Engine (`slash_commands_v1`). */
+export interface SlashCommand {
+  name: string
+  kind: 'ui' | 'mode' | 'turn' | 'skill'
+  description: string
+  args: string
+  mode: string | null
+  template: string | null
+  source: 'builtin' | 'skill'
+}
+
+/** Lo que viaja con el turno: el Engine cambia el modo o fija la skill y arma el mensaje. */
+export interface SlashCommandRequest {
+  name: string
+  text?: string
+}
+
 /** Biblioteca de skills (`skill_library_v1`). */
 export type SkillOrigin = 'rinari' | 'installed' | 'learned' | 'project'
 
@@ -800,7 +817,9 @@ export const engineApi = {
     platform().command<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null, max_dimension: max_dimension ?? null }),
   visionSettingsGet: () => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
-  contextCompact: (sessionId: string) => platform().command('context_compact', { sessionId }),
+  // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
+  // la petición sin sesión y la compactación manual fallaba.
+  contextCompact: (sessionId: string) => platform().command('context_compact', { session_id: sessionId }),
   /** Capacity of a saved model, or of a session's model plus its measured use. */
   contextStatus: (target: { model_id?: string; session_id?: string }) =>
     platform().command<import('../types/protocol.generated').ContextStatus>('context_status', target),
@@ -907,6 +926,7 @@ export const engineApi = {
     message: string,
     reasoningEffort?: string | null,
     attachments: Array<AttachmentInput | AttachmentRef> = [],
+    command?: SlashCommandRequest,
   ) => {
     // Fail-fast con texto inconfundible: si esto salta, el bug está en la
     // UI (nunca debería invocar sin sesión); si salta el mensaje del
@@ -922,8 +942,11 @@ export const engineApi = {
       // engine protocol is snake_case. Normalize at this boundary so an
       // imported document can never arrive as a display-only reference.
       attachments: attachmentInputs(attachments),
+      command: command ?? null,
     })
   },
+  commandList: (sessionId?: string) =>
+    platform().command<{ commands: SlashCommand[] }>('command_list', { session_id: sessionId ?? null }),
   cancelTurn: (sessionId: string) =>
     platform().command<{ status: string; turn_id: string; session_id: string }>("turn_cancel", {
       session_id: sessionId,

@@ -176,6 +176,15 @@
       ]
     },
     {
+      "command": "command_list",
+      "kind": "engine",
+      "method": "command.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "context_compact",
       "kind": "engine",
       "method": "context.compact",
@@ -1279,8 +1288,8 @@
     }
   ],
   "summary": {
-    "commands": 151,
-    "engine_backed": 145,
+    "commands": 152,
+    "engine_backed": 146,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 45

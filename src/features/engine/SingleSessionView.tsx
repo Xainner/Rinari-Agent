@@ -8,6 +8,7 @@ import { selectReasoning, useSessionUiStore } from '../../stores/sessionUi'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import type { ReasoningEffort } from '../../lib/reasoning'
 import type { ModelSummary } from '../../services/engine'
+import { runUiCommand } from './slashUi'
 
 /**
  * Vista Normal: la sesión activa con las mismas primitivas y el mismo
@@ -66,6 +67,12 @@ export default function SingleSessionView({
         isStreaming={busy}
         engineReady={data.ready}
         onSend={commands.send}
+        onUiCommand={(name, text) => runUiCommand(name, text, {
+          sessionId,
+          reveal: revealDock,
+          fork: commands.forkSession,
+          rename: commands.renameSession,
+        })}
         onPrepareAttachments={commands.prepareAttachments}
         onCancelAttachmentPreparation={commands.cancelAttachmentPreparation}
         onImplementPlan={commands.implementPlan}

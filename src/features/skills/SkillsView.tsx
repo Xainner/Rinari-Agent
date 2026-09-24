@@ -8,6 +8,7 @@ import { cn } from '../../lib/utils'
 import { SKILL_FILTERS, attentionReason, countByOrigin, filterSkills, type SkillFilter } from './skillsModel'
 import SkillDetailDialog from './SkillDetailDialog'
 import InstallSkillDialog from './InstallSkillDialog'
+import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands'
 
 /**
  * Ajustes > Skills: la biblioteca. Rinari (vienen con la app), Instaladas
@@ -28,6 +29,8 @@ export default function SkillsView() {
     try {
       const result = await engineApi.skillList()
       setSkills(result.skills)
+      // Las skills también son comandos `/`: el compositor vuelve a pedir el catálogo.
+      window.dispatchEvent(new Event(SKILLS_CHANGED_EVENT))
     } catch (err) {
       toast.error(commandMessage(err))
     } finally {

@@ -21,6 +21,7 @@ export type DesktopCommand =
   | "checkpoint_list"
   | "checkpoint_restore"
   | "checkpoint_show"
+  | "command_list"
   | "context_compact"
   | "context_get"
   | "context_models"
@@ -174,6 +175,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "checkpoint_list",
   "checkpoint_restore",
   "checkpoint_show",
+  "command_list",
   "context_compact",
   "context_get",
   "context_models",
@@ -347,6 +349,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "checkpoint_list",
   "checkpoint_restore",
   "checkpoint_show",
+  "command_list",
   "context_compact",
   "context_get",
   "context_models",

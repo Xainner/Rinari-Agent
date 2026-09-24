@@ -1566,6 +1566,23 @@ export const es = {
   'skills.import': "Importar",
   'skills.installed': "{name} instalada",
   'skills.changedSinceReview': "La skill cambió desde que la revisaste. Revísala de nuevo.",
+  'composer.slash.heading': "Comandos",
+  'composer.slash.skill': "skill",
+  'slash.help': "Ver los comandos",
+  'slash.new': "Nueva conversación",
+  'slash.plan': "Modo PLAN: leer y planificar, sin cambios",
+  'slash.build': "Modo BUILD: implementar y ejecutar",
+  'slash.review': "Modo REVIEW; solo, revisa los cambios sin commit",
+  'slash.test': "Ejecutar las pruebas del proyecto",
+  'slash.skill': "Usar una skill en esta petición",
+  'slash.skills': "Abrir la biblioteca de skills",
+  'slash.compact': "Compactar el contexto ahora",
+  'slash.context': "Uso del contexto y qué lo llena",
+  'slash.model': "Cambiar el modelo de esta conversación",
+  'slash.diff': "Cambios en el workspace",
+  'slash.tasks': "Tareas del proyecto",
+  'slash.fork': "Seguir en una copia de esta conversación",
+  'slash.rename': "Renombrar esta conversación",
 } as const
 
 export type I18nKey = keyof typeof es

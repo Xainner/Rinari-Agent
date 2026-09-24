@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
-import { commandMessage, engineApi, prepareAttachmentRefs, prepareAttachmentRefsWithJob, type ModelSummary } from '../../services/engine'
+import { type SlashCommandRequest, commandMessage, engineApi, prepareAttachmentRefs, prepareAttachmentRefsWithJob, type ModelSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import type { ReasoningEffort } from '../../lib/reasoning'
 import { useCatalog } from './useCatalog'
@@ -16,6 +16,8 @@ import { useSessionUiStore } from '../../stores/sessionUi'
 
 export interface SendOptions {
   reasoningEffort?: ReasoningEffort
+  /** Comando `/` reconocido: el Engine lo expande (modo, plantilla, skill). */
+  command?: SlashCommandRequest
 }
 
 export interface UseModelOptions {
@@ -143,6 +145,7 @@ export function useEngineSession() {
           trimmed,
           effort === 'off' ? null : effort,
           preparedAttachments,
+          options.command,
         )
         runtime.dispatch({ type: 'turn/ack', turnId: started.turn_id, sessionId, now: Date.now() })
         return true
@@ -157,7 +160,7 @@ export function useEngineSession() {
   }, [runtime, t])
 
   /** Envía a la sesión Normal: crea sesión si no hay activa. */
-  async function send(text: string, attachments: AttachmentRef[] = []): Promise<boolean> {
+  async function send(text: string, attachments: AttachmentRef[] = [], options: SendOptions = {}): Promise<boolean> {
     let sessionId = sessions.activeSession
     if (sessionId === '') {
       if (text.trim() === '' && attachments.length === 0) return false
@@ -165,7 +168,7 @@ export function useEngineSession() {
       if (!created) return false
       sessionId = created
     }
-    return sendTo(sessionId, text, attachments)
+    return sendTo(sessionId, text, attachments, options)
   }
 
   const prepareAttachmentsFor = useCallback(async (sessionId: string, attachments: AttachmentRef[]): Promise<AttachmentRef[]> => {

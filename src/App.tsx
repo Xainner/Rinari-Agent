@@ -14,6 +14,7 @@ import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
 import SingleSessionView from './features/engine/SingleSessionView'
 import BoardActivityController from './features/board/BoardActivityController'
+import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import BoardAttentionMenu from './features/board/BoardAttentionMenu'
 import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
 import { projectDisplayName } from './features/projects/workspaceModel'
@@ -441,6 +442,7 @@ function App() {
     <I18nProvider lang={lang}>
       <EngineProvider session={session}>
       <BoardActivityController />
+      <SkillLearnedNotifier />
       <DesktopContextMenu />
       <ProcessRuntimeProvider
         epoch={session.connectionEpoch ?? 0}

@@ -1,6 +1,6 @@
 {
   "generated_on": "2026-09-24",
-  "catalog_count": 111,
+  "catalog_count": 112,
   "scope": "Built-in inspection catalog; live permissions remain engine-owned",
   "tools": [
     {
@@ -4678,6 +4678,72 @@
       "side_effects": "none",
       "idempotent": true,
       "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
+      "name": "skills.propose",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "skill_md": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60000
+          },
+          "references": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "update_of": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Optional deduplication key; reuse only for the same operation in this live runtime (last 256 requests)."
+          }
+        },
+        "required": [
+          "name",
+          "skill_md"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "update": {
+            "type": "boolean"
+          },
+          "review": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "local_reversible",
+      "idempotent": true,
+      "supports_request_id": true,
       "availability": {
         "available": null,
         "reason": "Permissions and resource availability are checked at execution.",

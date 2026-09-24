@@ -119,8 +119,14 @@ export type DesktopCommand =
   | "skill_job_get"
   | "skill_job_start"
   | "skill_list"
+  | "skill_pending_approve"
+  | "skill_pending_list"
+  | "skill_pending_reject"
   | "skill_read"
   | "skill_remove"
+  | "skill_revert"
+  | "skill_settings_get"
+  | "skill_settings_set"
   | "skill_write"
   | "snapshot_get"
   | "soul_activate"
@@ -273,8 +279,14 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "skill_job_get",
   "skill_job_start",
   "skill_list",
+  "skill_pending_approve",
+  "skill_pending_list",
+  "skill_pending_reject",
   "skill_read",
   "skill_remove",
+  "skill_revert",
+  "skill_settings_get",
+  "skill_settings_set",
   "skill_write",
   "snapshot_get",
   "soul_activate",
@@ -442,8 +454,14 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "skill_job_get",
   "skill_job_start",
   "skill_list",
+  "skill_pending_approve",
+  "skill_pending_list",
+  "skill_pending_reject",
   "skill_read",
   "skill_remove",
+  "skill_revert",
+  "skill_settings_get",
+  "skill_settings_set",
   "skill_write",
   "snapshot_get",
   "soul_activate",

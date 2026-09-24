@@ -3366,6 +3366,120 @@
       "host_effects": []
     },
     {
+      "command": "skill_pending_list",
+      "module": "skills",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.pending.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_pending_approve",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.pending.approve",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_pending_reject",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.pending.reject",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_revert",
+      "module": "skills",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.revert",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_settings_get",
+      "module": "skills",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_settings_set",
+      "module": "skills",
+      "args": [
+        {
+          "name": "auto_learn",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.settings.set",
+      "engine_params": [
+        {
+          "key": "auto_learn",
+          "from": "auto_learn",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "tool_list",
       "module": "ecosystem",
       "args": [],

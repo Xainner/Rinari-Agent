@@ -888,6 +888,15 @@
       ]
     },
     {
+      "command": "session_pin",
+      "kind": "engine",
+      "method": "session.pin",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "session_rename",
       "kind": "engine",
       "method": "session.rename",
@@ -1188,8 +1197,8 @@
     }
   ],
   "summary": {
-    "commands": 140,
-    "engine_backed": 134,
+    "commands": 141,
+    "engine_backed": 135,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 41

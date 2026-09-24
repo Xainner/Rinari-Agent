@@ -368,6 +368,15 @@ export function useSessionList(options: {
     }
   }, [refreshSessions])
 
+  const pinSession = useCallback(async (id: string, pinned: boolean): Promise<void> => {
+    try {
+      await engineApi.pinSession(id, pinned)
+      await refreshSessions()
+    } catch (err) {
+      toast.error(commandMessage(err))
+    }
+  }, [refreshSessions])
+
   const archiveSession = useCallback(async (id: string): Promise<boolean> => {
     try {
       await engineApi.archiveSession(id)
@@ -479,6 +488,7 @@ export function useSessionList(options: {
     createSession,
     closeSession,
     renameSession,
+    pinSession,
     archiveSession,
     restoreSession,
     forkSession,

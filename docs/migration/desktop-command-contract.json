@@ -739,6 +739,39 @@
       "host_effects": []
     },
     {
+      "command": "session_pin",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "reference",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "pinned",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.pin",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "reference",
+          "optional": false
+        },
+        {
+          "key": "pinned",
+          "from": "pinned",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "session_fork",
       "module": "sessions",
       "args": [

@@ -24,7 +24,7 @@ type CommandKeys =
   | 'refreshCatalog' | 'discoverCatalog' | 'refreshModels' | 'useModel' | 'useModelFor'
   | 'selectSession' | 'setActiveSession' | 'setMode' | 'setModeFor' | 'setPermission' | 'setPermissionFor'
   | 'searchFiles' | 'searchFilesFor'
-  | 'closeSession' | 'renameSession' | 'archiveSession' | 'restoreSession' | 'forkSession' | 'deleteSession'
+  | 'closeSession' | 'renameSession' | 'pinSession' | 'archiveSession' | 'restoreSession' | 'forkSession' | 'deleteSession'
   | 'refreshProjects' | 'openProject' | 'updateProject' | 'removeProject'
   | 'loadProjectStatus' | 'loadProjectIntelligence' | 'trustProject'
   | 'activeModelFor' | 'isBusy'
@@ -38,7 +38,7 @@ const COMMAND_KEYS: readonly CommandKeys[] = [
   'refreshCatalog', 'discoverCatalog', 'refreshModels', 'useModel', 'useModelFor',
   'selectSession', 'setActiveSession', 'setMode', 'setModeFor', 'setPermission', 'setPermissionFor',
   'searchFiles', 'searchFilesFor',
-  'closeSession', 'renameSession', 'archiveSession', 'restoreSession', 'forkSession', 'deleteSession',
+  'closeSession', 'renameSession', 'pinSession', 'archiveSession', 'restoreSession', 'forkSession', 'deleteSession',
   'refreshProjects', 'openProject', 'updateProject', 'removeProject',
   'loadProjectStatus', 'loadProjectIntelligence', 'trustProject',
   'activeModelFor', 'isBusy',

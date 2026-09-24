@@ -116,3 +116,29 @@ describe('sortProjects', () => {
     expect(sortProjects(projects).map((item) => item.id)).toEqual(['pin', 'new', 'old'])
   })
 })
+
+describe('fijadas', () => {
+  it('saca las fijadas de su proyecto y de los chats, la más reciente primero', () => {
+    const projects = [project({ id: 'p1', root: '/r/cli', name: 'Rinari CLI' })]
+    const sessions = [
+      session({ id: 'a', kind: 'PROJECT', project_id: 'p1', pinned_at: '2026-09-24T09:00:00Z' }),
+      session({ id: 'b', pinned_at: '2026-09-24T10:00:00Z' }),
+      session({ id: 'c', kind: 'PROJECT', project_id: 'p1' }),
+      session({ id: 'd' }),
+    ]
+    const model = buildWorkspaceModel(sessions, projects)
+    expect(model.pinned.map((entry) => [entry.session.id, entry.project?.id ?? null])).toEqual([['b', null], ['a', 'p1']])
+    expect(model.sections[0].sessions.map((s) => s.id)).toEqual(['c'])
+    expect(model.chats.map((s) => s.id)).toEqual(['d'])
+  })
+
+  it('la búsqueda filtra fijadas por título o nombre del proyecto', () => {
+    const projects = [project({ id: 'p1', root: '/r/cli', name: 'Rinari CLI' })]
+    const sessions = [
+      session({ id: 'a', kind: 'PROJECT', project_id: 'p1', title: 'Governor', pinned_at: '2026-09-24T09:00:00Z' }),
+      session({ id: 'b', title: 'Viaje', pinned_at: '2026-09-24T10:00:00Z' }),
+    ]
+    expect(buildWorkspaceModel(sessions, projects, 'rinari').pinned.map((entry) => entry.session.id)).toEqual(['a'])
+    expect(buildWorkspaceModel(sessions, projects, 'viaje').pinned.map((entry) => entry.session.id)).toEqual(['b'])
+  })
+})

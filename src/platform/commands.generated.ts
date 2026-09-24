@@ -107,6 +107,7 @@ export type DesktopCommand =
   | "session_open"
   | "session_permission_get"
   | "session_permission_set"
+  | "session_pin"
   | "session_rename"
   | "session_restore"
   | "session_timeline"
@@ -249,6 +250,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_open",
   "session_permission_get",
   "session_permission_set",
+  "session_pin",
   "session_rename",
   "session_restore",
   "session_timeline",
@@ -406,6 +408,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_open",
   "session_permission_get",
   "session_permission_set",
+  "session_pin",
   "session_rename",
   "session_restore",
   "session_timeline",

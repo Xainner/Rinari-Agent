@@ -465,6 +465,9 @@ export const engineApi = {
     platform().command<{ session: SessionSummary }>('session_get', { reference }),
   renameSession: (reference: string, title: string) =>
     platform().command<{ session: SessionSummary }>('session_rename', { reference, title }),
+  /** Fija o desfija una conversación (capacidad `session_pins_v1`). */
+  pinSession: (reference: string, pinned: boolean) =>
+    platform().command<{ session: SessionSummary }>('session_pin', { reference, pinned }),
   archiveSession: (reference: string) =>
     platform().command<{ session: SessionSummary }>('session_archive', { reference }),
   restoreSession: (reference: string) =>

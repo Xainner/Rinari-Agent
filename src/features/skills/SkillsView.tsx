@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
-import { commandMessage, engineApi, type SkillEntry } from '../../services/engine'
+import { commandMessage, engineApi, type SkillEntry, type SkillProposal } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { Switch } from '../../components/ui/switch'
 import { cn } from '../../lib/utils'
@@ -9,6 +9,7 @@ import { SKILL_FILTERS, attentionReason, countByOrigin, filterSkills, type Skill
 import SkillDetailDialog from './SkillDetailDialog'
 import InstallSkillDialog from './InstallSkillDialog'
 import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands'
+import PendingSkills from './PendingSkills'
 
 /**
  * Ajustes > Skills: la biblioteca. Rinari (vienen con la app), Instaladas
@@ -24,13 +25,18 @@ export default function SkillsView() {
   const [selected, setSelected] = useState<string | null>(null)
   const [installing, setInstalling] = useState(false)
   const [toggling, setToggling] = useState<string | null>(null)
+  const [pending, setPending] = useState<SkillProposal[]>([])
+  const [autoLearn, setAutoLearn] = useState<'propose' | 'never' | null>(null)
 
   const reload = useCallback(async () => {
     try {
       const result = await engineApi.skillList()
       setSkills(result.skills)
+      // Aprendizaje: opcional según la capacidad del Engine; sin ella no se muestra.
+      void engineApi.skillPendingList().then((res) => setPending(res.pending)).catch(() => setPending([]))
+      void engineApi.skillSettingsGet().then((res) => setAutoLearn(res.auto_learn)).catch(() => setAutoLearn(null))
       // Las skills también son comandos `/`: el compositor vuelve a pedir el catálogo.
-      window.dispatchEvent(new Event(SKILLS_CHANGED_EVENT))
+      window.dispatchEvent(new CustomEvent(SKILLS_CHANGED_EVENT, { detail: { from: 'library' } }))
     } catch (err) {
       toast.error(commandMessage(err))
     } finally {
@@ -41,6 +47,26 @@ export default function SkillsView() {
   useEffect(() => {
     void reload()
   }, [reload])
+
+  // Una skill aprendida o deshecha mientras la biblioteca está abierta.
+  useEffect(() => {
+    const refresh = (event: Event) => {
+      if ((event as CustomEvent<{ from?: string }>).detail?.from === 'library') return
+      void reload()
+    }
+    window.addEventListener(SKILLS_CHANGED_EVENT, refresh)
+    return () => window.removeEventListener(SKILLS_CHANGED_EVENT, refresh)
+  }, [reload])
+
+  async function toggleAutoLearn() {
+    if (autoLearn === null) return
+    try {
+      const next = autoLearn === 'propose' ? 'never' : 'propose'
+      setAutoLearn((await engineApi.skillSettingsSet(next)).auto_learn)
+    } catch (err) {
+      toast.error(commandMessage(err))
+    }
+  }
 
   const counts = useMemo(() => countByOrigin(skills), [skills])
   const visible = useMemo(() => filterSkills(skills, filter, query), [skills, filter, query])
@@ -72,6 +98,18 @@ export default function SkillsView() {
           <Plus size={14} aria-hidden="true" /> {t('skills.install')}
         </button>
       </div>
+
+      {autoLearn !== null && (
+        <label className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-[var(--text)]">{t('skills.autoLearn')}</span>
+            <span className="mt-0.5 block text-xs text-[var(--text-subtle)]">{t('skills.autoLearnDesc')}</span>
+          </span>
+          <Switch checked={autoLearn === 'propose'} onCheckedChange={() => void toggleAutoLearn()} aria-label={t('skills.autoLearn')} />
+        </label>
+      )}
+
+      <PendingSkills proposals={pending} onChanged={() => void reload()} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label={t('skills.filter')} className="flex flex-wrap gap-1">

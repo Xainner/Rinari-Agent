@@ -986,6 +986,33 @@
       ]
     },
     {
+      "command": "skill_pending_approve",
+      "kind": "engine",
+      "method": "skill.pending.approve",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_pending_list",
+      "kind": "engine",
+      "method": "skill.pending.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_pending_reject",
+      "kind": "engine",
+      "method": "skill.pending.reject",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "skill_read",
       "kind": "engine",
       "method": "skill.read",
@@ -998,6 +1025,31 @@
       "command": "skill_remove",
       "kind": "engine",
       "method": "skill.remove",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_revert",
+      "kind": "engine",
+      "method": "skill.revert",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "skill_settings_get",
+      "kind": "engine",
+      "method": "skill.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_settings_set",
+      "kind": "engine",
+      "method": "skill.settings.set",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -1288,10 +1340,10 @@
     }
   ],
   "summary": {
-    "commands": 152,
-    "engine_backed": 146,
+    "commands": 158,
+    "engine_backed": 152,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 45
+    "without_callers": 46
   }
 }

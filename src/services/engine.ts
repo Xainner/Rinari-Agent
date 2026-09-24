@@ -340,7 +340,7 @@ export interface SessionDeleteResult {
 /** Comando `/` del catálogo del Engine (`slash_commands_v1`). */
 export interface SlashCommand {
   name: string
-  kind: 'ui' | 'mode' | 'turn' | 'skill'
+  kind: 'ui' | 'mode' | 'turn' | 'skill' | 'learn'
   description: string
   args: string
   mode: string | null
@@ -440,6 +440,30 @@ export interface SkillPage {
   offset: number
   total_lines: number
   next_offset: number | null
+}
+
+/** Skill que Rinari propuso sola y espera la aprobación del dueño. */
+export interface SkillProposal {
+  name: string
+  description: string
+  version: string | null
+  learned_from: string | null
+  proposed_at: string | null
+  update: boolean
+  review: SkillReview
+  skill_md: string
+  /** Versión instalada que reemplazaría; null si es nueva. */
+  current_skill_md: string | null
+}
+
+/** Payload de `skill.learned`. */
+export interface SkillLearned {
+  name: string
+  status: 'active' | 'pending'
+  version: string
+  update: boolean
+  review: SkillReview['verdict']
+  session_id: string
 }
 
 export type SkillJobAction = 'inspect' | 'install' | 'update'
@@ -779,6 +803,17 @@ export const engineApi = {
   skillWrite: (name: string, content: string) =>
     platform().command<{ skill: SkillDetail }>('skill_write', { name, content }),
   skillImportScan: () => platform().command<{ candidates: SkillCandidate[] }>('skill_import_scan'),
+  skillPendingList: () => platform().command<{ pending: SkillProposal[] }>('skill_pending_list'),
+  skillPendingApprove: (name: string) =>
+    platform().command<{ skill: SkillDetail }>('skill_pending_approve', { name }),
+  skillPendingReject: (name: string) =>
+    platform().command<{ rejected: boolean }>('skill_pending_reject', { name }),
+  /** Deshacer una skill aprendida: su versión anterior, o fuera si era nueva. */
+  skillRevert: (name: string) =>
+    platform().command<{ name: string; restored: string | null; removed: boolean }>('skill_revert', { name }),
+  skillSettingsGet: () => platform().command<{ auto_learn: 'propose' | 'never' }>('skill_settings_get'),
+  skillSettingsSet: (autoLearn: 'propose' | 'never') =>
+    platform().command<{ auto_learn: 'propose' | 'never' }>('skill_settings_set', { auto_learn: autoLearn }),
   /** Inspeccionar e instalar pueden descargar: el Engine responde con un job y termina con `skill.job.*`. */
   skillJobStart: (input: {
     action: SkillJobAction

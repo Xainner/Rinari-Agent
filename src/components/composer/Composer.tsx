@@ -99,6 +99,7 @@ const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
   review: 'slash.review',
   test: 'slash.test',
   skill: 'slash.skill',
+  learn: 'slash.learn',
   skills: 'slash.skills',
   compact: 'slash.compact',
   context: 'slash.context',

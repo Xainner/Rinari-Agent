@@ -872,12 +872,38 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .pane-dock { display: flex; flex: 0 0 auto; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--border); background: var(--bg-app); }
 .pane-dock-drawer { position: absolute; inset: 0 0 0 auto; z-index: 20; width: min(92%, 420px); box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45); }
 .pane-dock-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+/* Cuatro superficies no caben con nombre en un dock estrecho: las inactivas
+ * quedan solo con su icono (el nombre sigue en aria-label y en el tooltip). */
+.session-dock { container-type: inline-size; }
+@container (max-width: 440px) { .pane-dock-tab:not(.is-active) .pane-dock-tab-label { display: none; } }
 .pane-dock-tab { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: var(--radius-control); font-size: 12px; font-weight: 600; color: var(--text-muted); }
 .pane-dock-tab:hover { color: var(--text); background: var(--bg-hover); }
 .pane-dock-tab.is-active { color: var(--text); background: var(--bg-active); }
 .pane-dock-count { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--bg-hover); font-size: 10px; }
 .pane-dock-body { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; flex-direction: column; overflow: hidden; }
 .pane-dock-body > * { flex: 1 1 auto; min-height: 0; }
+/* Terminal del dock: pestañas + xterm. El fondo sigue el token del tema. */
+.terminal-panel { display: flex; flex-direction: column; min-height: 0; background: var(--bg-elevated); }
+.terminal-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+/* Las pestañas se encogen (título truncado) y, si aun así no caben, se
+ * desplazan solas: «+» y el menú de shells quedan siempre a la vista. */
+.terminal-tab-list { display: flex; flex: 0 1 auto; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.terminal-tab { display: flex; flex: 0 1 auto; min-width: 64px; max-width: 170px; align-items: center; border-radius: 6px; color: var(--text-muted); }
+.terminal-tab.is-active { background: var(--bg-hover); color: var(--text); }
+.terminal-tab.is-exited .terminal-tab-label { opacity: .6; }
+.terminal-tab-label { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 5px; padding: 3px 4px 3px 8px; font-size: 12px; white-space: nowrap; }
+.terminal-tab-close { flex: none; }
+.terminal-tab-close { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 4px; color: var(--text-subtle); }
+.terminal-tab-close:hover { background: var(--bg-subtle); color: var(--text); }
+.terminal-tab-input { width: 120px; margin: 2px 4px; padding: 1px 4px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg-subtle); color: var(--text); font-size: 12px; }
+.terminal-error { padding: 6px 10px; font-size: 12px; color: var(--danger); }
+.terminal-body { position: relative; display: flex; flex: 1 1 auto; min-height: 0; }
+.terminal-view { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 6px 0 0 8px; }
+.terminal-view .xterm { height: 100%; }
+.terminal-exited { position: absolute; right: 10px; bottom: 8px; padding: 3px 8px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-muted); font-size: 11px; }
+.terminal-empty { display: grid; flex: 1 1 auto; place-items: center; padding: 16px; text-align: center; }
+.terminal-start { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; }
+.terminal-start:hover { background: var(--bg-hover); }
 /* Workspace de sesión (Normal y panel): conversación + dock con ancho real.
  * min-width/min-height 0 evitan que el dock empuje el chat fuera de su celda. */
 .session-workspace { position: relative; display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; height: 100%; }

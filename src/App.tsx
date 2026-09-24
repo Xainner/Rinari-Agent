@@ -391,6 +391,7 @@ function App() {
         case 'files': toggleDockSurface('files'); break
         case 'browser': toggleDockSurface('browser'); break
         case 'workspace-panel': toggleDockSurface('workspace'); break
+        case 'terminal': toggleDockSurface('terminal'); break
         case 'commands': setPaletteOpen(true); break
         case 'processes':
           if (session.activeSession) {

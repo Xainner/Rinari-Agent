@@ -19,6 +19,8 @@ export type DesktopAction =
    * la paleta y la barra superior compartan una ruta que no colisione con ella.
    */
   | 'workspace-panel'
+  /** Abre el dock de la sesión en la superficie **Terminal** (`desktop_terminal_v1`). */
+  | 'terminal'
   | 'commands'
   | 'processes'
   | 'undo'

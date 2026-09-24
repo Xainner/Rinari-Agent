@@ -41,6 +41,8 @@ export interface SessionWorkspaceProps {
   sharedRoot?: boolean
   /** El Engine anuncia `browser_view_v1`; sin capability no se consulta. */
   browserEnabled?: boolean
+  /** El Engine anuncia `desktop_terminal_v1`: el dock suma la pestaña Terminal. */
+  terminalEnabled?: boolean
   /** Generación del Engine: al cambiar, el visor vuelve a inscribir sus watches. */
   engineGeneration?: number
   /** La sesión ejecuta un turno: al terminar se sondea el navegador una vez. */
@@ -50,13 +52,13 @@ export interface SessionWorkspaceProps {
 /**
  * Composición de una sesión compartida por Normal (`SingleSessionView`) y por
  * cada panel del board (`SessionPane`): conversación + dock con Archivos,
- * Navegador y Workspace. Una sola implementación del visor de archivos y del
+ * Navegador, Workspace y Terminal. Una sola implementación del visor de archivos y del
  * browser; el layout del dock es por sesión (`sessionDock`). El dock ocupa
  * ancho real dentro de la sesión y, cuando no caben chat y dock, pasa a un
  * drawer dentro de este contenedor: no reaparece ninguna superficie flotante
  * global.
  */
-export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, busy = false, engineGeneration }: SessionWorkspaceProps) {
+export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, terminalEnabled = false, busy = false, engineGeneration }: SessionWorkspaceProps) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
@@ -187,7 +189,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
             <SessionDock
               sessionId={sessionId}
               session={record}
-              surface={layout.activeSurface}
+              surface={layout.activeSurface === 'terminal' && !terminalEnabled ? 'workspace' : layout.activeSurface}
               onSurfaceChange={(surface) => setActiveSurface(sessionId, surface)}
               workspaceTab={layout.workspaceTab}
               onWorkspaceTabChange={(tab) => setWorkspaceTab(sessionId, tab)}
@@ -196,6 +198,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
               width={liveWidth}
               onClose={() => setVisible(sessionId, false)}
               browser={{ frame: browser.frame, error: browser.error, targetId, onTargetChange: setTargetId }}
+              terminalEnabled={terminalEnabled}
             />
           </>
         )}

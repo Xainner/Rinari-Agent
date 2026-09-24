@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 /**
- * Layout del dock de una sesión (Archivos / Navegador / Workspace), compartido
+ * Layout del dock de una sesión (Archivos / Navegador / Workspace / Terminal), compartido
  * por la vista Normal y por su panel del board: un solo modelo persistido de
  * presentación. Contrato nuevo de UI; no es un DTO del Engine.
  *
@@ -11,7 +11,7 @@ import { create } from 'zustand'
  * `webContentsId`, grants, `busy`, handles CDP ni generaciones: nada de eso
  * es autoridad recuperable.
  */
-export type DockSurface = 'files' | 'browser' | 'workspace'
+export type DockSurface = 'files' | 'browser' | 'workspace' | 'terminal'
 export type WorkspaceTab = 'changes' | 'tasks' | 'verification' | 'checkpoints' | 'artifacts' | 'insight'
 
 export interface SessionDockLayout {
@@ -29,7 +29,7 @@ export const DOCK_DEFAULT_WIDTH = 360
 export const DOCK_MAX_WIDTH = 800
 /** Ancho mínimo del chat para acoplar el dock al lado; si no cabe, el dock es un drawer. */
 export const CHAT_MIN_DOCKED_WIDTH = 480
-export const DOCK_SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace']
+export const DOCK_SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace', 'terminal']
 export const WORKSPACE_TABS: readonly WorkspaceTab[] = ['changes', 'tasks', 'verification', 'checkpoints', 'artifacts', 'insight']
 const DEFAULT_HOME = 'default'
 

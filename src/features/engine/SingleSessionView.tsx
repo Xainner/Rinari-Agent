@@ -54,6 +54,7 @@ export default function SingleSessionView({
       density="normal"
       focused
       browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+      terminalEnabled={data.status?.capabilities.desktop_terminal_v1 === true}
       engineGeneration={data.engineGeneration}
       busy={busy}
     >

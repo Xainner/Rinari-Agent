@@ -21,6 +21,10 @@ vi.mock('../workspace/WorkspaceView', () => ({
   ),
 }))
 
+vi.mock('../terminal/TerminalPanel', () => ({
+  default: ({ sessionId }: { sessionId: string }) => <div data-testid={`terminal-${sessionId}`} />,
+}))
+
 import { I18nProvider } from '../../i18n'
 import { useBoardStore, defaultBoard } from '../../stores/board'
 import { useComposerStore } from '../../stores/composer'
@@ -243,4 +247,25 @@ it('un overlay bloqueante viaja en la geometría del slot', async () => {
     resetOverlaysForTests()
     restore()
   }
+})
+
+it('la pestaña Terminal aparece solo si el Engine anuncia la terminal', () => {
+  useSessionDockStore.getState().reveal('ses_t', 'terminal')
+  const view = (terminalEnabled: boolean) => (
+    <I18nProvider lang="es">
+      <SessionWorkspace sessionId="ses_t" record={sessionFixture('ses_t', 'ses_t')} density="normal" focused browserEnabled={false} terminalEnabled={terminalEnabled}>
+        <div />
+      </SessionWorkspace>
+    </I18nProvider>
+  )
+  const { rerender } = render(view(false))
+  // Sin capacidad, una superficie guardada «terminal» cae en Workspace.
+  let dock = screen.getByTestId('session-dock')
+  expect(dock.dataset.surface).toBe('workspace')
+  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Archivos', 'Navegador', 'Workspace'])
+  rerender(view(true))
+  dock = screen.getByTestId('session-dock')
+  expect(dock.dataset.surface).toBe('terminal')
+  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Archivos', 'Navegador', 'Workspace', 'Terminal'])
+  expect(screen.getByTestId('terminal-ses_t')).toBeTruthy()
 })

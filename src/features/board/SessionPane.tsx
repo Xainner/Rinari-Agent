@@ -228,6 +228,7 @@ function SessionPane({
           focused={focused}
           sharedRoot={sharedRoot}
           browserEnabled={data.status?.capabilities.browser_view_v1 === true}
+          terminalEnabled={data.status?.capabilities.desktop_terminal_v1 === true}
           engineGeneration={data.engineGeneration}
           busy={session.busy}
         >

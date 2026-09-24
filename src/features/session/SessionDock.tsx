@@ -1,4 +1,4 @@
-import { FileText, Globe, LayoutPanelLeft, X } from 'lucide-react'
+import { FileText, Globe, LayoutPanelLeft, SquareTerminal, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useI18n } from '../../i18n'
 import type { SessionSummary } from '../../services/engine'
@@ -6,6 +6,7 @@ import type { BrowserView as BrowserFrame } from '../../types/protocol.generated
 import { FileViewer, useFileWorkspace } from '../files/FileWorkspace'
 import BrowserSurface from '../browser/BrowserSurface'
 import WorkspaceView from '../workspace/WorkspaceView'
+import TerminalPanel from '../terminal/TerminalPanel'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
@@ -23,14 +24,17 @@ export interface SessionDockProps {
   width: number
   onClose: () => void
   browser: { frame: BrowserFrame | null; error: string; targetId: string; onTargetChange: (targetId: string) => void }
+  /** El Engine anuncia `desktop_terminal_v1`: sin ella no hay pestaña Terminal. */
+  terminalEnabled?: boolean
 }
 
-const SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace']
+const SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace', 'terminal']
 
 /**
- * Dock de una sesión con tres superficies: **Archivos** (tablist y
- * renderizadores actuales), **Navegador** (toolbar + slot de vista) y
- * **Workspace** (cambios, tareas, verificaciones…). Una sola superficie
+ * Dock de una sesión con cuatro superficies: **Archivos** (tablist y
+ * renderizadores actuales), **Navegador** (toolbar + slot de vista),
+ * **Workspace** (cambios, tareas, verificaciones…) y **Terminal** (PTY del
+ * Engine, si lo anuncia). Una sola superficie
  * activa; ocupa ancho real dentro de la sesión o, si no cabe, un drawer
  * dentro del mismo contenedor con cierre visible y foco correcto. Cerrarlo
  * no cierra archivos, browser ni procesos.
@@ -47,6 +51,7 @@ export default function SessionDock({
   width,
   onClose,
   browser,
+  terminalEnabled = false,
 }: SessionDockProps) {
   const { t } = useI18n()
   const overlayDepth = useOverlayStore(selectOverlayDepth)
@@ -62,8 +67,9 @@ export default function SessionDock({
     return () => previous?.focus?.()
   }, [layout])
 
-  const labels: Record<DockSurface, string> = { files: t('dock.files'), browser: t('dock.browser'), workspace: t('nav.workspace') }
-  const icons = { files: FileText, browser: Globe, workspace: LayoutPanelLeft } as const
+  const labels: Record<DockSurface, string> = { files: t('dock.files'), browser: t('dock.browser'), workspace: t('nav.workspace'), terminal: t('dock.terminal') }
+  const icons = { files: FileText, browser: Globe, workspace: LayoutPanelLeft, terminal: SquareTerminal } as const
+  const surfaces = terminalEnabled ? SURFACES : SURFACES.filter((item) => item !== 'terminal')
 
   return (
     <aside
@@ -80,7 +86,7 @@ export default function SessionDock({
       }}
     >
       <div className="pane-dock-tabs" role="tablist" aria-label={t('dock.label')}>
-        {SURFACES.map((item) => {
+        {surfaces.map((item) => {
           const Icon = icons[item]
           return (
             <button
@@ -89,10 +95,12 @@ export default function SessionDock({
               role="tab"
               aria-selected={surface === item}
               aria-controls={`dock-${sessionId}-${item}`}
+              aria-label={labels[item]}
+              title={labels[item]}
               onClick={() => onSurfaceChange(item)}
               className={cn('pane-dock-tab', surface === item && 'is-active')}
             >
-              <Icon size={13} aria-hidden="true" />{labels[item]}
+              <Icon size={13} aria-hidden="true" /><span className="pane-dock-tab-label">{labels[item]}</span>
               {item === 'files' && openFiles > 0 && <span className="pane-dock-count">{openFiles}</span>}
               {item === 'browser' && browserConnected && (
                 <span className="pane-dock-dot" role="img" aria-label={t('browser.live')} title={t('browser.live')} />
@@ -106,7 +114,9 @@ export default function SessionDock({
         </button>
       </div>
       <div id={`dock-${sessionId}-${surface}`} className="pane-dock-body" role="tabpanel" aria-label={labels[surface]}>
-        {surface === 'workspace' ? (
+        {surface === 'terminal' && terminalEnabled ? (
+          <TerminalPanel sessionId={sessionId} />
+        ) : surface === 'workspace' || surface === 'terminal' ? (
           <WorkspaceView session={session} embedded tab={workspaceTab} onTabChange={onWorkspaceTabChange} sharedRoot={sharedRoot} />
         ) : surface === 'browser' ? (
           <BrowserSurface

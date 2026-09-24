@@ -4847,6 +4847,223 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "pty_shells",
+      "module": "terminal",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.shells",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "pty_start",
+      "module": "terminal",
+      "args": [
+        {
+          "name": "command",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "cwd",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "columns",
+          "type": "Option<u32>",
+          "optional": true
+        },
+        {
+          "name": "rows",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.start",
+      "engine_params": [
+        {
+          "key": "command",
+          "from": "command",
+          "optional": true
+        },
+        {
+          "key": "cwd",
+          "from": "cwd",
+          "optional": true
+        },
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        },
+        {
+          "key": "columns",
+          "from": "columns",
+          "optional": true
+        },
+        {
+          "key": "rows",
+          "from": "rows",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "pty_write",
+      "module": "terminal",
+      "args": [
+        {
+          "name": "pty_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "data",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "raw",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.write",
+      "engine_params": [
+        {
+          "key": "pty_id",
+          "from": "pty_id",
+          "optional": false
+        },
+        {
+          "key": "data",
+          "from": "data",
+          "optional": false
+        },
+        {
+          "key": "raw",
+          "from": "raw",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "pty_resize",
+      "module": "terminal",
+      "args": [
+        {
+          "name": "pty_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "columns",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "rows",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.resize",
+      "engine_params": [
+        {
+          "key": "pty_id",
+          "from": "pty_id",
+          "optional": false
+        },
+        {
+          "key": "columns",
+          "from": "columns",
+          "optional": false
+        },
+        {
+          "key": "rows",
+          "from": "rows",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "pty_read",
+      "module": "terminal",
+      "args": [
+        {
+          "name": "pty_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.read",
+      "engine_params": [
+        {
+          "key": "pty_id",
+          "from": "pty_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "pty_list",
+      "module": "terminal",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "pty_terminate",
+      "module": "terminal",
+      "args": [
+        {
+          "name": "pty_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "pty.terminate",
+      "engine_params": [
+        {
+          "key": "pty_id",
+          "from": "pty_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

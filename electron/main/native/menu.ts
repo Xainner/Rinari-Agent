@@ -102,6 +102,8 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
         // Sin atajo propio: comparte ruta con la barra superior y la paleta,
         // y no compite con la vista global de Workspace.
         item('workspace-panel', 'Panel de Workspace'),
+        // El mismo atajo que en los editores; no es una combinación de texto.
+        item('terminal', 'Terminal', 'CmdOrCtrl+`'),
         item('commands', 'Paleta de comandos', 'CmdOrCtrl+K'),
         item('zoom-in', 'Acercar', 'CmdOrCtrl+Plus'),
         item('zoom-out', 'Alejar', 'CmdOrCtrl+-'),

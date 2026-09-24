@@ -337,6 +337,13 @@ export interface SessionDeleteResult {
   };
 }
 
+/** Shell que la terminal puede abrir (`desktop_terminal_v1`). */
+export interface PtyShell {
+  id: string
+  label: string
+  command: string
+}
+
 /** Comando `/` del catálogo del Engine (`slash_commands_v1`). */
 export interface SlashCommand {
   name: string
@@ -834,6 +841,26 @@ export const engineApi = {
       'skill_job_get',
       { job_id: jobId },
     ),
+  // Terminal del usuario: un PTY del Engine (ConPTY en Windows). El modelo no
+  // escribe aquí; las pulsaciones viajan `raw`, tal cual se teclean.
+  ptyShells: () => platform().command<{ shells: PtyShell[]; supported: boolean }>('pty_shells'),
+  ptyStart: (input: { sessionId: string; command?: string; columns: number; rows: number }) =>
+    platform().command<{ pty_id: string; session_id: string | null }>('pty_start', {
+      session_id: input.sessionId,
+      command: input.command ?? null,
+      columns: input.columns,
+      rows: input.rows,
+    }),
+  ptyWrite: (ptyId: string, data: string) =>
+    platform().command<{ pty_id: string; written: number }>('pty_write', { pty_id: ptyId, data, raw: true }),
+  ptyResize: (ptyId: string, columns: number, rows: number) =>
+    platform().command<{ pty_id: string }>('pty_resize', { pty_id: ptyId, columns, rows }),
+  ptyRead: (ptyId: string) =>
+    platform().command<{ pty_id: string; alive: boolean; exit_code: number | null; data: string; offset?: number }>('pty_read', { pty_id: ptyId }),
+  ptyList: () =>
+    platform().command<{ ptys: { pty_id: string; command: string; alive: boolean; session_id: string | null }[] }>('pty_list'),
+  ptyTerminate: (ptyId: string) =>
+    platform().command<{ pty_id: string; alive: boolean; exit_code: number | null }>('pty_terminate', { pty_id: ptyId }),
   toolList: () => platform().command<{ tools: NativeTool[] }>("tool_list"),
   policyGet: () =>
     platform().command<{ mode_profile: Record<string, string>; note: string }>("policy_get"),

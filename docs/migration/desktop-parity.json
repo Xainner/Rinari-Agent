@@ -717,6 +717,57 @@
       "callers": []
     },
     {
+      "command": "pty_list",
+      "kind": "engine",
+      "method": "pty.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "pty_read",
+      "kind": "engine",
+      "method": "pty.read",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "pty_resize",
+      "kind": "engine",
+      "method": "pty.resize",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "pty_shells",
+      "kind": "engine",
+      "method": "pty.shells",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "pty_start",
+      "kind": "engine",
+      "method": "pty.start",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "pty_terminate",
+      "kind": "engine",
+      "method": "pty.terminate",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "pty_write",
+      "kind": "engine",
+      "method": "pty.write",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "question_list",
       "kind": "engine",
       "method": "question.list",
@@ -1340,10 +1391,10 @@
     }
   ],
   "summary": {
-    "commands": 158,
-    "engine_backed": 152,
+    "commands": 165,
+    "engine_backed": 159,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 46
+    "without_callers": 52
   }
 }

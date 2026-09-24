@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **158**
-- Respaldados por Engine: **152**
+- Comandos: **165**
+- Respaldados por Engine: **159**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -98,6 +98,13 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `provider_update` | engine | `provider.update` | `src/services/engine.ts` |
 | `provider_usage_get` | engine | `provider.usage.get` | `src/services/engine.ts` |
 | `provider_use` | engine | `provider.use` | **ninguno** |
+| `pty_list` | engine | `pty.list` | **ninguno** |
+| `pty_read` | engine | `pty.read` | **ninguno** |
+| `pty_resize` | engine | `pty.resize` | `src/services/engine.ts` |
+| `pty_shells` | engine | `pty.shells` | **ninguno** |
+| `pty_start` | engine | `pty.start` | **ninguno** |
+| `pty_terminate` | engine | `pty.terminate` | **ninguno** |
+| `pty_write` | engine | `pty.write` | **ninguno** |
 | `question_list` | engine | `question.list` | `src/services/desktop.ts` |
 | `question_resolve` | engine | `question.resolve` | `src/services/desktop.ts` |
 | `queue_add` | engine | `session.queue.add` | **ninguno** |

@@ -86,6 +86,13 @@ export type DesktopCommand =
   | "provider_update"
   | "provider_usage_get"
   | "provider_use"
+  | "pty_list"
+  | "pty_read"
+  | "pty_resize"
+  | "pty_shells"
+  | "pty_start"
+  | "pty_terminate"
+  | "pty_write"
   | "question_list"
   | "question_resolve"
   | "queue_add"
@@ -246,6 +253,13 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "provider_update",
   "provider_usage_get",
   "provider_use",
+  "pty_list",
+  "pty_read",
+  "pty_resize",
+  "pty_shells",
+  "pty_start",
+  "pty_terminate",
+  "pty_write",
   "question_list",
   "question_resolve",
   "queue_add",
@@ -421,6 +435,13 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "provider_update",
   "provider_usage_get",
   "provider_use",
+  "pty_list",
+  "pty_read",
+  "pty_resize",
+  "pty_shells",
+  "pty_start",
+  "pty_terminate",
+  "pty_write",
   "question_list",
   "question_resolve",
   "queue_add",

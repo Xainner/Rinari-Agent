@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import { ArrowUp, Brain, Check, Columns3, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
@@ -245,9 +246,37 @@ export default function Composer({
   const slashQ = slashQuery(text)
   const slashMatches = slashQ !== null ? matchSlashCommands(slashQ, slashCommands) : []
   const [slashHighlight, setSlashHighlight] = useState(0)
+  // Las sugerencias (/, @) se abren encima del compositor, fuera de su caja.
+  // Su contenedor hace scroll cuando el compositor crece, y eso las
+  // recortaba: van en un portal, ancladas a la caja medida del compositor.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [menuBox, setMenuBox] = useState<{ left: number; width: number; bottom: number } | null>(null)
   useEffect(() => {
     setSlashHighlight(0)
   }, [slashQ])
+  const menuOpen = slashMatches.length > 0 || paneMatches.length > 0 || fileMatches.length > 0
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuBox(null)
+      return
+    }
+    const measure = () => {
+      const rect = rootRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuBox({ left: rect.left + 8, width: Math.max(0, rect.width - 16), bottom: window.innerHeight - rect.top + 8 })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    // Captura: el scroll del contenedor del compositor también mueve la caja.
+    window.addEventListener('scroll', measure, true)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    if (rootRef.current) observer?.observe(rootRef.current)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+      observer?.disconnect()
+    }
+  }, [menuOpen])
   const [modelSignal, setModelSignal] = useState(0)
   const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
   const [visionRevision, setVisionRevision] = useState(0)
@@ -559,7 +588,7 @@ export default function Composer({
   }
 
   return (
-    <div className="composer-root relative">
+    <div ref={rootRef} className="composer-root relative">
       <div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
@@ -590,8 +619,12 @@ export default function Composer({
             <span className="text-[var(--text-subtle)]">· {paneMention.message ? t('composer.paneMention.hint') : t('composer.paneMention.empty')}</span>
           </div>
         )}
-        {(slashMatches.length > 0 || paneMatches.length > 0 || fileMatches.length > 0) && (
-          <div className="absolute right-2 bottom-full left-2 z-30 mb-2 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl">
+        {menuOpen && menuBox && createPortal(
+          <div
+            data-testid="composer-suggestions"
+            style={{ position: 'fixed', left: menuBox.left, width: menuBox.width, bottom: menuBox.bottom }}
+            className="z-50 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl"
+          >
             {slashMatches.length > 0 && (
               <div role="listbox" aria-label={t('composer.slash.heading')} data-testid="slash-command-list">
                 <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.slash.heading')}</p>
@@ -639,7 +672,8 @@ export default function Composer({
                 <FileText size={13} /><span className="truncate">{file.relative_path}</span>
               </button>
             ))}
-          </div>
+          </div>,
+          document.body,
         )}
         <textarea
           ref={textareaRef}

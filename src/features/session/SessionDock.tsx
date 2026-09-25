@@ -7,6 +7,7 @@ import { FileViewer, useFileWorkspace } from '../files/FileWorkspace'
 import BrowserSurface from '../browser/BrowserSurface'
 import WorkspaceView from '../workspace/WorkspaceView'
 import TerminalPanel from '../terminal/TerminalPanel'
+import { useAgentRunningCount } from '../terminal/agentTab'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
@@ -58,6 +59,8 @@ export default function SessionDock({
   const files = useFileWorkspace()
   const openFiles = files?.tabs.length ?? 0
   const browserConnected = browser.frame?.state === 'connected'
+  // Lo que Rinari tiene en marcha se anuncia en la pestaña Terminal.
+  const agentRunning = useAgentRunningCount(terminalEnabled ? sessionId : '')
   const root = useRef<HTMLElement>(null)
   // Un drawer cubre el chat: el foco entra al dock y vuelve al cerrarlo.
   useEffect(() => {
@@ -102,6 +105,9 @@ export default function SessionDock({
             >
               <Icon size={13} aria-hidden="true" /><span className="pane-dock-tab-label">{labels[item]}</span>
               {item === 'files' && openFiles > 0 && <span className="pane-dock-count">{openFiles}</span>}
+              {item === 'terminal' && agentRunning > 0 && (
+                <span className="pane-dock-count" title={t('terminal.agentRunning', { n: agentRunning })}>{agentRunning}</span>
+              )}
               {item === 'browser' && browserConnected && (
                 <span className="pane-dock-dot" role="img" aria-label={t('browser.live')} title={t('browser.live')} />
               )}

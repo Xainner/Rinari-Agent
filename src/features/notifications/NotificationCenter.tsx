@@ -1,4 +1,4 @@
-import { BellRing, CalendarClock, CheckCheck, Library, X } from 'lucide-react'
+import { BellRing, CalendarClock, CheckCheck, Library, TriangleAlert, X } from 'lucide-react'
 import { useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -16,8 +16,9 @@ import BoardAttentionSection, { useBoardAttentionTotal } from '../board/BoardAtt
 const MODULE_TITLE: Record<NotificationModule, I18nKey> = {
   schedules: 'notifications.module.schedules',
   skills: 'notifications.module.skills',
+  system: 'notifications.module.system',
 }
-const MODULE_ICON = { schedules: CalendarClock, skills: Library } as const
+const MODULE_ICON = { schedules: CalendarClock, skills: Library, system: TriangleAlert } as const
 const TONE_DOT: Record<NonNullable<CenterNotification['tone']>, string> = {
   info: 'bg-[var(--accent)]',
   success: 'bg-[var(--success)]',

@@ -59,6 +59,7 @@ export default function SingleSessionView({
       busy={busy}
     >
       <ChatView
+        processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
         homeContext={{
           projectName: project?.name ?? projectRoot,
           changedFiles: gitStatus?.status.available ? gitStatus.status.files.length : null,

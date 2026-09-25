@@ -68,6 +68,11 @@ interface ChatViewProps {
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
   processesOpenSignal?: number
+  /**
+   * Los procesos viven en el panel Terminal (pestaña «Rinari»): no se pinta
+   * la barra sobre el compositor. Sin terminal integrada, la barra sigue.
+   */
+  processesInPanel?: boolean
   historyPhase?: HistoryPhase
   onRetryHistory?: () => void
   /** Instancia Normal del Composer (espejo legacy del borrador). Los paneles pasan `false`. */
@@ -120,6 +125,7 @@ function ChatView({
   onPermissionChange,
   onSearchFiles,
   processesOpenSignal = 0,
+  processesInPanel = false,
   historyPhase = 'loaded',
   onRetryHistory,
   composerPrimary = true,
@@ -406,7 +412,7 @@ function ChatView({
           </button>
         </div>
     ) : undefined}>
-      {(presentation === 'empty' || presentation === 'conversation') && sessionId !== '' && (
+      {!processesInPanel && (presentation === 'empty' || presentation === 'conversation') && sessionId !== '' && (
         <ProcessesDock key={`processes:${sessionId}`} sessionId={sessionId} openSignal={processesOpenSignal} />
       )}
       {(presentation === 'empty' || presentation === 'conversation') && (

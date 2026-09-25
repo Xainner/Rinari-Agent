@@ -235,6 +235,7 @@ function SessionPane({
           <ReadTrackingContext.Provider value={readTracking}>
           <div className="session-pane-chat">
             <ChatView
+              processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
               homeContext={{
                 projectName: session.project?.name ?? session.projectRoot,
                 changedFiles: session.gitStatus?.status.available ? session.gitStatus.status.files.length : null,

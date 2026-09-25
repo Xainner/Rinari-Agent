@@ -15,7 +15,7 @@ import { commandMessage, engineApi, isCommandError } from '../../services/engine
 import { copyText } from '../../lib/clipboard'
 import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
-import { artifactImageUrl, isArtifactImage, useArtifactImage } from './artifactImage'
+import { artifactImageUrl, isArtifactImage, rememberArtifactImageSize, useArtifactImage } from './artifactImage'
 
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
@@ -90,10 +90,20 @@ export function ArtifactImage({ uri, alt = '' }: { uri: string; alt?: string }) 
   const open = useContext(FileContext)
   const turnId = useContext(FileTurnContext)
   const { t } = useI18n()
-  const { url, failed } = useArtifactImage(uri)
+  const { url, failed, width, height } = useArtifactImage(uri)
   if (failed) return <FileLink href={uri}>{alt || uri.split('/').at(-1)}</FileLink>
   if (!url) return <span className="artifact-image-pending" role="status">{t('files.imageLoading')}</span>
-  const image = <img src={url} alt={alt} className="artifact-image" />
+  // Con el tamaño conocido, el alto queda reservado antes de decodificar.
+  const image = (
+    <img
+      src={url}
+      alt={alt}
+      className="artifact-image"
+      width={width}
+      height={height}
+      onLoad={(event) => rememberArtifactImageSize(uri, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}
+    />
+  )
   return open ? (
     <button type="button" className="artifact-image-open" title={t('files.openImage')} onClick={() => open(uri, turnId)}>
       {image}

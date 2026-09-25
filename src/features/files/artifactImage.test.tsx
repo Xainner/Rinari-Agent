@@ -62,3 +62,24 @@ it('only treats previewable image artifacts as images', () => {
   expect(isArtifactImage('artifact://s/media/blob', 'image/webp')).toBe(true)
   expect(isArtifactImage(PNG, 'text/plain')).toBe(false)
 })
+
+it('a remounted image paints at once with its size reserved, so a long chat does not jump', async () => {
+  // La lista virtual desmonta las filas que salen de la vista. Si al volver
+  // la imagen empezara como «cargando» y luego creciera, el scroll saltaría.
+  const uri = 'artifact://ses_1/media/remount.png'
+  vi.mocked(engineApi.attachmentPreview).mockResolvedValue(preview)
+  const markdown = <I18nProvider lang="es"><Markdown>{`![Generada](${uri})`}</Markdown></I18nProvider>
+  const first = render(markdown)
+  const image = await screen.findByRole('img', { name: 'Generada' })
+  Object.defineProperty(image, 'naturalWidth', { value: 832 })
+  Object.defineProperty(image, 'naturalHeight', { value: 1216 })
+  image.dispatchEvent(new Event('load'))
+  first.unmount()
+
+  render(markdown)
+  // Sin esperar: ni «cargando» ni alto cero en el primer pintado.
+  const again = screen.getByRole('img', { name: 'Generada' })
+  expect(again.getAttribute('width')).toBe('832')
+  expect(again.getAttribute('height')).toBe('1216')
+  expect(screen.queryByRole('status')).toBeNull()
+})

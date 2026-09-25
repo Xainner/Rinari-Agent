@@ -53,6 +53,14 @@ describe('turn token aggregates', () => {
       view.unmount()
     })
   })
+  it('shows what the conversation occupies and keeps the turn cost in the details', () => {
+    render(<I18nProvider lang="es"><TokenUsage usage={{ ...usage(1, 31000), source: 'reported', context_tokens: 10600 }} /></I18nProvider>)
+    expect(screen.getByTestId('token-usage').textContent).toBe(`${formatTokens(10600, 'es')} tokens`)
+    const details = screen.getByTestId('token-usage').parentElement?.getAttribute('title') ?? ''
+    expect(details).toContain('Contexto al terminar: 10.600')
+    expect(details).toContain('Consumo del turno: 31.000 tokens')
+  })
+
   it('removes the approximation only for fully reported totals', () => {
     const view=render(<I18nProvider lang="en"><TokenUsage usage={{...usage(),source:'mixed'}} /></I18nProvider>)
     expect(screen.getByTestId('token-usage').textContent).toContain('~')

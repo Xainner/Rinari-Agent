@@ -4,6 +4,7 @@ import { commandMessage, engineApi, onEngineEvent, type SkillLearned } from '../
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands'
+import { useNotificationCenter } from '../../stores/notificationCenter'
 
 /**
  * Aviso cuando Rinari guarda o propone una skill (`skill.learned`). Con
@@ -20,6 +21,14 @@ export default function SkillLearnedNotifier() {
       if (event.event !== 'skill.learned') return
       const learned = event.payload as SkillLearned
       window.dispatchEvent(new Event(SKILLS_CHANGED_EVENT))
+      useNotificationCenter.getState().push({
+        module: 'skills',
+        title: learned.status === 'active'
+          ? t(learned.update ? 'skills.learned.updated' : 'skills.learned.saved', { name: learned.name })
+          : t('skills.learned.proposed', { name: learned.name }),
+        tone: learned.status === 'active' ? 'success' : 'warning',
+        target: { kind: 'skills' },
+      })
       if (learned.status === 'active') {
         toast.success(t(learned.update ? 'skills.learned.updated' : 'skills.learned.saved', { name: learned.name }), {
           action: {

@@ -44,6 +44,7 @@ import ScheduleForm from './ScheduleForm'
 import ScheduleNotifier from './ScheduleNotifier'
 import SchedulesView from './SchedulesView'
 import { describeSchedule, draftProblem, emptyDraft, runTone, useScheduleForm } from './scheduleModel'
+import { resetNotificationCenterForTests, useNotificationCenter } from '../../stores/notificationCenter'
 import { translate } from '../../i18n'
 
 const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate('es', key, vars)
@@ -82,6 +83,7 @@ beforeEach(() => {
   toasts.calls.length = 0
   sent.notifications.length = 0
   useScheduleForm.setState({ open: null })
+  resetNotificationCenterForTests()
   vi.mocked(engineApi.scheduleList).mockResolvedValue({ tasks: [task()], now: 0 })
   vi.mocked(engineApi.scheduleGet).mockResolvedValue({ task: task(), runs: [run(), run({ id: 'run_0', status: 'skipped', reason: 'missed', session_id: null, summary: null })] })
 })
@@ -176,4 +178,30 @@ it('turns engine events into a proposal card, a needs-you alert and a reminder',
   const count = sent.notifications.length
   act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { name: 'Agua', kind: 'reminder', status: 'skipped' } }))
   expect(sent.notifications).toHaveLength(count)
+})
+
+it('a task the owner asked for is created at once, with undo, and lands in the bell', async () => {
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  act(() => emit({ type: 'event', event: 'schedule.proposed', payload: {
+    created: true, session_id: 'ses_chat', proposal: { ...emptyDraft(), name: 'Sacar la basura', prompt: 'p' },
+    task: task({ id: 'sch_9', name: 'Sacar la basura', kind: 'reminder', schedule: { kind: 'once', at: '2026-09-24T22:23' } }),
+  } }))
+  const created = toasts.calls.find((call) => call.title === 'Tarea programada: Sacar la basura')
+  expect(created?.kind).toBe('success')
+  expect(useScheduleForm.getState().open).toBeNull()
+  expect(useNotificationCenter.getState().items[0]).toMatchObject({ module: 'schedules', title: 'Tarea programada: Sacar la basura' })
+  act(() => created?.options?.action?.onClick())
+  await waitFor(() => expect(engineApi.scheduleDelete).toHaveBeenCalledWith('sch_9'))
+  await waitFor(() => expect(useNotificationCenter.getState().items).toHaveLength(0))
+})
+
+it('a run that needs you and then finishes is one entry in the bell, updated', async () => {
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  act(() => emit({ type: 'event', event: 'schedule.run.needs_you', payload: { name: 'Backup', run_id: 'run_7', session_id: 'ses_run', reason: 'shell.exec' } }))
+  act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { name: 'Backup', kind: 'agent', run_id: 'run_7', status: 'completed', session_id: 'ses_run', summary: 'Hecho' } }))
+  const items = useNotificationCenter.getState().items
+  expect(items).toHaveLength(1)
+  expect(items[0]).toMatchObject({ tone: 'success', body: 'Hecho', target: { kind: 'session', sessionId: 'ses_run' } })
 })

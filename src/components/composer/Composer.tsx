@@ -255,6 +255,12 @@ export default function Composer({
     setSlashHighlight(0)
   }, [slashQ])
   const menuOpen = slashMatches.length > 0 || paneMatches.length > 0 || fileMatches.length > 0
+  const menuRef = useRef<HTMLDivElement>(null)
+  // Con las flechas, la opción elegida no se salía de la lista visible.
+  useEffect(() => {
+    const selected = menuRef.current?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]')
+    selected?.scrollIntoView?.({ block: 'nearest' })
+  }, [slashHighlight, menuBox])
   useLayoutEffect(() => {
     if (!menuOpen) {
       setMenuBox(null)
@@ -621,6 +627,7 @@ export default function Composer({
         )}
         {menuOpen && menuBox && createPortal(
           <div
+            ref={menuRef}
             data-testid="composer-suggestions"
             style={{ position: 'fixed', left: menuBox.left, width: menuBox.width, bottom: menuBox.bottom }}
             className="z-50 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl"

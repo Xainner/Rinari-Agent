@@ -13,8 +13,12 @@ export default function TokenUsage({ usage }: { usage?: TurnTokenUsage }) {
   const { t, lang } = useI18n()
   if (!usage) return null
   const number = (n: number) => new Intl.NumberFormat(lang).format(n)
+  // Al pie, lo que ocupa la conversación al terminar (crece turno a turno);
+  // lo que consumió el turno —cada llamada reenvía todo— va en el detalle.
+  const context = typeof usage.context_tokens === 'number' && usage.context_tokens > 0 ? usage.context_tokens : null
   const details = [
-    `${number(usage.total_tokens)} tokens`,
+    context !== null && `${t('usage.context')}: ${number(context)}`,
+    `${context !== null ? `${t('usage.turnCost')}: ` : ''}${number(usage.total_tokens)} tokens`,
     `${t('usage.input')}: ${number(usage.input_tokens)}`,
     `${t('usage.output')}: ${number(usage.output_tokens)}`,
     usage.cached_input_tokens != null && `${t('usage.cache')}: ${number(usage.cached_input_tokens)}`,
@@ -24,7 +28,7 @@ export default function TokenUsage({ usage }: { usage?: TurnTokenUsage }) {
   ].filter(Boolean).join(' · ')
   return <span className="tabular-nums" title={details}>
     <span data-testid="token-usage" aria-hidden="true">
-      {usage.source === 'reported' ? '' : '~'}{formatTokens(usage.total_tokens, lang)} tokens
+      {usage.source === 'reported' ? '' : '~'}{formatTokens(context ?? usage.total_tokens, lang)} tokens
     </span>
     <span className="sr-only">{details}</span>
   </span>

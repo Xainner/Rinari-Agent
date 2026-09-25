@@ -17,7 +17,7 @@ import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
 import ScheduleNotifier from './features/schedules/ScheduleNotifier'
-import BoardAttentionMenu from './features/board/BoardAttentionMenu'
+import NotificationCenter from './features/notifications/NotificationCenter'
 import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
 import { projectDisplayName } from './features/projects/workspaceModel'
 import {
@@ -566,7 +566,18 @@ function App() {
             workingCount={session.busySessionIds.size}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
-            attentionMenu={<BoardAttentionMenu labelFor={boardLabelFor} goBoard={goBoard} disabled={!session.ready} />}
+            attentionMenu={
+              <NotificationCenter
+                labelFor={boardLabelFor}
+                goBoard={goBoard}
+                disabled={!session.ready}
+                onOpenTarget={(target) => {
+                  if (target.kind === 'session') chooseSession(target.sessionId)
+                  else if (target.kind === 'schedules') goSchedules()
+                  else goSettings('skills')
+                }}
+              />
+            }
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}

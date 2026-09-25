@@ -19,6 +19,9 @@ extraResources:
       - "**/*"
   - from: build/app-update.yml
     to: app-update.yml
+  # Icono propio de la bandeja: el del ejecutable a 16 px no se reconoce.
+  - from: build/tray.ico
+    to: tray.ico
 afterPack: build/afterPack.cjs
 artifactName: Rinari-Agent-Payload-${version}-${arch}.${ext}
 forceCodeSigning: false

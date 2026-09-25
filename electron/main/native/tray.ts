@@ -5,7 +5,10 @@
  * como el menú y la X, y detiene el Engine de forma coordinada.
  */
 
-import { Menu, Tray, app, type NativeImage } from 'electron'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
 
 export interface TrayDeps {
   /** Muestra y enfoca la ventana principal (o la revela si nunca se mostró). */
@@ -34,9 +37,16 @@ export function createTrayController(deps: TrayDeps) {
   // Se pidió ocultar mientras el icono se cargaba: no se crea al llegar.
   let wanted = false
 
-  // El icono del ejecutable: en la app instalada es el de Rinari (afterPack
-  // lo incrusta); no hay que empaquetar otro archivo para la bandeja.
-  const icon = (): Promise<NativeImage> => app.getFileIcon(process.execPath, { size: 'small' })
+  // Icono propio (build/tray.ico, recortado sobre la cara y con los tamaños
+  // de la bandeja): el del ejecutable, reducido a 16 px, no se reconoce. El
+  // del ejecutable queda como respaldo si el archivo faltara.
+  const icon = async (): Promise<NativeImage> => {
+    const path = app.isPackaged
+      ? join(process.resourcesPath, 'tray.ico')
+      : join(__dirname, '..', 'build', 'tray.ico')
+    const image = existsSync(path) ? nativeImage.createFromPath(path) : null
+    return image && !image.isEmpty() ? image : app.getFileIcon(process.execPath, { size: 'small' })
+  }
 
   return {
     async show(): Promise<void> {

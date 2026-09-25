@@ -72,6 +72,21 @@ function renderComposer() {
 }
 
 describe('comandos / en el compositor', () => {
+  it('lleva a la vista la opción elegida con las flechas', async () => {
+    const scrolled: string[] = []
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.textContent ?? '') }
+    try {
+      const { box } = renderComposer()
+      const user = userEvent.setup()
+      await user.type(box, '/')
+      await user.keyboard('{ArrowDown}{ArrowDown}')
+      expect(scrolled.at(-1)).toContain('/new')
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
+  })
+
   it('abre el menú fuera del compositor, que recorta lo que sobresale de su caja', async () => {
     const { box } = renderComposer()
     await userEvent.setup().type(box, '/')

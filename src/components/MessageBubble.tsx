@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, X, CalendarClock } from 'lucide-react'
+import { ArrowUpRight, Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, X, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
@@ -85,6 +85,8 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
 
   if (message.role === 'user') {
     const quoted = message.origin?.kind === 'user' ? message.origin.quoted_source : null
+    const command = message.origin?.kind === 'user' && typeof message.origin.command === 'string' ? message.origin.command : null
+    const text = command ? withoutCommand(message.content, command) : message.content
     const quotedSession = quoted && typeof quoted.session_id === 'string' ? quoted.session_id : null
     return (
       <div data-testid="user-message-row" className="flex w-full min-w-0 flex-col items-end gap-1">
@@ -95,7 +97,8 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             {message.attachments.map((attachment) => <HistoricalAttachment key={attachment.id} attachment={attachment} />)}
           </div>}
-          {message.content}
+          {command && <><CommandChip name={command} kind={message.origin?.command_kind ?? 'command'} />{text && <br />}</>}
+          {text}
         </div>
         </div>
       </div>
@@ -193,6 +196,35 @@ function PeerBubble({ message }: { message: ChatMessage }) {
 
 /** El usuario reenvió a mano un texto de otro panel: se marca la cita, sin techo. */
 /** El prompt lo envió una tarea programada, no el usuario en ese momento. */
+/**
+ * El comando o la skill con que empezó el mensaje, como etiqueta en vez del
+ * «/nombre» crudo. El texto que escribiste después queda debajo.
+ */
+function CommandChip({ name, kind }: { name: string; kind: string }) {
+  const { t } = useI18n()
+  const skill = kind === 'skill'
+  const Icon = skill ? Sparkles : SquareSlash
+  return (
+    <span
+      data-testid="command-chip"
+      title={t(skill ? 'message.skillUsed' : 'message.commandUsed', { name })}
+      className="mb-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--accent-2)]"
+    >
+      <Icon size={12} aria-hidden="true" className="shrink-0" />
+      <span className="truncate">{name}</span>
+      <span className="sr-only">{t(skill ? 'message.skillUsed' : 'message.commandUsed', { name })}</span>
+    </span>
+  )
+}
+
+/** Quita el «/nombre» del principio: la etiqueta ya lo dice. */
+export function withoutCommand(content: string, name: string): string {
+  const prefix = `/${name}`
+  if (!content.startsWith(prefix)) return content
+  const rest = content.slice(prefix.length)
+  return rest === '' || /^\s/.test(rest) ? rest.trimStart() : content
+}
+
 function ScheduledBadge() {
   const { t } = useI18n()
   return (

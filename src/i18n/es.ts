@@ -1045,6 +1045,8 @@ export const es = {
   'approval.risk.medium': "medio",
   'approval.risk.high': "alto",
   'approval.risk.critical': "crítico",
+  'message.skillUsed': "Skill usada: {name}",
+  'message.commandUsed': "Comando usado: /{name}",
   'tools.title': 'Herramientas y permisos',
   'tools.policy': 'Policy efectiva (del engine)',
   'tools.catalog': 'Herramientas del motor ({n})',

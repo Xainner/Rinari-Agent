@@ -42,7 +42,10 @@ export default function PluginsView({ onChanged }: { onChanged: () => void }) {
         {t('plugins.title')}
       </h2>
       {plugins.length === 0 && (
-        <p className="text-sm text-[var(--text-subtle)]">{t('plugins.empty')}</p>
+        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-elevated)] p-6 text-center">
+          <p className="text-sm text-[var(--text)]">{t('plugins.empty')}</p>
+          <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('plugins.emptyHint')}</p>
+        </div>
       )}
       {plugins.map((plugin) => {
         const failing = plugin.diagnostics.filter((d) => d.code !== 'OK')

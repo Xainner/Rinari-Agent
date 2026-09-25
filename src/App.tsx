@@ -4,6 +4,8 @@ import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
+import { X } from 'lucide-react'
+import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
@@ -32,6 +34,8 @@ import {
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import { requestDockToggle } from './features/session/SessionWorkspace'
+import { useTerminalStore } from './features/terminal/terminalStore'
+import { AGENT_TAB } from './features/terminal/agentTab'
 import { dockNamespaceKey, nextDockIntent, useSessionDockStore, type DockSurface, type SessionDockState } from './stores/sessionDock'
 import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
@@ -228,6 +232,21 @@ function App() {
   const [wizardSnoozed, setWizardSnoozed] = useState(false)
   // Solicitud explícita de abrir el inspector de procesos de la sesión activa.
   const [processesSignal, setProcessesSignal] = useState(0)
+  // Aviso de degradación bajo la barra: se cierra con la × y no vuelve hasta
+  // que el error cambie. Cada uno queda además en la campana (Sistema).
+  const [dismissedBanner, setDismissedBanner] = useState<string | null>(null)
+  const bannerError = session.sessionsError ?? session.catalogError
+  useEffect(() => {
+    if (bannerError === null) return
+    const key = session.sessionsError !== null ? 'startup.sessionsDegraded' : 'startup.catalogDegraded'
+    useNotificationCenter.getState().push({
+      id: `system:${key}:${bannerError}`,
+      module: 'system',
+      title: translate(lang, key, { detail: bannerError }),
+      tone: 'warning',
+      target: session.sessionsError !== null ? undefined : { kind: 'providers' },
+    })
+  }, [bannerError, session.sessionsError, lang])
   useEffect(() => {
     if (
       session.ready &&
@@ -402,7 +421,13 @@ function App() {
         case 'processes':
           if (session.activeSession) {
             goChat()
-            setProcessesSignal((value) => value + 1)
+            if (session.status?.capabilities.desktop_terminal_v1 === true) {
+              // Los procesos viven en la pestaña «Rinari» del panel Terminal.
+              useTerminalStore.getState().select(session.activeSession, AGENT_TAB)
+              requestDockToggle({ sessionId: session.activeSession, surface: 'terminal' })
+            } else {
+              setProcessesSignal((value) => value + 1)
+            }
           }
           break
         case 'undo': case 'redo': document.execCommand(action); break
@@ -444,6 +469,7 @@ function App() {
   const degradedDetail = session.sessionsError ?? session.catalogError
   const degradedKey =
     session.sessionsError !== null ? 'startup.sessionsDegraded' : 'startup.catalogDegraded'
+  const degradedText = degradedDetail !== null ? translate(lang, degradedKey, { detail: degradedDetail }) : null
 
   return (
     <I18nProvider lang={lang}>
@@ -460,13 +486,13 @@ function App() {
         hasIdentity={session.processesIdentityCapability === true}
       >
       <AppShell
-        banner={degradedDetail !== null && (
+        banner={degradedText !== null && degradedText !== dismissedBanner && (
           <div
             role="alert"
             className="flex items-center gap-3 border-b border-amber-400/30 bg-amber-400/10 px-4 py-1.5 text-xs text-[var(--text)]"
           >
             <span className="min-w-0 flex-1 truncate">
-              {translate(lang, degradedKey, { detail: degradedDetail ?? '' })}
+              {degradedText}
             </span>
             <button
               type="button"
@@ -477,6 +503,15 @@ function App() {
               className="shrink-0 rounded-full border border-[var(--border)] px-3 py-0.5 transition-colors hover:border-[var(--accent)]/50"
             >
               {translate(lang, 'startup.retry')}
+            </button>
+            <button
+              type="button"
+              aria-label={translate(lang, 'startup.dismiss')}
+              title={translate(lang, 'startup.dismiss')}
+              onClick={() => setDismissedBanner(degradedText)}
+              className="shrink-0 rounded p-0.5 text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+            >
+              <X size={14} />
             </button>
           </div>
         )}
@@ -574,6 +609,7 @@ function App() {
                 onOpenTarget={(target) => {
                   if (target.kind === 'session') chooseSession(target.sessionId)
                   else if (target.kind === 'schedules') goSchedules()
+                  else if (target.kind === 'providers') goSettings('providers')
                   else goSettings('skills')
                 }}
               />

@@ -1,4 +1,4 @@
-import { ChevronDown, Plus, SquareTerminal, X } from 'lucide-react'
+import { Bot, ChevronDown, Plus, SquareTerminal, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -6,6 +6,8 @@ import { engineApi, type PtyShell } from '../../services/engine'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 import { nextTerminalTitle, useTerminalPrefs, useTerminalStore, type TerminalTab } from './terminalStore'
 import XtermView from './XtermView'
+import AgentProcesses from './AgentProcesses'
+import { AGENT_TAB, useAgentRunningCount } from './agentTab'
 
 const EMPTY: readonly TerminalTab[] = []
 /** Sesiones cuya primera terminal ya se abrió sola: cerrar la última no la reabre. */
@@ -44,10 +46,13 @@ export default function TerminalPanel({ sessionId }: { sessionId: string }) {
   const body = useRef<HTMLDivElement>(null)
   // La terminal que el usuario acaba de abrir o elegir toma el foco al montarse.
   const [focusPty, setFocusPty] = useState<string | null>(null)
-  const active = tabs.find((tab) => tab.ptyId === activeId) ?? tabs[0]
+  // La pestaña «Rinari» (lo que lanzó el agente) o una de tus terminales.
+  const agentActive = activeId === AGENT_TAB
+  const active = agentActive ? undefined : (tabs.find((tab) => tab.ptyId === activeId) ?? tabs[0])
+  const agentRunning = useAgentRunningCount(sessionId)
 
   const start = useCallback(
-    async (shell?: PtyShell) => {
+    async (shell?: PtyShell, options: { automatic?: boolean } = {}) => {
       setError('')
       setStarting(true)
       try {
@@ -68,8 +73,9 @@ export default function TerminalPanel({ sessionId }: { sessionId: string }) {
           rows: Math.max(5, Math.floor(height / (fontSize * 1.3))),
         })
         const current = useTerminalStore.getState().bySession[sessionId] ?? EMPTY
-        setFocusPty(started.pty_id)
-        add(sessionId, { ptyId: started.pty_id, title: nextTerminalTitle(chosen?.label ?? t('terminal.tab'), current) })
+        // Una apertura automática no le quita la pestaña elegida (p. ej. «Rinari»).
+        if (!options.automatic) setFocusPty(started.pty_id)
+        add(sessionId, { ptyId: started.pty_id, title: nextTerminalTitle(chosen?.label ?? t('terminal.tab'), current) }, { select: !options.automatic })
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       } finally {
@@ -97,11 +103,11 @@ export default function TerminalPanel({ sessionId }: { sessionId: string }) {
         for (const pty of alive) {
           const current = useTerminalStore.getState().bySession[sessionId] ?? EMPTY
           const label = catalog.shells.find((shell) => shell.command === pty.command)?.label ?? t('terminal.tab')
-          add(sessionId, { ptyId: pty.pty_id, title: nextTerminalTitle(label, current) })
+          add(sessionId, { ptyId: pty.pty_id, title: nextTerminalTitle(label, current) }, { select: false })
         }
         if (alive.length === 0 && !autoStarted.has(sessionId)) {
           autoStarted.add(sessionId)
-          await start()
+          await start(undefined, { automatic: true })
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
@@ -131,6 +137,20 @@ export default function TerminalPanel({ sessionId }: { sessionId: string }) {
     <div className="terminal-panel" data-testid="terminal-panel">
       <div className="terminal-tabs">
         <div className="terminal-tab-list" role="tablist" aria-label={t('terminal.tabs')}>
+        <div className={cn('terminal-tab', agentActive && 'is-active')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={agentActive}
+            title={t('terminal.agentTabHint')}
+            onClick={() => select(sessionId, AGENT_TAB)}
+            className="terminal-tab-label pr-2"
+          >
+            <Bot size={12} aria-hidden="true" className="shrink-0" />
+            <span className="truncate">{t('terminal.agentTab')}</span>
+            {agentRunning > 0 && <span className="terminal-tab-badge" aria-label={t('terminal.agentRunning', { n: agentRunning })}>{agentRunning}</span>}
+          </button>
+        </div>
         {tabs.map((tab) => (
           <div key={tab.ptyId} className={cn('terminal-tab', tab.ptyId === active?.ptyId && 'is-active', tab.exited && 'is-exited')}>
             {editing === tab.ptyId ? (
@@ -197,7 +217,9 @@ export default function TerminalPanel({ sessionId }: { sessionId: string }) {
         </p>
       )}
       <div ref={body} className="terminal-body">
-        {active ? (
+        {agentActive ? (
+          <AgentProcesses sessionId={sessionId} />
+        ) : active ? (
           <>
             <XtermView key={active.ptyId} ptyId={active.ptyId} fontSize={prefs.fontSize} exited={active.exited} autoFocus={focusPty === active.ptyId} />
             {active.exited && (

@@ -81,7 +81,7 @@ export default function SettingsView({
         />
       )}
       {section === 'terminal' && <TerminalView />}
-      {section === 'advanced' && <AdvancedSettings />}
+      {section === 'advanced' && <AdvancedSettings models={models} providers={providers} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
       {!['context', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
         <SoonSettings />

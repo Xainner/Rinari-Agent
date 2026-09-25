@@ -112,7 +112,8 @@ export default function ProcessInspector({
   onDismiss: (id: string) => void
   onPin: (id: string | null) => void
   onRefresh: () => void
-  onClose: () => void
+  /** Sin él (dentro del panel Terminal) no hay botón de cerrar. */
+  onClose?: () => void
 }) {
   const { t } = useI18n()
   const [filter, setFilter] = useState<Filter>(defaultFilter)
@@ -169,14 +170,16 @@ export default function ProcessInspector({
             {t(filterKey(item))}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('processes.closeInspector')}
-          className="processes-inspector-close"
-        >
-          <X size={15} />
-        </button>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('processes.closeInspector')}
+            className="processes-inspector-close"
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
 
       {(!narrow || !detailOnly) && (

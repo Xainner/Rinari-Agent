@@ -58,6 +58,7 @@ const { FakeTerminal, terminals } = vi.hoisted(() => {
   return { FakeTerminal, terminals }
 })
 vi.mock('@xterm/xterm', () => ({ Terminal: FakeTerminal }))
+vi.mock('./AgentProcesses', () => ({ default: ({ sessionId }: { sessionId: string }) => <div data-testid="agent-processes">{sessionId}</div> }))
 vi.mock('@xterm/addon-fit', () => ({ FitAddon: class { fit() {} } }))
 vi.mock('@xterm/xterm/css/xterm.css', () => ({}))
 
@@ -140,7 +141,8 @@ it('adopts the live terminals of the session after a window reload instead of op
   })
   panel()
   await screen.findByRole('tab', { name: /Símbolo del sistema/ })
-  expect(screen.getAllByRole('tab')).toHaveLength(1)
+  // «Rinari» (lo que lanzó el agente) y la terminal adoptada.
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Rinari', 'Símbolo del sistema'])
   expect(engineApi.ptyStart).not.toHaveBeenCalled()
 })
 
@@ -152,7 +154,7 @@ it('closing a tab terminates its PTY; closing the last one does not reopen it', 
   cleanup()
   panel()
   expect(await screen.findAllByRole('button', { name: 'Nueva terminal' })).toHaveLength(2)
-  expect(screen.queryByRole('tab')).toBeNull()
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Rinari'])
   expect(engineApi.ptyStart).toHaveBeenCalledTimes(1)
 })
 
@@ -191,4 +193,12 @@ it('marks the tab closed when the process exits and stops sending keys', async (
   terminals[0].type('x')
   expect(engineApi.ptyWrite).not.toHaveBeenCalled()
   expect(terminals[0].options.fontSize).toBe(15)
+})
+
+it('the Rinari tab shows what the agent started, not your terminals', async () => {
+  panel()
+  await screen.findByRole('tab', { name: /PowerShell/ })
+  fireEvent.click(screen.getByRole('tab', { name: 'Rinari' }))
+  expect((await screen.findByTestId('agent-processes')).textContent).toBe('ses_a')
+  expect(screen.queryByTestId('xterm-view')).toBeNull()
 })

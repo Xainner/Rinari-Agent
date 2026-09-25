@@ -16,7 +16,8 @@ export interface TerminalTab {
 interface TerminalState {
   bySession: Record<string, TerminalTab[]>
   active: Record<string, string>
-  add: (sessionId: string, tab: Omit<TerminalTab, 'exited' | 'exitCode'> & Partial<TerminalTab>) => void
+  /** `select: false` la añade sin cambiar la pestaña elegida (aperturas automáticas). */
+  add: (sessionId: string, tab: Omit<TerminalTab, 'exited' | 'exitCode'> & Partial<TerminalTab>, options?: { select?: boolean }) => void
   remove: (sessionId: string, ptyId: string) => void
   select: (sessionId: string, ptyId: string) => void
   rename: (sessionId: string, ptyId: string, title: string) => void
@@ -26,14 +27,15 @@ interface TerminalState {
 export const useTerminalStore = create<TerminalState>((set) => ({
   bySession: {},
   active: {},
-  add: (sessionId, tab) =>
+  add: (sessionId, tab, options = {}) =>
     set((state) => {
       const tabs = state.bySession[sessionId] ?? []
       if (tabs.some((item) => item.ptyId === tab.ptyId)) return state
       const next: TerminalTab = { exited: false, exitCode: null, ...tab }
+      const keep = options.select === false && state.active[sessionId] !== undefined
       return {
         bySession: { ...state.bySession, [sessionId]: [...tabs, next] },
-        active: { ...state.active, [sessionId]: next.ptyId },
+        active: keep ? state.active : { ...state.active, [sessionId]: next.ptyId },
       }
     }),
   remove: (sessionId, ptyId) =>

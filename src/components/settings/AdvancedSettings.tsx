@@ -1,8 +1,10 @@
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { Switch } from '../ui/switch'
+import type { ModelSummary, ProviderSummary } from '../../services/engine'
+import ExecutionSettings from './ExecutionSettings'
 
-export default function AdvancedSettings() {
+export default function AdvancedSettings({ models = [], providers = [] }: { models?: ModelSummary[]; providers?: ProviderSummary[] }) {
   const { t } = useI18n()
   const enabled = useUIStore((state) => state.showTechnicalActivityNames)
   const setEnabled = useUIStore((state) => state.setShowTechnicalActivityNames)
@@ -19,6 +21,7 @@ export default function AdvancedSettings() {
         </div>
         <Switch checked={enabled} onCheckedChange={setEnabled} aria-label={t('settings.advanced.technicalActivity')} />
       </div>
+      <ExecutionSettings models={models} providers={providers} />
     </section>
   )
 }

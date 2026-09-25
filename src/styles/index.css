@@ -871,6 +871,12 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .pane-notice-action:hover { background: var(--bg-hover); }
 .pane-dock { display: flex; flex: 0 0 auto; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--border); background: var(--bg-app); }
 .pane-dock-drawer { position: absolute; inset: 0 0 0 auto; z-index: 20; width: min(92%, 420px); box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45); }
+/* Desplegables nativos: la lista abierta la pinta el sistema; sin colores
+ * propios salía blanca sobre la app oscura. Las opciones toman el tema. */
+select { color-scheme: inherit; }
+select option,
+select optgroup { background-color: var(--bg-elevated); color: var(--text); }
+select option:disabled { color: var(--text-subtle); }
 .pane-dock-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
 /* Cuatro superficies no caben con nombre en un dock estrecho: las inactivas
  * quedan solo con su icono (el nombre sigue en aria-label y en el tooltip). */
@@ -893,6 +899,9 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .terminal-tab.is-exited .terminal-tab-label { opacity: .6; }
 .terminal-tab-label { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: 5px; padding: 3px 4px 3px 8px; font-size: 12px; white-space: nowrap; }
 .terminal-tab-close { flex: none; }
+.terminal-tab-badge { flex: none; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+.terminal-agent { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: auto; padding: 8px; }
+.terminal-agent .processes-inspector { flex: 1 1 auto; }
 .terminal-tab-close { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 4px; color: var(--text-subtle); }
 .terminal-tab-close:hover { background: var(--bg-subtle); color: var(--text); }
 .terminal-tab-input { width: 120px; margin: 2px 4px; padding: 1px 4px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg-subtle); color: var(--text); font-size: 12px; }

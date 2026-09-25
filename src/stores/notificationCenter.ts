@@ -8,12 +8,13 @@ import { create } from 'zustand'
  * Es presentación de este escritorio (localStorage, con tope); la verdad de
  * cada cosa sigue en el Engine.
  */
-export type NotificationModule = 'schedules' | 'skills'
+export type NotificationModule = 'schedules' | 'skills' | 'system'
 
 export type NotificationTarget =
   | { kind: 'session'; sessionId: string }
   | { kind: 'schedules' }
   | { kind: 'skills' }
+  | { kind: 'providers' }
 
 export interface CenterNotification {
   id: string
@@ -29,7 +30,7 @@ export interface CenterNotification {
 
 export const NOTIFICATION_CENTER_KEY = 'rinari.notifications.v1'
 export const NOTIFICATION_LIMIT = 100
-export const NOTIFICATION_MODULES: readonly NotificationModule[] = ['schedules', 'skills']
+export const NOTIFICATION_MODULES: readonly NotificationModule[] = ['schedules', 'skills', 'system']
 
 function load(): CenterNotification[] {
   try {

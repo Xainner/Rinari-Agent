@@ -1027,6 +1027,8 @@ export const en: Record<I18nKey, string> = {
   'approval.risk.medium': "medium",
   'approval.risk.high': "high",
   'approval.risk.critical': "critical",
+  'message.skillUsed': "Skill used: {name}",
+  'message.commandUsed': "Command used: /{name}",
   'tools.title': 'Tools & Permissions',
   'tools.policy': 'Effective policy (engine-owned)',
   'tools.catalog': 'Engine tools ({n})',

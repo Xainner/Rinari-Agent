@@ -34,6 +34,7 @@ import { formatTool, toolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
+import { approvalCopy } from './approvalCopy'
 
 type DisplayItem = TimelineItem | { id: string; type: 'tool-group'; items: Extract<TimelineItem, { type: 'tool' }>[] }
 
@@ -161,12 +162,14 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     )
   }
   if (item.type === 'approval') {
+    const copy = approvalCopy(item, t)
     const pending = item.status === 'pending'
     const resolving = item.status === 'resolving'
     const status = item.status === 'allowed' ? (lang === 'es' ? 'Concedido' : 'Allowed') : item.status === 'denied' ? (lang === 'es' ? 'Denegado' : 'Denied') : item.status === 'expired' ? (lang === 'es' ? 'Expirado' : 'Expired') : ''
     return (
       <div className="my-2 border-l-2 border-amber-400/50 py-1 pl-3 text-[13px]">
-        <div className="flex items-center gap-2 text-[var(--text)]"><ShieldAlert size={14} className="text-amber-400" />{item.description || item.capability}<span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">{item.risk}</span></div>
+        <div className="flex flex-wrap items-center gap-2 text-[var(--text)]"><ShieldAlert size={14} className="text-amber-400" /><span title={item.description}>{copy.title}</span>{copy.tool && <span className="font-mono text-[10px] text-[var(--text-subtle)]">{copy.tool}</span>}<span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">{copy.risk}</span></div>
+        {copy.note && <div className="mt-1 text-[11px] text-amber-200/80">{copy.note}</div>}
         {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</div>}
         {(pending || resolving) ? (
           <div className="mt-2 flex flex-wrap gap-2">

@@ -3535,6 +3535,40 @@
       "host_effects": []
     },
     {
+      "command": "permission_grants_list",
+      "module": "ecosystem",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "permission.grants.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "permission_grants_revoke",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "permission.grants.revoke",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "bundle_list",
       "module": "workflow",
       "args": [],

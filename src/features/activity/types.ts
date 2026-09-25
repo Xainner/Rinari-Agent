@@ -76,6 +76,8 @@ export interface ApprovalTimelineItem extends TimelineItemBase {
   choices?: string[]
   ruleId?: string
   reusable?: boolean
+  /** Dónde queda «Siempre…»: este proyecto o todos los chats sueltos. */
+  grantScope?: 'project' | 'chats'
 }
 
 export interface ChangeSetTimelineItem extends TimelineItemBase {

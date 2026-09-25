@@ -7,6 +7,7 @@ import {
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
+import SavedGrants from './SavedGrants'
 
 /**
  * Ajustes > Tools: centro de herramientas y permisos. Solo lectura del
@@ -60,6 +61,8 @@ export default function ToolsView() {
           <p className="text-xs text-[var(--text-subtle)]">{note}</p>
         )}
       </Section>
+
+      <SavedGrants />
 
       <Section title={t('tools.catalog', { n: String(tools.length) })}>
         <p className="text-xs text-[var(--text-subtle)]">{t('tools.catalogNote')}</p>

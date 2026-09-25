@@ -630,6 +630,19 @@ export function commandMessage(error: unknown): string {
   return String(error);
 }
 
+export interface PermissionGrant {
+  id: string
+  /** Raíz del proyecto, o "chats" para todas las conversaciones sueltas. */
+  scope: string
+  scope_kind: 'project' | 'chats'
+  scope_label: string
+  capability: string
+  rule_id: string | null
+  target: string | null
+  description: string
+  granted_at: string
+}
+
 export type SteerResult =
   | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string }
   | { session_id: string; delivery: 'queued'; position: number }
@@ -940,6 +953,11 @@ export const engineApi = {
       session_id: input.sessionId ?? null,
     }),
   toolList: () => platform().command<{ tools: NativeTool[] }>("tool_list"),
+  /** «Siempre en este proyecto» (o en los chats) guardado por el Engine. */
+  permissionGrantsList: () =>
+    platform().command<{ grants: PermissionGrant[] }>("permission_grants_list"),
+  permissionGrantsRevoke: (id: string) =>
+    platform().command<{ id: string; revoked: boolean }>("permission_grants_revoke", { id }),
   policyGet: () =>
     platform().command<{ mode_profile: Record<string, string>; note: string }>("policy_get"),
   artifactList: (session_id?: string) =>

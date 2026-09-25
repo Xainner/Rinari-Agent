@@ -786,14 +786,14 @@ export default function Composer({
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1.5">
-              {sessionMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">PLAN y REVIEW no modifican archivos ni ejecutan comandos. Estos permisos definen qué carpetas pueden leer.</p>}
+              {sessionMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">PLAN y REVIEW leen libremente y no modifican archivos ni ejecutan comandos.</p>}
               {([
-                ['read-only', 'Solo lectura', 'No inicia shell ni procesos y no modifica archivos.'],
-                ['workspace', 'Workspace', 'Trabaja dentro del proyecto; pide permiso ante una mutación externa detectable.'],
-                ['full-access', 'Acceso completo', 'Permite mutaciones locales externas. Credenciales, trabajo previo y Git remoto siguen protegidos.'],
+                ['read-only', 'Solo lectura', 'Lee archivos e internet. No escribe, no ejecuta y no envía nada.'],
+                ['workspace', 'Workspace', 'Libre en el proyecto, localhost e internet para leer. Pregunta una vez para actuar fuera: escribir, enviar datos, git push.'],
+                ['full-access', 'Acceso completo', 'No pregunta. Solo force push, borrar fuera del proyecto y llaves del sistema piden confirmación.'],
               ] as const).map(([value, label, description]) => (
                 <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? 'Actualiza Rinari Engine para usar acceso completo con garantías v2.' : undefined} onClick={() => { setPermissionOpen(false); onPermissionChange(value) }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
-                  <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? (value === 'full-access' ? 'Lee carpetas externas sin pedir permiso. Las credenciales siguen protegidas.' : value === 'workspace' ? 'Lee el proyecto y pide permiso para leer carpetas externas.' : 'Lee únicamente la carpeta de esta sesión.') : description}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? 'Lee cualquier archivo e internet sin preguntar. Las llaves del sistema siguen protegidas.' : description}</span></span>
                   {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
                 </button>
               ))}

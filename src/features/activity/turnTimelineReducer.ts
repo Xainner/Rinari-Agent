@@ -283,6 +283,7 @@ function mergeEventItem(
         : prior?.choices,
       ruleId: text(payload.rule_id) || prior?.ruleId,
       reusable: typeof payload.reusable === 'boolean' ? payload.reusable : prior?.reusable,
+      grantScope: payload.grant_scope === 'project' || payload.grant_scope === 'chats' ? payload.grant_scope : prior?.grantScope,
     }
   }
   if (event.startsWith('turn.changes.')) {

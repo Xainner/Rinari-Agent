@@ -460,6 +460,22 @@
       "callers": []
     },
     {
+      "command": "permission_grants_list",
+      "kind": "engine",
+      "method": "permission.grants.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "permission_grants_revoke",
+      "kind": "engine",
+      "method": "permission.grants.revoke",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "plugin_diagnostics",
       "kind": "engine",
       "method": "plugin.diagnostics",
@@ -1466,10 +1482,10 @@
     }
   ],
   "summary": {
-    "commands": 174,
-    "engine_backed": 168,
+    "commands": 176,
+    "engine_backed": 170,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 55
+    "without_callers": 56
   }
 }

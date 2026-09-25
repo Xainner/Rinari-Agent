@@ -350,8 +350,12 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
     ['deny', lang === 'es' ? 'Denegar' : 'Deny'],
     ['allow_once', lang === 'es' ? 'Permitir una vez' : 'Allow once'],
     ['allow_session', lang === 'es' ? 'Permitir en este chat' : 'Allow in this chat'],
+    ['allow_project', item.grantScope === 'chats'
+      ? (lang === 'es' ? 'Siempre en los chats' : 'Always in chats')
+      : (lang === 'es' ? 'Siempre en este proyecto' : 'Always in this project')],
   ]
-  const offered = choices.filter(([decision]) => !item.choices || item.choices.includes(decision))
+  // «Siempre…» solo si el Engine lo ofrece: uno anterior a permisos v3 no lo entiende.
+  const offered = choices.filter(([decision]) => item.choices ? item.choices.includes(decision) : decision !== 'allow_project')
   const buttonClass = 'min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--text)] disabled:opacity-50'
   // La tarea suma el permiso y la ejecución sigue: las próximas no preguntan.
   const allowForTask = async () => {

@@ -64,6 +64,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "peer_message_cancel": {"method":"session.peer_message.cancel","params":[{"key":"message_id","from":"message_id","optional":false}]},
   "peer_message_forward": {"method":"session.peer_message.forward","params":[{"key":"target_session_id","from":"target_session_id","optional":false},{"key":"message","from":"message","optional":false},{"key":"source_session_id","from":null,"optional":true},{"key":"quoted_source","from":null,"optional":true}],"manual":true},
   "peer_message_list": {"method":"session.peer_message.list","params":[{"key":"session_id","from":"session_id","optional":false}]},
+  "permission_grants_list": {"method":"permission.grants.list","params":[]},
+  "permission_grants_revoke": {"method":"permission.grants.revoke","params":[{"key":"id","from":"id","optional":false}]},
   "plugin_diagnostics": {"method":"plugin.diagnostics","params":[]},
   "plugin_list": {"method":"plugin.list","params":[]},
   "plugin_set_enabled": {"method":"plugin.enable","params":[{"key":"name","from":"name","optional":false}],"manual":true},

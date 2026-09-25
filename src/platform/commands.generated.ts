@@ -55,6 +55,8 @@ export type DesktopCommand =
   | "peer_message_cancel"
   | "peer_message_forward"
   | "peer_message_list"
+  | "permission_grants_list"
+  | "permission_grants_revoke"
   | "plugin_diagnostics"
   | "plugin_list"
   | "plugin_set_enabled"
@@ -231,6 +233,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "peer_message_cancel",
   "peer_message_forward",
   "peer_message_list",
+  "permission_grants_list",
+  "permission_grants_revoke",
   "plugin_diagnostics",
   "plugin_list",
   "plugin_set_enabled",
@@ -422,6 +426,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "peer_message_cancel",
   "peer_message_forward",
   "peer_message_list",
+  "permission_grants_list",
+  "permission_grants_revoke",
   "plugin_diagnostics",
   "plugin_list",
   "plugin_set_enabled",

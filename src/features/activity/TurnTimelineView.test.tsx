@@ -54,6 +54,21 @@ describe('TurnTimelineView', () => {
     expect(screen.queryByRole('button', { name: 'Permitir en este chat' })).toBeNull()
   })
 
+  it('offers «always here» only when the engine does, named for the project or the chats', async () => {
+    const resolve = vi.fn()
+    const approval = { id: 'approval:p1', type: 'approval' as const, activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending' as const, capability: 'network.outbound', target: 'api.example.com', risk: 'medium', description: 'Enviar datos' }
+    const legacy = view({ ...base, status: 'approval', items: [approval] }, 1_200, resolve)
+    expect(screen.queryByRole('button', { name: /Siempre/ })).toBeNull()
+    legacy.unmount()
+    const offered = { ...approval, choices: ['deny', 'allow_once', 'allow_session', 'allow_project'], grantScope: 'project' as const }
+    const project = view({ ...base, status: 'approval', items: [offered] }, 1_200, resolve)
+    await userEvent.click(screen.getByRole('button', { name: 'Siempre en este proyecto' }))
+    expect(resolve).toHaveBeenCalledWith('p1', 'allow_project')
+    project.unmount()
+    view({ ...base, status: 'approval', items: [{ ...offered, grantScope: 'chats' as const }] }, 1_200, resolve)
+    expect(screen.getByRole('button', { name: 'Siempre en los chats' })).toBeTruthy()
+  })
+
   it('a scheduled run offers to allow the capability for the whole task', async () => {
     const grant = vi.spyOn(engineApi, 'scheduleGrant').mockResolvedValue({} as never)
     const resolve = vi.fn()

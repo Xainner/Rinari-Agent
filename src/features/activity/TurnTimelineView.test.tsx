@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { TurnTimeline } from './types'
 import TurnTimelineView from './TurnTimelineView'
+import { engineApi } from '../../services/engine'
 
 const base: TurnTimeline = {
   turnId: 't1', sessionId: 's1', status: 'running', startedAt: 1_000,
@@ -51,6 +52,20 @@ describe('TurnTimelineView', () => {
     view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'fs.write', risk: 'high', description: 'Archivo sensible', choices: ['deny', 'allow_once'], reusable: false }] }, 1_200)
     expect(screen.getByRole('button', { name: 'Permitir una vez' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Permitir en este chat' })).toBeNull()
+  })
+
+  it('a scheduled run offers to allow the capability for the whole task', async () => {
+    const grant = vi.spyOn(engineApi, 'scheduleGrant').mockResolvedValue({} as never)
+    const resolve = vi.fn()
+    const approval = { id: 'approval:p1', type: 'approval' as const, activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending' as const, capability: 'shell.exec', target: 'backup.ps1', risk: 'high', description: 'Ejecutar comando' }
+    const rendered = view({ ...base, status: 'approval', items: [approval] }, 1_200, resolve)
+    expect(screen.queryByRole('button', { name: 'Permitir para esta tarea' })).toBeNull()
+    rendered.unmount()
+    view({ ...base, status: 'approval', origin: { kind: 'schedule' }, items: [approval] }, 1_200, resolve)
+    await userEvent.click(screen.getByRole('button', { name: 'Permitir para esta tarea' }))
+    expect(grant).toHaveBeenCalledWith({ sessionId: 's1', capability: 'shell.exec', target: 'backup.ps1' })
+    expect(resolve).toHaveBeenCalledWith('p1', 'allow_session')
+    grant.mockRestore()
   })
 
   it('shows a compact per-turn changeset after the final response', () => {

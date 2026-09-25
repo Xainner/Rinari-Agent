@@ -442,3 +442,14 @@ describe('conversaciones fijadas', () => {
     }
   })
 })
+
+describe('AppSidebar destinations', () => {
+  it('shows Tareas programadas only when the Engine offers them', async () => {
+    renderSidebar()
+    expect(screen.queryByRole('button', { name: 'Tareas programadas' })).toBeNull()
+    cleanup()
+    const props = renderSidebar({ onOpenSchedules: vi.fn() })
+    await userEvent.click(screen.getByRole('button', { name: 'Tareas programadas' }))
+    expect(props.onOpenSchedules).toHaveBeenCalled()
+  })
+})

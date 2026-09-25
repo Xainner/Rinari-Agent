@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import {
   Archive,
   ArchiveRestore,
+  CalendarClock,
   ChevronDown,
   Columns3,
   Copy,
@@ -54,6 +55,8 @@ export interface AppSidebarProps {
   onSearch: () => void
   onOpenSettings: () => void
   onOpenEngine: () => void
+  /** Tareas programadas; ausente si el Engine no anuncia `scheduled_tasks_v1`. */
+  onOpenSchedules?: () => void
   /** Home del proyecto de la sesión activa; null si no hay. */
   onOpenProjectHome: (() => void) | null
   onNewChat: () => void
@@ -122,6 +125,7 @@ export function AppSidebar({
   collapsed,
   onSearch,
   onOpenEngine,
+  onOpenSchedules,
   onOpenProjectHome,
   onNewChat,
   onNewProjectChat,
@@ -399,6 +403,11 @@ export function AppSidebar({
         <RailButton label={t('sidebar.commands')} onClick={onSearch}>
           <Search size={17} />
         </RailButton>
+        {onOpenSchedules && (
+          <RailButton label={t('sidebar.schedules')} onClick={onOpenSchedules}>
+            <CalendarClock size={17} />
+          </RailButton>
+        )}
         {onOpenProjectHome && (
           <RailButton label={t('sidebar.projects')} onClick={onOpenProjectHome}>
             <FolderGit2 size={17} />
@@ -427,6 +436,18 @@ export function AppSidebar({
         </button>
 
       </div>
+      {/* Destinos: páginas propias bajo «Nueva conversación». Cada una aparece
+          cuando el Engine la ofrece. */}
+      {onOpenSchedules && (
+        <button
+          type="button"
+          onClick={onOpenSchedules}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+        >
+          <CalendarClock size={15} aria-hidden="true" />
+          <span className="truncate">{t('sidebar.schedules')}</span>
+        </button>
+      )}
       </div>
 
       <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5 transition-colors focus-within:border-[var(--border-strong)]">

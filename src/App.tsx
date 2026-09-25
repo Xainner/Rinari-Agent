@@ -15,6 +15,8 @@ import { useSessionHasContent } from './features/engine/sessionSelectors'
 import SingleSessionView from './features/engine/SingleSessionView'
 import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
+import ScheduleForm from './features/schedules/ScheduleForm'
+import ScheduleNotifier from './features/schedules/ScheduleNotifier'
 import BoardAttentionMenu from './features/board/BoardAttentionMenu'
 import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
 import { projectDisplayName } from './features/projects/workspaceModel'
@@ -46,6 +48,7 @@ import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const FlowView = lazy(() => import('./features/flow/FlowView'))
+const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
 
 const APP_VERSION = '0.2.0'
 
@@ -64,6 +67,7 @@ function App() {
   const goFlows = useUIStore((s) => s.goFlows)
   const toggleBoards = useUIStore((s) => s.toggleBoards)
   const goEngine = useUIStore((s) => s.goEngine)
+  const goSchedules = useUIStore((s) => s.goSchedules)
   const goWorkspace = useUIStore((s) => s.goWorkspace)
   const goProject = useUIStore((s) => s.goProject)
   const projectRoot = useUIStore((s) => s.projectRoot)
@@ -330,6 +334,7 @@ function App() {
     useUIStore.getState().setFlowHomeId(homeId)
   }, [homeId])
   /** Elegir una sesión desde sidebar/paleta: en Boards enfoca o añade su panel; en Normal la selecciona. */
+  const schedulesEnabled = session.status?.capabilities.scheduled_tasks_v1 === true
   const chooseSession = (id: string) => {
     if (view === 'board') {
       const existing = useBoardStore.getState().paneForSession(id)
@@ -382,6 +387,7 @@ function App() {
         case 'appearance': goSettings('appearance'); break
         case 'about': goSettings('about'); break
         case 'engine': goEngine(); break
+        case 'schedules': if (schedulesEnabled) goSchedules(); break
         case 'sidebar': toggleSidebarCollapsed(); break
         // Las tres superficies del dock comparten destino y semántica: abrir,
         // cambiar de pestaña o cerrar según lo que ya esté visible. El
@@ -444,6 +450,8 @@ function App() {
       <EngineProvider session={session}>
       <BoardActivityController />
       <SkillLearnedNotifier />
+      {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
+      <ScheduleForm />
       <DesktopContextMenu />
       <ProcessRuntimeProvider
         epoch={session.connectionEpoch ?? 0}
@@ -478,6 +486,7 @@ function App() {
             onSearch={() => setPaletteOpen(true)}
             onOpenSettings={() => goSettings()}
             onOpenEngine={goEngine}
+            onOpenSchedules={schedulesEnabled ? goSchedules : undefined}
             onOpenProjectHome={
               session.activeProjectRoot ? () => goProject(session.activeProjectRoot as string) : null
             }
@@ -579,6 +588,11 @@ function App() {
           </Suspense>
         )}
         {view === 'engine' && <EngineConsole session={session} />}
+        {view === 'schedules' && (
+          <Suspense fallback={null}>
+            <SchedulesView onOpenSession={chooseSession} />
+          </Suspense>
+        )}
         {view === 'workspace' && (
           <WorkspaceView session={activeRecord} onBack={goChat} />
         )}

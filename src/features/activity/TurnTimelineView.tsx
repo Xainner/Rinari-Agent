@@ -16,7 +16,7 @@ import {
   SquareTerminal,
   TestTube2,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
@@ -339,14 +339,41 @@ function StreamOutput({ label, content, warning = false }: { label: string; cont
   </div>
 }
 
+/** Sesión de una ejecución programada: sus aprobaciones ofrecen «Permitir para esta tarea». */
+const ScheduledRunContext = createContext<string | null>(null)
+
 function ApprovalActions({ item, disabled, onResolve }: { item: Extract<TimelineItem, { type: 'approval' }>; disabled: boolean; onResolve: (id: string, decision: string) => void }) {
   const { lang } = useI18n()
+  const runSession = useContext(ScheduledRunContext)
+  const [granting, setGranting] = useState(false)
   const choices = [
     ['deny', lang === 'es' ? 'Denegar' : 'Deny'],
     ['allow_once', lang === 'es' ? 'Permitir una vez' : 'Allow once'],
     ['allow_session', lang === 'es' ? 'Permitir en este chat' : 'Allow in this chat'],
   ]
-  return choices.filter(([decision]) => !item.choices || item.choices.includes(decision)).map(([decision, label]) => <button key={decision} type="button" disabled={disabled} onClick={() => onResolve(item.approvalId, decision)} className="min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--text)] disabled:opacity-50">{label}</button>)
+  const offered = choices.filter(([decision]) => !item.choices || item.choices.includes(decision))
+  const buttonClass = 'min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--text)] disabled:opacity-50'
+  // La tarea suma el permiso y la ejecución sigue: las próximas no preguntan.
+  const allowForTask = async () => {
+    if (!runSession) return
+    setGranting(true)
+    try {
+      await engineApi.scheduleGrant({ sessionId: runSession, capability: item.capability, target: item.target ?? null })
+      onResolve(item.approvalId, 'allow_session')
+    } catch (error) {
+      toast.error(commandMessage(error))
+    } finally {
+      setGranting(false)
+    }
+  }
+  return <>
+    {offered.map(([decision, label]) => <button key={decision} type="button" disabled={disabled} onClick={() => onResolve(item.approvalId, decision)} className={buttonClass}>{label}</button>)}
+    {runSession && item.reusable !== false && offered.some(([decision]) => decision === 'allow_session') && (
+      <button type="button" disabled={disabled || granting} onClick={() => void allowForTask()} className={buttonClass}>
+        {lang === 'es' ? 'Permitir para esta tarea' : 'Allow for this task'}
+      </button>
+    )}
+  </>
 }
 
 const visualPending = (item: VisionTimelineItem) => ['queued', 'preparing', 'running'].includes(item.status)
@@ -388,7 +415,17 @@ function VisualProgress({ items, status, onResolveApproval }: {
  * una sola vez) y una fila compacta de metadatos/acciones (`TurnMeta`) que no
  * repite el cuerpo.
  */
-export default function TurnTimelineView({ timeline, user, now, onResolveApproval, planActions, onReviewChanges }: Props) {
+export default function TurnTimelineView(props: Props) {
+  const { timeline } = props
+  const runSession = timeline.origin?.kind === 'schedule' ? timeline.sessionId : null
+  return (
+    <ScheduledRunContext.Provider value={runSession}>
+      <TurnTimelineBody {...props} />
+    </ScheduledRunContext.Provider>
+  )
+}
+
+function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges }: Props) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
   const visualItems = timeline.items.filter((item): item is VisionTimelineItem => item.type === 'vision' && item.route !== 'conversation')

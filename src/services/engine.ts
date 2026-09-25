@@ -337,6 +337,60 @@ export interface SessionDeleteResult {
   };
 }
 
+/** Horario de una tarea programada, en la hora local de este equipo. */
+export type ScheduleSpec =
+  | { kind: 'once'; at: string }
+  | { kind: 'interval'; minutes: number }
+  | { kind: 'daily'; time: string }
+  | { kind: 'weekly'; days: number[]; time: string }
+
+export interface ScheduleGrant {
+  capability: string
+  target: string | null
+}
+
+export type ScheduledRunStatus = 'running' | 'needs_you' | 'completed' | 'failed' | 'cancelled' | 'blocked' | 'skipped'
+
+export interface ScheduledRun {
+  id: string
+  task_id: string
+  status: ScheduledRunStatus
+  trigger: 'schedule' | 'manual'
+  scheduled_for: number | null
+  started_at: number | null
+  finished_at: number | null
+  session_id: string | null
+  turn_id: string | null
+  summary: string | null
+  reason: string | null
+}
+
+/** Lo que se envía al crear o editar una tarea (`scheduled_tasks_v1`). */
+export interface ScheduledTaskInput {
+  name: string
+  kind: 'agent' | 'reminder'
+  schedule: ScheduleSpec
+  prompt: string
+  project_id?: string | null
+  mode?: 'plan' | 'build' | 'review'
+  model?: string | null
+  skills?: string[]
+  grants?: ScheduleGrant[]
+  enabled?: boolean
+}
+
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model'>> {
+  id: string
+  project_id: string | null
+  model: string | null
+  next_run_at: number | null
+  created_at: number
+  updated_at: number
+  /** Descripción corta del Engine, en inglés; la interfaz arma la suya. */
+  description: string
+  last_run: ScheduledRun | null
+}
+
 /** Shell que la terminal puede abrir (`desktop_terminal_v1`). */
 export interface PtyShell {
   id: string
@@ -861,6 +915,26 @@ export const engineApi = {
     platform().command<{ ptys: { pty_id: string; command: string; alive: boolean; session_id: string | null }[] }>('pty_list'),
   ptyTerminate: (ptyId: string) =>
     platform().command<{ pty_id: string; alive: boolean; exit_code: number | null }>('pty_terminate', { pty_id: ptyId }),
+  // Tareas programadas: las corre el Engine, con la app abierta o en la bandeja.
+  scheduleList: () => platform().command<{ tasks: ScheduledTask[]; now: number }>('schedule_list'),
+  scheduleGet: (taskId: string) =>
+    platform().command<{ task: ScheduledTask; runs: ScheduledRun[] }>('schedule_get', { task_id: taskId }),
+  scheduleCreate: (task: ScheduledTaskInput) =>
+    platform().command<{ task: ScheduledTask }>('schedule_create', { task: task as unknown as Record<string, unknown> }),
+  scheduleUpdate: (taskId: string, patch: Partial<ScheduledTaskInput>) =>
+    platform().command<{ task: ScheduledTask }>('schedule_update', { task_id: taskId, patch: patch as unknown as Record<string, unknown> }),
+  scheduleDelete: (taskId: string) =>
+    platform().command<{ deleted: boolean }>('schedule_delete', { task_id: taskId }),
+  scheduleRunNow: (taskId: string) =>
+    platform().command<{ run: ScheduledRun }>('schedule_run_now', { task_id: taskId }),
+  /** «Permitir para esta tarea»: por tarea o por la sesión de la ejecución. */
+  scheduleGrant: (input: { capability: string; target?: string | null; taskId?: string; sessionId?: string }) =>
+    platform().command<{ task: ScheduledTask }>('schedule_grant', {
+      capability: input.capability,
+      target: input.target ?? null,
+      task_id: input.taskId ?? null,
+      session_id: input.sessionId ?? null,
+    }),
   toolList: () => platform().command<{ tools: NativeTool[] }>("tool_list"),
   policyGet: () =>
     platform().command<{ mode_profile: Record<string, string>; note: string }>("policy_get"),

@@ -72,6 +72,15 @@ function renderComposer() {
 }
 
 describe('comandos / en el compositor', () => {
+  it('abre el menú fuera del compositor, que recorta lo que sobresale de su caja', async () => {
+    const { box } = renderComposer()
+    await userEvent.setup().type(box, '/')
+    const menu = screen.getByTestId('composer-suggestions')
+    // En un portal, con posición fija: el contenedor con scroll ya no lo tapa.
+    expect(box.closest('.composer-root')?.contains(menu)).toBe(false)
+    expect(menu.style.position).toBe('fixed')
+  })
+
   it('muestra el menú con descripciones y skills, y completa al elegir', async () => {
     const { box } = renderComposer()
     const user = userEvent.setup()

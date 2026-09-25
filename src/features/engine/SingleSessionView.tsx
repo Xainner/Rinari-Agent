@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import ChatView from '../../components/ChatView'
+import QueueBar from '../../components/chat/QueueBar'
 import { ReadTrackingContext } from '../board/useResultVisibility'
 import SessionWorkspace from '../session/SessionWorkspace'
 import { useEngineCommands, useEngineData, useRuntimeStore } from './EngineContext'
@@ -32,6 +33,7 @@ export default function SingleSessionView({
   const messages = useSessionThread(store, sessionId)
   const timelines = useSessionTimelines(store, sessionId)
   const busy = useSessionBusy(store, sessionId)
+  const steering = data.status?.capabilities.turn_steering_v1 === true
   const reasoningEffort = useSessionUiStore(selectReasoning(sessionId))
   const setReasoningFor = useSessionUiStore((state) => state.setReasoningFor)
   const onReasoningChange = useCallback(
@@ -59,6 +61,7 @@ export default function SingleSessionView({
       busy={busy}
     >
       <ChatView
+        queue={steering ? <QueueBar sessionId={sessionId} refreshKey={busy} showInput={false} /> : undefined}
         processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
         homeContext={{
           projectName: project?.name ?? projectRoot,
@@ -79,6 +82,8 @@ export default function SingleSessionView({
         onCancelAttachmentPreparation={commands.cancelAttachmentPreparation}
         onImplementPlan={commands.implementPlan}
         onStop={() => void commands.cancelTurn()}
+        onSteer={steering ? (text) => commands.steerTo(sessionId, text) : undefined}
+        onQueue={steering ? (text) => commands.queueTo(sessionId, text) : undefined}
         onOpenProviders={onOpenProviders}
         models={data.models}
         providers={data.providers}

@@ -24,6 +24,7 @@ export type TimelineAction =
   | { type: 'message/sent'; sessionId: string; message: ChatMessage }
   | { type: 'turn/ack'; turnId: string; sessionId: string; now: number }
   | { type: 'turn/cancelling'; sessionId: string }
+  | { type: 'steer/sent'; sessionId: string; turnId: string; steerId: string; content: string; now: number }
   | { type: 'busy/set'; sessionId: string; busy: boolean }
   | { type: 'history/loaded'; sessionId: string; messages: ChatMessage[] }
   | { type: 'timeline/loaded'; sessionId: string; turns: TimelineTurn[] }
@@ -77,6 +78,7 @@ function defaultTimeline(turnId: string, sessionId: string, now: number): TurnTi
 }
 
 function itemId(event: string, payload: Record<string, unknown>): string {
+  if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
   if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
   if (event.startsWith('question.')) return `question:${payload.request_id}`
@@ -173,6 +175,17 @@ function mergeEventItem(
           : prior?.outputKind,
       model: text(payload.model) || prior?.model,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
+    }
+  }
+  if (event === 'steer.applied') {
+    return {
+      id,
+      type: 'steer',
+      activitySeq,
+      occurredAt,
+      steerId: text(payload.steer_id),
+      content: text(payload.content) || (current?.type === 'steer' ? current.content : ''),
+      status: 'applied',
     }
   }
   if (event.startsWith('vision.')) {
@@ -516,6 +529,22 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       busySessions: busyCopy(state.busySessions, action.sessionId, true),
     }
   }
+  if (action.type === 'steer/sent') {
+    const timeline = state.timelines[action.turnId] ?? defaultTimeline(action.turnId, action.sessionId, action.now)
+    const id = `steer:${action.steerId}`
+    // `steer.applied` pudo llegar antes que la respuesta del comando.
+    if (timeline.items.some((item) => item.id === id)) return state
+    const item: TimelineItem = {
+      id,
+      type: 'steer',
+      activitySeq: Number.MAX_SAFE_INTEGER,
+      occurredAt: action.now,
+      steerId: action.steerId,
+      content: action.content,
+      status: 'pending',
+    }
+    return { ...state, timelines: { ...state.timelines, [action.turnId]: { ...timeline, items: [...timeline.items, item] } } }
+  }
   if (action.type === 'turn/cancelling') {
     const active = Object.values(state.timelines).find(
       (timeline) => timeline.sessionId === action.sessionId && timeline.status === 'running',
@@ -625,6 +654,9 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
             } satisfies TurnStopReason
           : timeline.stopReason,
       }
+    } else if (event === 'steer.returned') {
+      // Lo que el turno no llegó a leer vuelve al compositor (useTurnRuntime).
+      timeline = { ...timeline, items: timeline.items.filter((item) => item.type !== 'steer' || item.status !== 'pending') }
     } else {
       timeline = mergeIntoTimeline(timeline, event, payload, action.now)
       if (event === 'approval.requested' && ['running', 'approval'].includes(timeline.status)) timeline = { ...timeline, status: 'approval' }
@@ -672,6 +704,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('approval.') ||
     event.event.startsWith('governor.') ||
     event.event.startsWith('agent.') ||
-    event.event.startsWith('verification.')
+    event.event.startsWith('verification.') ||
+    event.event.startsWith('steer.')
   return relevant ? { type: 'engine/event', event, now } : null
 }

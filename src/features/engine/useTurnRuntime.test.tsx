@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
 const host = installMockPlatform()
-import { act, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { SESSION_REFRESH_DEBOUNCE_MS, SESSION_REFRESH_MAX_WAIT_MS, useTurnRuntime } from './useTurnRuntime'
@@ -73,4 +73,18 @@ it('stops the listener and pending timers on unmount', async () => {
   expect(onSessionsChanged).not.toHaveBeenCalled()
   emit('turn.completed', { turn_id: 'after-unmount', session_id: 'A' })
   expect(onSessionsChanged).not.toHaveBeenCalled()
+})
+
+it('puts what a stopped turn did not read back in its draft, ahead of what you typed', async () => {
+  cleanup() // Earlier hooks are still mounted; the app has one runtime.
+  const { useComposerStore } = await import('../../stores/composer')
+  useComposerStore.getState().setTextFor('S', 'lo que escribía')
+  renderHook(() => useTurnRuntime({ onSessionsChanged: vi.fn() }))
+  await act(async () => {
+    await Promise.resolve()
+  })
+  act(() => {
+    emit('steer.returned', { turn_id: 't', session_id: 'S', messages: ['uno', 'dos'], reason: 'cancelled' })
+  })
+  expect(useComposerStore.getState().getDraft('S').text).toBe('uno\n\ndos\n\nlo que escribía')
 })

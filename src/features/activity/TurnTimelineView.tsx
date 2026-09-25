@@ -33,7 +33,7 @@ import { commandMessage, engineApi } from '../../services/engine'
 import { formatTool, toolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
-import type { TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
+import type { SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 
 type DisplayItem = TimelineItem | { id: string; type: 'tool-group'; items: Extract<TimelineItem, { type: 'tool' }>[] }
 
@@ -425,6 +425,21 @@ export default function TurnTimelineView(props: Props) {
   )
 }
 
+/** Lo que escribiste mientras Rinari trabajaba, en el punto donde lo leyó. */
+function SteerBubble({ item }: { item: SteerTimelineItem }) {
+  const { t } = useI18n()
+  return (
+    <div data-testid="steer-message" data-status={item.status} className="flex w-full min-w-0 flex-col items-end gap-0.5 py-1.5">
+      <div className="w-fit min-w-0 max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]">
+        {item.content}
+      </div>
+      <span className="text-[10px] text-[var(--text-subtle)]">
+        {t(item.status === 'pending' ? 'steer.pending' : 'steer.applied')}
+      </span>
+    </div>
+  )
+}
+
 function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges }: Props) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
@@ -432,7 +447,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const visualRunning = ['running', 'approval', 'cancelling'].includes(timeline.status) && visualItems.some(visualPending)
   const visible = timeline.items.filter((item) => item !== final && item.type !== 'changeset' && item.type !== 'vision' && (item.type !== 'model' || Boolean(item.content)))
   const displayItems = groupAdjacent(visible)
-  const significant = visible.filter((item) => item.type !== 'model' && item.type !== 'system')
+  const significant = visible.filter((item) => item.type !== 'model' && item.type !== 'system' && item.type !== 'steer')
   const lastActivity = visible.at(-1)?.occurredAt ?? timeline.startedAt
   const actionRunning = visible.some((item) =>
     item.type === 'tool' && (item.status === 'requested' || item.status === 'running') ||
@@ -452,7 +467,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
     <div className="space-y-3">
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       <div className="space-y-1 pl-0.5">
-        {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'model' ? (
+        {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'steer' ? <SteerBubble key={item.id} item={item} /> : item.type === 'model' ? (
           <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown></div>
         ) : <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
         <VisualProgress items={visualItems} status={timeline.status} onResolveApproval={onResolveApproval} />

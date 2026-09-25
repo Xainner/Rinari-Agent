@@ -1,5 +1,5 @@
 import type { SendOptions } from '../features/engine/useEngineSession'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelRefreshResult, ModelSummary, ProviderSummary } from '../services/engine'
@@ -45,6 +45,11 @@ interface ChatViewProps {
   onPrepareAttachments?: (attachments: AttachmentRef[]) => Promise<AttachmentRef[]>
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   onStop: () => void
+  /** El Engine anuncia `turn_steering_v1`: escribir mientras trabaja la guía. */
+  onSteer?: (text: string) => Promise<boolean>
+  onQueue?: (text: string) => Promise<boolean>
+  /** Mensajes que esperan al final del turno, sobre el compositor. */
+  queue?: ReactNode
   onImplementPlan?: () => Promise<boolean>
   onOpenProviders: () => void
   models: ModelSummary[]
@@ -103,6 +108,9 @@ function ChatView({
   onPrepareAttachments,
   onCancelAttachmentPreparation,
   onStop,
+  onSteer,
+  onQueue,
+  queue,
   onImplementPlan,
   onOpenProviders,
   models,
@@ -328,6 +336,8 @@ function ChatView({
       acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}
       onStop={onStop}
+      onSteer={onSteer}
+      onQueue={onQueue}
       models={models}
       providers={providers}
       activeAlias={activeAlias}
@@ -418,6 +428,7 @@ function ChatView({
       {(presentation === 'empty' || presentation === 'conversation') && (
         <>
           <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
+          {queue}
           {composer}
         </>
       )}

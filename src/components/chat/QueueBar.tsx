@@ -15,11 +15,14 @@ export default function QueueBar({
   sessionId,
   refreshKey,
   peerMessaging = false,
+  showInput = true,
 }: {
   sessionId: string | null
   refreshKey: boolean
   /** El Engine anuncia `session_peer_messaging_v1`: se escuchan sus eventos. */
   peerMessaging?: boolean
+  /** Con guiado del turno, el compositor ya encola (Tab): sin campo propio. */
+  showInput?: boolean
 }) {
   const { t } = useI18n()
   const navigation = usePeerNavigation()
@@ -107,7 +110,7 @@ export default function QueueBar({
     }
   }
 
-  if (!sessionId || (!refreshKey && entries.length === 0)) return null
+  if (!sessionId || ((!refreshKey || !showInput) && entries.length === 0)) return null
   const paused = entries.some((entry) => entry.state === 'paused')
 
   function originLabel(entry: QueuedPromptEntry): string {
@@ -174,7 +177,7 @@ export default function QueueBar({
           </div>
         </div>
       )}
-      {refreshKey && (
+      {refreshKey && showInput && (
         <div className="mx-auto flex w-full max-w-2xl gap-2">
           <input
             value={draft}

@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer'
   activitySeq: number
   occurredAt: number
 }
@@ -151,7 +151,19 @@ export interface VisionTimelineItem extends TimelineItemBase {
   cached: boolean
 }
 
+/**
+ * Mensaje que enviaste mientras el turno corría. `pending` hasta que el
+ * Engine lo pone en el historial (`steer.applied`), tras el paso en curso.
+ */
+export interface SteerTimelineItem extends TimelineItemBase {
+  type: 'steer'
+  steerId: string
+  content: string
+  status: 'pending' | 'applied'
+}
+
 export type TimelineItem =
+  | SteerTimelineItem
   | VisionTimelineItem
   | QuestionTimelineItem
   | ModelTimelineItem

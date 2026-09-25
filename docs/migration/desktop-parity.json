@@ -1316,6 +1316,15 @@
       ]
     },
     {
+      "command": "turn_steer",
+      "kind": "engine",
+      "method": "session.turn.steer",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "usage_get",
       "kind": "engine",
       "method": "usage.get",
@@ -1457,8 +1466,8 @@
     }
   ],
   "summary": {
-    "commands": 173,
-    "engine_backed": 167,
+    "commands": 174,
+    "engine_backed": 168,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 55

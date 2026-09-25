@@ -3,6 +3,9 @@ import { useStore } from 'zustand'
 import { toast } from 'sonner'
 import { commandMessage, engineApi, isCommandError, onEngineEvent, type EngineEventMsg } from '../../services/engine'
 import { TRIGGERS_SESSION_REFRESH, engineEventAction, type TimelineAction } from '../activity/turnTimelineReducer'
+import { useComposerStore } from '../../stores/composer'
+import { translate } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 import { createRuntimeStore, type RuntimeStore } from './runtimeStore'
 
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
@@ -48,6 +51,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     void onEngineEvent((event: EngineEventMsg) => {
       const action = engineEventAction(event)
       if (action) store.getState().dispatch(action)
+      if (event.event === 'steer.returned') returnUnread(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()
     }).then((stop) => {
       if (disposed) stop()
@@ -109,6 +113,42 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     }
   }, [restoreSnapshot, store])
 
+  /**
+   * Mensaje para el turno en curso. El Engine lo lee tras el paso actual;
+   * si el turno ya terminó, lo trata como mensaje normal.
+   */
+  const steerTurn = useCallback(async (sessionId: string, message: string): Promise<boolean> => {
+    try {
+      const result = await engineApi.turnSteer(sessionId, message)
+      if (result.delivery === 'steer') {
+        store.getState().dispatch({
+          type: 'steer/sent',
+          sessionId,
+          turnId: result.turn_id,
+          steerId: result.steer_id,
+          content: message,
+          now: Date.now(),
+        })
+      }
+      return true
+    } catch (error) {
+      toast.error(commandMessage(error))
+      return false
+    }
+  }, [store])
+
+  /** Tab mientras trabaja: espera a que termine el turno (cola del Engine). */
+  const queueMessage = useCallback(async (sessionId: string, message: string): Promise<boolean> => {
+    try {
+      await engineApi.queueAdd(sessionId, message)
+      toast(translate(useUIStore.getState().lang, 'steer.queued'))
+      return true
+    } catch (error) {
+      toast.error(commandMessage(error))
+      return false
+    }
+  }, [])
+
   const resolveApproval = useCallback(async (approvalId: string, decision: string): Promise<void> => {
     store.getState().dispatch({ type: 'approval/resolving', approvalId })
     try {
@@ -134,7 +174,24 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     resetForNewEngine,
     cancelTurn,
     resolveApproval,
+    steerTurn,
+    queueMessage,
   }
+}
+
+/**
+ * Lo que un turno detenido o fallido no llegó a leer vuelve al borrador de su
+ * sesión, delante de lo que haya escrito, para que no se pierda ni arranque
+ * trabajo que acabas de detener.
+ */
+function returnUnread(payload: Record<string, unknown>): void {
+  const sessionId = typeof payload.session_id === 'string' ? payload.session_id : ''
+  const messages = Array.isArray(payload.messages) ? payload.messages.filter((item): item is string => typeof item === 'string') : []
+  if (!sessionId || messages.length === 0) return
+  const composer = useComposerStore.getState()
+  const current = composer.getDraft(sessionId).text
+  composer.setTextFor(sessionId, [...messages, current].filter((part) => part.trim()).join('\n\n'))
+  toast(translate(useUIStore.getState().lang, 'steer.returned'))
 }
 
 export type TurnRuntime = ReturnType<typeof useTurnRuntime>

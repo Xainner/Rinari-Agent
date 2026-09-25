@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
 import { engineApi } from './services/engine'
+import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
 import { useBoardStore } from './stores/board'
@@ -60,6 +61,7 @@ function App() {
   const view = useUIStore((s) => s.view)
   const lang = useUIStore((s) => s.lang)
   const setLang = useUIStore((s) => s.setLang)
+  const { ask: confirm, dialog: confirmDialog } = useConfirm()
   const theme = useUIStore((s) => s.theme)
   const setTheme = useUIStore((s) => s.setTheme)
   const paletteOpen = useUIStore((s) => s.paletteOpen)
@@ -104,7 +106,32 @@ function App() {
     await session.refreshSessions()
     await session.refreshProjects()
     await session.selectSession(opened.session.id)
+    // Una carpeta nueva sin confianza se pregunta ya, no después en su página.
+    const root = opened.project.root
+    void engineApi.projectIntelligence(root)
+      .then((intel) => { if (!intel.instructions.trusted) void offerTrust(root) })
+      .catch(() => undefined)
     return true
+  }
+
+  /** Confiar habilita instrucciones, skills y plugins del proyecto: se pregunta. */
+  async function offerTrust(root: string): Promise<void> {
+    const ok = await confirm({
+      title: translate(lang, 'project.trustTitle'),
+      body: translate(lang, 'project.trustConfirm'),
+      confirmLabel: translate(lang, 'project.trust'),
+      cancelLabel: translate(lang, 'project.trustLater'),
+    })
+    if (ok) await session.trustProject(root)
+  }
+
+  function confirmArchiveProject(): Promise<boolean> {
+    return confirm({
+      title: translate(lang, 'project.archive'),
+      body: translate(lang, 'project.archiveConfirm'),
+      confirmLabel: translate(lang, 'project.archiveAction'),
+      cancelLabel: translate(lang, 'common.cancel'),
+    })
   }
 
   async function handleDeleteSession(id: string, cascade: boolean): Promise<void> {
@@ -474,6 +501,7 @@ function App() {
   return (
     <I18nProvider lang={lang}>
       <EngineProvider session={session}>
+      {confirmDialog}
       <BoardActivityController />
       <SkillLearnedNotifier />
       {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
@@ -544,7 +572,11 @@ function App() {
             boardSessionIds={boardSessionIds}
             boardSignalBySession={boardSignalBySession}
             onOpenInBoard={openInBoard}
-            onViewFlow={(scope) => goFlows(scope)}
+            onViewFlow={(scope) => {
+              // Flujos muestra la conversación activa: se abre esa y se va allí.
+              void session.selectSession(scope.id)
+              goFlows()
+            }}
             onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
             onCloseSession={(id) => void session.closeSession(id)}
@@ -558,9 +590,7 @@ function App() {
             onDeleteSession={(id, cascade) => void handleDeleteSession(id, cascade)}
             onUpdateProject={(id, changes) => void session.updateProject(id, changes)}
             onArchiveProject={(id) => {
-              if (window.confirm(translate(lang, 'project.archiveConfirm'))) {
-                void session.removeProject(id, 'archive')
-              }
+              void confirmArchiveProject().then((ok) => { if (ok) void session.removeProject(id, 'archive') })
             }}
             approvals={session.approvals}
           />
@@ -683,19 +713,17 @@ function App() {
                 void session.loadProjectIntelligence(projectRoot)
               }
             }}
-            onTrust={() => {
-              if (window.confirm(translate(lang, 'project.trustConfirm'))) {
-                void session.trustProject(projectRoot)
-              }
-            }}
+            onTrust={() => void offerTrust(projectRoot)}
             onUpdate={(changes) => {
               const project = session.projects.find((item) => item.root === projectRoot)
               return project ? session.updateProject(project.id, changes) : Promise.resolve(false)
             }}
             onArchive={() => {
               const project = session.projects.find((item) => item.root === projectRoot)
-              if (project && window.confirm(translate(lang, 'project.archiveConfirm'))) {
-                void session.removeProject(project.id, 'archive').then((ok) => ok && goChat())
+              if (project) {
+                void confirmArchiveProject().then((ok) => {
+                  if (ok) void session.removeProject(project.id, 'archive').then((done) => done && goChat())
+                })
               }
             }}
           />

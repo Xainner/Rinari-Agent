@@ -95,6 +95,9 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
             </button>
           )}
         </div>
+        {boardTotal === 0 && items.length === 0 && (
+          <p className="px-1 py-3 text-center text-xs text-[var(--text-muted)]">{t('notifications.empty')}</p>
+        )}
         <div className="space-y-3">
           <BoardAttentionSection labelFor={labelFor} goBoard={goBoard} onNavigate={close} />
           {NOTIFICATION_MODULES.map((module) => {

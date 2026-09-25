@@ -72,7 +72,7 @@ function mount(engine = engineFixture({ sessions, projects, activeSession: 'ses_
 it('FLOW-01: renders the stages the engine projected, in order, with cycles and executors', async () => {
   mount()
   const stages = await screen.findAllByTestId('flow-stage')
-  expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_a' })
+  expect(flowGet).toHaveBeenCalledWith({ session_id: 'ses_a' })
   expect(stages.map((stage) => stage.dataset.kind)).toEqual(['planning', 'implementation', 'review', 'planning'])
   expect(within(stages[0]!).getByText('Paso 1 · Planificación')).toBeTruthy()
   expect(within(stages[0]!).getByRole('button', { name: 'Diseño de la API' })).toBeTruthy()
@@ -202,42 +202,26 @@ it('opens the stage detail inside the view and closes it with Escape', async () 
   await waitFor(() => expect(screen.queryByRole('complementary')).toBeNull())
 })
 
-it('FLOW-08/09: scope switching, empty project, engine error with retry', async () => {
-  flowGet.mockResolvedValueOnce(projectFlowFixture())
-  mount()
-  const user = userEvent.setup()
-  await screen.findAllByTestId('flow-stage')
-
-  flowGet.mockResolvedValueOnce(flowFixture([], { scope: { kind: 'project', id: 'proj_b', title: 'Web', root: 'C:/repo/web' } }))
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Alcance' }), 'project:proj_b')
-  expect(flowGet).toHaveBeenLastCalledWith({ project_id: 'proj_b' })
-  expect(await screen.findByTestId('flow-empty')).toBeTruthy()
-  expect(screen.getByText(/aún no tiene turnos/)).toBeTruthy()
-  expect(useUIStore.getState().flowScope).toEqual({ kind: 'project', id: 'proj_b' })
-
+it('FLOW-08/09: the flow is the active conversation\'s: no picker, no manual refresh, error with retry', async () => {
   flowGet.mockRejectedValueOnce(new Error('engine unavailable'))
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Alcance' }), 'session:ses_chat')
-  expect(flowGet).toHaveBeenLastCalledWith({ session_id: 'ses_chat' })
+  mount(engineFixture({ sessions, projects, activeSession: 'ses_chat', status }))
+  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ session_id: 'ses_chat' }))
   expect((await screen.findByRole('alert')).textContent).toContain('engine unavailable')
+  // It refreshes by itself on engine events: nothing to pick, nothing to press.
+  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Actualizar flujo' })).toBeNull()
   flowGet.mockResolvedValueOnce(flowFixture([stageFixture({ id: 'stg_x', index: 1, sessions: [{ session_id: 'ses_chat', title: 'Charla suelta', turns: 1 }] })], { scope: { kind: 'session', id: 'ses_chat', title: 'Charla suelta', root: null } }))
-  await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Reintentar' }))
   expect(await screen.findByTestId('flow-stage')).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
 })
 
-it('FLOW-09: a project session opened from the sidebar is offered as its own scope option', async () => {
-  // «Ver flujo» sobre una sesión de proyecto: no es una conversación suelta,
-  // pero el selector debe reflejar el alcance real, no caer al primer proyecto.
-  useUIStore.setState({ flowScope: { kind: 'session', id: 'ses_b' } })
-  flowGet.mockResolvedValueOnce(flowFixture([stageFixture({ id: 'stg_x', index: 1, sessions: [{ session_id: 'ses_b', title: 'Docs', turns: 1 }] })], { scope: { kind: 'session', id: 'ses_b', title: 'Docs', root: 'C:/repo/backend' } }))
-  mount()
-  await screen.findByTestId('flow-stage')
+it('FLOW-09: a conversation without turns says so', async () => {
+  flowGet.mockResolvedValueOnce(flowFixture([], { scope: { kind: 'session', id: 'ses_b', title: 'Docs', root: 'C:/repo/backend' } }))
+  mount(engineFixture({ sessions, projects, activeSession: 'ses_b', status }))
+  expect(await screen.findByTestId('flow-empty')).toBeTruthy()
+  expect(screen.getByText(/aún no tiene turnos/)).toBeTruthy()
   expect(flowGet).toHaveBeenCalledWith({ session_id: 'ses_b' })
-  const select = screen.getByRole('combobox', { name: 'Alcance' }) as HTMLSelectElement
-  expect(select.value).toBe('session:ses_b')
-  expect(within(screen.getByRole('group', { name: 'Sesiones del proyecto' })).getByRole('option', { name: 'Docs' })).toBeTruthy()
-  // Las conversaciones sueltas siguen en su grupo; las de proyecto no se duplican allí.
-  expect(within(screen.getByRole('group', { name: 'Conversaciones' })).queryByRole('option', { name: 'Docs' })).toBeNull()
 })
 
 it('FLOW-11: an engine without project_flow_v1 gets a clear notice and no flow.get call', async () => {
@@ -256,34 +240,20 @@ it('FLOW-08: many stages keep fixed-width cards in a horizontally scrollable can
   expect(stages.every((stage) => stage.closest('.flow-stage-slot'))).toBe(true)
 })
 
-it('F11-13: an active loose conversation opens its own flow, not the first project', async () => {
-  useUIStore.setState({ flowScope: null, flowScopeExplicit: false })
-  mount(engineFixture({ sessions, projects, activeSession: 'ses_chat', status }))
-  // Existen proyectos registrados, pero lo que la persona tiene delante es una
-  // conversación suelta: responder por `proj_a` era abrir un proyecto ajeno.
-  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ session_id: 'ses_chat' }))
-  expect(flowGet).not.toHaveBeenCalledWith({ project_id: 'proj_a' })
-})
-
-it('F11-13: the active session\'s project wins over a valid persisted scope', async () => {
-  // El alcance guardado existe y es válido, pero no es lo que se está
-  // trabajando: sólo se usa cuando no hay sesión activa que mande.
-  useUIStore.setState({ flowScope: { kind: 'project', id: 'proj_b' }, flowScopeExplicit: false })
-  mount(engineFixture({ sessions, projects, activeSession: 'ses_a', status }))
-  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_a' }))
-})
-
-it('F11-13: a scope chosen by hand survives, and only the persisted one gives way', async () => {
+it('F11-13: a persisted or hand-picked scope no longer overrides the active conversation', async () => {
+  // Flujos habla de la conversación que tienes delante, sea suelta o de un
+  // proyecto; lo que quedara guardado de antes no manda.
   useUIStore.setState({ flowScope: { kind: 'project', id: 'proj_b' }, flowScopeExplicit: true })
   mount(engineFixture({ sessions, projects, activeSession: 'ses_a', status }))
-  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_b' }))
+  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ session_id: 'ses_a' }))
+  expect(flowGet).not.toHaveBeenCalledWith({ project_id: 'proj_b' })
   expect(flowGet).not.toHaveBeenCalledWith({ project_id: 'proj_a' })
 })
 
-it('F11-13: without projects or sessions the persisted scope is the last thing standing', async () => {
-  useUIStore.setState({ flowScope: { kind: 'project', id: 'proj_b' }, flowScopeExplicit: false })
+it('F11-13: without an active conversation there is nothing to ask the Engine', async () => {
   mount(engineFixture({ sessions: [], projects, activeSession: '', status }))
-  await waitFor(() => expect(flowGet).toHaveBeenCalledWith({ project_id: 'proj_b' }))
+  expect(await screen.findByText(/Abre una conversación para ver su flujo/)).toBeTruthy()
+  expect(flowGet).not.toHaveBeenCalled()
 })
 
 it('F11-13: the capability has three states and "checking" is not "supported"', async () => {

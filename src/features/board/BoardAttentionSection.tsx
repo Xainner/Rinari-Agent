@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { CheckCheck, CircleHelp, MessageSquareShare, ShieldAlert } from 'lucide-react'
+import { CheckCheck, CircleHelp, Columns3, MessageSquareShare, ShieldAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useBoardStore } from '../../stores/board'
 import { selectAttentionCounts, useBoardStatusStore } from '../../stores/boardStatus'
@@ -60,10 +60,12 @@ export default function BoardAttentionSection({ labelFor, goBoard, onNavigate }:
     revealBoardAttention({ sessionId: row.sessionId, turnId: row.unreadTurns[0] ?? row.status.turnId ?? undefined }, { goBoard })
   }
 
+  // Como cualquier otro módulo de la campana: sin pendientes, no ocupa sitio.
+  if (rows.length === 0) return null
   return (
-    <section aria-label={t('board.attention.title')}>
+    <section aria-label={t('board.attention.title')} className="border-t border-[var(--border)] pt-2">
       <div className="flex items-center justify-between px-1 pb-1.5">
-        <span className="text-[11px] font-semibold tracking-wide text-[var(--text-subtle)] uppercase">{t('board.attention.title')}</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-[var(--text-subtle)] uppercase"><Columns3 size={12} aria-hidden="true" /> {t('board.attention.title')}</span>
         {counts.unreadResultCount > 0 && (
           <button type="button" className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-2)] hover:underline" onClick={() => markAllBoardResultsRead()}>
             <CheckCheck size={12} aria-hidden="true" /> {t('board.attention.markAll')}
@@ -71,9 +73,7 @@ export default function BoardAttentionSection({ labelFor, goBoard, onNavigate }:
         )}
       </div>
       {syncing && <p className="px-1 pb-1 text-[11px] text-[var(--text-subtle)]">{t('topbar.engine.starting')}</p>}
-      {rows.length === 0 ? (
-        <p className="px-1 py-1.5 text-xs text-[var(--text-muted)]">{t('board.attention.empty')}</p>
-      ) : (
+      {(
         <ul className="space-y-1" aria-label={t('board.attention.title')}>
           {rows.map((row) => (
             <li key={row.sessionId}>

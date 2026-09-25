@@ -630,6 +630,10 @@ export function commandMessage(error: unknown): string {
   return String(error);
 }
 
+export type SteerResult =
+  | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string }
+  | { session_id: string; delivery: 'queued'; position: number }
+
 export const engineApi = {
   // Ciclo de vida del proceso: es del host, no un método del Engine. Pasarlo
   // por `command()` fallaba al traducir, porque no hay método que traducir.
@@ -980,6 +984,12 @@ export const engineApi = {
       session_id,
       message,
     }),
+  /**
+   * Mensaje para el turno en curso: Rinari lo lee al terminar el paso actual,
+   * sin cortar nada. Sin turno en marcha es un mensaje normal (`queued`).
+   */
+  turnSteer: (session_id: string, message: string) =>
+    platform().command<SteerResult>("turn_steer", { session_id, message }),
   queueList: (session_id: string) =>
     platform().command<{
       session_id: string

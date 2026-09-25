@@ -1501,6 +1501,39 @@
       "host_effects": []
     },
     {
+      "command": "turn_steer",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "queue_list",
       "module": "sessions",
       "args": [

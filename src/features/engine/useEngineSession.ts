@@ -335,6 +335,8 @@ export function useEngineSession() {
     implementPlanFor,
     cancelTurn,
     cancelTurnFor,
+    steerTo: runtime.steerTurn,
+    queueTo: runtime.queueMessage,
     resolveApproval: runtime.resolveApproval,
     providers: catalog.providers,
     models: catalog.models,

@@ -59,6 +59,7 @@ function SessionPane({
   const { t } = useI18n()
   const commands = useEngineCommands()
   const data = useEngineData()
+  const steering = data.status?.capabilities.turn_steering_v1 === true
   const session = usePaneSession(pane.sessionId)
   const dockVisible = useSessionDockStore((state) => state.layoutFor(pane.sessionId).visible)
   const setDockVisible = useSessionDockStore((state) => state.setVisible)
@@ -256,6 +257,8 @@ function SessionPane({
               onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
               onImplementPlan={session.implementPlan}
               onStop={session.stop}
+              onSteer={steering ? (text) => commands.steerTo(pane.sessionId, text) : undefined}
+              onQueue={steering ? (text) => commands.queueTo(pane.sessionId, text) : undefined}
               onOpenProviders={onOpenProviders}
               models={data.models}
               providers={data.providers}
@@ -284,7 +287,7 @@ function SessionPane({
               mentionTargets={mentionTargets}
               onSendToTarget={peerMessaging ? sendToTarget : undefined}
             />
-            <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} />
+            <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} showInput={!steering} />
           </div>
           </ReadTrackingContext.Provider>
         </SessionWorkspace>

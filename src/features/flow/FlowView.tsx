@@ -15,10 +15,9 @@ import FlowStageDetail from './FlowStageDetail'
 import { useFlow } from './useFlow'
 
 /**
- * Vista Flujos: cómo avanzó un proyecto (o un chat) y cómo intervino la IA,
- * como etapas ordenadas en el tiempo. El alcance se elige arriba (proyectos
- * registrados y conversaciones recientes); el canvas es horizontal con
- * columnas en píxeles, como Boards. Los datos son del Engine (`flow.get`):
+ * Vista Flujos: cómo avanzó la conversación activa y cómo intervino la IA,
+ * como etapas ordenadas en el tiempo. El canvas es horizontal con columnas en
+ * píxeles, como Boards. Los datos son del Engine (`flow.get`):
  * la vista no estima nada y rotula lo que falta.
  */
 export default function FlowView() {
@@ -26,9 +25,6 @@ export default function FlowView() {
   const reduced = useFlowReducedMotion()
   const data = useEngineData()
   const commands = useEngineCommands()
-  const scope = useUIStore((s) => s.flowScope)
-  const scopeExplicit = useUIStore((s) => s.flowScopeExplicit)
-  const setFlowScope = useUIStore((s) => s.setFlowScope)
   const goBoard = useUIStore((s) => s.goBoard)
   const goNormal = useUIStore((s) => s.goNormal)
   const boardPanes = useBoardStore((s) => s.panes)
@@ -37,59 +33,10 @@ export default function FlowView() {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null)
 
   const projects = useMemo(() => data.projects.filter((project) => !project.archived), [data.projects])
-  const chats = useMemo(() => data.sessions.filter((row) => row.kind === 'CHAT'), [data.sessions])
-  // Una sesión de proyecto llega por «Ver flujo» del sidebar: se ofrece como
-  // opción propia para que el selector refleje el alcance real.
-  const scopedSession = scope?.kind === 'session' && !chats.some((row) => row.id === scope.id)
-    ? data.sessionsById[scope.id] ?? null
-    : null
-
-  /**
-   * Alcance inicial. El orden importa y no es el obvio: un alcance elegido a
-   * mano manda, y por debajo va lo que se está trabajando ahora —no lo
-   * persistido—. Abrir Flujos desde una conversación suelta y encontrarse el
-   * primer proyecto registrado era el fallo: la vista respondía por un
-   * proyecto que nadie había pedido.
-   *
-   *   1. elección explícita de esta ejecución («Ver flujo» o el selector)
-   *   2. proyecto de la sesión activa
-   *   3. sesión activa suelta
-   *   4. alcance persistido que siga existiendo
-   *   5. primer proyecto
-   */
-  useEffect(() => {
-    // Sin el listado de sesiones no se sabe qué es válido: se deja lo que haya
-    // (típicamente lo persistido) en vez de elegir con datos incompletos.
-    if (!data.sessionsLoaded) return
-    const stillThere = (candidate: FlowScope | null): FlowScope | null => {
-      if (!candidate) return null
-      if (candidate.kind === 'project') {
-        return data.projects.some((project) => project.id === candidate.id) ? candidate : null
-      }
-      return data.sessionsById[candidate.id] ? candidate : null
-    }
-    if (scopeExplicit && stillThere(scope)) return
-    const active = data.sessionsById[data.activeSession] ?? null
-    const activeProject = active?.project_id
-      ? projects.find((project) => project.id === active.project_id) ?? null
-      : active?.project_root
-        ? projects.find((project) => project.root === active.project_root) ?? null
-        : null
-    const loose = active && !active.project_id && !active.project_root ? active : null
-    const next: FlowScope | null = activeProject
-      ? { kind: 'project', id: activeProject.id }
-      : loose
-        ? { kind: 'session', id: loose.id }
-        : stillThere(scope)
-          ?? (projects[0]
-            ? { kind: 'project', id: projects[0].id }
-            // Sesión de un proyecto que no está registrado: su propio flujo es
-            // mejor respuesta que el de un proyecto ajeno.
-            : active
-              ? { kind: 'session', id: active.id }
-              : null)
-    if (next && (scope?.kind !== next.kind || scope.id !== next.id)) setFlowScope(next, false)
-  }, [scope, scopeExplicit, data.projects, data.sessionsById, data.sessionsLoaded, data.activeSession, projects, setFlowScope])
+  // El flujo es el de la conversación en la que estás; se actualiza solo con
+  // los eventos del Engine (useFlow), sin selector ni recarga manual.
+  const activeSession = data.sessionsById[data.activeSession] ? data.activeSession : ''
+  const scope = useMemo<FlowScope | null>(() => (activeSession ? { kind: 'session', id: activeSession } : null), [activeSession])
 
   // Tres estados, no dos: mientras el Engine no está `ready` no se sabe si
   // ofrece flujos. Darlo por soportado era adivinar, y adivinar bien la mayoría
@@ -189,50 +136,6 @@ export default function FlowView() {
   return (
     <div className="flow-view" data-testid="flow-view">
       <header className="flow-header">
-        <div className="flow-scope">
-          <label className="flow-scope-label" htmlFor="flow-scope-select">
-            <Workflow size={14} aria-hidden="true" />
-            {t('flow.scope')}
-          </label>
-          <select
-            id="flow-scope-select"
-            className="flow-scope-select"
-            value={scope ? `${scope.kind}:${scope.id}` : ''}
-            onChange={(event) => {
-              const [kind, ...rest] = event.target.value.split(':')
-              const id = rest.join(':')
-              if ((kind === 'project' || kind === 'session') && id) {
-                setSelectedStageId(null)
-                setFlowScope({ kind, id })
-              }
-            }}
-            disabled={projects.length === 0 && chats.length === 0}
-          >
-            {!scope && <option value="">{t('flow.scopeNone')}</option>}
-            {projects.length > 0 && (
-              <optgroup label={t('flow.scopeProjects')}>
-                {projects.map((project) => (
-                  <option key={project.id} value={`project:${project.id}`}>{project.name || projectDisplayName(project.root)}</option>
-                ))}
-              </optgroup>
-            )}
-            {scopedSession && (
-              <optgroup label={t('flow.scopeProjectSessions')}>
-                <option value={`session:${scopedSession.id}`}>{scopedSession.title || t('sidebar.newChat')}</option>
-              </optgroup>
-            )}
-            {chats.length > 0 && (
-              <optgroup label={t('flow.scopeChats')}>
-                {chats.map((row) => (
-                  <option key={row.id} value={`session:${row.id}`}>{row.title || t('sidebar.newChat')}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-          <button type="button" className="pane-header-icon" aria-label={t('flow.refresh')} title={t('flow.refresh')} onClick={() => void flow.refresh()} disabled={!scope || flow.loading}>
-            <RefreshCw size={14} className={cn(flow.loading && 'motion-safe:animate-spin')} />
-          </button>
-        </div>
         {scope && (
           <div className="flow-summary" aria-live="polite">
             <div className="flow-summary-title">

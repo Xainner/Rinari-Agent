@@ -59,6 +59,13 @@ interface ComposerProps {
   acceptsGlobalFocus?: boolean
   isStreaming: boolean
   onStop: () => void
+  /**
+   * Mientras Rinari trabaja, Enter le da el mensaje en el turno en curso (lo
+   * lee al terminar el paso actual). Sin esta prop el compositor espera.
+   */
+  onSteer?: (text: string) => Promise<boolean>
+  /** Tab mientras trabaja: el mensaje espera a que termine el turno. */
+  onQueue?: (text: string) => Promise<boolean>
   models: ModelSummary[]
   /** Catálogo de proveedores para resolver el logo por alias/endpoint. */
   providers?: ProviderSummary[]
@@ -129,6 +136,8 @@ export default function Composer({
   acceptsGlobalFocus = true,
   isStreaming,
   onStop,
+  onSteer,
+  onQueue,
   models,
   providers,
   activeAlias,
@@ -353,6 +362,31 @@ export default function Composer({
   }, [placement, acceptsGlobalFocus])
 
   const { armSendReset, cancelSendReset } = useComposerHeight(textareaRef, text, draftKey, placement, reducePillMotion)
+
+  const canSteer = isStreaming && Boolean(onSteer)
+
+  /** Mensaje durante el turno: ahora (guiar) o al terminar (cola). Solo texto. */
+  async function handleSteer(later: boolean) {
+    const submissionSessionKey = draftKey
+    const content = useComposerStore.getState().getDraft(submissionSessionKey).text
+    const deliver = later ? onQueue : onSteer
+    if (!deliver || !content.trim() || isSubmitting) return
+    armSendReset()
+    setTextFor(submissionSessionKey, '')
+    textareaRef.current?.focus()
+    setIsSubmitting(true)
+    try {
+      if (!(await deliver(content.trim()))) {
+        setTextFor(submissionSessionKey, content)
+        cancelSendReset()
+      }
+    } catch {
+      setTextFor(submissionSessionKey, content)
+      cancelSendReset()
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   async function handleSend() {
     // Capture identity and content before any await: focus or view changes
@@ -687,7 +721,7 @@ export default function Composer({
           value={text}
           rows={placement === 'centered' ? 2 : 1}
           aria-label={t('composer.message')}
-          placeholder={isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
+          placeholder={canSteer ? t('composer.placeholderSteer') : isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
           onChange={(e) => {
             setText(e.target.value)
           }}
@@ -708,13 +742,18 @@ export default function Composer({
             }
             const sendWithEnter = useUIStore.getState().enterToSend
             const mod = e.ctrlKey || e.metaKey
+            if (canSteer && onQueue && e.key === 'Tab' && !e.shiftKey && text.trim() && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              void handleSteer(true)
+              return
+            }
             if (
               e.key === 'Enter' &&
               !e.nativeEvent.isComposing &&
               (sendWithEnter ? !e.shiftKey : mod)
             ) {
               e.preventDefault()
-              void handleSend()
+              void (canSteer ? handleSteer(false) : handleSend())
             }
           }}
           className="composer-textarea block max-h-[240px] min-h-13 w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] focus:outline-none focus-visible:outline-none"
@@ -863,6 +902,18 @@ export default function Composer({
             </PopoverContent>
           </Popover>
 
+          {canSteer && text.trim() && (
+            <button
+              type="button"
+              onClick={() => void handleSteer(false)}
+              disabled={isSubmitting}
+              aria-label={t('composer.steer')}
+              title={t('composer.steer')}
+              className="flex size-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-30"
+            >
+              <ArrowUp size={17} aria-hidden="true" />
+            </button>
+          )}
           {isStreaming ? (
             <button
               type="button"
@@ -889,7 +940,7 @@ export default function Composer({
         </div>
       </div>
       <p className="mt-1.5 px-1 text-center text-[11px] text-[var(--text-subtle)]">
-        {t('composer.hint')}
+        {canSteer ? t(onQueue ? 'composer.steerHint' : 'composer.steerHintNow') : t('composer.hint')}
       </p>
       {previewAttachment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Vista previa de ${previewAttachment.name}`} onClick={() => setPreviewAttachment(null)}>

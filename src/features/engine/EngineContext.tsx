@@ -20,7 +20,7 @@ type CommandKeys =
   | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded' | 'retryHistoryFor' | 'retryHistory'
   | 'send' | 'sendTo' | 'prepareAttachments' | 'prepareAttachmentsFor'
   | 'cancelAttachmentPreparation' | 'cancelAttachmentPreparationFor'
-  | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'resolveApproval'
+  | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'steerTo' | 'queueTo' | 'resolveApproval'
   | 'refreshCatalog' | 'discoverCatalog' | 'refreshModels' | 'useModel' | 'useModelFor'
   | 'selectSession' | 'setActiveSession' | 'setMode' | 'setModeFor' | 'setPermission' | 'setPermissionFor'
   | 'searchFiles' | 'searchFilesFor'
@@ -34,7 +34,7 @@ const COMMAND_KEYS: readonly CommandKeys[] = [
   'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded', 'retryHistoryFor', 'retryHistory',
   'send', 'sendTo', 'prepareAttachments', 'prepareAttachmentsFor',
   'cancelAttachmentPreparation', 'cancelAttachmentPreparationFor',
-  'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'resolveApproval',
+  'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'steerTo', 'queueTo', 'resolveApproval',
   'refreshCatalog', 'discoverCatalog', 'refreshModels', 'useModel', 'useModelFor',
   'selectSession', 'setActiveSession', 'setMode', 'setModeFor', 'setPermission', 'setPermissionFor',
   'searchFiles', 'searchFilesFor',

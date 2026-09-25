@@ -29,7 +29,7 @@ export function historyToMessages(rows: HistoryMessage[]): ChatMessage[] {
       createdAt: historyTimestamp(row.created_at),
       turnId: row.turn_id ?? undefined,
       origin: row.role === 'user' && row.origin && row.origin.kind !== 'user' ? row.origin
-        : row.role === 'user' && row.origin?.quoted_source ? row.origin : undefined,
+        : row.role === 'user' && (row.origin?.quoted_source || row.origin?.steer_id) ? row.origin : undefined,
       attachments: attachmentRows?.map((attachment, index) => ({
         id: attachment.id ?? attachment.uri,
         path: attachment.uri,

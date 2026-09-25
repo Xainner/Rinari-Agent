@@ -15,7 +15,9 @@ export function buildChatStream(
   const timelineIds = new Set(sessionTimelines.map((turn) => turn.turnId))
   const users = new Map(
     messages
-      .filter((message) => message.role === 'user' && message.turnId)
+      // A message sent mid-turn shares the turn id; the timeline shows it
+      // where it was read, and it is not what started the turn.
+      .filter((message) => message.role === 'user' && message.turnId && !message.origin?.steer_id)
       .map((message) => [message.turnId as string, message]),
   )
   const rows: ChatStreamItem[] = messages

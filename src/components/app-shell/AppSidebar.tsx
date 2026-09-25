@@ -364,7 +364,7 @@ export function AppSidebar({
                   {onOpenInBoard && <DropdownMenuItem onSelect={() => onOpenInBoard(session.id)}>
                     <Columns3 size={13} /> {t('sidebar.openInBoard')}
                   </DropdownMenuItem>}
-                  {onViewFlow && <DropdownMenuItem onSelect={() => onViewFlow(session.project_id && session.kind === 'PROJECT' ? { kind: 'project', id: session.project_id } : { kind: 'session', id: session.id })}>
+                  {onViewFlow && <DropdownMenuItem onSelect={() => onViewFlow({ kind: 'session', id: session.id })}>
                     <Workflow size={13} /> {t('sidebar.viewFlow')}
                   </DropdownMenuItem>}
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
@@ -544,9 +544,6 @@ export function AppSidebar({
                     <DropdownMenuItem onSelect={() => onUpdateProject(project.id, { pinned: !project.pinned })}>
                       <Pin size={13} /> {project.pinned ? t('project.unpin') : t('project.pin')}
                     </DropdownMenuItem>
-                    {onViewFlow && <DropdownMenuItem onSelect={() => onViewFlow({ kind: 'project', id: project.id })}>
-                      <Workflow size={13} /> {t('sidebar.viewFlow')}
-                    </DropdownMenuItem>}
                     <DropdownMenuItem onSelect={() => onOpenProject(project.root)}>
                       <Pencil size={13} /> {t('project.edit')}
                     </DropdownMenuItem>

@@ -29,8 +29,8 @@ it('groups what the app announced by module and counts it in the bell', async ()
   const schedules = screen.getByRole('region', { name: 'Tareas programadas' })
   expect(within(schedules).getByText('Recordatorio: Tomar agua')).toBeTruthy()
   expect(within(screen.getByRole('region', { name: 'Skills' })).getByText('Skill guardada: deploy')).toBeTruthy()
-  // Boards sigue ahí, en vivo.
-  expect(screen.getByRole('region', { name: 'Pendientes del board' })).toBeTruthy()
+  // Sin pendientes del board, su sección no ocupa sitio (como cualquier otro módulo).
+  expect(screen.queryByRole('region', { name: 'Pendientes del board' })).toBeNull()
   await userEvent.click(within(schedules).getByText('Recordatorio: Tomar agua'))
   expect(onOpenTarget).toHaveBeenCalledWith({ kind: 'schedules' })
   // Verlas las deja leídas.
@@ -44,4 +44,11 @@ it('removes one notification without opening it', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Quitar «Backup: Falló»' }))
   expect(useNotificationCenter.getState().items).toHaveLength(0)
   expect(onOpenTarget).not.toHaveBeenCalled()
+})
+
+it('says so when there is nothing to show', async () => {
+  center()
+  await userEvent.click(screen.getByTestId('notification-center-trigger'))
+  expect(screen.getByText('Sin notificaciones.')).toBeTruthy()
+  expect(screen.queryByText(/No hay pendientes en el board/)).toBeNull()
 })

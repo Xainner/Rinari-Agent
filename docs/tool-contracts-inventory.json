@@ -1,6 +1,6 @@
 {
-  "generated_on": "2026-09-24",
-  "catalog_count": 112,
+  "generated_on": "2026-09-26",
+  "catalog_count": 114,
   "scope": "Built-in inspection catalog; live permissions remain engine-owned",
   "tools": [
     {
@@ -4219,6 +4219,97 @@
       }
     },
     {
+      "name": "schedule.propose",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "reminder"
+            ]
+          },
+          "schedule": {
+            "type": "object"
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "build",
+              "review"
+            ]
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "in_this_project": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "schedule",
+          "prompt"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "proposal": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "task_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next_run_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "local_reversible",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
       "name": "search.files",
       "input_schema": {
         "type": "object",
@@ -4700,6 +4791,7 @@
           },
           "references": {
             "type": "object",
+            "description": "Relative paths including references/, scripts/ or assets/ (e.g. references/payload.json)",
             "additionalProperties": {
               "type": "string"
             }
@@ -4737,6 +4829,9 @@
           },
           "review": {
             "type": "string"
+          },
+          "warnings": {
+            "type": "array"
           }
         },
         "additionalProperties": true
@@ -4862,6 +4957,70 @@
               "string",
               "null"
             ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "side_effects": "none",
+      "idempotent": true,
+      "supports_request_id": false,
+      "availability": {
+        "available": null,
+        "reason": "Permissions and resource availability are checked at execution.",
+        "requires": []
+      }
+    },
+    {
+      "name": "skills.validate_draft",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "skill_md": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60000
+          },
+          "references": {
+            "type": "object",
+            "description": "Relative paths including references/, scripts/ or assets/ (e.g. references/payload.json)",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "update_of": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "skill_md"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "issues": {
+            "type": "array"
+          },
+          "warnings": {
+            "type": "array"
+          },
+          "review": {
+            "type": "object"
           }
         },
         "additionalProperties": true

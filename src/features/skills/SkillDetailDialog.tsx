@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import ReviewFindings from './ReviewFindings'
+import SkillChanges from './SkillChanges'
 import { runSkillJob } from './skillJobs'
 
 type Pending = { kind: 'remove' } | { kind: 'force' } | { kind: 'review'; review: SkillReview; force: boolean }
@@ -34,10 +35,13 @@ export default function SkillDetailDialog({
   name,
   onClose,
   onChanged,
+  focusChanges = false,
 }: {
   name: string | null
   onClose: () => void
   onChanged: () => void
+  /** Abierta desde el aviso de una actualización: el cambio se ve desplegado. */
+  focusChanges?: boolean
 }) {
   const { t } = useI18n()
   const [detail, setDetail] = useState<SkillDetail | null>(null)
@@ -47,19 +51,21 @@ export default function SkillDetailDialog({
   const [busy, setBusy] = useState<string | null>(null)
   const [page, setPage] = useState<SkillPage | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const [showChanges, setShowChanges] = useState(focusChanges)
 
   useEffect(() => {
     setDetail(null)
     setEditing(false)
     setPage(null)
     setEditError(null)
+    setShowChanges(focusChanges)
     if (!name) return
     let cancelled = false
     engineApi.skillGet(name)
       .then(({ skill }) => { if (!cancelled) setDetail(skill) })
       .catch((err) => { if (!cancelled) toast.error(commandMessage(err)) })
     return () => { cancelled = true }
-  }, [name])
+  }, [name, focusChanges])
 
   if (!name) return null
 
@@ -126,6 +132,29 @@ export default function SkillDetailDialog({
     } else toast.error(outcome.error.message)
   }
 
+  /** Deshacer el último cambio de una skill aprendida: su versión anterior. */
+  async function undo() {
+    if (!detail) return
+    setBusy('undo')
+    try {
+      const result = await engineApi.skillRevert(detail.name)
+      onChanged()
+      if (result.removed) {
+        toast(t('skills.learned.undoneRemoved', { name: detail.name }))
+        onClose()
+        return
+      }
+      toast(t('skills.learned.undoneRestored', { name: detail.name, version: result.restored ?? '' }))
+      const { skill } = await engineApi.skillGet(detail.name)
+      setDetail(skill)
+      setShowChanges(false)
+    } catch (err) {
+      toast.error(commandMessage(err))
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function remove() {
     if (!detail) return
     try {
@@ -173,6 +202,31 @@ export default function SkillDetailDialog({
               </ul>
             )}
             {detail.modified && <p className="text-xs text-amber-400">{t('skills.attention.modified')}</p>}
+
+            {detail.previous && (
+              <section
+                aria-label={t('skills.changes.title')}
+                className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[var(--text)]">{t('skills.changes.title')}</p>
+                    <p className="text-xs text-[var(--text-subtle)]">
+                      {t('skills.changes.summary', { from: detail.previous.version ?? '—', to: detail.version ?? '—' })}
+                    </p>
+                  </div>
+                  <span className="ml-auto flex gap-1.5">
+                    <button type="button" onClick={() => setShowChanges(!showChanges)} className={buttonClass}>
+                      {t(showChanges ? 'skills.changes.hide' : 'skills.changes.show')}
+                    </button>
+                    <button type="button" disabled={busy !== null} onClick={() => void undo()} className={buttonClass}>
+                      {t('skills.changes.undo', { version: detail.previous.version ?? '—' })}
+                    </button>
+                  </span>
+                </div>
+                {showChanges && <SkillChanges before={detail.previous.skill_md} after={detail.skill_md} />}
+              </section>
+            )}
 
             <ReviewFindings review={detail.review} />
 

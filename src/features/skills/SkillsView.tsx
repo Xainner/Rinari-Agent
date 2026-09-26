@@ -10,6 +10,7 @@ import SkillDetailDialog from './SkillDetailDialog'
 import InstallSkillDialog from './InstallSkillDialog'
 import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands'
 import PendingSkills from './PendingSkills'
+import { useUIStore } from '../../stores/ui'
 
 /**
  * Ajustes > Skills: la biblioteca. Rinari (vienen con la app), Instaladas
@@ -27,6 +28,16 @@ export default function SkillsView() {
   const [toggling, setToggling] = useState<string | null>(null)
   const [pending, setPending] = useState<SkillProposal[]>([])
   const [autoLearn, setAutoLearn] = useState<'propose' | 'never' | null>(null)
+  const [focusChanges, setFocusChanges] = useState(false)
+  const skillFocus = useUIStore((s) => s.skillFocus)
+
+  // «Revisar» en el aviso de una skill aprendida: su ficha, con el cambio a la vista.
+  useEffect(() => {
+    if (!skillFocus) return
+    setSelected(skillFocus)
+    setFocusChanges(true)
+    useUIStore.getState().clearSkillFocus()
+  }, [skillFocus])
 
   const reload = useCallback(async () => {
     try {
@@ -150,7 +161,7 @@ export default function SkillsView() {
             <li key={entry.name} className="flex items-center gap-3 px-4 py-3">
               <button
                 type="button"
-                onClick={() => setSelected(entry.name)}
+                onClick={() => { setFocusChanges(false); setSelected(entry.name) }}
                 className="min-w-0 flex-1 text-left"
                 aria-label={t('skills.open', { name: entry.name })}
               >
@@ -197,7 +208,12 @@ export default function SkillsView() {
         )}
       </ul>
 
-      <SkillDetailDialog name={selected} onClose={() => setSelected(null)} onChanged={() => void reload()} />
+      <SkillDetailDialog
+        name={selected}
+        focusChanges={focusChanges}
+        onClose={() => { setSelected(null); setFocusChanges(false) }}
+        onChanged={() => void reload()}
+      />
       <InstallSkillDialog
         open={installing}
         onClose={() => setInstalling(false)}

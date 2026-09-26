@@ -640,6 +640,7 @@ function App() {
                   if (target.kind === 'session') chooseSession(target.sessionId)
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
+                  else if (target.skill) useUIStore.getState().openSkill(target.skill)
                   else goSettings('skills')
                 }}
               />

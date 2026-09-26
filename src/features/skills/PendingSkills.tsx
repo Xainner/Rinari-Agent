@@ -3,13 +3,16 @@ import { toast } from 'sonner'
 import { commandMessage, engineApi, type SkillProposal } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import ReviewFindings from './ReviewFindings'
+import SkillChanges from './SkillChanges'
 
 const buttonClass =
   'rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40'
 
 /**
- * Skills que Rinari propuso por su cuenta: nada entra al catálogo hasta que el
- * dueño la aprueba. En una actualización se ve la versión actual al lado.
+ * Lo que espera la aprobación del dueño: una skill nueva que Rinari propuso por
+ * su cuenta, un cambio a una skill instalada o creada por el dueño, o contenido
+ * que la revisión marcó como peligroso. Una actualización muestra qué cambia.
+ * Las mejoras de skills aprendidas no pasan por aquí: se aplican y se avisan.
  */
 export default function PendingSkills({ proposals, onChanged }: { proposals: SkillProposal[]; onChanged: () => void }) {
   const { t } = useI18n()
@@ -59,18 +62,14 @@ export default function PendingSkills({ proposals, onChanged }: { proposals: Ski
             <p className="text-xs text-[var(--text-subtle)]">{proposal.description}</p>
             <ReviewFindings review={proposal.review} compact />
             {open === proposal.name && (
-              <div className={proposal.current_skill_md ? 'grid gap-2 md:grid-cols-2' : ''}>
-                {proposal.current_skill_md && (
+              proposal.current_skill_md !== null
+                ? <SkillChanges before={proposal.current_skill_md} after={proposal.skill_md} />
+                : (
                   <figure>
-                    <figcaption className="mb-1 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('skills.pendingCurrent')}</figcaption>
-                    <pre className="max-h-72 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[11px] whitespace-pre-wrap text-[var(--text-muted)]">{proposal.current_skill_md}</pre>
+                    <figcaption className="mb-1 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('skills.pendingProposed')}</figcaption>
+                    <pre className="max-h-72 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[11px] whitespace-pre-wrap text-[var(--text-muted)]">{proposal.skill_md}</pre>
                   </figure>
-                )}
-                <figure>
-                  <figcaption className="mb-1 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('skills.pendingProposed')}</figcaption>
-                  <pre className="max-h-72 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[11px] whitespace-pre-wrap text-[var(--text-muted)]">{proposal.skill_md}</pre>
-                </figure>
-              </div>
+                )
             )}
           </li>
         ))}

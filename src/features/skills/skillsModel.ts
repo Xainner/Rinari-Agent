@@ -68,3 +68,57 @@ const IMPORT_KIND_KEYS: Record<string, I18nKey> = {
 export function importKindKey(kind: string): I18nKey | null {
   return IMPORT_KIND_KEYS[kind] ?? null
 }
+
+export type DiffLine = { kind: 'same' | 'added' | 'removed'; text: string }
+
+// Tope de celdas de la tabla LCS: una SKILL.md normal ronda las 150 líneas.
+const DIFF_MAX_CELLS = 4_000_000
+
+/**
+ * Diferencia por líneas entre dos versiones de una SKILL.md (LCS), para revisar
+ * lo que cambió en una actualización. null si los textos son demasiado grandes:
+ * la vista cae entonces en mostrar ambas versiones completas.
+ */
+export function lineDiff(before: string, after: string): DiffLine[] | null {
+  const a = before.replace(/\r\n/g, '\n').split('\n')
+  const b = after.replace(/\r\n/g, '\n').split('\n')
+  // Prefijo y sufijo comunes fuera de la tabla: casi toda edición es local.
+  let start = 0
+  while (start < a.length && start < b.length && a[start] === b[start]) start += 1
+  let endA = a.length
+  let endB = b.length
+  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
+    endA -= 1
+    endB -= 1
+  }
+  const n = endA - start
+  const m = endB - start
+  if ((n + 1) * (m + 1) > DIFF_MAX_CELLS) return null
+  const table = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1))
+  for (let i = n - 1; i >= 0; i -= 1) {
+    for (let j = m - 1; j >= 0; j -= 1) {
+      table[i][j] = a[start + i] === b[start + j]
+        ? table[i + 1][j + 1] + 1
+        : Math.max(table[i + 1][j], table[i][j + 1])
+    }
+  }
+  const lines: DiffLine[] = a.slice(0, start).map((text) => ({ kind: 'same', text }))
+  let i = 0
+  let j = 0
+  while (i < n || j < m) {
+    if (i < n && j < m && a[start + i] === b[start + j]) {
+      lines.push({ kind: 'same', text: a[start + i] })
+      i += 1
+      j += 1
+    } else if (i < n && (j >= m || table[i + 1][j] >= table[i][j + 1])) {
+      // Lo quitado antes que lo añadido, como en un diff unificado.
+      lines.push({ kind: 'removed', text: a[start + i] })
+      i += 1
+    } else {
+      lines.push({ kind: 'added', text: b[start + j] })
+      j += 1
+    }
+  }
+  for (const text of a.slice(endA)) lines.push({ kind: 'same', text })
+  return lines
+}

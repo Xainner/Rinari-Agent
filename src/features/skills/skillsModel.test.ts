@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SkillEntry, SkillReview } from '../../services/engine'
-import { attentionReason, confirmedHash, countByOrigin, filterSkills, findingKey } from './skillsModel'
+import { attentionReason, confirmedHash, countByOrigin, filterSkills, findingKey, lineDiff } from './skillsModel'
 
 function entry(partial: Partial<SkillEntry> & { name: string }): SkillEntry {
   return {
@@ -63,5 +63,25 @@ describe('skillsModel', () => {
   it('un código de hallazgo desconocido no tiene texto propio', () => {
     expect(findingKey('REMOTE_CODE')).toBe('skills.finding.REMOTE_CODE')
     expect(findingKey('SOMETHING_NEW')).toBeNull()
+  })
+})
+
+describe('lineDiff', () => {
+  it('marca lo quitado antes que lo añadido y conserva el resto', () => {
+    expect(lineDiff('a\nb\nc\nd', 'a\nB\nc\nd\ne')).toEqual([
+      { kind: 'same', text: 'a' },
+      { kind: 'removed', text: 'b' },
+      { kind: 'added', text: 'B' },
+      { kind: 'same', text: 'c' },
+      { kind: 'same', text: 'd' },
+      { kind: 'added', text: 'e' },
+    ])
+  })
+
+  it('iguales y CRLF no generan cambios; textos enormes devuelven null', () => {
+    expect(lineDiff('x\r\ny', 'x\ny')?.every((line) => line.kind === 'same')).toBe(true)
+    const big = Array.from({ length: 3000 }, (_, index) => `line ${index}`).join('\n')
+    const other = Array.from({ length: 3000 }, (_, index) => `other ${index}`).join('\n')
+    expect(lineDiff(big, other)).toBeNull()
   })
 })

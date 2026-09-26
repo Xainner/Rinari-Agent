@@ -13,7 +13,7 @@ export type NotificationModule = 'schedules' | 'skills' | 'system'
 export type NotificationTarget =
   | { kind: 'session'; sessionId: string }
   | { kind: 'schedules' }
-  | { kind: 'skills' }
+  | { kind: 'skills'; skill?: string }
   | { kind: 'providers' }
 
 export interface CenterNotification {

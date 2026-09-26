@@ -4832,6 +4832,12 @@
           },
           "warnings": {
             "type": "array"
+          },
+          "previous_version": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": true
@@ -5021,6 +5027,15 @@
           },
           "review": {
             "type": "object"
+          },
+          "previous_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unchanged": {
+            "type": "boolean"
           }
         },
         "additionalProperties": true

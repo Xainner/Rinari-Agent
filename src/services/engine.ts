@@ -479,6 +479,11 @@ export interface SkillDetail extends SkillEntry {
   license?: string
   compatibility?: string
   metadata?: Record<string, string>
+  /**
+   * Skill aprendida con historial: la versión que «Deshacer» restauraría, para
+   * revisar lo que Rinari cambió sin pedir aprobación. Ausente en Engines previos.
+   */
+  previous?: { version: string | null; skill_md: string } | null
 }
 
 export interface SkillCandidate {
@@ -517,7 +522,10 @@ export interface SkillProposal {
   current_skill_md: string | null
 }
 
-/** Payload de `skill.learned`. */
+/**
+ * Payload de `skill.learned`. `active` con `update` es una skill aprendida que
+ * Rinari mejoró sin pedir aprobación: el aviso es para revisarla o deshacerla.
+ */
 export interface SkillLearned {
   name: string
   status: 'active' | 'pending'
@@ -525,6 +533,8 @@ export interface SkillLearned {
   update: boolean
   review: SkillReview['verdict']
   session_id: string
+  /** Versión reemplazada en una actualización; ausente en Engines previos. */
+  previous_version?: string | null
 }
 
 export type SkillJobAction = 'inspect' | 'install' | 'update'

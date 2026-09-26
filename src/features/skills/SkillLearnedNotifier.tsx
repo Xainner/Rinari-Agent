@@ -7,50 +7,67 @@ import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands
 import { useNotificationCenter } from '../../stores/notificationCenter'
 
 /**
- * Aviso cuando Rinari guarda o propone una skill (`skill.learned`). Con
- * `/learn` la skill ya está activa: «Ver» y «Deshacer». Si la propuso sola,
- * espera aprobación: «Revisar» abre la biblioteca. Sin render propio.
+ * Aviso cuando Rinari guarda o propone una skill (`skill.learned`).
+ *
+ * - Activa (`/learn`, o una mejora de una skill aprendida): ya está guardada, el
+ *   aviso es para revisarla. «Revisar» abre su ficha con el cambio a la vista;
+ *   «Deshacer» vuelve a la versión anterior (o la quita si era nueva).
+ * - Pendiente (nueva y propuesta por su cuenta, sobre una skill instalada o con
+ *   hallazgos peligrosos): espera aprobación en la biblioteca.
+ *
+ * Sin render propio.
  */
 export default function SkillLearnedNotifier() {
   const { t } = useI18n()
   useEffect(() => {
     let disposed = false
     let stop: (() => void) | undefined
-    const openLibrary = () => useUIStore.getState().goSettings('skills')
     void onEngineEvent((event) => {
       if (event.event !== 'skill.learned') return
       const learned = event.payload as SkillLearned
       window.dispatchEvent(new Event(SKILLS_CHANGED_EVENT))
+      const active = learned.status === 'active'
+      const title = !active
+        ? t('skills.learned.proposed', { name: learned.name })
+        : learned.update
+          ? t('skills.learned.updated', { name: learned.name })
+          : t('skills.learned.saved', { name: learned.name })
+      const body = !active
+        ? t('skills.learned.proposedBody')
+        : learned.update
+          ? t('skills.learned.updatedBody', { from: learned.previous_version ?? '—', to: learned.version })
+          : undefined
       useNotificationCenter.getState().push({
         module: 'skills',
-        title: learned.status === 'active'
-          ? t(learned.update ? 'skills.learned.updated' : 'skills.learned.saved', { name: learned.name })
-          : t('skills.learned.proposed', { name: learned.name }),
-        tone: learned.status === 'active' ? 'success' : 'warning',
-        target: { kind: 'skills' },
+        title,
+        body,
+        tone: active ? 'success' : 'warning',
+        target: active ? { kind: 'skills', skill: learned.name } : { kind: 'skills' },
       })
-      if (learned.status === 'active') {
-        toast.success(t(learned.update ? 'skills.learned.updated' : 'skills.learned.saved', { name: learned.name }), {
-          action: {
-            label: t('skills.learned.undo'),
-            onClick: () => {
-              void engineApi.skillRevert(learned.name)
-                .then((result) => {
-                  window.dispatchEvent(new Event(SKILLS_CHANGED_EVENT))
-                  toast(result.removed
-                    ? t('skills.learned.undoneRemoved', { name: learned.name })
-                    : t('skills.learned.undoneRestored', { name: learned.name, version: result.restored ?? '' }))
-                })
-                .catch((err) => toast.error(commandMessage(err)))
-            },
-          },
-          cancel: { label: t('skills.learned.view'), onClick: openLibrary },
+      if (!active) {
+        toast(title, {
+          description: body,
+          action: { label: t('skills.learned.review'), onClick: () => useUIStore.getState().goSettings('skills') },
         })
-      } else {
-        toast(t('skills.learned.proposed', { name: learned.name }), {
-          action: { label: t('skills.learned.review'), onClick: openLibrary },
-        })
+        return
       }
+      toast.success(title, {
+        description: body,
+        action: { label: t('skills.learned.review'), onClick: () => useUIStore.getState().openSkill(learned.name) },
+        cancel: {
+          label: t('skills.learned.undo'),
+          onClick: () => {
+            void engineApi.skillRevert(learned.name)
+              .then((result) => {
+                window.dispatchEvent(new Event(SKILLS_CHANGED_EVENT))
+                toast(result.removed
+                  ? t('skills.learned.undoneRemoved', { name: learned.name })
+                  : t('skills.learned.undoneRestored', { name: learned.name, version: result.restored ?? '' }))
+              })
+              .catch((err) => toast.error(commandMessage(err)))
+          },
+        },
+      })
     }).then((unsubscribe) => {
       if (disposed) unsubscribe()
       else stop = unsubscribe

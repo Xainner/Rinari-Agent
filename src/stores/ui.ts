@@ -192,6 +192,11 @@ interface UIState {
   shortcutBindings: ShortcutBindings
   /** Home del proyecto abierto (root). Solo con view 'project'. */
   projectRoot: string | null
+  /** Skill cuya ficha abre la biblioteca al entrar (aviso «Revisar»); en memoria. */
+  skillFocus: string | null
+  /** Ajustes > Skills con la ficha de `name` abierta. */
+  openSkill: (name: string) => void
+  clearSkillFocus: () => void
   goChat: () => void
   /** Selección idempotente de Normal (alias de `goChat`). */
   goNormal: () => void
@@ -296,6 +301,10 @@ export const useUIStore = create<UIState>((set) => ({
   goProject: (root) => set({ view: 'project', sidebarOpen: false, projectRoot: root }),
   goSettings: (section = 'general') =>
     set({ view: 'settings', sidebarOpen: false, settingsSection: section, projectRoot: null }),
+  skillFocus: null,
+  openSkill: (name) =>
+    set({ view: 'settings', sidebarOpen: false, settingsSection: 'skills', projectRoot: null, skillFocus: name }),
+  clearSkillFocus: () => set({ skillFocus: null }),
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   setLang: (lang) => {
     try {

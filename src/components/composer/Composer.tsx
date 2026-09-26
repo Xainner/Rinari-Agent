@@ -169,7 +169,10 @@ export default function Composer({
   // el padding del grupo porque los botones cuelgan de él.
   const reducePillMotion = appReduceMotion || Boolean(systemReducedMotion)
   const pillDuration = reducePillMotion ? 0 : 0.22
-  const currentMode = (sessionMode ?? 'build').toLowerCase()
+  // A legacy mode ("ask", from terminal sessions) runs as BUILD in the Engine;
+  // showing no mode selected made it look broken.
+  const rawMode = (sessionMode ?? 'build').toLowerCase()
+  const currentMode = (MODES as readonly string[]).includes(rawMode) ? rawMode : 'build'
   // Modo pedido con clic en este grupo: solo ese cambio viaja. Un cambio
   // que llega solo (conversación nueva que corrige plan anterior a build,
   // sincronización del engine) se coloca sin animar: es el viaje fantasma.
@@ -786,7 +789,7 @@ export default function Composer({
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1.5">
-              {sessionMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">PLAN y REVIEW leen libremente y no modifican archivos ni ejecutan comandos.</p>}
+              {currentMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">PLAN y REVIEW leen libremente y no modifican archivos ni ejecutan comandos.</p>}
               {([
                 ['read-only', 'Solo lectura', 'Lee archivos e internet. No escribe, no ejecuta y no envía nada.'],
                 ['workspace', 'Workspace', 'Libre en el proyecto, localhost e internet para leer. Pregunta una vez para actuar fuera: escribir, enviar datos, git push.'],

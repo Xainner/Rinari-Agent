@@ -199,6 +199,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
               onClose={() => setVisible(sessionId, false)}
               browser={{ frame: browser.frame, error: browser.error, targetId, onTargetChange: setTargetId }}
               terminalEnabled={terminalEnabled}
+              busy={busy}
             />
           </>
         )}

@@ -1,10 +1,10 @@
 import { Suspense, lazy, memo, useEffect, useState, type ComponentProps } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy, ImageOff } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { highlightToHtml } from '../lib/highlight'
-import { containsMath } from '../lib/math-detect'
+import { containsMath, escapeCurrency } from '../lib/math-detect'
 import { copyText } from '../lib/clipboard'
 
 import { ArtifactImage, FileLink, fileUrlTransform } from '../features/files/FileWorkspace'
@@ -88,9 +88,11 @@ export const markdownComponents: ComponentProps<typeof ReactMarkdown>['component
   // The renderer cannot load `artifact://`: an image the agent put in its
   // message is read from the artifact store instead of rendering broken.
   img({ src, alt }) {
-    return typeof src === 'string' && src.startsWith('artifact://')
-      ? <ArtifactImage uri={src} alt={alt ?? ''} />
-      : <img src={typeof src === 'string' ? src : undefined} alt={alt ?? ''} />
+    if (typeof src === 'string' && src.startsWith('artifact://')) return <ArtifactImage uri={src} alt={alt ?? ''} />
+    // A local path (file://, C:\…) cannot load in the renderer: say what it
+    // is instead of showing a broken image.
+    if (typeof src === 'string' && /^(file:|[A-Za-z]:[\\/]|\/)/.test(src)) return <LocalImageNotice src={src} alt={alt ?? ''} />
+    return <img src={typeof src === 'string' ? src : undefined} alt={alt ?? ''} />
   },
   table({ children }) {
     return (
@@ -101,7 +103,19 @@ export const markdownComponents: ComponentProps<typeof ReactMarkdown>['component
   },
 }
 
-function Markdown({ children }: { children: string }) {
+function LocalImageNotice({ src, alt }: { src: string; alt: string }) {
+  const { t } = useI18n()
+  const name = decodeURIComponent(src.split(/[\\/]/).pop() || src)
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-xs text-[var(--text-muted)]" title={src}>
+      <ImageOff size={13} aria-hidden="true" />
+      {t('markdown.localImage', { name: alt || name })}
+    </span>
+  )
+}
+
+function Markdown({ children: raw }: { children: string }) {
+  const children = escapeCurrency(raw)
   if (containsMath(children)) {
     return (
       <div className="md-body">

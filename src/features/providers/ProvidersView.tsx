@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { ChevronDown } from 'lucide-react'
 import {
   commandMessage,
   engineApi,
@@ -208,10 +209,17 @@ export default function ProvidersView({
           <Section
             key={provider.id}
             title={
-              <span className="flex items-center gap-2.5">
+              // The whole title opens the card: only the small «details» button did.
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setExpanded(isOpen ? null : provider.alias)}
+                className="flex w-full items-center gap-2.5 text-left"
+              >
                 <ProviderLogo alias={provider.alias} endpoint={provider.endpoint} size={22} />
-                <span>{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
-              </span>
+                <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
+                <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
             }
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-subtle)]">

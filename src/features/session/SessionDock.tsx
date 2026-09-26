@@ -27,6 +27,8 @@ export interface SessionDockProps {
   browser: { frame: BrowserFrame | null; error: string; targetId: string; onTargetChange: (targetId: string) => void }
   /** El Engine anuncia `desktop_terminal_v1`: sin ella no hay pestaña Terminal. */
   terminalEnabled?: boolean
+  /** A turn is running: the browser hands control to Rinari, and back when it ends. */
+  busy?: boolean
 }
 
 const SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace', 'terminal']
@@ -53,6 +55,7 @@ export default function SessionDock({
   onClose,
   browser,
   terminalEnabled = false,
+  busy = false,
 }: SessionDockProps) {
   const { t } = useI18n()
   const overlayDepth = useOverlayStore(selectOverlayDepth)
@@ -137,6 +140,7 @@ export default function SessionDock({
             // Y se retira también mientras haya un modal encima. El recuento
             // es de la ventana, no de la sesión: un diálogo tapa todo.
             overlayDepth={overlayDepth}
+            busy={busy}
           />
         ) : (
           <FileViewer />

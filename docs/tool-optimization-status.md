@@ -6,10 +6,14 @@ empaquetado local; no constituyen una versión publicada ni un push.
 
 ## Cobertura verificable
 
-El [inventario generado](tool-contracts-inventory.json) (regenerado el 2026-09-24) contiene las **112 herramientas**,
+El [inventario generado](tool-contracts-inventory.json) (regenerado el 2026-09-26) contiene las **114 herramientas**,
 sus schemas de entrada/salida, efectos, idempotencia declarada, disponibilidad de
 plataforma y soporte de request_id. La [auditoría original](tool-optimization-audit.md)
 conserva el diagnóstico previo y las propuestas, no el estado de ejecución actual.
+
+La regeneración incluye `skills.validate_draft`; procede del catálogo incorporado
+del Engine fijado en `engine-manifest.json`. Las cifras de las pruebas y del paquete
+del 2026-09-10 que aparecen más abajo son evidencia histórica de esa entrega.
 
 Todas las herramientas registradas pasan por la validación, permisos, presupuestos,
 deadlines, errores y límites de salida del runtime compartido. Los schemas de salida

@@ -375,16 +375,32 @@ export class NativeBrowserHost {
    * bloqueo permanente (§5.4). El Engine cachea lo último que llegó y contesta
    * en local.
    */
-  publishTargets(contextId: string): void {
+  /**
+   * Recuerda el id que el Engine le dio al contexto al prepararlo. Es el
+   * mismo que `run` aprende de la primera operación; si ya se conoce otro,
+   * manda el conocido (no se reasigna un contexto a otra identidad).
+   */
+  adoptEngineContext(context: ContextEntry, engineContextId: unknown): void {
+    if (context.engineContextId !== null) return
+    if (typeof engineContextId !== 'string' || !engineContextId) return
+    context.engineContextId = engineContextId
+  }
+
+  publishTargets(contextId: string): Promise<void> {
     const binding = this.binding
     const context = this.deps.registry.context(contextId)
-    if (!binding || !context?.engineContextId) return
+    if (!binding || !context?.engineContextId) return Promise.resolve()
     // La UI también tiene que enterarse. Antes sólo se refrescaba tras una
     // acción del usuario, así que cuando navegaba el **agente** la toolbar se
     // quedaba con el estado del montaje: página viva y cabecera diciendo
     // «desconectado».
-    this.deps.onContextChanged?.(context.sessionId)
-    void this.deps
+    //
+    // Se avisa **después** de que el Engine tenga la lista: la UI relee
+    // `browser.context.get`, y el Engine responde con lo último que le llegó.
+    // Avisar antes hacía que leyera la foto vieja (sin pestañas: «Preparando
+    // el navegador…») y se quedara así hasta cambiar de pestaña.
+    const sessionId = context.sessionId
+    return this.deps
       .request('host.browser.event', {
         binding_id: binding.binding_id,
         engine_instance_id: binding.engine_instance_id,
@@ -393,9 +409,13 @@ export class NativeBrowserHost {
         targets: this.deps.registry.describeTargets(context),
         active_target_id: context.activeTargetId,
       })
-      .catch(() => {
-        // Que la UI se quede con una foto vieja no puede tumbar la operación.
-      })
+      .then(
+        () => undefined,
+        () => {
+          // Que el Engine no reciba la lista no puede tumbar la operación.
+        },
+      )
+      .finally(() => this.deps.onContextChanged?.(sessionId))
   }
 
   /**
@@ -706,7 +726,7 @@ export class NativeBrowserHost {
         if (typeof targetId !== 'string' || !registry.setActiveTarget(context, targetId)) {
           throw new OperationError('TARGET_NOT_FOUND', 'no such page in this context')
         }
-        this.publishTargets(context.contextId)
+        void this.publishTargets(context.contextId)
         return { active_target_id: targetId }
       }
 
@@ -719,11 +739,11 @@ export class NativeBrowserHost {
         await entry.view.webContents.loadURL('about:blank')
         await registry.attach(entry)
         if (url === 'about:blank') {
-          this.publishTargets(context.contextId)
+          void this.publishTargets(context.contextId)
           return { target_id: entry.targetId, url }
         }
         await entry.view.webContents.loadURL(url)
-        this.publishTargets(context.contextId)
+        void this.publishTargets(context.contextId)
         return { target_id: entry.targetId, url }
       }
 
@@ -733,7 +753,7 @@ export class NativeBrowserHost {
         }
         const closed = registry.closeTarget(context, request.target_id)
         if (!closed) throw new OperationError('TARGET_NOT_FOUND', 'no such page in this context')
-        this.publishTargets(context.contextId)
+        void this.publishTargets(context.contextId)
         return { closed: request.target_id }
       }
 
@@ -791,7 +811,7 @@ export class NativeBrowserHost {
       // Navegar cambia la URL y el título que la toolbar enseña; sin esto la
       // UI se quedaría con la foto anterior hasta el siguiente cambio de
       // pestaña.
-      if (request.operation === 'page.navigate') this.publishTargets(context.contextId)
+      if (request.operation === 'page.navigate') void this.publishTargets(context.contextId)
       return (value ?? {}) as Record<string, unknown>
     } catch (error) {
       const text = messageOf(error)

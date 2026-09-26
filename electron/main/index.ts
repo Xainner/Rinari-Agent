@@ -271,13 +271,21 @@ function browserServices(): HostServices['browser'] {
     prepare: async (sessionId) => {
       const view = await engine.request('browser.context.prepare', { session_id: sessionId })
       const context = browserRegistry?.ensureContext(sessionId)
-      if (context && context.order.length === 0) {
+      if (!context) return view
+      // Preparar no le pide nada al host, así que el id del Engine sólo se
+      // conocía con la primera operación del agente. Sin él la lista de
+      // pestañas no llega al Engine y el panel se quedaba en «Preparando el
+      // navegador…» sin dejar escribir una dirección.
+      browserHost?.adoptEngineContext(context, (view as { context_id?: unknown }).context_id)
+      if (context.order.length === 0) {
         const target = browserRegistry!.createTarget(context)
         await target.view.webContents.loadURL('about:blank')
         await browserRegistry!.attach(target)
-        browserHost?.publishTargets(context.contextId)
       }
-      return view
+      // La vista de arriba se leyó sin pestañas: se devuelve la de después de
+      // que el Engine las tenga.
+      await browserHost?.publishTargets(context.contextId)
+      return await engine.request('browser.context.get', { session_id: sessionId })
     },
 
     attachSlot: async (sessionId) => {
@@ -328,7 +336,7 @@ function browserServices(): HostServices['browser'] {
       if (!browserRegistry!.setActiveTarget(context, targetId)) {
         throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
       }
-      browserHost?.publishTargets(context.contextId)
+      await browserHost?.publishTargets(context.contextId)
       publishBrowserContext(sessionId)
       return { active_target_id: targetId }
     },
@@ -351,11 +359,16 @@ function browserServices(): HostServices['browser'] {
       // Navegar la página que el agente está usando es la mutación más grande
       // que hay: se lleva por delante el DOM entero. Requiere el control.
       requireUserControl(context, 'navigating')
-      const entry = browserRegistry!.target(context.contextId, null)
-      if (!entry) throw Object.assign(new Error('this context has no page'), { code: 'NOT_FOUND' })
+      // Un contexto recién preparado no tiene página (nace en blanco hasta
+      // la primera navegación): escribir una dirección la crea.
+      let entry = browserRegistry!.target(context.contextId, null)
+      if (!entry) {
+        entry = browserRegistry!.createTarget(context)
+        await entry.view.webContents.loadURL('about:blank')
+      }
       await browserRegistry!.attach(entry)
       await entry.view.webContents.loadURL(url)
-      browserHost?.publishTargets(context.contextId)
+      await browserHost?.publishTargets(context.contextId)
       publishBrowserContext(sessionId)
       return { url }
     },

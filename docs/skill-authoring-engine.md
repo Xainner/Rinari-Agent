@@ -23,10 +23,8 @@ cuando hay un guardado o propuesta real.
 - El Engine prueba `/learn` por su protocolo con un modelo determinista:
   validar no crea la skill, proponer sí y deshacer conserva su comportamiento.
 
-El PR de Agent debe revisarse junto con el PR del motor. El pin de revisión es
-provisional y permite probar el commit exacto de la rama del Engine. Antes de
-fusionar Agent, fusionar Rinari-CLI #37, sustituir `engine_git_sha` por el SHA
-resultante en `main` (también si se usa squash/rebase), regenerar el inventario
-si cambió y repetir `protocol:check`. El pin definitivo debe pertenecer a `main`.
+El pin apunta al merge de Rinari-CLI #37 en `main` (`5b2eb8b`); el inventario
+de herramientas no cambió respecto a la rama revisada y `protocol:check` se
+repitió contra ese SHA.
 Este cambio no instala una nueva versión sobre la aplicación del usuario ni
 reescribe sus skills, historial o memorias anteriores.

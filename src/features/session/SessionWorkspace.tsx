@@ -12,6 +12,7 @@ import {
   useSessionDockStore,
   type DockSurface,
 } from '../../stores/sessionDock'
+import { automaticBrowserUiEnabled } from '../browser/automaticBrowserUi'
 import { useBrowserFrame } from '../browser/useBrowserFrame'
 import { FileWorkspaceProvider } from '../files/FileWorkspace'
 import SessionDock from './SessionDock'
@@ -150,7 +151,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
         const previous = nativeState.current
         nativeState.current = view.context_state
         if (view.backend !== 'electron-native' || view.context_state !== 'ready') return
-        if (previous === 'ready') return
+        if (previous === 'ready' || !automaticBrowserUiEnabled()) return
         const current = useSessionDockStore.getState().layoutFor(sessionId)
         if (focusedRef.current && !current.visible) reveal(sessionId, 'browser')
       })

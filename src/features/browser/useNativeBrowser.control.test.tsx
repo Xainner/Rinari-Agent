@@ -3,6 +3,7 @@ import { installMockPlatform } from '../../test/mockPlatform'
 const host = installMockPlatform()
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it } from 'vitest'
+import { setAutomaticBrowserUi } from './automaticBrowserUi'
 import { useNativeBrowser } from './useNativeBrowser'
 
 const context = {
@@ -49,4 +50,18 @@ it('what you decide by hand is respected', async () => {
   await act(() => hook.result.current.returnControl())
   hook.rerender({ busy: false })
   expect(controls()).toEqual(['user', 'agent', 'user', 'agent'])
+})
+
+it('la prueba vertical apaga el reparto automático: nadie mueve el control por detrás', async () => {
+  setAutomaticBrowserUi(false)
+  try {
+    const hook = renderHook(({ busy }) => useNativeBrowser('s1', { shown: true, busy }), { initialProps: { busy: false } })
+    await waitFor(() => expect(hook.result.current.context?.control_state).toBe('agent'))
+    hook.rerender({ busy: true })
+    hook.rerender({ busy: false })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(controls()).toEqual([])
+  } finally {
+    setAutomaticBrowserUi(true)
+  }
 })

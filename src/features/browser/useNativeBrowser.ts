@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { platform } from '../../platform'
 import type { NativeBrowserContext, NativeBrowserPreview } from '../../platform/contract'
 import { useNativeSurfaces } from '../../stores/nativeSurfaces'
+import { useAutomaticBrowserUi } from './automaticBrowserUi'
 
 /**
  * Browser nativo de una sesión (documento 03 §6.1 y §8.1).
@@ -313,6 +314,7 @@ export function useNativeBrowser(
   // en pleno turno no se te quita, y si lo devuelves estando en reposo no
   // se vuelve a tomar hasta el siguiente turno.
   const tookDuringTurn = useRef(false)
+  const automaticHandoff = useAutomaticBrowserUi()
   const keepAgentWhileIdle = useRef(false)
   const wasBusy = useRef<boolean | undefined>(undefined)
   const setControl = useCallback(
@@ -324,7 +326,7 @@ export function useNativeBrowser(
     [applyControlReply, context?.control_revision, guard, sessionId],
   )
   useEffect(() => {
-    if (busy === undefined) return
+    if (busy === undefined || !automaticHandoff) return
     const started = busy && wasBusy.current === false
     const ended = !busy && wasBusy.current === true
     wasBusy.current = busy
@@ -340,7 +342,7 @@ export function useNativeBrowser(
     if (!busy && shown && context.control_state === 'agent' && !keepAgentWhileIdle.current) {
       void setControl('user')
     }
-  }, [busy, shown, context?.context_state, context?.control_state, setControl, context])
+  }, [automaticHandoff, busy, shown, context?.context_state, context?.control_state, setControl, context])
 
   return {
     context,

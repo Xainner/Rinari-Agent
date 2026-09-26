@@ -565,11 +565,15 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const shotTool = shot.tools.find((tool) => tool.tool === 'browser.screenshot')
     const observation = parseObservation(shotTool?.observation)
     const bytes = Number(observation?.bytes ?? 0)
-    // La herramienta devuelve el artefacto como URI `file://`, no como ruta.
+    // Con Artifact Store la herramienta devuelve `artifact://` (lo que el chat
+    // muestra) y la ruta del PNG en `path`; sin él, sólo un URI `file://`.
     const artifactUri = String(observation?.artifact ?? '')
-    const artifactPath = artifactUri.startsWith('file://')
-      ? decodeURIComponent(new URL(artifactUri).pathname).replace(/^\/([A-Za-z]:)/, '$1')
-      : artifactUri
+    const artifactPath =
+      typeof observation?.path === 'string' && observation.path
+        ? observation.path
+        : artifactUri.startsWith('file://')
+          ? decodeURIComponent(new URL(artifactUri).pathname).replace(/^\/([A-Za-z]:)/, '$1')
+          : artifactUri
 
     const { createHash } = await import('node:crypto')
     const { readFile } = await import('node:fs/promises')

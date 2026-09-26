@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { platform } from '../../platform'
 import type { NativeBrowserContext, NativeBrowserPreview } from '../../platform/contract'
 import { useNativeSurfaces } from '../../stores/nativeSurfaces'
+import { useAutomaticBrowserUi } from './automaticBrowserUi'
 
 /**
  * Browser nativo de una sesión (documento 03 §6.1 y §8.1).
@@ -90,9 +91,9 @@ export interface NativeBrowserState {
 
 export function useNativeBrowser(
   sessionId: string,
-  options: { shown: boolean; overlayDepth?: number },
+  options: { shown: boolean; overlayDepth?: number; busy?: boolean },
 ): NativeBrowserState {
-  const { shown, overlayDepth = 0 } = options
+  const { shown, overlayDepth = 0, busy } = options
   const [context, setContext] = useState<NativeBrowserContext | null>(null)
   const [preview, setPreview] = useState<NativeBrowserPreview | null>(null)
   const [error, setError] = useState('')
@@ -305,6 +306,44 @@ export function useNativeBrowser(
     [sessionId],
   )
 
+  // Reparto automático del control. Con Rinari al mando la página real
+  // queda a 1×1 y aquí se ven capturas cada ~1 s: un video se ve congelado y
+  // una página recién abierta tarda en aparecer. Entre turnos el agente no
+  // puede actuar, así que la vista pasa sola a vivo; al empezar un turno
+  // vuelve a Rinari. Lo que decidas a mano se respeta: si tomas el control
+  // en pleno turno no se te quita, y si lo devuelves estando en reposo no
+  // se vuelve a tomar hasta el siguiente turno.
+  const tookDuringTurn = useRef(false)
+  const automaticHandoff = useAutomaticBrowserUi()
+  const keepAgentWhileIdle = useRef(false)
+  const wasBusy = useRef<boolean | undefined>(undefined)
+  const setControl = useCallback(
+    (owner: 'agent' | 'user') =>
+      guard(async () => {
+        const result = await platform().browser.setControl(sessionId, owner, context?.control_revision)
+        applyControlReply(result)
+      }),
+    [applyControlReply, context?.control_revision, guard, sessionId],
+  )
+  useEffect(() => {
+    if (busy === undefined || !automaticHandoff) return
+    const started = busy && wasBusy.current === false
+    const ended = !busy && wasBusy.current === true
+    wasBusy.current = busy
+    if (ended) {
+      tookDuringTurn.current = false
+      keepAgentWhileIdle.current = false
+    }
+    if (!context || context.context_state !== 'ready') return
+    if (started && context.control_state === 'user' && !tookDuringTurn.current) {
+      void setControl('agent')
+      return
+    }
+    if (!busy && shown && context.control_state === 'agent' && !keepAgentWhileIdle.current) {
+      void setControl('user')
+    }
+  }, [automaticHandoff, busy, shown, context?.context_state, context?.control_state, setControl, context])
+
   return {
     context,
     preview,
@@ -317,6 +356,7 @@ export function useNativeBrowser(
     selectTarget: (targetId) => guard(() => platform().browser.selectTarget(sessionId, targetId)),
     takeControl: () =>
       guard(async () => {
+        if (busy) tookDuringTurn.current = true
         const result = await platform().browser.setControl(
           sessionId,
           'user',
@@ -328,6 +368,7 @@ export function useNativeBrowser(
       }),
     returnControl: () =>
       guard(async () => {
+        if (!busy) keepAgentWhileIdle.current = true
         const result = await platform().browser.setControl(
           sessionId,
           'agent',

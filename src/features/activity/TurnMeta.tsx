@@ -10,6 +10,7 @@ import { usePrepareRetry } from './usePrepareRetry'
 import type { TurnTimeline } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
 import TokenUsage from './TokenUsageIndicator'
+import { useOptionalEngineData } from '../engine/EngineContext'
 
 export interface TurnMetaProps {
   timeline: TurnTimeline
@@ -55,7 +56,10 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
   const filesChanged = changeset?.files.length ?? null
   const duration = timeline.completedAt !== undefined && timeline.startedAt > 0 ? Math.max(0, timeline.completedAt - timeline.startedAt) : null
   const finalItem = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
-  const executor = finalItem && finalItem.type === 'model' ? finalItem.model ?? null : null
+  const executorId = finalItem && finalItem.type === 'model' ? finalItem.model ?? null : null
+  // The Engine reports the model id (mdl_…); the owner knows its name.
+  const models = useOptionalEngineData()?.models
+  const executor = executorId ? models?.find((model) => model.id === executorId)?.alias ?? executorId : null
   const retryable = outcome === 'failed' || outcome === 'stopped' || outcome === 'cancelled'
   if (!emphasis && !unread && filesChanged === null && !retryable && !timeline.usage) return null
 

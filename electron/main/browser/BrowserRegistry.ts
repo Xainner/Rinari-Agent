@@ -803,13 +803,16 @@ export class BrowserRegistry {
     context.targets.clear()
     context.order = []
     if (context.barrier) {
-      context.barrier.webContents.close()
+      if (!context.barrier.webContents.isDestroyed()) context.barrier.webContents.close()
       context.barrier = null
     }
     // El oyente de descargas vive en la partición, no en la vista: quitar las
     // vistas no lo suelta.
     context.downloads?.dispose()
-    this.deps.window.contentView.removeChildView(context.container)
+    // Al salir, `disposeAll` corre en `closed`: la ventana ya está destruida y
+    // tocar su contentView lanza «Object has been destroyed» (salir desde la
+    // bandeja lo mostraba como error del proceso principal).
+    if (!this.deps.window.isDestroyed()) this.deps.window.contentView.removeChildView(context.container)
     this.contexts.delete(contextId)
     this.bySession.delete(context.sessionId)
   }

@@ -82,15 +82,23 @@ function FlowStageCard({ stage, order, selected, models, providers, onOpen, onGo
         {title}
       </button>
       {stage.excerpt && stage.excerpt !== title && <p className="flow-stage-excerpt">{stage.excerpt}</p>}
-      <div className="flow-stage-progress" role="group" aria-label={t('flow.stage.progress')}>
-        <div className="flow-stage-progress-row">
-          <span>{t('flow.stage.progress')}</span>
-          <span className="flow-stage-progress-value">{progress === null ? t('flow.stage.progressUnknown') : `${progress}%`}</span>
+      {progress === null && stage.status === 'done' ? (
+        // Terminada sin nada que medir: un «sin datos» con la barra vacía
+        // parecía roto. Se dice qué faltó para medir, sin inventar un 100 %.
+        <p className="flow-stage-unmeasured" data-testid="flow-stage-unmeasured">
+          {t(stage.kind === 'review' ? 'flow.stage.doneNoChecks' : 'flow.stage.doneNoTasks')}
+        </p>
+      ) : (
+        <div className="flow-stage-progress" role="group" aria-label={t('flow.stage.progress')}>
+          <div className="flow-stage-progress-row">
+            <span>{t('flow.stage.progress')}</span>
+            <span className="flow-stage-progress-value">{progress === null ? t('flow.stage.progressUnknown') : `${progress}%`}</span>
+          </div>
+          <div className="flow-stage-progress-track" aria-hidden="true">
+            <div className="flow-stage-progress-fill" data-known={progress !== null || undefined} style={{ width: `${progress ?? 0}%` }} />
+          </div>
         </div>
-        <div className="flow-stage-progress-track" aria-hidden="true">
-          <div className="flow-stage-progress-fill" data-known={progress !== null || undefined} style={{ width: `${progress ?? 0}%` }} />
-        </div>
-      </div>
+      )}
       <dl className="flow-stage-meta">
         <div>
           <Timer size={11} aria-hidden="true" />

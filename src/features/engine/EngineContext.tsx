@@ -131,6 +131,11 @@ export function useEngineCommands(): EngineCommands {
   return value
 }
 
+/** Como useEngineData, pero null fuera del proveedor (vistas que también se prueban solas). */
+export function useOptionalEngineData(): EngineData | null {
+  return useContext(EngineDataContext)
+}
+
 export function useEngineData(): EngineData {
   const value = useContext(EngineDataContext)
   if (!value) throw new Error('useEngineData must be used inside <EngineProvider>')

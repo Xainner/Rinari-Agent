@@ -17,6 +17,8 @@ export interface BrowserSurfaceProps {
   shown?: boolean
   /** Overlays de Rinari encima ahora mismo (§8.3). */
   overlayDepth?: number
+  /** Hay un turno en curso en la sesión (reparto automático del control). */
+  busy?: boolean
 }
 
 /**
@@ -43,9 +45,10 @@ export default function BrowserSurface({
   onTargetChange,
   shown = true,
   overlayDepth = 0,
+  busy,
 }: BrowserSurfaceProps) {
   const { t } = useI18n()
-  const native = useNativeBrowser(sessionId, { shown, overlayDepth })
+  const native = useNativeBrowser(sessionId, { shown, overlayDepth, busy })
   const context = native.context
 
   const useNative = Boolean(context?.supported && context.backend === 'electron-native')

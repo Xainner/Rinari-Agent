@@ -1027,6 +1027,7 @@ select option:disabled { color: var(--text-subtle); }
 .flow-stage-title { display: block; width: 100%; text-align: left; font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--text); border-radius: 6px; }
 .flow-stage-title:hover { color: var(--accent-2); }
 .flow-stage-excerpt { font-size: 12px; line-height: 1.45; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.flow-stage-unmeasured { margin: 0; font-size: 11px; line-height: 1.4; color: var(--text-subtle); }
 .flow-stage-progress { display: flex; flex-direction: column; gap: 5px; }
 .flow-stage-progress-row { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-subtle); }
 .flow-stage-progress-value { color: var(--text-muted); text-transform: none; letter-spacing: 0; }

@@ -55,8 +55,9 @@ export default function ModelCatalog({
   const pending = discovered.filter((d) => !savedIds.has(d.provider_model_id))
 
   async function saveModel(item: DiscoveredModel) {
-    const alias = (aliases[item.provider_model_id] ?? '').trim()
-    if (alias === '') return
+    // The alias is optional: by default the model keeps the name it brings,
+    // which is unique within its provider. Rename it later if you want.
+    const alias = (aliases[item.provider_model_id] ?? '').trim() || item.provider_model_id
     setBusy(`save:${item.provider_model_id}`)
     try {
       await engineApi.modelAdd({
@@ -159,7 +160,7 @@ export default function ModelCatalog({
               setAliases((prev) => ({ ...prev, [item.provider_model_id]: e.target.value }))
             }
             aria-label={t('providers.modelAlias')}
-            placeholder={t('providers.modelAlias')}
+            placeholder={t('providers.modelAliasOptional')}
             className="w-36 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-xs outline-none placeholder:text-[var(--text-subtle)] focus:border-[var(--accent-2)]/60"
           />
           <button

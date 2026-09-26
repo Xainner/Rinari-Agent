@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 
 import { platform } from '../platform'
+import { setAutomaticBrowserUi } from '../features/browser/automaticBrowserUi'
 import { useNativeSurfaces, type NativeRect } from '../stores/nativeSurfaces'
 
 const START = 'rinari:browser-vertical-toast-start'
@@ -44,6 +45,10 @@ function startOf(value: unknown): ProbeStart | null {
  */
 export function registerBrowserVerticalUiProbe(enabled: boolean): () => void {
   if (!enabled) return () => {}
+  // La prueba vertical maqueta la vista y mueve el control a mano, y comprueba
+  // cada geometría y cada revisión. Revelar el panel o repartir el control
+  // solos serían un segundo dueño por detrás, así que en este modo se apagan.
+  setAutomaticBrowserUi(false)
   let unsubscribe: (() => void) | null = null
   let current: ProbeStart | null = null
   let revision = 0

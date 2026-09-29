@@ -9,6 +9,7 @@ import { useBlockingOverlay } from '../stores/overlay'
 import Markdown from './Markdown'
 
 function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
+  const { t } = useI18n()
   const [previewUrl, setPreviewUrl] = useState(attachment.previewUrl)
   const [previewText, setPreviewText] = useState<string>()
   const [loading, setLoading] = useState(false)
@@ -40,22 +41,22 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
       if (typeof result.data_url === 'string') setPreviewUrl(result.data_url)
       else if (typeof result.base64 === 'string' && typeof result.mime_type === 'string') setPreviewUrl(`data:${result.mime_type};base64,${result.base64}`)
     } catch {
-      setPreviewText('No se pudo abrir la vista previa de este adjunto.')
+      setPreviewText(t('attach.previewFailed'))
     } finally {
       setLoading(false)
     }
   }
 
   return <>
-    <button type="button" onClick={() => void showPreview()} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title="Abrir vista previa">
+    <button type="button" onClick={() => void showPreview()} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title={t('attach.openPreview')}>
       {previewUrl ? <img src={previewUrl} alt={attachment.name} className="size-8 rounded object-cover" /> : attachment.kind === 'image' ? <ImageIcon size={13} /> : <FileText size={13} />}
       <span className="truncate">{attachment.name}</span>
       {loading && <LoaderCircle size={11} className="animate-spin" />}
     </button>
-    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Vista previa de ${attachment.name}`} onClick={() => setOpen(false)}>
+    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={t('attach.previewOf', { name: attachment.name })} onClick={() => setOpen(false)}>
       <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3"><Eye size={15} className="text-[var(--accent-2)]" /><span className="min-w-0 flex-1 truncate text-sm text-[var(--text)]">{attachment.name}</span><button type="button" aria-label="Cerrar vista previa" onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-[var(--bg-hover)]"><X size={15} /></button></div>
-        <div className="min-h-32 overflow-auto p-4">{loading && <div className="flex justify-center py-8"><LoaderCircle size={16} className="animate-spin" /></div>}{!loading && previewUrl && <img src={previewUrl} alt={attachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}{!loading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}{!loading && !previewUrl && previewText === undefined && <p className="py-8 text-center text-sm text-[var(--text-muted)]">No hay vista previa disponible.</p>}</div>
+        <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3"><Eye size={15} className="text-[var(--accent-2)]" /><span className="min-w-0 flex-1 truncate text-sm text-[var(--text)]">{attachment.name}</span><button type="button" aria-label={t('attach.closePreview')} onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-[var(--bg-hover)]"><X size={15} /></button></div>
+        <div className="min-h-32 overflow-auto p-4">{loading && <div className="flex justify-center py-8"><LoaderCircle size={16} className="animate-spin" /></div>}{!loading && previewUrl && <img src={previewUrl} alt={attachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}{!loading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}{!loading && !previewUrl && previewText === undefined && <p className="py-8 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}</div>
       </div>
     </div>}
   </>

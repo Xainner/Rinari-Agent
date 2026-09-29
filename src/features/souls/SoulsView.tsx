@@ -46,7 +46,9 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
     try {
       const result = await engineApi.soulList()
       setSouls(result.souls)
-      setActiveId(result.active_id)
+      // Un home nuevo no tiene activación explícita y aun así habla con el
+      // Soul de serie: se marca el que está en uso, no sólo el activado.
+      setActiveId(result.effective_id !== undefined ? result.effective_id : result.active_id)
     } catch (err) {
       toast.error(commandMessage(err))
     }
@@ -231,7 +233,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
                   id="soul-id"
                   value={form.id}
                   onChange={(e) => setForm({ ...form, id: e.target.value })}
-                  placeholder="mi-soul"
+                  placeholder={t('soul.idPlaceholder')}
                   className={inputClass}
                   autoComplete="off"
                   spellCheck={false}

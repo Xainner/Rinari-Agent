@@ -3,12 +3,17 @@ import { toast } from 'sonner'
 import { platform, type ContextMenuItem } from '../../platform'
 import { copyText } from '../../lib/clipboard'
 import { dispatchAction } from '../../services/actions'
+import { translate, type I18nKey } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 export default function DesktopContextMenu() {
   useEffect(() => {
     const handler = (event: MouseEvent) => {
       if (event.defaultPrevented || !platform().isDesktop()) return
       event.preventDefault()
+      // El idioma se lee al abrir el menú: puede haber cambiado desde el montaje.
+      const lang = useUIStore.getState().lang
+      const tr = (key: I18nKey) => translate(lang, key)
       const target = event.target instanceof Element ? event.target : null
       const editable = target?.closest(
         'input,textarea,[contenteditable="true"]',
@@ -21,7 +26,7 @@ export default function DesktopContextMenu() {
         items.push(
           {
             kind: 'action',
-            text: 'Deshacer',
+            text: tr('edit.undo'),
             run: () => {
               editable.focus()
               document.execCommand('undo')
@@ -29,22 +34,22 @@ export default function DesktopContextMenu() {
           },
           {
             kind: 'action',
-            text: 'Rehacer',
+            text: tr('edit.redo'),
             run: () => {
               editable.focus()
               document.execCommand('redo')
             },
           },
-          { kind: 'role', role: 'cut', text: 'Cortar' },
-          { kind: 'role', role: 'copy', text: 'Copiar' },
-          { kind: 'role', role: 'paste', text: 'Pegar' },
-          { kind: 'role', role: 'selectAll', text: 'Seleccionar todo' },
+          { kind: 'role', role: 'cut', text: tr('edit.cut') },
+          { kind: 'role', role: 'copy', text: tr('edit.copy') },
+          { kind: 'role', role: 'paste', text: tr('edit.paste') },
+          { kind: 'role', role: 'selectAll', text: tr('edit.selectAll') },
         )
       } else {
         if (selection)
           items.push({
             kind: 'action',
-            text: 'Copiar',
+            text: tr('edit.copy'),
             run: () => {
               void copyText(selection)
             },
@@ -53,12 +58,12 @@ export default function DesktopContextMenu() {
           items.push(
             {
               kind: 'action',
-              text: link.dataset.filePath ? 'Abrir archivo' : 'Abrir enlace',
+              text: link.dataset.filePath ? tr('app.openFile') : tr('app.openLink'),
               run: () => link.click(),
             },
             {
               kind: 'action',
-              text: 'Copiar dirección',
+              text: tr('app.copyAddress'),
               run: () => {
                 void copyText(link.dataset.filePath ?? link.href)
               },
@@ -66,8 +71,8 @@ export default function DesktopContextMenu() {
           )
         if (!items.length)
           items.push(
-            { kind: 'action', text: 'Nueva conversación', run: () => dispatchAction('new-chat') },
-            { kind: 'action', text: 'Configuración', run: () => dispatchAction('settings') },
+            { kind: 'action', text: tr('app.newConversation'), run: () => dispatchAction('new-chat') },
+            { kind: 'action', text: tr('app.settings'), run: () => dispatchAction('settings') },
           )
       }
       void platform()

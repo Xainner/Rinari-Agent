@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useI18n } from '../../i18n'
+import { translate, useI18n } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 import { type SlashCommandRequest, commandMessage, engineApi, prepareAttachmentRefs, prepareAttachmentRefsWithJob, type ModelSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import type { ReasoningEffort } from '../../lib/reasoning'
@@ -25,8 +26,6 @@ export interface UseModelOptions {
   setGlobalDefault?: boolean
 }
 
-const IMPLEMENT_PLAN_PROMPT =
-  'Implementa el plan propuesto en el turno anterior. Continúa en BUILD y verifica los cambios.'
 
 /**
  * Composición del estado de engine. Cada dominio vive en su hook:
@@ -268,7 +267,8 @@ export function useEngineSession() {
     try {
       const ok = await sessions.setModeFor(sessionId, 'build')
       if (!ok) return false
-      return await sendTo(sessionId, IMPLEMENT_PLAN_PROMPT)
+      // En el idioma de la interfaz: es un mensaje de la app enviado como del usuario.
+      return await sendTo(sessionId, translate(useUIStore.getState().lang, 'plan.implementPrompt'))
     } catch (err) {
       toast.error(commandMessage(err))
       return false

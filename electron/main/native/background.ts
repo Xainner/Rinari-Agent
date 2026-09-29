@@ -13,6 +13,7 @@ import { dirname } from 'node:path'
 
 import type { BackgroundPatch, BackgroundSettings } from '../../shared/contracts'
 import { ValidationError } from '../../shared/validation'
+import { isHostLanguage, type HostLanguage } from './hostText'
 
 /** Argumento con el que el sistema abre la app al iniciar sesión. */
 export const HIDDEN_START_ARG = '--hidden'
@@ -22,6 +23,11 @@ export interface DesktopSettings {
   backgroundMode: boolean
   /** Ya se avisó una vez de que la app sigue en la bandeja. */
   trayNoticeShown: boolean
+  /**
+   * Idioma de la interfaz, para lo que main pinta antes que el renderer
+   * (menú, bandeja). `null` hasta que el renderer lo diga: vale el del sistema.
+   */
+  language: HostLanguage | null
 }
 
 export interface LoginItems {
@@ -30,7 +36,7 @@ export interface LoginItems {
   set(openAtLogin: boolean): void
 }
 
-const DEFAULTS: DesktopSettings = { backgroundMode: true, trayNoticeShown: false }
+const DEFAULTS: DesktopSettings = { backgroundMode: true, trayNoticeShown: false, language: null }
 
 export function loadDesktopSettings(path: string): DesktopSettings {
   try {
@@ -38,6 +44,7 @@ export function loadDesktopSettings(path: string): DesktopSettings {
     return {
       backgroundMode: typeof raw.backgroundMode === 'boolean' ? raw.backgroundMode : DEFAULTS.backgroundMode,
       trayNoticeShown: typeof raw.trayNoticeShown === 'boolean' ? raw.trayNoticeShown : DEFAULTS.trayNoticeShown,
+      language: isHostLanguage(raw.language) ? raw.language : DEFAULTS.language,
     }
   } catch {
     // Ausente o ilegible: los valores por defecto, sin romper el arranque.
@@ -91,6 +98,19 @@ export function createBackground(deps: BackgroundDeps) {
   return {
     get backgroundMode(): boolean {
       return settings.backgroundMode
+    },
+
+    /** Idioma guardado de la interfaz, o `null` si el renderer aún no lo dijo. */
+    get language(): HostLanguage | null {
+      return settings.language
+    },
+
+    /** Guarda el idioma; `true` si cambió (main rehace menú y bandeja). */
+    setLanguage(language: HostLanguage): boolean {
+      if (settings.language === language) return false
+      settings = { ...settings, language }
+      persist()
+      return true
     },
 
     settings(): BackgroundSettings {

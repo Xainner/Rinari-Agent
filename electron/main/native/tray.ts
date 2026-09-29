@@ -10,10 +10,14 @@ import { join } from 'node:path'
 
 import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
 
+import type { HostText } from './hostText'
+
 export interface TrayDeps {
   /** Muestra y enfoca la ventana principal (o la revela si nunca se mostró). */
   onOpen(): void
   onQuit(): void
+  /** Etiquetas en el idioma actual de la interfaz. */
+  text(): HostText
 }
 
 export interface TrayEntry {
@@ -24,10 +28,11 @@ export interface TrayEntry {
 
 /** Entradas del menú; se prueban sin Electron. */
 export function trayMenuEntries(deps: TrayDeps): TrayEntry[] {
+  const text = deps.text()
   return [
-    { label: 'Abrir Rinari', run: deps.onOpen },
+    { label: text.trayOpen, run: deps.onOpen },
     { label: '', separator: true },
-    { label: 'Salir', run: deps.onQuit },
+    { label: text.trayQuit, run: deps.onQuit },
   ]
 }
 
@@ -48,6 +53,13 @@ export function createTrayController(deps: TrayDeps) {
     return image && !image.isEmpty() ? image : app.getFileIcon(process.execPath, { size: 'small' })
   }
 
+  const contextMenu = () =>
+    Menu.buildFromTemplate(
+      trayMenuEntries(deps).map((entry) =>
+        entry.separator ? { type: 'separator' as const } : { label: entry.label, click: entry.run },
+      ),
+    )
+
   return {
     async show(): Promise<void> {
       wanted = true
@@ -57,13 +69,7 @@ export function createTrayController(deps: TrayDeps) {
           if (!wanted) return
           tray = new Tray(image)
           tray.setToolTip('Rinari Agent')
-          tray.setContextMenu(
-            Menu.buildFromTemplate(
-              trayMenuEntries(deps).map((entry) =>
-                entry.separator ? { type: 'separator' as const } : { label: entry.label, click: entry.run },
-              ),
-            ),
-          )
+          tray.setContextMenu(contextMenu())
           // Un clic abre; el menú queda en el clic derecho, como en Windows.
           tray.on('click', () => deps.onOpen())
         })
@@ -78,6 +84,11 @@ export function createTrayController(deps: TrayDeps) {
       wanted = false
       tray?.destroy()
       tray = null
+    },
+
+    /** Cambió el idioma: se rehace el menú del icono si existe. */
+    refresh(): void {
+      tray?.setContextMenu(contextMenu())
     },
   }
 }

@@ -1,6 +1,8 @@
 import type { ManagedProcess, ProcessOutput } from '../types/protocol.generated'
 
 import { platform } from '../platform'
+import { translate, type I18nKey } from '../i18n'
+import { useUIStore } from '../stores/ui'
 
 export interface ProcessListResult {
   processes: ManagedProcess[]
@@ -110,15 +112,20 @@ export function isProcessStopResult(value: unknown): value is ProcessStopResult 
   return true
 }
 
+// Los errores llegan tal cual al inspector de procesos: van en el idioma de la
+// interfaz, con el prefijo técnico aparte.
+const fail = (key: I18nKey, vars?: Record<string, string>): Error =>
+  new Error(`processes: ${translate(useUIStore.getState().lang, key, vars)}`)
+
 function requireSession(sessionId: string): void {
   if (typeof sessionId !== 'string' || sessionId === '') {
-    throw new Error('processes: sessionId requerido; no se crea ni se infiere sesión')
+    throw fail('processes.errorSessionRequired')
   }
 }
 
 function requireId(id: string): void {
   if (typeof id !== 'string' || id === '') {
-    throw new Error('processes: id de recurso requerido (opaco, íntegro)')
+    throw fail('processes.errorIdRequired')
   }
 }
 
@@ -138,7 +145,7 @@ export const processesApi = {
       ...(opts.cursor !== undefined ? { cursor: opts.cursor } : {}),
       ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
     })
-    if (!isProcessListEnvelope(raw)) throw new Error('processes: respuesta list malformada')
+    if (!isProcessListEnvelope(raw)) throw fail('processes.errorMalformed', { op: 'list' })
     // Cuarentena por fila: una fila corrupta no oculta las válidas.
     const processes = (raw.processes as unknown[]).filter(isManagedProcess)
     return { ...raw, processes, invalid: raw.processes.length - processes.length }
@@ -148,7 +155,7 @@ export const processesApi = {
     requireSession(sessionId)
     requireId(id)
     const raw = await platform().command<unknown>('workspace_process_read', { session_id: sessionId, id })
-    if (!isProcessReadResult(raw)) throw new Error('processes: respuesta read malformada')
+    if (!isProcessReadResult(raw)) throw fail('processes.errorMalformed', { op: 'read' })
     return raw
   },
 
@@ -166,7 +173,7 @@ export const processesApi = {
         ? { engine_instance_id: preconditions.engine_instance_id, generation: preconditions.generation }
         : {}),
     })
-    if (!isProcessStopResult(raw)) throw new Error('processes: respuesta stop malformada')
+    if (!isProcessStopResult(raw)) throw fail('processes.errorMalformed', { op: 'stop' })
     return raw
   },
 }

@@ -26,6 +26,8 @@ export const CHANNEL = {
   /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
   appBackgroundGet: 'rinari:app.background.get',
   appBackgroundSet: 'rinari:app.background.set',
+  /** Idioma de la interfaz: main lo usa en el menú nativo, la bandeja y sus diálogos. */
+  appLanguageSet: 'rinari:app.language.set',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',

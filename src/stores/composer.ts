@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type { AttachmentRef } from '../types'
+import { translate } from '../i18n'
+import { useUIStore } from './ui'
 
 export interface Draft {
   text: string
@@ -58,7 +60,7 @@ function safeDraftAttachment(attachment: AttachmentRef): AttachmentRef {
     data_url: undefined,
     status: attachment.status === 'preparing' ? 'error' : attachment.status,
     error: attachment.status === 'preparing'
-      ? 'La preparacion se interrumpio; vuelve a intentar o adjunta el archivo de nuevo.'
+      ? translate(useUIStore.getState().lang, 'attach.interrupted')
       : attachment.error,
   }
 }

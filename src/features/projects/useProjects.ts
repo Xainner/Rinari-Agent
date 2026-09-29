@@ -8,6 +8,8 @@ import {
   type ProjectSummary,
 } from '../../services/engine'
 import { sortProjects } from './workspaceModel'
+import { translate } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 /**
  * Projects: proyectos recientes del engine, apertura, estado Git vivo e
@@ -133,7 +135,7 @@ export function useProjects(options: { engineReady: boolean }) {
       await engineApi.projectTrust(root)
       const intel = await engineApi.projectIntelligence(root)
       setIntelByRoot((prev) => ({ ...prev, [root]: intel }))
-      toast.success('Proyecto marcado como confiable.')
+      toast.success(translate(useUIStore.getState().lang, 'project.trusted'))
       return true
     } catch (err) {
       toast.error(commandMessage(err))

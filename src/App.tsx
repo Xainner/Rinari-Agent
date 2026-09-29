@@ -4,11 +4,11 @@ import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
-import { TRUST_WARNING } from './features/engine/useSessionList'
+import { warnUntrusted } from './features/projects/trustWarning'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
-import { engineApi } from './services/engine'
+import { engineApi, type TrustState } from './services/engine'
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
@@ -114,7 +114,8 @@ function App() {
     void engineApi.projectIntelligence(root)
       .then(async (intel) => {
         if (intel.instructions.trusted) return
-        if (!(await offerTrust(root))) toast.warning(TRUST_WARNING, { id: `project-trust-${opened.project.id ?? root}` })
+        const state = intel.instructions.trust_state
+        if (!(await offerTrust(root, state))) warnUntrusted(root, state, `project-trust-${opened.project.id ?? root}`)
       })
       .catch(() => undefined)
       .finally(release)
@@ -122,10 +123,11 @@ function App() {
   }
 
   /** Confiar habilita instrucciones, skills y plugins del proyecto: se pregunta. */
-  async function offerTrust(root: string): Promise<boolean> {
+  async function offerTrust(root: string, state?: TrustState | null): Promise<boolean> {
     const ok = await confirm({
       title: translate(lang, 'project.trustTitle'),
-      body: translate(lang, 'project.trustConfirm'),
+      // Si ya confiaste y cambió su identidad, se dice eso y no «¿confías?» a secas.
+      body: translate(lang, state === 'revalidation-required' ? 'project.trustChangedConfirm' : 'project.trustConfirm'),
       confirmLabel: translate(lang, 'project.trust'),
       cancelLabel: translate(lang, 'project.trustLater'),
     })
@@ -166,8 +168,24 @@ function App() {
     void refreshNotificationSupport()
   }, [])
 
+  // El menú nativo, la bandeja y los diálogos de main siguen el idioma de la
+  // interfaz. Un host sin esta intención (versiones anteriores) se ignora.
   useEffect(() => {
-    async function handleOpen(request: { project: string | null; session: string | null }) {
+    void platform().app.setLanguage(lang).catch(() => undefined)
+  }, [lang])
+
+  // `rinari desktop` en frío llega antes de que el Engine esté listo: abrir
+  // entonces fallaba con «engine is not running» y luego funcionaba. La
+  // petición espera a `session.ready`; si llegan varias, vale la última.
+  type OpenRequest = { project: string | null; session: string | null }
+  const pendingOpen = useRef<OpenRequest | null>(null)
+  const openWhenReady = useRef<(request: OpenRequest) => void>(() => {})
+  openWhenReady.current = (request) => {
+    if (!session.ready) {
+      pendingOpen.current = request
+      return
+    }
+    void (async () => {
       try {
         if (request.session) {
           await session.selectSession(request.session)
@@ -180,21 +198,29 @@ function App() {
       } catch (err) {
         toast.error(err instanceof Error ? err.message : String(err))
       }
-    }
+    })()
+  }
+  useEffect(() => {
+    if (!session.ready || !pendingOpen.current) return
+    const request = pendingOpen.current
+    pendingOpen.current = null
+    openWhenReady.current(request)
+  }, [session.ready])
+
+  useEffect(() => {
     let unlisten: (() => void) | undefined
     void engineApi
       .initialOpenRequest()
       .then((request) => {
-        if (request.project || request.session) void handleOpen(request)
+        if (request.project || request.session) openWhenReady.current(request)
       })
       .catch(() => {})
     void platform()
-      .events.onOpenRequest((request) => void handleOpen(request))
+      .events.onOpenRequest((request) => openWhenReady.current(request))
       .then((stop) => {
         unlisten = stop
       })
     return () => unlisten?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // El motor arranca solo al abrir la app: Rinari nunca parece "apagado".
@@ -467,10 +493,10 @@ function App() {
           break
         case 'undo': case 'redo': document.execCommand(action); break
         case 'updates': void checkForUpdates().then(found => {
-          if (!found) { toast.success('Rinari Agent está actualizado.'); return }
-          toast(`Nueva versión: ${found.version}`, {
-            description: found.unsigned ? 'Canal sin firma Authenticode; el SHA-512 se verificará antes de aplicar.' : undefined,
-            action: { label: 'Descargar', onClick: () => void downloadUpdate().catch(error => toast.error(String(error))) },
+          if (!found) { toast.success(translate(lang, 'update.upToDate')); return }
+          toast(translate(lang, 'update.available', { v: found.version }), {
+            description: found.unsigned ? translate(lang, 'update.unsigned') : undefined,
+            action: { label: translate(lang, 'update.download'), onClick: () => void downloadUpdate().catch(error => toast.error(String(error))) },
           })
         }).catch(error => toast.error(String(error))); break
       }

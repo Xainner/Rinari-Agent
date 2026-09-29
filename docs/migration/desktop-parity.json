@@ -1238,7 +1238,9 @@
       "kind": "engine",
       "method": "soul.list",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "soul_remove",
@@ -1486,6 +1488,6 @@
     "engine_backed": 170,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 56
+    "without_callers": 55
   }
 }

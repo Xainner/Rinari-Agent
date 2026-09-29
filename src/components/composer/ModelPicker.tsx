@@ -145,7 +145,7 @@ export default function ModelPicker({
               {t('composer.noModelsSetup')}
             </button>
           )}
-          {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">No se encontraron modelos.</p>}
+          {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">{t('models.noneFound')}</p>}
           {providerGroups.filter((provider) => matchingModels.some((model) => (model.provider ?? 'Otros') === provider)).map((provider) => <section key={provider} aria-label={provider}>
             <h3 className="text-[11px] font-semibold text-[var(--text-subtle)]">
               <button type="button" aria-expanded={Boolean(query.trim()) || !collapsedProviders.has(provider)} onClick={() => setCollapsedProviders((current) => { const next = new Set(current); if (next.has(provider)) next.delete(provider); else next.add(provider); return next })} disabled={Boolean(query.trim())} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default">

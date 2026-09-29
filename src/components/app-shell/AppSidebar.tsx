@@ -339,7 +339,7 @@ export function AppSidebar({
                 void copyText(session.id).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
               }}><Copy size={13} /> {t('sidebar.copySessionId')}</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => {
-                const reference = `Sesión: ${session.id}\nTítulo: ${sessionLabel(session, t('sidebar.newChat'))}${session.project_id ? `\nProyecto: ${session.project_id}` : ''}${session.project_root ? `\nWorkspace: ${session.project_root}` : ''}`
+                const reference = `${t('sidebar.refSession')}: ${session.id}\n${t('sidebar.refTitle')}: ${sessionLabel(session, t('sidebar.newChat'))}${session.project_id ? `\n${t('sidebar.refProject')}: ${session.project_id}` : ''}${session.project_root ? `\nWorkspace: ${session.project_root}` : ''}`
                 void copyText(reference).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionReferenceCopied' : 'sidebar.sessionReferenceCopyFailed')))
               }}><Copy size={13} /> {t('sidebar.copySessionReference')}</DropdownMenuItem>
               {opts?.closed ? (
@@ -357,8 +357,8 @@ export function AppSidebar({
                   }}>
                     <Pencil size={13} /> {t('sidebar.rename')}
                   </DropdownMenuItem>
-                  {onMoveSession && <DropdownMenuSub><DropdownMenuSubTrigger><FolderGit2 size={13} /> Mover a proyecto…</DropdownMenuSubTrigger><DropdownMenuSubContent>
-                    <DropdownMenuItem disabled={session.kind === 'CHAT'} onSelect={() => onMoveSession(session.id, null)}>Espacio general</DropdownMenuItem>
+                  {onMoveSession && <DropdownMenuSub><DropdownMenuSubTrigger><FolderGit2 size={13} /> {t('sidebar.moveToProject')}</DropdownMenuSubTrigger><DropdownMenuSubContent>
+                    <DropdownMenuItem disabled={session.kind === 'CHAT'} onSelect={() => onMoveSession(session.id, null)}>{t('sidebar.generalSpace')}</DropdownMenuItem>
                     {projects.filter(project => !project.archived).map(project => <DropdownMenuItem key={project.id} disabled={project.id === session.project_id} onSelect={() => onMoveSession(session.id, project.id)}>{project.name || projectDisplayName(project.root)}</DropdownMenuItem>)}
                   </DropdownMenuSubContent></DropdownMenuSub>}
                   {onOpenInBoard && <DropdownMenuItem onSelect={() => onOpenInBoard(session.id)}>
@@ -529,7 +529,7 @@ export function AppSidebar({
                     </span>
                   )}
                 </button>
-                {onNewProjectChat && <button type="button" aria-label={`Nueva sesión en ${project.name || projectDisplayName(project.root)}`} title="Nueva sesión en este proyecto" onClick={() => {
+                {onNewProjectChat && <button type="button" aria-label={t('sidebar.newSessionIn', { name: project.name || projectDisplayName(project.root) })} title={t('sidebar.newSessionInProject')} onClick={() => {
                   setQuery('')
                   setCollapsedProjects(current => { const next = new Set(current); next.delete(project.id); return next })
                   onNewProjectChat(project.id)
@@ -670,7 +670,7 @@ export function AppSidebar({
               {t('sidebar.approvals')} · {approvals.length}
             </p>
             <p className="px-2 text-[11px] leading-relaxed text-[var(--text-subtle)]">
-              Responde la solicitud dentro del turno activo.
+              {t('sidebar.approvalsHint')}
             </p>
           </div>
         )}

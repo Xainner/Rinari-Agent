@@ -1,4 +1,5 @@
 import { MoreVertical } from 'lucide-react'
+import { useI18n, type I18nKey } from '../../i18n'
 import { dispatchAction, type DesktopAction } from '../../services/actions'
 import {
   DropdownMenu,
@@ -7,19 +8,20 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 
-const entries: Array<[DesktopAction, string]> = [
-  ['settings', 'Configuración'],
-  ['appearance', 'Apariencia'],
-  ['engine', 'Estado del motor'],
-  ['updates', 'Buscar actualizaciones'],
-  ['about', 'Acerca de Rinari Agent'],
+const entries: Array<[DesktopAction, I18nKey]> = [
+  ['settings', 'app.settings'],
+  ['appearance', 'app.appearance'],
+  ['engine', 'app.engineStatus'],
+  ['updates', 'app.checkUpdates'],
+  ['about', 'app.about'],
 ]
 export default function ApplicationMenu({ collapsed = false }: { collapsed?: boolean }) {
+  const { t } = useI18n()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          aria-label="Menú de Rinari Agent"
+          aria-label={t('app.menuLabel')}
           className="relative flex w-full items-center justify-center gap-2 rounded-lg px-2 py-3 text-sm hover:bg-[var(--bg-hover)]"
         >
           {!collapsed && (
@@ -31,7 +33,7 @@ export default function ApplicationMenu({ collapsed = false }: { collapsed?: boo
       <DropdownMenuContent side="top" align="start" className="w-60">
         {entries.map(([action, label]) => (
           <DropdownMenuItem key={action} onSelect={() => dispatchAction(action)}>
-            {label}
+            {t(label)}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

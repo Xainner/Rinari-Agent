@@ -56,7 +56,16 @@ describe('segundo plano', () => {
   })
 
   it('falls back to defaults on an unreadable file', () => {
-    expect(loadDesktopSettings(join(tmpdir(), 'no-such-rinari-dir', 'x.json'))).toEqual({ backgroundMode: true, trayNoticeShown: false })
+    expect(loadDesktopSettings(join(tmpdir(), 'no-such-rinari-dir', 'x.json'))).toEqual({ backgroundMode: true, trayNoticeShown: false, language: null })
+  })
+
+  it('remembers the interface language for the menu and the tray of the next launch', () => {
+    const path = settingsPath()
+    const background = createBackground({ settingsPath: path, loginItems: null })
+    expect(background.language).toBeNull()
+    expect(background.setLanguage('en')).toBe(true)
+    expect(background.setLanguage('en')).toBe(false)
+    expect(loadDesktopSettings(path).language).toBe('en')
   })
 
   it('validates what the renderer sends: known booleans only', () => {

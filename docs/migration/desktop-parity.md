@@ -161,7 +161,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `soul_activate` | engine | `soul.activate` | `src/services/engine.ts` |
 | `soul_create` | engine | `soul.create` | `src/services/engine.ts` |
 | `soul_get` | engine | `soul.get` | `src/services/engine.ts` |
-| `soul_list` | engine | `soul.list` | **ninguno** |
+| `soul_list` | engine | `soul.list` | `src/services/engine.ts` |
 | `soul_remove` | engine | `soul.remove` | `src/services/engine.ts` |
 | `soul_update` | engine | `soul.update` | `src/services/engine.ts` |
 | `task_get` | engine | `task.get` | `src/services/engine.ts` |

@@ -93,6 +93,8 @@ export interface HostServices {
   app: {
     background(): BackgroundSettings
     setBackground(patch: BackgroundPatch): BackgroundSettings
+    /** Idioma de la interfaz para lo que pinta main (menú, bandeja, diálogos). */
+    setLanguage(language: 'es' | 'en'): void
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -367,6 +369,13 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.appBackgroundSet,
       guarded(registry, (_event, patch) => services.app.setBackground(assertBackgroundPatch(patch))),
+    ],
+    [
+      CHANNEL.appLanguageSet,
+      guarded(registry, (_event, language) => {
+        if (language !== 'es' && language !== 'en') throw new ValidationError('language must be "es" or "en"')
+        services.app.setLanguage(language)
+      }),
     ],
     [
       CHANNEL.contextMenuShow,

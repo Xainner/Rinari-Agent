@@ -19,6 +19,13 @@ it('una herramienta desconocida muestra su nombre, no «ejecutó un comando»', 
   expect(formatTool(tool('shell.exec', { command: 'npm test' }), 'en')).toBe('Ran a command')
 })
 
+it('una memoria rechazada o pendiente no se presenta como guardada', () => {
+  expect(formatTool(tool('memory.remember', {}, 'failed'), 'es')).toBe('No pudo guardar en su memoria')
+  const pending = { ...tool('memory.remember'), presentation: { kind: 'tool', data: { pending: true } } } as ToolTimelineItem
+  expect(formatTool(pending, 'en')).toBe('Proposed a memory for your approval')
+  expect(formatTool(tool('memory.remember'), 'es')).toBe('Actualizó su memoria')
+})
+
 it('clasifica por nombre exacto o familia, no por palabras sueltas', () => {
   // «list» dentro de `skills.list` no lo convierte en un listado de archivos.
   expect(toolCategory('skills.list')).toBe('skill')

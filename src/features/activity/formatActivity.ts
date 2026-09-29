@@ -172,9 +172,16 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
       }
       return pick(['Consultó sus skills', 'Checked its skills'])
     }
-    case 'memory':
-      if (item.tool === 'memory.recall' || item.tool === 'memory.episodic') return pick(['Recordó', 'Recalled from memory'])
+    case 'memory': {
+      if (item.tool === 'memory.recall') return pick(['Recordó', 'Recalled from memory'])
+      // Lo que no se guardó no se presenta como guardado: un rechazo decía
+      // «Actualizó su memoria» con el icono de error al lado.
+      if (item.status === 'failed' || item.status === 'cancelled') return pick(['No pudo guardar en su memoria', 'Could not save to memory'])
+      const data = item.presentation?.data as { pending?: unknown } | undefined
+      if (data?.pending === true) return pick(['Propuso un recuerdo para tu aprobación', 'Proposed a memory for your approval'])
+      if (item.tool === 'memory.episodic') return pick(['Anotó un resumen de la tarea', 'Noted a task summary'])
       return pick(['Actualizó su memoria', 'Updated its memory'])
+    }
     case 'code':
       return pick(['Analizó el código', 'Analyzed the code'])
     case 'ask':

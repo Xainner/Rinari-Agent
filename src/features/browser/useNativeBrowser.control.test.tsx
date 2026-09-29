@@ -34,6 +34,12 @@ it('between turns the page goes live; a new turn hands it back to Rinari', async
   await waitFor(() => expect(controls()).toEqual(['user', 'agent']))
   hook.rerender({ busy: false })
   await waitFor(() => expect(controls()).toEqual(['user', 'agent', 'user']))
+  // The live view is the UI's doing, not the user's: the Engine reclaims it on
+  // Rinari's first action even if this panel is gone when the turn starts.
+  const automatic = host.bridge.browserCalls
+    .filter((call) => call.kind === 'setControl')
+    .map((call) => Boolean((call as { automatic?: boolean }).automatic))
+  expect(automatic).toEqual([true, false, true])
 })
 
 it('what you decide by hand is respected', async () => {

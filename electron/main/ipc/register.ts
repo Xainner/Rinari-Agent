@@ -126,7 +126,12 @@ export interface HostServices {
     updateSlot(request: BrowserSlotLayoutRequest): Promise<void>
     detachSlot(slotId: string): Promise<void>
     selectTarget(sessionId: string, targetId: string): Promise<unknown>
-    setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number): Promise<unknown>
+    setControl(
+      sessionId: string,
+      owner: 'agent' | 'user',
+      expectedRevision?: number,
+      automatic?: boolean,
+    ): Promise<unknown>
     navigate(sessionId: string, url: string): Promise<unknown>
     preview(sessionId: string): Promise<unknown>
     diagnostics(): { layoutSlots: number }
@@ -310,6 +315,12 @@ function assertControlOwner(value: unknown): 'agent' | 'user' {
   return value
 }
 
+function assertOptionalBoolean(value: unknown, name: string): boolean | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'boolean') throw new ValidationError(`${name} must be a boolean`)
+  return value
+}
+
 function assertExpectedRevision(value: unknown): number | undefined {
   if (value === undefined || value === null) return undefined
   // `true` es un número en muchas comprobaciones laxas; aquí no.
@@ -445,11 +456,12 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     ],
     [
       CHANNEL.browserSetControl,
-      guarded(registry, (_event, sessionId, owner, expectedRevision) =>
+      guarded(registry, (_event, sessionId, owner, expectedRevision, automatic) =>
         services.browser.setControl(
           assertString(sessionId, 'session_id', 128),
           assertControlOwner(owner),
           assertExpectedRevision(expectedRevision),
+          assertOptionalBoolean(automatic, 'automatic'),
         ),
       ),
     ],

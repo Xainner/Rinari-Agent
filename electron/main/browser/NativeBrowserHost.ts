@@ -249,12 +249,14 @@ export class NativeBrowserHost {
     sessionId: string,
     owner: 'agent' | 'user',
     expectedRevision?: number,
+    automatic?: boolean,
   ): Promise<unknown> {
     if (owner === 'user') {
       return this.deps.request('browser.control.set', {
         session_id: sessionId,
         owner,
         ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
+        ...(automatic ? { automatic: true } : {}),
       })
     }
 

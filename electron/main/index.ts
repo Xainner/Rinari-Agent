@@ -341,9 +341,9 @@ function browserServices(): HostServices['browser'] {
       return { active_target_id: targetId }
     },
 
-    setControl: (sessionId, owner, expectedRevision) => {
+    setControl: (sessionId, owner, expectedRevision, automatic) => {
       if (!browserHost) throw new Error('the browser host is not ready')
-      return browserHost.setControl(sessionId, owner, expectedRevision)
+      return browserHost.setControl(sessionId, owner, expectedRevision, automatic)
     },
 
     // Navegación de la toolbar: es del usuario sobre su propia página, no una

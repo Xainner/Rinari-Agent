@@ -13,6 +13,8 @@ vi.mock('../../services/engine', async (importOriginal) => {
   return {
     ...actual,
     engineApi: { ...actual.engineApi, attachmentPreview: vi.fn(), artifactList: vi.fn(), artifactRead: vi.fn() },
+    // The artifacts panel listens for tools that save artifacts.
+    onEngineEvent: vi.fn(async () => () => {}),
   }
 })
 

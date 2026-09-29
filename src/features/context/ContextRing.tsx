@@ -3,7 +3,7 @@ import { useI18n } from '../../i18n'
 import { engineApi, onEngineEvent } from '../../services/engine'
 import type { ContextStatus } from '../../types/protocol.generated'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip'
-import { lastRequest } from './contextStatus'
+import { lastCompaction, lastRequest } from './contextStatus'
 
 /** Events after which the session's context may have grown or shrunk. */
 const REFRESH_EVENTS = new Set(['usage.updated', 'turn.completed', 'turn.failed', 'turn.cancelled', 'governor.compact'])
@@ -16,20 +16,36 @@ export interface RingFigures {
   ratio: number
   /** At or past the compaction threshold, when compaction is on. */
   near: boolean
+  /** Not measured yet: what the last compaction left, until the next call. */
+  estimated: boolean
 }
 
 /**
  * What the ring shows: what the provider measured for the last request of
- * this projection over the model's window. Nothing when it has not measured
- * it (a provider that reports no usage, or a session with no call yet).
+ * this projection over the model's window. Right after a compaction nothing
+ * has measured the new projection yet, and the ring used to vanish until the
+ * next call; it shows what the compaction left instead, marked as estimated.
+ * Nothing when neither exists (a provider that reports no usage, or a
+ * session with no call yet).
  */
 export function ringFigures(status: ContextStatus | null | undefined): RingFigures | null {
-  const used = lastRequest(status ?? undefined)?.input_tokens
+  const measured = lastRequest(status ?? undefined)?.input_tokens
+  const compacted = lastCompaction(status ?? undefined)
+  const after = compacted?.status === 'completed' && (status?.projection_revision ?? 0) > 0
+    ? compacted.after_tokens
+    : undefined
+  const used = measured ?? after
   const total = status?.window_tokens
   if (used === undefined || !total) return null
   const ratio = Math.min(1, used / total)
   const threshold = status?.compaction_enabled === false ? undefined : status?.compact_at_percent
-  return { used, total, ratio, near: threshold !== undefined && ratio * 100 >= threshold }
+  return {
+    used,
+    total,
+    ratio,
+    near: threshold !== undefined && ratio * 100 >= threshold,
+    estimated: measured === undefined,
+  }
 }
 
 /** How full this session's context is, next to the model picker. */
@@ -73,7 +89,7 @@ export default function ContextRing({ sessionId, modelId }: { sessionId?: string
             className="context-ring"
             tabIndex={0}
             role="img"
-            aria-label={t('context.ring', { used: count(figures.used), total: count(figures.total), percent })}
+            aria-label={t(figures.estimated ? 'context.ringEstimated' : 'context.ring', { used: count(figures.used), total: count(figures.total), percent })}
             data-near={figures.near || undefined}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
@@ -88,8 +104,9 @@ export default function ContextRing({ sessionId, modelId }: { sessionId?: string
           </span>
         </TooltipTrigger>
         <TooltipContent side="top">
-          <span className="tabular-nums">{count(figures.used)} / {count(figures.total)}</span>
+          <span className="tabular-nums">{figures.estimated ? '≈ ' : ''}{count(figures.used)} / {count(figures.total)}</span>
           <span className="ml-1.5 text-[var(--text-subtle)]">{percent}</span>
+          {figures.estimated && <span className="ml-1.5 text-[var(--text-subtle)]">{t('context.ringAfterCompaction')}</span>}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

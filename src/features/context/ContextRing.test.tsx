@@ -70,3 +70,19 @@ it('computes its figures only from a reported measurement', () => {
   expect(ringFigures(measured(131072 * 2))?.ratio).toBe(1)
   expect(ringFigures({ ...(measured(120000) as object), compaction_enabled: false } as never)?.near).toBe(false)
 })
+
+it('after a compaction shows what it left, as an estimate, until the next measurement', async () => {
+  // ses_01M3M992…: the ring vanished after compacting 137,737 → 69,862 tokens.
+  const compacted = {
+    ...(measured(0) as object),
+    last_request: null,
+    projection_revision: 1,
+    last_compaction: { status: 'completed', reason: 'manual', after_tokens: 69862, checks: {} },
+  } as never
+  expect(ringFigures(compacted)).toMatchObject({ used: 69862, estimated: true })
+  expect(ringFigures(measured(70000))?.estimated).toBe(false)
+  vi.mocked(engineApi.contextStatus).mockResolvedValue(compacted)
+  ring()
+  await flush()
+  expect(screen.getByRole('img').getAttribute('aria-label')).toContain('estimado tras compactar')
+})

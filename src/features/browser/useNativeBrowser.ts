@@ -318,9 +318,14 @@ export function useNativeBrowser(
   const keepAgentWhileIdle = useRef(false)
   const wasBusy = useRef<boolean | undefined>(undefined)
   const setControl = useCallback(
-    (owner: 'agent' | 'user') =>
+    (owner: 'agent' | 'user', automatic = false) =>
       guard(async () => {
-        const result = await platform().browser.setControl(sessionId, owner, context?.control_revision)
+        const result = await platform().browser.setControl(
+          sessionId,
+          owner,
+          context?.control_revision,
+          automatic || undefined,
+        )
         applyControlReply(result)
       }),
     [applyControlReply, context?.control_revision, guard, sessionId],
@@ -340,7 +345,9 @@ export function useNativeBrowser(
       return
     }
     if (!busy && shown && context.control_state === 'agent' && !keepAgentWhileIdle.current) {
-      void setControl('user')
+      // Automático: si el panel ya no está cuando empiece el turno, el Engine
+      // lo recupera en la primera acción de Rinari.
+      void setControl('user', true)
     }
   }, [automaticHandoff, busy, shown, context?.context_state, context?.control_state, setControl, context])
 

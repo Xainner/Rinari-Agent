@@ -664,12 +664,13 @@ export const engineApi = {
   start: () => platform().engine.start(),
   shutdown: () => platform().engine.shutdown(),
   restart: () => platform().engine.restart(),
-  sessions: (kind?: string, includeClosed?: boolean, projectId?: string, state?: string) =>
+  sessions: (kind?: string, includeClosed?: boolean, projectId?: string, state?: string, limit?: number) =>
     platform().command<{ sessions: SessionSummary[] }>("session_list", {
       kind: kind ?? null,
       include_closed: includeClosed ?? null,
       project_id: projectId ?? null,
       state: state ?? null,
+      limit: limit ?? null,
     }),
   createSession: (options?: { cwd?: string; chat?: boolean; title?: string; mode?: string; permission_profile?: string; project_id?: string }) =>
     platform().command<{ session: SessionSummary; created: boolean }>("session_create", {
@@ -987,7 +988,9 @@ export const engineApi = {
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
   // la petición sin sesión y la compactación manual fallaba.
-  contextCompact: (sessionId: string) => platform().command('context_compact', { session_id: sessionId }),
+  /** Compacts now; with `continueWith`, the same turn then sends that message. */
+  contextCompact: (sessionId: string, continueWith?: string) =>
+    platform().command('context_compact', { session_id: sessionId, continue_with: continueWith ?? null }),
   /** Capacity of a saved model, or of a session's model plus its measured use. */
   contextStatus: (target: { model_id?: string; session_id?: string }) =>
     platform().command<import('../types/protocol.generated').ContextStatus>('context_status', target),

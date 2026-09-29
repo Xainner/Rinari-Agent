@@ -74,6 +74,7 @@ interface DesktopHostApi {
       sessionId: string,
       owner: 'agent' | 'user',
       expectedRevision?: number,
+      automatic?: boolean,
     ): Promise<NativeBrowserControl>
     navigate(sessionId: string, url: string): Promise<unknown>
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
@@ -210,8 +211,8 @@ export const electronBridge: DesktopBridge = {
     selectTarget: async (sessionId, targetId) => {
       await required().browser.selectTarget(sessionId, targetId)
     },
-    setControl: (sessionId, owner, expectedRevision) =>
-      required().browser.setControl(sessionId, owner, expectedRevision),
+    setControl: (sessionId, owner, expectedRevision, automatic) =>
+      required().browser.setControl(sessionId, owner, expectedRevision, automatic),
     navigate: async (sessionId, url) => {
       await required().browser.navigate(sessionId, url)
     },

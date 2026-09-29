@@ -35,6 +35,14 @@
 > los valida el Engine. Validarlos campo a campo en main requiere que el schema
 > del Engine declare los parámetros de cada método, y es el paso siguiente.
 
+> **Dónde se entregan los instaladores (regla vigente, 2026-09-28).** Todo
+> instalador que se entregue al dueño termina en
+> `C:\Users\Xainner\Documents\DEV\Apps\Rinari-Agent\release\installer`, el
+> `release/installer/` del checkout principal (ignorado por git), aunque se haya
+> construido en otro worktree: se copia ahí con el nombre
+> `Rinari-Agent-Setup-<versión>-x64-<fecha>[letra].exe`, sin pisar los
+> anteriores, y se informa su SHA-256. No se usan otras carpetas de entrega.
+
 > **Status:** Implementation blueprint / source of truth for Rinari Agent v1
 > **Date:** 2026-09-08  
 > **Rinari-CLI baseline:** `Xainner/Rinari-CLI` @ `110ad4ee55dbea1f5bd1565b35af4b65f049dfd2`  \

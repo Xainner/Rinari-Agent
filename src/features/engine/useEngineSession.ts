@@ -229,7 +229,7 @@ export function useEngineSession() {
       try {
         let selected = model
         if (model.saved === false) {
-          if (!model.provider) throw new Error('Provider missing for discovered model')
+          if (!model.provider) throw new Error(translate(useUIStore.getState().lang, 'models.providerMissing'))
           const added = await engineApi.modelAdd({
             provider: model.provider,
             provider_model_id: model.provider_model_id,

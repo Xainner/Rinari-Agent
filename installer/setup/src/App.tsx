@@ -7,7 +7,7 @@ import {
   PackageCheck, RefreshCw, Settings2, ShieldCheck, Sparkles, TerminalSquare,
   Trash2, Wrench, X,
 } from 'lucide-react'
-import { detectLocale, translator } from './i18n'
+import { detectLocale, progressText, translator, type MessageKey } from './i18n'
 import type { InstallOptions, Screen, SetupOperation, SetupPlan, SetupProgress, SetupStatus } from './types'
 
 const MOCK_STATUS: SetupStatus = {
@@ -22,7 +22,7 @@ const MOCK_STATUS: SetupStatus = {
 }
 
 const isTauri = () => '__TAURI_INTERNALS__' in window
-const fmtBytes = (bytes: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024) + ' MB'
+const fmtBytes = (bytes: number, locale: string) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024) + ' MB'
 
 async function command<T>(name: string, args?: Record<string, unknown>): Promise<T> {
   if (isTauri()) return invoke<T>(name, args)
@@ -37,16 +37,17 @@ function Titlebar({ locale, setLocale, onClose }: { locale: 'es' | 'en'; setLoca
     if (!isTauri()) return
     await getCurrentWindow()[action]()
   }
+  const t = translator(locale)
   return <header className="titlebar" data-tauri-drag-region>
     <div className="brand" data-tauri-drag-region>
       <img src="/assets/rinari-icon.png" alt="" />
-      <strong>Rinari Agent</strong><span>{translator(locale)('installer')}</span>
+      <strong>Rinari Agent</strong><span>{t('installer')}</span>
     </div>
     <div className="title-actions">
-      <button className="locale" onClick={() => setLocale(locale === 'es' ? 'en' : 'es')} aria-label="Change language">{locale.toUpperCase()}</button>
-      <button onClick={() => windowAction('minimize')} aria-label="Minimize"><Minus /></button>
-      <button onClick={() => windowAction('toggleMaximize')} aria-label="Maximize"><span className="maximize" /></button>
-      <button onClick={onClose} aria-label="Close"><X /></button>
+      <button className="locale" onClick={() => setLocale(locale === 'es' ? 'en' : 'es')} aria-label={t('changeLanguage')}>{locale.toUpperCase()}</button>
+      <button onClick={() => windowAction('minimize')} aria-label={t('minimize')}><Minus /></button>
+      <button onClick={() => windowAction('toggleMaximize')} aria-label={t('maximize')}><span className="maximize" /></button>
+      <button onClick={onClose} aria-label={t('close')}><X /></button>
     </div>
   </header>
 }
@@ -84,9 +85,9 @@ function Layout({ screen, locale, setLocale, onClose, children }: {
   </main>
 }
 
-function Configure({ status, options, setOptions, modifying, onBack, onSubmit, t }: {
+function Configure({ status, options, setOptions, modifying, onBack, onSubmit, locale, t }: {
   status: SetupStatus; options: InstallOptions; setOptions: (value: InstallOptions) => void; modifying: boolean;
-  onBack: () => void; onSubmit: () => void; t: ReturnType<typeof translator>
+  onBack: () => void; onSubmit: () => void; locale: 'es' | 'en'; t: ReturnType<typeof translator>
 }) {
   const patch = (value: Partial<InstallOptions>) => setOptions({ ...options, ...value })
   const locationLocked = modifying || status.legacy_install
@@ -113,7 +114,7 @@ function Configure({ status, options, setOptions, modifying, onBack, onSubmit, t
     </div>
     <label className="field-label">{t('folder')}</label>
     <div className="path-field"><input disabled={locationLocked} value={options.install_dir} onChange={(event) => patch({ install_dir: event.target.value })} /><button disabled={locationLocked} onClick={choose}>{t('browse')}</button></div>
-    <div className="space"><HardDrive /><span>{t('requiredSpace')}: <strong>{fmtBytes(status.required_bytes)}</strong></span><span>{t('availableSpace')}: <strong>{fmtBytes(status.available_bytes)}</strong></span></div>
+    <div className="space"><HardDrive /><span>{t('requiredSpace')}: <strong>{fmtBytes(status.required_bytes, locale)}</strong></span><span>{t('availableSpace')}: <strong>{fmtBytes(status.available_bytes, locale)}</strong></span></div>
     <button className="primary" onClick={onSubmit}><Sparkles />{modifying ? t('modify') : t('install')}</button>
   </div>
 }
@@ -129,9 +130,9 @@ function Progress({ progress, onCancel, onRetry, onBack, t }: {
   return <div className="panel-inner progress-screen">
     <p className="eyebrow">{t('progressEyebrow')}</p><h1>{failed ? t('operationFailed') : t('progressTitle')}</h1><p className="lead">{failed ? progress?.detail : t('progressBody')}</p>
     <div className={`progress-card ${failed ? 'failed' : ''}`}>
-      <div className="progress-heading">{failed ? <AlertTriangle /> : <RefreshCw className="spin" />}<strong>{progress?.detail ?? t('progressBody')}</strong>{!failed && <span>{value}%</span>}</div>
+      <div className="progress-heading">{failed ? <AlertTriangle /> : <RefreshCw className="spin" />}<strong>{progress ? progressText(t, progress.step, progress.detail) : t('progressBody')}</strong>{!failed && <span>{value}%</span>}</div>
       <div className="progress-track"><i style={{ width: `${value}%` }} /></div>
-      <div className="phase-list">{phases.map((phase, index) => <div className={index < active ? 'done' : index === active ? 'active' : ''} key={phase}><span>{index < active ? <Check /> : index + 1}</span>{phase}</div>)}</div>
+      <div className="phase-list">{phases.map((phase, index) => <div className={index < active ? 'done' : index === active ? 'active' : ''} key={phase}><span>{index < active ? <Check /> : index + 1}</span>{t(`phase_${phase}` as MessageKey)}</div>)}</div>
     </div>
     {failed ? <div className="button-grid progress-actions"><button className="secondary" onClick={onBack}>{t('back')}</button><button className="primary" onClick={onRetry}>{t('retry')}</button></div> : <button className="secondary" disabled={!canCancel} onClick={onCancel}>{t('cancel')}</button>}
   </div>
@@ -261,7 +262,7 @@ export default function App() {
   const retry = () => { if (progress?.operation) void execute(progress.operation) }
 
   return <Layout screen={screen} locale={locale} setLocale={setLocale} onClose={close}>
-    {screen === 'configure' && <Configure status={status} options={options} setOptions={setOptions} modifying={modifying} onBack={() => { setModifying(false); setScreen('maintenance') }} onSubmit={() => execute(modifying ? 'modify' : 'install')} t={t} />}
+    {screen === 'configure' && <Configure status={status} options={options} setOptions={setOptions} modifying={modifying} onBack={() => { setModifying(false); setScreen('maintenance') }} onSubmit={() => execute(modifying ? 'modify' : 'install')} locale={locale} t={t} />}
     {screen === 'progress' && <Progress progress={progress} onCancel={() => command('cancel_operation')} onRetry={retry} onBack={progressBack} t={t} />}
     {screen === 'ready' && <Ready status={status} onClose={close} t={t} />}
     {screen === 'maintenance' && <Maintenance status={status} onAction={maintenanceAction} t={t} />}

@@ -19,7 +19,7 @@ export default function ModelCatalog({
   providerAlias: string
   onChanged: () => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [discovered, setDiscovered] = useState<DiscoveredModel[]>([])
   const [saved, setSaved] = useState<ModelSummary[]>([])
   const [aliases, setAliases] = useState<Record<string, string>>({})
@@ -193,7 +193,7 @@ export default function ModelCatalog({
               {model.provider_model_id}
             </span>
             <span className="mt-1 flex flex-wrap gap-2 text-[11px] text-[var(--text-muted)]">
-              {typeof model.capabilities?.max_context_tokens === 'number' && <span>{t('providers.contextTokens', { n: model.capabilities.max_context_tokens.toLocaleString() })}</span>}
+              {typeof model.capabilities?.max_context_tokens === 'number' && <span>{t('providers.contextTokens', { n: model.capabilities.max_context_tokens.toLocaleString(lang) })}</span>}
               {model.capabilities?.vision === true && <span>{t('providers.visionCapability')}</span>}
               {model.capabilities?.reasoning_effort === true && <span>{t('providers.reasoningCapability')}</span>}
             </span>

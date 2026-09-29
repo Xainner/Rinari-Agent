@@ -143,7 +143,7 @@ function PaneHeader({
           data-testid="pane-status"
           data-kind={status.kind}
           className="pane-header-status"
-          title={status.error ?? status.stopReason?.message ?? statusLabel}
+          title={status.error ?? (status.stopReason?.message || statusLabel)}
         >
           <span className="pane-header-status-dot" aria-hidden="true" />
           {statusLabel}

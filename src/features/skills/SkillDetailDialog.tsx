@@ -43,7 +43,7 @@ export default function SkillDetailDialog({
   /** Abierta desde el aviso de una actualización: el cambio se ve desplegado. */
   focusChanges?: boolean
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [detail, setDetail] = useState<SkillDetail | null>(null)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -233,7 +233,7 @@ export default function SkillDetailDialog({
             {provenance?.source && (
               <p className="text-xs text-[var(--text-subtle)] [overflow-wrap:anywhere]">
                 {t('skills.provenance', { source: provenance.source })}
-                {provenance.installed_at ? ` · ${new Date(provenance.installed_at).toLocaleString()}` : ''}
+                {provenance.installed_at ? ` · ${new Date(provenance.installed_at).toLocaleString(lang)}` : ''}
               </p>
             )}
             {(detail.required_tools?.length ?? 0) + (detail.allowed_tools?.length ?? 0) > 0 && (

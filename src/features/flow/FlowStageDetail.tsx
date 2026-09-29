@@ -17,10 +17,10 @@ export interface FlowStageDetailProps {
   isOnBoard: (sessionId: string) => boolean
 }
 
-function formatWhen(iso: string | null): string {
+function formatWhen(iso: string | null, lang: string): string {
   if (!iso) return '—'
   const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(lang)
 }
 
 /**
@@ -30,7 +30,7 @@ function formatWhen(iso: string | null): string {
  * Escape para cerrar, foco devuelto al cerrar.
  */
 export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, onOpenSession, onBoard, isOnBoard }: FlowStageDetailProps) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const root = useRef<HTMLElement>(null)
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
@@ -66,9 +66,9 @@ export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, on
       {stage.excerpt && <p className="flow-detail-excerpt">{stage.excerpt}</p>}
       <dl className="flow-detail-grid">
         <dt>{t('flow.detail.started')}</dt>
-        <dd>{formatWhen(stage.started_at)}</dd>
+        <dd>{formatWhen(stage.started_at, lang)}</dd>
         <dt>{t('flow.detail.completed')}</dt>
-        <dd>{stage.completed_at ? formatWhen(stage.completed_at) : t('flow.detail.inProgress')}</dd>
+        <dd>{stage.completed_at ? formatWhen(stage.completed_at, lang) : t('flow.detail.inProgress')}</dd>
         <dt>{t('flow.detail.duration')}</dt>
         <dd>{durationLabel(stage.duration_ms) ?? t('flow.stage.durationUnknown')}</dd>
         <dt>{t('flow.stage.progress')}</dt>

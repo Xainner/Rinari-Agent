@@ -74,9 +74,9 @@ export function groupByCycle(
 }
 
 /** Hora del último resultado bueno: es lo que fecha el aviso de desactualizado. */
-export function clockLabel(at: number | null): string {
+export function clockLabel(at: number | null, lang: string): string {
   if (at === null) return '—'
-  return new Date(at).toLocaleTimeString()
+  return new Date(at).toLocaleTimeString(lang)
 }
 
 /** Nombre de archivo para un chip: último segmento, con la carpeta como título. */

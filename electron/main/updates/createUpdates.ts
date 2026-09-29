@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
-import { UpdateService } from './UpdateService'
+import { UpdateService, type UpdateText } from './UpdateService'
 import type { UpdateState } from '../../shared/contracts'
 
 const UPDATE_E2E_ENABLED = process.env.RINARI_BUILD_UPDATE_E2E === '1'
@@ -9,6 +9,7 @@ const UPDATE_E2E_ENABLED = process.env.RINARI_BUILD_UPDATE_E2E === '1'
 export interface CreateUpdatesOptions {
   requestApply(): Promise<boolean>
   onState(state: UpdateState): void
+  text(): UpdateText
 }
 
 /** Canal separado del `latest.json` de Tauri 0.1.x. */
@@ -33,5 +34,6 @@ export function createUpdates(options: CreateUpdatesOptions): UpdateService {
     enabled,
     requestApply: options.requestApply,
     onState: options.onState,
+    text: options.text,
   })
 }

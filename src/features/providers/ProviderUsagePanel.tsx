@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
 
 export default function ProviderUsagePanel({ providerAlias, compact = false }: { providerAlias: string; compact?: boolean }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [snapshot, setSnapshot] = useState<ProviderUsageSnapshot | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -30,7 +30,7 @@ export default function ProviderUsagePanel({ providerAlias, compact = false }: {
     if (!compact) document.addEventListener('visibilitychange', visibleRefresh)
     return () => { generation.current++; clearInterval(timer); document.removeEventListener('visibilitychange', visibleRefresh) }
   }, [refresh, compact])
-  const date = (value: string) => new Date(value).toLocaleString()
+  const date = (value: string) => new Date(value).toLocaleString(lang)
   if (compact) return snapshot?.fetched_at ? <p className="text-xs text-[var(--text-muted)]" title={t('providers.updatedAt', { date: date(snapshot.fetched_at) })}>
     {snapshot.windows.map(window => `${window.id === 'rolling' ? '5h' : window.id === 'weekly' ? t('providers.windowWeekly') : window.id === 'monthly' ? t('providers.windowMonthly') : window.label}: ${window.remaining_percent === null ? '—' : `${window.remaining_percent}%`}`).join(' · ')}
     {snapshot.windows.length > 0 && ` ${t('providers.remaining')}`}

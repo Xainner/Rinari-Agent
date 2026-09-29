@@ -41,6 +41,22 @@ export interface UpdateServiceOptions {
   enabled: boolean
   requestApply(): Promise<boolean>
   onState?(state: UpdateState): void
+  /** Mensajes propios en el idioma de la app; sin ellos, en inglés. */
+  text?(): UpdateText
+}
+
+export interface UpdateText {
+  updateNothingToDownload: string
+  updateDownloadFirst: string
+  updateNoLongerReady: string
+  updateUnavailable: string
+}
+
+const DEFAULT_TEXT: UpdateText = {
+  updateNothingToDownload: 'No update is available to download.',
+  updateDownloadFirst: 'Download and verify the update before applying it.',
+  updateNoLongerReady: 'The update is no longer ready to install.',
+  updateUnavailable: 'The updater is available only in an installed build or an explicit update test channel.',
 }
 
 export class UpdatesUnavailable extends Error {
@@ -177,7 +193,7 @@ export class UpdateService {
     if (this.downloadInFlight) return this.downloadInFlight
     const run = async () => {
       if (!this.available) await this.check()
-      if (!this.available) throw new UpdateNotReady('No update is available to download.')
+      if (!this.available) throw new UpdateNotReady(this.text().updateNothingToDownload)
       this.publish({ phase: 'downloading', progress: null, message: null })
       try {
         await this.options.updater.downloadUpdate()
@@ -198,7 +214,7 @@ export class UpdateService {
 
   async apply(): Promise<void> {
     this.requireEnabled()
-    if (!this.downloaded) throw new UpdateNotReady('Download and verify the update before applying it.')
+    if (!this.downloaded) throw new UpdateNotReady(this.text().updateDownloadFirst)
     this.publish({ phase: 'applying', message: null })
     const accepted = await this.options.requestApply()
     if (!accepted) this.publish({ phase: 'downloaded' })
@@ -206,16 +222,18 @@ export class UpdateService {
 
   /** Lo llama la autoridad única de lifecycle después de cerrar el Engine. */
   commitInstall(): void {
-    if (!this.downloaded) throw new UpdateNotReady('The update is no longer ready to install.')
+    if (!this.downloaded) throw new UpdateNotReady(this.text().updateNoLongerReady)
     this.options.updater.quitAndInstall(true, true)
   }
 
   private requireEnabled(): void {
     if (!this.options.enabled) {
-      throw new UpdatesUnavailable(
-        'The Electron updater is available only in an installed build or an explicit update test channel.',
-      )
+      throw new UpdatesUnavailable(this.text().updateUnavailable)
     }
+  }
+
+  private text(): UpdateText {
+    return this.options.text?.() ?? DEFAULT_TEXT
   }
 
   private publish(patch: Partial<UpdateState>): void {

@@ -37,6 +37,23 @@ function service(updater = new FakeUpdater(), enabled = true) {
 }
 
 describe('UpdateService', () => {
+  it('sus propios errores salen en el idioma de la app', async () => {
+    const updates = new UpdateService({
+      updater: new FakeUpdater(),
+      currentVersion: '0.2.0',
+      enabled: true,
+      requestApply: async () => true,
+      text: () => ({
+        updateNothingToDownload: 'No hay ninguna actualización para descargar.',
+        updateDownloadFirst: 'Descarga primero.',
+        updateNoLongerReady: 'Ya no está lista.',
+        updateUnavailable: 'No disponible.',
+      }),
+    })
+    await expect(updates.download()).rejects.toThrow('No hay ninguna actualización para descargar.')
+    expect(() => updates.commitInstall()).toThrow('Ya no está lista.')
+  })
+
   it('configures manual, full, forward-only updates', () => {
     const { updater } = service()
     expect(updater).toMatchObject({

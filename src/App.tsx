@@ -244,7 +244,7 @@ function App() {
           action: { label: tr('update.install'), onClick: () => void applyUpdate().catch((error) => toast.error(String(error))) },
         })
       } else if (state.phase === 'error' && reportsUpdateError(before)) {
-        toast.error(tr('update.failed', { detail: state.message ?? 'unknown error' }), { id: 'rinari-update' })
+        toast.error(tr('update.failed', { detail: state.message ?? tr('update.unknownError') }), { id: 'rinari-update' })
       }
     }).then((unsubscribe) => {
       if (active) stop = unsubscribe

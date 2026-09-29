@@ -4,7 +4,8 @@ const { invoke } = installMockPlatform()
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+const toastWarning = vi.hoisted(() => vi.fn())
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { warning: toastWarning, error: vi.fn(), success: vi.fn(), info: vi.fn() }) }))
 
 import { I18nProvider } from '../../i18n'
 import type { ModelSummary, SessionSummary } from '../../services/engine'
@@ -53,8 +54,10 @@ function installInvoke(sessions: SessionSummary[]) {
         return { messages: [], total: 0, has_more: false }
       case 'session_timeline':
         return { turns: [] }
-      case 'session_open':
-        return { session: sessions.find((row) => row.id === args?.reference) ?? sessions[0], created: false, warnings: [] }
+      case 'session_open': {
+        const row = sessions.find((item) => item.id === args?.reference) ?? sessions[0]
+        return { session: row, created: false, warnings: row.project_root ? ['[trust] project is not trusted'] : [] }
+      }
       case 'session_get':
         return { session: sessions.find((row) => row.id === args?.reference) ?? sessions[0] }
       case 'session_create': {
@@ -163,6 +166,23 @@ describe('useEngineSession per-session primitives', () => {
     })
     expect(commandsNamed('model_use')).toHaveLength(1)
     expect(commandsNamed('session_model_set')[0][1]).toMatchObject({ reference: 's1', model: 'm-local' })
+  })
+
+  it('waits for the trust dialog before warning that a new folder is untrusted', async () => {
+    const project = session('p1', { kind: 'PROJECT', project_root: 'C:/Nueva' })
+    const hook = await mount([session('s1'), project])
+    toastWarning.mockClear()
+    const release = hook.result.current.deferTrustWarning('C:/Nueva')
+    await act(async () => {
+      await hook.result.current.selectSession('p1')
+    })
+    expect(toastWarning).not.toHaveBeenCalled()
+    release()
+    await act(async () => {
+      await hook.result.current.selectSession('s1')
+      await hook.result.current.selectSession('p1')
+    })
+    await waitFor(() => expect(toastWarning).toHaveBeenCalled())
   })
 
   it('forgets a deleted session, from here or from the Engine command', async () => {

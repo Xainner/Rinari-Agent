@@ -353,6 +353,7 @@ export function useEngineSession() {
     useModel,
     useModelFor,
     selectSession: sessions.selectSession,
+    deferTrustWarning: sessions.deferTrustWarning,
     setMode: sessions.setMode,
     setModeFor: sessions.setModeFor,
     setPermission: sessions.setPermission,

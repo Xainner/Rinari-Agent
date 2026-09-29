@@ -4,6 +4,7 @@ import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
+import { TRUST_WARNING } from './features/engine/useSessionList'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
@@ -103,19 +104,25 @@ function App() {
   async function handleOpenProjectPath(path: string): Promise<boolean> {
     const opened = await session.openProject(path)
     if (!opened) return false
+    // Una carpeta nueva sin confianza se pregunta ya, no después en su página;
+    // mientras se pregunta, el aviso de «no confiado» espera la respuesta.
+    const root = opened.project.root
+    const release = session.deferTrustWarning(root)
     await session.refreshSessions()
     await session.refreshProjects()
     await session.selectSession(opened.session.id)
-    // Una carpeta nueva sin confianza se pregunta ya, no después en su página.
-    const root = opened.project.root
     void engineApi.projectIntelligence(root)
-      .then((intel) => { if (!intel.instructions.trusted) void offerTrust(root) })
+      .then(async (intel) => {
+        if (intel.instructions.trusted) return
+        if (!(await offerTrust(root))) toast.warning(TRUST_WARNING, { id: `project-trust-${opened.project.id ?? root}` })
+      })
       .catch(() => undefined)
+      .finally(release)
     return true
   }
 
   /** Confiar habilita instrucciones, skills y plugins del proyecto: se pregunta. */
-  async function offerTrust(root: string): Promise<void> {
+  async function offerTrust(root: string): Promise<boolean> {
     const ok = await confirm({
       title: translate(lang, 'project.trustTitle'),
       body: translate(lang, 'project.trustConfirm'),
@@ -123,6 +130,7 @@ function App() {
       cancelLabel: translate(lang, 'project.trustLater'),
     })
     if (ok) await session.trustProject(root)
+    return ok
   }
 
   function confirmArchiveProject(): Promise<boolean> {

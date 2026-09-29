@@ -19,6 +19,8 @@ import { isSessionHidden, partitionSessions } from './sessionVisibility'
  */
 export const SESSION_LIST_LIMIT = 500
 
+export const TRUST_WARNING = 'Proyecto no confiado: las instrucciones locales están desactivadas.'
+
 export type PrepareSessionResult =
   | { ok: true; session: SessionSummary }
   | { ok: false; reason: 'missing' | 'closed' | 'archived' | 'unavailable'; message: string }
@@ -243,13 +245,23 @@ export function useSessionList(options: {
     void loadSessionHistory(activeSession)
   }, [engineReady, activeSession, engineGeneration, loadSessionHistory])
 
+  // Folders whose trust is being asked right now: the dialog explains it, and
+  // the warning only makes sense if the answer is "later".
+  const trustAsked = useRef(new Set<string>())
+  const deferTrustWarning = useCallback((root: string) => {
+    trustAsked.current.add(root)
+    return () => { trustAsked.current.delete(root) }
+  }, [])
+
   const reportWarnings = useCallback((id: string, opened: { session: SessionSummary; warnings?: string[] }) => {
     for (const warning of new Set(opened.warnings ?? [])) {
       // Working-tree drift is normal project state and already appears in
       // the Git surface. Do not present it as an application error.
       if (warning.startsWith('[working-tree]')) continue
       if (warning.startsWith('[trust]')) {
-        toast.warning('Proyecto no confiado: las instrucciones locales están desactivadas.', {
+        const root = opened.session.project_root
+        if (root && trustAsked.current.has(root)) continue
+        toast.warning(TRUST_WARNING, {
           id: `project-trust-${opened.session.project_id ?? opened.session.project_root ?? id}`,
         })
         continue
@@ -516,6 +528,7 @@ export function useSessionList(options: {
     loadSessionHistory,
     retrySessionHistory,
     ensureHistoryLoaded: loadSessionHistory,
+    deferTrustWarning,
     prepareSession,
     selectSession,
     createSession,

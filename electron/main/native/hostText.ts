@@ -58,6 +58,10 @@ const ES = {
   updateCancel: 'Cancelar',
   updateQuestion: '¿Aplicar la actualización ahora?',
   updateDetail: 'Rinari cerrará el Engine y reiniciará con la versión descargada. Los turnos y procesos activos se interrumpen.',
+  updateNothingToDownload: 'No hay ninguna actualización para descargar.',
+  updateDownloadFirst: 'Descarga y verifica la actualización antes de aplicarla.',
+  updateNoLongerReady: 'La actualización ya no está lista para instalarse.',
+  updateUnavailable: 'El actualizador solo funciona en una versión instalada o en un canal de prueba explícito.',
 }
 
 export type HostText = typeof ES
@@ -101,6 +105,10 @@ const EN: HostText = {
   updateCancel: 'Cancel',
   updateQuestion: 'Apply the update now?',
   updateDetail: 'Rinari will close the Engine and restart with the downloaded version. Active turns and processes are interrupted.',
+  updateNothingToDownload: 'No update is available to download.',
+  updateDownloadFirst: 'Download and verify the update before applying it.',
+  updateNoLongerReady: 'The update is no longer ready to install.',
+  updateUnavailable: 'The updater is available only in an installed build or an explicit update test channel.',
 }
 
 export function hostText(language: HostLanguage): HostText {

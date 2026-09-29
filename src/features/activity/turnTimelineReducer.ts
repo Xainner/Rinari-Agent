@@ -651,7 +651,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
         stopReason: event === 'turn.stopped'
           ? {
               code: text(payload.reason) || 'stopped',
-              message: text((payload.details as Record<string, unknown> | undefined)?.content) || 'Turn stopped.',
+              message: text((payload.details as Record<string, unknown> | undefined)?.content),
             } satisfies TurnStopReason
           : timeline.stopReason,
       }

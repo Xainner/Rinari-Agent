@@ -1991,6 +1991,16 @@ export const es = {
   'preview.connecting': 'Conectando…',
   'profiles.namePlaceholder': 'foco',
   'soul.idPlaceholder': 'mi-soul',
+  'turn.stoppedFallback': 'Turno detenido.',
+  'models.discoveryFailed': 'No se pudieron descubrir los modelos',
+  'models.providerMissing': 'Al modelo descubierto le falta su proveedor',
+  'activity.invalidImagePreview': 'La vista previa de la imagen no es válida',
+  'activity.items': '{n} elementos',
+  'activity.fields': '{n} campos',
+  'activity.more': '… {n} más',
+  'files.noImagePreview': 'El artefacto no tiene vista previa de imagen.',
+  'engine.restarted': 'El motor se reinició',
+  'update.unknownError': 'error desconocido',
 } as const
 
 export type I18nKey = keyof typeof es

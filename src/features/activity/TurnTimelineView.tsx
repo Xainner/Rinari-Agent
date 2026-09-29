@@ -245,6 +245,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
 }
 
 function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
+  const { t } = useI18n()
   if (value === undefined) return <span className="text-[var(--text-subtle)]">—</span>
   if (typeof value === 'string') {
     return value.startsWith('artifact://')
@@ -256,13 +257,13 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
   }
   if (depth >= 3) {
     const count = Array.isArray(value) ? value.length : Object.keys(value as object).length
-    return <span className="text-[var(--text-subtle)]">{Array.isArray(value) ? `[${count} items]` : `{${count} fields}`}</span>
+    return <span className="text-[var(--text-subtle)]">{Array.isArray(value) ? `[${t('activity.items', { n: count })}]` : `{${t('activity.fields', { n: count })}}`}</span>
   }
   if (Array.isArray(value)) {
     const visible = value.slice(0, 24)
     return <ul className="space-y-1">
       {visible.map((item, index) => <li key={index} className="flex gap-1.5"><span className="text-[var(--text-subtle)]">•</span><span className="min-w-0"><StructuredValue value={item} depth={depth + 1} /></span></li>)}
-      {value.length > visible.length && <li className="text-[var(--text-subtle)]">… {value.length - visible.length} more</li>}
+      {value.length > visible.length && <li className="text-[var(--text-subtle)]">{t('activity.more', { n: value.length - visible.length })}</li>}
     </ul>
   }
   if (typeof value === 'object') {
@@ -270,7 +271,7 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
     const visible = rows.slice(0, 24)
     return <dl className="grid grid-cols-[minmax(6rem,auto)_1fr] gap-x-2 gap-y-1">
       {visible.map(([key, item]) => <div key={key} className="contents"><dt className="text-[var(--text-subtle)]">{key}</dt><dd className="min-w-0"><StructuredValue value={item} depth={depth + 1} /></dd></div>)}
-      {rows.length > visible.length && <div className="col-span-2 text-[var(--text-subtle)]">… {rows.length - visible.length} more</div>}
+      {rows.length > visible.length && <div className="col-span-2 text-[var(--text-subtle)]">{t('activity.more', { n: rows.length - visible.length })}</div>}
     </dl>
   }
   return <span className="font-mono">{String(value)}</span>

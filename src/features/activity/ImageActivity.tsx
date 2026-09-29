@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Image as ImageIcon, LoaderCircle, RotateCcw } from 'lucide-react'
 import { engineApi, commandMessage } from '../../services/engine'
-import { useI18n } from '../../i18n'
+import { translate, useI18n } from '../../i18n'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ui/dialog'
 import type { ToolPresentation } from './types'
 
@@ -20,7 +20,7 @@ export function ImageActivity({ image }: { image: NonNullable<ToolPresentation['
     setError('')
     void engineApi.attachmentPreview(image.uri, 512 * 1024, open ? 2048 : 512).then(result => {
       if (cancelled) return
-      if (typeof result.data_url !== 'string' || !result.data_url.startsWith('data:image/jpeg;base64,')) throw new Error('Invalid image preview')
+      if (typeof result.data_url !== 'string' || !result.data_url.startsWith('data:image/jpeg;base64,')) throw new Error(translate(lang, 'activity.invalidImagePreview'))
       if (open) setLarge(result.data_url)
       else setThumbnail(result.data_url)
     }).catch(reason => { if (!cancelled) setError(commandMessage(reason)) })

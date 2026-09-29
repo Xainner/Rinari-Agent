@@ -337,7 +337,7 @@ function ProcessDetail({
   onDismiss: () => void
   onPin: () => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [showTech, setShowTech] = useState(false)
   const [queryOpen, setQueryOpen] = useState(false)
   const [urlError, setUrlError] = useState('')
@@ -458,7 +458,7 @@ function ProcessDetail({
                   <div>
                     <dt>{t('processes.techEndedAt')}</dt>
                     <dd className="processes-mono">
-                      {new Date(resource.ended_at * 1000).toLocaleString()}
+                      {new Date(resource.ended_at * 1000).toLocaleString(lang)}
                     </dd>
                   </div>
                 )}

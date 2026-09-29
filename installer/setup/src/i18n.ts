@@ -34,6 +34,14 @@ const messages = {
     goodbyeBody: 'Rinari Agent fue eliminado de este equipo.', uninstallComplete: 'Desinstalación completa',
     projectsSafe: 'Tus proyectos siguen siendo tuyos.', settingsSafe: 'Sesiones, proveedores y preferencias se conservaron.',
     reinstall: 'Reinstalar Rinari Agent', visit: 'Visitar Rinari', details: 'Detalles',
+    changeLanguage: 'Cambiar idioma', minimize: 'Minimizar', maximize: 'Maximizar',
+    phase_validate: 'Validar', phase_stage: 'Preparar', phase_files: 'Archivos',
+    phase_integrations: 'Accesos', phase_verify: 'Verificar', phase_commit: 'Activar',
+    step_elevation: 'Esperando el permiso de administrador', step_payload_validated: 'Paquete de instalación validado',
+    step_verifying: 'Verificando los archivos preparados', step_activating: 'Activando la instalación de forma atómica',
+    step_integrations: 'Aplicando los accesos y la CLI opcional', step_installed: 'Rinari Agent está listo',
+    step_owned_confirmed: 'Instalación propia confirmada', step_options_updated: 'Opciones de instalación actualizadas',
+    step_removing_files: 'Quitando los archivos del programa', step_removed: 'Rinari Agent se quitó; tus datos se conservan',
   },
   en: {
     installer: 'Installer', configureEyebrow: 'CONFIGURE RINARI AGENT',
@@ -67,9 +75,23 @@ const messages = {
     uninstallComplete: 'Uninstall complete', projectsSafe: 'Your projects are still yours.',
     settingsSafe: 'Sessions, providers, and preferences were preserved.', reinstall: 'Reinstall Rinari Agent',
     visit: 'Visit Rinari', details: 'Details',
+    changeLanguage: 'Change language', minimize: 'Minimize', maximize: 'Maximize',
+    phase_validate: 'Validate', phase_stage: 'Stage', phase_files: 'Files',
+    phase_integrations: 'Shortcuts', phase_verify: 'Verify', phase_commit: 'Activate',
+    step_elevation: 'Waiting for administrator permission', step_payload_validated: 'Installation package validated',
+    step_verifying: 'Verifying staged files', step_activating: 'Activating installation atomically',
+    step_integrations: 'Applying shortcuts and optional CLI', step_installed: 'Rinari Agent is ready',
+    step_owned_confirmed: 'Owned installation confirmed', step_options_updated: 'Installation options updated',
+    step_removing_files: 'Removing program files', step_removed: 'Rinari Agent removed; user data preserved',
   },
 } as const
 
 export type MessageKey = keyof typeof messages.en
 export const detectLocale = (): Locale => navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en'
 export const translator = (locale: Locale) => (key: MessageKey) => messages[locale][key]
+
+/** Texto de un paso de progreso: su traducción si se conoce; si no, lo que mandó el instalador. */
+export function progressText(t: ReturnType<typeof translator>, step: string | undefined, detail: string): string {
+  const key = `step_${step ?? ''}`
+  return key in messages.en ? t(key as MessageKey) : detail
+}

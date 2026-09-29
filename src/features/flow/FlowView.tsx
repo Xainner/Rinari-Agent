@@ -21,7 +21,7 @@ import { useFlow } from './useFlow'
  * la vista no estima nada y rotula lo que falta.
  */
 export default function FlowView() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const reduced = useFlowReducedMotion()
   const data = useEngineData()
   const commands = useEngineCommands()
@@ -164,7 +164,7 @@ export default function FlowView() {
         {scope && flow.stale && (
           <div className="flow-notice is-stale" role="status" data-testid="flow-stale">
             <AlertTriangle size={14} aria-hidden="true" />
-            <span>{t('flow.stale', { when: clockLabel(flow.updatedAt), reason: flow.error ?? '' })}</span>
+            <span>{t('flow.stale', { when: clockLabel(flow.updatedAt, lang), reason: flow.error ?? '' })}</span>
             <div className="flow-notice-actions">
               <button type="button" className="flow-stage-action" onClick={() => void flow.refresh()} disabled={flow.loading}>
                 {t('flow.retry')}

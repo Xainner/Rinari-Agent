@@ -35,6 +35,8 @@ export interface SetupPlan {
 export interface SetupProgress {
   operation: SetupOperation
   phase: string
+  /** Identificador estable del mensaje; `detail` es el texto de respaldo. */
+  step?: string
   detail: string
   completed: number
   total: number

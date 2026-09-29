@@ -9,6 +9,8 @@ import {
   type ModelSummary,
   type ProviderSummary,
 } from '../../services/engine'
+import { translate } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 /**
  * CatalogState: proveedores y modelos. Degradado independiente — un fallo
@@ -61,7 +63,7 @@ export function useCatalog() {
       }
       if (event.event === 'model.discovery.failed') {
         const error = event.payload.error as { message?: string } | undefined
-        setCatalogError(error?.message ?? 'Model discovery failed')
+        setCatalogError(error?.message ?? translate(useUIStore.getState().lang, 'models.discoveryFailed'))
       }
     }).then((stop) => {
       if (disposed) stop()

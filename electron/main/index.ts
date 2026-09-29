@@ -526,6 +526,7 @@ const quitCoordinator = new QuitCoordinator({
 const updates = createUpdates({
   requestApply: () => quitCoordinator.requestQuit('update'),
   onState: (state) => send(PUSH.updateState, state),
+  text: currentHostText,
 })
 
 /** Ensayo instalado y sin UI del canal local 0.2.0 → 0.2.1. */

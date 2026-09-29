@@ -296,7 +296,7 @@ export function useSessionList(options: {
       const pending = prepareInFlight.current.get(id)
       if (pending) return pending
       const generation = generationRef.current
-      const stale = (): PrepareSessionResult => ({ ok: false, reason: 'unavailable', message: 'Engine restarted' })
+      const stale = (): PrepareSessionResult => ({ ok: false, reason: 'unavailable', message: translate(useUIStore.getState().lang, 'engine.restarted') })
       const job = (async (): Promise<PrepareSessionResult> => {
         let row: SessionSummary
         try {

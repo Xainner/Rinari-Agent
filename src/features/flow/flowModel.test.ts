@@ -82,11 +82,11 @@ describe('resolveExecutor: identidad canónica primero', () => {
 
 describe('clockLabel', () => {
   it('sin lectura previa no inventa una hora', () => {
-    expect(clockLabel(null)).toBe('—')
+    expect(clockLabel(null, 'es')).toBe('—')
   })
 
-  it('fecha la lectura con la hora local', () => {
+  it('fecha la lectura con la hora local, en el idioma de la app', () => {
     const at = Date.UTC(2026, 8, 21, 10, 5, 0)
-    expect(clockLabel(at)).toBe(new Date(at).toLocaleTimeString())
+    expect(clockLabel(at, 'en')).toBe(new Date(at).toLocaleTimeString('en'))
   })
 })

@@ -78,7 +78,7 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
       {filesChanged !== null && <><span aria-hidden="true">·</span><span>{t('board.result.files', { n: filesChanged })}</span></>}
       {emptyPartial.length > 0 && <><span aria-hidden="true">·</span><span>{t('changes.coverage.meta')}</span></>}
       {executor && <><span aria-hidden="true">·</span><span>{t('board.result.model', { model: executor })}</span></>}
-      {outcome === 'stopped' && timeline.stopReason && <><span aria-hidden="true">·</span><span>{timeline.stopReason.message}</span></>}
+      {outcome === 'stopped' && timeline.stopReason && <><span aria-hidden="true">·</span><span>{timeline.stopReason.message || t('turn.stoppedFallback')}</span></>}
       {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (

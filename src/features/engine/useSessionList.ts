@@ -13,6 +13,12 @@ import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
 
+/**
+ * The Engine lists 50 sessions unless asked for more, and the sidebar only
+ * showed those: older chats vanished from it. Its ceiling is 500.
+ */
+export const SESSION_LIST_LIMIT = 500
+
 export type PrepareSessionResult =
   | { ok: true; session: SessionSummary }
   | { ok: false; reason: 'missing' | 'closed' | 'archived' | 'unavailable'; message: string }
@@ -112,7 +118,11 @@ export function useSessionList(options: {
     [recentSessionIds, sessionsById],
   )
 
+  // Sessions learnt while a listing was in flight (created, opened): that
+  // listing may predate them, so it cannot prove they are gone.
+  const learntDuring = useRef(new Map<string, number>())
   const rememberRows = useCallback((rows: SessionSummary[]) => {
+    for (const row of rows) learntDuring.current.set(row.id, refreshSeq.current)
     if (rows.length === 0) return
     setSessionsById((current) => {
       let changed = false
@@ -127,11 +137,28 @@ export function useSessionList(options: {
     })
   }, [])
 
+  const forgetMissing = useCallback((rows: SessionSummary[], seq: number) => {
+    const present = new Set(rows.map((row) => row.id))
+    setSessionsById((current) => {
+      const stale = Object.keys(current).filter(
+        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq,
+      )
+      if (stale.length === 0) return current
+      const next = { ...current }
+      for (const id of stale) delete next[id]
+      return next
+    })
+  }, [])
+
   const refreshSessions = useCallback(async (): Promise<void> => {
     const seq = ++refreshSeq.current
     try {
-      const result = await engineApi.sessions(undefined, true)
+      const result = await engineApi.sessions(undefined, true, undefined, undefined, SESSION_LIST_LIMIT)
       if (refreshSeq.current !== seq) return
+      // A complete list (under the limit) is authoritative: a session missing
+      // from it was deleted —from here or with the Engine command— and its
+      // cached row must go, or Boards kept its pane as if it still existed.
+      if (result.sessions.length < SESSION_LIST_LIMIT) forgetMissing(result.sessions, seq)
       // El engine expone estados de runtime (active/interrupted/stopped): solo
       // closed/archived se ocultan. Filtrar por `active` hacía que una sesión
       // interrumpida (p. ej. timeout de provider) desapareciera del sidebar al
@@ -161,7 +188,7 @@ export function useSessionList(options: {
     } finally {
       if (refreshSeq.current === seq) setSessionsLoaded(true)
     }
-  }, [rememberRows])
+  }, [forgetMissing, rememberRows])
 
   const loadSessionHistory = useCallback(
     (id: string): Promise<void> => {
@@ -415,6 +442,12 @@ export function useSessionList(options: {
     async (id: string, cascade: boolean): Promise<SessionDeleteResult | null> => {
       try {
         const result = await engineApi.deleteSession(id, cascade)
+        setSessionsById((current) => {
+          if (!(id in current)) return current
+          const next = { ...current }
+          delete next[id]
+          return next
+        })
         await refreshSessions()
         return result
       } catch (err) {

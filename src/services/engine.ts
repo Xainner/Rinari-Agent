@@ -664,12 +664,13 @@ export const engineApi = {
   start: () => platform().engine.start(),
   shutdown: () => platform().engine.shutdown(),
   restart: () => platform().engine.restart(),
-  sessions: (kind?: string, includeClosed?: boolean, projectId?: string, state?: string) =>
+  sessions: (kind?: string, includeClosed?: boolean, projectId?: string, state?: string, limit?: number) =>
     platform().command<{ sessions: SessionSummary[] }>("session_list", {
       kind: kind ?? null,
       include_closed: includeClosed ?? null,
       project_id: projectId ?? null,
       state: state ?? null,
+      limit: limit ?? null,
     }),
   createSession: (options?: { cwd?: string; chat?: boolean; title?: string; mode?: string; permission_profile?: string; project_id?: string }) =>
     platform().command<{ session: SessionSummary; created: boolean }>("session_create", {

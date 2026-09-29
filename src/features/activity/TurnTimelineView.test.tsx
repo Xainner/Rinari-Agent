@@ -117,3 +117,20 @@ it('opens an agent card with its own messages and execution context', async () =
   expect(screen.getByText('Inspeccionar SSH')).toBeTruthy()
   expect(screen.getByText('full-access · C:/Proyecto')).toBeTruthy()
 })
+
+it('keeps «Pensando…» while a subagent runs beside the coordinator', () => {
+  view({ ...base, items: [{
+    id: 'agent:a', type: 'agent', activitySeq: 1, occurredAt: 1_100,
+    agentId: 'a', agent: 'implementer', phase: 'started', status: 'running',
+    objective: 'Escribir generate.ps1', items: [],
+  }] }, 2_500)
+  expect(screen.getByText('Pensando…')).toBeTruthy()
+})
+
+it('shows «Pensando…» hidden only while the coordinator waits on a tool', () => {
+  view({ ...base, items: [{
+    id: 'tool:w', type: 'tool', activitySeq: 1, occurredAt: 1_100, toolCallId: 'w',
+    tool: 'agent.wait', status: 'running',
+  }] as TurnTimeline['items'] }, 2_500)
+  expect(screen.queryByText('Pensando…')).toBeNull()
+})

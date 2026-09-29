@@ -9,6 +9,16 @@ function str(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+/**
+ * Color of a record's result. The Engine records `passed | failed | error |
+ * skipped`; comparing with `'pass'` painted every success red.
+ */
+export function resultTone(result: string): string {
+  if (result === 'passed') return 'text-emerald-400'
+  if (result === 'failed' || result === 'error') return 'text-red-400'
+  return 'text-[var(--text-muted)]'
+}
+
 function list(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 }
@@ -102,9 +112,7 @@ export default function VerificationPanel({
                 {str(row['command'])}
               </span>
               <span
-                className={`shrink-0 text-xs font-semibold ${
-                  str(row['result']) === 'pass' ? 'text-emerald-400' : 'text-red-400'
-                }`}
+                className={`shrink-0 text-xs font-semibold ${resultTone(str(row['result']))}`}
               >
                 {str(row['result'])}
               </span>

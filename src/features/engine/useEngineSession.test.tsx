@@ -57,8 +57,12 @@ function installInvoke(sessions: SessionSummary[]) {
         return { session: sessions.find((row) => row.id === args?.reference) ?? sessions[0], created: false, warnings: [] }
       case 'session_get':
         return { session: sessions.find((row) => row.id === args?.reference) ?? sessions[0] }
-      case 'session_create':
-        return { session: session('ses_new') }
+      case 'session_create': {
+        // Like the Engine: a created session is in the next listing.
+        const created = session('ses_new')
+        if (!sessions.some((row) => row.id === created.id)) sessions = [created, ...sessions]
+        return { session: created }
+      }
       case 'snapshot_get':
         return { snapshot: { active_turns: [], pending_approvals: [] } }
       case 'provider_list':
@@ -159,6 +163,23 @@ describe('useEngineSession per-session primitives', () => {
     })
     expect(commandsNamed('model_use')).toHaveLength(1)
     expect(commandsNamed('session_model_set')[0][1]).toMatchObject({ reference: 's1', model: 'm-local' })
+  })
+
+  it('forgets a deleted session, from here or from the Engine command', async () => {
+    const hook = await mount([session('s1'), session('s2'), session('s3')])
+    expect(hook.result.current.sessionsById.s2).toBeTruthy()
+    installInvoke([session('s1'), session('s3')])
+    await act(async () => {
+      await hook.result.current.deleteSession('s2', false)
+    })
+    expect(hook.result.current.sessionsById.s2).toBeUndefined()
+    // Deleted outside the app (`rinari sessions delete`): the next listing drops it.
+    installInvoke([session('s1')])
+    await act(async () => {
+      await hook.result.current.refreshSessions()
+    })
+    expect(hook.result.current.sessionsById.s3).toBeUndefined()
+    expect(commandsNamed('session_list').at(-1)?.[1]).toMatchObject({ limit: 500 })
   })
 
   it('createSession with activate:false does not move the Normal selection', async () => {

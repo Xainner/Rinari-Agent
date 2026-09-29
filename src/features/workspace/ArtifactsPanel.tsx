@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { commandMessage, engineApi, type ArtifactSummary } from '../../services/engine'
+import { commandMessage, engineApi, onEngineEvent, type ArtifactSummary } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { artifactImageUrl, isArtifactImage } from '../files/artifactImage'
+
+/** Whether an Engine event may have added artifacts to the session. */
+export function producedArtifacts(event: string, payload: Record<string, unknown> | undefined): boolean {
+  if (event === 'turn.completed' || event === 'turn.failed' || event === 'turn.stopped') return true
+  if (event !== 'tool.completed') return false
+  const presentation = payload?.presentation as { artifacts?: unknown } | undefined
+  if (Array.isArray(presentation?.artifacts) && presentation.artifacts.length > 0) return true
+  return typeof payload?.observation === 'string' && payload.observation.includes('artifact://')
+}
 
 /** Galería de artefactos de la sesión: lista por URI + preview acotado. */
 export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
@@ -27,6 +36,21 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
     setText(null)
     void reload()
   }, [reload])
+
+  // A tool that saves an artifact while the panel is open: without this the
+  // list only caught up after switching tabs.
+  useEffect(() => {
+    let alive = true
+    let timer: number | undefined
+    let stop: (() => void) | undefined
+    void onEngineEvent((event) => {
+      if (event.payload?.session_id !== sessionId) return
+      if (!producedArtifacts(event.event, event.payload)) return
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => { if (alive) void reload() }, 300)
+    }).then((unsubscribe) => { if (alive) stop = unsubscribe; else unsubscribe() })
+    return () => { alive = false; window.clearTimeout(timer); stop?.() }
+  }, [reload, sessionId])
 
   async function open(artifact: ArtifactSummary) {
     const uri = artifact.uri

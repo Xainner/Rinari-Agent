@@ -456,11 +456,13 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const displayItems = groupAdjacent(visible)
   const significant = visible.filter((item) => item.type !== 'model' && item.type !== 'system' && item.type !== 'steer')
   const lastActivity = visible.at(-1)?.occurredAt ?? timeline.startedAt
+  // A subagent runs beside the coordinator, not instead of it: while the
+  // main agent waits for its own model call «Pensando…» must stay. When it
+  // waits for the subagent, `agent.wait` is a running tool and covers it.
   const actionRunning = visible.some((item) =>
     item.type === 'tool' && (item.status === 'requested' || item.status === 'running') ||
     item.type === 'context' && item.status === 'running' ||
-    item.type === 'verification' && item.status === 'running' ||
-    item.type === 'agent' && item.status === 'running',
+    item.type === 'verification' && item.status === 'running',
   )
   const initialWait = visible.length === 0 && now - timeline.startedAt >= 300
   const betweenSteps = visible.length > 0 && now - lastActivity >= 1000

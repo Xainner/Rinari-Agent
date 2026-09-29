@@ -582,6 +582,11 @@
           "name": "state",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "Option<u32>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -608,6 +613,11 @@
           "key": "state",
           "from": "state",
           "optional": false
+        },
+        {
+          "key": "limit",
+          "from": "limit",
+          "optional": true
         }
       ],
       "passthrough": null,

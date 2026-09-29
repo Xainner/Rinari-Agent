@@ -63,6 +63,7 @@ export type DesktopCommand =
   | "policy_get"
   | "project_add"
   | "project_changes"
+  | "project_delete"
   | "project_diff"
   | "project_get"
   | "project_intelligence"
@@ -241,6 +242,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "policy_get",
   "project_add",
   "project_changes",
+  "project_delete",
   "project_diff",
   "project_get",
   "project_intelligence",
@@ -434,6 +436,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "policy_get",
   "project_add",
   "project_changes",
+  "project_delete",
   "project_diff",
   "project_get",
   "project_intelligence",

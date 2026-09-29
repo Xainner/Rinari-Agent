@@ -524,6 +524,13 @@
       ]
     },
     {
+      "command": "project_delete",
+      "kind": "engine",
+      "method": "project.delete",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_diff",
       "kind": "engine",
       "method": "project.diff",
@@ -1484,10 +1491,10 @@
     }
   ],
   "summary": {
-    "commands": 176,
-    "engine_backed": 170,
+    "commands": 177,
+    "engine_backed": 171,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 55
+    "without_callers": 56
   }
 }

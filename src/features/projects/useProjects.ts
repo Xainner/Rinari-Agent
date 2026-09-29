@@ -89,6 +89,18 @@ export function useProjects(options: { engineReady: boolean }) {
     }
   }, [refreshProjects])
 
+  /** Borrado definitivo de un proyecto ya archivado (el Engine lo exige). */
+  const deleteProject = useCallback(async (projectId: string): Promise<number | null> => {
+    try {
+      const result = await engineApi.projectDelete(projectId)
+      await refreshProjects()
+      return result.sessions_deleted
+    } catch (err) {
+      toast.error(commandMessage(err))
+      return null
+    }
+  }, [refreshProjects])
+
   const loadStatus = useCallback((root: string, force = false): Promise<void> => {
     if (!root) return Promise.resolve()
     const pending = statusInFlight.current.get(root)
@@ -151,6 +163,7 @@ export function useProjects(options: { engineReady: boolean }) {
     openProject,
     updateProject,
     removeProject,
+    deleteProject,
     statusByRoot,
     statusErrorByRoot,
     loadStatus,

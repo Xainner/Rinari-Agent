@@ -92,6 +92,8 @@ export interface AppSidebarProps {
   onDeleteSession: (id: string, cascade: boolean) => void
   onUpdateProject: (id: string, changes: { pinned?: boolean; archived?: boolean }) => void
   onArchiveProject: (id: string) => void
+  /** Borrado definitivo de un archivado; ausente si el Engine no anuncia `project_delete_v1`. */
+  onDeleteProject?: (id: string) => void
   approvals: PendingApproval[]
 }
 
@@ -153,6 +155,7 @@ export function AppSidebar({
   onDeleteSession,
   onUpdateProject,
   onArchiveProject,
+  onDeleteProject,
   approvals,
 }: AppSidebarProps) {
   const { t } = useI18n()
@@ -578,6 +581,11 @@ export function AppSidebar({
                     <button type="button" onClick={() => onUpdateProject(project.id, { archived: false })} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)]" aria-label={t('project.restore')} title={t('project.restore')}>
                       <ArchiveRestore size={13} />
                     </button>
+                    {onDeleteProject && (
+                      <button type="button" onClick={() => onDeleteProject(project.id)} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)] hover:text-red-400" aria-label={t('project.deleteForever')} title={t('project.deleteForever')}>
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

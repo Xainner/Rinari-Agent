@@ -1984,4 +1984,9 @@ export const en: Record<I18nKey, string> = {
   'files.noImagePreview': 'The artifact has no image preview.',
   'engine.restarted': 'Engine restarted',
   'update.unknownError': 'unknown error',
+  'project.deleteForever': 'Delete permanently',
+  'project.deleteConfirm': 'This deletes the project, its conversations and what Rinari keeps about it (memory, tasks, verification, index and trust). Files in the folder are not touched. This cannot be undone.',
+  'project.deleteConfirmCount': 'This deletes the project, its {n} conversations and what Rinari keeps about it (memory, tasks, verification, index and trust). Files in the folder are not touched. This cannot be undone.',
+  'project.deleteAction': 'Delete',
+  'project.deleted': 'Project deleted. Its files are still in the folder.',
 }

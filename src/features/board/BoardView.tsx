@@ -143,7 +143,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
           const row = (await engineApi.sessionGet(pane.sessionId)).session
           resolved[pane.sessionId] = resolutionForState(row.state)
         } catch (error) {
-          resolved[pane.sessionId] = isCommandError(error) && error.code === 'NOT_FOUND'
+          resolved[pane.sessionId] = isCommandError(error) && (error.code === 'NOT_FOUND' || error.code === 'SESSION_NOT_FOUND')
             ? { status: 'not_found' }
             : { status: 'unknown', message: commandMessage(error) }
         }

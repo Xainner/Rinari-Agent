@@ -72,6 +72,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "policy_get": {"method":"policy.get","params":[]},
   "project_add": {"method":"project.add","params":[{"key":"path","from":"path","optional":false},{"key":"name","from":"name","optional":false},{"key":"description","from":"description","optional":false}]},
   "project_changes": {"method":"project.changes","params":[{"key":"path","from":"path","optional":false}]},
+  "project_delete": {"method":"project.delete","params":[{"key":"project_id","from":"project_id","optional":false}]},
   "project_diff": {"method":"project.diff","params":[{"key":"path","from":"path","optional":false},{"key":"file","from":"file","optional":true},{"key":"max_chars","from":"max_chars","optional":true}]},
   "project_get": {"method":"project.get","params":[{"key":"project_id","from":"project_id","optional":false}]},
   "project_intelligence": {"method":"project.intelligence","params":[{"key":"path","from":"path","optional":false}]},

@@ -36,7 +36,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "checkpoint_restore": {"method":"checkpoint.restore","params":[{"key":"path","from":"path","optional":false},{"key":"checkpoint_id","from":"checkpoint_id","optional":false},{"key":"preview","from":"preview","optional":false},{"key":"allow_mixed","from":"allow_mixed","optional":false}]},
   "checkpoint_show": {"method":"checkpoint.show","params":[{"key":"checkpoint_id","from":"checkpoint_id","optional":false}]},
   "command_list": {"method":"command.list","params":[{"key":"session_id","from":"session_id","optional":true}]},
-  "context_compact": {"method":"context.compact","params":[{"key":"session_id","from":"session_id","optional":false}]},
+  "context_compact": {"method":"context.compact","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"continue_with","from":"continue_with","optional":true}]},
   "context_get": {"method":"context.get","params":[{"key":"ref","from":"reference","optional":false}]},
   "context_models": {"method":"context.models","params":[{"key":"refresh","from":"refresh","optional":true}]},
   "context_settings_get": {"method":"context.settings.get","params":[]},

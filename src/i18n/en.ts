@@ -828,6 +828,8 @@ export const en: Record<I18nKey, string> = {
   'insight.noCost': 'No estimated cost: the engine knows no pricing.',
   'context.title': 'Context and compaction',
   'context.ring': 'Context: {used} of {total} tokens ({percent})',
+  'context.ringEstimated': 'Estimated context after compaction: {used} of {total} tokens ({percent})',
+  'context.ringAfterCompaction': 'estimated after compaction',
   'context.behavior': 'Behavior',
   'context.behavior.desc': 'When the conversation nears the model limit, Rinari summarizes the older part and keeps the goal, constraints and pending work.',
   'context.auto': 'Compact automatically',

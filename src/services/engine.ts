@@ -988,7 +988,9 @@ export const engineApi = {
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
   // la petición sin sesión y la compactación manual fallaba.
-  contextCompact: (sessionId: string) => platform().command('context_compact', { session_id: sessionId }),
+  /** Compacts now; with `continueWith`, the same turn then sends that message. */
+  contextCompact: (sessionId: string, continueWith?: string) =>
+    platform().command('context_compact', { session_id: sessionId, continue_with: continueWith ?? null }),
   /** Capacity of a saved model, or of a session's model plus its measured use. */
   contextStatus: (target: { model_id?: string; session_id?: string }) =>
     platform().command<import('../types/protocol.generated').ContextStatus>('context_status', target),

@@ -2376,6 +2376,11 @@
           "name": "session_id",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "continue_with",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -2386,6 +2391,11 @@
           "key": "session_id",
           "from": "session_id",
           "optional": false
+        },
+        {
+          "key": "continue_with",
+          "from": "continue_with",
+          "optional": true
         }
       ],
       "passthrough": null,

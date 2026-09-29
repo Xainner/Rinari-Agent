@@ -846,6 +846,8 @@ export const es = {
   'insight.noCost': 'Sin costo estimado: el engine no conoce precios.',
   'context.title': 'Contexto y compactación',
   'context.ring': 'Contexto: {used} de {total} tokens ({percent})',
+  'context.ringEstimated': 'Contexto estimado tras compactar: {used} de {total} tokens ({percent})',
+  'context.ringAfterCompaction': 'estimado tras compactar',
   'context.behavior': 'Comportamiento',
   'context.behavior.desc': 'Cuando la conversación se acerca al límite del modelo, Rinari resume la parte antigua y conserva el objetivo, las restricciones y el trabajo pendiente.',
   'context.auto': 'Compactar automáticamente',

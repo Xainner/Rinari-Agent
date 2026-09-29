@@ -134,3 +134,15 @@ it('shows «Pensando…» hidden only while the coordinator waits on a tool', ()
   }] as TurnTimeline['items'] }, 2_500)
   expect(screen.queryByText('Pensando…')).toBeNull()
 })
+
+it('offers to compact and continue when a compaction stopped the turn', async () => {
+  const compact = vi.spyOn(engineApi, 'contextCompact').mockResolvedValue({} as never)
+  view({ ...base, status: 'failed', completedAt: 2_000, items: [{
+    id: 'context:c1', type: 'context', activitySeq: 1, occurredAt: 1_100, sessionId: 's1',
+    status: 'failed', reason: 'automatic', error: 'The summarizer did not return a complete text summary (it returned no text).',
+  }] as TurnTimeline['items'] }, 2_000)
+  await userEvent.click(screen.getByText('Compactar y continuar'))
+  expect(compact).toHaveBeenCalledWith('s1', 'Continúa')
+  await userEvent.click(screen.getByText('Solo compactar'))
+  expect(compact).toHaveBeenLastCalledWith('s1')
+})

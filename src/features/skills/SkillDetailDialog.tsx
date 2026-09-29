@@ -231,14 +231,14 @@ export default function SkillDetailDialog({
             <ReviewFindings review={detail.review} />
 
             {provenance?.source && (
-              <p className="text-xs text-[var(--text-subtle)]">
+              <p className="text-xs text-[var(--text-subtle)] [overflow-wrap:anywhere]">
                 {t('skills.provenance', { source: provenance.source })}
                 {provenance.installed_at ? ` · ${new Date(provenance.installed_at).toLocaleString()}` : ''}
               </p>
             )}
             {(detail.required_tools?.length ?? 0) + (detail.allowed_tools?.length ?? 0) > 0 && (
               <p className="text-xs text-[var(--text-subtle)]">
-                {t('skills.tools')}: <span className="font-mono">{[...(detail.required_tools ?? []), ...(detail.allowed_tools ?? [])].join(', ')}</span>
+                {t('skills.tools')}: <span className="font-mono [overflow-wrap:anywhere]">{[...(detail.required_tools ?? []), ...(detail.allowed_tools ?? [])].join(', ')}</span>
               </p>
             )}
 
@@ -254,7 +254,7 @@ export default function SkillDetailDialog({
                 </div>
                 {page && (
                   <div className="mt-2">
-                    <pre className="max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 font-mono text-[11px] whitespace-pre-wrap text-[var(--text-muted)]">{page.text}</pre>
+                    <pre className="max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 font-mono text-[11px] whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text-muted)]">{page.text}</pre>
                     {page.next_offset !== null && (
                       <button type="button" onClick={() => void openReference(page.path, page.next_offset ?? 0)} className={`${buttonClass} mt-1`}>
                         {t('skills.moreLines')}
@@ -283,7 +283,9 @@ export default function SkillDetailDialog({
                 </div>
               </div>
             ) : (
-              <div className="max-h-80 overflow-auto rounded-xl border border-[var(--border)] p-3">
+              // Una skill se lee sin scroll horizontal: el código y las rutas
+              // largas se parten en vez de ensanchar la ficha.
+              <div className="max-h-80 overflow-x-hidden overflow-y-auto rounded-xl border border-[var(--border)] p-3 [overflow-wrap:anywhere] [&_code]:[overflow-wrap:anywhere] [&_pre]:whitespace-pre-wrap">
                 <Markdown>{detail.body}</Markdown>
               </div>
             )}

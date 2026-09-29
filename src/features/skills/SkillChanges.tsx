@@ -27,7 +27,7 @@ function withContext(lines: DiffLine[]): Row[] {
 }
 
 const preClass =
-  'max-h-80 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[11px] whitespace-pre-wrap text-[var(--text-muted)]'
+  'max-h-80 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-2 font-mono text-[11px] whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text-muted)]'
 
 /**
  * Qué cambió entre dos versiones de una SKILL.md: diff por líneas con contexto.

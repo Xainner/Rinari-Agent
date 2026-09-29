@@ -8,6 +8,7 @@ import {
 } from '../../services/desktop'
 import { commandMessage } from '../../services/engine'
 import { CodeBlock } from '../../components/Markdown'
+import { useI18n } from '../../i18n'
 
 import { platform } from '../../platform'
 
@@ -35,6 +36,7 @@ export default function HtmlPreview({
   turnId?: string
   file: FilePreview
 }) {
+  const { t } = useI18n()
   const [preview, setPreview] = useState<WebPreview | null>(null)
   const [content, setContent] = useState(file.content)
   const [source, setSource] = useState(false)
@@ -82,7 +84,7 @@ export default function HtmlPreview({
         setError(
           next.error ||
             (!next.ready && Date.now() - started > 30_000
-              ? 'El servidor no responde todavía. Revisa sus dependencias o vuelve a intentarlo.'
+              ? t('preview.serverNotResponding')
               : ''),
         )
       } catch (reason) {
@@ -115,9 +117,7 @@ export default function HtmlPreview({
             .stopPreview(sessionId, next.preview_id)
             .catch(() => {})
           handle = null
-          throw new Error(
-            'La vista previa debe usar un origen local separado de Rinari Agent.',
-          )
+          throw new Error(t('preview.isolatedOrigin'))
         }
         revision = next.revision
         setPreview(next)
@@ -162,7 +162,7 @@ export default function HtmlPreview({
           onClick={() => setSource(false)}
           className={`rounded-md px-2 py-1.5 ${!source ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)]'}`}
         >
-          Vista previa
+          {t('files.preview')}
         </button>
         <button
           type="button"
@@ -170,21 +170,21 @@ export default function HtmlPreview({
           onClick={() => setSource(true)}
           className={`rounded-md px-2 py-1.5 ${source ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)]'}`}
         >
-          Código
+          {t('preview.code')}
         </button>
         <span className="flex-1" />
         <button
           type="button"
-          title="Usar servidor de desarrollo"
+          title={t('preview.useDevServer')}
           onClick={() => setDevRequired((value) => !value)}
           className="rounded-md px-2 py-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
         >
-          Servidor
+          {t('preview.server')}
         </button>
         <button
           type="button"
-          aria-label="Recargar vista previa"
-          title="Recargar"
+          aria-label={t('preview.reloadPreview')}
+          title={t('preview.reload')}
           onClick={refresh}
           className="rounded-md p-1.5 hover:bg-[var(--bg-hover)]"
         >
@@ -192,8 +192,8 @@ export default function HtmlPreview({
         </button>
         <button
           type="button"
-          aria-label="Abrir en navegador"
-          title="Abrir en navegador"
+          aria-label={t('preview.openInBrowser')}
+          title={t('preview.openInBrowser')}
           disabled={!preview?.ready}
           onClick={() => {
             if (preview)
@@ -215,7 +215,7 @@ export default function HtmlPreview({
         {preview?.ready && !error && !devRequired ? (
           <iframe
             key={`${preview.preview_id}:${reload}`}
-            title={`Vista previa de ${file.name}`}
+            title={t('attach.previewOf', { name: file.name })}
             src={preview.url}
             sandbox="allow-scripts allow-same-origin allow-forms"
             referrerPolicy="no-referrer"
@@ -227,9 +227,7 @@ export default function HtmlPreview({
             {devRequired ? (
               <>
                 <p>
-                  {isVite
-                    ? 'Este proyecto usa Vite. Inicia su servidor para ver React, TypeScript y los estilos funcionando.'
-                    : 'Conecta la URL local del servidor de desarrollo de tu proyecto.'}
+                  {isVite ? t('preview.viteHint') : t('preview.connectHint')}
                 </p>
                 {isVite && (
                   <>
@@ -240,14 +238,14 @@ export default function HtmlPreview({
                       }
                       className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white"
                     >
-                      Iniciar servidor de desarrollo
+                      {t('preview.startDevServer')}
                     </button>
                   </>
                 )}
                 <label className="block text-xs">
-                  O usa un servidor existente
+                  {t('preview.useExisting')}
                   <input
-                    aria-label="URL del servidor de desarrollo"
+                    aria-label={t('preview.devServerUrl')}
                     value={existingUrl}
                     onChange={(event) => setExistingUrl(event.target.value)}
                     className="mt-2 w-full rounded-md border border-[var(--border)] bg-[var(--bg-app)] p-2"
@@ -264,7 +262,7 @@ export default function HtmlPreview({
                   }
                   className="rounded-lg border border-[var(--border)] px-3 py-2"
                 >
-                  Conectar servidor
+                  {t('preview.connectServer')}
                 </button>
               </>
             ) : error ? (
@@ -284,15 +282,15 @@ export default function HtmlPreview({
                       })
                     }
                   >
-                    Configurar servidor
+                    {t('preview.configureServer')}
                   </button>
                 )}
               </>
             ) : (
               <p role="status">
                 {preview?.kind === 'development'
-                  ? 'Iniciando servidor de desarrollo…'
-                  : 'Preparando vista previa…'}
+                  ? t('preview.startingDevServer')
+                  : t('attach.previewLoading')}
               </p>
             )}
           </div>
@@ -304,9 +302,9 @@ export default function HtmlPreview({
           title={preview.url}
         >
           {preview.kind === 'development'
-            ? 'Servidor de desarrollo'
-            : 'Vista local'}{' '}
-          · {preview.ready ? 'Actualización automática' : 'Conectando…'}
+            ? t('preview.devServer')
+            : t('preview.localView')}{' '}
+          · {preview.ready ? t('preview.autoRefresh') : t('preview.connecting')}
         </div>
       )}
     </div>

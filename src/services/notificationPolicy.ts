@@ -4,6 +4,8 @@
  * atención, las preferencias y el soporte nativo; no envía nada.
  */
 import type { BoardNotificationPrefs } from '../stores/board'
+import { translate } from '../i18n'
+import { useUIStore } from '../stores/ui'
 
 export type BoardEventKind = 'terminal' | 'intervention' | 'peer'
 
@@ -52,7 +54,7 @@ export function decideChannels(input: ChannelInput): ChannelDecision {
 
 /** Cuerpo nativo genérico por defecto: nada de rutas, fragmentos ni prompts. */
 export function nativeBody(kind: BoardEventKind, details: { label?: string | null; provider?: string | null; model?: string | null } | null, showDetails: boolean): string {
-  const generic = kind === 'intervention' ? 'Un panel necesita tu intervención' : 'Un panel necesita revisión'
+  const generic = translate(useUIStore.getState().lang, kind === 'intervention' ? 'board.notify.needsYou' : 'board.notify.needsReview')
   if (!showDetails || !details?.label) return generic
   const attribution = [details.provider, details.model].filter(Boolean).join(' › ')
   return attribution ? `${details.label} · ${attribution}` : details.label

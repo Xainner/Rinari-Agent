@@ -1,20 +1,27 @@
 import {
+  AppWindow,
   Bot,
+  Brain,
   Check,
+  ClipboardCheck,
+  Code,
   Copy,
   ChevronDown,
   CircleAlert,
   FileSearch,
   FileText,
+  Globe,
   Image as ImageIcon,
   GitBranch,
   ListTree,
   LoaderCircle,
+  MessageCircleQuestion,
   Pencil,
   ShieldAlert,
   Sparkles,
   SquareTerminal,
-  TestTube2,
+  TriangleAlert,
+  Wrench,
 } from 'lucide-react'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -30,7 +37,7 @@ import CompactionDetails from '../context/CompactionDetails'
 import TokenUsage from './TokenUsageIndicator'
 import TurnResult from './TurnResult'
 import { commandMessage, engineApi } from '../../services/engine'
-import { formatTool, toolCategory } from './formatActivity'
+import { formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
@@ -49,21 +56,31 @@ interface Props {
   onReviewChanges?: () => void
 }
 
-const ICONS = {
+const ICONS: Record<ToolCategory, typeof FileText> = {
   image: ImageIcon,
   read: FileText,
   search: FileSearch,
   list: ListTree,
   edit: Pencil,
-  test: TestTube2,
   git: GitBranch,
   command: SquareTerminal,
+  verify: ClipboardCheck,
+  browser: AppWindow,
+  web: Globe,
+  skill: Sparkles,
+  memory: Brain,
+  code: Code,
+  ask: MessageCircleQuestion,
+  other: Wrench,
 }
 
 function elapsed(ms: number): string {
   const seconds = Math.max(0, ms) / 1000
   return seconds < 10 ? `${seconds.toFixed(1)} s` : `${Math.round(seconds)} s`
 }
+
+/** Lo instantáneo no lleva duración: «0.0 s» no dice nada. */
+const shownDuration = (ms: number | undefined): ms is number => ms !== undefined && ms >= 100
 
 function groupAdjacent(items: TimelineItem[]): DisplayItem[] {
   const output: DisplayItem[] = []
@@ -137,7 +154,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const failed = item.status === 'failed' || item.status === 'cancelled'
     if (item.presentation?.kind === 'image' && item.presentation.image && item.status === 'completed') {
       return <div className="py-1 text-[13px] text-[var(--text-muted)]">
-        <div className="flex items-center gap-2"><ImageIcon size={13} /><span>{formatTool(item, lang)}</span>{item.durationMs !== undefined && <span className="text-[10px] text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}</div>
+        <div className="flex items-center gap-2"><ImageIcon size={13} /><span>{formatTool(item, lang)}</span>{shownDuration(item.durationMs) && <span className="text-[10px] text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}</div>
         <ImageActivity key={item.presentation.image.uri} image={item.presentation.image} />
       </div>
     }
@@ -145,14 +162,20 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     if (item.status === 'completed' && ['fs.write', 'fs.patch'].includes(item.tool)) {
       try { const args = JSON.parse(item.arguments ?? '{}'); if (typeof args.path === 'string') outputPath = args.path } catch { /* truncated arguments */ }
     }
+    // Un comando que corrió y salió con código ≠ 0 no es un fallo de la
+    // herramienta —una prueba en rojo a propósito sale con 1—: se muestra su
+    // código en ámbar. El rojo queda para lo que no llegó a ejecutarse bien.
+    const exitCode = item.presentation?.kind === 'command' ? item.presentation.exit_code : undefined
+    const exited = failed && !item.error && !item.presentation?.error && typeof exitCode === 'number' && exitCode !== 0
     return (
       <details className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
         <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50">
-          {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
+          {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : exited ? <TriangleAlert size={13} className="text-amber-400" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
           <span>{formatTool(item, lang)}</span>
-          {outputPath && <span onClick={e => e.stopPropagation()} className="text-[var(--accent)] underline"><FileLink href={outputPath}>Ver archivo</FileLink></span>}
+          {exited && <span className="font-mono text-[10px] text-amber-300">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
+          {outputPath && <span onClick={e => e.stopPropagation()} className="text-[var(--accent)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
           {technical && <span className="font-mono text-[10px] text-[var(--text-subtle)]">{item.tool}</span>}
-          {item.durationMs !== undefined && <span className="ml-auto text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}
+          {shownDuration(item.durationMs) && <span className="ml-auto text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}
           <ChevronDown size={12} className="transition-transform group-open/activity:rotate-180" />
         </summary>
         {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (

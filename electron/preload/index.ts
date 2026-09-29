@@ -137,6 +137,7 @@ const api = {
   app: {
     background: () => call<BackgroundSettings>(CHANNEL.appBackgroundGet),
     setBackground: (patch: BackgroundPatch) => call<BackgroundSettings>(CHANNEL.appBackgroundSet, patch),
+    setLanguage: (language: 'es' | 'en') => call<void>(CHANNEL.appLanguageSet, language),
   },
 
   contextMenu: {

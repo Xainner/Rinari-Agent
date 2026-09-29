@@ -15,6 +15,8 @@
 
 import { Menu, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 
+import type { HostText } from './hostText'
+
 const ZOOM_STEP = 0.1
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2
@@ -24,6 +26,8 @@ export interface MenuDeps {
   /** Acción que decide el renderer; viaja por su id, igual que antes. */
   onAction: (id: string) => void
   onQuit: () => void
+  /** Etiquetas en el idioma de la interfaz; el menú se reconstruye al cambiarlo. */
+  text: HostText
 }
 
 /** Nivel de zoom del webContents. Una sola ventana, como en el host anterior. */
@@ -59,63 +63,64 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
     },
   })
 
+  const text = deps.text
   const template: MenuItemConstructorOptions[] = [
     {
-      label: 'Archivo',
+      label: text.menuFile,
       submenu: [
-        item('new-chat', 'Nueva conversación', 'CmdOrCtrl+N'),
-        item('open-folder', 'Abrir carpeta…', 'CmdOrCtrl+O'),
-        item('close-session', 'Cerrar sesión', 'CmdOrCtrl+W'),
-        item('settings', 'Configuración…', 'CmdOrCtrl+,'),
+        item('new-chat', text.menuNewChat, 'CmdOrCtrl+N'),
+        item('open-folder', text.menuOpenFolder, 'CmdOrCtrl+O'),
+        item('close-session', text.menuCloseSession, 'CmdOrCtrl+W'),
+        item('settings', text.menuSettings, 'CmdOrCtrl+,'),
         { type: 'separator' },
-        item('quit', 'Salir', process.platform === 'darwin' ? 'Cmd+Q' : 'Alt+F4'),
+        item('quit', text.menuQuit, process.platform === 'darwin' ? 'Cmd+Q' : 'Alt+F4'),
       ],
     },
     {
-      label: 'Editar',
+      label: text.menuEdit,
       submenu: [
         // Deshacer y rehacer los implementa el renderer sobre el campo con
         // foco, igual que en el menú contextual.
-        item('undo', 'Deshacer'),
-        item('redo', 'Rehacer'),
+        item('undo', text.menuUndo),
+        item('redo', text.menuRedo),
         { type: 'separator' },
-        { role: 'cut', label: 'Cortar' },
-        { role: 'copy', label: 'Copiar' },
-        { role: 'paste', label: 'Pegar' },
-        { role: 'selectAll', label: 'Seleccionar todo' },
+        { role: 'cut', label: text.menuCut },
+        { role: 'copy', label: text.menuCopy },
+        { role: 'paste', label: text.menuPaste },
+        { role: 'selectAll', label: text.menuSelectAll },
       ],
     },
     {
-      label: 'Ver',
+      label: text.menuView,
       submenu: [
         // Selección idempotente y sin acelerador nativo a propósito.
-        item('view-normal', 'Normal'),
-        item('view-boards', 'Boards'),
-        item('view-flows', 'Flujos'),
+        item('view-normal', text.menuNormal),
+        item('view-boards', text.menuBoards),
+        item('view-flows', text.menuFlows),
         { type: 'separator' },
-        item('sidebar', 'Barra lateral', 'CmdOrCtrl+B'),
-        item('files', 'Panel de archivos', 'CmdOrCtrl+Shift+E'),
+        item('sidebar', text.menuSidebar, 'CmdOrCtrl+B'),
+        item('files', text.menuFiles, 'CmdOrCtrl+Shift+E'),
         // El navegador vive en el mismo dock que los archivos, así que se abre
         // igual. Sin esta entrada sólo se llegaba abriendo Archivos y cambiando
         // de pestaña dentro, que no es «abrir Browser» (documento 03 §1).
-        item('browser', 'Panel de navegador', 'CmdOrCtrl+Shift+U'),
+        item('browser', text.menuBrowser, 'CmdOrCtrl+Shift+U'),
         // Sin atajo propio: comparte ruta con la barra superior y la paleta,
         // y no compite con la vista global de Workspace.
-        item('workspace-panel', 'Panel de Workspace'),
+        item('workspace-panel', text.menuWorkspace),
         // El mismo atajo que en los editores; no es una combinación de texto.
-        item('terminal', 'Terminal', 'CmdOrCtrl+`'),
-        item('commands', 'Paleta de comandos', 'CmdOrCtrl+K'),
-        item('zoom-in', 'Acercar', 'CmdOrCtrl+Plus'),
-        item('zoom-out', 'Alejar', 'CmdOrCtrl+-'),
-        item('zoom-reset', 'Tamaño real', 'CmdOrCtrl+0'),
+        item('terminal', text.menuTerminal, 'CmdOrCtrl+`'),
+        item('commands', text.menuCommands, 'CmdOrCtrl+K'),
+        item('zoom-in', text.menuZoomIn, 'CmdOrCtrl+Plus'),
+        item('zoom-out', text.menuZoomOut, 'CmdOrCtrl+-'),
+        item('zoom-reset', text.menuZoomReset, 'CmdOrCtrl+0'),
       ],
     },
     {
-      label: 'Ayuda',
+      label: text.menuHelp,
       submenu: [
-        item('about', 'Acerca de Rinari Agent'),
-        item('engine', 'Estado del motor'),
-        item('updates', 'Buscar actualizaciones'),
+        item('about', text.menuAbout),
+        item('engine', text.menuEngine),
+        item('updates', text.menuUpdates),
       ],
     },
   ]

@@ -55,15 +55,15 @@ export default function ShortcutsSettings() {
                 className="min-w-24 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
                 aria-label={`${t(label)}: ${bindings[id]}`}
               >
-                {recording === id ? 'Pulsa una combinación…' : bindings[id]}
+                {recording === id ? t('settings.shortcuts.recording') : bindings[id]}
               </button>
             </div>
           ))}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-[var(--text-subtle)]">Usa Ctrl, Alt o Shift junto a otra tecla. Esc cancela. {t('settings.shortcuts.closeContext')}</p>
+          <p className="text-xs text-[var(--text-subtle)]">{t('settings.shortcuts.howTo')} {t('settings.shortcuts.closeContext')}</p>
           <button type="button" onClick={resetShortcutBindings} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
-            <RotateCcw size={13} /> Restaurar
+            <RotateCcw size={13} /> {t('settings.shortcuts.reset')}
           </button>
         </div>
       </Section>

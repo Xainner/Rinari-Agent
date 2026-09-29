@@ -59,6 +59,8 @@ export interface TestBridge extends DesktopBridge {
   readonly copiedTexts: string[]
   /** Ajustes de segundo plano del host de prueba. */
   background: BackgroundSettings
+  /** Último idioma que el renderer comunicó al host (`null` si ninguno). */
+  hostLanguage: 'es' | 'en' | null
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
@@ -154,6 +156,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     openedFiles: [],
     copiedTexts: [],
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
+    hostLanguage: null,
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -228,6 +231,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
         if (patch.launchAtLogin !== undefined && next.launchAtLoginSupported) next.launchAtLogin = patch.launchAtLogin
         bridge.background = next
         return { ...next }
+      },
+      async setLanguage(language) {
+        bridge.hostLanguage = language
       },
     },
 
@@ -395,6 +401,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       bridge.initialHandoff = { project: null, session: null }
       bridge.openedFiles.length = 0
       bridge.copiedTexts.length = 0
+      bridge.hostLanguage = null
       bridge.menus.length = 0
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }

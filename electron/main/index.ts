@@ -23,11 +23,12 @@ import { canPush } from './ipc/pushGuard'
 import { QuitCoordinator, confirmsQuit } from './lifecycle/QuitCoordinator'
 import { defaultMigrationDirectory, MigrationService } from './migration/MigrationService'
 import { createBackground, HIDDEN_START_ARG, type Background } from './native/background'
-import { HandoffQueue, parseOpenRequest } from './native/handoff'
+import { HandoffQueue, openRequestFromData, parseOpenRequest } from './native/handoff'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
 import { createTrayController } from './native/tray'
+import { hostLanguageFromLocale, hostText, type HostText } from './native/hostText'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
@@ -73,10 +74,32 @@ function showMainWindow(): void {
   else openWindow()
 }
 
+/**
+ * Textos de main en el idioma de la interfaz. Hasta que el renderer lo dice
+ * (primer arranque) vale el del sistema; después, el guardado.
+ */
+function currentHostText(): HostText {
+  return hostText(background?.language ?? hostLanguageFromLocale(app.getLocale()))
+}
+
+/** Menú de aplicación; se rehace cuando la interfaz cambia de idioma. */
+function installApplicationMenu(): void {
+  Menu.setApplicationMenu(
+    buildApplicationMenu({
+      getWindow: () => mainWindow,
+      onAction: (id) => send(PUSH.menuAction, id),
+      // El menú entra por la misma autoridad que el resto.
+      onQuit: () => void quitCoordinator.requestQuit('menu'),
+      text: currentHostText(),
+    }),
+  )
+}
+
 const tray = createTrayController({
   onOpen: showMainWindow,
   // «Salir» del icono entra por la misma autoridad que el menú y la X.
   onQuit: () => void quitCoordinator.requestQuit('tray'),
+  text: currentHostText,
 })
 /**
  * Origen del renderer de confianza: el esquema propio en producción y el del
@@ -442,6 +465,13 @@ function buildServices(): HostServices {
     app: {
       background: () => requireBackground().settings(),
       setBackground: (patch) => requireBackground().update(patch),
+      setLanguage: (language) => {
+        // Sólo si cambió: el renderer lo repite en cada arranque.
+        if (requireBackground().setLanguage(language)) {
+          installApplicationMenu()
+          tray.refresh()
+        }
+      },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -465,13 +495,14 @@ const quitCoordinator = new QuitCoordinator({
   shouldConfirm: (reason) => confirmsQuit(reason, engine.status().state === 'ready'),
   async confirm() {
     const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+    const text = currentHostText()
     const options = {
       type: 'question' as const,
-      buttons: ['Reiniciar y actualizar', 'Cancelar'],
+      buttons: [text.updateRestart, text.updateCancel],
       defaultId: 1,
       cancelId: 1,
-      message: '¿Aplicar la actualización ahora?',
-      detail: 'Rinari cerrará el Engine y reiniciará con la versión descargada. Los turnos y procesos activos se interrumpen.',
+      message: text.updateQuestion,
+      detail: text.updateDetail,
     }
     const { response } = target
       ? await dialog.showMessageBox(target, options)
@@ -549,10 +580,8 @@ function openWindow(): void {
       if (decision.action === 'hide') {
         window.hide()
         if (decision.notice) {
-          notifications.send({
-            title: 'Rinari sigue en la bandeja',
-            body: 'Ábrela desde su icono en la bandeja del sistema. Para salir, usa «Salir» en ese menú.',
-          })
+          const text = currentHostText()
+          notifications.send({ title: text.trayNoticeTitle, body: text.trayNoticeBody })
         }
         return
       }
@@ -868,18 +897,22 @@ function attachSmoke(window: BrowserWindow): void {
         const copy = await smokeClipboard(window)
         const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false
           && visible && (maximized || !maximizeRequired) && copy.ok
-        report(ok, { stage: 'renderer', ...probe, visible, maximized, maximizeRequired, clipboard: copy, engine: engine.status().state })
+        const engineStatus = engine.status()
+        report(ok, { stage: 'renderer', ...probe, visible, maximized, maximizeRequired, clipboard: copy, engine: engineStatus.state, engineDetail: engineStatus.detail ?? null })
       })
       .catch((error: unknown) => report(false, { stage: 'probe', error: String(error) }))
   })
 }
 
 // Una sola instancia: la segunda entrega su handoff y enfoca a la primera.
-if (!app.requestSingleInstanceLock()) {
+// La segunda lo manda ya leído: el argv que recibe `second-instance` llega
+// reordenado por Chromium (ver `openRequestFromData`).
+const launchRequest = parseOpenRequest(process.argv, app.isPackaged ? 1 : 2)
+if (!app.requestSingleInstanceLock({ handoff: launchRequest })) {
   app.quit()
 } else {
-  app.on('second-instance', (_event, argv) => {
-    handoff.push(parseOpenRequest(argv, app.isPackaged ? 1 : 2))
+  app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
+    handoff.push(openRequestFromData(additionalData) ?? parseOpenRequest(argv, app.isPackaged ? 1 : 2))
     if (mainWindow) presentWindow(mainWindow)
   })
 
@@ -890,14 +923,6 @@ if (!app.requestSingleInstanceLock()) {
       return
     }
     if (!isDev) registerAppScheme(rendererRoot())
-    Menu.setApplicationMenu(
-      buildApplicationMenu({
-        getWindow: () => mainWindow,
-        onAction: (id) => send(PUSH.menuAction, id),
-        // El menú entra por la misma autoridad que el resto.
-        onQuit: () => void quitCoordinator.requestQuit('menu'),
-      }),
-    )
     background = createBackground({
       settingsPath: join(app.getPath('userData'), 'desktop-settings.json'),
       // En desarrollo se registraría el electron.exe de la worktree.
@@ -909,9 +934,11 @@ if (!app.requestSingleInstanceLock()) {
         : null,
       onModeChanged: (enabled) => (enabled ? void tray.show() : tray.hide()),
     })
+    // Después de los ajustes: el menú sale ya en el idioma guardado.
+    installApplicationMenu()
     if (background.backgroundMode) void tray.show()
     unregisterIpc = registerIpc(registry, buildServices())
-    handoff.push(parseOpenRequest(process.argv, app.isPackaged ? 1 : 2))
+    handoff.push(launchRequest)
     openWindow()
 
     app.on('activate', () => {

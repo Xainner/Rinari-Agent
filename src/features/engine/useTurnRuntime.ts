@@ -90,7 +90,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     window.setTimeout(() => void restoreSnapshot(), 2000)
     window.setTimeout(() => {
       if (store.getState().busySessions.has(sessionId)) {
-        toast.warning('El motor aún no confirma la cancelación. Puedes reiniciarlo desde Estado del motor.')
+        toast.warning(translate(useUIStore.getState().lang, 'engine.cancelUnconfirmed'))
         void restoreSnapshot()
       }
     }, 5000)

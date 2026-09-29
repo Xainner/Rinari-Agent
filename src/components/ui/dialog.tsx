@@ -3,6 +3,8 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useBlockingOverlay } from '../../stores/overlay'
+import { translate } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
@@ -38,6 +40,9 @@ function DialogContent({
   children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
+  // Del store y no del contexto: hay diálogos que se montan fuera del
+  // I18nProvider (el arranque, por ejemplo).
+  const lang = useUIStore((state) => state.lang)
   return (
     <DialogPrimitive.Portal>
       {/* §8.3: ningún `z-index` del DOM queda por encima de una
@@ -53,7 +58,7 @@ function DialogContent({
       >
         {children}
         <DialogPrimitive.Close
-          aria-label="Cerrar"
+          aria-label={translate(lang, 'common.close')}
           className="absolute top-3 right-3 rounded-lg p-1.5 text-[var(--text-subtle)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
         >
           <X size={16} />

@@ -26,7 +26,7 @@ describe('processesApi', () => {
 
   it('rechaza sobres malformados y pone en cuarentena filas sueltas', async () => {
     vi.mocked(invoke).mockResolvedValueOnce({ processes: 'no-array', truncated: false })
-    await expect(processesApi.list('s1')).rejects.toThrow(/malformada/)
+    await expect(processesApi.list('s1')).rejects.toThrow(/malformada|malformed/)
     vi.mocked(invoke).mockResolvedValueOnce({
       processes: [
         { id: 'process:ok', kind: 'process', command: 'npm run dev', cwd: 'C:/s', running: true, can_stop: true },

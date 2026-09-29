@@ -1,27 +1,34 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { platform } from './platform'
+import { translate } from './i18n'
+import { useUIStore } from './stores/ui'
 import './styles/index.css'
 
 const container = document.getElementById('root') as HTMLElement
 let root: ReturnType<typeof ReactDOM.createRoot> | null = null
 
+/**
+ * Pantalla previa a React y al I18nProvider: los textos salen del catálogo con
+ * el idioma que la app ya tenía guardado.
+ */
 function migrationFailure(error: unknown): void {
+  const lang = useUIStore.getState().lang
   const detail = error instanceof Error ? error.message : String(error)
   container.innerHTML = ''
   const panel = document.createElement('main')
   panel.setAttribute('role', 'alert')
   panel.style.cssText = 'max-width:640px;margin:15vh auto;padding:32px;color:#f7f1ff;font:15px/1.5 system-ui;background:#17121f;border:1px solid #6d42a6;border-radius:16px'
   const title = document.createElement('h1')
-  title.textContent = 'No se pudo importar la transición de Rinari'
+  title.textContent = translate(lang, 'migration.failedTitle')
   const copy = document.createElement('p')
-  copy.textContent = 'La exportación original se conservó. Rinari no abrirá un perfil vacío hasta que la importación termine correctamente.'
+  copy.textContent = translate(lang, 'migration.failedBody')
   const code = document.createElement('pre')
   code.textContent = detail
   code.style.whiteSpace = 'pre-wrap'
   const retry = document.createElement('button')
   retry.type = 'button'
-  retry.textContent = 'Reintentar importación'
+  retry.textContent = translate(lang, 'migration.retry')
   retry.style.cssText = 'padding:10px 16px;border:0;border-radius:8px;background:#8b5cf6;color:white;cursor:pointer'
   retry.onclick = async () => {
     retry.disabled = true

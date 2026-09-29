@@ -19,6 +19,11 @@ import type {
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
+import { translate, type I18nKey } from '../i18n'
+import { useUIStore } from '../stores/ui'
+
+/** Texto de la app para errores que nacen aquí y se muestran tal cual. */
+const uiText = (key: I18nKey, vars?: Record<string, string>) => translate(useUIStore.getState().lang, key, vars)
 
 export type EngineState =
   | "stopped"
@@ -307,6 +312,9 @@ export interface ProjectStatus {
   active_session_id: string | null;
 }
 
+/** Estado de la confianza de un proyecto, tal como lo decide el Engine. */
+export type TrustState = 'trusted' | 'not-trusted' | 'revalidation-required' | 'not-found'
+
 export interface ProjectIntelligence {
   project: { root: string };
   repository: {
@@ -322,6 +330,8 @@ export interface ProjectIntelligence {
   index: Record<string, unknown>;
   instructions: {
     trusted: boolean;
+    /** Distingue «nunca confiado» de «su identidad cambió». Engines anteriores no lo envían. */
+    trust_state?: TrustState;
     scopes: Array<{ scope: string; provenance: string; kind: string }>;
   };
 }
@@ -682,7 +692,7 @@ export const engineApi = {
       project_id: options?.project_id ?? null,
     }),
   openSession: (reference: string) =>
-    platform().command<{ session: SessionSummary; created: boolean; warnings: string[] }>(
+    platform().command<{ session: SessionSummary; created: boolean; warnings: string[]; trust_state?: TrustState | null }>(
       "session_open",
       { reference },
     ),
@@ -836,7 +846,14 @@ export const engineApi = {
       "session_events",
       { reference, after_seq: after_seq ?? null, limit: limit ?? null },
     ),
-  soulList: () => platform().command<{ souls: SoulSummary[]; active_id: string | null }>("soul_list"),
+  soulList: () =>
+    platform().command<{
+      souls: SoulSummary[]
+      active_id: string | null
+      /** El Soul en uso sin pin de sesión (activado, o el de serie). Engines anteriores no lo envían. */
+      effective_id?: string | null
+      effective_source?: 'global' | 'legacy' | 'default'
+    }>("soul_list"),
   soulGet: (id: string) => platform().command<{ soul: SoulDetail }>("soul_get", { id }),
   soulCreate: (input: {
     id: string;
@@ -1385,7 +1402,7 @@ function mapPreparedAttachments(prepared: PreparedAttachmentResult[], originals:
     // Preparation preserves request order. Artifact IDs are not client IDs,
     // and filenames need not be unique across selected directories.
     const original = originals[index]
-    if (!original) throw new Error('El motor no devolvió el adjunto seleccionado')
+    if (!original) throw new Error(uiText('attach.errorMissing'))
     return addEnginePreview(mapPreparedAttachment(item, original))
   }))
 }
@@ -1424,14 +1441,14 @@ export async function prepareAttachmentRefsWithJob(
   let state = started
   const pollMs = Math.max(50, options.pollMs ?? 120)
   while (true) {
-    if (options.signal?.aborted) throw new DOMException('Attachment preparation cancelled', 'AbortError')
+    if (options.signal?.aborted) throw new DOMException(uiText('attach.errorCancelled'), 'AbortError')
     const status = String(state.status ?? 'preparing').toLowerCase()
     if (isTerminalPreparationStatus(status)) {
       if (['error', 'failed', 'cancelled', 'canceled'].includes(status)) {
-        throw new Error(typeof state.error === 'string' ? state.error : `Preparación de adjuntos: ${status}`)
+        throw new Error(typeof state.error === 'string' ? state.error : uiText('attach.errorStatus', { status }))
       }
       const prepared = Array.isArray(state.attachments) ? state.attachments as PreparedAttachmentResult[] : []
-      if (prepared.length === 0) throw new Error('El motor terminó la preparación sin adjuntos')
+      if (prepared.length === 0) throw new Error(uiText('attach.errorEmpty'))
       return mapPreparedAttachments(prepared, attachments)
     }
     await new Promise<void>((resolve) => globalThis.setTimeout(resolve, pollMs))

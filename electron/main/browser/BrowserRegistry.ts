@@ -242,6 +242,8 @@ export interface ContextEntry {
    */
   downloads: { directory: string | null; dispose: () => void } | null
   geometry: ResolvedLayout | null
+  /** Qué target se presentó a tamaño real la última vez (`null`: ninguno). */
+  presentedTarget?: string | null
 }
 
 export interface RegistryDeps {
@@ -743,6 +745,17 @@ export class BrowserRegistry {
       entry.view.setVisible(active)
       if (active) entry.view.setBounds({ ...page })
     }
+    // Al pasar del suelo 1×1 a tamaño real (fin de turno, «tomar el control»)
+    // la página no cambia de tamaño —el viewport lógico se conserva—, así que
+    // Chromium no produce un cuadro nuevo y el contenedor enseñaba el último
+    // que tenía: uno de 1×1, o sea negro, hasta que la página se repintaba
+    // por su cuenta. Se pide el repintado al presentarla.
+    const shown = presented ? context.activeTargetId : null
+    if (shown && shown !== context.presentedTarget) {
+      const entry = context.targets.get(shown)
+      if (entry && !entry.view.webContents.isDestroyed()) entry.view.webContents.invalidate()
+    }
+    context.presentedTarget = shown
     if (context.barrier) {
       context.barrier.setBounds({ x: 0, y: 0, width: container.width, height: container.height })
     }

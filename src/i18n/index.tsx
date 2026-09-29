@@ -26,7 +26,7 @@ interface I18n {
   t: (key: I18nKey, vars?: Record<string, string | number>) => string
 }
 
-const I18nContext = createContext<I18n>({ lang: 'es', t: (k) => translate('es', k) })
+const I18nContext = createContext<I18n>({ lang: 'es', t: (k, vars) => translate('es', k, vars) })
 
 export function I18nProvider({ lang, children }: { lang: Language; children: ReactNode }) {
   useEffect(() => {

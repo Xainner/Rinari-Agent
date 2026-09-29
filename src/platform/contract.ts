@@ -22,6 +22,7 @@ import type { EngineBackedCommand } from './commands.generated'
 import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
+import type { Language } from '../types'
 import type { MigrationStatus } from '../../electron/shared/migration'
 
 export type {
@@ -151,6 +152,8 @@ export interface DesktopBridge {
     /** Seguir en la bandeja al cerrar e iniciar con el sistema. */
     backgroundSettings(): Promise<BackgroundSettings>
     setBackgroundSettings(patch: BackgroundPatch): Promise<BackgroundSettings>
+    /** Idioma de la interfaz para el menú nativo, la bandeja y los diálogos del host. */
+    setLanguage(language: Language): Promise<void>
   }
 
   events: {

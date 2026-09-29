@@ -2,7 +2,7 @@
 // `parse_open_request`, más la cola que evita sesiones paralelas.
 import { describe, expect, it, vi } from 'vitest'
 
-import { HandoffQueue, hasRequest, parseOpenRequest } from './handoff'
+import { HandoffQueue, hasRequest, openRequestFromData, parseOpenRequest } from './handoff'
 
 describe('parseOpenRequest', () => {
   it('lee proyecto y sesión por bandera', () => {
@@ -41,9 +41,46 @@ describe('parseOpenRequest', () => {
     expect(parseOpenRequest(['rinari-agent', 'uno', 'dos'])).toEqual({ project: 'uno', session: null })
   })
 
+  it('una bandera no toma otra bandera como valor', () => {
+    // `--session` ya no se lee como proyecto. El orden real de un argv
+    // reordenado por Chromium no se puede reconstruir: por eso la segunda
+    // instancia manda su petición en `additionalData`.
+    expect(parseOpenRequest(['rinari-agent', '--project', '--session', 'ses_1'])).toEqual({
+      project: null,
+      session: 'ses_1',
+    })
+  })
+
   it('hasRequest distingue una petición vacía', () => {
     expect(hasRequest({ project: null, session: null })).toBe(false)
     expect(hasRequest({ project: null, session: 's1' })).toBe(true)
+  })
+})
+
+describe('openRequestFromData', () => {
+  it('toma la petición que la segunda instancia leyó de su propio argv', () => {
+    expect(openRequestFromData({ handoff: { project: 'C:/demo', session: 'ses_1' } })).toEqual({
+      project: 'C:/demo',
+      session: 'ses_1',
+    })
+    expect(openRequestFromData({ handoff: { project: null, session: 'ses_1' } })).toEqual({
+      project: null,
+      session: 'ses_1',
+    })
+  })
+
+  it('rechaza lo que no tiene la forma esperada', () => {
+    const invalid: unknown[] = [
+      undefined,
+      null,
+      'x',
+      {},
+      { handoff: 1 },
+      { handoff: { project: 3, session: null } },
+      { handoff: { project: '', session: null } },
+      { handoff: { project: 'x'.repeat(5000), session: null } },
+    ]
+    for (const data of invalid) expect(openRequestFromData(data)).toBeNull()
   })
 })
 

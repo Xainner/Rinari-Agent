@@ -62,7 +62,7 @@ export default function EngineConsole({ session }: { session: EngineSession }) {
     push('diag: turn_start(session_id="") …', 'info')
     try {
       const raw = await platform().command('turn_start', { session_id: '', message: 'ping' })
-      push(`diag: turn_start OK inesperado: ${JSON.stringify(raw)}`, 'error')
+      push(`diag: ${t('engine.diagUnexpected')}: ${JSON.stringify(raw)}`, 'error')
     } catch (err) {
       push(`diag: turn_start → ${commandMessage(err)}`, 'error')
     }
@@ -84,7 +84,7 @@ export default function EngineConsole({ session }: { session: EngineSession }) {
           {session.status?.engine_version && <span>v{session.status.engine_version}</span>}
           {session.status?.protocol_version != null && (
             <span className="text-[var(--text-subtle)]">
-              protocolo {session.status.protocol_version}
+              {t('engine.protocol')} {session.status.protocol_version}
             </span>
           )}
         </div>
@@ -118,7 +118,7 @@ export default function EngineConsole({ session }: { session: EngineSession }) {
         </div>
       </Section>
 
-      <Section title="eventos">
+      <Section title={t('engine.events')}>
         <div
           ref={logRef}
           className="max-h-96 min-h-32 overflow-y-auto rounded-xl bg-black/30 p-3 font-mono text-xs leading-relaxed"

@@ -18,7 +18,8 @@ import HtmlPreview from './HtmlPreview'
 import { artifactImageUrl, isArtifactImage, rememberArtifactImageSize, useArtifactImage } from './artifactImage'
 
 import { platform } from '../../platform'
-import { useI18n } from '../../i18n'
+import { translate, useI18n } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 type OpenFile = (path: string, turnId?: string) => void
 const FileContext = createContext<OpenFile | null>(null)
@@ -247,7 +248,7 @@ export function FileWorkspaceProvider({
         file = { path: target, name: target.split('/').at(-1) || 'Artifact', content: '', language: '', size: 0 } as FilePreview
       } else if (target.startsWith('artifact://')) {
         const result = await engineApi.artifactRead(target, 512 * 1024)
-        if (result.truncated) throw new Error('La vista previa supera 512 KiB.')
+        if (result.truncated) throw new Error(translate(useUIStore.getState().lang, 'files.previewTooLarge'))
         file = {
           path: target,
           name: target.split('/').at(-1) || 'Artifact',
@@ -396,7 +397,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
       <div className="flex items-center border-b border-[var(--border)]">
         <div
           role="tablist"
-          aria-label="Archivos abiertos"
+          aria-label={t('files.openTabs')}
           className="flex flex-1 overflow-x-auto"
         >
           {currentTabs.map((tab) => (
@@ -414,7 +415,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
                 {tab.file?.name ?? tab.target.split(/[\\/]/).at(-1)}
               </button>
               <button
-                aria-label={`Cerrar ${tab.file?.name ?? tab.target}`}
+                aria-label={t('files.closeTab', { name: tab.file?.name ?? tab.target })}
                 onClick={() => close(tab.key)}
                 className="pr-2"
               >
@@ -424,7 +425,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
           ))}
         </div>
         {onClose && (
-          <button aria-label="Cerrar visor" onClick={onClose} className="p-3">
+          <button aria-label={t('files.closeViewer')} onClick={onClose} className="p-3">
             <X size={16} />
           </button>
         )}
@@ -439,7 +440,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
               {selected.file?.path ?? selected.target}
             </span>
             <button
-              aria-label="Copiar ruta"
+              aria-label={t('files.copyPath')}
               onClick={() => void copyText(selected.file?.path ?? selected.target)}
             >
               <Copy size={14} />
@@ -451,7 +452,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
               !selected.target.startsWith('artifact:') &&
               !['html', 'htm'].includes(selected.file.language) && (
                 <button
-                  aria-label="Abrir externamente"
+                  aria-label={t('files.openExternally')}
                   onClick={() =>
                     void desktopApi
                       .openFile(selected.sessionId, selected.file!.path, selected.turnId)
@@ -474,7 +475,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
               className="self-start px-3 py-2 text-xs"
               onClick={() => setSource((v) => !v)}
             >
-              {source ? 'Vista previa' : 'Ver fuente'}
+              {source ? t('files.preview') : t('files.viewSource')}
             </button>
           )}
           <div
@@ -517,13 +518,13 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
                 </FileContext.Provider>
               </FileTurnContext.Provider>
             ) : (
-              <p role="status">Cargando archivo…</p>
+              <p role="status">{t('files.loading')}</p>
             )}
           </div>
         </>
       ) : (
         <p className="p-4 text-[var(--text-muted)]">
-          Abre un archivo desde la conversación.
+          {t('files.emptyHint')}
         </p>
       )}
     </div>

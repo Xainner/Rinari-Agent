@@ -6,8 +6,10 @@ import {
   isCommandError,
   type SessionDeleteResult,
   type SessionSummary,
+  type TrustState,
 } from '../../services/engine'
 import { translate } from '../../i18n'
+import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
@@ -19,7 +21,6 @@ import { isSessionHidden, partitionSessions } from './sessionVisibility'
  */
 export const SESSION_LIST_LIMIT = 500
 
-export const TRUST_WARNING = 'Proyecto no confiado: las instrucciones locales están desactivadas.'
 
 export type PrepareSessionResult =
   | { ok: true; session: SessionSummary }
@@ -253,7 +254,7 @@ export function useSessionList(options: {
     return () => { trustAsked.current.delete(root) }
   }, [])
 
-  const reportWarnings = useCallback((id: string, opened: { session: SessionSummary; warnings?: string[] }) => {
+  const reportWarnings = useCallback((id: string, opened: { session: SessionSummary; warnings?: string[]; trust_state?: TrustState | null }) => {
     for (const warning of new Set(opened.warnings ?? [])) {
       // Working-tree drift is normal project state and already appears in
       // the Git surface. Do not present it as an application error.
@@ -261,9 +262,7 @@ export function useSessionList(options: {
       if (warning.startsWith('[trust]')) {
         const root = opened.session.project_root
         if (root && trustAsked.current.has(root)) continue
-        toast.warning(TRUST_WARNING, {
-          id: `project-trust-${opened.session.project_id ?? opened.session.project_root ?? id}`,
-        })
+        warnUntrusted(root, opened.trust_state, `project-trust-${opened.session.project_id ?? opened.session.project_root ?? id}`)
         continue
       }
       toast.warning(warning, { id: `session-warning-${id}-${warning}` })

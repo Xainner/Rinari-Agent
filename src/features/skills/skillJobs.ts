@@ -4,6 +4,8 @@ import {
   type SkillJobAction,
   type SkillJobError,
 } from '../../services/engine'
+import { translate } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 
 export type SkillJobOutcome<T> = { ok: true; result: T } | { ok: false; error: SkillJobError }
 
@@ -49,7 +51,7 @@ export async function runSkillJob<T>(input: {
       }).catch(() => undefined)
     }, POLL_MS)
     const timeout = setTimeout(
-      () => finish({ ok: false, error: { code: 'SKILL_JOB_TIMEOUT', message: 'El Engine no terminó a tiempo.', details: {} } }),
+      () => finish({ ok: false, error: { code: 'SKILL_JOB_TIMEOUT', message: translate(useUIStore.getState().lang, 'skills.jobTimeout'), details: {} } }),
       TIMEOUT_MS,
     )
   })

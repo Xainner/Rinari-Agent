@@ -169,7 +169,7 @@ export default function ProfilesView({
                 id="profile-id"
                 value={form.id}
                 onChange={(e) => setForm({ ...form, id: e.target.value })}
-                placeholder="foco"
+                placeholder={t('profiles.namePlaceholder')}
                 className={inputClass}
                 autoComplete="off"
                 spellCheck={false}

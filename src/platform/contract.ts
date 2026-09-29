@@ -206,11 +206,16 @@ export interface DesktopBridge {
     detachSlot(slotId: string): Promise<void>
     /** Pestaña visible; también es la que opera sin target explícito. */
     selectTarget(sessionId: string, targetId: string): Promise<void>
-    /** Tomar o devolver el control. La confirmación puede llegar después. */
+    /**
+     * Tomar o devolver el control. La confirmación puede llegar después.
+     * `automatic`: lo da la interfaz sola (vista en vivo entre turnos), no el
+     * usuario; el Engine lo recupera en la primera acción del agente.
+     */
     setControl(
       sessionId: string,
       owner: 'agent' | 'user',
       expectedRevision?: number,
+      automatic?: boolean,
     ): Promise<NativeBrowserControl>
     /** Navegación pedida por el usuario desde la toolbar. */
     navigate(sessionId: string, url: string): Promise<void>

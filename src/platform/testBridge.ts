@@ -288,8 +288,8 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async selectTarget(sessionId: string, targetId: string) {
         bridge.browserCalls.push({ kind: 'selectTarget', sessionId, targetId })
       },
-      async setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number) {
-        bridge.browserCalls.push({ kind: 'setControl', sessionId, owner, expectedRevision })
+      async setControl(sessionId: string, owner: 'agent' | 'user', expectedRevision?: number, automatic?: boolean) {
+        bridge.browserCalls.push({ kind: 'setControl', sessionId, owner, expectedRevision, ...(automatic ? { automatic } : {}) })
         if (bridge.browserControlResult) return bridge.browserControlResult
         return { control: owner, control_state: owner, control_revision: (expectedRevision ?? 1) + 1 }
       },

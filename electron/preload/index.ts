@@ -236,8 +236,8 @@ const api = {
     detachSlot: (slotId: string) => call<void>(CHANNEL.browserDetachSlot, slotId),
     selectTarget: (sessionId: string, targetId: string) =>
       call<{ active_target_id: string }>(CHANNEL.browserSelectTarget, sessionId, targetId),
-    setControl: (sessionId: string, owner: 'agent' | 'user', expectedRevision?: number) =>
-      call<BrowserControlView>(CHANNEL.browserSetControl, sessionId, owner, expectedRevision),
+    setControl: (sessionId: string, owner: 'agent' | 'user', expectedRevision?: number, automatic?: boolean) =>
+      call<BrowserControlView>(CHANNEL.browserSetControl, sessionId, owner, expectedRevision, automatic),
     navigate: (sessionId: string, url: string) =>
       call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
     preview: (sessionId: string) =>

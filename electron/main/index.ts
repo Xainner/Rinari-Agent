@@ -24,6 +24,7 @@ import { QuitCoordinator, confirmsQuit } from './lifecycle/QuitCoordinator'
 import { defaultMigrationDirectory, MigrationService } from './migration/MigrationService'
 import { createBackground, HIDDEN_START_ARG, type Background } from './native/background'
 import { HandoffQueue, openRequestFromData, parseOpenRequest } from './native/handoff'
+import { runRequestedUpdate, updateRequestFromData, wantsUpdate } from './updates/cliRequest'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
@@ -909,12 +910,16 @@ function attachSmoke(window: BrowserWindow): void {
 // La segunda lo manda ya leído: el argv que recibe `second-instance` llega
 // reordenado por Chromium (ver `openRequestFromData`).
 const launchRequest = parseOpenRequest(process.argv, app.isPackaged ? 1 : 2)
-if (!app.requestSingleInstanceLock({ handoff: launchRequest })) {
+// `rinari update` con la app abierta la arranca con `--update`: esa segunda
+// instancia se lo entrega a esta, que se actualiza con su propio diálogo.
+const launchUpdate = wantsUpdate(process.argv, app.isPackaged ? 1 : 2)
+if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdate })) {
   app.quit()
 } else {
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
     handoff.push(openRequestFromData(additionalData) ?? parseOpenRequest(argv, app.isPackaged ? 1 : 2))
     if (mainWindow) presentWindow(mainWindow)
+    if (updateRequestFromData(additionalData)) void runRequestedUpdate(updates)
   })
 
   void app.whenReady().then(() => {
@@ -941,6 +946,7 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest })) {
     unregisterIpc = registerIpc(registry, buildServices())
     handoff.push(launchRequest)
     openWindow()
+    if (launchUpdate) void runRequestedUpdate(updates)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) openWindow()

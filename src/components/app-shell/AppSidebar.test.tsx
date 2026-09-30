@@ -9,7 +9,10 @@ import { AppSidebar, type AppSidebarProps } from './AppSidebar'
 import { useUIStore } from '../../stores/ui'
 
 const now = '2026-09-09T00:00:00Z'
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+})
 
 function project(id: string, name: string, archived = false): ProjectSummary {
   return {
@@ -87,7 +90,7 @@ function renderSidebar(overrides: Partial<AppSidebarProps> = {}) {
 
 describe('AppSidebar project and session lifecycle', () => {
   it('separates project sessions from standalone chats and searches both', async () => {
-    renderSidebar()
+    renderSidebar({ activeId: 'project-session' })
     expect(screen.getByText('Rinari CLI')).toBeTruthy()
     expect(screen.getByText('Fix governor')).toBeTruthy()
     expect(screen.getByText('Research')).toBeTruthy()
@@ -96,6 +99,22 @@ describe('AppSidebar project and session lifecycle', () => {
     await userEvent.type(search, 'governor')
     expect(screen.getByText('Fix governor')).toBeTruthy()
     expect(screen.queryByText('Research')).toBeNull()
+  })
+
+  it('projects start collapsed except the active one, and a manual choice is remembered', async () => {
+    renderSidebar()
+    // The active conversation is a loose chat: its project stays collapsed.
+    expect(screen.queryByText('Fix governor')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: /Rinari CLI/ }))
+    expect(screen.getByText('Fix governor')).toBeTruthy()
+    cleanup()
+    renderSidebar()
+    expect(screen.getByText('Fix governor')).toBeTruthy()
+
+    cleanup()
+    localStorage.clear()
+    renderSidebar({ activeId: 'project-session' })
+    expect(screen.getByText('Fix governor')).toBeTruthy()
   })
 
   it('restores archived projects through the engine callback', async () => {
@@ -129,7 +148,7 @@ describe('AppSidebar project and session lifecycle', () => {
   })
 
   it('exposes fork, archive and rename instead of hiding engine lifecycle actions', async () => {
-    const props = renderSidebar({ archivedProjects: [] })
+    const props = renderSidebar({ archivedProjects: [], activeId: 'project-session' })
     const user = userEvent.setup()
     const options = () => screen.getAllByRole('button', { name: 'Opciones de sesión' })[0]
 
@@ -162,7 +181,7 @@ it('creates a session for the exact project without invoking global new chat', a
 })
 
 it('collapses project sessions without opening the project', async () => {
-  const props = renderSidebar()
+  const props = renderSidebar({ activeId: 'project-session' })
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: /Rinari CLI/ }))
   expect(screen.queryByText('Fix governor')).toBeNull()
@@ -173,7 +192,7 @@ it('collapses project sessions without opening the project', async () => {
 })
 
 it('reveals project sessions and clears search when creating from a collapsed project', async () => {
-  const props = renderSidebar({ onNewProjectChat: vi.fn() })
+  const props = renderSidebar({ onNewProjectChat: vi.fn(), activeId: 'project-session' })
   const user = userEvent.setup()
   await user.click(screen.getByTitle('/repo/project'))
   expect(screen.queryByText('Fix governor')).toBeNull()
@@ -303,6 +322,8 @@ describe('transición al cambiar de conversación', () => {
 
 it('shows work in an unselected session and its collapsed project', async () => {
   renderSidebar({ busySessionIds: new Set(['project-session']) })
+  // The project starts collapsed (the active chat is not in it): open it first.
+  await userEvent.click(screen.getByTitle('/repo/project'))
   expect(within(screen.getByText('Research').closest('button')!).queryByRole('status')).toBeNull()
   expect(within(screen.getByText('Fix governor').closest('button')!).getByRole('status')).toBeTruthy()
   await userEvent.click(screen.getByTitle('/repo/project'))

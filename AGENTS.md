@@ -35,13 +35,19 @@
 > los valida el Engine. Validarlos campo a campo en main requiere que el schema
 > del Engine declare los parámetros de cada método, y es el paso siguiente.
 
-> **Dónde se entregan los instaladores (regla vigente, 2026-09-28).** Todo
-> instalador que se entregue al dueño termina en
-> `C:\Users\Xainner\Documents\DEV\Apps\Rinari-Agent\release\installer`, el
-> `release/installer/` del checkout principal (ignorado por git), aunque se haya
-> construido en otro worktree: se copia ahí con el nombre
+> **Cómo se entrega una versión (regla vigente, 2026-09-30).** La entrega es un
+> **release publicado** en `Xainner/Rinari-Agent`: `npm run release:bump
+> <x.y.z>` sube la versión en todos los sitios, se fusiona, y empujar el tag
+> `v<x.y.z>` hace que `release.yml` construya y publique el instalador,
+> `latest.yml` y `rinari-release.json`. De ahí se actualizan la app y `rinari
+> update`. Publicar es una acción hacia fuera: el tag se empuja solo con
+> autorización del dueño.
+>
+> Si el dueño pide además un instalador local, termina en
+> `C:\Users\Xainner\Documents\DEV\Apps\Rinari-Agent\release\installer` (el
+> `release/installer/` del checkout principal, ignorado por git), con el nombre
 > `Rinari-Agent-Setup-<versión>-x64-<fecha>[letra].exe`, sin pisar los
-> anteriores, y se informa su SHA-256. No se usan otras carpetas de entrega.
+> anteriores y con su SHA-256. No se usan otras carpetas de entrega.
 
 > **Status:** Implementation blueprint / source of truth for Rinari Agent v1
 > **Date:** 2026-09-08  

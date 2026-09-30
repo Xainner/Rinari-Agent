@@ -49,6 +49,7 @@ import {
 } from '../ui/dropdown-menu'
 import { Switch } from '../ui/switch'
 import ApplicationMenu from './ApplicationMenu'
+import { isProjectExpanded, readProjectExpansion, writeProjectExpansion, type ProjectExpansion } from './projectExpansion'
 
 export interface AppSidebarProps {
   collapsed: boolean
@@ -171,7 +172,14 @@ export function AppSidebar({
   const [query, setQuery] = useState('')
   const [sessionMenu, setSessionMenu] = useState<string | null>(null)
   const [projectMenu, setProjectMenu] = useState<string | null>(null)
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() => new Set())
+  const [projectChoices, setProjectChoices] = useState<ProjectExpansion>(readProjectExpansion)
+  const activeProjectId = sessions.find((session) => session.id === activeId)?.project_id ?? null
+  const projectOpen = (id: string) => Boolean(query) || isProjectExpanded(projectChoices, id, activeProjectId)
+  const toggleProject = (id: string) => setProjectChoices((current) => {
+    const next = { ...current, [id]: !isProjectExpanded(current, id, activeProjectId) }
+    writeProjectExpansion(next)
+    return next
+  })
   const [deleteTarget, setDeleteTarget] = useState<SessionSummary | null>(null)
   const [renameTarget, setRenameTarget] = useState<SessionSummary | null>(null)
   const [renameTitle, setRenameTitle] = useState('')
@@ -511,8 +519,8 @@ export function AppSidebar({
                 <div className="flex items-center">
                 <button
                   type="button"
-                  aria-expanded={!collapsedProjects.has(project.id) || Boolean(query)}
-                  onClick={() => setCollapsedProjects(current => { const next = new Set(current); if (next.has(project.id)) next.delete(project.id); else next.add(project.id); return next })}
+                  aria-expanded={projectOpen(project.id)}
+                  onClick={() => toggleProject(project.id)}
                   title={project.root}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-[var(--bg-hover)]/60"
                 >
@@ -534,7 +542,11 @@ export function AppSidebar({
                 </button>
                 {onNewProjectChat && <button type="button" aria-label={t('sidebar.newSessionIn', { name: project.name || projectDisplayName(project.root) })} title={t('sidebar.newSessionInProject')} onClick={() => {
                   setQuery('')
-                  setCollapsedProjects(current => { const next = new Set(current); next.delete(project.id); return next })
+                  setProjectChoices(current => {
+                    const next = { ...current, [project.id]: true }
+                    writeProjectExpansion(next)
+                    return next
+                  })
                   onNewProjectChat(project.id)
                 }} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 hover:bg-[var(--bg-hover)]"><Plus size={14} /></button>}
                 <DropdownMenu open={projectMenu === project.id} onOpenChange={open => setProjectMenu(open ? project.id : null)}>
@@ -556,7 +568,7 @@ export function AppSidebar({
                   </DropdownMenuContent>
                 </DropdownMenu>
                 </div>
-                {items.length > 0 && (!collapsedProjects.has(project.id) || Boolean(query)) && (
+                {items.length > 0 && projectOpen(project.id) && (
                   <ul className="mt-0.5 ml-3.5 space-y-0.5 border-l border-[var(--border)] pl-1">
                     {items.map((session) => row(session))}
                   </ul>

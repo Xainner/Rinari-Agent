@@ -62,6 +62,31 @@ export async function generateUpdateMetadata({ version, setup, output, releaseDa
   return { output: outputPath, file: name, version, sha512, bytes: info.size, unsigned: true }
 }
 
+/**
+ * `rinari-release.json`: lo que `rinari update` necesita saber de un release
+ * sin descargar el instalador. Sobre todo el commit del Engine que lleva la
+ * app, porque el CLI suelto se instala en ese mismo commit y así los dos
+ * quedan compatibles.
+ */
+export async function generateReleaseManifest({ metadata, manifest, output }) {
+  if (typeof manifest.engine_git_sha !== 'string' || !/^[0-9a-f]{40}$/.test(manifest.engine_git_sha)) {
+    throw new Error('engine-manifest.json has no full engine_git_sha')
+  }
+  const release = {
+    schema: 1,
+    version: metadata.version,
+    engine_repository: manifest.engine_repository,
+    engine_git_sha: manifest.engine_git_sha,
+    protocol_version: manifest.protocol_version,
+    unsigned: true,
+    setup: { name: metadata.file, sha512: metadata.sha512, size: metadata.bytes },
+  }
+  const outputPath = resolve(output)
+  await mkdir(dirname(outputPath), { recursive: true })
+  await writeFile(outputPath, `${JSON.stringify(release, null, 2)}\n`, 'utf8')
+  return release
+}
+
 async function main() {
   const args = argsOf(process.argv.slice(2))
   const packageJson = JSON.parse(await readFile(resolve('package.json'), 'utf8'))
@@ -77,6 +102,10 @@ async function main() {
   })
   // Releer evita anunciar un archivo que no llegó al disco.
   await readFile(result.output, 'utf8')
+  const manifest = JSON.parse(await readFile(resolve('engine-manifest.json'), 'utf8'))
+  const releaseOutput = join(dirname(result.output), 'rinari-release.json')
+  await generateReleaseManifest({ metadata: result, manifest, output: releaseOutput })
+  console.log(`Release manifest: ${releaseOutput}`)
   console.log(`Electron update metadata: ${result.output}`)
   console.log(`SHA-512 (base64): ${result.sha512}`)
   console.log('Authenticode: unsigned')

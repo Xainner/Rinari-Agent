@@ -3,9 +3,10 @@ name: release
 permissions:
   contents: write
 
-# Electron 0.2.x usa latest.yml + SHA-512. El workflow prepara únicamente un
-# draft unsigned: no publica automáticamente y no acepta tags de la línea
-# Tauri 0.1.x, conservada en el commit histórico de transición.
+# Electron 0.2.x usa latest.yml + SHA-512. Empujar el tag `v0.2.x` (solo con
+# autorización del dueño) **publica** el release: es de donde la app y
+# `rinari update` se actualizan. Un borrador no lo ve nadie, así que nunca
+# hubo nada que actualizar. No acepta tags de la línea Tauri 0.1.x.
 on:
   push:
     tags: ['v0.2.*']
@@ -55,9 +56,14 @@ jobs:
           if (-not (Test-Path -LiteralPath $setup)) { throw 'setup missing' }
           $metadata = Get-Content release/installer/latest.yml -Raw
           if ($metadata -notmatch 'rinariUnsigned: true') { throw 'unsigned disclosure missing' }
+          $release = Get-Content release/installer/rinari-release.json -Raw | ConvertFrom-Json
+          if ($release.version -ne $version) { throw "rinari-release.json version $($release.version) != $version" }
+          $pin = (Get-Content engine-manifest.json -Raw | ConvertFrom-Json).engine_git_sha
+          if ($release.engine_git_sha -ne $pin) { throw 'rinari-release.json does not carry the pinned Engine' }
       - uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
+          make_latest: true
           name: Rinari Agent ${{ github.ref_name }} (unsigned)
           body: |
             Unsigned Windows x64 release candidate. Windows will show an unknown-publisher warning.
@@ -66,3 +72,4 @@ jobs:
             release/installer/Rinari-Agent-Setup-*-x64.exe
             release/installer/latest.yml
             release/installer/setup.sha256.json
+            release/installer/rinari-release.json

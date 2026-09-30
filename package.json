@@ -1,7 +1,7 @@
 {
   "name": "rinari-agent",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Native desktop workspace for the Rinari Engine",
   "author": "Xainner",
   "homepage": "https://github.com/Xainner/Rinari-Agent",
@@ -36,6 +36,7 @@
     "package:hashes": "node scripts/hash-package-inputs.mjs",
     "package:payload": "npm run build && npm run desktop:build && electron-builder --win dir --x64 --publish never && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-setup-payload.ps1",
     "package:update-metadata": "node scripts/generate-update-metadata.mjs",
+    "release:bump": "node scripts/bump-version.mjs",
     "updater:e2e": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1",
     "package:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1",
     "package:win:staged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1 -SkipEngine"

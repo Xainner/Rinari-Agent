@@ -44,6 +44,19 @@ describe('historyToMessages', () => {
     expect(messages[0].content).toBe('respuesta')
   })
 
+  it('omite las notas del runtime aunque viajen como mensaje de usuario', () => {
+    const messages = historyToMessages([
+      row({ seq: 1, role: 'user', content: 'Arregla el total' }),
+      row({
+        seq: 2,
+        role: 'user',
+        content: '[harness loop-detector] repeated-rewrites: src/order.js…',
+        origin: { kind: 'harness', source: 'loop-detector' },
+      }),
+    ])
+    expect(messages.map((m) => m.content)).toEqual(['Arregla el total'])
+  })
+
   it('omite roles no conversacionales', () => {
     const messages = historyToMessages([
       row({ seq: 1, role: 'tool', content: 'salida', tool_call_id: 'c1' }),

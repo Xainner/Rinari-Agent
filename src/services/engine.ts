@@ -1187,6 +1187,13 @@ export const engineApi = {
       sessions_affected: number;
       filesystem_deleted: false;
     }>('project_remove', { project_id: projectId, session_policy: sessionPolicy }),
+  /** Borra un proyecto archivado y todo lo que Rinari guarda de él; nunca sus archivos. */
+  projectDelete: (projectId: string) =>
+    platform().command<{
+      deleted: { id: string; root: string };
+      sessions_deleted: number;
+      filesystem_deleted: false;
+    }>('project_delete', { project_id: projectId }),
   projectOpen: (path: string) =>
     platform().command<{ project: ProjectSummary; session: SessionSummary; created: boolean }>(
       "project_open",

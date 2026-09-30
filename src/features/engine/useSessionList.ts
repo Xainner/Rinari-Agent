@@ -153,6 +153,17 @@ export function useSessionList(options: {
     })
   }, [])
 
+  /** Una sesión que el Engine confirmó que no existe deja de estar en caché. */
+  const forgetRow = useCallback((id: string) => {
+    learntDuring.current.delete(id)
+    setSessionsById((current) => {
+      if (!(id in current)) return current
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+  }, [])
+
   const refreshSessions = useCallback(async (): Promise<void> => {
     const seq = ++refreshSeq.current
     try {
@@ -303,6 +314,10 @@ export function useSessionList(options: {
           row = (await engineApi.sessionGet(id)).session
         } catch (err) {
           if (isCommandError(err) && (err.code === 'NOT_FOUND' || err.code === 'SESSION_NOT_FOUND')) {
+            // Se borró por fuera de esta lista (el CLI, otra ventana, el
+            // bridge): dejarla como activa conservaba sus paneles de Boards
+            // como «Session not found». Sin ella, Boards la reconcilia.
+            forgetRow(id)
             return { ok: false, reason: 'missing', message: commandMessage(err) }
           }
           return { ok: false, reason: 'unavailable', message: commandMessage(err) }
@@ -329,7 +344,7 @@ export function useSessionList(options: {
       })
       return job
     },
-    [loadSessionHistory, rememberOpened, rememberRows, reportWarnings],
+    [forgetRow, loadSessionHistory, rememberOpened, rememberRows, reportWarnings],
   )
 
   /** Selecciona la sesión Normal: reconcile (open) + historial persistente una vez. */
@@ -453,12 +468,7 @@ export function useSessionList(options: {
     async (id: string, cascade: boolean): Promise<SessionDeleteResult | null> => {
       try {
         const result = await engineApi.deleteSession(id, cascade)
-        setSessionsById((current) => {
-          if (!(id in current)) return current
-          const next = { ...current }
-          delete next[id]
-          return next
-        })
+        forgetRow(id)
         await refreshSessions()
         return result
       } catch (err) {
@@ -466,7 +476,7 @@ export function useSessionList(options: {
         return null
       }
     },
-    [refreshSessions],
+    [forgetRow, refreshSessions],
   )
 
   /** Cambia PLAN/BUILD/REVIEW de una sesión concreta. Tareas y contexto intactos. */

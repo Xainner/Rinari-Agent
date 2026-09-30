@@ -379,6 +379,7 @@ export function useEngineSession() {
     openProject: projects.openProject,
     updateProject: projects.updateProject,
     removeProject: projects.removeProject,
+    deleteProject: projects.deleteProject,
     loadProjectStatus: projects.loadStatus,
     loadProjectIntelligence: projects.loadIntelligence,
     trustProject: projects.trustProject,

@@ -106,6 +106,14 @@ describe('AppSidebar project and session lifecycle', () => {
     expect(props.onUpdateProject).toHaveBeenCalledWith('old', { archived: false })
   })
 
+  it('deletes an archived project only when the engine offers it', async () => {
+    const onDeleteProject = vi.fn()
+    renderSidebar({ onDeleteProject })
+    await userEvent.click(screen.getByRole('button', { name: /Proyectos archivados/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Eliminar definitivamente' }))
+    expect(onDeleteProject).toHaveBeenCalledWith('old')
+  })
+
   it('keeps archived sessions distinct from merely closed sessions', async () => {
     const props = renderSidebar({
       archivedProjects: [],

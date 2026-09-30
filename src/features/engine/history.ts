@@ -17,6 +17,9 @@ export function historyToMessages(rows: HistoryMessage[]): ChatMessage[] {
   const sorted = [...rows].sort((a, b) => a.seq - b.seq)
   for (const row of sorted) {
     if (row.role !== 'user' && row.role !== 'assistant') continue
+    // Notas del runtime para el modelo (loop detector, governor): viajan como
+    // mensaje de usuario pero no las escribió el dueño. Se veían como suyas.
+    if (row.origin?.kind === 'harness') continue
     const content = row.content ?? ''
     const attachmentRows: NonNullable<HistoryMessage['attachments']> = row.attachments?.length
       ? row.attachments

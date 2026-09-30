@@ -3938,6 +3938,29 @@
       "host_effects": []
     },
     {
+      "command": "project_delete",
+      "module": "projects",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.delete",
+      "engine_params": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "project_open",
       "module": "projects",
       "args": [

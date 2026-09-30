@@ -135,6 +135,27 @@ function App() {
     return ok
   }
 
+  /** Borrado definitivo de un proyecto archivado: se dice cuántas conversaciones se van. */
+  async function handleDeleteProject(id: string): Promise<void> {
+    const count = await engineApi
+      .sessions(undefined, true, id, undefined, 500)
+      .then((result) => result.sessions.length)
+      .catch(() => null)
+    const ok = await confirm({
+      title: translate(lang, 'project.deleteForever'),
+      body: count === null
+        ? translate(lang, 'project.deleteConfirm')
+        : translate(lang, 'project.deleteConfirmCount', { n: count }),
+      confirmLabel: translate(lang, 'project.deleteAction'),
+      cancelLabel: translate(lang, 'common.cancel'),
+    })
+    if (!ok) return
+    const deleted = await session.deleteProject(id)
+    if (deleted === null) return
+    await session.refreshSessions()
+    toast.success(translate(lang, 'project.deleted'))
+  }
+
   function confirmArchiveProject(): Promise<boolean> {
     return confirm({
       title: translate(lang, 'project.archive'),
@@ -626,6 +647,9 @@ function App() {
             onArchiveProject={(id) => {
               void confirmArchiveProject().then((ok) => { if (ok) void session.removeProject(id, 'archive') })
             }}
+            onDeleteProject={session.status?.capabilities.project_delete_v1 === true
+              ? (id) => void handleDeleteProject(id)
+              : undefined}
             approvals={session.approvals}
           />
         }

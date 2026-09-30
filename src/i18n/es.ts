@@ -2001,6 +2001,11 @@ export const es = {
   'files.noImagePreview': 'El artefacto no tiene vista previa de imagen.',
   'engine.restarted': 'El motor se reinició',
   'update.unknownError': 'error desconocido',
+  'project.deleteForever': 'Eliminar definitivamente',
+  'project.deleteConfirm': 'Se borran el proyecto, sus conversaciones y lo que Rinari guarda de él (memoria, tareas, verificaciones, índice y confianza). Los archivos de la carpeta no se tocan. No se puede deshacer.',
+  'project.deleteConfirmCount': 'Se borran el proyecto, sus {n} conversaciones y lo que Rinari guarda de él (memoria, tareas, verificaciones, índice y confianza). Los archivos de la carpeta no se tocan. No se puede deshacer.',
+  'project.deleteAction': 'Eliminar',
+  'project.deleted': 'Proyecto eliminado. Sus archivos siguen en la carpeta.',
 } as const
 
 export type I18nKey = keyof typeof es

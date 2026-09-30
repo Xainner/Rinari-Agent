@@ -9,10 +9,11 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
 }))
 
-const { openSession, sessions, sessionHistory } = vi.hoisted(() => ({
+const { openSession, sessions, sessionHistory, sessionGet } = vi.hoisted(() => ({
   openSession: vi.fn(),
   sessions: vi.fn(),
   sessionHistory: vi.fn(),
+  sessionGet: vi.fn(),
 }))
 
 vi.mock('../../services/engine', async () => {
@@ -25,6 +26,7 @@ vi.mock('../../services/engine', async () => {
       openSession,
       sessions,
       sessionHistory,
+      sessionGet,
       sessionTimeline: vi.fn(),
     },
     commandMessage: (error: unknown) => String(error),
@@ -149,6 +151,25 @@ describe('useSessionList session visibility', () => {
     expect(result.current.sessions.map((s) => s.id)).toEqual(['c'])
     expect(result.current.closedSessions).toEqual([])
     expect(result.current.archivedSessions).toEqual([])
+  })
+
+  it('una sesión borrada por fuera deja la caché al confirmarse que no existe', async () => {
+    // La borraron el CLI u otra ventana: la lista la seguía dando por activa
+    // y Boards conservaba su panel como «Session not found».
+    const { result } = setup()
+    sessions.mockResolvedValue({ sessions: [summary('a'), summary('gone')] })
+    await act(async () => {
+      await result.current.refreshSessions()
+    })
+    expect(result.current.sessionsById.gone).toBeDefined()
+    sessionGet.mockRejectedValue({ code: 'NOT_FOUND', message: 'Session not found: gone' })
+    let prepared!: Awaited<ReturnType<typeof result.current.prepareSession>>
+    await act(async () => {
+      prepared = await result.current.prepareSession('gone')
+    })
+    expect(prepared).toMatchObject({ ok: false, reason: 'missing' })
+    expect(result.current.sessionsById.gone).toBeUndefined()
+    expect(result.current.sessionsById.a).toBeDefined()
   })
 
   it('does not invent an active session when openSession fails', async () => {

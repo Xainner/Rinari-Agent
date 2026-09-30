@@ -761,6 +761,9 @@ export const es = {
   'update.ready': 'La versión {v} está lista para aplicar.',
   'update.unsigned': 'Build sin firma Authenticode; se verificó su SHA-512.',
   'update.install': 'Instalar y reiniciar',
+  'update.applyTitle': '¿Aplicar la actualización ahora?',
+  'update.applyDetail': 'Rinari cerrará el Engine y se reabrirá con la versión nueva. Los turnos y procesos activos se interrumpen.',
+  'update.restartAction': 'Reiniciar y actualizar',
   'update.installing': 'Instalando actualización…',
   'update.failed': 'Falló la actualización: {detail}',
 

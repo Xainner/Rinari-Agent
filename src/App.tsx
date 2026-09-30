@@ -252,6 +252,17 @@ function App() {
     let stop: (() => void) | undefined
     let active = true
     let previous: Parameters<typeof reportsUpdateError>[0] = null
+    // Se pregunta con el diálogo de la app (antes era uno nativo, sin estilo);
+    // main ya no vuelve a preguntar.
+    const confirmAndApply = () =>
+      void confirm({
+        title: tr('update.applyTitle'),
+        body: tr('update.applyDetail'),
+        confirmLabel: tr('update.restartAction'),
+        cancelLabel: tr('common.cancel'),
+      }).then((ok) => {
+        if (ok) void applyUpdate().catch((error) => toast.error(String(error)))
+      })
     void onUpdateState((state) => {
       const before = previous
       previous = state.phase
@@ -262,8 +273,10 @@ function App() {
         toast(tr('update.ready', { v: state.available_version ?? '' }), {
           id: 'rinari-update',
           description: state.unsigned ? tr('update.unsigned') : undefined,
-          action: { label: tr('update.install'), onClick: () => void applyUpdate().catch((error) => toast.error(String(error))) },
+          action: { label: tr('update.install'), onClick: confirmAndApply },
         })
+        // `rinari update` con la app abierta: pregunta sin esperar al toast.
+        if (state.prompt) confirmAndApply()
       } else if (state.phase === 'error' && reportsUpdateError(before)) {
         toast.error(tr('update.failed', { detail: state.message ?? tr('update.unknownError') }), { id: 'rinari-update' })
       }
@@ -275,7 +288,7 @@ function App() {
       active = false
       stop?.()
     }
-  }, [lang])
+  }, [lang, confirm])
 
   useEffect(() => {
     if (!autoStarted.current) {

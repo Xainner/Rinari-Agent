@@ -103,6 +103,14 @@ describe('QUIT-02/04 — confirmar detiene una sola vez', () => {
     await expect(quit.requestQuit('update')).resolves.toBe(true)
     expect(calls.commitReasons).toEqual(['update'])
   })
+
+  it('lo que ya confirmó el diálogo de la app no se vuelve a preguntar', async () => {
+    const { quit, calls } = coordinator()
+    await expect(quit.requestQuit('update', { confirmed: true })).resolves.toBe(true)
+    expect(calls.confirm).toBe(0)
+    expect(calls.shutdown).toBe(1)
+    expect(calls.commitReasons).toEqual(['update'])
+  })
 })
 
 describe('QUIT-05/06 — peticiones simultáneas comparten una sola operación', () => {

@@ -140,6 +140,8 @@ export interface UpdateState {
   progress: UpdateProgress | null
   message: string | null
   unsigned: boolean
+  /** Una sola vez: pide al renderer que pregunte si aplicar (`rinari update`). */
+  prompt?: boolean
 }
 
 export type { MigrationStage, MigrationStatus } from './migration'

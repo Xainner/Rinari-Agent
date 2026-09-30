@@ -127,9 +127,15 @@ fn main() {
         });
     }
     if let Some(force_run) = updater_request(&args) {
-        let result = operations::wait_for_agent_closed(Duration::from_secs(45))
+        // 120 s: la app cierra el Engine antes de salir, y el CLI empaquetado
+        // que lanzó `rinari update` también tiene que terminar.
+        let result = operations::wait_for_agent_closed(Duration::from_secs(120))
             .and_then(|_| operations::updater_plan())
             .and_then(|plan| operations::execute(plan, |_| {}));
+        if let Err(error) = &result {
+            // Sin interfaz ni consola: sin esto un fallo no dejaba ningún rastro.
+            operations::log_update_failure(&error.to_string());
+        }
         let code = match result {
             Ok(()) => {
                 if force_run {

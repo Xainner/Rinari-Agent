@@ -86,8 +86,43 @@ describe('UpdateService', () => {
     expect(fixture.service.snapshot().progress).toBeNull()
     expect(fixture.requestApply).toHaveBeenCalledOnce()
     expect(fixture.updater.quitAndInstall).not.toHaveBeenCalled()
-    fixture.service.commitInstall()
+    expect(fixture.service.commitInstall()).toBe('delegated')
     expect(fixture.updater.quitAndInstall).toHaveBeenCalledWith(true, true)
+  })
+
+  it('launches the downloaded installer itself instead of trusting quitAndInstall', async () => {
+    // «Reiniciar y actualizar» no hacía nada: quitAndInstall, sin el instalador
+    // en su estado, solo emitía un error y la app quedaba abierta.
+    const updater = new FakeUpdater()
+    updater.result = { isUpdateAvailable: true, updateInfo: { version: '0.2.1' } }
+    updater.downloadUpdate.mockResolvedValueOnce(['C:/cache/pending/Rinari-Agent-Setup-0.2.1-x64.exe'])
+    const launchInstaller = vi.fn()
+    const requestApply = vi.fn(async () => true)
+    const states: Array<{ phase: string; prompt?: boolean }> = []
+    const updates = new UpdateService({
+      updater,
+      currentVersion: '0.2.0',
+      enabled: true,
+      requestApply,
+      launchInstaller,
+      onState: (state) => states.push({ phase: state.phase, prompt: state.prompt }),
+    })
+    await updates.check()
+    await updates.download()
+
+    // `rinari update`: el renderer pregunta; el aviso es de un solo uso.
+    updates.prompt()
+    expect(states.filter((state) => state.prompt)).toEqual([{ phase: 'downloaded', prompt: true }])
+    expect(updates.snapshot().prompt).toBe(false)
+
+    await updates.apply(true)
+    expect(requestApply).toHaveBeenCalledWith(true)
+    expect(updates.commitInstall()).toBe('launched')
+    expect(launchInstaller).toHaveBeenCalledWith('C:/cache/pending/Rinari-Agent-Setup-0.2.1-x64.exe', [
+      '--updated',
+      '--force-run',
+    ])
+    expect(updater.quitAndInstall).not.toHaveBeenCalled()
   })
 
   it('does not apply before the SHA-512 validated download completes', async () => {

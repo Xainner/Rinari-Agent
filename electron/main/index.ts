@@ -514,8 +514,19 @@ const quitCoordinator = new QuitCoordinator({
   commit(reason) {
     unregisterIpc?.()
     unregisterIpc = null
-    if (reason === 'update') updates.commitInstall()
-    else app.quit()
+    if (reason !== 'update') {
+      app.quit()
+      return
+    }
+    // El Engine ya está apagado: pase lo que pase, la app no se queda abierta
+    // sin él. Si el instalador no se pudo lanzar, se reinicia tal cual.
+    try {
+      if (updates.commitInstall() === 'launched') app.exit(0)
+    } catch (error) {
+      console.error('[rinari] no se pudo lanzar la actualización:', error)
+      app.relaunch()
+      app.exit(0)
+    }
   },
   onShutdownError(error, reason) {
     // Ni se fuerza la salida ni se oculta: queda registrado y se puede
@@ -525,7 +536,7 @@ const quitCoordinator = new QuitCoordinator({
 })
 
 const updates = createUpdates({
-  requestApply: () => quitCoordinator.requestQuit('update'),
+  requestApply: (confirmed) => quitCoordinator.requestQuit('update', { confirmed }),
   onState: (state) => send(PUSH.updateState, state),
   text: currentHostText,
 })

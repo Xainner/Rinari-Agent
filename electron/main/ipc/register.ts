@@ -104,7 +104,7 @@ export interface HostServices {
   updates: {
     check(): Promise<unknown>
     download(): Promise<unknown>
-    apply(): Promise<void>
+    apply(confirmed?: boolean): Promise<void>
   }
   migration: {
     status(): Promise<unknown>
@@ -388,7 +388,8 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
     [CHANNEL.updatesDownload, guarded(registry, () => services.updates.download())],
-    [CHANNEL.updatesApply, guarded(registry, () => services.updates.apply())],
+    // El renderer ya preguntó con su diálogo: no se vuelve a preguntar en main.
+    [CHANNEL.updatesApply, guarded(registry, () => services.updates.apply(true))],
     [CHANNEL.migrationStatus, guarded(registry, () => services.migration.status())],
     [CHANNEL.migrationStage, guarded(registry, () => services.migration.stage())],
     [

@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { runRequestedUpdate, updateRequestFromData, wantsUpdate } from './cliRequest'
 
-function updates(available: boolean, apply = vi.fn(async () => undefined)) {
+function updates(available: boolean, prompt = vi.fn(() => undefined)) {
   return {
     check: vi.fn(async () => (available ? { version: '0.2.1', unsigned: true } as never : null)),
     download: vi.fn(async () => ({}) as never),
-    apply,
+    prompt,
   }
 }
 
@@ -15,7 +15,7 @@ describe('update requested by the CLI', () => {
     const service = updates(true)
     await expect(runRequestedUpdate(service)).resolves.toBe('asked')
     expect(service.download).toHaveBeenCalledOnce()
-    expect(service.apply).toHaveBeenCalledOnce()
+    expect(service.prompt).toHaveBeenCalledOnce()
   })
 
   it('does nothing when there is no newer version', async () => {
@@ -26,7 +26,7 @@ describe('update requested by the CLI', () => {
 
   it('reports a failure without throwing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const service = updates(true, vi.fn(async () => { throw new Error('boom') }))
+    const service = updates(true, vi.fn(() => { throw new Error('boom') }))
     await expect(runRequestedUpdate(service)).resolves.toBe('failed')
     warn.mockRestore()
   })

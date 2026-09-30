@@ -3,8 +3,9 @@
  *
  * El CLI no cierra la app ni reemplaza sus archivos por debajo: la arranca con
  * `--update` (una segunda instancia que entrega la petición a esta) y la app
- * se actualiza con su propio flujo. `apply()` pide confirmación con el diálogo
- * «Reiniciar y actualizar», así que nada se cierra sin que el dueño lo acepte.
+ * se actualiza con su propio flujo: descarga y pide al renderer que pregunte
+ * «Reiniciar y actualizar» con su diálogo, así que nada se cierra sin que el
+ * dueño lo acepte.
  */
 
 import type { UpdateService } from './UpdateService'
@@ -12,14 +13,15 @@ import type { UpdateService } from './UpdateService'
 export type RequestedUpdateOutcome = 'current' | 'asked' | 'failed'
 
 export async function runRequestedUpdate(
-  updates: Pick<UpdateService, 'check' | 'download' | 'apply'>,
+  updates: Pick<UpdateService, 'check' | 'download' | 'prompt'>,
 ): Promise<RequestedUpdateOutcome> {
   try {
     // El CLI ya vio una versión nueva; si aquí no la hay (otro canal, feed
     // caché), no se inventa nada.
     if (!(await updates.check())) return 'current'
     await updates.download()
-    await updates.apply()
+    // Pregunta el diálogo de la app, no uno nativo.
+    updates.prompt()
     return 'asked'
   } catch (error) {
     // El estado de error ya lo publica UpdateService y el renderer lo avisa.

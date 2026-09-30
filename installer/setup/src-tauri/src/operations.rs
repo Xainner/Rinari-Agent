@@ -1204,8 +1204,81 @@ fn ensure_agent_closed() -> Result<()> {
                 ));
             }
         }
+        // `rinari update` from the CLI bundled with the app runs on this very
+        // Engine (`resources/engine-dist/python.exe`): its files cannot be
+        // replaced until it exits, and it exits right after starting us.
+        if let Some(record) = installed_record() {
+            let engine = Path::new(&record.install_dir)
+                .join("resources")
+                .join("engine-dist");
+            if engine_process_running(&engine) {
+                return Err(SetupError(
+                    "Close the Rinari CLI running from this installation before changing it".into(),
+                ));
+            }
+        }
     }
     Ok(())
+}
+
+/// Whether `path` is `dir` or lies inside it, ignoring case and separators
+/// (Windows paths).
+fn is_within(path: &Path, dir: &Path) -> bool {
+    let normalize = |value: &Path| {
+        value
+            .to_string_lossy()
+            .replace('/', "\\")
+            .trim_end_matches('\\')
+            .to_lowercase()
+    };
+    let (path, dir) = (normalize(path), normalize(dir));
+    path == dir || path.starts_with(&format!("{dir}\\"))
+}
+
+#[cfg(windows)]
+fn engine_process_running(engine: &Path) -> bool {
+    use std::os::windows::ffi::OsStringExt;
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    // SAFETY: standard Toolhelp enumeration; every handle is closed and the
+    // buffers outlive the calls that fill them.
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return false;
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut found = false;
+        let mut more = Process32FirstW(snapshot, &mut entry) != 0;
+        while more && !found {
+            let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, entry.th32ProcessID);
+            if !process.is_null() {
+                let mut buffer = vec![0u16; 32_768];
+                let mut length = buffer.len() as u32;
+                if QueryFullProcessImageNameW(process, 0, buffer.as_mut_ptr(), &mut length) != 0 {
+                    let image =
+                        PathBuf::from(std::ffi::OsString::from_wide(&buffer[..length as usize]));
+                    found = is_within(&image, engine);
+                }
+                CloseHandle(process);
+            }
+            more = Process32NextW(snapshot, &mut entry) != 0;
+        }
+        CloseHandle(snapshot);
+        found
+    }
+}
+
+#[cfg(not(windows))]
+fn engine_process_running(_engine: &Path) -> bool {
+    false
 }
 
 pub fn open_install_directory() -> Result<()> {
@@ -1660,6 +1733,34 @@ mod tests {
         assert!(read_record_at(&moved).is_none());
         fs::remove_dir_all(root).unwrap();
         fs::remove_dir_all(moved).unwrap();
+    }
+
+    #[test]
+    fn the_bundled_engine_is_recognized_by_its_folder() {
+        let engine =
+            Path::new(r"C:\Users\Me\AppData\Local\Programs\Rinari Agent\resources\engine-dist");
+        let python = Path::new(
+            r"c:\users\me\appdata\local\programs\rinari agent\RESOURCES\engine-dist\python.exe",
+        );
+        assert!(is_within(python, engine));
+        assert!(is_within(engine, engine));
+        // A sibling that only shares the prefix is not inside it.
+        let sibling = Path::new(
+            r"C:\Users\Me\AppData\Local\Programs\Rinari Agent\resources\engine-dist-old\python.exe",
+        );
+        assert!(!is_within(sibling, engine));
+        assert!(!is_within(Path::new(r"C:\Python314\python.exe"), engine));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_running_process_is_found_by_the_folder_of_its_image() {
+        // This test binary is running from its own folder.
+        let exe = std::env::current_exe().unwrap();
+        assert!(engine_process_running(exe.parent().unwrap()));
+        assert!(!engine_process_running(Path::new(
+            r"C:\rinari-no-such-engine-dist"
+        )));
     }
 
     #[test]

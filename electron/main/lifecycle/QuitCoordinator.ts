@@ -65,12 +65,13 @@ export class QuitCoordinator {
    * Dos peticiones a la vez comparten la misma promesa: una sola pregunta y
    * un solo `shutdown`, venga de donde venga.
    */
-  requestQuit(reason: QuitReason): Promise<boolean> {
+  requestQuit(reason: QuitReason, options: { confirmed?: boolean } = {}): Promise<boolean> {
     if (this.state === 'committed') return Promise.resolve(true)
     if (this.inFlight) return this.inFlight
 
     const run = async (): Promise<boolean> => {
-      if (this.deps.shouldConfirm(reason)) {
+      // `confirmed`: ya preguntó el diálogo de la app; no se vuelve a preguntar.
+      if (!options.confirmed && this.deps.shouldConfirm(reason)) {
         this.state = 'confirming'
         const confirmed = await this.deps.confirm(reason)
         if (!confirmed) {

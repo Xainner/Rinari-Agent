@@ -743,6 +743,9 @@ export const en: Record<I18nKey, string> = {
   'update.ready': 'Version {v} is ready to apply.',
   'update.unsigned': 'Unsigned Authenticode build; its SHA-512 was verified.',
   'update.install': 'Install and restart',
+  'update.applyTitle': 'Apply the update now?',
+  'update.applyDetail': 'Rinari will close the Engine and reopen with the new version. Active turns and processes are interrupted.',
+  'update.restartAction': 'Restart and update',
   'update.installing': 'Installing update…',
   'update.failed': 'Update failed: {detail}',
 

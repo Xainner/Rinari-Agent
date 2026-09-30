@@ -1,6 +1,6 @@
 [package]
 name = "rinari-setup"
-version = "0.2.1"
+version = "0.2.2"
 description = "Rinari Agent setup and maintenance bootstrapper"
 authors = ["Xainner"]
 edition = "2021"

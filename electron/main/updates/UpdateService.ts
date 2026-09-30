@@ -39,8 +39,16 @@ export interface UpdateServiceOptions {
   updater: UpdaterLike
   currentVersion: string
   enabled: boolean
-  requestApply(): Promise<boolean>
+  /** `confirmed`: quien pide aplicar ya preguntó (el diálogo de la app). */
+  requestApply(confirmed: boolean): Promise<boolean>
   onState?(state: UpdateState): void
+  /**
+   * Arranca el instalador descargado y desacoplado. Sin él se delega en
+   * `quitAndInstall` de electron-updater.
+   */
+  launchInstaller?(path: string, args: string[]): void
+  /** Registro persistente de lo que hace el actualizador. */
+  log?(line: string): void
   /** Mensajes propios en el idioma de la app; sin ellos, en inglés. */
   text?(): UpdateText
 }
@@ -109,6 +117,8 @@ export class UpdateService {
   private state: UpdateState
   private available: UpdateAvailable | null = null
   private downloaded = false
+  /** El instalador que dejó `downloadUpdate()`; lo lanza `commitInstall`. */
+  private installer: string | null = null
   private checkInFlight: Promise<UpdateAvailable | null> | null = null
   private downloadInFlight: Promise<UpdateState> | null = null
 
@@ -196,7 +206,9 @@ export class UpdateService {
       if (!this.available) throw new UpdateNotReady(this.text().updateNothingToDownload)
       this.publish({ phase: 'downloading', progress: null, message: null })
       try {
-        await this.options.updater.downloadUpdate()
+        const files = await this.options.updater.downloadUpdate()
+        this.installer = files.find((file) => file.toLowerCase().endsWith('.exe')) ?? null
+        this.options.log?.(`downloaded ${this.installer ?? '(no installer path)'}`)
         this.downloaded = true
         this.publish({ phase: 'downloaded', progress: null })
         return this.snapshot()
@@ -212,18 +224,43 @@ export class UpdateService {
     return this.downloadInFlight
   }
 
-  async apply(): Promise<void> {
+  async apply(confirmed = false): Promise<void> {
     this.requireEnabled()
     if (!this.downloaded) throw new UpdateNotReady(this.text().updateDownloadFirst)
     this.publish({ phase: 'applying', message: null })
-    const accepted = await this.options.requestApply()
+    const accepted = await this.options.requestApply(confirmed)
     if (!accepted) this.publish({ phase: 'downloaded' })
   }
 
-  /** Lo llama la autoridad única de lifecycle después de cerrar el Engine. */
-  commitInstall(): void {
+  /**
+   * Pide al renderer que pregunte con su diálogo (la actualización que pidió
+   * `rinari update`). Es un aviso de un solo uso: el siguiente estado no lo lleva.
+   */
+  prompt(): void {
+    if (!this.downloaded) throw new UpdateNotReady(this.text().updateDownloadFirst)
+    this.publish({ phase: 'downloaded', prompt: true })
+    this.state = { ...this.state, prompt: false }
+  }
+
+  /**
+   * Lo llama la autoridad única de lifecycle después de cerrar el Engine.
+   *
+   * Lanza el instalador descargado (`--updated --force-run`: espera a que la
+   * app cierre, instala sin interfaz y la reabre) y devuelve `launched`; quien
+   * llama sale. Antes se delegaba en `quitAndInstall`, que si no encontraba el
+   * instalador en su estado solo emitía un error y no cerraba: la app quedaba
+   * abierta con el Engine ya apagado y «Reiniciar y actualizar» no hacía nada.
+   */
+  commitInstall(): 'launched' | 'delegated' {
     if (!this.downloaded) throw new UpdateNotReady(this.text().updateNoLongerReady)
+    if (this.installer && this.options.launchInstaller) {
+      this.options.log?.(`launching ${this.installer} --updated --force-run`)
+      this.options.launchInstaller(this.installer, ['--updated', '--force-run'])
+      return 'launched'
+    }
+    this.options.log?.('delegating to electron-updater quitAndInstall')
     this.options.updater.quitAndInstall(true, true)
+    return 'delegated'
   }
 
   private requireEnabled(): void {

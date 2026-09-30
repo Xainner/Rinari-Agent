@@ -76,6 +76,8 @@ export interface UpdateState {
   progress: UpdateProgress | null
   message: string | null
   unsigned: boolean
+  /** Una sola vez: preguntar ya si aplicar (lo pidió `rinari update`). */
+  prompt?: boolean
 }
 
 /** Un elemento del menú contextual nativo. */

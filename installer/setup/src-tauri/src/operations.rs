@@ -1284,6 +1284,17 @@ fn engine_process_running(_engine: &Path) -> bool {
 pub fn open_install_directory() -> Result<()> {
     open_path(&PathBuf::from(status()?.install_dir))
 }
+/// Deja en el `install.log` de la instalación por qué falló una actualización
+/// sin interfaz (la lanzan la app o `rinari update`, sin consola visible).
+pub fn log_update_failure(message: &str) {
+    if let Some(record) = installed_record() {
+        let _ = write_log(
+            Path::new(&record.install_dir),
+            &format!("Update to {SETUP_VERSION} failed: {message}\n"),
+        );
+    }
+}
+
 pub fn open_install_log() -> Result<()> {
     open_path(&PathBuf::from(status()?.install_dir).join(LOG_NAME))
 }

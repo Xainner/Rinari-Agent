@@ -110,6 +110,26 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
+### Claude Subscription, fases A-C (2026-10-01)
+
+- **Provider de runtime externo** — `DONE`. `external-cli` como clase de auth,
+  sin credencial y sin cliente HTTP; el producto se concede solo cuando
+  endpoint, auth y transporte coinciden.
+- **Guard de facturación** — `DONE`. Se verifica la fuente de auth al crear y
+  antes de cada petición, y el hijo pierde todo `ANTHROPIC_*`, `CLAUDE_*` y
+  `CLAUDECODE`. Lo desconocido bloquea, nunca conecta.
+- **Herramientas** — `OPEN` declarado (fase D). El provider anuncia
+  `tool_calls: false` y el loop deja de ofrecerlas; una sesión que necesite el
+  filesystem todavía no puede usarlo. El bridge MCP va en un PR aparte.
+- **Modelos** — `OPEN`. El modo print del CLI no lista los modelos de la
+  cuenta, así que son los alias documentados con disponibilidad `unknown`.
+- **Concurrencia por cuenta** — `OPEN`. Sin semáforo todavía (plan §47/§48).
+- **Smoke real contra Anthropic** — `NOT_RUN`. Exige
+  `claude auth login --claudeai`, que es acción sobre la cuenta del usuario.
+  Verificado hasta donde llega sin eso: ver
+  `docs/evidence/claude-subscription-2026-10-01/`.
+- **Visión, continuations, cuota remota** — fuera de alcance de esta entrega.
+
 ### Vista Flujos (2026-09-18, plan 06)
 
 - **Derivación del flujo en el Engine** — `DONE`. `flow.get`

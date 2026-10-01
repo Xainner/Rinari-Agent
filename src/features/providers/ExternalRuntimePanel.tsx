@@ -123,7 +123,13 @@ export default function ExternalRuntimePanel({
             {status.sanitized_env.length > 0 && (
               <>
                 <dt>{t('providers.claudeSanitized')}</dt>
-                <dd className="font-mono">{status.sanitized_env.join(', ')}</dd>
+                {/* Pueden ser decenas: se nombran unas pocas y el resto cuenta.
+                    La lista completa vive en diagnostics, no en la tarjeta. */}
+                <dd className="font-mono" title={status.sanitized_env.join(', ')}>
+                  {status.sanitized_env.slice(0, 3).join(', ')}
+                  {status.sanitized_env.length > 3 &&
+                    ` +${status.sanitized_env.length - 3}`}
+                </dd>
               </>
             )}
           </dl>

@@ -55,10 +55,17 @@ it('CLAUDE-UI-01: a connected subscription shows the plan, version and the usage
   expect(screen.getByText(/counts against the limits/i)).toBeTruthy()
 })
 
-it('CLAUDE-UI-02: it says which billing variables were stripped', async () => {
-  mount(connected)
+it('CLAUDE-UI-02: it names the stripped variables, and counts the rest', async () => {
+  mount({
+    ...connected,
+    sanitized_env: ['ANTHROPIC_API_KEY', 'CLAUDECODE', 'CLAUDE_CODE_MESSAGING_TOKEN', 'CLAUDE_EFFORT', 'CLAUDE_PID'],
+  })
   await screen.findByRole('status')
-  expect(screen.getByText('ANTHROPIC_API_KEY')).toBeTruthy()
+  // El barrido puede retirar decenas de variables: la tarjeta nombra unas
+  // pocas y cuenta el resto en vez de volverse un volcado del entorno.
+  const cell = screen.getByText(/ANTHROPIC_API_KEY/)
+  expect(cell.textContent).toBe('ANTHROPIC_API_KEY, CLAUDECODE, CLAUDE_CODE_MESSAGING_TOKEN +2')
+  expect(cell.getAttribute('title')).toContain('CLAUDE_PID')
 })
 
 it('CLAUDE-UI-03: a missing CLI shows the install command, not a credential field', async () => {

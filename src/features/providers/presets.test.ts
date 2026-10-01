@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { providerBrand } from '../../lib/providerBrand'
-import { PROVIDER_PRESETS } from './presets'
+import { PROVIDER_PRESETS, providerCreateSettings } from './presets'
 
 /**
  * Glob de Vite sobre public/: valida que el asset exista de verdad sin
@@ -56,3 +56,23 @@ it('no repite ids y todos los endpoints base van sin barra final', () => {
     expect(preset.endpoint.endsWith('/'), preset.id).toBe(false)
   }
 })
+
+it('el alta de un runtime externo manda las tres señales que exige el Engine', () => {
+  // El producto es privilegiado (sin credencial, lanza procesos), así que el
+  // Engine solo lo concede cuando endpoint, auth y transporte coinciden. Hay
+  // dos puntos de alta y, cuando cada uno armó sus settings por su cuenta, el
+  // modal se olvidó del transporte y el Engine rechazaba el provider.
+  const claude = PROVIDER_PRESETS.find((preset) => preset.id === 'claude-subscription')!
+  expect(claude.endpoint).toBe('process://claude')
+  expect(claude.auth).toBe('external-cli')
+  expect(providerCreateSettings(claude)).toEqual({
+    product_id: 'claude-subscription',
+    transport: 'claude-cli',
+  })
+})
+
+it('un provider HTTP no gana un transporte que no tiene', () => {
+  const openai = PROVIDER_PRESETS.find((preset) => preset.id === 'openai')!
+  expect(providerCreateSettings(openai)).toEqual({ product_id: 'openai' })
+})
+

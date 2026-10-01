@@ -18,7 +18,7 @@ import {
 } from '../../components/ui/dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
 import ModelCatalog from './ModelCatalog'
-import { isExternalRuntime, useProviderPresets } from './presets'
+import { providerCreateSettings, useProviderPresets } from './presets'
 import ProviderAuthPanel from './ProviderAuthPanel'
 import ExternalRuntimePanel from './ExternalRuntimePanel'
 
@@ -144,11 +144,7 @@ export default function ProviderWizard({
         alias,
         provider_type: preset.provider_type,
         auth_method: form.auth,
-        // Un producto de runtime externo necesita las tres señales (endpoint,
-        // auth y transporte) para que el Engine se lo conceda.
-        settings: isExternalRuntime(preset)
-          ? { product_id: preset.id, transport: preset.runtime ?? 'claude-cli' }
-          : { product_id: preset.id },
+        settings: providerCreateSettings(preset),
         endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
         account_hint:
           form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),

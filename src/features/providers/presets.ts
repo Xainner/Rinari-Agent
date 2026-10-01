@@ -29,6 +29,20 @@ export function isExternalRuntime(preset: Pick<ProviderPreset, 'auth' | 'runtime
 }
 
 /**
+ * Settings del alta. Un producto de runtime externo es privilegiado (sin
+ * credencial, lanza procesos), así que el Engine solo se lo concede cuando
+ * endpoint, método de auth y transporte coinciden. Vive aquí porque hay dos
+ * puntos de alta —el asistente inicial y el modal de Proveedores— y cuando
+ * cada uno armó lo suyo, el modal se olvidó del transporte y el Engine
+ * rechazaba el provider con «Unsupported external CLI provider».
+ */
+export function providerCreateSettings(preset: ProviderPreset): Record<string, unknown> {
+  return isExternalRuntime(preset)
+    ? { product_id: preset.id, transport: preset.runtime ?? 'claude-cli' }
+    : { product_id: preset.id }
+}
+
+/**
  * Presets de alta. Todo lo OpenAI-compatible entra por `custom` con su endpoint
  * base: el engine le agrega `/chat/completions` y `/models` (sin barra final).
  *

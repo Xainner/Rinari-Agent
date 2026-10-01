@@ -30,4 +30,12 @@ describe('versión de Rinari Agent', () => {
     expect(changed).toHaveLength(2)
     expect(() => bumpVersion('latest', copy)).toThrow('invalid version')
   })
+
+  it('el renderer no fija la versión en el código', () => {
+    // `const APP_VERSION = '0.2.0'` se quedó atrás al publicar la 0.2.1: la
+    // versión se importa de package.json.
+    for (const file of ['src/App.tsx', 'src/components/settings/SoonSettings.tsx']) {
+      expect(readFileSync(join(ROOT, file), 'utf8')).not.toMatch(/['"`]v?\d+\.\d+\.\d+['"`]/)
+    }
+  })
 })

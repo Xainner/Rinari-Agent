@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { engineApi } from '../../services/engine'
 import type { ProviderBrandId } from '../../lib/providerBrand'
 
-export type ProviderAuth = 'api-key' | 'none' | 'oauth'
+export type ProviderAuth = 'api-key' | 'none' | 'oauth' | 'external-cli'
 
 export interface ProviderPreset {
   id: string
@@ -17,6 +17,15 @@ export interface ProviderPreset {
   name?: string
   experimental?: boolean
   authMethods?: ProviderAuth[]
+  /** 'http' o un runtime externo ('claude-cli'): decide el alta y la tarjeta. */
+  runtime?: string
+  /** Ejecutable que instala el usuario; el alta guía en vez de pedir una clave. */
+  requiresBinary?: string | null
+}
+
+/** Un provider servido por un CLI externo no pide credencial: la tiene el CLI. */
+export function isExternalRuntime(preset: Pick<ProviderPreset, 'auth' | 'runtime'>): boolean {
+  return preset.auth === 'external-cli' || (preset.runtime ?? 'http') !== 'http'
 }
 
 /**
@@ -110,6 +119,18 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     auth: 'none',
   },
   {
+    id: 'claude-subscription',
+    nameKey: 'providers.presetClaudeSubscription',
+    descKey: 'providers.presetClaudeSubscriptionDesc',
+    provider_type: 'custom',
+    endpoint: 'process://claude',
+    auth: 'external-cli',
+    brand: 'anthropic',
+    experimental: true,
+    runtime: 'claude-cli',
+    requiresBinary: 'claude',
+  },
+  {
     id: 'custom',
     nameKey: 'providers.presetCustom',
     descKey: 'providers.presetCustomDesc',
@@ -131,6 +152,7 @@ export function useProviderPresets() {
         provider_type: p.provider_type as ProviderPreset['provider_type'], endpoint: p.endpoint,
         auth: p.auth_methods[0] as ProviderAuth, authMethods: p.auth_methods as ProviderAuth[],
         experimental: p.experimental, brand: PROVIDER_PRESETS.find(local => local.id === p.id)?.brand,
+        runtime: p.runtime, requiresBinary: p.requires_external_binary,
       })))
     }).catch(() => { /* Old engines retain their existing API-key wizard. */ })
     return () => { active = false }

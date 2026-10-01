@@ -29,7 +29,7 @@ it('mantiene OpenCode Zen fuera hasta que el engine enrute por modelo', () => {
 it('cada preset con marca tiene su logo en public/logos (y variante clara si aplica)', () => {
   const branded = PROVIDER_PRESETS.filter((preset) => preset.brand)
   expect(branded.map((preset) => preset.id).sort()).toEqual(
-    ['anthropic', 'deepseek', 'gemini', 'mistral', 'openai', 'opencode-go', 'xai'].sort(),
+    ['anthropic', 'claude-subscription', 'deepseek', 'gemini', 'mistral', 'openai', 'opencode-go', 'xai'].sort(),
   )
   for (const preset of branded) {
     const brand = providerBrand(preset.brand)

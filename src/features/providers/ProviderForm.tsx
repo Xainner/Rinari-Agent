@@ -148,11 +148,21 @@ export default function ProviderForm({
                   : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
-              {mode === 'oauth' ? t('providers.login') : mode === 'api-key' ? t('providers.authKey') : t('providers.authNone')}
+              {mode === 'oauth'
+                ? t('providers.login')
+                : mode === 'api-key'
+                  ? t('providers.authKey')
+                  : mode === 'external-cli'
+                    ? t('providers.presetClaudeSubscription')
+                    : t('providers.authNone')}
             </button>
           ))}
         </div>
       </div>
+
+      {form.auth === 'external-cli' && (
+        <p className="text-sm text-[var(--text-muted)]">{t('providers.claudeNoCredential')}</p>
+      )}
 
       {form.auth === 'api-key' && (
         <>

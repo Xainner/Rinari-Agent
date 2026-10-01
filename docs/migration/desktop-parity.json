@@ -706,6 +706,15 @@
       "callers": []
     },
     {
+      "command": "provider_runtime_probe",
+      "kind": "engine",
+      "method": "provider.runtime.probe",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "provider_test",
       "kind": "engine",
       "method": "provider.test",
@@ -1491,8 +1500,8 @@
     }
   ],
   "summary": {
-    "commands": 177,
-    "engine_backed": 171,
+    "commands": 178,
+    "engine_backed": 172,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 56

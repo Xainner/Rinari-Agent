@@ -228,6 +228,41 @@ export interface ProviderHealth {
   models: DiscoveredModel[];
 }
 
+/**
+ * Estado de un provider servido por un CLI externo. Lo deriva el Engine: la
+ * UI solo rotula. `state` manda sobre cualquier otro campo, y todo lo que no
+ * sea `connected` impide usar el provider.
+ */
+export type ExternalRuntimeState =
+  | 'missing_cli'
+  | 'unsupported_cli'
+  | 'logged_out'
+  | 'connected'
+  | 'non_subscription_auth'
+  | 'error';
+
+export interface ExternalRuntimeStatus {
+  transport: string;
+  experimental: boolean;
+  installed: boolean;
+  path: string | null;
+  discovered_via: string | null;
+  /** Variables de facturación retiradas del proceso hijo (solo los nombres). */
+  sanitized_env: string[];
+  state: ExternalRuntimeState;
+  version?: string | null;
+  supported?: boolean;
+  detail?: string;
+  hint?: string;
+  auth?: {
+    logged_in: boolean;
+    auth_method: string | null;
+    api_provider: string | null;
+    subscription_type: string | null;
+    safe_for_subscription: boolean;
+  };
+}
+
 export interface DiscoveryCandidate {
   source: string;
   name: string;
@@ -1223,6 +1258,9 @@ export const engineApi = {
   providerCatalog: () => platform().command<{ presets: ProtocolProviderPreset[]; version: string }>('provider_catalog_get'),
   providerUsage: (ref: string, refresh = false) => platform().command<ProviderUsageSnapshot>('provider_usage_get', { ref, refresh }),
   providerDiagnostics: (ref: string) => platform().command<Record<string, unknown>>('provider_diagnostics_get', { ref }),
+  /** Estado de un runtime externo (CLI) antes de que exista el provider. */
+  providerRuntimeProbe: (runtime: string, command_path?: string) =>
+    platform().command<{ runtime: ExternalRuntimeStatus }>('provider_runtime_probe', { runtime, command_path: command_path ?? null }),
   providerAuthStart: (ref: string, method: 'browser' | 'device') => platform().command<ProviderAuthSnapshot>('provider_auth_start', { ref, method }),
   providerAuthGet: (ref: string, operation_id?: string) => platform().command<ProviderAuthSnapshot>('provider_auth_get', { ref, operation_id }),
   providerAuthCancel: (ref: string) => platform().command<ProviderAuthSnapshot>('provider_auth_cancel', { ref }),

@@ -124,10 +124,17 @@ documentado; lo demás no se presenta como terminado.
 - **Modelos** — `OPEN`. El modo print del CLI no lista los modelos de la
   cuenta, así que son los alias documentados con disponibilidad `unknown`.
 - **Concurrencia por cuenta** — `OPEN`. Sin semáforo todavía (plan §47/§48).
-- **Smoke real contra Anthropic** — `NOT_RUN`. Exige
-  `claude auth login --claudeai`, que es acción sobre la cuenta del usuario.
-  Verificado hasta donde llega sin eso: ver
+- **Smoke real contra Anthropic** — `DONE` (2026-10-01). Con la suscripción
+  Pro del dueño: `authMethod: claude.ai`, la tarjeta pasó sola a conectado y
+  un turno lo respondió Claude Opus 5.5. Ver
   `docs/evidence/claude-subscription-2026-10-01/`.
+- **Esfuerzo de razonamiento** — `PARTIAL`. Se envían los cinco niveles que
+  acepta `--effort`; `none`, `minimal` y `ultra` no se mandan porque el CLI
+  los descarta en silencio. La UI sigue ofreciéndolos para todos los
+  proveedores: haría falta que el Engine publique los niveles soportados por
+  modelo para que el selector se ajuste.
+- **Thinking** — `DONE` para el transporte: los bloques llegan como items con
+  su firma. Activar el razonamiento extendido no depende de Rinari.
 - **Visión, continuations, cuota remota** — fuera de alcance de esta entrega.
 
 ### Vista Flujos (2026-09-18, plan 06)

@@ -1,7 +1,7 @@
 {
   "name": "rinari-agent",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Native desktop workspace for the Rinari Engine",
   "author": "Xainner",
   "homepage": "https://github.com/Xainner/Rinari-Agent",

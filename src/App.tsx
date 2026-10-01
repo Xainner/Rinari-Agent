@@ -12,6 +12,7 @@ import { engineApi, type TrustState } from './services/engine'
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
+import { version as appVersion } from '../package.json'
 import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
@@ -56,7 +57,9 @@ const BoardView = lazy(() => import('./features/board/BoardView'))
 const FlowView = lazy(() => import('./features/flow/FlowView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
 
-const APP_VERSION = '0.2.0'
+// De package.json al compilar: fija en el código se quedó en 0.2.0 tras publicar
+// la 0.2.1. `npm run release:bump` solo toca package.json y sus copias.
+const APP_VERSION = appVersion
 
 function App() {
   const view = useUIStore((s) => s.view)

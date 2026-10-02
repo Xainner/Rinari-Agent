@@ -1653,6 +1653,8 @@ export const es = {
   'board.toolbar.focusMode': 'Modo foco',
   'board.toolbar.focusModeHint': 'Mantiene expandido solo el panel enfocado; el resto queda en tiras.',
   'board.toolbar.addPane': 'Añadir panel',
+  'board.toolbar.removeAll': 'Quitar todos',
+  'board.toolbar.removeAllHint': 'Quita todos los paneles del board. Las conversaciones y su trabajo en curso se conservan.',
   'board.toolbar.markAllRead': 'Marcar todos los resultados como leídos',
   'settings.shortcuts.collapsePane': 'Colapsar panel enfocado',
   'settings.shortcuts.expandPane': 'Expandir panel',

@@ -1637,6 +1637,8 @@ export const en: Record<I18nKey, string> = {
   'board.toolbar.focusMode': 'Focus mode',
   'board.toolbar.focusModeHint': 'Keeps only the focused pane expanded; the rest become strips.',
   'board.toolbar.addPane': 'Add pane',
+  'board.toolbar.removeAll': 'Remove all',
+  'board.toolbar.removeAllHint': 'Removes all panes from the board. Conversations and ongoing work are preserved.',
   'board.toolbar.markAllRead': 'Mark all results as read',
   'settings.shortcuts.collapsePane': 'Collapse focused pane',
   'settings.shortcuts.expandPane': 'Expand pane',

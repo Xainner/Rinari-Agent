@@ -126,8 +126,8 @@ documentado; lo demás no se presenta como terminado.
 - **Concurrencia por cuenta** — `OPEN`. Sin semáforo todavía (plan §47/§48).
 - **Smoke real contra Anthropic** — `DONE` (2026-10-01). Con la suscripción
   Pro del dueño: `authMethod: claude.ai`, la tarjeta pasó sola a conectado y
-  un turno lo respondió Claude Opus 5.5. Ver
-  `docs/evidence/claude-subscription-2026-10-01/`.
+  un turno lo respondió Claude Opus 5.5. La evidencia está en Rinari-Agent#65:
+  `docs/evidence/` cae bajo la regla `evidence/` del `.gitignore`.
 - **Esfuerzo de razonamiento** — `DONE` (2026-10-02). El Engine publica por
   modelo los cinco niveles que acepta `--effort` y el selector habilita
   exactamente esos; `none`, `minimal` y `ultra` quedan deshabilitados. Un

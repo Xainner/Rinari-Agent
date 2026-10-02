@@ -419,6 +419,6 @@ revisión M02 y queda como registro histórico).
 Validación: `src/features/providers/ExternalRuntimePanel.test.tsx`
 (CLAUDE-UI-01…09), `presets.test.ts`, y en el Engine
 `tests/unit/test_claude_cli_runtime.py` y
-`tests/unit/test_claude_subscription_provider.py`. Evidencia real en
-`docs/evidence/claude-subscription-2026-10-01/`.
+`tests/unit/test_claude_subscription_provider.py`. La evidencia real (smoke
+en Electron y validación contra el CLI 2.1.286) está en Rinari-Agent#65.
 

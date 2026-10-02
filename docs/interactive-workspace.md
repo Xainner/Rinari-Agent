@@ -59,7 +59,7 @@ Project headers collapse their sessions. Composer selectors close upon selection
 
 # Boards: paneles, restauración y dock
 
-- Un board persistido (`rinari.board.v1`, schema interno 3) con N paneles en
+- Un board persistido (`rinari.board.v1`, schema interno 4) con N paneles en
   columnas con scroll horizontal. Cada panel referencia exactamente una sesión;
   una misma sesión no se añade dos veces (un segundo intento la enfoca). Se
   persisten orden, anchos de panel, foco, límite suave y preferencias deseadas;
@@ -68,6 +68,26 @@ Project headers collapse their sessions. Composer selectors close upon selection
   guardaba por panel y se migra al cargar sin reescribir layouts existentes.
   Un layout de una versión futura no se reescribe. Las escrituras se agrupan
   (250 ms) y se vuelcan al ocultar la ventana.
+- **Ajustar a la vista** reparte el espacio real entre los paneles expandidos,
+  descontando las tiras colapsadas y la columna Añadir panel. El layout flex
+  responde al tamaño del contenedor, la barra lateral y el zoom; no guarda
+  mediciones ni cambia el foco, los borradores o las preferencias del dock.
+  Mientras está activo se retiran los separadores manuales. Al apagarlo se
+  recuperan los anchos guardados (480–1600 px); el reparto puede superar ese
+  máximo. El modo persiste en schema 4 y los layouts anteriores abren en manual.
+  Si no caben todos a una densidad compacta de 320 px, aparece un aviso y scroll
+  solo en la fila de paneles: Añadir panel permanece fuera del área desplazable.
+  Colapsar todo y el modo foco conservan la preferencia de ajuste.
+  Pulsar Ajustar a la vista expande todos los paneles y sale del modo foco,
+  incluso si el ajuste ya estaba activo antes de colapsarlos. Solo vuelve al
+  modo manual al pulsarlo con todos los paneles visibles y fuera del modo foco.
+  Prueba nativa: construir con `npm run build` y `npm run desktop:build`,
+  configurar `RINARI_ENGINE_BIN`, `RINARI_ENGINE_ARGS_JSON` y
+  `RINARI_ENGINE_CWD` para el Engine fijado en `engine-manifest.json`, y
+  ejecutar `node scripts/boards-fit-e2e.mjs` (`--keep` deja la app abierta).
+  Usa perfil y home temporales, sesiones reales y un proveedor loopback sin
+  credenciales cuyo turno falla de forma esperada; no llama a modelos externos.
+  Guarda capturas y el informe en `release/evidence/boards-fit/`.
 - «Añadir panel» ofrece chat general, proyecto registrado, carpeta nueva y
   sesiones existentes. Siempre crea con `session.create {project_id}` sin
   activar la sesión Normal; una carpeta nueva se registra con `project.add`.

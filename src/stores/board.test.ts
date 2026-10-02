@@ -62,7 +62,7 @@ describe('board layout store', () => {
     expect(useBoardStore.getState().panes[0]).not.toHaveProperty('dockTab')
   })
 
-  it('persists only layout preferences under the v1 key with internal schema 3', () => {
+  it('persists only layout preferences under the v1 key with internal schema 4', () => {
     useBoardStore.getState().addPane('ses_a')
     useBoardStore.getState().setSoftLimit(3)
     flushBoardPersistence()
@@ -72,6 +72,41 @@ describe('board layout store', () => {
     expect((stored.panes as unknown[]).length).toBe(1)
     expect(stored).not.toHaveProperty('paneErrors')
     expect(stored).not.toHaveProperty('persistError')
+  })
+
+  it('round trips fit mode while preserving manual widths and focus composition', () => {
+    const store = useBoardStore.getState()
+    const a = store.addPane('ses_a')
+    const b = store.addPane('ses_b')
+    store.setPaneWidth(a.paneId, 650)
+    store.setPaneWidth(b.paneId, 1150)
+    store.setCollapsed(a.paneId, true)
+    store.setFitToView(true)
+    store.setPaneWidth(b.paneId, 500) // A resize already in flight cannot overwrite the preference.
+    store.setFocusMode(true)
+    store.setFocusMode(false)
+    flushBoardPersistence()
+    const stored = JSON.parse(window.localStorage.getItem(BOARD_STORAGE_KEY)!)
+    store.hydrate(stored)
+    expect(useBoardStore.getState().fitToView).toBe(true)
+    expect(useBoardStore.getState().panes.map(({ width, collapsed }) => ({ width, collapsed }))).toEqual([
+      { width: 650, collapsed: true }, { width: 1150, collapsed: false },
+    ])
+    store.collapseAll()
+    store.expandAll()
+    expect(useBoardStore.getState().fitToView).toBe(true)
+    store.setFitToView(false)
+    expect(useBoardStore.getState().panes.map((pane) => pane.width)).toEqual([650, 1150])
+    store.setPaneWidth(a.paneId, 750)
+    expect(useBoardStore.getState().panes[0].width).toBe(750)
+  })
+
+  it('defaults old and invalid fit preferences to manual without losing panes', () => {
+    for (const version of [1, 2, 3, 4]) {
+      const layout = { version, panes: [{ paneId: 'a', sessionId: 'ses_a', width: 650 }] }
+      expect(normalizeBoard(layout)).toMatchObject({ fitToView: false, panes: [{ width: 650 }] })
+      expect(normalizeBoard({ ...layout, fitToView: 'true' }).fitToView).toBe(false)
+    }
   })
 
   it('migrates a plan-1.0 layout, drops invalid entries and deduplicates sessions', () => {

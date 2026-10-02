@@ -254,6 +254,10 @@ export interface ExternalRuntimeStatus {
   supported?: boolean;
   detail?: string;
   hint?: string;
+  /** Comando de instalación listo para pegar, cuando el CLI no está. */
+  install_command?: string;
+  /** Comando de inicio de sesión listo para pegar en esta máquina. */
+  login_command?: string;
   auth?: {
     logged_in: boolean;
     auth_method: string | null;

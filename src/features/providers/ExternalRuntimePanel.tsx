@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, LogIn, RefreshCw, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Copy, Download, LogIn, RefreshCw, ShieldAlert } from 'lucide-react'
 import { commandMessage, engineApi, type ExternalRuntimeStatus } from '../../services/engine'
+import { copyText } from '../../lib/clipboard'
 import { useI18n } from '../../i18n'
 
 /**
@@ -137,21 +138,9 @@ export default function ExternalRuntimePanel({
               </>
             )}
           </dl>
-          {status.state === 'missing_cli' && status.hint && (
-            <pre className="overflow-x-auto rounded-xl bg-[var(--bg-subtle)] p-3 text-xs select-all">
-              {status.hint}
-            </pre>
-          )}
-          {status.state === 'logged_out' && (
-            <pre className="overflow-x-auto rounded-xl bg-[var(--bg-subtle)] p-3 text-xs select-all">
-              claude auth login --claudeai
-            </pre>
-          )}
-          {status.state === 'non_subscription_auth' && (
-            <p className="text-sm text-[var(--text-muted)]">
-              {t('providers.claudeWrongAuthHelp')}
-            </p>
-          )}
+          {(status.state === 'missing_cli' ||
+            status.state === 'logged_out' ||
+            status.state === 'non_subscription_auth') && <ConnectGuide status={status} />}
           {status.state === 'connected' && (
             <p className="text-xs text-[var(--text-muted)]">{t('providers.claudeDisclosure')}</p>
           )}
@@ -168,3 +157,98 @@ export default function ExternalRuntimePanel({
     </div>
   )
 }
+
+/** Sin comando del Engine (versiones anteriores), el que sirve con `claude` en el PATH. */
+const FALLBACK_LOGIN = 'claude auth login --claudeai'
+
+/**
+ * Pasos para conectar la cuenta según el estado. Los comandos los arma el
+ * Engine para esta máquina: con la ruta completa si el CLI no está en el PATH
+ * y con el `&` que PowerShell exige delante de una ruta entre comillas. Esas
+ * dos cosas fueron justo las que hicieron fallar el primer inicio de sesión
+ * a mano. La guía no ejecuta nada: el usuario corre el comando y vuelve.
+ */
+function ConnectGuide({ status }: { status: ExternalRuntimeStatus }) {
+  const { t } = useI18n()
+  const login = status.login_command || FALLBACK_LOGIN
+  const powershell = login.startsWith('& ')
+  const step = 'pl-1'
+
+  return (
+    <section
+      aria-label={t('providers.claudeGuide.title')}
+      className="space-y-2 rounded-xl border border-[var(--border)] p-3"
+      data-testid="claude-connect-guide"
+    >
+      <h4 className="text-sm font-semibold">{t('providers.claudeGuide.title')}</h4>
+      {status.state === 'missing_cli' && (
+        <ol className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-muted)]">
+          <li className={step}>
+            {t('providers.claudeGuide.install1')}
+            {(status.install_command || status.hint) && (
+              <CommandBox command={status.install_command || (status.hint ?? '').replace(/^Run:\s*/, '')} />
+            )}
+          </li>
+          <li className={step}>{t('providers.claudeGuide.install2')}</li>
+          <li className={step}>{t('providers.claudeGuide.install3')}</li>
+        </ol>
+      )}
+      {status.state === 'logged_out' && (
+        <ol className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-muted)]">
+          <li className={step}>{t('providers.claudeGuide.login1')}</li>
+          <li className={step}>
+            {t('providers.claudeGuide.login2')}
+            <CommandBox command={login} />
+          </li>
+          <li className={step}>{t('providers.claudeGuide.login3')}</li>
+          <li className={step}>{t('providers.claudeGuide.login4')}</li>
+        </ol>
+      )}
+      {status.state === 'non_subscription_auth' && (
+        <>
+          <p className="text-sm text-[var(--text-muted)]">{t('providers.claudeWrongAuthHelp')}</p>
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-muted)]">
+            <li className={step}>
+              {t('providers.claudeGuide.wrong1')}
+              <CommandBox command={login} />
+            </li>
+            <li className={step}>{t('providers.claudeGuide.wrong2')}</li>
+          </ol>
+        </>
+      )}
+      {status.state !== 'missing_cli' && (
+        <ul className="space-y-1 text-xs text-[var(--text-subtle)]">
+          <li>{t('providers.claudeGuide.noteSubscription')}</li>
+          {powershell && <li>{t('providers.claudeGuide.notePowerShell')}</li>}
+          <li>{t('providers.claudeGuide.noteShared')}</li>
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function CommandBox({ command }: { command: string }) {
+  const { t } = useI18n()
+  const [copied, setCopied] = useState(false)
+  return (
+    <div className="mt-1.5 flex items-start gap-2">
+      <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-[var(--bg-subtle)] p-2.5 text-xs text-[var(--text)] select-all">
+        {command}
+      </pre>
+      <button
+        type="button"
+        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-2 text-xs hover:bg-[var(--bg-hover)]"
+        onClick={async () => {
+          if (await copyText(command)) {
+            setCopied(true)
+            window.setTimeout(() => setCopied(false), 2000)
+          }
+        }}
+      >
+        <Copy size={13} aria-hidden="true" />
+        {copied ? t('providers.claudeGuide.copied') : t('providers.claudeGuide.copy')}
+      </button>
+    </div>
+  )
+}
+

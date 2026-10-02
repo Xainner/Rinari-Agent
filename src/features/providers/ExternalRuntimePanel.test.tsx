@@ -2,7 +2,7 @@
 // La tarjeta de un provider servido por un CLI externo. La UI no ejecuta el
 // binario ni juzga la autenticación: pinta lo que el Engine derivó, y nada que
 // no sea `connected` ofrece seguir adelante.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createTestBridge } from '../../platform/testBridge'
 import { setPlatformForTests } from '../../platform'
@@ -99,9 +99,11 @@ it('CLAUDE-UI-05: a non-subscription source is refused and explained', async () 
   })
   const status = await screen.findByRole('status')
   expect(status.textContent).toContain('Unsupported authentication source')
-  expect(screen.getByText(/bills the API/i)).toBeTruthy()
+  expect(screen.getAllByText(/bills the API/i).length).toBeGreaterThan(0)
   // No hay atajo para continuar igual: cambiar de fuente cambiaría la factura.
-  expect(screen.queryByText(/connect/i)).toBeNull()
+  // La guía explica cómo volver a la suscripción, pero ningún botón conecta.
+  expect(screen.queryByRole('button', { name: /^connect/i })).toBeNull()
+  expect(within(screen.getByTestId('claude-connect-guide')).getByText('claude auth login --claudeai')).toBeTruthy()
 })
 
 it('CLAUDE-UI-06: "check again" re-reads the state instead of caching it', async () => {
@@ -159,3 +161,69 @@ it('CLAUDE-UI-09: the state reaches the caller so the wizard can gate on it', as
   await screen.findByRole('status')
   expect(seen).toHaveBeenCalledWith(expect.objectContaining({ state: 'connected' }))
 })
+
+// -- guía para conectar la cuenta ---------------------------------------------
+
+const offPath = '& "C:\\Users\\x\\.local\\bin\\claude.exe" auth login --claudeai'
+
+it('CLAUDE-UI-12: signed out, the guide walks through the login with the exact command', async () => {
+  // El caso real del dueño: CLI fuera del PATH en Windows. El comando lleva
+  // la ruta completa y el `&` de PowerShell; sin ellos falló la primera vez.
+  mount({ ...connected, state: 'logged_out', login_command: offPath, auth: { ...connected.auth, logged_in: false } })
+  const guide = await screen.findByTestId('claude-connect-guide')
+  const steps = within(guide).getAllByRole('listitem')
+  expect(within(guide).getByText(offPath)).toBeTruthy()
+  expect(guide.textContent).toContain('Open a terminal')
+  expect(guide.textContent).toContain('Login successful')
+  expect(guide.textContent).toContain('Check again')
+  expect(guide.textContent).toContain('leading & is required')
+  expect(guide.textContent).toContain('Do not use --console')
+  expect(steps.length).toBeGreaterThanOrEqual(4)
+})
+
+it('CLAUDE-UI-13: the copy button copies the command exactly', async () => {
+  const bridge = mount({ ...connected, state: 'logged_out', login_command: offPath, auth: { ...connected.auth, logged_in: false } })
+  const guide = await screen.findByTestId('claude-connect-guide')
+  fireEvent.click(within(guide).getByRole('button', { name: /copy/i }))
+  await waitFor(() => expect(bridge.copiedTexts).toEqual([offPath]))
+  expect(await within(guide).findByText('Command copied')).toBeTruthy()
+})
+
+it('CLAUDE-UI-14: with claude on PATH the command is bare and the PowerShell note is not shown', async () => {
+  mount({ ...connected, state: 'logged_out', login_command: 'claude auth login --claudeai', auth: { ...connected.auth, logged_in: false } })
+  const guide = await screen.findByTestId('claude-connect-guide')
+  expect(within(guide).getByText('claude auth login --claudeai')).toBeTruthy()
+  expect(guide.textContent).not.toContain('leading & is required')
+})
+
+it('CLAUDE-UI-15: not installed, the guide gives the install command to copy, not a login', async () => {
+  const bridge = mount({
+    transport: 'claude-cli',
+    experimental: true,
+    installed: false,
+    path: null,
+    discovered_via: null,
+    sanitized_env: [],
+    state: 'missing_cli',
+    hint: 'Run: irm https://claude.ai/install.ps1 | iex',
+    install_command: 'irm https://claude.ai/install.ps1 | iex',
+  })
+  const guide = await screen.findByTestId('claude-connect-guide')
+  expect(within(guide).getByText('irm https://claude.ai/install.ps1 | iex')).toBeTruthy()
+  expect(guide.textContent).not.toContain('auth login')
+  fireEvent.click(within(guide).getByRole('button', { name: /copy/i }))
+  await waitFor(() => expect(bridge.copiedTexts).toEqual(['irm https://claude.ai/install.ps1 | iex']))
+})
+
+it('CLAUDE-UI-16: an older Engine without the command still gets a working one', async () => {
+  mount({ ...connected, state: 'logged_out', auth: { ...connected.auth, logged_in: false } })
+  const guide = await screen.findByTestId('claude-connect-guide')
+  expect(within(guide).getByText('claude auth login --claudeai')).toBeTruthy()
+})
+
+it('CLAUDE-UI-17: once connected, there is no guide', async () => {
+  mount(connected)
+  await screen.findByRole('status')
+  expect(screen.queryByTestId('claude-connect-guide')).toBeNull()
+})
+

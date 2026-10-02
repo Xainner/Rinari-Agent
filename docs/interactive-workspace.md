@@ -408,6 +408,14 @@ revisión M02 y queda como registro histórico).
   contador: el barrido puede retirar decenas y la tarjeta no es un volcado del
   entorno). Cuando está conectado muestra el aviso de que el uso se descuenta
   de los límites de la cuenta de Claude Code.
+- Mientras el CLI no esté en una suscripción, la tarjeta muestra una **guía
+  paso a paso** según el estado: instalar (sin CLI), iniciar sesión (sin
+  sesión) o volver a iniciarla con la suscripción (fuente que factura por
+  API). Los comandos vienen del Engine (`install_command`, `login_command`)
+  armados para esa máquina: con la ruta completa si el CLI no está en el
+  PATH y con el `&` que PowerShell exige delante de una ruta entre comillas,
+  las dos cosas que hicieron fallar el primer inicio de sesión a mano. Cada
+  comando tiene botón de copiar. La guía no ejecuta nada.
 - Un provider así abre en la pestaña de conexión, porque su estado puede
   cambiar fuera de Rinari entre dos sesiones, y dice en claro que quitarlo de
   Rinari no cierra la sesión de Claude Code y que todavía no ejecuta

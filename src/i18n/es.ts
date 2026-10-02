@@ -1652,7 +1652,7 @@ export const es = {
   'board.toolbar.nothingToCollapse': 'No hay paneles terminados que colapsar.',
   'board.toolbar.focusMode': 'Modo foco',
   'board.toolbar.fitToView': 'Ajustar a la vista',
-  'board.toolbar.fitToViewHint': 'Distribuye el ancho entre los paneles abiertos y mantiene visible Añadir panel. Desactívalo para ajustar los anchos a mano.',
+  'board.toolbar.fitToViewHint': 'Expande todos los paneles y reparte el ancho, manteniendo visible Añadir panel. Con todos visibles, pulsa de nuevo para volver al ajuste manual.',
   'board.fitOverflow': 'No caben todos los paneles con un ancho legible. Desplázate para verlos; Añadir panel sigue disponible.',
   'board.toolbar.focusModeHint': 'Mantiene expandido solo el panel enfocado; el resto queda en tiras.',
   'board.toolbar.addPane': 'Añadir panel',

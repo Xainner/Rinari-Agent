@@ -135,7 +135,25 @@ async function run() {
   await click('.board-toolbar button[title="Colapsar todo"]')
   checkFit(await geometry(), false)
   assert.equal((await geometry()).panes.length, 0)
-  await click('.board-toolbar button[title="Expandir todo"]')
+  await click('button[aria-label="Ajustar a la vista"]')
+  assert.equal((await geometry()).panes.length, 3)
+  checkFit(await geometry(), false)
+  // Fit was already active before Collapse all: one click must reveal all.
+  await click('button[aria-label="Ajustar a la vista"]')
+  await click('.board-toolbar button[title="Colapsar todo"]')
+  await click('button[aria-label="Ajustar a la vista"]')
+  assert.equal((await geometry()).panes.length, 3)
+  checkFit(await geometry(), false)
+  // A single collapsed pane and focus mode have the same reveal-all behavior.
+  await click('.pane-header button[aria-label="Colapsar panel"]')
+  await click('button[aria-label="Ajustar a la vista"]')
+  assert.equal((await geometry()).panes.length, 3)
+  checkFit(await geometry(), false)
+  await click('.board-toolbar button[title="Mantiene expandido solo el panel enfocado; el resto queda en tiras."]')
+  await click('button[aria-label="Ajustar a la vista"]')
+  assert.equal((await geometry()).panes.length, 3)
+  checkFit(await geometry(), false)
+  await screenshot('fit-reveals-collapsed')
   await size(1200)
   checkFit(await geometry(), true)
   await size(1500)
@@ -213,7 +231,7 @@ async function run() {
   writeFileSync(join(output, 'report.json'), JSON.stringify({ ok: true, realEngine: true,
     provider: 'loopback fixture; failed turn expected, no external model calls',
     checks: ['equal widths: 1/2/3/6 panes', 'manual width restoration', 'composer identity and draft',
-      'collapse, expand, focus mode', 'resize, sidebar, 125% zoom', 'dock drawer preference',
+      'collapse, expand, focus mode', 'fit reveals collapsed panes from manual, fit and focus modes', 'resize, sidebar, 125% zoom', 'dock drawer preference',
       'reload persistence', 'real failed turn does not redistribute', 'compact accessible toolbar',
       'add and remove through UI', 'all collapsed overflow', 'schema 3 migration',
       'single pane above 1600px', 'future schema write protection'], report }, null, 2))

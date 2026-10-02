@@ -78,6 +78,9 @@ Project headers collapse their sessions. Composer selectors close upon selection
   Si no caben todos a una densidad compacta de 320 px, aparece un aviso y scroll
   solo en la fila de paneles: Añadir panel permanece fuera del área desplazable.
   Colapsar todo y el modo foco conservan la preferencia de ajuste.
+  Pulsar Ajustar a la vista expande todos los paneles y sale del modo foco,
+  incluso si el ajuste ya estaba activo antes de colapsarlos. Solo vuelve al
+  modo manual al pulsarlo con todos los paneles visibles y fuera del modo foco.
   Prueba nativa: construir con `npm run build` y `npm run desktop:build`,
   configurar `RINARI_ENGINE_BIN`, `RINARI_ENGINE_ARGS_JSON` y
   `RINARI_ENGINE_CWD` para el Engine fijado en `engine-manifest.json`, y

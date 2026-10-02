@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
+import { providerCreateSettings } from './presets'
 import ProviderDetails from './ProviderDetails'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ModelCatalog from './ModelCatalog'
@@ -94,7 +95,7 @@ export default function ProvidersView({
           alias,
           provider_type: form.preset.provider_type,
           auth_method: form.auth,
-          settings: { product_id: form.preset.id },
+          settings: providerCreateSettings(form.preset),
           endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
           account_hint: form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
           // Solo viaja el campo de la fuente activa; el incompatible queda vacío.

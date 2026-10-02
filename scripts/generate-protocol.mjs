@@ -48,18 +48,20 @@ const pascal = (value) => value
   .map((part) => part[0].toUpperCase() + part.slice(1))
   .join('')
 
-// `anyOf: [{ $ref }, { type: 'null' }]` is how the schema spells a nullable
-// object reference (JSON Schema has no `type: [ref, null]`).
-function nullableRef(node) {
+// `anyOf: [{ ... }, { type: 'null' }]` is how the schema spells a nullable
+// branch (JSON Schema has no `type: [ref, null]`). It carries a $ref for a
+// nullable object and a plain type for a nullable scalar; both must end up as
+// `X | null`, not `unknown`.
+function nullableBranch(node) {
   if (!Array.isArray(node.anyOf) || node.anyOf.length !== 2) return null
-  const reference = node.anyOf.find((branch) => branch.$ref)
+  const value = node.anyOf.find((branch) => branch.type !== 'null')
   const nothing = node.anyOf.find((branch) => branch.type === 'null')
-  return reference && nothing ? reference : null
+  return value && nothing ? value : null
 }
 
 function tsType(node) {
-  const optionalRef = nullableRef(node)
-  if (optionalRef) return `${tsType(optionalRef)} | null`
+  const optional = nullableBranch(node)
+  if (optional) return `${tsType(optional)} | null`
   if (node.$ref) return pascal(node.$ref.split('/').at(-1))
   if ('const' in node) return JSON.stringify(node.const)
   if (node.enum) return node.enum.map((item) => JSON.stringify(item)).join(' | ')

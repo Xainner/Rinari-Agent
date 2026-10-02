@@ -18,8 +18,9 @@ import {
 } from '../../components/ui/dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
 import ModelCatalog from './ModelCatalog'
-import { useProviderPresets } from './presets'
+import { providerCreateSettings, useProviderPresets } from './presets'
 import ProviderAuthPanel from './ProviderAuthPanel'
+import ExternalRuntimePanel from './ExternalRuntimePanel'
 
 type Step = 'preset' | 'fields' | 'testing' | 'models' | 'done'
 const WIZARD_DRAFT_KEY = 'rinari.provider-wizard.v1'
@@ -143,7 +144,7 @@ export default function ProviderWizard({
         alias,
         provider_type: preset.provider_type,
         auth_method: form.auth,
-        settings: { product_id: preset.id },
+        settings: providerCreateSettings(preset),
         endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
         account_hint:
           form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
@@ -420,6 +421,12 @@ export default function ProviderWizard({
         {step === 'testing' && (
           <div className="space-y-3">
             {form.auth === 'oauth' && createdAlias && <ProviderAuthPanel providerAlias={createdAlias} onConnected={() => void retryTest()} />}
+            {form.auth === 'external-cli' && (
+              <ExternalRuntimePanel
+                runtime={form.preset.runtime ?? 'claude-cli'}
+                providerRef={createdAlias ?? undefined}
+              />
+            )}
             <p className="text-sm text-[var(--text-muted)]">
               {working ? t('providers.testing') : (health ? t('providers.healthFail', { detail: health.detail }) : '')}
             </p>

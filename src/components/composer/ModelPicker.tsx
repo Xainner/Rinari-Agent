@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { brandForProvider } from '../../lib/providerBrand'
 import ProviderLogo from '../ProviderLogo'
 import { cn } from '../../lib/utils'
+import { modelDisplayName, modelTechnicalId } from '../../lib/modelDisplay'
 
 export interface ModelPickerProps {
   models: ModelSummary[]
@@ -97,9 +98,10 @@ export default function ModelPicker({
   const activeBrand = brandForProvider({ alias: activeProvider, endpoint: providerEndpoint(activeProvider) })
   const normalizedQuery = query.trim().toLowerCase()
   const matchingModels = normalizedQuery
-    ? models.filter((model) => [model.alias, model.provider, model.provider_model_id].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery))
+    ? models.filter((model) => [model.alias, model.provider, model.provider_model_id, modelDisplayName(model), modelTechnicalId(model)].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery))
     : models
-  const label = activeAlias ?? missingLabel ?? t('composer.noModel')
+  const activeEntry = activeModel ?? models.find((model) => model.alias === activeAlias)
+  const label = (activeEntry ? modelDisplayName(activeEntry) : activeAlias) ?? missingLabel ?? t('composer.noModel')
 
   return (
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) { setQuery(''); onDiscoverModels() } }}>
@@ -165,10 +167,13 @@ export default function ModelPicker({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium text-[var(--text)]">
-                    {model.alias}
+                    {modelDisplayName(model)}
                   </span>
-                  <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]">
-                    {model.provider ?? ''} · {model.provider_model_id}
+                  <span
+                    className="block truncate font-mono text-[11px] text-[var(--text-subtle)]"
+                    title={`${model.provider ?? ''} · ${modelTechnicalId(model)}`}
+                  >
+                    {model.provider ?? ''} · {modelTechnicalId(model)}
                   </span>
                 </span>
                 {(activeModel ? activeModel.id === model.id : model.active) && (

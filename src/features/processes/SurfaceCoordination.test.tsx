@@ -131,7 +131,7 @@ it('cerrar el dock no cierra el navegador del Engine, y el inspector de procesos
   vi.mocked(invoke).mockImplementation(async (command) => (command === 'browser_view_get' ? CONNECTED : { items: [], processes: [] }))
   workspace(true)
   const dock = await screen.findByTestId('session-dock')
-  fireEvent.click(screen.getByLabelText('Cerrar dock'))
+  fireEvent.click(screen.getByLabelText('Cerrar panel lateral'))
   await waitFor(() => expect(screen.queryByTestId('session-dock')).toBeNull())
   // El recurso sigue consultándose en segundo plano (indicador), no se cierra nada.
   const calls = vi.mocked(invoke).mock.calls.filter(([command]) => command === 'browser_view_get').length

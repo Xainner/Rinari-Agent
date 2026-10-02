@@ -25,8 +25,8 @@ export const BOARD_STORAGE_KEY = 'rinari.board.v1'
 export const BOARD_SCHEMA_VERSION = 3
 
 export const PANE_MIN_WIDTH = 480
-/** Chat mínimo acoplado (480) + dock por defecto (360) + separador: un panel
- * nuevo muestra su dock al lado del chat, no como drawer encima del composer. */
+/** Espacio para chat (480) + lateral (360) + separador cuando el usuario lo abra.
+ * El lateral de una sesión sin preferencias empieza cerrado. */
 export const PANE_DEFAULT_WIDTH = 860
 export const PANE_MAX_WIDTH = 1600
 export const SOFT_LIMIT_DEFAULT = 6
@@ -351,9 +351,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       peerReceive: true,
       peerSend: true,
     }
-    // Un panel nuevo abre su dock en Workspace, como siempre en Boards; una
-    // sesión con layout propio (Normal o un panel anterior) lo conserva.
-    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: true, surface: 'workspace' })
+    // Sin preferencias, el lateral empieza cerrado. Una sesión con layout
+    // propio (Normal o un panel anterior) lo conserva, abierto o cerrado.
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
     set((state) => {
       const panes = [...state.panes]
       const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1

@@ -428,7 +428,7 @@ export const en: Record<I18nKey, string> = {
   'composer.placeholder': 'Type a message…',
   'composer.placeholderStreaming': 'Generating response…',
   'composer.message': 'Message',
-  'composer.dropMedia': 'Drop your images or videos here',
+  'composer.dropFiles': 'Drop files here',
   'composer.attach': 'Attach images or videos',
   'composer.removeImage': 'Remove {name}',
   'composer.removeVideo': 'Remove video {name}',

@@ -85,6 +85,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const goNormal = useUIStore((state) => state.goNormal)
   const goSettings = useUIStore((state) => state.goSettings)
   const panes = useBoardStore((state) => state.panes)
+  const fitToView = useBoardStore((state) => state.fitToView)
   const focusedPaneId = useBoardStore((state) => state.focusedPaneId)
   const softLimit = useBoardStore((state) => state.softLimit)
   const addPane = useBoardStore((state) => state.addPane)
@@ -98,6 +99,39 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const [dialogOpen, setDialogOpen] = useState(false)
   const [closing, setClosing] = useState<{ paneId: string; sessionId: string } | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const paneRowRef = useRef<HTMLDivElement>(null)
+  const [fitOverflow, setFitOverflow] = useState(false)
+
+  // Flex reparte el espacio real después de reservar Añadir y las tiras. Solo
+  // observamos si se alcanzó la densidad mínima: nunca persistimos geometría.
+  useEffect(() => {
+    const row = paneRowRef.current
+    if (!fitToView || !row) {
+      setFitOverflow(false)
+      return
+    }
+    const measure = () => {
+      const overflow = row.scrollWidth > row.clientWidth + 1
+      setFitOverflow(overflow)
+      if (!overflow) row.scrollLeft = 0
+      if (canvasRef.current) canvasRef.current.scrollLeft = 0
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    // El aviso cambia la altura de la fila. Publicarlo fuera del ciclo del
+    // observer evita realimentar su propia entrega de notificaciones.
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    })
+    observer.observe(row)
+    for (const child of row.children) observer.observe(child)
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [fitToView, panes])
 
   // -- alta ----------------------------------------------------------------
   const warnSoftLimit = useCallback(() => {
@@ -232,7 +266,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
 
   return (
     <PeerNavigationProvider value={peerNavigation}>
-    <div className="board-root">
+    <div className={fitToView ? 'board-root is-fit-to-view' : 'board-root'}>
       {persistError && (
         <div role="alert" className="board-banner">{t('board.persistError')}</div>
       )}
@@ -240,6 +274,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
         <div role="status" className="board-banner">{t('board.attention.notPersisted')}</div>
       )}
       {panes.length > 0 && <BoardToolbar onAddPane={openAddDialog} />}
+      {fitToView && fitOverflow && <div role="status" className="board-banner">{t('board.fitOverflow')}</div>}
       <div ref={canvasRef} className="board-canvas" role="region" aria-label={t('board.title')}>
         {panes.length === 0 ? (
           <BoardEmptyState
@@ -248,28 +283,30 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
           />
         ) : (
           <>
-            {panes.map((pane, index) => {
-              const root = canonicalRoot(data.sessionsById[pane.sessionId])
-              return (
-                <Fragment key={pane.paneId}>
-                  <SessionPane
-                    pane={pane}
-                    focused={pane.paneId === focusedPaneId}
-                    sharedRoot={root !== null && sharedRoots.has(root)}
-                    canMoveLeft={index > 0}
-                    canMoveRight={index < panes.length - 1}
-                    onFocus={focusPane}
-                    onOpenSingle={openSingle}
-                    onRemove={removePane}
-                    onRemoveAndClose={(paneId, sessionId) => setClosing({ paneId, sessionId })}
-                    onOpenProviders={() => goSettings('providers')}
-                    peerMessaging={peerMessaging}
-                    peerLabelFor={peerLabelFor}
-                  />
-                  {!pane.collapsed && <PaneResizer pane={pane} />}
-                </Fragment>
-              )
-            })}
+            <div ref={paneRowRef} className="board-pane-row">
+              {panes.map((pane, index) => {
+                const root = canonicalRoot(data.sessionsById[pane.sessionId])
+                return (
+                  <Fragment key={pane.paneId}>
+                    <SessionPane
+                      pane={pane}
+                      focused={pane.paneId === focusedPaneId}
+                      sharedRoot={root !== null && sharedRoots.has(root)}
+                      canMoveLeft={index > 0}
+                      canMoveRight={index < panes.length - 1}
+                      onFocus={focusPane}
+                      onOpenSingle={openSingle}
+                      onRemove={removePane}
+                      onRemoveAndClose={(paneId, sessionId) => setClosing({ paneId, sessionId })}
+                      onOpenProviders={() => goSettings('providers')}
+                      peerMessaging={peerMessaging}
+                      peerLabelFor={peerLabelFor}
+                    />
+                    {!pane.collapsed && !fitToView && <PaneResizer pane={pane} />}
+                  </Fragment>
+                )
+              })}
+            </div>
             <div className="board-add-column">
               <button type="button" onClick={openAddDialog} className="board-add-button" aria-label={t('board.empty.addPane')} title={t('board.empty.addPane')}>
                 <Plus size={18} aria-hidden="true" />

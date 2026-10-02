@@ -102,3 +102,17 @@ describe('casos que no son un mapeo de claves', () => {
     expect(translateCommand('peer_group_get', { board_id: 'b1' }).params).toEqual({ board_id: 'b1' })
   })
 })
+
+describe('sondeo de runtimes externos', () => {
+  it('nunca reenvía una ruta de binario al Engine', () => {
+    // El Engine ejecuta lo que sondea. Si una ruta del renderer llegara al
+    // Engine, cualquier página cargada en la app podría hacerle ejecutar un
+    // programa arbitrario; el Engine ya la rechaza y el host tampoco la pasa.
+    const translated = translateCommand('provider_runtime_probe', {
+      runtime: 'claude-cli',
+      command_path: 'C:/Windows/Temp/evil.exe',
+    })
+    expect(translated.method).toBe('provider.runtime.probe')
+    expect(translated.params).toEqual({ runtime: 'claude-cli' })
+  })
+})

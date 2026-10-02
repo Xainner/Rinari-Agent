@@ -1259,8 +1259,9 @@ export const engineApi = {
   providerUsage: (ref: string, refresh = false) => platform().command<ProviderUsageSnapshot>('provider_usage_get', { ref, refresh }),
   providerDiagnostics: (ref: string) => platform().command<Record<string, unknown>>('provider_diagnostics_get', { ref }),
   /** Estado de un runtime externo (CLI) antes de que exista el provider. */
-  providerRuntimeProbe: (runtime: string, command_path?: string) =>
-    platform().command<{ runtime: ExternalRuntimeStatus }>('provider_runtime_probe', { runtime, command_path: command_path ?? null }),
+  /** Sin ruta a propósito: tomarla dejaría a la UI hacer que el Engine ejecute cualquier programa. */
+  providerRuntimeProbe: (runtime: string) =>
+    platform().command<{ runtime: ExternalRuntimeStatus }>('provider_runtime_probe', { runtime }),
   providerAuthStart: (ref: string, method: 'browser' | 'device') => platform().command<ProviderAuthSnapshot>('provider_auth_start', { ref, method }),
   providerAuthGet: (ref: string, operation_id?: string) => platform().command<ProviderAuthSnapshot>('provider_auth_get', { ref, operation_id }),
   providerAuthCancel: (ref: string) => platform().command<ProviderAuthSnapshot>('provider_auth_cancel', { ref }),

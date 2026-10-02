@@ -128,13 +128,30 @@ documentado; lo demás no se presenta como terminado.
   Pro del dueño: `authMethod: claude.ai`, la tarjeta pasó sola a conectado y
   un turno lo respondió Claude Opus 5.5. Ver
   `docs/evidence/claude-subscription-2026-10-01/`.
-- **Esfuerzo de razonamiento** — `PARTIAL`. Se envían los cinco niveles que
-  acepta `--effort`; `none`, `minimal` y `ultra` no se mandan porque el CLI
-  los descarta en silencio. La UI sigue ofreciéndolos para todos los
-  proveedores: haría falta que el Engine publique los niveles soportados por
-  modelo para que el selector se ajuste.
-- **Thinking** — `DONE` para el transporte: los bloques llegan como items con
-  su firma. Activar el razonamiento extendido no depende de Rinari.
+- **Esfuerzo de razonamiento** — `DONE` (2026-10-02). El Engine publica por
+  modelo los cinco niveles que acepta `--effort` y el selector habilita
+  exactamente esos; `none`, `minimal` y `ultra` quedan deshabilitados. Un
+  turno real con «Alto» completa.
+- **`ultracode`** — no se ofrece, a propósito. El CLI lo acepta sin aviso,
+  pero es un modo que lanza workflows y agentes propios con el esfuerzo sin
+  cambiar: convertiría a Claude Code en un segundo agente dentro de Rinari
+  (plan §3.1 y §13). El tope es «Máximo».
+- **Thinking** — los bloques viajan como items, pero nada los muestra: Rinari
+  no expone el razonamiento privado del modelo (AGENTS.md). Lo que el usuario
+  controla y ve es el nivel de esfuerzo.
+- **Modelos de la cuenta** — `OPEN`. El modo print del CLI no lista los
+  modelos de un plan: se ofrecen los alias, y uno no incluido (Fable en Pro)
+  falla con un error claro en vez de una respuesta falsa.
+- **Modelo real en la UI** — `OPEN`. Se resuelve (`opus` → `claude-opus-5-5`)
+  pero no se guarda ni se muestra; el selector agrupa por el alias técnico
+  del proveedor, no por el nombre del producto.
+- **Verificar `apiKeySource` por turno** — `OPEN` (propuesto). El evento de
+  inicio del CLI dice qué credencial usó; comprobarlo en cada turno cubriría
+  fuentes que el saneamiento del entorno no ve, como un `apiKeyHelper` en
+  ajustes administrados.
+- **`onStateChange` de `ExternalRuntimePanel`** — `OPEN`, latente. Prop sin
+  uso; si un padre le pasara una función nueva en cada render, el panel
+  relanzaría `claude` en bucle.
 - **Visión, continuations, cuota remota** — fuera de alcance de esta entrega.
 
 ### Vista Flujos (2026-09-18, plan 06)

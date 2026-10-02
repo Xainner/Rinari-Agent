@@ -4778,11 +4778,6 @@
           "name": "runtime",
           "type": "String",
           "optional": false
-        },
-        {
-          "name": "command_path",
-          "type": "String",
-          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -4793,11 +4788,6 @@
           "key": "runtime",
           "from": "runtime",
           "optional": false
-        },
-        {
-          "key": "command_path",
-          "from": "command_path",
-          "optional": true
         }
       ],
       "passthrough": null,

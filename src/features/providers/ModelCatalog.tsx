@@ -7,6 +7,7 @@ import {
   type ModelSummary,
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
+import { modelTechnicalId } from '../../lib/modelDisplay'
 
 /**
  * Catálogo de modelos de un proveedor: descubiertos (guardar con alias)
@@ -151,8 +152,15 @@ export default function ModelCatalog({
           key={item.provider_model_id}
           className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-[var(--border)] px-3 py-2"
         >
-          <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-[var(--text)]">
-            {item.provider_model_id}
+          <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text)]">
+            {typeof item.capabilities?.label === 'string' && item.capabilities.label ? (
+              <>
+                {item.capabilities.label}{' '}
+                <span className="font-mono text-[11px] text-[var(--text-subtle)]">{modelTechnicalId(item)}</span>
+              </>
+            ) : (
+              <span className="font-mono">{item.provider_model_id}</span>
+            )}
           </span>
           <input
             value={aliases[item.provider_model_id] ?? ''}

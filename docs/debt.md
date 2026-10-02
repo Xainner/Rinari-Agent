@@ -139,19 +139,20 @@ documentado; lo demás no se presenta como terminado.
 - **Thinking** — los bloques viajan como items, pero nada los muestra: Rinari
   no expone el razonamiento privado del modelo (AGENTS.md). Lo que el usuario
   controla y ve es el nivel de esfuerzo.
-- **Modelos de la cuenta** — `OPEN`. El modo print del CLI no lista los
-  modelos de un plan: se ofrecen los alias, y uno no incluido (Fable en Pro)
-  falla con un error claro en vez de una respuesta falsa.
-- **Modelo real en la UI** — `OPEN`. Se resuelve (`opus` → `claude-opus-5-5`)
-  pero no se guarda ni se muestra; el selector agrupa por el alias técnico
-  del proveedor, no por el nombre del producto.
-- **Verificar `apiKeySource` por turno** — `OPEN` (propuesto). El evento de
-  inicio del CLI dice qué credencial usó; comprobarlo en cada turno cubriría
-  fuentes que el saneamiento del entorno no ve, como un `apiKeyHelper` en
-  ajustes administrados.
-- **`onStateChange` de `ExternalRuntimePanel`** — `OPEN`, latente. Prop sin
-  uso; si un padre le pasara una función nueva en cada render, el panel
-  relanzaría `claude` en bucle.
+- **Modelos de la cuenta** — `DONE` (2026-10-02). El Engine pide al CLI su
+  selector en vivo con `initialize`, sin inferencia: nombre real, modelo
+  resuelto y niveles de esfuerzo **por modelo** (Haiku 4.5 no admite
+  ninguno; los 4.6 no llegan a `xhigh`). Fable se sigue ofreciendo: con
+  créditos funciona y sin ellos falla con un error claro.
+- **Modelo real en la UI** — `DONE`. El selector y el catálogo muestran el
+  nombre real («Opus 5.5») y, debajo, el modelo concreto
+  (`claude-opus-5-5`). Si el usuario eligió un alias propio, se respeta.
+  Sigue `OPEN` que el encabezado del grupo use el alias técnico del
+  proveedor: cambiarlo afecta a todos los proveedores.
+- **Verificar `apiKeySource` por turno** — `DONE`. Cualquier credencial que
+  no sea la suscripción corta el turno antes de que el modelo responda.
+- **`onStateChange` de `ExternalRuntimePanel`** — `DONE`. El callback va por
+  ref y ya no puede relanzar el sondeo.
 - **Visión, continuations, cuota remota** — fuera de alcance de esta entrega.
 
 ### Vista Flujos (2026-09-18, plan 06)

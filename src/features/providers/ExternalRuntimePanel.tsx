@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Download, LogIn, RefreshCw, ShieldAlert } from 'lucide-react'
 import { commandMessage, engineApi, type ExternalRuntimeStatus } from '../../services/engine'
 import { useI18n } from '../../i18n'
@@ -26,6 +26,10 @@ export default function ExternalRuntimePanel({
   const [status, setStatus] = useState<ExternalRuntimeStatus | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  // Por ref: si el sondeo dependiera del callback, un padre que pasara una
+  // función nueva en cada render relanzaría `claude` en bucle.
+  const onStateChangeRef = useRef(onStateChange)
+  onStateChangeRef.current = onStateChange
 
   const check = useCallback(async () => {
     setBusy(true)
@@ -36,15 +40,15 @@ export default function ExternalRuntimePanel({
             .runtime ?? null
         : (await engineApi.providerRuntimeProbe(runtime)).runtime
       setStatus(next)
-      onStateChange?.(next)
+      onStateChangeRef.current?.(next)
     } catch (err) {
       setError(commandMessage(err))
       setStatus(null)
-      onStateChange?.(null)
+      onStateChangeRef.current?.(null)
     } finally {
       setBusy(false)
     }
-  }, [providerRef, runtime, onStateChange])
+  }, [providerRef, runtime])
 
   useEffect(() => {
     void check()

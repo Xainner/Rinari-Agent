@@ -1,17 +1,19 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import { AppSidebar, type AppSidebarProps } from './AppSidebar'
 import { useUIStore } from '../../stores/ui'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const now = '2026-09-09T00:00:00Z'
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  useProjectExpansionStore.setState({ choices: {}, query: '' })
 })
 
 function project(id: string, name: string, archived = false): ProjectSummary {
@@ -199,6 +201,10 @@ it('reveals project sessions and clears search when creating from a collapsed pr
   const search = screen.getByPlaceholderText('Buscar proyectos y sesiones…')
   await user.type(search, 'Rinari')
   await user.click(screen.getByLabelText('Nueva sesión en Rinari CLI'))
+  // A click alone is not confirmation. The controller reveals on Engine success.
+  expect((search as HTMLInputElement).value).toBe('Rinari')
+  expect(useProjectExpansionStore.getState().choices.project).toBe(false)
+  act(() => useProjectExpansionStore.getState().reveal('project'))
   expect((search as HTMLInputElement).value).toBe('')
   expect(screen.getByText('Fix governor')).toBeTruthy()
   expect(props.onNewProjectChat).toHaveBeenCalledWith('project')

@@ -11,6 +11,7 @@ import {
 import { translate } from '../../i18n'
 import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
+import { revealSessionProject } from '../projects/revealSessionProject'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -389,6 +390,7 @@ export function useSessionList(options: {
       historyLoaded.current.add(result.session.id)
       setHistoryPhases((current) => ({ ...current, [result.session.id]: 'loaded' }))
       if (shouldActivate) activate(result.session.id)
+      await revealSessionProject(result.session)
       void refreshSessions()
       return result.session.id
     } catch (err) {

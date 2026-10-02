@@ -18,6 +18,7 @@ import {
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { useBoardStore } from '../../stores/board'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const SEARCH_THRESHOLD = 8
 
@@ -116,6 +117,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDi
     try {
       // project.add registra o deduplica el proyecto sin crear sesiones.
       const added = await engineApi.projectAdd(picked)
+      if (added.created) useProjectExpansionStore.getState().reveal(added.project.id)
       await commands.refreshProjects()
       setBusy(false)
       chooseProject(added.project)

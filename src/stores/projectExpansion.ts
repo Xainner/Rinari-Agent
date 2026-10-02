@@ -1,3 +1,5 @@
+import { create } from 'zustand'
+
 /**
  * Qué proyectos de la barra lateral están desplegados.
  *
@@ -37,3 +39,31 @@ export function isProjectExpanded(
 ): boolean {
   return choices[projectId] ?? projectId === activeProjectId
 }
+
+interface ProjectExpansionState {
+  choices: ProjectExpansion
+  query: string
+  setQuery: (query: string) => void
+  toggle: (projectId: string, activeProjectId: string | null) => void
+  reveal: (projectId: string) => void
+}
+
+/** One reactive preference for every creation surface; search is not persisted. */
+export const useProjectExpansionStore = create<ProjectExpansionState>((set) => ({
+  choices: readProjectExpansion(),
+  query: '',
+  setQuery: (query) => set({ query }),
+  toggle: (projectId, activeProjectId) => set((state) => {
+    const choices = { ...state.choices, [projectId]: !isProjectExpanded(state.choices, projectId, activeProjectId) }
+    writeProjectExpansion(choices)
+    return { choices }
+  }),
+  reveal: (projectId) => {
+    if (!projectId) return
+    set((state) => {
+      const choices = { ...state.choices, [projectId]: true }
+      writeProjectExpansion(choices)
+      return { choices, query: '' }
+    })
+  },
+}))

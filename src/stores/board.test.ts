@@ -13,6 +13,8 @@ import {
   useBoardStore,
 } from './board'
 import { resetSessionDockForTests, useSessionDockStore } from './sessionDock'
+import { useComposerStore } from './composer'
+import { useBoardAttentionStore } from './boardAttention'
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -20,6 +22,43 @@ beforeEach(() => {
 })
 
 describe('board layout store', () => {
+  it.each(['expanded', 'collapsed', 'focus'] as const)('removes all %s panes atomically, retaining session data and board preferences', (mode) => {
+    const store = useBoardStore.getState()
+    const a = store.addPane('ses_a')
+    store.addPane('ses_b')
+    store.setSoftLimit(4)
+    store.setMessagingEnabled(true)
+    store.setNotifications({ toasts: false })
+    if (mode === 'collapsed') store.collapseAll()
+    if (mode === 'focus') store.setFocusMode(true)
+    useBoardStore.setState({ paneErrors: { [a.paneId]: 'offline' } })
+    useSessionDockStore.getState().reveal('ses_a', 'files')
+    useComposerStore.getState().setTextFor('ses_a', 'draft to keep')
+    useBoardAttentionStore.getState().initializeSessionAttention('ses_a', [])
+    useBoardAttentionStore.getState().observeTerminal('ses_a', 't1', 'completed', 'live')
+    const before = useBoardStore.getState()
+    const dock = useSessionDockStore.getState().layoutFor('ses_a')
+    const attention = useBoardAttentionStore.getState().sessions
+    const transitions: number[] = []
+    const unsubscribe = useBoardStore.subscribe((state) => transitions.push(state.panes.length))
+    store.removeAllPanes()
+    unsubscribe()
+    expect(transitions).toEqual([0])
+    expect(useBoardStore.getState()).toMatchObject({ panes: [], focusedPaneId: null, lastExpandedPaneId: null, focusMode: false, focusModeSnapshot: null, paneErrors: {}, boardId: before.boardId, softLimit: 4, messagingEnabled: true, notifications: before.notifications })
+    expect(useSessionDockStore.getState().layoutFor('ses_a')).toEqual(dock)
+    expect(useComposerStore.getState().getDraft('ses_a').text).toBe('draft to keep')
+    expect(useBoardAttentionStore.getState().sessions).toBe(attention)
+    flushBoardPersistence()
+    const persisted = JSON.parse(localStorage.getItem(BOARD_STORAGE_KEY)!)
+    expect(persisted.panes).toEqual([])
+    expect(normalizeBoard(persisted)).toMatchObject({ panes: [], focusMode: false, focusedPaneId: null })
+    store.removeAllPanes()
+    expect(useBoardStore.getState().panes).toEqual([])
+    const next = store.addPane('ses_a')
+    expect(next.collapsed).toBe(false)
+    expect(useSessionDockStore.getState().layoutFor('ses_a')).toEqual(dock)
+  })
+
   it('adds panes once per session, focuses them and keeps order', () => {
     const store = useBoardStore.getState()
     const a = store.addPane('ses_a')

@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { CheckCheck, ChevronsLeftRight, ChevronsRightLeft, Crosshair, ListCollapse, Plus } from 'lucide-react'
+import { CheckCheck, ChevronsLeftRight, ChevronsRightLeft, Crosshair, ListCollapse, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { useBoardStore } from '../../stores/board'
@@ -10,6 +10,7 @@ import {
   collapseFinishedPanes,
   expandAllPanes,
   markAllBoardResultsRead,
+  removeAllPanes,
   toggleFocusMode,
 } from './boardCommands'
 
@@ -60,6 +61,9 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
         </button>
         <button type="button" className="board-toolbar-button" disabled={counts.unreadResultCount === 0} onClick={() => markAllBoardResultsRead()} title={t('board.toolbar.markAllRead')}>
           <CheckCheck size={14} aria-hidden="true" /><span>{t('board.toolbar.markAllRead')}</span>
+        </button>
+        <button type="button" className="board-toolbar-button" disabled={paneCount === 0} onClick={removeAllPanes} aria-label={t('board.toolbar.removeAll')} title={t('board.toolbar.removeAllHint')}>
+          <X size={14} aria-hidden="true" /><span>{t('board.toolbar.removeAll')}</span>
         </button>
         <button type="button" className="board-toolbar-button is-primary" onClick={onAddPane} title={t('board.toolbar.addPane')}>
           <Plus size={14} aria-hidden="true" /><span>{t('board.toolbar.addPane')}</span>

@@ -344,8 +344,8 @@ export function AppSidebar({
                 <MoreHorizontal size={14} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <div className="px-2.5 py-1.5 font-mono text-[10px] break-all text-[var(--text-subtle)]">{session.id}</div>
+            <DropdownMenuContent align="end" className="w-max max-w-[calc(100vw-16px)]">
+              <div title={session.id} className="truncate px-2.5 py-1.5 font-mono text-[10px] text-[var(--text-subtle)]">{session.id}</div>
               <DropdownMenuItem onSelect={() => {
                 void copyText(session.id).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
               }}><Copy size={13} /> {t('sidebar.copySessionId')}</DropdownMenuItem>

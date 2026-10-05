@@ -10,6 +10,7 @@ import TurnTimelineView from '../features/activity/TurnTimelineView'
 import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
+import { ChatFileDropZone } from './composer/ChatFileDropZone'
 import type { PaneMentionTarget } from './composer/paneMention'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
@@ -361,6 +362,7 @@ function ChatView({
   )
 
   return (
+    <ChatFileDropZone draftKey={sessionId || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
@@ -433,6 +435,7 @@ function ChatView({
         </>
       )}
     </HomeWelcome>
+    </ChatFileDropZone>
   )
 }
 

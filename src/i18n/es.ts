@@ -433,7 +433,7 @@ export const es = {
   'composer.placeholder': 'Escribe un mensaje…',
   'composer.placeholderStreaming': 'Generando respuesta…',
   'composer.message': 'Mensaje',
-  'composer.dropMedia': 'Suelta las imágenes o videos aquí',
+  'composer.dropFiles': 'Suelta los archivos aquí',
   'composer.attach': 'Adjuntar imágenes o videos',
   'composer.removeImage': 'Quitar {name}',
   'composer.removeVideo': 'Quitar video {name}',

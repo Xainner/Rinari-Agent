@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { ArrowUp, Brain, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
@@ -14,6 +14,7 @@ import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../li
 import ModelPicker from './ModelPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
+import { useChatFileReceiver } from './ChatFileDropZone'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
@@ -509,7 +510,9 @@ export default function Composer({
   }
 
   function addAttachment(item: AttachmentRef) {
-    if (attachments.length >= 8 && !attachments.some((current) => current.path === item.path && current.name === item.name)) {
+    const currentAttachments = useComposerStore.getState().getDraft(draftKey).attachments
+    if (currentAttachments.some(current => current.path === item.path && current.name === item.name)) return
+    if (currentAttachments.length >= 8) {
       setAttachmentNotice(t('attach.limitCount'))
       return
     }
@@ -581,10 +584,7 @@ export default function Composer({
     reader.readAsDataURL(file)
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault()
-    for (const file of Array.from(event.dataTransfer.files)) addBrowserFile(file)
-  }
+  useChatFileReceiver(files => { for (const file of files) addBrowserFile(file) })
 
   function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
     for (const file of Array.from(event.clipboardData.files)) addBrowserFile(file)
@@ -629,7 +629,7 @@ export default function Composer({
 
   return (
     <div ref={rootRef} className="composer-root relative">
-      <div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
+      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (

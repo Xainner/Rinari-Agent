@@ -37,6 +37,18 @@ import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
 const isDev = Boolean(DEV_SERVER)
 const UPDATE_E2E_ENABLED = process.env.RINARI_BUILD_UPDATE_E2E === '1'
+
+// Los accesos directos abrían la app con la carpeta de instalación como
+// directorio de trabajo, y el Engine y todo lo que lanza (MCP, git, node…) la
+// heredaban: un hijo vivo bloqueaba la carpeta y la actualización fallaba con
+// «os error 32». La app instalada trabaja desde la carpeta del usuario.
+if (app.isPackaged) {
+  try {
+    process.chdir(app.getPath('home'))
+  } catch (error) {
+    console.warn('[rinari] no se pudo cambiar el directorio de trabajo:', error)
+  }
+}
 const updateE2EProfile = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_PROFILE : undefined
 if (updateE2EProfile) app.setPath('userData', updateE2EProfile)
 

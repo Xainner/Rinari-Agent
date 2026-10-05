@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Brain, Check, Copy, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, X, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
+import { ArrowUpRight, Brain, Check, Copy, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
-import { useBlockingOverlay } from '../stores/overlay'
+import { AttachmentPreview } from './AttachmentPreview'
 import Markdown from './Markdown'
 
 function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
@@ -26,10 +26,6 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
     }).catch(() => undefined).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [attachment.kind, attachment.uri, previewUrl])
-
-  // El visor cubre la ventana: mientras está abierto se retiran las vistas
-  // nativas, que si no quedarían por encima de él (§8.3).
-  useBlockingOverlay(open)
 
   async function showPreview() {
     setOpen(true)
@@ -53,12 +49,12 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
       <span className="truncate">{attachment.name}</span>
       {loading && <LoaderCircle size={11} className="animate-spin" />}
     </button>
-    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={t('attach.previewOf', { name: attachment.name })} onClick={() => setOpen(false)}>
-      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3"><Eye size={15} className="text-[var(--accent-2)]" /><span className="min-w-0 flex-1 truncate text-sm text-[var(--text)]">{attachment.name}</span><button type="button" aria-label={t('attach.closePreview')} onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-[var(--bg-hover)]"><X size={15} /></button></div>
-        <div className="min-h-32 overflow-auto p-4">{loading && <div className="flex justify-center py-8"><LoaderCircle size={16} className="animate-spin" /></div>}{!loading && previewUrl && <img src={previewUrl} alt={attachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}{!loading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}{!loading && !previewUrl && previewText === undefined && <p className="py-8 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}</div>
-      </div>
-    </div>}
+    <AttachmentPreview name={attachment.name} open={open} onOpenChange={setOpen}>
+      {loading && <div className="flex justify-center py-8"><LoaderCircle size={16} className="animate-spin" /></div>}
+      {!loading && previewUrl && <img src={previewUrl} alt={attachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}
+      {!loading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}
+      {!loading && !previewUrl && previewText === undefined && <p className="py-8 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}
+    </AttachmentPreview>
   </>
 }
 

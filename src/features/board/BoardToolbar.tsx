@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { CheckCheck, ChevronsLeftRight, ChevronsRightLeft, Crosshair, ListCollapse, Plus } from 'lucide-react'
+import { CheckCheck, ChevronsLeftRight, ChevronsRightLeft, Crosshair, ListCollapse, PanelsTopLeft, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { useBoardStore } from '../../stores/board'
@@ -11,6 +11,7 @@ import {
   expandAllPanes,
   markAllBoardResultsRead,
   toggleFocusMode,
+  toggleFitToView,
 } from './boardCommands'
 
 export interface BoardToolbarProps {
@@ -26,6 +27,7 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
   const { t } = useI18n()
   const paneCount = useBoardStore((state) => state.panes.length)
   const focusMode = useBoardStore((state) => state.focusMode)
+  const fitToView = useBoardStore((state) => state.fitToView)
   const allCollapsed = useBoardStore((state) => state.panes.length > 0 && state.panes.every((pane) => pane.collapsed))
   const anyCollapsed = useBoardStore((state) => state.panes.some((pane) => pane.collapsed))
   const counts = useBoardStatusStore(selectAttentionCounts)
@@ -46,6 +48,9 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
         {counts.unreadResultPaneCount > 0 && <span className="board-toolbar-count is-unread" data-testid="count-unread">{t('board.toolbar.unread', { n: counts.unreadResultPaneCount })}</span>}
       </div>
       <div className="board-toolbar-actions">
+        <button type="button" className={cn('board-toolbar-button', fitToView && 'is-active')} aria-pressed={fitToView} aria-label={t('board.toolbar.fitToView')} onClick={toggleFitToView} title={t('board.toolbar.fitToViewHint')}>
+          <PanelsTopLeft size={14} aria-hidden="true" /><span>{t('board.toolbar.fitToView')}</span>
+        </button>
         <button type="button" className="board-toolbar-button" disabled={paneCount === 0 || allCollapsed} onClick={collapseAllPanes} title={t('board.toolbar.collapseAll')}>
           <ChevronsRightLeft size={14} aria-hidden="true" /><span>{t('board.toolbar.collapseAll')}</span>
         </button>

@@ -38,6 +38,18 @@ export function expandAllPanes(): void {
   useBoardStore.getState().expandAll()
 }
 
+/** Con tiras presentes, pulsar Ajustar siempre revela todo, incluso si el
+ * modo ya estaba activo. Solo vuelve a manual cuando todos están visibles. */
+export function toggleFitToView(): void {
+  const state = useBoardStore.getState()
+  if (!state.fitToView || state.focusMode || state.panes.some((pane) => pane.collapsed)) {
+    state.expandAll()
+    state.setFitToView(true)
+  } else {
+    state.setFitToView(false)
+  }
+}
+
 export function removeAllPanes(): void {
   useBoardStore.getState().removeAllPanes()
 }

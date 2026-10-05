@@ -710,7 +710,7 @@ fn install_payload<F: FnMut(SetupProgress)>(plan: &SetupPlan, callback: &mut F) 
             100,
         );
         if target.exists() {
-            fs::rename(&target, &backup)?;
+            rename_installation(&target, &backup)?;
         }
         if let Err(error) = fs::rename(&stage, &target) {
             if backup.exists() {
@@ -1299,8 +1299,148 @@ pub fn open_install_log() -> Result<()> {
     open_path(&PathBuf::from(status()?.install_dir).join(LOG_NAME))
 }
 pub fn launch_agent() -> Result<()> {
-    Command::new(PathBuf::from(status()?.install_dir).join("rinari-agent.exe")).spawn()?;
+    let mut command = Command::new(PathBuf::from(status()?.install_dir).join("rinari-agent.exe"));
+    // Never from the installation folder: whatever the app starts inherits
+    // its working directory, and a child still alive there blocks the next
+    // update from moving the folder.
+    if let Some(home) = env::var_os("USERPROFILE") {
+        command.current_dir(home);
+    }
+    command.spawn()?;
     Ok(())
+}
+
+/// Moves the installation folder aside, retrying while something holds it.
+///
+/// Windows refuses to rename a folder while a process has a file open in it or
+/// uses it as its working directory (os error 32). It can be brief (the app's
+/// processes finishing, an antivirus scan), so it is retried for a while; if
+/// it persists, the error names the folder and the processes holding files.
+fn rename_installation(from: &Path, to: &Path) -> Result<()> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        match fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(error)
+                if matches!(error.raw_os_error(), Some(5 | 32 | 33))
+                    && std::time::Instant::now() < deadline =>
+            {
+                thread::sleep(Duration::from_millis(500));
+            }
+            Err(error) => {
+                let holders = processes_holding(from);
+                let who = if holders.is_empty() {
+                    String::new()
+                } else {
+                    format!(" Held by: {}.", holders.join(", "))
+                };
+                return Err(SetupError(format!(
+                    "Could not move {}: {error}.{who}",
+                    from.display()
+                )));
+            }
+        }
+    }
+}
+
+/// Files under `dir`, bounded: enough for Restart Manager to name the holders.
+fn files_under(dir: &Path, limit: usize) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(folder) = pending.pop() {
+        let Ok(entries) = fs::read_dir(&folder) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else {
+                files.push(path);
+                if files.len() >= limit {
+                    return files;
+                }
+            }
+        }
+    }
+    files
+}
+
+#[cfg(windows)]
+fn processes_holding(dir: &Path) -> Vec<String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::System::RestartManager::{
+        RmEndSession, RmGetList, RmRegisterResources, RmStartSession, CCH_RM_SESSION_KEY,
+        RM_PROCESS_INFO,
+    };
+    let wide: Vec<Vec<u16>> = files_under(dir, 4000)
+        .iter()
+        .map(|path| path.as_os_str().encode_wide().chain(Some(0)).collect())
+        .collect();
+    let pointers: Vec<*const u16> = wide.iter().map(|path| path.as_ptr()).collect();
+    let mut names = Vec::new();
+    // SAFETY: Restart Manager session over buffers that outlive every call;
+    // the session is always ended.
+    unsafe {
+        let mut session = 0u32;
+        let mut key = [0u16; CCH_RM_SESSION_KEY as usize + 1];
+        if RmStartSession(&mut session, 0, key.as_mut_ptr()) != 0 {
+            return names;
+        }
+        if RmRegisterResources(
+            session,
+            pointers.len() as u32,
+            pointers.as_ptr(),
+            0,
+            std::ptr::null(),
+            0,
+            std::ptr::null(),
+        ) == 0
+        {
+            let mut needed = 0u32;
+            let mut count = 0u32;
+            let mut reasons = 0u32;
+            let first = RmGetList(
+                session,
+                &mut needed,
+                &mut count,
+                std::ptr::null_mut(),
+                &mut reasons,
+            );
+            if first == 234 && needed > 0 {
+                let mut info: Vec<RM_PROCESS_INFO> = vec![std::mem::zeroed(); needed as usize];
+                count = needed;
+                if RmGetList(
+                    session,
+                    &mut needed,
+                    &mut count,
+                    info.as_mut_ptr(),
+                    &mut reasons,
+                ) == 0
+                {
+                    for item in &info[..count as usize] {
+                        let end = item
+                            .strAppName
+                            .iter()
+                            .position(|c| *c == 0)
+                            .unwrap_or(item.strAppName.len());
+                        names.push(format!(
+                            "{} (pid {})",
+                            String::from_utf16_lossy(&item.strAppName[..end]),
+                            item.Process.dwProcessId
+                        ));
+                    }
+                }
+            }
+        }
+        RmEndSession(session);
+    }
+    names
+}
+
+#[cfg(not(windows))]
+fn processes_holding(_dir: &Path) -> Vec<String> {
+    Vec::new()
 }
 fn open_path(path: &Path) -> Result<()> {
     Command::new("explorer.exe").arg(path).spawn()?;
@@ -1649,7 +1789,7 @@ mod registry {
 
     fn update_shortcut(link: &Path, target: &Path, create: bool) -> Result<()> {
         let script = if create {
-            "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut($env:RINARI_LINK);$s.TargetPath=$env:RINARI_TARGET;$s.WorkingDirectory=(Split-Path -LiteralPath $env:RINARI_TARGET);$s.Save()"
+            "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut($env:RINARI_LINK);$s.TargetPath=$env:RINARI_TARGET;$s.WorkingDirectory='%USERPROFILE%';$s.Save()"
         } else {
             "$w=New-Object -ComObject WScript.Shell;if(Test-Path -LiteralPath $env:RINARI_LINK){$s=$w.CreateShortcut($env:RINARI_LINK);if($s.TargetPath -ieq $env:RINARI_TARGET){Remove-Item -LiteralPath $env:RINARI_LINK -Force}}"
         };
@@ -1761,6 +1901,38 @@ mod tests {
         );
         assert!(!is_within(sibling, engine));
         assert!(!is_within(Path::new(r"C:\Python314\python.exe"), engine));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn moving_the_installation_waits_for_a_held_file_and_names_the_holder() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = env::temp_dir().join(format!("rinari-lock-test-{}", Uuid::new_v4()));
+        let from = root.join("app");
+        let to = root.join("app.old");
+        fs::create_dir_all(&from).unwrap();
+        fs::write(from.join("engine.dll"), b"x").unwrap();
+        // Held without sharing, like a process still using the installation.
+        let held = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(from.join("engine.dll"))
+            .unwrap();
+        let holders = processes_holding(&from);
+        assert!(
+            holders
+                .iter()
+                .any(|name| name.contains(&format!("pid {}", std::process::id()))),
+            "{holders:?}"
+        );
+        let release = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(1500));
+            drop(held);
+        });
+        rename_installation(&from, &to).unwrap();
+        release.join().unwrap();
+        assert!(to.join("engine.dll").is_file());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(windows)]

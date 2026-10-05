@@ -7,11 +7,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 
 import { useBoardStore, defaultBoard } from '../../stores/board'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import AddPaneDialog from './AddPaneDialog'
 import { BoardHarness, engineFixture, projectFixture, sessionFixture } from './testUtils'
 
 beforeEach(() => {
   window.localStorage.clear()
+  useProjectExpansionStore.setState({ choices: {}, query: '' })
   useBoardStore.getState().hydrate(defaultBoard())
   vi.mocked(invoke).mockReset()
 })
@@ -63,6 +65,22 @@ it('registers a picked folder with project.add and never calls project.open', as
   expect(engine.createSession).toHaveBeenCalledWith('proj_new', { activate: false })
   expect(engine.openProject).not.toHaveBeenCalled()
   expect(onAdded).toHaveBeenCalledWith('ses_folder')
+  expect(useProjectExpansionStore.getState().choices.proj_new).toBe(true)
+})
+
+it('does not reveal an existing folder when duplicate creation is cancelled', async () => {
+  useBoardStore.getState().addPane('ses_a')
+  useProjectExpansionStore.setState({ choices: { proj_a: false }, query: 'hidden' })
+  vi.mocked(openFolderDialog).mockResolvedValue(['/repo/proj_a'])
+  vi.mocked(invoke).mockResolvedValue({ project: projects[0], created: false })
+  const engine = engineFixture({ projects, sessions })
+  render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} /></BoardHarness>)
+  await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))
+  await screen.findByRole('alertdialog')
+  await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+  expect(engine.createSession).not.toHaveBeenCalled()
+  expect(useProjectExpansionStore.getState().choices.proj_a).toBe(false)
+  expect(useProjectExpansionStore.getState().query).toBe('hidden')
 })
 
 it('lists existing sessions not on the board and adds them without creating anything', async () => {

@@ -12,16 +12,40 @@ import {
   normalizeBoard,
   useBoardStore,
 } from './board'
-import { resetSessionDockForTests, useSessionDockStore } from './sessionDock'
+import { SESSION_DOCK_STORAGE_KEY, dockNamespaceKey, resetSessionDockForTests, useSessionDockStore } from './sessionDock'
 import { useComposerStore } from './composer'
 import { useBoardAttentionStore } from './boardAttention'
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetSessionDockForTests()
   useBoardStore.getState().hydrate(defaultBoard())
 })
 
 describe('board layout store', () => {
+  it('persists a closed side panel for a session without preferences', () => {
+    useBoardStore.getState().addPane('ses_new')
+    expect(useSessionDockStore.getState().layoutFor('ses_new')).toMatchObject({ visible: false, activeSurface: 'workspace' })
+    const stored = JSON.parse(localStorage.getItem(SESSION_DOCK_STORAGE_KEY)!)
+    expect(stored[dockNamespaceKey(null, 'ses_new')].visible).toBe(false)
+  })
+
+  it.each([true, false])('keeps a saved visible=%s layout on add, focus and remove/re-add', (visible) => {
+    const dock = useSessionDockStore.getState()
+    dock.update('ses_saved', { visible, activeSurface: 'files', widthPx: 430, workspaceTab: 'tasks' })
+    const saved = dock.layoutFor('ses_saved')
+    const board = useBoardStore.getState()
+    const pane = board.addPane('ses_saved')
+    board.addPane('ses_other')
+    const other = dock.layoutFor('ses_other')
+    expect(board.addPane('ses_saved').paneId).toBe(pane.paneId)
+    expect(dock.layoutFor('ses_saved')).toEqual(saved)
+    board.removePane(pane.paneId)
+    board.addPane('ses_saved')
+    expect(dock.layoutFor('ses_saved')).toEqual(saved)
+    expect(dock.layoutFor('ses_other')).toEqual(other)
+  })
+
   it.each(['expanded', 'collapsed', 'focus'] as const)('removes all %s panes atomically, retaining session data and board preferences', (mode) => {
     const store = useBoardStore.getState()
     const a = store.addPane('ses_a')
@@ -101,7 +125,7 @@ describe('board layout store', () => {
     expect(useBoardStore.getState().panes[0]).not.toHaveProperty('dockTab')
   })
 
-  it('persists only layout preferences under the v1 key with internal schema 3', () => {
+  it('persists only layout preferences under the v1 key with internal schema 4', () => {
     useBoardStore.getState().addPane('ses_a')
     useBoardStore.getState().setSoftLimit(3)
     flushBoardPersistence()
@@ -111,6 +135,41 @@ describe('board layout store', () => {
     expect((stored.panes as unknown[]).length).toBe(1)
     expect(stored).not.toHaveProperty('paneErrors')
     expect(stored).not.toHaveProperty('persistError')
+  })
+
+  it('round trips fit mode while preserving manual widths and focus composition', () => {
+    const store = useBoardStore.getState()
+    const a = store.addPane('ses_a')
+    const b = store.addPane('ses_b')
+    store.setPaneWidth(a.paneId, 650)
+    store.setPaneWidth(b.paneId, 1150)
+    store.setCollapsed(a.paneId, true)
+    store.setFitToView(true)
+    store.setPaneWidth(b.paneId, 500) // A resize already in flight cannot overwrite the preference.
+    store.setFocusMode(true)
+    store.setFocusMode(false)
+    flushBoardPersistence()
+    const stored = JSON.parse(window.localStorage.getItem(BOARD_STORAGE_KEY)!)
+    store.hydrate(stored)
+    expect(useBoardStore.getState().fitToView).toBe(true)
+    expect(useBoardStore.getState().panes.map(({ width, collapsed }) => ({ width, collapsed }))).toEqual([
+      { width: 650, collapsed: true }, { width: 1150, collapsed: false },
+    ])
+    store.collapseAll()
+    store.expandAll()
+    expect(useBoardStore.getState().fitToView).toBe(true)
+    store.setFitToView(false)
+    expect(useBoardStore.getState().panes.map((pane) => pane.width)).toEqual([650, 1150])
+    store.setPaneWidth(a.paneId, 750)
+    expect(useBoardStore.getState().panes[0].width).toBe(750)
+  })
+
+  it('defaults old and invalid fit preferences to manual without losing panes', () => {
+    for (const version of [1, 2, 3, 4]) {
+      const layout = { version, panes: [{ paneId: 'a', sessionId: 'ses_a', width: 650 }] }
+      expect(normalizeBoard(layout)).toMatchObject({ fitToView: false, panes: [{ width: 650 }] })
+      expect(normalizeBoard({ ...layout, fitToView: 'true' }).fitToView).toBe(false)
+    }
   })
 
   it('migrates a plan-1.0 layout, drops invalid entries and deduplicates sessions', () => {
@@ -145,12 +204,14 @@ describe('board layout store', () => {
         { paneId: 'p1', sessionId: 'ses_a', workspaceVisible: false, workspaceWidth: 420, dockTab: 'file', workspaceTab: 'verification' },
         { paneId: 'p2', sessionId: 'ses_kept', workspaceVisible: true, workspaceWidth: 300, dockTab: 'workspace', workspaceTab: 'changes' },
         { paneId: 'p3', sessionId: 'ses_plain' },
+        { paneId: 'p4', sessionId: 'ses_open', workspaceVisible: true, workspaceWidth: 390 },
       ],
     })
     const dock = useSessionDockStore.getState()
     expect(dock.layoutFor('ses_a')).toMatchObject({ visible: false, widthPx: 420, activeSurface: 'files', workspaceTab: 'verification' })
     // Una sesión que ya tenía layout propio no se reescribe con el del panel.
     expect(dock.layoutFor('ses_kept')).toMatchObject({ visible: false, activeSurface: 'browser', widthPx: 500, workspaceTab: 'tasks' })
+    expect(dock.layoutFor('ses_open')).toMatchObject({ visible: true, widthPx: 390 })
     // Sin campos de dock no se inventa un layout.
     expect(Object.keys(dock.layouts).some((key) => key.includes('ses_plain'))).toBe(false)
     // Un layout ya en schema 3 no vuelve a migrar nada.

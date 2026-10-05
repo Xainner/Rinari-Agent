@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Brain, Check, Columns3, Eye, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Brain, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
-import { useBlockingOverlay } from '../../stores/overlay'
+import { AttachmentPreview } from '../AttachmentPreview'
 import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
@@ -14,6 +14,7 @@ import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../li
 import ModelPicker from './ModelPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
+import { useChatFileReceiver } from './ChatFileDropZone'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
@@ -215,9 +216,6 @@ export default function Composer({
   const [permissionOpen, setPermissionOpen] = useState(false)
   const [reasoningOpen, setReasoningOpen] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
-  // El visor cubre la ventana: mientras está abierto se retiran las vistas
-  // nativas, que si no quedarían por encima de él (§8.3).
-  useBlockingOverlay(previewAttachment !== null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -512,7 +510,9 @@ export default function Composer({
   }
 
   function addAttachment(item: AttachmentRef) {
-    if (attachments.length >= 8 && !attachments.some((current) => current.path === item.path && current.name === item.name)) {
+    const currentAttachments = useComposerStore.getState().getDraft(draftKey).attachments
+    if (currentAttachments.some(current => current.path === item.path && current.name === item.name)) return
+    if (currentAttachments.length >= 8) {
       setAttachmentNotice(t('attach.limitCount'))
       return
     }
@@ -584,10 +584,7 @@ export default function Composer({
     reader.readAsDataURL(file)
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault()
-    for (const file of Array.from(event.dataTransfer.files)) addBrowserFile(file)
-  }
+  useChatFileReceiver(files => { for (const file of files) addBrowserFile(file) })
 
   function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
     for (const file of Array.from(event.clipboardData.files)) addBrowserFile(file)
@@ -632,7 +629,7 @@ export default function Composer({
 
   return (
     <div ref={rootRef} className="composer-root relative">
-      <div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
+      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
@@ -946,21 +943,12 @@ export default function Composer({
         {canSteer ? t(onQueue ? 'composer.steerHint' : 'composer.steerHintNow') : t('composer.hint')}
       </p>
       {previewAttachment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={t('attach.previewOf', { name: previewAttachment.name })} onClick={() => setPreviewAttachment(null)}>
-          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-              <Eye size={15} className="text-[var(--accent-2)]" />
-              <span className="min-w-0 flex-1 truncate text-sm text-[var(--text)]">{previewAttachment.name}</span>
-              <button type="button" aria-label={t('attach.closePreview')} onClick={() => setPreviewAttachment(null)} className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"><X size={15} /></button>
-            </div>
-            <div className="min-h-32 overflow-auto p-4">
-              {previewLoading && <div className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--text-muted)]"><LoaderCircle size={16} className="animate-spin" /> {t('attach.previewLoading')}</div>}
-              {!previewLoading && previewUrl && previewAttachment.kind === 'image' && <img src={previewUrl} alt={previewAttachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}
-              {!previewLoading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}
-              {!previewLoading && !previewUrl && previewText === undefined && <p className="py-10 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}
-            </div>
-          </div>
-        </div>
+        <AttachmentPreview name={previewAttachment.name} open onOpenChange={(open) => { if (!open) setPreviewAttachment(null) }}>
+          {previewLoading && <div className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--text-muted)]"><LoaderCircle size={16} className="animate-spin" /> {t('attach.previewLoading')}</div>}
+          {!previewLoading && previewUrl && previewAttachment.kind === 'image' && <img src={previewUrl} alt={previewAttachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}
+          {!previewLoading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}
+          {!previewLoading && !previewUrl && previewText === undefined && <p className="py-10 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}
+        </AttachmentPreview>
       )}
     </div>
   )

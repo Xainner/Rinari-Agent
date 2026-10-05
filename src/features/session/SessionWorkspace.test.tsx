@@ -80,13 +80,29 @@ it('mounts one dock with three surfaces per session; a file link reveals Files i
   const dock = await screen.findByTestId('session-dock')
   expect(dock.dataset.sessionId).toBe('ses_a')
   expect(dock.dataset.surface).toBe('files')
-  const surfaces = within(dock).getByRole('tablist', { name: 'Dock de la sesión' })
+  const surfaces = within(dock).getByRole('tablist', { name: 'Panel lateral de la sesión' })
   expect(within(surfaces).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Archivos1', 'Navegador', 'Workspace'])
   expect(await within(dock).findByRole('heading', { name: 'Planning document' })).toBeTruthy()
   expect(screen.getAllByTestId('session-dock')).toHaveLength(1)
   // El chat sigue montado al lado: el dock ocupa espacio real, no lo cubre.
   expect(screen.getByTestId('chat-ses_a')).toBeTruthy()
   expect(dock.closest('.session-workspace')?.getAttribute('data-dock')).toBe('docked')
+})
+
+it.each([
+  ['es', 'Panel lateral de la sesión', 'Cerrar panel lateral', 'Ancho del panel lateral'],
+  ['en', 'Session side panel', 'Close side panel', 'Side panel width'],
+] as const)('uses consistent side panel names in %s, including the close tooltip', (lang, label, close, width) => {
+  useSessionDockStore.getState().reveal('ses_a', 'workspace')
+  render(<I18nProvider lang={lang}>{workspace('ses_a')}</I18nProvider>)
+  expect(screen.getByRole('complementary', { name: label })).toBeTruthy()
+  expect(screen.getByRole('tablist', { name: label })).toBeTruthy()
+  const button = screen.getByRole('button', { name: close })
+  expect(button.title).toBe(close)
+  expect(screen.getByRole('separator', { name: width })).toBeTruthy()
+  fireEvent.click(button)
+  expect(screen.queryByTestId('session-dock')).toBeNull()
+  expect(screen.getByTestId('chat-ses_a')).toBeTruthy()
 })
 
 it('UX-09: a typed dock action names its session and never opens the dock of the others', () => {

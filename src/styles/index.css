@@ -497,6 +497,38 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-2)
 }
 .composer-root { container-type: inline-size; }
 .composer-surface { background: linear-gradient(115deg, #14111f, #111019); border-color: var(--border-strong); }
+.chat-file-drop-zone {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  isolation: isolate;
+}
+.chat-file-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent-2) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 45%, transparent);
+  pointer-events: none;
+}
+.chat-file-drop-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 16px);
+  padding: 8px 12px;
+  border: 1px solid var(--accent-2);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 13px;
+}
 .composer-toolbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-top: 8px; }
 .composer-tools, .composer-model-controls { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .composer-model-controls { justify-content: flex-end; }
@@ -844,6 +876,14 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .board-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .board-banner { flex-shrink: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--warning) 12%, transparent); font-size: 12px; color: var(--text); }
 .board-canvas { display: flex; flex: 1 1 auto; align-items: stretch; min-height: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-gutter: stable; }
+.board-pane-row { display: contents; }
+/* The add column stays outside the scrolling row in fit mode. Flex consumes
+   its actual border box and each collapsed strip before sharing the rest.
+   Manual widths remain untouched; no JS copy of the CSS geometry is needed. */
+.is-fit-to-view .board-canvas { overflow: hidden; }
+.is-fit-to-view .board-pane-row { display: flex; flex: 1 1 0; min-width: 0; min-height: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.is-fit-to-view .board-pane-row > .session-pane { flex: 1 0 0; min-width: 320px; max-width: none; }
+.is-fit-to-view .board-add-column { max-width: 35%; }
 .session-pane { display: flex; flex-direction: column; flex: 0 0 auto; min-width: 0; max-width: 100%; height: 100%; border-right: 1px solid var(--border); border-top: 2px solid transparent; background: var(--bg-app); }
 .session-pane.is-focused { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
 .session-pane-body { position: relative; display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; }

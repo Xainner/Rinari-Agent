@@ -17,16 +17,16 @@ import {
  * pestaña de workspace) es un layout **por sesión** compartido con Normal y
  * vive en `sessionDock`; el schema 2 lo guardaba por panel y se migra.
  *
- * Clave de almacenamiento `rinari.board.v1` con `version` interno 3 (la clave
+ * Clave de almacenamiento `rinari.board.v1` con `version` interno 4 (la clave
  * no es la versión del schema). La lectura de resultados vive aparte
  * (`boardAttention`).
  */
 export const BOARD_STORAGE_KEY = 'rinari.board.v1'
-export const BOARD_SCHEMA_VERSION = 3
+export const BOARD_SCHEMA_VERSION = 4
 
 export const PANE_MIN_WIDTH = 480
-/** Chat mínimo acoplado (480) + dock por defecto (360) + separador: un panel
- * nuevo muestra su dock al lado del chat, no como drawer encima del composer. */
+/** Espacio para chat (480) + lateral (360) + separador cuando el usuario lo abra.
+ * El lateral de una sesión sin preferencias empieza cerrado. */
 export const PANE_DEFAULT_WIDTH = 860
 export const PANE_MAX_WIDTH = 1600
 export const SOFT_LIMIT_DEFAULT = 6
@@ -54,6 +54,8 @@ export interface PersistedBoard {
   focusedPaneId: string | null
   lastExpandedPaneId: string | null
   focusMode: boolean
+  /** Preferencia persistida; los anchos automáticos pertenecen al layout CSS. */
+  fitToView: boolean
   focusModeSnapshot: Record<string, boolean> | null
   softLimit: number
   messagingEnabled: boolean
@@ -86,6 +88,7 @@ interface BoardState extends PersistedBoard {
   movePane: (paneId: string, toIndex: number) => void
   focusPane: (paneId: string | null) => void
   setPaneWidth: (paneId: string, width: number) => void
+  setFitToView: (enabled: boolean) => void
   setSoftLimit: (limit: number) => void
   setPeerFlags: (paneId: string, flags: Partial<Pick<BoardPane, 'peerReceive' | 'peerSend'>>) => void
   setMessagingEnabled: (enabled: boolean) => void
@@ -185,6 +188,7 @@ export function defaultBoard(): PersistedBoard {
     focusedPaneId: null,
     lastExpandedPaneId: null,
     focusMode: false,
+    fitToView: false,
     focusModeSnapshot: null,
     softLimit: SOFT_LIMIT_DEFAULT,
     messagingEnabled: true,
@@ -193,7 +197,7 @@ export function defaultBoard(): PersistedBoard {
 }
 
 /**
- * Valida un layout persistido (v1 del plan original, v2 o v3) y devuelve uno
+ * Valida un layout persistido (v1 del plan original hasta v4) y devuelve uno
  * completo. Datos ausentes → defaults; entradas inválidas se descartan;
  * ids de pane duplicados y sesiones repetidas se deduplican; el dock por
  * panel de v≤2 migra al layout por sesión. Nunca lanza.
@@ -216,7 +220,7 @@ export function normalizeBoard(raw: unknown): PersistedBoard {
     if (!pane) continue
     if (seenPaneIds.has(pane.paneId)) pane.paneId = newId('pane')
     seenPaneIds.add(pane.paneId)
-    if (version < BOARD_SCHEMA_VERSION) migrateLegacyPaneDock(item, pane.sessionId)
+    if (version < 3) migrateLegacyPaneDock(item, pane.sessionId)
     panes.push(pane)
   }
   const focusedPaneId =
@@ -243,6 +247,7 @@ export function normalizeBoard(raw: unknown): PersistedBoard {
     focusedPaneId,
     lastExpandedPaneId,
     focusMode,
+    fitToView: bool(input.fitToView, false),
     focusModeSnapshot,
     softLimit: clamp(input.softLimit, 0, 100, SOFT_LIMIT_DEFAULT),
     messagingEnabled: bool(input.messagingEnabled, true),
@@ -267,6 +272,7 @@ export function serializeBoardLayout(state: PersistedBoard): PersistedBoard {
     focusedPaneId: state.focusedPaneId,
     lastExpandedPaneId: state.lastExpandedPaneId,
     focusMode: state.focusMode,
+    fitToView: state.fitToView,
     focusModeSnapshot: state.focusModeSnapshot ? { ...state.focusModeSnapshot } : null,
     softLimit: state.softLimit,
     messagingEnabled: state.messagingEnabled,
@@ -353,9 +359,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       peerReceive: true,
       peerSend: true,
     }
-    // Un panel nuevo abre su dock en Workspace, como siempre en Boards; una
-    // sesión con layout propio (Normal o un panel anterior) lo conserva.
-    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: true, surface: 'workspace' })
+    // Sin preferencias, el lateral empieza cerrado. Una sesión con layout
+    // propio (Normal o un panel anterior) lo conserva, abierto o cerrado.
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
     set((state) => {
       const panes = [...state.panes]
       const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1
@@ -447,7 +453,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     return { panes, focusedPaneId: paneId, lastExpandedPaneId: paneId }
   }),
 
-  setPaneWidth: (paneId, width) => set((state) => ({
+  setFitToView: (enabled) => set({ fitToView: enabled }),
+  setPaneWidth: (paneId, width) => set((state) => state.fitToView ? state : ({
     panes: state.panes.map((pane) => pane.paneId === paneId
       ? { ...pane, width: clamp(width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, pane.width) }
       : pane),

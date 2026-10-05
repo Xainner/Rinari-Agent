@@ -2,7 +2,7 @@
 param(
   [string] $SourceDir = (Join-Path $PSScriptRoot '..\release\electron\win-unpacked'),
   [string] $OutputDir = (Join-Path $PSScriptRoot '..\installer\setup\src-tauri\resources\payload'),
-  [string] $Version = '0.2.2'
+  [string] $Version = '0.2.4'
 )
 
 $ErrorActionPreference = 'Stop'

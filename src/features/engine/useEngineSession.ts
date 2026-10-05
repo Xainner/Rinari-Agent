@@ -8,6 +8,7 @@ import type { ReasoningEffort } from '../../lib/reasoning'
 import { useCatalog } from './useCatalog'
 import { useEngineConnection } from './useEngineConnection'
 import { useProjects } from '../projects/useProjects'
+import { useProjectPromotionReveal } from '../projects/useProjectPromotionReveal'
 import { useProjectRootWatch } from '../projects/useProjectRootWatch'
 import { useSessionList } from './useSessionList'
 import { useTurnRuntime } from './useTurnRuntime'
@@ -53,6 +54,7 @@ export function useEngineSession() {
     engineGeneration,
   })
   const projects = useProjects({ engineReady: connection.ready })
+  useProjectPromotionReveal(sessions.sessionsById, engineGeneration, projects.refreshProjects)
   const catalog = useCatalog()
   const attachmentJobsRef = useRef(new Map<string, string>())
   /** Admisión de envío por sesión: dos clics antes del siguiente render no crean dos turnos. */

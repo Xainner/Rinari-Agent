@@ -4,16 +4,19 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useSessionList } from './useSessionList'
 import type { SessionSummary } from '../../services/engine'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
 }))
 
-const { openSession, sessions, sessionHistory, sessionGet } = vi.hoisted(() => ({
+const { openSession, sessions, sessionHistory, sessionGet, createSession, projectList } = vi.hoisted(() => ({
   openSession: vi.fn(),
   sessions: vi.fn(),
   sessionHistory: vi.fn(),
   sessionGet: vi.fn(),
+  createSession: vi.fn(),
+  projectList: vi.fn(),
 }))
 
 vi.mock('../../services/engine', async () => {
@@ -27,6 +30,8 @@ vi.mock('../../services/engine', async () => {
       sessions,
       sessionHistory,
       sessionGet,
+      createSession,
+      projectList,
       sessionTimeline: vi.fn(),
     },
     commandMessage: (error: unknown) => String(error),
@@ -60,6 +65,10 @@ function deferred<T>() {
 }
 
 function setup() {
+  localStorage.clear()
+  useProjectExpansionStore.setState({ choices: { actual: false, other: false }, query: 'hidden' })
+  createSession.mockReset()
+  projectList.mockReset()
   openSession.mockReset()
   sessions.mockReset()
   sessionHistory.mockReset()
@@ -70,6 +79,52 @@ function setup() {
 }
 
 describe('useSessionList session visibility', () => {
+  it.each([true, false])('reveals confirmed membership with activate=%s', async (activate) => {
+    const { result } = setup()
+    const created = { ...summary('new'), kind: 'PROJECT', project_id: 'actual' }
+    createSession.mockResolvedValue({ session: created })
+    sessions.mockResolvedValue({ sessions: [summary('normal'), created] })
+    act(() => result.current.setActiveSession('normal'))
+    await act(async () => { expect(await result.current.createSession('requested', { activate })).toBe('new') })
+    expect(result.current.activeSession).toBe(activate ? 'new' : 'normal')
+    expect(useProjectExpansionStore.getState().choices).toEqual({ actual: true, other: false })
+    expect(useProjectExpansionStore.getState().query).toBe('')
+    expect(JSON.parse(localStorage.getItem('rinari.projectsExpanded')!)).toEqual({ actual: true, other: false })
+    act(() => useProjectExpansionStore.getState().toggle('actual', 'actual'))
+    await act(async () => { await result.current.refreshSessions() })
+    expect(useProjectExpansionStore.getState().choices.actual).toBe(false)
+  })
+
+  it('resolves a root-only creation against the Engine catalog', async () => {
+    const { result } = setup()
+    const created = { ...summary('new'), kind: 'PROJECT', project_root: '/repo/actual' }
+    createSession.mockResolvedValue({ session: created })
+    projectList.mockResolvedValue({ projects: [{ id: 'actual', root: '/repo/actual' }] })
+    sessions.mockResolvedValue({ sessions: [created] })
+    await act(async () => { await result.current.createSession('requested') })
+    expect(useProjectExpansionStore.getState().choices.actual).toBe(true)
+    expect(useProjectExpansionStore.getState().choices.requested).toBeUndefined()
+  })
+
+  it('does not reveal the previous project for a generic chat or failed creation', async () => {
+    const { result } = setup()
+    createSession.mockResolvedValueOnce({ session: summary('loose') }).mockRejectedValueOnce(new Error('down'))
+    sessions.mockResolvedValue({ sessions: [summary('loose')] })
+    await act(async () => { await result.current.createSession() })
+    await act(async () => { expect(await result.current.createSession('actual')).toBeNull() })
+    expect(useProjectExpansionStore.getState().choices).toEqual({ actual: false, other: false })
+    expect(useProjectExpansionStore.getState().query).toBe('hidden')
+  })
+
+  it('keeps a successful root-only session when catalog lookup fails', async () => {
+    const { result } = setup()
+    const created = { ...summary('new'), kind: 'PROJECT', project_root: '/repo/actual' }
+    createSession.mockResolvedValue({ session: created })
+    projectList.mockRejectedValue(new Error('catalog unavailable'))
+    sessions.mockResolvedValue({ sessions: [created] })
+    await act(async () => { expect(await result.current.createSession('requested')).toBe('new') })
+    expect(useProjectExpansionStore.getState().choices.actual).toBe(false)
+  })
   it('a retry supersedes an in-flight history request in the same generation', async () => {
     const { result } = setup()
     const old = deferred<{ session_id: string; messages: []; total: number; has_more: boolean }>()

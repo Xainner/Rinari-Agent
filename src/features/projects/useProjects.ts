@@ -10,6 +10,7 @@ import {
 import { sortProjects } from './workspaceModel'
 import { translate } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 /**
  * Projects: proyectos recientes del engine, apertura, estado Git vivo e
@@ -54,12 +55,20 @@ export function useProjects(options: { engineReady: boolean }) {
   /** Registra (sin inicializar) y devuelve proyecto + sesión recomendada. */
   const openProject = useCallback(async (path: string) => {
     try {
-      return await engineApi.projectOpen(path)
+      // project.open.created describes the recommended session, not registration.
+      const added = await engineApi.projectAdd(path)
+      if (added.created) {
+        useProjectExpansionStore.getState().reveal(added.project.id)
+        await refreshProjects()
+      }
+      const opened = await engineApi.projectOpen(path)
+      if (opened.created) useProjectExpansionStore.getState().reveal(opened.project.id)
+      return opened
     } catch (err) {
       toast.error(commandMessage(err))
       return null
     }
-  }, [])
+  }, [refreshProjects])
 
   const updateProject = useCallback(async (
     projectId: string,

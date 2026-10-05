@@ -5,6 +5,7 @@ import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { warnUntrusted } from './features/projects/trustWarning'
+import { revealSessionProject } from './features/projects/revealSessionProject'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
@@ -774,6 +775,7 @@ function App() {
                   permission_profile: 'workspace',
                 })
                 .then(async (created) => {
+                  await revealSessionProject(created.session)
                   await session.refreshSessions()
                   await session.selectSession(created.session.id)
                   goChat()

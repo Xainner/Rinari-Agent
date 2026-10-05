@@ -12,14 +12,38 @@ import {
   normalizeBoard,
   useBoardStore,
 } from './board'
-import { resetSessionDockForTests, useSessionDockStore } from './sessionDock'
+import { SESSION_DOCK_STORAGE_KEY, dockNamespaceKey, resetSessionDockForTests, useSessionDockStore } from './sessionDock'
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetSessionDockForTests()
   useBoardStore.getState().hydrate(defaultBoard())
 })
 
 describe('board layout store', () => {
+  it('persists a closed side panel for a session without preferences', () => {
+    useBoardStore.getState().addPane('ses_new')
+    expect(useSessionDockStore.getState().layoutFor('ses_new')).toMatchObject({ visible: false, activeSurface: 'workspace' })
+    const stored = JSON.parse(localStorage.getItem(SESSION_DOCK_STORAGE_KEY)!)
+    expect(stored[dockNamespaceKey(null, 'ses_new')].visible).toBe(false)
+  })
+
+  it.each([true, false])('keeps a saved visible=%s layout on add, focus and remove/re-add', (visible) => {
+    const dock = useSessionDockStore.getState()
+    dock.update('ses_saved', { visible, activeSurface: 'files', widthPx: 430, workspaceTab: 'tasks' })
+    const saved = dock.layoutFor('ses_saved')
+    const board = useBoardStore.getState()
+    const pane = board.addPane('ses_saved')
+    board.addPane('ses_other')
+    const other = dock.layoutFor('ses_other')
+    expect(board.addPane('ses_saved').paneId).toBe(pane.paneId)
+    expect(dock.layoutFor('ses_saved')).toEqual(saved)
+    board.removePane(pane.paneId)
+    board.addPane('ses_saved')
+    expect(dock.layoutFor('ses_saved')).toEqual(saved)
+    expect(dock.layoutFor('ses_other')).toEqual(other)
+  })
+
   it('adds panes once per session, focuses them and keeps order', () => {
     const store = useBoardStore.getState()
     const a = store.addPane('ses_a')
@@ -106,12 +130,14 @@ describe('board layout store', () => {
         { paneId: 'p1', sessionId: 'ses_a', workspaceVisible: false, workspaceWidth: 420, dockTab: 'file', workspaceTab: 'verification' },
         { paneId: 'p2', sessionId: 'ses_kept', workspaceVisible: true, workspaceWidth: 300, dockTab: 'workspace', workspaceTab: 'changes' },
         { paneId: 'p3', sessionId: 'ses_plain' },
+        { paneId: 'p4', sessionId: 'ses_open', workspaceVisible: true, workspaceWidth: 390 },
       ],
     })
     const dock = useSessionDockStore.getState()
     expect(dock.layoutFor('ses_a')).toMatchObject({ visible: false, widthPx: 420, activeSurface: 'files', workspaceTab: 'verification' })
     // Una sesión que ya tenía layout propio no se reescribe con el del panel.
     expect(dock.layoutFor('ses_kept')).toMatchObject({ visible: false, activeSurface: 'browser', widthPx: 500, workspaceTab: 'tasks' })
+    expect(dock.layoutFor('ses_open')).toMatchObject({ visible: true, widthPx: 390 })
     // Sin campos de dock no se inventa un layout.
     expect(Object.keys(dock.layouts).some((key) => key.includes('ses_plain'))).toBe(false)
     // Un layout ya en schema 3 no vuelve a migrar nada.

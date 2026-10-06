@@ -5,7 +5,7 @@
 // desde la app.
 const assert = require('node:assert/strict')
 const { shell } = require('electron')
-const { copyFileSync, mkdirSync, writeFileSync } = require('node:fs')
+const { copyFileSync, mkdirSync, realpathSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { ui, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, useLocalModel, wait } = require('../harness.cjs')
 
@@ -55,7 +55,8 @@ scenario(async () => {
     shell.showItemInFolder = original
   }
   assert.equal(revealed.length, 1)
-  assert.equal(revealed[0].toLowerCase(), join(root, 'out', 'manual.pdf').toLowerCase())
+  // El Engine devuelve la ruta canónica (sin nombres cortos 8.3 como RUNNER~1).
+  assert.equal(revealed[0].toLowerCase(), realpathSync.native(join(root, 'out', 'manual.pdf')).toLowerCase())
   await screenshot('pdf-actions')
 
   // Los tonos de aviso están en el build y se reproducen.

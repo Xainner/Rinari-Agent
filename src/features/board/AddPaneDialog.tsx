@@ -17,7 +17,7 @@ import {
 } from '../../components/ui/alert-dialog'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
-import { useBoardStore } from '../../stores/board'
+import { isDraftPane, useBoardStore } from '../../stores/board'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const SEARCH_THRESHOLD = 8
@@ -69,8 +69,8 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
   }, [boardSessionIds, data.sessions, query])
 
   /** Sesiones del board que ya trabajan sobre la misma raíz canónica. */
-  const sharedWith = (project: ProjectSummary): string[] =>
-    panes
+  const sharedWith = (project: ProjectSummary): string[] => [
+    ...panes
       .map((pane) => data.sessionsById[pane.sessionId])
       .filter((session): session is SessionSummary => Boolean(session))
       .filter((session) => {
@@ -78,7 +78,10 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
         const root = session.project_root
         return root !== null && (root === project.root || root === project.canonical_root)
       })
-      .map((session) => session.title || session.id)
+      .map((session) => session.title || session.id),
+    // Un borrador del mismo proyecto también ocupa esa raíz.
+    ...panes.filter((pane) => isDraftPane(pane) && pane.draft.projectId === project.id).map(() => t('sidebar.newChat')),
+  ]
 
   const finish = (sessionId: string) => {
     onAdded(sessionId)

@@ -10,8 +10,9 @@ scenario(async () => {
   await useLocalModel()
   await reload()
   await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Nueva conversación') && b.textContent.includes('Ctrl')).click()`)
-  await wait(`document.querySelector('[aria-current="page"]')?.textContent.includes('Nueva conversación')`)
-  await delay(800)
+  // Un borrador: la sesión se crea al enviar.
+  await wait('Boolean(document.querySelector(".composer-surface textarea"))')
+  await delay(300)
   await input('.composer-surface textarea', first)
   await click('.composer-surface button[aria-label="Enviar mensaje"]')
   // El modelo falso retiene la respuesta principal: el título llega antes.

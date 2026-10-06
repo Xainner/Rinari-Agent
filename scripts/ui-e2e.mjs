@@ -124,7 +124,15 @@ async function runScenario(name) {
     await model?.close()
   }
   // Los datos solo sirven para diagnosticar un fallo o revisar con --keep.
-  if (code === 0 && !keep) rmSync(data, { recursive: true, force: true })
+  if (code === 0 && !keep) {
+    // El Engine puede tardar en soltar sus archivos tras un turno: se reintenta
+    // y, si sigue ocupado, se avisa sin convertir un escenario correcto en fallo.
+    try {
+      rmSync(data, { recursive: true, force: true, maxRetries: 60, retryDelay: 250 })
+    } catch (error) {
+      console.warn(`  no se pudieron borrar los datos de ${name} (${error.code ?? error.message}): ${data}`)
+    }
+  }
   else console.error(`  datos conservados en ${data}`)
   return code
 }

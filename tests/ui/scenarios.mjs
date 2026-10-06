@@ -90,6 +90,15 @@ export const scenarios = {
       text: paragraphs(60, (i) => `Párrafo ${i} del turno ${n}: historial para comprobar el salto al enviar.`) + (n % 2 ? `\n\nFIN DEL HISTORIAL ${n}` : `\n\nRESPUESTA AL ENVÍO ${n}`),
     }))),
   },
+  'conversation-draft': {
+    title: 'Conversación nueva: borrador hasta el primer mensaje',
+    phases: ['exercise'],
+    // Las sesiones nacen como «Nueva conversación»: el título va por su carril.
+    model: () => startRoutedModel({
+      title: [{ text: 'Plan del proyecto' }, { text: 'Saludo del panel' }],
+      main: [{ text: 'RESPUESTA DEL BORRADOR' }, { text: 'RESPUESTA DEL PANEL' }],
+    }, laneOf),
+  },
   'composer-file-drag': {
     title: 'Composer: arrastrar archivos a todo el chat',
     phases: ['exercise'],
@@ -98,6 +107,11 @@ export const scenarios = {
       writeFileSync(join(data, 'adjunto.txt'), 'Contenido de prueba del flujo de adjuntos.')
       writeFileSync(join(data, 'imagen.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'))
     },
+  },
+  'file-media': {
+    title: 'Archivos: video, imagen y PDF del workspace',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'Listo: [Ver la promo](out/clip.mp4) · [Póster](out/poster.png) · [Manual](out/manual.pdf)' }]),
   },
   'model-change-notice': {
     title: 'Chat: aviso de cambio de modelo',

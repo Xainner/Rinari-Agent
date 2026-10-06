@@ -4,7 +4,7 @@
 const assert = require('node:assert/strict')
 const { readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
-const { ui, click, clickText, command, evaluate, key, reload, report, scenario, screenshot, useLocalModel, wait, delay } = require('../harness.cjs')
+const { ui, click, clickText, command, evaluate, input, key, reload, report, scenario, screenshot, useLocalModel, wait, delay } = require('../harness.cjs')
 
 const layouts = () => evaluate(`JSON.parse(localStorage.getItem('rinari.sessionDock.v1') || '{}')`)
 const board = () => evaluate(`JSON.parse(localStorage.getItem('rinari.board.v1') || '{}')`)
@@ -27,6 +27,15 @@ async function add(title) {
   return (await board()).panes.at(-1).sessionId
 }
 const toggle = 'button[aria-label="Mostrar u ocultar panel lateral"]'
+/** «Chat general» deja un panel borrador; su primer mensaje crea la sesión. */
+async function addGeneralChat() {
+  await add('Chat general')
+  const draftPane = (await board()).panes.at(-1).paneId
+  await input(`[data-pane-id="${draftPane}"] .composer-surface textarea`, 'Hola')
+  await click(`[data-pane-id="${draftPane}"] .composer-surface button[aria-label="Enviar mensaje"]`)
+  await wait(`JSON.parse(localStorage.getItem('rinari.board.v1') || '{}').panes?.find(p=>p.paneId===${JSON.stringify(draftPane)})?.sessionId`)
+  return (await board()).panes.find((p) => p.paneId === draftPane).sessionId
+}
 
 async function exercise() {
   const passed = []
@@ -43,7 +52,7 @@ async function exercise() {
   await click('.view-switcher button[aria-label^="Boards"]')
   await add('Sin preferencias'); await state(a.id, false)
   assert.equal(await evaluate('document.querySelectorAll("[data-testid=session-dock]").length'), 0)
-  const fresh = await add('Chat general'); await state(fresh, false)
+  const fresh = await addGeneralChat(); await state(fresh, false)
   await state(a.id, false)
   passed.push('Existing session without preferences and newly created session both start closed')
   await screenshot('new-panels-closed')
@@ -111,7 +120,7 @@ async function restart() {
   assert.deepEqual(await layouts(), saved.layouts, 'Side panel layouts survive a complete process restart')
   await click('.view-switcher button[aria-label^="Boards"]')
   for (const id of saved.ids) await state(id, saved.visibility[id])
-  const fresh = await add('Chat general')
+  const fresh = await addGeneralChat()
   await state(fresh, false)
   await screenshot('restart-new-closed')
   report({ passed: ['old preferences restored after restart', 'new session still starts closed'] })

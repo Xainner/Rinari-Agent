@@ -22,6 +22,8 @@ export const CHANNEL = {
   dialogOpenFiles: 'rinari:dialog.openFiles',
   openerOpenUrl: 'rinari:opener.openUrl',
   filesOpenExternal: 'rinari:files.openExternal',
+  filesRevealInFolder: 'rinari:files.revealInFolder',
+  filesMedia: 'rinari:files.media',
   clipboardWriteText: 'rinari:clipboard.writeText',
   /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
   appBackgroundGet: 'rinari:app.background.get',
@@ -207,6 +209,16 @@ export interface OpenExternalFileRequest {
   session_id: string
   path: string
   turn_id?: string
+}
+
+/** Qué es un archivo autorizado; `url` solo para imagen, video o audio. */
+export interface WorkspaceMedia {
+  path: string
+  name: string
+  size: number
+  kind: 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'binary'
+  mime: string
+  url: string | null
 }
 
 export interface OpenFilesRequest {

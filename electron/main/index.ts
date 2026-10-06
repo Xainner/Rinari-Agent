@@ -27,6 +27,7 @@ import { HandoffQueue, openRequestFromData, parseOpenRequest } from './native/ha
 import { runRequestedUpdate, updateRequestFromData, wantsUpdate } from './updates/cliRequest'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
+import { createMediaRegistry, mediaToken, serveMedia } from './native/mediaFiles'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
 import { createTrayController } from './native/tray'
 import { hostLanguageFromLocale, hostText, type HostText } from './native/hostText'
@@ -205,9 +206,49 @@ const notifications = createNotifications({
   },
 })
 
-/** Sirve el renderer construido desde el esquema propio. */
-function registerAppScheme(root: string): void {
+/** Rutas que el Engine aprobó para verse dentro de la app, tras un token. */
+const media = createMediaRegistry({ origin: APP_ORIGIN })
+
+/** Lo que el Engine sabe de un archivo autorizado, sin leer su contenido. */
+interface ResolvedFile {
+  path: string
+  name: string
+  size: number
+  kind: 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'binary'
+  mime: string
+}
+
+/**
+ * Pide al Engine la ruta autorizada (raíz, procedencia del turno, rutas
+ * privadas) sin leer el archivo como texto: sirve igual para un PNG de 1 MB o
+ * un video de 30 MB. Nunca se usa la ruta que diga el renderer.
+ */
+async function resolveWorkspaceFile(request: { session_id: string; path: string; turn_id?: string }): Promise<ResolvedFile> {
+  const call = translateCommand('workspace_file_resolve', {
+    session_id: request.session_id,
+    path: request.path,
+    turn_id: request.turn_id,
+  })
+  const resolved = (await engine.request(call.method, call.params)) as Partial<ResolvedFile> | null
+  if (!resolved || typeof resolved.path !== 'string' || !resolved.path) {
+    throw new EngineCommandError('ENGINE_ERROR', 'Engine returned no file path')
+  }
+  return resolved as ResolvedFile
+}
+
+/**
+ * Sirve el renderer construido desde el esquema propio y, en cualquier modo,
+ * los medios aprobados (`/__media/<token>`). En desarrollo la UI viene de
+ * Vite (`root` nulo) y el esquema solo entrega medios.
+ */
+function registerAppScheme(root: string | null): void {
   protocol.handle(APP_SCHEME, async (request) => {
+    const token = mediaToken(request.url)
+    if (token) {
+      const grant = media.lookup(token)
+      return grant ? serveMedia(request, grant) : new Response('Not found', { status: 404 })
+    }
+    if (!root) return new Response('Not found', { status: 404 })
     const resolved = resolveAppUrl(request.url, root)
     if (!resolved.ok) return new Response('Not found', { status: 404 })
     try {
@@ -460,16 +501,30 @@ function buildServices(): HostServices {
        * ruta que devuelve. Nunca `shell.openPath(rutaDelRenderer)`.
        */
       async openExternal(request) {
-        const call = translateCommand('workspace_file_read', {
-          session_id: request.session_id,
-          path: request.path,
-          turn_id: request.turn_id,
-        })
-        const preview = (await engine.request(call.method, call.params)) as { path?: unknown }
-        const approved = typeof preview?.path === 'string' ? preview.path : null
-        if (!approved) throw new EngineCommandError('ENGINE_ERROR', 'Engine returned no file path')
-        const failure = await shell.openPath(approved)
+        const { path } = await resolveWorkspaceFile(request)
+        const failure = await shell.openPath(path)
         if (failure) throw new EngineCommandError('HOST_ERROR', failure)
+      },
+      /** Muestra el archivo seleccionado en el Explorador (Finder, gestor de archivos). */
+      async revealInFolder(request) {
+        const { path } = await resolveWorkspaceFile(request)
+        shell.showItemInFolder(path)
+      },
+      /**
+       * URL de la app para ver una imagen, un video o un audio aprobados; para
+       * cualquier otro tipo devuelve sus datos sin URL.
+       */
+      async media(request) {
+        const file = await resolveWorkspaceFile(request)
+        const playable = file.kind === 'image' || file.kind === 'video' || file.kind === 'audio'
+        return {
+          path: file.path,
+          name: file.name,
+          size: file.size,
+          kind: file.kind,
+          mime: file.mime,
+          url: playable ? media.grant({ path: file.path, mime: file.mime }) : null,
+        }
       },
     },
     clipboard: {
@@ -951,7 +1006,7 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
       void runUpdateE2E(updateE2EResult)
       return
     }
-    if (!isDev) registerAppScheme(rendererRoot())
+    registerAppScheme(isDev ? null : rendererRoot())
     background = createBackground({
       settingsPath: join(app.getPath('userData'), 'desktop-settings.json'),
       // En desarrollo se registraría el electron.exe de la worktree.

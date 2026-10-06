@@ -262,3 +262,69 @@ it('falls back to manual reads when the restarted Engine has no watches', async 
   await screen.findByRole('heading', { name: 'Read manually' })
   expect(screen.queryByRole('alert')).toBeNull()
 })
+
+it('plays a large video and shows a large image without reading them as text', async () => {
+  bridge.engineStatus.capabilities.workspace_file_resolve_v1 = true
+  bridge.mediaKinds['out/promo.mp4'] = 'video'
+  bridge.mediaKinds['out/poster.png'] = 'image'
+  render(
+    <Files>
+      <FileTurnContext.Provider value="turn-7">
+        <FileLink href="out/promo.mp4">Ver la promo</FileLink>
+        <FileLink href="out/poster.png">Póster</FileLink>
+      </FileTurnContext.Provider>
+    </Files>,
+  )
+  await userEvent.click(screen.getByText('Ver la promo'))
+  const video = await waitFor(() => {
+    const element = document.querySelector('video')
+    expect(element).toBeTruthy()
+    return element!
+  })
+  expect(video.getAttribute('src')).toBe('app://rinari/__media/test-promo.mp4')
+  await userEvent.click(screen.getByText('Póster'))
+  await waitFor(() => expect(document.querySelector('img[src="app://rinari/__media/test-poster.png"]')).toBeTruthy())
+  expect(desktopApi.watchFile).not.toHaveBeenCalled()
+  expect(desktopApi.readFile).not.toHaveBeenCalled()
+})
+
+it('offers opening outside or in its folder for files without a viewer', async () => {
+  bridge.engineStatus.capabilities.workspace_file_resolve_v1 = true
+  bridge.mediaKinds['out/manual.pdf'] = 'pdf'
+  render(
+    <Files>
+      <FileTurnContext.Provider value="turn-7">
+        <FileLink href="out/manual.pdf">Manual</FileLink>
+      </FileTurnContext.Provider>
+    </Files>,
+  )
+  await userEvent.click(screen.getByText('Manual'))
+  await screen.findByText(/no tiene un visor/)
+  const reveal = screen.getAllByRole('button', { name: 'Abrir en el Explorador de archivos' })
+  await userEvent.click(reveal.at(-1)!)
+  expect(bridge.revealedFiles).toEqual([{ session_id: 'session', path: 'out/manual.pdf', turn_id: 'turn-7' }])
+  await userEvent.click(screen.getAllByRole('button', { name: 'Abrir externamente' }).at(-1)!)
+  expect(bridge.openedFiles).toEqual([{ session_id: 'session', path: 'out/manual.pdf', turn_id: 'turn-7' }])
+})
+
+it('the context menu of a file link reveals it with its own session and turn', async () => {
+  render(
+    <Files>
+      <FileTurnContext.Provider value="turn-7">
+        <FileLink href="out/poster.png">Póster</FileLink>
+        <FileLink href="https://example.com">Web</FileLink>
+      </FileTurnContext.Provider>
+    </Files>,
+  )
+  const menu = (element: Element) => element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 5, clientY: 6 }))
+  act(() => { menu(screen.getByText('Póster')) })
+  const items = bridge.menus.at(-1)!.items
+  expect(items.map((item) => item.text)).toEqual(['Abrir archivo', 'Abrir en el Explorador de archivos', 'Copiar dirección'])
+  const reveal = items[1]
+  if (reveal.kind !== 'action') throw new Error('expected an action')
+  reveal.run()
+  expect(bridge.revealedFiles).toEqual([{ session_id: 'session', path: 'out/poster.png', turn_id: 'turn-7' }])
+  const before = bridge.menus.length
+  act(() => { menu(screen.getByText('Web')) })
+  expect(bridge.menus.length).toBe(before)
+})

@@ -25,6 +25,7 @@ import {
   type BackgroundPatch,
   type BackgroundSettings,
   type OpenExternalFileRequest,
+  type WorkspaceMedia,
   type OpenFilesRequest,
   type SystemNotificationRequest,
   type FlowScopeRequest,
@@ -87,7 +88,11 @@ export interface HostServices {
   }
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
-  files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
+  files: {
+    openExternal(request: OpenExternalFileRequest): Promise<void>
+    revealInFolder(request: OpenExternalFileRequest): Promise<void>
+    media(request: OpenExternalFileRequest): Promise<WorkspaceMedia>
+  }
   clipboard: { writeText(text: string): void | Promise<void> }
   /** Bandeja al cerrar e inicio con el sistema: preferencias que main necesita antes que el renderer. */
   app: {
@@ -360,6 +365,14 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.filesOpenExternal,
       guarded(registry, (_event, request) => services.files.openExternal(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.filesRevealInFolder,
+      guarded(registry, (_event, request) => services.files.revealInFolder(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.filesMedia,
+      guarded(registry, (_event, request) => services.files.media(assertOpenExternal(request))),
     ],
     [
       CHANNEL.clipboardWriteText,

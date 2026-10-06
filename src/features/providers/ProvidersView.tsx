@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
+import { registerProviderModels } from './registerModels'
 import ProviderDetails from './ProviderDetails'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ModelCatalog from './ModelCatalog'
@@ -104,6 +105,7 @@ export default function ProvidersView({
         })
         toast.success(t('wizard.saved'))
         setExpanded(alias)
+        void registerProviderModels(alias).then(onChanged)
       } else if (dialog?.mode === 'edit') {
         const patch: {
           alias?: string
@@ -130,6 +132,10 @@ export default function ProvidersView({
           return
         }
         await engineApi.providerUpdate(dialog.provider.alias, patch)
+        // Credencial o endpoint nuevos pueden traer otro catálogo.
+        if (patch.secret || patch.secret_env || patch.endpoint !== undefined) {
+          void registerProviderModels(patch.alias ?? dialog.provider.alias).then(onChanged)
+        }
       }
       setDialog(null)
       onChanged()

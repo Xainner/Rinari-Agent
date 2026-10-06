@@ -19,7 +19,7 @@
  */
 
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -35,7 +35,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
@@ -143,6 +143,13 @@ export interface DesktopBridge {
      * no se abre lo que diga el renderer sin pasar por ahí.
      */
     openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    /** Muestra el archivo en su carpeta, seleccionado. Misma autorización del Engine. */
+    revealInFolder(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    /**
+     * Qué es el archivo (tipo, tamaño) sin leerlo como texto y, si es imagen,
+     * video o audio, una URL de la app que lo sirve por tramos.
+     */
+    media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
   }
 
   clipboard: {

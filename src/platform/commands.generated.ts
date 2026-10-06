@@ -170,6 +170,7 @@ export type DesktopCommand =
   | "vision_settings_set"
   | "workspace_file_open"
   | "workspace_file_read"
+  | "workspace_file_resolve"
   | "workspace_file_search"
   | "workspace_file_unwatch"
   | "workspace_file_watch"
@@ -349,6 +350,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "vision_settings_set",
   "workspace_file_open",
   "workspace_file_read",
+  "workspace_file_resolve",
   "workspace_file_search",
   "workspace_file_unwatch",
   "workspace_file_watch",
@@ -542,6 +544,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "vision_settings_get",
   "vision_settings_set",
   "workspace_file_read",
+  "workspace_file_resolve",
   "workspace_file_search",
   "workspace_file_unwatch",
   "workspace_file_watch",

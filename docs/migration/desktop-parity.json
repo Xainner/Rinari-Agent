@@ -1411,6 +1411,13 @@
       ]
     },
     {
+      "command": "workspace_file_resolve",
+      "kind": "engine",
+      "method": "workspace.file.resolve",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "workspace_file_search",
       "kind": "engine",
       "method": "workspace.file.search",
@@ -1491,10 +1498,10 @@
     }
   ],
   "summary": {
-    "commands": 177,
-    "engine_backed": 171,
+    "commands": 178,
+    "engine_backed": 172,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 56
+    "without_callers": 57
   }
 }

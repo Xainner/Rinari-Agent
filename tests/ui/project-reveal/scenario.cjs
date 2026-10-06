@@ -26,6 +26,12 @@ async function edit(p) {
 }
 const addFromFolder = () => evaluate(`[...document.querySelectorAll('[role="dialog"] .add-pane-row')].find(b=>b.textContent.includes('Abrir carpeta')).click()`)
 const search = 'input[placeholder="Buscar proyectos y sesiones…"]'
+const sessionsIn = (p) => evaluate(`document.querySelector(${JSON.stringify(header(p))}).closest('li').querySelectorAll('ul li').length`)
+async function sendDraft(text) {
+  await wait(`Boolean(document.querySelector('.composer-surface textarea'))`)
+  await input('.composer-surface textarea', text)
+  await click('.composer-surface button[aria-label="Enviar mensaje"]')
+}
 const details = 'section[aria-label="Detalles del proyecto"] input'
 
 async function exercise() {
@@ -47,14 +53,19 @@ async function exercise() {
   await click('button[aria-label="Nueva sesión en Proyecto Alfa"]')
   await expanded(a, true); await expanded(b, false)
   assert.equal(await evaluate(`document.querySelector(${JSON.stringify(search)}).value`), '')
+  // El «+» abre un borrador: ninguna sesión hasta su primer mensaje.
+  await delay(400)
+  assert.equal(await sessionsIn(a), 1)
+  await sendDraft('Primer mensaje en Alfa')
   await wait(`document.querySelector(${JSON.stringify(header(a))}).closest('li').querySelectorAll('ul li').length===2`)
-  passed.push('Sidebar + creates a real session, clears search and persists only its project')
+  passed.push('Sidebar + opens a draft of its project; the first message creates the session there')
   await screenshot('sidebar-created')
   await collapse(a)
   await edit(a)
   await input(search, 'hidden by old search')
   await clickText('Nueva sesión')
   await expanded(a, true)
+  await sendDraft('Desde la página del proyecto')
   await wait(`document.querySelector(${JSON.stringify(header(a))}).closest('li').querySelectorAll('ul li').length===3`)
   passed.push('ProjectHome creation reveals a manually collapsed project and clears hidden search')
   await collapse(a)

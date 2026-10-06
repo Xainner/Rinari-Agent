@@ -14,6 +14,7 @@ import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
+  WorkspaceMedia,
   EngineBackedCommand,
   EngineStatus,
   EngineEventMessage,
@@ -106,7 +107,11 @@ interface DesktopHostApi {
     initial(): Promise<OpenRequest>
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
-  files: { openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void> }
+  files: {
+    openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    revealInFolder(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
+  }
   clipboard: { writeText(text: string): Promise<void> }
   app: {
     background(): Promise<BackgroundSettings>
@@ -162,6 +167,8 @@ export const electronBridge: DesktopBridge = {
 
   files: {
     openExternal: (input) => required().files.openExternal(input),
+    revealInFolder: (input) => required().files.revealInFolder(input),
+    media: (input) => required().files.media(input),
   },
 
   clipboard: {

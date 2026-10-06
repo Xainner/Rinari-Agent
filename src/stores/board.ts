@@ -1,4 +1,7 @@
 import { create } from 'zustand'
+import type { ModelSummary } from '../services/engine'
+import type { DraftPermission } from './conversationDraft'
+import { useComposerStore } from './composer'
 import {
   DOCK_MAX_WIDTH,
   DOCK_MIN_WIDTH,
@@ -33,11 +36,36 @@ export const SOFT_LIMIT_DEFAULT = 6
 
 export interface BoardPane {
   paneId: string
+  /** Vacío mientras el panel es un borrador (`draft`): aún no hay sesión. */
   sessionId: string
   width: number
   collapsed: boolean
   peerReceive: boolean
   peerSend: boolean
+  /**
+   * Conversación nueva pendiente: el panel tiene composer, pero la sesión se
+   * crea con su primer mensaje. Un borrador nunca viaja al Engine como sesión.
+   */
+  draft?: PaneDraft
+}
+
+export interface PaneDraft {
+  projectId: string | null
+  mode: string
+  permissionProfile: DraftPermission
+  /** Modelo elegido antes del primer envío (en Boards cada sesión tiene el suyo). */
+  model?: ModelSummary | null
+  /** Sesión creada cuyo primer envío falló; el reintento la reutiliza. */
+  sessionId?: string
+}
+
+/** Clave del composer y de las preferencias de un panel borrador. */
+export function paneDraftKey(paneId: string): string {
+  return `draft:pane:${paneId}`
+}
+
+export function isDraftPane(pane: BoardPane): pane is BoardPane & { draft: PaneDraft } {
+  return Boolean(pane.draft) && pane.sessionId === ''
 }
 
 export interface BoardNotificationPrefs {
@@ -82,6 +110,11 @@ interface BoardState extends PersistedBoard {
   /** Última vez que no se pudo persistir (cuota/storage). */
   persistError: string | null
   addPane: (sessionId: string, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
+  /** Panel de una conversación nueva que aún no existe (se crea al enviar). */
+  addDraftPane: (projectId: string | null, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
+  updatePaneDraft: (paneId: string, patch: Partial<PaneDraft>) => void
+  /** El borrador ya tiene sesión con su primer mensaje: el panel pasa a ella. */
+  materializePane: (paneId: string, sessionId: string) => void
   removePane: (paneId: string) => void
   /** Vacía la composición visual; conserva sesiones, borradores y layouts laterales. */
   removeAllPanes: () => void
@@ -147,9 +180,39 @@ interface LegacyPaneDock {
   workspaceTab?: unknown
 }
 
+const PERMISSIONS: readonly DraftPermission[] = ['read-only', 'workspace', 'full-access']
+
+function normalizeDraft(raw: unknown): PaneDraft | null {
+  if (!raw || typeof raw !== 'object') return null
+  const draft = raw as Partial<PaneDraft>
+  const model = draft.model && typeof draft.model === 'object' && typeof draft.model.id === 'string' && typeof draft.model.alias === 'string'
+    ? draft.model
+    : null
+  return {
+    projectId: typeof draft.projectId === 'string' && draft.projectId ? draft.projectId : null,
+    mode: typeof draft.mode === 'string' && draft.mode ? draft.mode : 'build',
+    permissionProfile: PERMISSIONS.includes(draft.permissionProfile as DraftPermission) ? draft.permissionProfile as DraftPermission : 'workspace',
+    ...(model ? { model } : {}),
+    ...(typeof draft.sessionId === 'string' && draft.sessionId ? { sessionId: draft.sessionId } : {}),
+  }
+}
+
 function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
   if (!raw || typeof raw !== 'object') return null
   const item = raw as Partial<BoardPane>
+  if (item.sessionId === '' && item.draft) {
+    const draft = normalizeDraft(item.draft)
+    if (!draft) return null
+    return {
+      paneId: typeof item.paneId === 'string' && item.paneId ? item.paneId : newId('pane'),
+      sessionId: '',
+      width: clamp(item.width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, PANE_DEFAULT_WIDTH),
+      collapsed: bool(item.collapsed, false),
+      peerReceive: bool(item.peerReceive, true),
+      peerSend: bool(item.peerSend, true),
+      draft,
+    }
+  }
   if (typeof item.sessionId !== 'string' || item.sessionId === '') return null
   if (seen.has(item.sessionId)) return null
   seen.add(item.sessionId)
@@ -340,7 +403,32 @@ function nearestNeighbor(panes: BoardPane[], paneId: string): string | null {
   return null
 }
 
-export const useBoardStore = create<BoardState>((set, get) => ({
+export const useBoardStore = create<BoardState>((set, get) => {
+  /** Inserta un panel (tras `afterPaneId` o al final) respetando foco y modo foco. */
+  function insertPane(pane: BoardPane, options: { focus?: boolean; afterPaneId?: string }): BoardPane {
+    set((state) => {
+      const panes = [...state.panes]
+      const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1
+      if (at >= 0) panes.splice(at + 1, 0, pane)
+      else panes.push(pane)
+      const focus = options.focus !== false
+      let next: Partial<BoardState> = { panes }
+      if (focus) next = { ...next, focusedPaneId: pane.paneId, lastExpandedPaneId: pane.paneId }
+      if (state.focusMode) {
+        // Alta en modo foco: el nuevo panel queda expandido y enfocado; el resto colapsa.
+        next = {
+          ...next,
+          panes: panes.map((item) => (item.paneId === pane.paneId ? item : { ...item, collapsed: focus ? true : item.collapsed })),
+          focusModeSnapshot: { ...(state.focusModeSnapshot ?? {}), [pane.paneId]: false },
+          focusedPaneId: focus ? pane.paneId : state.focusedPaneId,
+        }
+      }
+      return next
+    })
+    return pane
+  }
+
+  return {
   ...loadBoard(),
   paneErrors: {},
   persistError: null,
@@ -362,27 +450,55 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     // Sin preferencias, el lateral empieza cerrado. Una sesión con layout
     // propio (Normal o un panel anterior) lo conserva, abierto o cerrado.
     useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
-    set((state) => {
-      const panes = [...state.panes]
-      const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1
-      if (at >= 0) panes.splice(at + 1, 0, pane)
-      else panes.push(pane)
-      const focus = options.focus !== false
-      let next: Partial<BoardState> = { panes }
-      if (focus) next = { ...next, focusedPaneId: pane.paneId, lastExpandedPaneId: pane.paneId }
-      if (state.focusMode) {
-        // Alta en modo foco: el nuevo panel queda expandido y enfocado; el resto colapsa.
-        next = {
-          ...next,
-          panes: panes.map((item) => (item.paneId === pane.paneId ? item : { ...item, collapsed: focus ? true : item.collapsed })),
-          focusModeSnapshot: { ...(state.focusModeSnapshot ?? {}), [pane.paneId]: false },
-          focusedPaneId: focus ? pane.paneId : state.focusedPaneId,
-        }
-      }
-      return next
-    })
-    return pane
+    return insertPane(pane, options)
   },
+
+  addDraftPane: (projectId, options = {}) => {
+    // Volver a pedir un borrador vacío del mismo destino enfoca el que ya hay.
+    const empty = get().panes.find((pane) => isDraftPane(pane) && pane.draft.projectId === projectId && !pane.draft.sessionId
+      && !useComposerStore.getState().getDraft(paneDraftKey(pane.paneId)).text.trim()
+      && useComposerStore.getState().getDraft(paneDraftKey(pane.paneId)).attachments.length === 0)
+    if (empty) {
+      if (options.focus !== false) get().focusPane(empty.paneId)
+      return empty
+    }
+    const pane: BoardPane = {
+      paneId: newId('pane'),
+      sessionId: '',
+      width: PANE_DEFAULT_WIDTH,
+      collapsed: false,
+      peerReceive: true,
+      peerSend: true,
+      draft: { projectId, mode: 'build', permissionProfile: 'workspace' },
+    }
+    return insertPane(pane, options)
+  },
+
+  updatePaneDraft: (paneId, patch) => set((state) => ({
+    panes: state.panes.map((pane) => (pane.paneId === paneId && pane.draft ? { ...pane, draft: { ...pane.draft, ...patch } } : pane)),
+  })),
+
+  materializePane: (paneId, sessionId) => {
+    const state = get()
+    const pane = state.panes.find((item) => item.paneId === paneId)
+    if (!pane || !pane.draft) return
+    const existing = state.panes.find((item) => item.sessionId === sessionId)
+    if (existing) {
+      // La sesión ya tiene panel: el borrador sobra.
+      get().removePane(paneId)
+      get().focusPane(existing.paneId)
+      return
+    }
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
+    set({
+      panes: state.panes.map((item) => {
+        if (item.paneId !== paneId) return item
+        const { draft: _draft, ...rest } = item
+        return { ...rest, sessionId }
+      }),
+    })
+  },
+
 
   removeAllPanes: () => set((state) => {
     if (state.panes.length === 0) return state
@@ -603,7 +719,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   hasSession: (sessionId) => get().panes.some((pane) => pane.sessionId === sessionId),
   paneForSession: (sessionId) => get().panes.find((pane) => pane.sessionId === sessionId),
   hydrate: (layout) => set({ ...normalizeBoard(layout), paneErrors: {} }),
-}))
+  }
+})
 
 // -- persistencia: solo preferencias, agrupada, nunca por pixel -------------
 

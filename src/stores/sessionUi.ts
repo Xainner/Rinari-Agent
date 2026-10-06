@@ -53,7 +53,8 @@ function persist(bySession: Record<string, SessionUiPrefs>) {
 
 export const useSessionUiStore = create<SessionUiState>((set, get) => ({
   bySession: load(),
-  reasoningFor: (sessionId) => (get().bySession[sessionId] ?? DEFAULT_PREFS).reasoningEffort,
+  // Sin sesión, la clave es la del borrador: leer y escribir usan la misma.
+  reasoningFor: (sessionId) => (get().bySession[sessionId || 'draft'] ?? DEFAULT_PREFS).reasoningEffort,
   setReasoningFor: (sessionId, effort) => set((state) => {
     const key = sessionId || 'draft'
     const current = state.bySession[key] ?? DEFAULT_PREFS

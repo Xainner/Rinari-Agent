@@ -11,6 +11,7 @@ import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
+  WorkspaceMedia,
   DesktopCommand,
   EngineBackedCommand,
   EngineStatus,
@@ -55,6 +56,10 @@ export interface TestBridge extends DesktopBridge {
   initialHandoff: OpenRequest
   /** Archivos que se pidió abrir con la aplicación del sistema. */
   readonly openedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
+  /** «Abrir en el Explorador»: distinto de abrir, para que un test no los confunda. */
+  readonly revealedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
+  /** Tipo que devuelve `files.media` por ruta (por defecto `text`). */
+  readonly mediaKinds: Record<string, WorkspaceMedia['kind']>
   /** Textos que el host de prueba confirmó en el portapapeles. */
   readonly copiedTexts: string[]
   /** Ajustes de segundo plano del host de prueba. */
@@ -154,6 +159,8 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     },
     initialHandoff: { project: null, session: null },
     openedFiles: [],
+    revealedFiles: [],
+    mediaKinds: {},
     copiedTexts: [],
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     hostLanguage: null,
@@ -212,6 +219,21 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     files: {
       async openExternal(input) {
         bridge.openedFiles.push(input)
+      },
+      async revealInFolder(input) {
+        bridge.revealedFiles.push(input)
+      },
+      async media(input) {
+        const kind = bridge.mediaKinds[input.path] ?? 'text'
+        const name = input.path.split(/[\/]/).pop() ?? input.path
+        return {
+          path: input.path,
+          name,
+          size: 1,
+          kind,
+          mime: kind === 'image' ? 'image/png' : kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mpeg' : 'application/octet-stream',
+          url: kind === 'image' || kind === 'video' || kind === 'audio' ? `app://rinari/__media/test-${name}` : null,
+        }
       },
     },
 
@@ -400,6 +422,8 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       }
       bridge.initialHandoff = { project: null, session: null }
       bridge.openedFiles.length = 0
+      bridge.revealedFiles.length = 0
+      for (const key of Object.keys(bridge.mediaKinds)) delete bridge.mediaKinds[key]
       bridge.copiedTexts.length = 0
       bridge.hostLanguage = null
       bridge.menus.length = 0

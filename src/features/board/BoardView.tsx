@@ -22,6 +22,7 @@ import { projectDisplayName } from '../projects/workspaceModel'
 import {
   PANE_MAX_WIDTH,
   PANE_MIN_WIDTH,
+  isDraftPane,
   useBoardStore,
   type BoardPane,
   type SessionResolution,
@@ -144,6 +145,11 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     warnSoftLimit()
     addPane(sessionId, { focus: true })
   }, [addPane, warnSoftLimit])
+  const addDraftPane = useBoardStore((state) => state.addDraftPane)
+  const addDraft = useCallback((projectId: string | null) => {
+    warnSoftLimit()
+    addDraftPane(projectId, { focus: true })
+  }, [addDraftPane, warnSoftLimit])
 
   const openAddDialog = useCallback(() => setDialogOpen(true), [])
   const removeFocused = useCallback(() => {
@@ -168,6 +174,8 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     void (async () => {
       const resolved: Record<string, SessionResolution> = {}
       for (const pane of useBoardStore.getState().panes) {
+        // Un borrador aún no tiene sesión que resolver.
+        if (isDraftPane(pane)) continue
         const known = data.sessionsById[pane.sessionId]
         if (known) {
           resolved[pane.sessionId] = resolutionForState(known.state)
@@ -316,7 +324,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
           </>
         )}
       </div>
-      <AddPaneDialog open={dialogOpen} onOpenChange={setDialogOpen} onAdded={addSession} />
+      <AddPaneDialog open={dialogOpen} onOpenChange={setDialogOpen} onAdded={addSession} onAddDraft={addDraft} />
       <AlertDialog open={closing !== null} onOpenChange={(next) => { if (!next) setClosing(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>

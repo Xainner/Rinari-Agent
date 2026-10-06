@@ -1,5 +1,6 @@
 import { platform, type NotificationTarget, type SystemNotification } from '../platform'
 import type { NotificationDeliverySupport, SystemPermission } from './notificationPolicy'
+import { ownSoundsEnabled } from './notificationSounds'
 
 /**
  * Adaptador de notificaciones del sistema.
@@ -60,6 +61,8 @@ export async function sendSystemNotification(notification: NativeNotification): 
     title: notification.title,
     body: notification.body,
     target: notification.target,
+    // Con los tonos de Rinari activos, ellos son el único sonido del aviso.
+    silent: ownSoundsEnabled(),
   }
   try {
     return await platform().notifications.send(payload)

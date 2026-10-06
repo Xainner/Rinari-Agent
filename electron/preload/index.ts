@@ -36,6 +36,7 @@ import {
   type NotificationSupport,
   type NotificationTarget,
   type OpenExternalFileRequest,
+  type WorkspaceMedia,
   type OpenFilesRequest,
   type OpenRequest,
   type SystemNotificationRequest,
@@ -128,6 +129,8 @@ const api = {
   files: {
     /** El Engine valida raíz y procedencia; el host solo abre lo que aprobó. */
     openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
+    revealInFolder: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesRevealInFolder, request),
+    media: (request: OpenExternalFileRequest) => call<WorkspaceMedia>(CHANNEL.filesMedia, request),
   },
 
   clipboard: {

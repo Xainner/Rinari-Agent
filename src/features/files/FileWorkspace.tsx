@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Copy, ExternalLink, FileText, RefreshCw, X } from 'lucide-react'
+import { Copy, ExternalLink, FileText, FolderOpen, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { desktopApi, type FilePreview } from '../../services/desktop'
 import { commandMessage, engineApi, isCommandError } from '../../services/engine'
@@ -17,12 +17,23 @@ import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 import { artifactImageUrl, isArtifactImage, rememberArtifactImageSize, useArtifactImage } from './artifactImage'
 
-import { platform } from '../../platform'
+import { platform, type ContextMenuItem, type WorkspaceMedia } from '../../platform'
 import { translate, useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 
 type OpenFile = (path: string, turnId?: string) => void
-const FileContext = createContext<OpenFile | null>(null)
+/**
+ * Lo que se puede hacer con un enlace a archivo, ya con su sesión y su base:
+ * dentro de un documento abierto, los relativos parten de su carpeta.
+ */
+interface FileActions {
+  open: OpenFile
+  reveal: OpenFile
+  openExternal: OpenFile
+}
+const FileContext = createContext<FileActions | null>(null)
+/** La vista de texto del Engine: más grande, se ofrece abrir fuera. */
+const TEXT_PREVIEW_LIMIT = 512 * 1024
 export const FileTurnContext = createContext<string | undefined>(undefined)
 
 export function localFileTarget(href: string): string | null {
@@ -58,17 +69,33 @@ export function FileLink({
   href?: string
   children?: ReactNode
 }) {
-  const open = useContext(FileContext)
+  const actions = useContext(FileContext)
   const turnId = useContext(FileTurnContext)
   const target = localFileTarget(href)
   return (
     <a
       href={href}
       data-file-path={target ?? undefined}
+      onContextMenu={(e) => {
+        // El menú se arma aquí, con la sesión, el turno y la base del enlace;
+        // el global (DesktopContextMenu) respeta `defaultPrevented`.
+        if (target === null || !actions || !platform().isDesktop()) return
+        e.preventDefault()
+        const lang = useUIStore.getState().lang
+        const selection = window.getSelection()?.toString() ?? ''
+        const items: ContextMenuItem[] = []
+        if (selection) items.push({ kind: 'action', text: translate(lang, 'edit.copy'), run: () => void copyText(selection) })
+        items.push({ kind: 'action', text: translate(lang, 'app.openFile'), run: () => actions.open(target, turnId) })
+        if (!target.startsWith('artifact:')) {
+          items.push({ kind: 'action', text: translate(lang, 'files.revealInFolder'), run: () => actions.reveal(target, turnId) })
+        }
+        items.push({ kind: 'action', text: translate(lang, 'app.copyAddress'), run: () => void copyText(target) })
+        void platform().contextMenu.show(items, { x: e.clientX, y: e.clientY }).catch((error) => toast.error(String(error)))
+      }}
       onClick={(e) => {
-        if (target !== null && open) {
+        if (target !== null && actions) {
           e.preventDefault()
-          open(target, turnId)
+          actions.open(target, turnId)
         } else if (/^(https?:|mailto:)/i.test(href)) {
           e.preventDefault()
           void platform().opener.openUrl(href).catch((error) =>
@@ -88,7 +115,7 @@ export function FileLink({
  * stays a link to the artifact.
  */
 export function ArtifactImage({ uri, alt = '' }: { uri: string; alt?: string }) {
-  const open = useContext(FileContext)
+  const open = useContext(FileContext)?.open
   const turnId = useContext(FileTurnContext)
   const { t } = useI18n()
   const { url, failed, width, height } = useArtifactImage(uri)
@@ -120,6 +147,13 @@ export type FileTab = {
   file?: FilePreview
   /** Data URL of an image artifact; `file` then only names it. */
   image?: string
+  /**
+   * Archivo local que no se lee como texto: imagen, video o audio con su URL
+   * de la app, o cualquier otro (PDF, binario, texto enorme) sin vista interna.
+   */
+  media?: WorkspaceMedia
+  /** Artefacto de texto mostrado solo en parte. */
+  truncated?: boolean
   error?: string
   watchId?: string
   revision?: number
@@ -136,6 +170,8 @@ export interface FileWorkspaceController {
   close: (key: string) => void
   refresh: (key: string) => void
   open: OpenFile
+  reveal: OpenFile
+  openExternal: OpenFile
   source: boolean
   setSource: (next: boolean | ((current: boolean) => boolean)) => void
 }
@@ -194,6 +230,19 @@ export function FileWorkspaceProvider({
     const tab = tabsRef.current.find((candidate) => candidate.key === key)
     const owner = owners.current.get(key)
     if (!tab || !owner || tab.target.startsWith('artifact://')) return
+    if (tab.media) {
+      // Sin watch: refrescar pide otra URL, que vuelve a leer el archivo.
+      const sequence = ++owner.sequence
+      try {
+        const media = await platform().files.media({ session_id: tab.sessionId, path: tab.target, turn_id: tab.turnId })
+        if (owners.current.get(key) !== owner || owner.sequence !== sequence) return
+        updateTabs((current) => current.map((candidate) => candidate.key === key ? { ...candidate, media, error: undefined, syncError: undefined, stale: false } : candidate))
+      } catch (error) {
+        if (owners.current.get(key) !== owner || owner.sequence !== sequence) return
+        updateTabs((current) => current.map((candidate) => candidate.key === key ? { ...candidate, stale: true, syncError: commandMessage(error) } : candidate))
+      }
+      return
+    }
     if (revision !== undefined) {
       if ((tab.revision ?? 0) >= revision) return
       updateTabs((current) => current.map((candidate) => candidate.key === key
@@ -243,12 +292,15 @@ export function FileWorkspaceProvider({
       let file: FilePreview
       let watchId: string | undefined
       let image: string | undefined
+      let media: WorkspaceMedia | undefined
+      let truncated = false
       if (isArtifactImage(target)) {
         image = await artifactImageUrl(target)
         file = { path: target, name: target.split('/').at(-1) || 'Artifact', content: '', language: '', size: 0 } as FilePreview
       } else if (target.startsWith('artifact://')) {
         const result = await engineApi.artifactRead(target, 512 * 1024)
-        if (result.truncated) throw new Error(translate(useUIStore.getState().lang, 'files.previewTooLarge'))
+        // Como en la lista de artefactos: el principio, con su aviso.
+        truncated = result.truncated === true
         file = {
           path: target,
           name: target.split('/').at(-1) || 'Artifact',
@@ -257,18 +309,29 @@ export function FileWorkspaceProvider({
           size: result.text.length,
         }
       } else {
-        try {
-          const status = await platform().engine.status()
+        const status = await platform().engine.status()
+        if (!isCurrent()) return
+        if (status.capabilities?.workspace_file_resolve_v1) {
+          // Qué es antes de leerlo: un video o un PNG grande no pasan por la
+          // vista de texto (512 KiB, UTF-8).
+          const described = await platform().files.media({ session_id: sessionId, path: target, turn_id: turnId })
           if (!isCurrent()) return
-          if (!status.capabilities?.workspace_file_watch_v1) {
-            throw Object.assign(new Error('legacy engine'), { code: 'UNKNOWN_METHOD' })
+          if (described.kind !== 'text' || described.size > TEXT_PREVIEW_LIMIT) media = described
+        }
+        if (media) {
+          file = { path: media.path, name: media.name, content: '', language: '', size: media.size } as FilePreview
+        } else {
+          try {
+            if (!status.capabilities?.workspace_file_watch_v1) {
+              throw Object.assign(new Error('legacy engine'), { code: 'UNKNOWN_METHOD' })
+            }
+            const watched = await desktopApi.watchFile(sessionId, target, turnId)
+            file = watched.preview
+            watchId = watched.watch_id
+          } catch (error) {
+            if (!isCommandError(error) || !['UNKNOWN_METHOD', 'UNKNOWN_COMMAND'].includes(error.code)) throw error
+            file = await desktopApi.readFile(sessionId, target, turnId)
           }
-          const watched = await desktopApi.watchFile(sessionId, target, turnId)
-          file = watched.preview
-          watchId = watched.watch_id
-        } catch (error) {
-          if (!isCommandError(error) || !['UNKNOWN_METHOD', 'UNKNOWN_COMMAND'].includes(error.code)) throw error
-          file = await desktopApi.readFile(sessionId, target, turnId)
         }
       }
       if (!isCurrent()) {
@@ -277,7 +340,7 @@ export function FileWorkspaceProvider({
       }
       updateTabs((current) =>
         current.map((tab) =>
-          tab.key === key ? { ...tab, file, image, watchId, error: undefined } : tab,
+          tab.key === key ? { ...tab, file, image, media, truncated, watchId, error: undefined } : tab,
         ),
       )
       // Covers changes emitted between watch registration and its response.
@@ -375,13 +438,17 @@ export function FileWorkspaceProvider({
     close,
     refresh: (key) => void readCurrent(key),
     open: (path, turnId) => void open(path, turnId),
+    reveal: (path, turnId) => void platform().files.revealInFolder({ session_id: sessionId, path, turn_id: turnId })
+      .catch((error) => toast.error(commandMessage(error))),
+    openExternal: (path, turnId) => void platform().files.openExternal({ session_id: sessionId, path, turn_id: turnId })
+      .catch((error) => toast.error(commandMessage(error))),
     source,
     setSource,
   }), [sessionId, currentTabs, selected, close, open, readCurrent, source])
 
   return (
     <FileWorkspaceContext.Provider value={controller}>
-      <FileContext.Provider value={controller.open}>{children}</FileContext.Provider>
+      <FileContext.Provider value={controller}>{children}</FileContext.Provider>
     </FileWorkspaceContext.Provider>
   )
 }
@@ -391,7 +458,12 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
   const { t } = useI18n()
   const controller = useFileWorkspace()
   if (!controller) return null
-  const { tabs: currentTabs, selected, select, close, refresh, open, source, setSource } = controller
+  const { tabs: currentTabs, selected, select, close, refresh, open, reveal, openExternal, source, setSource } = controller
+  const local = selected && !selected.target.startsWith('artifact:')
+  // Base de los enlaces relativos de un documento abierto: su carpeta.
+  const nested = (path: string) => !selected?.file || /^(?:[a-z]:[\\/]|\/|artifact:)/i.test(path)
+    ? path
+    : `${selected.file.path.replace(/[\\/][^\\/]*$/, '')}/${path}`
   return (
     <div className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg-app)] text-sm ${className}`}>
       <div className="flex items-center border-b border-[var(--border)]">
@@ -448,21 +520,30 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
             <button aria-label={t('files.refresh')} onClick={() => refresh(selected.key)}>
               <RefreshCw size={14} />
             </button>
-            {selected.file &&
-              !selected.target.startsWith('artifact:') &&
-              !['html', 'htm'].includes(selected.file.language) && (
-                <button
-                  aria-label={t('files.openExternally')}
-                  onClick={() =>
-                    void desktopApi
-                      .openFile(selected.sessionId, selected.file!.path, selected.turnId)
-                      .catch((error) => toast.error(commandMessage(error)))
-                  }
-                >
-                  <ExternalLink size={14} />
-                </button>
-              )}
+            {local && !(selected.file && ['html', 'htm'].includes(selected.file.language)) && (
+              <button
+                aria-label={t('files.openExternally')}
+                title={t('files.openExternally')}
+                onClick={() => openExternal(selected.file?.path ?? selected.target, selected.turnId)}
+              >
+                <ExternalLink size={14} />
+              </button>
+            )}
+            {local && (
+              <button
+                aria-label={t('files.revealInFolder')}
+                title={t('files.revealInFolder')}
+                onClick={() => reveal(selected.file?.path ?? selected.target, selected.turnId)}
+              >
+                <FolderOpen size={14} />
+              </button>
+            )}
           </div>
+          {selected.truncated && (
+            <div role="status" className="border-b border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)]">
+              {t('files.partialPreview')}
+            </div>
+          )}
           {(selected.file?.changed_since_turn || selected.stale || selected.syncError) && (
             <div role="status" className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
               {selected.syncError ?? (selected.state === 'deleted'
@@ -484,6 +565,8 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
           >
             {selected.error ? (
               <p role="alert">{selected.error}</p>
+            ) : selected.media ? (
+              <MediaView media={selected.media} onOpenExternally={() => openExternal(selected.media!.path, selected.turnId)} onReveal={() => reveal(selected.media!.path, selected.turnId)} />
             ) : selected.image ? (
               <img src={selected.image} alt={selected.file?.name ?? ''} className="artifact-image mx-auto" />
             ) : selected.file &&
@@ -499,12 +582,10 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
             ) : selected.file ? (
               <FileTurnContext.Provider value={selected.turnId}>
                 <FileContext.Provider
-                  value={(path) => {
-                    const nested =
-                      !/^(?:[a-z]:[\\/]|\/|artifact:)/i.test(path)
-                        ? `${selected.file!.path.replace(/[\\/][^\\/]*$/, '')}/${path}`
-                        : path
-                    open(nested, selected.turnId)
+                  value={{
+                    open: (path) => open(nested(path), selected.turnId),
+                    reveal: (path) => reveal(nested(path), selected.turnId),
+                    openExternal: (path) => openExternal(nested(path), selected.turnId),
                   }}
                 >
                   {selected.file.language === 'md' && !source ? (
@@ -527,6 +608,55 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
           {t('files.emptyHint')}
         </p>
       )}
+    </div>
+  )
+}
+
+/** Tamaño legible: «32,9 MB». */
+function formatBytes(size: number, lang: string): string {
+  const units = ['B', 'KB', 'MB', 'GB']
+  let value = size
+  let unit = 0
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+  return `${value.toLocaleString(lang, { maximumFractionDigits: unit === 0 ? 0 : 1 })} ${units[unit]}`
+}
+
+/**
+ * Imagen, video o audio del workspace, servidos por la app a partir de la ruta
+ * que aprobó el Engine. El resto (PDF, binarios, textos enormes) no se lee: se
+ * dice qué es y se ofrece abrirlo fuera o en su carpeta.
+ */
+function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedia; onOpenExternally: () => void; onReveal: () => void }) {
+  const { t, lang } = useI18n()
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [media.url])
+  if (media.url && !failed) {
+    if (media.kind === 'image') return <img src={media.url} alt={media.name} className="artifact-image mx-auto" onError={() => setFailed(true)} />
+    if (media.kind === 'video') {
+      return <video key={media.url} src={media.url} controls preload="metadata" className="mx-auto max-h-full max-w-full" aria-label={media.name} onError={() => setFailed(true)} />
+    }
+    if (media.kind === 'audio') return <audio key={media.url} src={media.url} controls preload="metadata" className="w-full" aria-label={media.name} onError={() => setFailed(true)} />
+  }
+  const reason = failed
+    ? t('files.mediaUnsupported')
+    : media.kind === 'text' ? t('files.textTooLarge') : t('files.noInternalViewer')
+  return (
+    <div role="status" className="mx-auto flex max-w-md flex-col items-center gap-3 py-10 text-center">
+      <FileText size={28} className="text-[var(--text-subtle)]" />
+      <p className="text-sm text-[var(--text)]">{media.name}</p>
+      <p className="text-xs text-[var(--text-muted)]">{formatBytes(media.size, lang)} · {media.mime}</p>
+      <p className="text-xs text-[var(--text-muted)]">{reason}</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <button type="button" onClick={onOpenExternally} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white">
+          <ExternalLink size={13} />{t('files.openExternally')}
+        </button>
+        <button type="button" onClick={onReveal} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text)]">
+          <FolderOpen size={13} />{t('files.revealInFolder')}
+        </button>
+      </div>
     </div>
   )
 }

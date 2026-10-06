@@ -106,6 +106,8 @@ export function engineFixture(overrides: Partial<EngineSession> = {}): EngineSes
     setPermissionFor: vi.fn(async () => true),
     searchFiles: vi.fn(async () => ({ root: '', files: [] })),
     searchFilesFor: vi.fn(async () => ({ root: '', files: [] })),
+    openDraft: vi.fn(),
+    materializeDraft: vi.fn(async () => null),
     historyInfo: {},
     historyPhase: 'loaded',
     historyPhases: Object.fromEntries(sessions.map(row => [row.id, 'loaded'])),

@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n'
 import ModelCatalog from './ModelCatalog'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ProviderAuthPanel from './ProviderAuthPanel'
+import { registerProviderModels } from './registerModels'
 
 export default function ProviderDetails({ provider, onChanged }: { provider: ProviderSummary; onChanged: () => void }) {
   const { t } = useI18n()
@@ -29,7 +30,7 @@ export default function ProviderDetails({ provider, onChanged }: { provider: Pro
     </div>
     <div id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`}>
       {tab === 'connection' && (provider.auth_method === 'oauth'
-        ? <ProviderAuthPanel providerAlias={provider.alias} onConnected={onChanged} />
+        ? <ProviderAuthPanel providerAlias={provider.alias} onConnected={() => void registerProviderModels(provider.alias).then(onChanged)} />
         : <p className="text-sm text-[var(--text-muted)]">{provider.has_credential ? t('providers.credentialOk') : provider.auth_method === 'none' ? t('providers.authNone') : t('providers.noCredential')}</p>)}
       {tab === 'models' && <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />}
       {tab === 'usage' && <ProviderUsagePanel providerAlias={provider.alias} />}

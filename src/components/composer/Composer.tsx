@@ -494,7 +494,11 @@ export default function Composer({
   const canSend = paneMention ? paneMention.message.length > 0 : (!!text.trim() || attachments.length > 0)
 
   async function prepareOne(item: AttachmentRef) {
-    if (!onPrepareAttachments) return
+    if (!onPrepareAttachments) {
+      // Borrador sin sesión: se prepara al enviar; aquí solo cambia la elección.
+      updateAttachmentById(item.id, { ...item, status: undefined, error: undefined })
+      return
+    }
     const generation = (preparationGenerationRef.current.get(item.id) ?? 0) + 1
     preparationGenerationRef.current.set(item.id, generation)
     const pending = { ...item, status: 'preparing' as const, error: undefined }

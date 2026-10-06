@@ -8,6 +8,7 @@ export type DesktopCommand =
   | "approval_resolve"
   | "artifact_list"
   | "artifact_read"
+  | "artifact_resolve"
   | "attachment_prepare"
   | "attachment_prepare_cancel"
   | "attachment_prepare_get"
@@ -188,6 +189,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "approval_resolve",
   "artifact_list",
   "artifact_read",
+  "artifact_resolve",
   "attachment_prepare",
   "attachment_prepare_cancel",
   "attachment_prepare_get",
@@ -388,6 +390,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "approval_resolve",
   "artifact_list",
   "artifact_read",
+  "artifact_resolve",
   "attachment_prepare",
   "attachment_prepare_cancel",
   "attachment_prepare_get",

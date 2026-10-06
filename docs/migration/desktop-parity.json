@@ -59,6 +59,13 @@
       "callers": []
     },
     {
+      "command": "artifact_resolve",
+      "kind": "engine",
+      "method": "artifact.resolve",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "attachment_prepare",
       "kind": "engine",
       "method": "attachment.prepare",
@@ -1498,10 +1505,10 @@
     }
   ],
   "summary": {
-    "commands": 178,
-    "engine_backed": 172,
+    "commands": 179,
+    "engine_backed": 173,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 57
+    "without_callers": 58
   }
 }

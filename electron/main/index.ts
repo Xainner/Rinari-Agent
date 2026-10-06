@@ -224,11 +224,15 @@ interface ResolvedFile {
  * un video de 30 MB. Nunca se usa la ruta que diga el renderer.
  */
 async function resolveWorkspaceFile(request: { session_id: string; path: string; turn_id?: string }): Promise<ResolvedFile> {
-  const call = translateCommand('workspace_file_resolve', {
-    session_id: request.session_id,
-    path: request.path,
-    turn_id: request.turn_id,
-  })
+  // Un artefacto lo resuelve el Artifact Store del Engine; React nunca
+  // deduce dónde están sus bytes.
+  const call = request.path.startsWith('artifact://')
+    ? translateCommand('artifact_resolve', { uri: request.path })
+    : translateCommand('workspace_file_resolve', {
+      session_id: request.session_id,
+      path: request.path,
+      turn_id: request.turn_id,
+    })
   const resolved = (await engine.request(call.method, call.params)) as Partial<ResolvedFile> | null
   if (!resolved || typeof resolved.path !== 'string' || !resolved.path) {
     throw new EngineCommandError('ENGINE_ERROR', 'Engine returned no file path')

@@ -27,6 +27,7 @@ import type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  UpdateState,
   MigrationStatus,
   FlowScopeRequest,
   BackgroundSettings,
@@ -70,6 +71,9 @@ export interface TestBridge extends DesktopBridge {
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
   update: UpdateAvailable | null
+  /** Lo que devuelve `updates.snapshot`; `emitUpdateState` lo cambia y avisa. */
+  updateState: UpdateState
+  emitUpdateState(state: UpdateState): void
   desktop: boolean
   migrationStatus: MigrationStatus
   /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
@@ -110,6 +114,7 @@ export function createTestBridge(): TestBridge {
   const menuListeners = new Set<(action: string) => void>()
   const openListeners = new Set<(request: OpenRequest) => void>()
   const notificationListeners = new Set<(target: NotificationTarget) => void>()
+  const updateListeners = new Set<(state: UpdateState) => void>()
   const browserListeners = new Set<(view: NativeBrowserContext) => void>()
 
 /** Un alcance sin etapas: lo honesto cuando el test no dijo otra cosa. */
@@ -170,6 +175,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     openedUrls: [],
     nextFileSelection: null,
     update: null,
+    updateState: { phase: 'idle', current_version: '0.2.0', available_version: null, progress: null, message: null, unsigned: true },
     desktop: true,
     migrationStatus: { state: 'not_started', pending: false },
 
@@ -380,8 +386,14 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
           unsigned: bridge.update?.unsigned ?? true,
         }
       },
+      async snapshot() {
+        return bridge.updateState
+      },
       async apply() {},
-      async onState() { return () => {} },
+      async onState(callback) {
+        updateListeners.add(callback)
+        return () => updateListeners.delete(callback)
+      },
     },
 
     migration: {
@@ -394,6 +406,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
 
     emitEngineEvent(event) {
       for (const listener of [...engineListeners]) listener(event)
+    },
+    emitUpdateState(state) {
+      bridge.updateState = state
+      for (const listener of [...updateListeners]) listener(state)
     },
     emitMenuAction(action) {
       for (const listener of [...menuListeners]) listener(action)

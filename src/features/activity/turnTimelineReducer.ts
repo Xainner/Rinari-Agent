@@ -120,6 +120,15 @@ function modelChange(payload: Record<string, unknown>): ModelChange | undefined 
   return previous && next ? { previous, next } : undefined
 }
 
+function errorCode(value: unknown): string | undefined {
+  return value && typeof value === 'object' ? text((value as Record<string, unknown>).code) || undefined : undefined
+}
+
+function errorRetryable(value: unknown): boolean | undefined {
+  const raw = value && typeof value === 'object' ? (value as Record<string, unknown>).retryable : undefined
+  return typeof raw === 'boolean' ? raw : undefined
+}
+
 function errorMessage(value: unknown): string | undefined {
   if (typeof value === 'string') return value
   if (value && typeof value === 'object') {
@@ -387,7 +396,8 @@ function mergeEventItem(
       sessionId: text(payload.session_id) || undefined,
       error: text(payload.error) || undefined,
       reason: text(payload.reason) || undefined,
-      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source, checks: payload.checks, duration: payload.duration_ms, dropped: payload.dropped_messages },
+      skipReason: text(payload.skip_reason) || undefined,
+      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source, checks: payload.checks, duration: payload.duration_ms, dropped: payload.dropped_messages, messages: payload.history_messages, history: payload.history_tokens },
       activitySeq,
       occurredAt,
       status:
@@ -459,6 +469,8 @@ function normalizePersistedTurn(turn: TimelineTurn): TurnTimeline {
     userMessage: turn.user_message,
     origin: originOf(turn.origin),
     error: errorMessage(turn.terminal?.error),
+    errorCode: errorCode(turn.terminal?.error),
+    errorRetryable: errorRetryable(turn.terminal?.error),
     errorDetails: turn.terminal?.error && typeof turn.terminal.error === 'object'
       ? (turn.terminal.error as { details?: Record<string, unknown> }).details : undefined,
     items: [],
@@ -519,6 +531,8 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
           completedAt: incomingTerminal ? incoming.completedAt : current.completedAt,
           error: incomingTerminal ? incoming.error : current.error,
           errorDetails: incomingTerminal ? incoming.errorDetails : current.errorDetails,
+          errorCode: incomingTerminal ? incoming.errorCode : current.errorCode,
+          errorRetryable: incomingTerminal ? incoming.errorRetryable : current.errorRetryable,
           stopReason: incomingTerminal ? incoming.stopReason : current.stopReason,
           items: incoming.items,
           usage: (newestUsage(current.usage, incoming.usage)?.revision ?? 0) > 0
@@ -681,6 +695,8 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
         status: terminal,
         completedAt: parseTime(payload.occurred_at, action.now),
         error: event === 'turn.failed' ? errorMessage(payload.error) : timeline.error,
+        errorCode: event === 'turn.failed' ? errorCode(payload.error) : timeline.errorCode,
+        errorRetryable: event === 'turn.failed' ? errorRetryable(payload.error) : timeline.errorRetryable,
         errorDetails: event === 'turn.failed' && payload.error && typeof payload.error === 'object' ? (payload.error as { details?: Record<string, unknown> }).details : timeline.errorDetails,
         stopReason: event === 'turn.stopped'
           ? {

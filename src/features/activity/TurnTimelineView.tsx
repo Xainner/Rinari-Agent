@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import type { ChatMessage } from '../../types'
 import Markdown from '../../components/Markdown'
@@ -41,7 +41,7 @@ import { commandMessage, engineApi } from '../../services/engine'
 import { formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
-import type { SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
+import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
 
 type DisplayItem = TimelineItem | { id: string; type: 'tool-group'; items: Extract<TimelineItem, { type: 'tool' }>[] }
@@ -122,7 +122,7 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
     : category === 'read' ? `${items.length} reads${fileCount}` : category === 'search' ? `Ran ${items.length} searches` : category === 'command' ? `Ran ${items.length} commands` : `Listed files ${items.length} times`
   return (
     <details className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
         <Icon size={13} className="text-[var(--text-subtle)]" />
         <span>{label}</span>
         <ChevronDown size={12} className="ml-auto transition-transform group-open/activity:rotate-180" />
@@ -170,7 +170,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const exited = failed && !item.error && !item.presentation?.error && typeof exitCode === 'number' && exitCode !== 0
     return (
       <details className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
           {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : exited ? <TriangleAlert size={13} className="text-amber-400" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
           <span>{formatTool(item, lang)}</span>
           {exited && <span className="font-mono text-[10px] text-amber-300">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
@@ -208,7 +208,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'question') return <details className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></details>
   if (item.type === 'system') return null
   const labels = item.type === 'context'
-      ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? (lang === 'es' ? 'No fue necesario compactar' : 'Compaction was not needed') : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
+      ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
       : item.type === 'verification'
         ? (item.status === 'running' ? (lang === 'es' ? 'Verificando…' : 'Verifying…') : item.status === 'failed' ? (lang === 'es' ? 'La verificación falló' : 'Verification failed') : (lang === 'es' ? 'Verificación completada' : 'Verification completed'))
         : ''
@@ -225,6 +225,19 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   </div>
   const Icon = item.type === 'verification' ? Check : Sparkles
   return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" />{labels}</div>
+}
+
+/**
+ * Una compactación manual sin efecto dice por qué y con qué números. Sin
+ * motivo (un Engine anterior), el texto de siempre.
+ */
+export function compactionSkipped(item: ContextTimelineItem, t: (key: I18nKey, params?: Record<string, string | number>) => string): string {
+  const details = item.contextDetails ?? {}
+  const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? Math.round(value).toLocaleString() : '?')
+  if (item.skipReason === 'empty_history') return t('context.skipped.empty')
+  if (item.skipReason === 'only_latest_exchange') return t('context.skipped.latestOnly', { messages: count(details.messages), tokens: count(details.history) })
+  if (item.skipReason === 'summary_not_smaller') return t('context.skipped.notSmaller', { tokens: count(details.after) })
+  return t('context.skipped.generic')
 }
 
 function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number }) {

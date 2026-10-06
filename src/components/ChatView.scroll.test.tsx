@@ -166,6 +166,24 @@ it('sending while reading history jumps to the end once the Engine accepts the m
   expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
 })
 
+it('after the jump only a gesture of the person stops following the end, not a scroll the list makes itself', async () => {
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  scrollToIndex.mockClear()
+  sendFromComposer('otra pregunta')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
+  // The virtualizer re-measures rows while the reply arrives: a scroll event
+  // that is not at the end must not switch following off.
+  scrollTo(430)
+  expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
+  // The person scrolls up with the wheel: now it stops.
+  fireEvent.wheel(scroller())
+  scrollTo(200)
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+})
+
 it('a refused send leaves the reader where they were', async () => {
   const engine = engineWithTurns(10)
   ;(engine.send as ReturnType<typeof vi.fn>).mockResolvedValue(false)

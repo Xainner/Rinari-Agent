@@ -1,4 +1,4 @@
-# Archivos: video, imagen y PDF del workspace
+# Archivos: video, imagen, PDF y audio del workspace
 
 Los enlaces a archivos que no son texto ya no pasan por la vista de texto del
 Engine (512 KiB, UTF-8). `workspace.file.resolve` autoriza el archivo sin
@@ -17,4 +17,6 @@ Qué comprueba:
 - Un PNG de más de 512 KiB se ve como imagen.
 - Un PDF ofrece «Abrir externamente» y «Abrir en el Explorador»; este último
   entrega al sistema la ruta que aprobó el Engine.
+- Un enlace a un audio en la respuesta lleva su reproductor: no carga nada
+  hasta pulsar «Reproducir» y luego suena desde la URL aprobada.
 - Los tonos de aviso (`sounds/`) se sirven como `audio/mpeg` y se cargan.

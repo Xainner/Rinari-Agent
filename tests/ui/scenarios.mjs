@@ -109,14 +109,19 @@ export const scenarios = {
     },
   },
   'file-media': {
-    title: 'Archivos: video, imagen y PDF del workspace',
+    title: 'Archivos: video, imagen, PDF y audio del workspace',
     phases: ['exercise'],
-    model: () => startFakeModel([{ text: 'Listo: [Ver la promo](out/clip.mp4) · [Póster](out/poster.png) · [Manual](out/manual.pdf)' }]),
+    model: () => startFakeModel([{ text: 'Listo: [Ver la promo](out/clip.mp4) · [Póster](out/poster.png) · [Manual](out/manual.pdf) · [Voz](out/voz.mp3)' }]),
   },
   'model-change-notice': {
     title: 'Chat: aviso de cambio de modelo',
     phases: ['exercise', 'restart'],
     model: () => startFakeModel([{ text: 'RESPUESTA UNO' }, { text: 'RESPUESTA DOS' }, { text: 'RESPUESTA TRES' }]),
+  },
+  'provider-limit': {
+    title: 'Errores: cuota agotada lleva a Uso y límites del proveedor',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ httpError: { status: 429, body: { error: { message: 'You exceeded your current quota, please check your plan and billing details.', type: 'insufficient_quota', code: 'insufficient_quota' } } } }]),
   },
   'project-reveal': {
     title: 'Barra lateral: desplegar el proyecto al crear',

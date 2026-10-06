@@ -195,10 +195,25 @@ function ChatView({
     return { follow: false, rowId: row.id, offset: Math.max(0, virt.scrollOffset - virt.getItemOffset(index)) }
   }
 
+  // Tras un salto pedido (enviar o guiar) y mientras llega esa respuesta, solo
+  // un gesto de la persona apaga «seguir el final». Los `scroll` que provoca
+  // el virtualizador al medir y recolocar filas no cuentan: antes uno de ellos
+  // podía caer antes del salto y dejar el panel a medio camino. Termina con
+  // el gesto o cuando la respuesta acaba y el panel está abajo.
+  const jumpRef = useRef(false)
+  const streamingRef = useRef(isStreaming)
+  streamingRef.current = isStreaming
+  const userScrolls = () => { jumpRef.current = false }
+  useEffect(() => {
+    if (!isStreaming) jumpRef.current = false
+  }, [isStreaming])
+
   function handleScroll() {
     const el = scrollRef.current
     if (!el) return
     const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (jumpRef.current && !bottom) return
+    if (jumpRef.current && !streamingRef.current) jumpRef.current = false
     setAtBottom(bottom)
     followRef.current = bottom
     anchorRef.current = snapshotAnchor()
@@ -209,6 +224,7 @@ function ChatView({
   // lectura se restaura cuando las filas existan. Al salir, se guarda la
   // última ancla conocida de la sesión que se deja.
   useLayoutEffect(() => {
+    jumpRef.current = false
     const saved = readScrollAnchor(sessionId)
     if (!saved || saved.follow) {
       followRef.current = true
@@ -259,6 +275,7 @@ function ChatView({
     const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.message.turnId === turnId)
     if (index < 0) return false
     navigationRef.current += 1
+    jumpRef.current = false
     followRef.current = false
     setAtBottom(false)
     restoreRef.current = null
@@ -341,6 +358,7 @@ function ChatView({
   const sessionRef = useRef(sessionId)
   sessionRef.current = sessionId
   const goToEnd = useCallback(() => {
+    jumpRef.current = true
     followRef.current = true
     setAtBottom(true)
     anchorRef.current = { follow: true }
@@ -408,7 +426,7 @@ function ChatView({
     <ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={userScrolls} onKeyDown={userScrolls}>
             {historyNote?.hasMore && (
               <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">
                 {t('history.hasMore', { n: historyNote.total })}

@@ -52,7 +52,7 @@ export default function ShortcutsSettings() {
                     setRecording(null)
                   }
                 }}
-                className="min-w-24 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+                className="min-w-24 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] focus:outline-none/40"
                 aria-label={`${t(label)}: ${bindings[id]}`}
               >
                 {recording === id ? t('settings.shortcuts.recording') : bindings[id]}

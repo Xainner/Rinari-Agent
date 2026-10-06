@@ -22,6 +22,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "approval_resolve": {"method":"approval.resolve","params":[{"key":"approval_id","from":"approval_id","optional":false},{"key":"decision","from":"decision","optional":false}]},
   "artifact_list": {"method":"artifact.list","params":[{"key":"session_id","from":"session_id","optional":true}]},
   "artifact_read": {"method":"artifact.read","params":[{"key":"uri","from":"uri","optional":false},{"key":"max_bytes","from":"max_bytes","optional":true}]},
+  "artifact_resolve": {"method":"artifact.resolve","params":[{"key":"uri","from":"uri","optional":false}]},
   "attachment_prepare": {"method":"attachment.prepare","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"attachments","from":"attachments","optional":false}]},
   "attachment_prepare_cancel": {"method":"attachment.prepare.cancel","params":[{"key":"job_id","from":"job_id","optional":false}]},
   "attachment_prepare_get": {"method":"attachment.prepare.get","params":[{"key":"job_id","from":"job_id","optional":false}]},

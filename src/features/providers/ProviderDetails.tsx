@@ -5,11 +5,12 @@ import ModelCatalog from './ModelCatalog'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ProviderAuthPanel from './ProviderAuthPanel'
 import { registerProviderModels } from './registerModels'
+import type { ProviderTab } from '../../stores/ui'
 
-export default function ProviderDetails({ provider, onChanged }: { provider: ProviderSummary; onChanged: () => void }) {
+export default function ProviderDetails({ provider, onChanged, initialTab }: { provider: ProviderSummary; onChanged: () => void; initialTab?: ProviderTab }) {
   const { t } = useI18n()
   const tabId = useId()
-  const [tab, setTab] = useState<'connection' | 'models' | 'usage' | 'diagnostics'>(provider.auth_method === 'oauth' && !provider.has_credential ? 'connection' : 'usage')
+  const [tab, setTab] = useState<ProviderTab>(initialTab ?? (provider.auth_method === 'oauth' && !provider.has_credential ? 'connection' : 'usage'))
   const [diagnostics, setDiagnostics] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {

@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Copy, ExternalLink, FileText, FolderOpen, RefreshCw, X } from 'lucide-react'
+import { Copy, ExternalLink, FileText, Film, FolderOpen, Music, Play, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { desktopApi, type FilePreview } from '../../services/desktop'
 import { commandMessage, engineApi, isCommandError } from '../../services/engine'
@@ -16,6 +16,7 @@ import { copyText } from '../../lib/clipboard'
 import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 import { artifactImageUrl, isArtifactImage, rememberArtifactImageSize, useArtifactImage } from './artifactImage'
+import { MediaPlayer, mediaCandidate } from './MediaPlayer'
 
 import { platform, type ContextMenuItem, type WorkspaceMedia } from '../../platform'
 import { translate, useI18n } from '../../i18n'
@@ -27,6 +28,8 @@ type OpenFile = (path: string, turnId?: string) => void
  * dentro de un documento abierto, los relativos parten de su carpeta.
  */
 interface FileActions {
+  /** Qué es el archivo y, si es imagen, audio o video, su URL servida por el host. */
+  media: (path: string, turnId?: string) => Promise<WorkspaceMedia>
   open: OpenFile
   reveal: OpenFile
   openExternal: OpenFile
@@ -110,6 +113,53 @@ export function FileLink({
 }
 
 /**
+ * Un enlace a un audio o un video en un mensaje lleva su reproductor debajo.
+ * No se resuelve ni carga nada hasta que se pulsa «Reproducir»: un historial
+ * largo con muchos medios no descarga ninguno por estar a la vista.
+ */
+export function InlineMedia({ href }: { href: string }) {
+  const actions = useContext(FileContext)
+  const turnId = useContext(FileTurnContext)
+  const { t } = useI18n()
+  const target = localFileTarget(href)
+  const candidate = target ? mediaCandidate(target) : null
+  const [state, setState] = useState<{ media?: WorkspaceMedia; error?: string; loading?: boolean }>({})
+  if (!target || !candidate || !actions) return null
+  const name = decodeURIComponent(target.split(/[\\/]/).pop() || target)
+  if (state.media) {
+    return (
+      <span className="my-1.5 block" data-inline-media={candidate}>
+        <MediaPlayer media={state.media} autoPlay onOpenExternal={() => actions.openExternal(target, turnId)} />
+      </span>
+    )
+  }
+  const Icon = candidate === 'audio' ? Music : Film
+  const label = t(candidate === 'audio' ? 'files.playAudio' : 'files.playVideo', { name })
+  // Pegado al enlace y en línea: no parte la frase en la que va.
+  return (
+    <span className="inline-flex items-center align-middle" data-inline-media={candidate}>
+      <button
+        type="button"
+        disabled={state.loading}
+        aria-label={label}
+        title={label}
+        onClick={() => {
+          setState({ loading: true })
+          actions.media(target, turnId)
+            .then((media) => setState({ media }))
+            .catch((error) => setState({ error: commandMessage(error) }))
+        }}
+        className="ml-1 inline-flex items-center gap-0.5 rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-0.5 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:opacity-60"
+      >
+        <Icon size={12} aria-hidden="true" />
+        <Play size={10} aria-hidden="true" />
+      </button>
+      {state.error && <span role="alert" className="ml-1.5 text-xs text-red-400">{state.error}</span>}
+    </span>
+  )
+}
+
+/**
  * An image artifact inside a message. It keeps its aspect ratio within the
  * message width and opens in the file viewer; if it cannot be previewed it
  * stays a link to the artifact.
@@ -170,6 +220,7 @@ export interface FileWorkspaceController {
   close: (key: string) => void
   refresh: (key: string) => void
   open: OpenFile
+  media: FileActions['media']
   reveal: OpenFile
   openExternal: OpenFile
   source: boolean
@@ -297,7 +348,14 @@ export function FileWorkspaceProvider({
       if (isArtifactImage(target)) {
         image = await artifactImageUrl(target)
         file = { path: target, name: target.split('/').at(-1) || 'Artifact', content: '', language: '', size: 0 } as FilePreview
+      } else if (target.startsWith('artifact://') && (await platform().engine.status()).capabilities?.artifact_resolve_v1
+        && (media = await platform().files.media({ session_id: sessionId, path: target, turn_id: turnId })).kind !== 'text') {
+        // Un audio o video guardado como artefacto se reproduce; leerlo como
+        // texto mostraba bytes ilegibles.
+        if (!isCurrent()) return
+        file = { path: target, name: media.name, content: '', language: '', size: media.size } as FilePreview
       } else if (target.startsWith('artifact://')) {
+        media = undefined
         const result = await engineApi.artifactRead(target, 512 * 1024)
         // Como en la lista de artefactos: el principio, con su aviso.
         truncated = result.truncated === true
@@ -438,6 +496,7 @@ export function FileWorkspaceProvider({
     close,
     refresh: (key) => void readCurrent(key),
     open: (path, turnId) => void open(path, turnId),
+    media: (path, turnId) => platform().files.media({ session_id: sessionId, path, turn_id: turnId }),
     reveal: (path, turnId) => void platform().files.revealInFolder({ session_id: sessionId, path, turn_id: turnId })
       .catch((error) => toast.error(commandMessage(error))),
     openExternal: (path, turnId) => void platform().files.openExternal({ session_id: sessionId, path, turn_id: turnId })
@@ -566,7 +625,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
             {selected.error ? (
               <p role="alert">{selected.error}</p>
             ) : selected.media ? (
-              <MediaView media={selected.media} onOpenExternally={() => openExternal(selected.media!.path, selected.turnId)} onReveal={() => reveal(selected.media!.path, selected.turnId)} />
+              <MediaView media={selected.media} onOpenExternally={() => openExternal(selected.target.startsWith('artifact:') ? selected.target : selected.media!.path, selected.turnId)} onReveal={selected.target.startsWith('artifact:') ? undefined : () => reveal(selected.media!.path, selected.turnId)} />
             ) : selected.image ? (
               <img src={selected.image} alt={selected.file?.name ?? ''} className="artifact-image mx-auto" />
             ) : selected.file &&
@@ -584,6 +643,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
                 <FileContext.Provider
                   value={{
                     open: (path) => open(nested(path), selected.turnId),
+                    media: (path) => controller.media(nested(path), selected.turnId),
                     reveal: (path) => reveal(nested(path), selected.turnId),
                     openExternal: (path) => openExternal(nested(path), selected.turnId),
                   }}
@@ -629,7 +689,7 @@ function formatBytes(size: number, lang: string): string {
  * que aprobó el Engine. El resto (PDF, binarios, textos enormes) no se lee: se
  * dice qué es y se ofrece abrirlo fuera o en su carpeta.
  */
-function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedia; onOpenExternally: () => void; onReveal: () => void }) {
+function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedia; onOpenExternally: () => void; onReveal?: () => void }) {
   const { t, lang } = useI18n()
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [media.url])
@@ -653,9 +713,11 @@ function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedi
         <button type="button" onClick={onOpenExternally} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white">
           <ExternalLink size={13} />{t('files.openExternally')}
         </button>
-        <button type="button" onClick={onReveal} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text)]">
-          <FolderOpen size={13} />{t('files.revealInFolder')}
-        </button>
+        {onReveal && (
+          <button type="button" onClick={onReveal} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text)]">
+            <FolderOpen size={13} />{t('files.revealInFolder')}
+          </button>
+        )}
       </div>
     </div>
   )

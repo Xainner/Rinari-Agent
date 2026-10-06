@@ -23,6 +23,7 @@ import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
 import ScheduleNotifier from './features/schedules/ScheduleNotifier'
 import SoundCoordinator from './features/sounds/SoundCoordinator'
+import UpdateNotifier from './features/updates/UpdateNotifier'
 import NotificationCenter from './features/notifications/NotificationCenter'
 import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
 import { projectDisplayName } from './features/projects/workspaceModel'
@@ -577,6 +578,7 @@ function App() {
       {confirmDialog}
       <BoardActivityController />
       <SoundCoordinator activeSession={session.activeSession} />
+      <UpdateNotifier lang={lang} />
       <SkillLearnedNotifier />
       {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
       <ScheduleForm />
@@ -717,6 +719,7 @@ function App() {
                   if (target.kind === 'session') chooseSession(target.sessionId)
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
+                  else if (target.kind === 'update') goSettings('about')
                   else if (target.skill) useUIStore.getState().openSkill(target.skill)
                   else goSettings('skills')
                 }}

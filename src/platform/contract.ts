@@ -273,6 +273,12 @@ export interface DesktopBridge {
     check(): Promise<UpdateAvailable | null>
     /** Descarga y valida el SHA-512; no interrumpe el trabajo activo. */
     download(): Promise<UpdateState>
+    /**
+     * Estado actual del actualizador. `onState` solo trae lo que pasa desde
+     * que uno se suscribe: un renderer recargado o montado tarde lo recupera
+     * con esto (versión ofrecida, descarga en curso o terminada).
+     */
+    snapshot(): Promise<UpdateState>
     /** Pide confirmación, cierra el Engine y aplica lo ya descargado. */
     apply(): Promise<void>
     onState(callback: (state: UpdateState) => void): Promise<Unsubscribe>

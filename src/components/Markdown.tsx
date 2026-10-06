@@ -7,7 +7,7 @@ import { highlightToHtml } from '../lib/highlight'
 import { containsMath, escapeCurrency } from '../lib/math-detect'
 import { copyText } from '../lib/clipboard'
 
-import { ArtifactImage, FileLink, fileUrlTransform } from '../features/files/FileWorkspace'
+import { ArtifactImage, FileLink, InlineMedia, fileUrlTransform } from '../features/files/FileWorkspace'
 
 const MathMarkdown = lazy(() => import('./MathMarkdown'))
 
@@ -82,7 +82,10 @@ export const markdownComponents: ComponentProps<typeof ReactMarkdown>['component
   },
   a({ children, ...props }) {
     return (
-      <FileLink href={props.href}>{children}</FileLink>
+      <>
+        <FileLink href={props.href}>{children}</FileLink>
+        {props.href && <InlineMedia href={props.href} />}
+      </>
     )
   },
   // The renderer cannot load `artifact://`: an image the agent put in its

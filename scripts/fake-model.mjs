@@ -14,8 +14,9 @@
 import { createServer } from 'node:http'
 
 /**
- * Un guion es una lista de turnos del modelo. Cada entrada es o bien
- * `{ tool, args, say? }` —pide una herramienta— o `{ text }` —cierra el turno—.
+ * Un guion es una lista de turnos del modelo. Cada entrada es `{ tool, args, say? }`
+ * —pide una herramienta—, `{ text }` —cierra el turno— o `{ httpError }` —el
+ * proveedor rechaza la petición con ese estado y cuerpo—.
  * La petición de herramienta lleva una frase para el usuario (`say`), como un
  * modelo bien portado: el Engine no ejecuta un primer lote mudo y pide antes
  * la apertura. `say: ''` guioniza ese lote mudo.
@@ -148,6 +149,16 @@ export function scriptedModel(initial = []) {
         wantsStream = Boolean(JSON.parse(body || '{}').stream)
       } catch {
         wantsStream = false
+      }
+      // `{ httpError: { status, body, headers } }`: the provider refuses the
+      // request (quota, rate limit…) so the error path is the real one.
+      const failing = script[step]?.httpError
+      if (failing) {
+        served.push(script[step])
+        step += 1
+        response.writeHead(failing.status ?? 500, { 'Content-Type': 'application/json', ...(failing.headers ?? {}) })
+        response.end(JSON.stringify(failing.body ?? { error: { message: 'fake failure' } }))
+        return
       }
       const message = nextMessage()
       if (wantsStream) {

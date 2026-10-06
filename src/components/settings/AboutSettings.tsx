@@ -5,7 +5,7 @@ import { copyText } from '../../lib/clipboard'
 import { useI18n } from '../../i18n'
 import { platform, type UpdateState } from '../../platform'
 import { engineApi, type EngineStatus } from '../../services/engine'
-import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState } from '../../services/updates'
+import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, updateSnapshot } from '../../services/updates'
 import { useConfirm } from '../ui/useConfirm'
 import { Row, Section } from './parts'
 import engineManifest from '../../../engine-manifest.json'
@@ -54,6 +54,9 @@ export default function AboutSettings({ version }: { version: string }) {
     void onUpdateState((state) => { if (alive) setUpdate(state) })
       .then((unsubscribe) => { if (alive) stop = unsubscribe; else unsubscribe() })
       .catch(() => {})
+    // Al llegar desde la campana, la versión ofrecida y su fase ya están en el
+    // host: se recuperan en vez de mostrar solo «Buscar actualizaciones».
+    void updateSnapshot().then((state) => { if (alive) setUpdate((current) => current ?? state) }).catch(() => {})
     return () => {
       alive = false
       stop?.()

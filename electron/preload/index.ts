@@ -18,6 +18,7 @@
  * Se empaqueta a CommonJS: con `sandbox: true` el preload no admite ESM.
  */
 
+import type { AttentionIndicators } from '../shared/indicators'
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 
 import {
@@ -144,6 +145,7 @@ const api = {
     background: () => call<BackgroundSettings>(CHANNEL.appBackgroundGet),
     setBackground: (patch: BackgroundPatch) => call<BackgroundSettings>(CHANNEL.appBackgroundSet, patch),
     setLanguage: (language: 'es' | 'en') => call<void>(CHANNEL.appLanguageSet, language),
+    setIndicators: (state: AttentionIndicators) => call<void>(CHANNEL.appIndicatorsSet, state),
   },
 
   contextMenu: {

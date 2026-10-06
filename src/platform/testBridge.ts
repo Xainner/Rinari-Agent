@@ -7,6 +7,7 @@
  * convierte un fallo de integración en un test verde.
  */
 
+import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
@@ -67,6 +68,8 @@ export interface TestBridge extends DesktopBridge {
   background: BackgroundSettings
   /** Último idioma que el renderer comunicó al host (`null` si ninguno). */
   hostLanguage: 'es' | 'en' | null
+  /** Lo que el renderer mandó a la barra de tareas y la bandeja, en orden. */
+  indicators: AttentionIndicators[]
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
@@ -169,6 +172,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     copiedTexts: [],
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     hostLanguage: null,
+    indicators: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -262,6 +266,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       },
       async setLanguage(language) {
         bridge.hostLanguage = language
+      },
+      async setIndicators(state) {
+        bridge.indicators.push(state)
       },
     },
 
@@ -442,6 +449,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       for (const key of Object.keys(bridge.mediaKinds)) delete bridge.mediaKinds[key]
       bridge.copiedTexts.length = 0
       bridge.hostLanguage = null
+      bridge.indicators = []
       bridge.menus.length = 0
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }

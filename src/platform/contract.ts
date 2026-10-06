@@ -18,6 +18,7 @@
  *    reescribir los consumidores otra vez.
  */
 
+import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
 import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
@@ -165,6 +166,8 @@ export interface DesktopBridge {
     setBackgroundSettings(patch: BackgroundPatch): Promise<BackgroundSettings>
     /** Idioma de la interfaz para el menú nativo, la bandeja y los diálogos del host. */
     setLanguage(language: Language): Promise<void>
+    /** Número de chats pendientes en la barra de tareas y marca en la bandeja. */
+    setIndicators(state: AttentionIndicators): Promise<void>
   }
 
   events: {
@@ -364,3 +367,5 @@ export interface NativeBrowserSlotLayout {
   /** Regiones DOM temporales que una vista nativa no puede tapar. */
   occlusions?: Array<{ x: number; y: number; width: number; height: number }>
 }
+
+export type { AttentionCategory, AttentionIndicators } from '../../electron/shared/indicators'

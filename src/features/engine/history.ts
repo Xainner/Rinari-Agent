@@ -1,3 +1,4 @@
+import { readingCoverage } from '../../components/AttachmentReading'
 import type { ChatMessage } from '../../types'
 import type { HistoryMessage } from '../../services/engine'
 
@@ -46,6 +47,8 @@ export function historyToMessages(rows: HistoryMessage[]): ChatMessage[] {
         derivedUri: attachment.derived_uri,
         images: attachment.images,
         ocr: attachment.ocr,
+        keepImage: attachment.ocr ? attachment.keep_image : undefined,
+        coverage: readingCoverage(attachment.coverage),
         truncated: attachment.truncated,
         warning: attachment.warning,
         status: 'ready' as const,

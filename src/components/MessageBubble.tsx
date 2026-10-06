@@ -6,6 +6,7 @@ import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
 import { AttachmentPreview } from './AttachmentPreview'
+import { ReadingBadges, RecognizedPreview, coverageDetail } from './AttachmentReading'
 import Markdown from './Markdown'
 
 function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
@@ -27,9 +28,12 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
     return () => { cancelled = true }
   }, [attachment.kind, attachment.uri, previewUrl])
 
+  // Una imagen leída con OCR deja ver el original y el texto reconocido.
+  const recognized = Boolean(attachment.ocr && attachment.kind === 'image' && attachment.derivedUri)
+
   async function showPreview() {
     setOpen(true)
-    if (previewUrl || previewText !== undefined || !attachment.uri) return
+    if (recognized || previewUrl || previewText !== undefined || !attachment.uri) return
     setLoading(true)
     try {
       const result = await engineApi.attachmentPreview(attachment.derivedUri || attachment.uri, 512 * 1024)
@@ -47,13 +51,17 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
     <button type="button" onClick={() => void showPreview()} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title={t('attach.openPreview')}>
       {previewUrl ? <img src={previewUrl} alt={attachment.name} className="size-8 rounded object-cover" /> : attachment.kind === 'image' ? <ImageIcon size={13} /> : <FileText size={13} />}
       <span className="truncate">{attachment.name}</span>
+      <ReadingBadges attachment={attachment} />
       {loading && <LoaderCircle size={11} className="animate-spin" />}
     </button>
     <AttachmentPreview name={attachment.name} open={open} onOpenChange={setOpen}>
+      {attachment.coverage && <p className="mb-3 text-xs text-[var(--text-muted)]">{t('attach.coverage.pages', { read: attachment.coverage.prepared_pages, total: attachment.coverage.total_pages })} · {coverageDetail(attachment.coverage, t)}</p>}
+      {recognized ? <RecognizedPreview attachment={attachment} previewUrl={previewUrl} /> : <>
       {loading && <div className="flex justify-center py-8"><LoaderCircle size={16} className="animate-spin" /></div>}
       {!loading && previewUrl && <img src={previewUrl} alt={attachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}
       {!loading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}
       {!loading && !previewUrl && previewText === undefined && <p className="py-8 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}
+      </>}
     </AttachmentPreview>
   </>
 }

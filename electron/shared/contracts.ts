@@ -30,6 +30,8 @@ export const CHANNEL = {
   appBackgroundSet: 'rinari:app.background.set',
   /** Idioma de la interfaz: main lo usa en el menú nativo, la bandeja y sus diálogos. */
   appLanguageSet: 'rinari:app.language.set',
+  /** Chats pendientes: número en la barra de tareas y marca en la bandeja. */
+  appIndicatorsSet: 'rinari:app.indicators.set',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',

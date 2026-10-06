@@ -18,8 +18,8 @@ const wrap=(node: React.ReactNode,lang:'es'|'en'='es')=><I18nProvider lang={lang
 
 it('classifies by observed files, including binary and rename with zero textual diff',()=>{
   expect(changeSetPresentation(empty)).toBe('hidden')
-  expect(changeSetPresentation({...empty,attributionComplete:false})).toBe('coverage-warning')
-  expect(changeSetPresentation({...empty,warnings:['unknown']})).toBe('coverage-warning')
+  expect(changeSetPresentation({...empty,attributionComplete:false})).toBe('hidden')
+  expect(changeSetPresentation({...empty,warnings:['unknown']})).toBe('hidden')
   expect(changeSetPresentation({...empty,files:[file]})).toBe('changes')
   expect(changeSetPresentation({...empty,files:[{...file,kind:'renamed'}],attributionComplete:false})).toBe('changes')
 })
@@ -32,19 +32,13 @@ it('hides fully observed empty sets without forcing metadata or review actions',
   expect(review).not.toHaveBeenCalled()
 })
 
-it.each(['es','en'] as const)('groups empty coverage warnings once and never leaks unknown details (%s)',async lang=>{
+it.each(['es','en'] as const)('says nothing when no file changed, even with partial coverage (%s)',lang=>{
   const partial={...empty,attributionComplete:false,warnings:['C:/private/secret.env=secret','Workspace scan exceeded the attribution budget.']}
-  const view=render(wrap(<TurnResult timeline={timeline([partial,{...partial,id:'c2'}])}/>,lang))
-  expect(screen.getAllByTestId('coverage-warning')).toHaveLength(1)
-  expect(view.container.textContent).not.toMatch(/0 archivo|0 file|\+0|-0|secret|C:\//)
-  expect(screen.queryByRole('button')).toBeNull()
-  expect(screen.queryByRole('alert')).toBeNull()
-  const summary=view.container.querySelector('summary')!
-  summary.focus()
-  expect(document.activeElement).toBe(summary)
-  // jsdom does not implement summary keyboard defaults; the Electron probe does.
-  await userEvent.setup().click(summary)
-  expect(view.container.querySelector('details')?.open).toBe(true)
+  const review=vi.fn()
+  const value=timeline([partial,{...partial,id:'c2'}])
+  const view=render(wrap(<><ChangeSetRow item={partial} turnActive={false}/><TurnResult timeline={value}/><TurnMeta timeline={value} actions={3} emphasis onReviewChanges={review}/></>,lang))
+  expect(view.container.textContent).not.toMatch(/cobertura|coverage|0 archivo|0 file|\+0|-0|secret|C:\//i)
+  expect(screen.queryByRole('button',{name:/Revisar cambios|Review changes/})).toBeNull()
 })
 
 it('keeps real changes actionable and uses the latest nonempty set for metadata',async()=>{
@@ -59,14 +53,6 @@ it('keeps real changes actionable and uses the latest nonempty set for metadata'
   expect(review).toHaveBeenCalledOnce()
 })
 
-it('does not force metadata for partial empty coverage, but adds a label when metadata is already visible',()=>{
-  const partial={...empty,attributionComplete:false}
-  const view=render(wrap(<TurnMeta timeline={timeline([partial])} actions={0} emphasis={false} onReviewChanges={vi.fn()}/>))
-  expect(screen.queryByTestId('turn-meta')).toBeNull()
-  view.rerender(wrap(<TurnMeta timeline={timeline([partial])} actions={3} emphasis onReviewChanges={vi.fn()}/>))
-  expect(screen.getByTestId('turn-meta').textContent).toContain('cobertura de cambios parcial')
-  expect(screen.queryByRole('button')).toBeNull()
-})
 
 it('keeps the audit item and renders history and live events identically',()=>{
   const row={event:'turn.changes.completed',turn_id:'t',session_id:'s',id:'c',activity_seq:1,files:[],warnings:[],attribution_complete:false,additions:0,deletions:0,undoable:false}

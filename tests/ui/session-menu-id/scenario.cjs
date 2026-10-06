@@ -7,6 +7,9 @@ const { ui, clickText, command, evaluate, language, q, reload, report, scenario,
 const trigger = 'button[aria-label="Opciones de sesión"],button[aria-label="Session options"]'
 
 async function open(title, dots) {
+  // Tras recargar (cambio de idioma) la lista llega después de la barra de
+  // vistas: se espera la fila en vez de suponerla.
+  await wait(`[...document.querySelectorAll('aside button')].some(b=>b.textContent.includes(${JSON.stringify(title)}))`)
   await evaluate(`(() => {const b=[...document.querySelectorAll('aside button')].find(b=>b.textContent.includes(${JSON.stringify(title)}));const row=b.closest('li');row.dataset.menuTest='target';const t=row.querySelector(${JSON.stringify(trigger)});if(t)t.dataset.menuTrigger='true'})()`)
   await click(dots ? '[data-menu-test="target"] [data-menu-trigger]' : '[data-menu-test="target"]', dots ? 'left' : 'right')
   await wait(`Boolean(document.querySelector('[role="menu"]'))`)

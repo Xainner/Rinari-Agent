@@ -53,6 +53,11 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'attention-taskbar': {
+    title: 'Pendientes: un resultado en otro chat de Normal sube el número',
+    phases: ['exercise'],
+    model: () => heldModel([{ text: 'Listo, ya revisé el informe.' }]),
+  },
   'boards-fit': {
     title: 'Boards: Ajustar a la vista',
     phases: ['exercise'],

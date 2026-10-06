@@ -9,14 +9,27 @@ kept with the session draft across navigation and app restart.
 Supported inputs are text and source files, PDF, DOCX, XLSX, PNG, JPEG and
 WebP. A turn accepts at most eight files and 50 MiB total; each document is
 limited to 25 MiB and images use the engine image limit. PDF preparation reads
-at most 20 selected pages and can render up to four selected pages for vision.
+at most 20 selected pages, and any of them can also be rendered for vision.
 OCR work across one preparation request is limited to 20 pages and 120 seconds.
 
-Images can be sent visually when the selected model declares vision. If its
-capability is unknown, the composer requires an explicit confirmation. If the
-model declares that it lacks vision, use OCR or select another model. Image OCR
-sends extracted text instead of image bytes. PDFs can combine extracted text
-with selected visual pages and therefore follow the same vision checks.
+Every prepared PDF carries its reading coverage: total and prepared pages, and
+per page whether it had its own text, was read with OCR, had no text
+recognized, ran out of OCR budget or failed. The composer and the history show
+it as "20/80 págs." with the breakdown, so a partial read never looks complete.
+During the turn the agent can look at any page as an image with
+`fs.read_pdf_pages` (up to four per call), including pages beyond the first 20.
+
+Images are read in one of three ways, chosen in the composer: **Imagen** (the
+model sees the pixels), **Texto (OCR)** (the recognized text replaces the
+pixels) or **Texto e imagen** (both; more context). The history keeps the OCR
+label, and the preview switches between the original and the recognized text.
+Images are sent visually when the selected model or route has vision. If the
+model declares that it lacks vision, use OCR or select another model.
+
+The model also receives a short manifest of every attachment, images included:
+name, type, size, `artifact://` URI and sha256. With it, `fs.read_image`
+re-opens an image and `artifact.export` copies the original bytes to a file for
+programs or uploads, so the agent does not have to ask where the file is.
 
 The CLI equivalents are:
 

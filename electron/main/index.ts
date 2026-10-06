@@ -30,6 +30,7 @@ import { createNotifications } from './native/notifications'
 import { createMediaRegistry, mediaToken, serveMedia } from './native/mediaFiles'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
 import { createTrayController } from './native/tray'
+import { createIndicators, indicatorsDir } from './native/indicators'
 import { hostLanguageFromLocale, hostText, type HostText } from './native/hostText'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
@@ -114,6 +115,12 @@ const tray = createTrayController({
   // «Salir» del icono entra por la misma autoridad que el menú y la X.
   onQuit: () => void quitCoordinator.requestQuit('tray'),
   text: currentHostText,
+})
+
+const indicators = createIndicators({
+  getWindow: () => mainWindow,
+  setTray: (image, tooltip) => tray.setIndicator(image, tooltip),
+  dir: () => indicatorsDir(app.isPackaged, process.resourcesPath, __dirname),
 })
 /**
  * Origen del renderer de confianza: el esquema propio en producción y el del
@@ -544,6 +551,9 @@ function buildServices(): HostServices {
           tray.refresh()
         }
       },
+      setIndicators: (state) => {
+        indicators.apply(state)
+      },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -679,6 +689,9 @@ function openWindow(): void {
 
   registry.trust(mainWindow.webContents.id)
   handoff.open((request: OpenRequest) => send(PUSH.openRequest, request))
+  // Ventana nueva: el overlay vive en su botón de la barra; se repone lo último.
+  mainWindow.once('ready-to-show', () => indicators.reapply())
+  mainWindow.on('show', () => indicators.reapply())
 
   // El browser nativo cuelga de esta ventana: sus vistas son hijas de su
   // contenido, así que nace y muere con ella (§6.2, [E8]).

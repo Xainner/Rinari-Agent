@@ -5,6 +5,7 @@ import { platform } from '../../platform'
 import type { BackgroundPatch, BackgroundSettings as Settings } from '../../platform/contract'
 import { Switch } from '../ui/switch'
 import { Row, Section } from './parts'
+import { useIndicatorPrefs } from '../../stores/indicatorPrefs'
 
 /**
  * Ajustes > General > Segundo plano: seguir en la bandeja al cerrar e iniciar
@@ -16,6 +17,7 @@ export default function BackgroundSettings() {
   const { t } = useI18n()
   const [settings, setSettings] = useState<Settings | null>(null)
   const [saving, setSaving] = useState(false)
+  const indicators = useIndicatorPrefs()
 
   useEffect(() => {
     let cancelled = false
@@ -54,6 +56,17 @@ export default function BackgroundSettings() {
             disabled={saving}
             onCheckedChange={(value) => void update({ backgroundMode: value })}
             aria-label={t('settings.general.backgroundMode')}
+          />
+        }
+      />
+      <Row
+        title={t('settings.general.indicators')}
+        desc={t('settings.general.indicatorsDesc')}
+        control={
+          <Switch
+            checked={indicators.enabled}
+            onCheckedChange={(value) => indicators.setEnabled(value)}
+            aria-label={t('settings.general.indicators')}
           />
         }
       />

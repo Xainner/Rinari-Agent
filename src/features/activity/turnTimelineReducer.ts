@@ -702,6 +702,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
           ? {
               code: text(payload.reason) || 'stopped',
               message: text((payload.details as Record<string, unknown> | undefined)?.content),
+              loop: text(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.loop) || undefined,
             } satisfies TurnStopReason
           : timeline.stopReason,
       }

@@ -103,6 +103,8 @@ export interface SystemNotification {
   body: string
   /** Qué abrir al pulsarla. Es una referencia, no una acción. */
   target?: NotificationTarget
+  /** Sin sonido del sistema: la app reproduce su propio tono. */
+  silent?: boolean
 }
 
 export interface OpenFilesOptions {

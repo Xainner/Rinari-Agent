@@ -26,6 +26,8 @@ export interface SystemNotification {
   body: string
   /** Qué abrir al hacer clic. Es una referencia, no una acción. */
   target?: { sessionId?: string; turnId?: string }
+  /** Sin sonido del sistema: la app reproduce su propio tono. */
+  silent?: boolean
 }
 
 /** Clave de dedupe: mismo título, cuerpo y destino. */
@@ -69,7 +71,8 @@ export function createNotifications(deps: NotificationsDeps) {
       const native = new Notification({
         title: notification.title,
         body: notification.body,
-        silent: false,
+        // Con los tonos de Rinari activos, el aviso del sistema no suena aparte.
+        silent: notification.silent === true,
       })
       native.on('click', () => {
         deps.focusWindow()

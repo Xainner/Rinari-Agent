@@ -203,6 +203,8 @@ export interface SystemNotificationRequest {
   title: string
   body: string
   target?: NotificationTarget
+  /** Sin sonido del sistema: la app reproduce su propio tono. */
+  silent?: boolean
 }
 
 export interface OpenExternalFileRequest {

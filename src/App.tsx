@@ -22,6 +22,7 @@ import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
 import ScheduleNotifier from './features/schedules/ScheduleNotifier'
+import SoundCoordinator from './features/sounds/SoundCoordinator'
 import NotificationCenter from './features/notifications/NotificationCenter'
 import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
 import { projectDisplayName } from './features/projects/workspaceModel'
@@ -575,6 +576,7 @@ function App() {
       <EngineProvider session={session}>
       {confirmDialog}
       <BoardActivityController />
+      <SoundCoordinator activeSession={session.activeSession} />
       <SkillLearnedNotifier />
       {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
       <ScheduleForm />

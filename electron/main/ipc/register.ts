@@ -224,6 +224,7 @@ function assertNotification(value: unknown): SystemNotificationRequest {
   return {
     title: assertString(raw.title, 'title', 120),
     body: assertString(raw.body, 'body', 400),
+    silent: raw.silent === true,
     target: {
       sessionId: entry.sessionId === undefined ? undefined : assertString(entry.sessionId, 'sessionId', 128),
       turnId: entry.turnId === undefined ? undefined : assertString(entry.turnId, 'turnId', 128),

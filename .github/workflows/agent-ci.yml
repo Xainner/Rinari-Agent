@@ -25,6 +25,7 @@ jobs:
       bootstrapper: ${{ steps.scope.outputs.bootstrapper }}
       package: ${{ steps.scope.outputs.package }}
       updater: ${{ steps.scope.outputs.updater }}
+      ui: ${{ steps.scope.outputs.ui }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,6 +125,56 @@ jobs:
         env:
           RINARI_CLI: ${{ github.workspace }}/Rinari-CLI
         run: xvfb-run -a npm run browser:vertical
+
+  # Pruebas nativas de interfaz (tests/ui): la app construida con el Engine
+  # fijado, perfil y home temporales, sin llavero ni red, y un modelo falso en
+  # loopback. En Windows, donde corre el producto y se escribieron. Solo si el
+  # cambio puede romperlas (scripts/ci-scope.mjs).
+  ui-e2e:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Read pinned Engine revision
+        id: engine
+        shell: pwsh
+        run: |
+          $manifest = Get-Content engine-manifest.json -Raw | ConvertFrom-Json
+          "sha=$($manifest.engine_git_sha)" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          repository: Xainner/Rinari-CLI
+          ref: ${{ steps.engine.outputs.sha }}
+          path: Rinari-CLI
+      - name: Verify the Engine checkout is exact
+        shell: bash
+        run: test "$(git -C Rinari-CLI rev-parse HEAD)" = "${{ steps.engine.outputs.sha }}"
+      - uses: astral-sh/setup-uv@v5
+      # El primer `uv run` crearía el entorno dentro del arranque del Engine
+      # y agotaría su espera; se prepara antes.
+      - run: uv sync
+        working-directory: Rinari-CLI
+      - run: npm ci
+      - run: npm run electron:install
+      - run: npm run build
+      - run: npm run desktop:build
+      - name: UI scenarios against the pinned Engine
+        env:
+          RINARI_CLI: ${{ github.workspace }}\Rinari-CLI
+        run: npm run ui:e2e -- --all
+      - name: Keep the evidence of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-e2e-evidence
+          path: release/evidence/ui/
+          retention-days: 7
 
   # Empaquetado de Windows. Antes se llamaba `setup-bootstrapper`, pero el Rust
   # del bootstrapper es sólo una parte (~4 min). El resto es el paquete con

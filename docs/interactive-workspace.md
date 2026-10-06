@@ -81,13 +81,7 @@ Project headers collapse their sessions. Composer selectors close upon selection
   Pulsar Ajustar a la vista expande todos los paneles y sale del modo foco,
   incluso si el ajuste ya estaba activo antes de colapsarlos. Solo vuelve al
   modo manual al pulsarlo con todos los paneles visibles y fuera del modo foco.
-  Prueba nativa: construir con `npm run build` y `npm run desktop:build`,
-  configurar `RINARI_ENGINE_BIN`, `RINARI_ENGINE_ARGS_JSON` y
-  `RINARI_ENGINE_CWD` para el Engine fijado en `engine-manifest.json`, y
-  ejecutar `node scripts/boards-fit-e2e.mjs` (`--keep` deja la app abierta).
-  Usa perfil y home temporales, sesiones reales y un proveedor loopback sin
-  credenciales cuyo turno falla de forma esperada; no llama a modelos externos.
-  Guarda capturas y el informe en `release/evidence/boards-fit/`.
+  Prueba nativa: `npm run ui:e2e -- boards-fit` (ver `tests/ui/README.md`).
 - «Añadir panel» ofrece chat general, proyecto registrado, carpeta nueva y
   sesiones existentes. Siempre crea con `session.create {project_id}` sin
   activar la sesión Normal; una carpeta nueva se registra con `project.add`.

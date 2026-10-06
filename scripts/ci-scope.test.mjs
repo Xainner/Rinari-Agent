@@ -3,26 +3,31 @@
 import { describe, expect, it } from 'vitest'
 import { classify, scopeFor } from './ci-scope.mjs'
 
-const NONE = { bootstrapper: false, package: false, updater: false }
+const NONE = { bootstrapper: false, package: false, updater: false, ui: false }
 
 describe('classify', () => {
   it('sólo documentación (#18): no empaqueta nada', () => {
     expect(classify(['docs/debt.md'])).toEqual(NONE)
   })
 
-  it('sólo el renderer: lo cubre frontend con desktop:smoke', () => {
+  it('sólo el renderer: no empaqueta, pero pasa las pruebas nativas de interfaz', () => {
     expect(classify([
       'src/features/flow/FlowView.tsx',
       'src/features/flow/useFlow.ts',
       'src/i18n/es.ts',
-    ])).toEqual(NONE)
+    ])).toEqual({ ...NONE, ui: true })
+  })
+
+  it('las pruebas nativas de interfaz y su modelo falso se prueban a sí mismas', () => {
+    expect(classify(['tests/ui/boards-fit/scenario.cjs'])).toEqual({ ...NONE, ui: true })
+    expect(classify(['scripts/fake-model.mjs'])).toEqual({ ...NONE, ui: true })
   })
 
   it('un cambio de pin del Engine (M02, #11) empaqueta, sin Rust ni updater', () => {
     expect(classify([
       'engine-manifest.json',
       'src/types/protocol.generated.ts',
-    ])).toEqual({ bootstrapper: false, package: true, updater: false })
+    ])).toEqual({ bootstrapper: false, package: true, updater: false, ui: true })
   })
 
   it('código del host (#17) empaqueta: el mapa de comandos va en el main empaquetado', () => {
@@ -31,21 +36,21 @@ describe('classify', () => {
       'electron/main/engine/commandMap.generated.ts',
       'scripts/desktop-parity.mjs',
       'src/platform/commands.generated.ts',
-    ])).toEqual({ bootstrapper: false, package: true, updater: false })
+    ])).toEqual({ bootstrapper: false, package: true, updater: false, ui: true })
   })
 
   it('el bootstrapper arrastra el paquete: el setup va dentro', () => {
-    expect(classify(['installer/setup/src-tauri/src/main.rs'])).toEqual({ bootstrapper: true, package: true, updater: false })
+    expect(classify(['installer/setup/src-tauri/src/main.rs'])).toEqual({ bootstrapper: true, package: true, updater: false, ui: false })
   })
 
   it('el updater arrastra el paquete: empaqueta sobre el sidecar y el payload', () => {
-    expect(classify(['scripts/updater-e2e.ps1'])).toEqual({ bootstrapper: false, package: true, updater: true })
-    expect(classify(['scripts/generate-update-metadata.mjs'])).toEqual({ bootstrapper: false, package: true, updater: true })
+    expect(classify(['scripts/updater-e2e.ps1'])).toEqual({ bootstrapper: false, package: true, updater: true, ui: false })
+    expect(classify(['scripts/generate-update-metadata.mjs'])).toEqual({ bootstrapper: false, package: true, updater: true, ui: false })
   })
 
   it('las actualizaciones activan el updater', () => {
-    expect(classify(['electron/main/updates/createUpdates.ts'])).toEqual({ bootstrapper: false, package: true, updater: true })
-    expect(classify(['build/app-update.yml'])).toEqual({ bootstrapper: false, package: true, updater: true })
+    expect(classify(['electron/main/updates/createUpdates.ts'])).toEqual({ bootstrapper: false, package: true, updater: true, ui: true })
+    expect(classify(['build/app-update.yml'])).toEqual({ bootstrapper: false, package: true, updater: true, ui: false })
   })
 
   it('los scripts de empaquetado coinciden por prefijo', () => {
@@ -56,29 +61,31 @@ describe('classify', () => {
   })
 
   it('una dependencia puede romper cualquier parte menos el Rust', () => {
-    expect(classify(['package-lock.json'])).toEqual({ bootstrapper: false, package: true, updater: true })
+    expect(classify(['package-lock.json'])).toEqual({ bootstrapper: false, package: true, updater: true, ui: true })
   })
 
   it('cambiar el propio CI ejecuta todo', () => {
-    const all = { bootstrapper: true, package: true, updater: true }
+    const all = { bootstrapper: true, package: true, updater: true, ui: true }
     expect(classify(['.github/workflows/agent-ci.yml'])).toEqual(all)
     expect(classify(['scripts/ci-scope.mjs'])).toEqual(all)
   })
 
   it('una ruta parecida no coincide por accidente', () => {
-    expect(classify(['docs/electron/notes.md', 'src/build/x.ts', 'tests/installer/y.ts'])).toEqual(NONE)
+    // `src/build/` es renderer: solo activa las pruebas de interfaz.
+    expect(classify(['docs/electron/notes.md', 'src/build/x.ts', 'tests/installer/y.ts'])).toEqual({ ...NONE, ui: true })
+    expect(classify(['docs/ui/notes.md', 'tests/uix/y.ts'])).toEqual(NONE)
   })
 })
 
 describe('scopeFor', () => {
   it('en push a main corre todo, sin mirar ficheros', () => {
     expect(scopeFor({ event: 'push', full: false, files: ['docs/debt.md'] }))
-      .toMatchObject({ bootstrapper: true, package: true, updater: true })
+      .toMatchObject({ bootstrapper: true, package: true, updater: true, ui: true })
   })
 
   it('workflow_dispatch corre todo', () => {
     expect(scopeFor({ event: 'workflow_dispatch', full: false, files: [] }))
-      .toMatchObject({ bootstrapper: true, package: true, updater: true })
+      .toMatchObject({ bootstrapper: true, package: true, updater: true, ui: true })
   })
 
   it('la etiqueta ci:full fuerza todo en un PR', () => {

@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client'
 import { platform } from './platform'
 import { translate } from './i18n'
 import { useUIStore } from './stores/ui'
+import { trackInputModality } from './lib/inputModality'
 import './styles/index.css'
+
+trackInputModality()
 
 const container = document.getElementById('root') as HTMLElement
 let root: ReturnType<typeof ReactDOM.createRoot> | null = null

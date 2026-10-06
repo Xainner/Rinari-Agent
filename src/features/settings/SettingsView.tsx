@@ -39,12 +39,12 @@ export default function SettingsView({
 }) {
   const { lang } = useI18n()
   const section = useUIStore((s) => s.settingsSection)
-  const goChat = useUIStore((s) => s.goChat)
+  const goBackToWork = useUIStore((s) => s.goBackToWork)
   const setLang = useUIStore((s) => s.setLang)
   const setSection = useUIStore((s) => s.setSettingsSection)
 
   return (
-    <SettingsShell onBack={goChat}>
+    <SettingsShell onBack={goBackToWork}>
       {section === 'general' && (
         <GeneralSettings language={lang} onLanguageChange={(next) => setLang(next)} />
       )}

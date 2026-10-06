@@ -126,6 +126,8 @@ export interface ContextTimelineItem extends TimelineItemBase {
   sessionId?: string
   error?: string
   reason?: string
+  /** Why a manual compaction changed nothing (`empty_history`, `only_latest_exchange`, `summary_not_smaller`). */
+  skipReason?: string
   contextDetails?: Record<string, unknown>
     type: 'context'
     status: 'running' | 'completed' | 'skipped' | 'failed' | 'cancelled'
@@ -209,6 +211,9 @@ export interface TurnTimeline {
   stopReason?: TurnStopReason
   errorDetails?: Record<string, unknown>
   error?: string
+  /** Código del error terminal (`PROVIDER_MODEL_FAILURE`…) y si se puede reintentar. */
+  errorCode?: string
+  errorRetryable?: boolean
   /** Procedencia del turno (peer / reenvío); `undefined` = petición del usuario. */
   origin?: MessageOrigin | null
 }

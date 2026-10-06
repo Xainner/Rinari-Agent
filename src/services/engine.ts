@@ -47,6 +47,10 @@ export interface EngineStatus {
 export interface CommandError {
   code: string;
   message: string;
+  /** Si reintentar sirve, según el Engine. */
+  retryable?: boolean;
+  /** Datos del error (proveedor que falló, estado HTTP…), si el Engine los dio. */
+  details?: Record<string, unknown>;
 }
 
 export interface EngineEventMsg {

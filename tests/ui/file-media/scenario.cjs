@@ -14,6 +14,8 @@ scenario(async () => {
   const root = join(ui.data, 'Promo'); mkdirSync(join(root, 'out'), { recursive: true })
   copyFileSync(join(__dirname, 'clip.mp4'), join(root, 'out', 'clip.mp4'))
   writeFileSync(join(root, 'out', 'manual.pdf'), '%PDF-1.4\n% prueba\n')
+  // Un audio real (un tono de la app) para el reproductor del chat.
+  copyFileSync(join(__dirname, '..', '..', '..', 'public', 'sounds', 'rinari', 'success.mp3'), join(root, 'out', 'voz.mp3'))
   const { project } = await command('project_add', { path: root, name: 'Promo' })
   await command('session_create', { project_id: project.id, title: 'Entrega' })
   await reload()
@@ -59,9 +61,16 @@ scenario(async () => {
   assert.equal(revealed[0].toLowerCase(), realpathSync.native(join(root, 'out', 'manual.pdf')).toLowerCase())
   await screenshot('pdf-actions')
 
+  // El enlace a un audio lleva su reproductor en el mensaje; no carga nada
+  // hasta pulsarlo y luego suena desde la URL que aprobó el Engine.
+  assert.equal(await evaluate(`document.querySelectorAll('audio').length`), 0)
+  await click('button[aria-label="Reproducir voz.mp3"]')
+  await wait(`(() => {const a=document.querySelector('audio[aria-label="voz.mp3"]');return Boolean(a && a.src.startsWith('app://rinari/__media/') && a.readyState >= 1 && a.duration > 0.3 && !a.error)})()`)
+  await screenshot('inline-audio')
+
   // Los tonos de aviso están en el build y se reproducen.
   const tone = await evaluate(`(async () => {const r=await fetch('sounds/rinari/success.mp3');const a=new Audio('sounds/soft/attention.mp3');await new Promise((ok,ko)=>{a.onloadedmetadata=ok;a.onerror=ko});return {type:r.headers.get('content-type'),duration:a.duration}})()`)
   assert.equal(tone.type, 'audio/mpeg')
   assert(tone.duration > 0.3)
-  report({ passed: ['video plays and seeks by ranges', 'large PNG shown as an image', 'PDF offers outside/folder; reveal gets the Engine path', 'notification tones are served'] })
+  report({ passed: ['video plays and seeks by ranges', 'large PNG shown as an image', 'PDF offers outside/folder; reveal gets the Engine path', 'audio link plays inline after a click', 'notification tones are served'] })
 }, { width: 1500, height: 900 })

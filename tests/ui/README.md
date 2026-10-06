@@ -48,9 +48,10 @@ también `failure.png` y el final del texto visible en la consola.
 | [chat-send-jump](chat-send-jump/README.md) | Enviar desde arriba del historial lleva al final |
 | [composer-file-drag](composer-file-drag/README.md) | Arrastrar archivos a todo el chat |
 | [conversation-draft](conversation-draft/README.md) | Conversación nueva como borrador hasta el primer mensaje |
-| [file-media](file-media/README.md) | Video, imagen grande y PDF del workspace; tonos de aviso |
+| [file-media](file-media/README.md) | Video, imagen grande, PDF y audio del workspace; tonos de aviso |
 | [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |
+| [provider-limit](provider-limit/README.md) | Cuota agotada: la razón real y «Revisar uso y límites» del proveedor que falló |
 | [session-menu-id](session-menu-id/README.md) | ID de sesión en una sola línea |
 | [session-title](session-title/README.md) | Título que resume el primer mensaje, en vivo |
 | [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |

@@ -108,6 +108,7 @@ export interface HostServices {
   }
   updates: {
     check(): Promise<unknown>
+    snapshot(): unknown
     download(): Promise<unknown>
     apply(confirmed?: boolean): Promise<void>
   }
@@ -153,7 +154,15 @@ function toResult(error: unknown): BridgeResult<never> {
   if (error instanceof ValidationError) return failure(error.code, error.message)
   const code = (error as { code?: unknown })?.code
   const message = error instanceof Error ? error.message : String(error)
-  return failure(typeof code === 'string' ? code : 'HOST_ERROR', message)
+  const result = failure(typeof code === 'string' ? code : 'HOST_ERROR', message)
+  // What the Engine said about the error travels with it: whether retrying
+  // helps and its data (provider that failed, HTTP status…).
+  const { retryable, details } = (error ?? {}) as { retryable?: unknown; details?: unknown }
+  if (!result.ok && typeof retryable === 'boolean') result.error.retryable = retryable
+  if (!result.ok && details && typeof details === 'object' && !Array.isArray(details)) {
+    result.error.details = details as Record<string, unknown>
+  }
+  return result
 }
 
 /**
@@ -402,6 +411,7 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
     [CHANNEL.updatesDownload, guarded(registry, () => services.updates.download())],
+    [CHANNEL.updatesSnapshot, guarded(registry, () => services.updates.snapshot())],
     // El renderer ya preguntó con su diálogo: no se vuelve a preguntar en main.
     [CHANNEL.updatesApply, guarded(registry, () => services.updates.apply(true))],
     [CHANNEL.migrationStatus, guarded(registry, () => services.migration.status())],

@@ -36,6 +36,8 @@ export const CHANNEL = {
   updatesCheck: 'rinari:updates.check',
   updatesDownload: 'rinari:updates.download',
   updatesApply: 'rinari:updates.apply',
+  /** Estado actual del actualizador: lo que un renderer recargado no vio pasar. */
+  updatesSnapshot: 'rinari:updates.snapshot',
   migrationStatus: 'rinari:migration.status',
   migrationStage: 'rinari:migration.importPending',
   migrationCommit: 'rinari:migration.commit',
@@ -153,7 +155,9 @@ export type { MigrationStage, MigrationStatus } from './migration'
  * como excepciones serializadas: una excepción cruzando el puente pierde el
  * código de máquina que la UI necesita para decidir.
  */
-export type BridgeResult<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } }
+export type BridgeResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: { code: string; message: string; retryable?: boolean; details?: Record<string, unknown> } }
 
 /**
  * Un elemento del menú contextual tal como cruza el puente: la función que

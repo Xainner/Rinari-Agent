@@ -1667,6 +1667,8 @@ export const es = {
   'board.toolbar.addPane': 'Añadir panel',
   'board.toolbar.removeAll': 'Quitar todos',
   'board.toolbar.removeAllHint': 'Quita todos los paneles del board. Las conversaciones y su trabajo en curso se conservan.',
+  'board.toolbar.removeAllConfirmTitle': '¿Quitar los {n} paneles del board?',
+  'board.toolbar.removeAllConfirmBody': 'Las conversaciones, sus borradores y el trabajo en curso se conservan; solo se vacía la disposición del board, y no se puede deshacer.',
   'board.toolbar.markAllRead': 'Marcar todos los resultados como leídos',
   'settings.shortcuts.collapsePane': 'Colapsar panel enfocado',
   'settings.shortcuts.expandPane': 'Expandir panel',

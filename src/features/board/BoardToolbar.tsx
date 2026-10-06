@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { CheckCheck, ChevronsLeftRight, ChevronsRightLeft, Crosshair, ListCollapse, PanelsTopLeft, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
+import { useConfirm } from '../../components/ui/useConfirm'
 import { useBoardStore } from '../../stores/board'
 import { selectAttentionCounts, useBoardStatusStore } from '../../stores/boardStatus'
 import { cn } from '../../lib/utils'
@@ -32,12 +33,25 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
   const allCollapsed = useBoardStore((state) => state.panes.length > 0 && state.panes.every((pane) => pane.collapsed))
   const anyCollapsed = useBoardStore((state) => state.panes.some((pane) => pane.collapsed))
   const counts = useBoardStatusStore(selectAttentionCounts)
+  const confirm = useConfirm()
 
   function collapseFinished() {
     const result = collapseFinishedPanes()
     if (result.outcome === 'focus-mode') toast.info(t('board.toolbar.collapseFinishedFocusMode'))
     else if (result.outcome === 'nothing') toast.info(t('board.toolbar.nothingToCollapse'))
     else toast.success(t('board.toolbar.collapsedFinished', { n: result.count }))
+  }
+
+  // Vaciar el board no toca las conversaciones, pero la disposición no se
+  // puede deshacer: se confirma con el diálogo de la app.
+  async function removeAll() {
+    const ok = await confirm.ask({
+      title: t('board.toolbar.removeAllConfirmTitle', { n: paneCount }),
+      body: t('board.toolbar.removeAllConfirmBody'),
+      confirmLabel: t('board.toolbar.removeAll'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (ok) removeAllPanes()
   }
 
   return (
@@ -67,13 +81,14 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
         <button type="button" className="board-toolbar-button" disabled={counts.unreadResultCount === 0} onClick={() => markAllBoardResultsRead()} title={t('board.toolbar.markAllRead')}>
           <CheckCheck size={14} aria-hidden="true" /><span>{t('board.toolbar.markAllRead')}</span>
         </button>
-        <button type="button" className="board-toolbar-button" disabled={paneCount === 0} onClick={removeAllPanes} aria-label={t('board.toolbar.removeAll')} title={t('board.toolbar.removeAllHint')}>
+        <button type="button" className="board-toolbar-button" disabled={paneCount === 0} onClick={() => void removeAll()} aria-label={t('board.toolbar.removeAll')} title={t('board.toolbar.removeAllHint')}>
           <X size={14} aria-hidden="true" /><span>{t('board.toolbar.removeAll')}</span>
         </button>
         <button type="button" className="board-toolbar-button is-primary" onClick={onAddPane} title={t('board.toolbar.addPane')}>
           <Plus size={14} aria-hidden="true" /><span>{t('board.toolbar.addPane')}</span>
         </button>
       </div>
+      {confirm.dialog}
     </div>
   )
 }

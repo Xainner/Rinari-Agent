@@ -25,6 +25,11 @@ async function click(selector) {
   win.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...point })
   await delay(250)
 }
+async function clickText(text, scope) {
+  await wait(`[...document.querySelectorAll(${JSON.stringify(scope)})].some(b=>b.textContent.trim()===${JSON.stringify(text)})`)
+  await evaluate(`[...document.querySelectorAll(${JSON.stringify(scope)})].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click()`)
+  await delay(250)
+}
 const command = (name, args = {}) => evaluate(`window.rinariDesktop.command(${JSON.stringify(name)},${JSON.stringify(name === 'session_create' ? { mode: 'build', permission_profile: 'workspace', ...args } : args)})`)
 const stored = key => evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(key)}) || '{}')`)
 async function input(selector, value) {
@@ -53,7 +58,10 @@ async function seed(ids, mode = 'expanded') {
   await wait('document.querySelectorAll("[data-pane-id]").length===3')
 }
 async function empty(label = 'Quitar todos') {
-  await click(`button[aria-label="${label}"]`)
+  await click(`.board-toolbar button[aria-label="${label}"]`)
+  // La confirmación es el diálogo de la app; su botón repite la etiqueta.
+  await wait(`Boolean(document.querySelector('[role="alertdialog"]'))`)
+  await clickText(label, '[role="alertdialog"] button')
   await wait('document.querySelectorAll("[data-pane-id]").length===0 && Boolean(document.querySelector(".board-empty"))')
   await wait(`JSON.parse(localStorage.getItem('rinari.board.v1')).panes.length===0`)
   const board = await stored('rinari.board.v1')
@@ -97,7 +105,7 @@ async function run() {
   await seed(ids)
   await input('[data-pane-id="pane_0"] textarea', 'Borrador que debe conservarse')
   await click('[data-pane-id="pane_0"] .pane-header-title')
-  await click('[data-pane-id="pane_0"] button[aria-label="Mostrar u ocultar dock"]')
+  await click('[data-pane-id="pane_0"] button[aria-label="Mostrar u ocultar panel lateral"]')
   const docks = await stored('rinari.sessionDock.v1')
   await input('[data-pane-id="pane_1"] textarea', 'Turno local controlado para comprobar que sigue vivo')
   await click('[data-pane-id="pane_1"] .pane-header-title')
@@ -120,7 +128,7 @@ async function run() {
   await seed(ids)
   win.setMinimumSize(480, 500); win.setContentSize(780, 800)
   await wait('innerWidth===780')
-  const name = 'button[aria-label="Remove all"]'
+  const name = '.board-toolbar button[aria-label="Remove all"]'
   assert(await evaluate(`(() => {const b=document.querySelector(${JSON.stringify(name)});const r=b.getBoundingClientRect();return r.width>0 && r.left>=0 && r.right<=innerWidth && b.title.includes('Conversations')})()`))
   await screenshot('narrow-english')
   await empty('Remove all')

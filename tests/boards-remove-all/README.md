@@ -4,7 +4,8 @@ El botón «Quitar todos» / «Remove all» vacía la composición visual en una
 actualización, incluidos paneles colapsados y en modo foco. Conserva las
 conversaciones, su ejecución, borradores, paneles laterales, recibos de lectura
 y preferencias generales del board. Limpia el foco, su instantánea y errores
-de los paneles retirados. La acción es inmediata, igual que quitar un panel.
+de los paneles retirados. Antes pide confirmación con el diálogo de la app,
+porque la disposición del board no se puede deshacer.
 
 ## Validación
 

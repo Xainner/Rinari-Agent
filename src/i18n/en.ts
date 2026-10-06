@@ -1651,6 +1651,8 @@ export const en: Record<I18nKey, string> = {
   'board.toolbar.addPane': 'Add pane',
   'board.toolbar.removeAll': 'Remove all',
   'board.toolbar.removeAllHint': 'Removes all panes from the board. Conversations and ongoing work are preserved.',
+  'board.toolbar.removeAllConfirmTitle': 'Remove all {n} panes from the board?',
+  'board.toolbar.removeAllConfirmBody': 'Conversations, their drafts and ongoing work are kept; only the board layout is cleared, and this cannot be undone.',
   'board.toolbar.markAllRead': 'Mark all results as read',
   'settings.shortcuts.collapsePane': 'Collapse focused pane',
   'settings.shortcuts.expandPane': 'Expand pane',

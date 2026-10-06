@@ -116,7 +116,7 @@ scenario(async () => {
   await startOfChat(a); await click(a + ' ' + historical)
   await verify(a, 'board-short-window')
   await size(1500, 900)
-  await click('.view-switcher button[aria-label="Normal"]')
+  await click('.view-switcher button[aria-label^="Normal"]')
   await startOfChat(); await click(historical)
   await wait(`${q(preview + ' img')}?.naturalWidth>0`)
   await screenshot('ready-for-review')

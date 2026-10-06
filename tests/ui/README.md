@@ -17,7 +17,8 @@ npm run ui:e2e -- boards-fit --keep  # deja la ventana abierta al terminar
 `RINARI_ENGINE_ARGS_JSON`, y `RINARI_ENGINE_CWD`), se usa ese. Si no, se usa
 `uv run rinari` en el checkout `RINARI_CLI`, que debe estar en el
 `engine_git_sha` de `engine-manifest.json`. La CI hace lo mismo en el job
-`ui-e2e`.
+`ui-e2e`, con la pantalla del runner a 1920×1080: los escenarios necesitan
+ventanas de hasta 1900 px, y el arnés falla con la causa si no caben.
 
 **Aislamiento.** Cada escenario:
 

@@ -129,7 +129,7 @@ scenario(async () => {
   await delay(400)
   ui.win.webContents.reload()
   await wait('Boolean(document.querySelector(".view-switcher"))')
-  await domClick('.view-switcher button[aria-label="Boards"]')
+  await domClick('.view-switcher button[aria-label^="Boards"]')
   await wait('document.querySelectorAll(".session-pane").length === 3')
   await delay(400)
   checkFit(await geometry(), false)
@@ -162,11 +162,15 @@ scenario(async () => {
   assert.equal((await geometry()).handles, 3)
   await domClick(fit)
   checkFit(await geometry(), false)
-  // Sin máximo manual al ajustar, también en un monitor ancho.
-  await size(2200, 850)
+  // Sin máximo manual al ajustar, también en un monitor ancho (1920 px con
+  // la barra lateral colapsada: el panel supera los 1600 px del modo manual).
+  await size(1900, 850)
   await load(1)
+  await domClick('button[aria-label="Colapsar barra"]')
+  await delay(300)
   checkFit(await geometry(), false)
   assert((await geometry()).panes[0].width > 1600)
+  await domClick('button[aria-label="Expandir barra"]')
   // Un layout de una versión futura no se reescribe.
   await seedBoard({ version: 99, boardId: 'future', panes: [] }, { open: false })
   await delay(700)

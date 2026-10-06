@@ -23,5 +23,6 @@ Qué comprueba:
 - La persistencia al recargar, y que un turno fallido no redistribuye.
 - La barra compacta sigue siendo accesible; añadir y quitar desde la interfaz.
 - Desbordamiento con todo colapsado.
-- Migración desde el schema 3, un panel de más de 1600 px y que no se
+- Migración desde el schema 3, un panel de más de 1600 px (ventana de 1900 con
+  la barra colapsada) y que no se
   reescribe un layout de una versión futura.

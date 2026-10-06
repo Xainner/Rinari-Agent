@@ -71,6 +71,7 @@ const UI = [
   'vite.config.ts',
   'tests/ui/',
   'scripts/ui-e2e.mjs',
+  'scripts/set-display-resolution.ps1',
   'scripts/fake-model.mjs',
   'scripts/build-desktop.mjs',
   'engine-manifest.json',

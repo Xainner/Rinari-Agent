@@ -164,6 +164,11 @@ jobs:
       - run: npm run electron:install
       - run: npm run build
       - run: npm run desktop:build
+      # El escritorio del runner arranca en 1024x768 y la ventana no crece más
+      # que la pantalla; los escenarios usan ventanas de hasta 1920 px.
+      - name: Use a desktop large enough for the scenarios
+        shell: pwsh
+        run: ./scripts/set-display-resolution.ps1 -Width 1920 -Height 1080
       - name: UI scenarios against the pinned Engine
         env:
           RINARI_CLI: ${{ github.workspace }}\Rinari-CLI

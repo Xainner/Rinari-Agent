@@ -88,7 +88,7 @@ async function restart() {
   await size(1500, 880)
   const { ids } = JSON.parse(readFileSync(join(ui.data, 'expected.json'), 'utf8'))
   assert.equal((await stored('rinari.board.v1')).panes.length, 0)
-  await click('.view-switcher button[aria-label="Boards"]')
+  await click('.view-switcher button[aria-label^="Boards"]')
   await wait('Boolean(document.querySelector(".board-empty"))')
   for (const id of ids) assert.equal((await command('session_get', { reference: id })).session.state, 'active')
   // Deja un board poblado para revisar el botón a mano con --keep.

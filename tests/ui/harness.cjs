@@ -13,7 +13,7 @@
 //
 // Los clics van por `sendInputEvent` (eventos de confianza, como un ratón
 // real) salvo donde una prueba pide expresamente un `click()` del DOM.
-const { app, BrowserWindow, Menu } = require('electron')
+const { app, BrowserWindow, Menu, screen } = require('electron')
 const { join } = require('node:path')
 const { writeFileSync } = require('node:fs')
 
@@ -150,6 +150,13 @@ async function reload() {
   await ready()
 }
 async function size(width, height) {
+  // Una ventana no crece más que la pantalla: falla aquí, con la causa, y no
+  // después con un desbordamiento que no lo parece.
+  const area = screen.getDisplayMatching(ui.win.getBounds()).workAreaSize
+  const frame = ui.win.getSize()[0] - ui.win.getContentSize()[0]
+  if (width + frame > area.width || height > area.height) {
+    throw new Error(`The screen work area is ${area.width}x${area.height}; this scenario needs a ${width}x${height} window.`)
+  }
   if (ui.win.isMaximized()) { ui.win.unmaximize(); await delay(400) }
   ui.win.setMinimumSize(480, 500)
   ui.win.setContentSize(width, height)
@@ -182,7 +189,7 @@ async function seedBoard(layout, { open = true } = {}) {
   })()`)
   await reload()
   if (!open) return
-  await click('.view-switcher button[aria-label="Boards"]')
+  await click('.view-switcher button[aria-label^="Boards"]')
   await wait(`document.querySelectorAll('[data-pane-id]').length===${value.panes.length}`)
 }
 /** Paneles expandidos para estas sesiones, enfocando el primero. */

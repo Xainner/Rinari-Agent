@@ -12,6 +12,7 @@ import type { ModelSummary, SessionSummary } from '../../services/engine'
 import { useComposerStore } from '../../stores/composer'
 import { useSessionUiStore } from '../../stores/sessionUi'
 import { useEngineSession } from './useEngineSession'
+import { resetConversationDraftsForTests, useConversationDraftStore } from '../../stores/conversationDraft'
 
 const session = (id: string, extra: Partial<SessionSummary> = {}): SessionSummary => ({
   id,
@@ -244,5 +245,85 @@ describe('useEngineSession per-session primitives', () => {
     })
     expect(commandsNamed('session_mode_set')[0][1]).toMatchObject({ reference: 's2', mode: 'build' })
     expect(commandsNamed('turn_start')[0][1]).toMatchObject({ session_id: 's2' })
+  })
+})
+
+describe('new conversations are drafts until their first message', () => {
+  beforeEach(() => resetConversationDraftsForTests())
+
+  it('opening a project draft many times creates nothing; the first send creates one session for that project with the draft settings', async () => {
+    const hook = await mount([session('s1')])
+    act(() => {
+      for (let i = 0; i < 5; i += 1) hook.result.current.openDraft('proj_a')
+    })
+    expect(hook.result.current.activeSession).toBe('')
+    expect(commandsNamed('session_create')).toHaveLength(0)
+    await act(async () => {
+      await hook.result.current.setMode('plan')
+      await hook.result.current.setPermission('read-only')
+    })
+    useSessionUiStore.getState().setReasoningFor('draft:project:proj_a', 'high')
+    let ok = false
+    await act(async () => {
+      ok = await hook.result.current.send('Revisa el login')
+    })
+    expect(ok).toBe(true)
+    const creates = commandsNamed('session_create')
+    expect(creates).toHaveLength(1)
+    expect(creates[0][1]).toMatchObject({ project_id: 'proj_a', mode: 'plan', permission_profile: 'read-only' })
+    expect(commandsNamed('turn_start')[0][1]).toMatchObject({ session_id: 'ses_new', reasoning_effort: 'high' })
+    expect(hook.result.current.activeSession).toBe('ses_new')
+    expect(useConversationDraftStore.getState().normal).toBeNull()
+  })
+
+  it('a general draft stays general even after a project conversation was open', async () => {
+    const hook = await mount([session('s1', { kind: 'PROJECT', project_id: 'proj_a', project_root: '/repo/a' })])
+    act(() => hook.result.current.openDraft())
+    await act(async () => { await hook.result.current.send('Hola') })
+    expect(commandsNamed('session_create')[0][1]).toMatchObject({ chat: true })
+    expect(commandsNamed('session_create')[0][1]?.project_id).toBeFalsy()
+  })
+
+  it('two concurrent first sends share one creation', async () => {
+    const hook = await mount([session('s1')])
+    act(() => hook.result.current.openDraft('proj_a'))
+    await act(async () => {
+      await Promise.all([hook.result.current.send('uno'), hook.result.current.send('dos')])
+    })
+    expect(commandsNamed('session_create')).toHaveLength(1)
+  })
+
+  it('a failed first turn keeps the draft and the retry reuses the created session', async () => {
+    const hook = await mount([session('s1')])
+    const base = vi.mocked(invoke).getMockImplementation()!
+    let failTurns = true
+    vi.mocked(invoke).mockImplementation(async (command: string, args?: unknown) => {
+      if (command === 'turn_start' && failTurns) {
+        calls.push([command, args as Record<string, unknown>])
+        throw new Error('provider down')
+      }
+      return base(command, args)
+    })
+    act(() => hook.result.current.openDraft('proj_a'))
+    let ok = true
+    await act(async () => { ok = await hook.result.current.send('Primero') })
+    expect(ok).toBe(false)
+    expect(hook.result.current.activeSession).toBe('')
+    expect(useConversationDraftStore.getState().normal?.sessionId).toBe('ses_new')
+    failTurns = false
+    await act(async () => { ok = await hook.result.current.send('Otra vez') })
+    expect(ok).toBe(true)
+    expect(commandsNamed('session_create')).toHaveLength(1)
+    expect(hook.result.current.activeSession).toBe('ses_new')
+  })
+
+  it('adding files to a draft prepares nothing and creates nothing', async () => {
+    const hook = await mount([session('s1')])
+    act(() => hook.result.current.openDraft())
+    const files = [{ id: 'a1', path: 'C:/doc.pdf', name: 'doc.pdf' }] as never[]
+    let prepared: unknown
+    await act(async () => { prepared = await hook.result.current.prepareAttachments(files) })
+    expect(prepared).toBe(files)
+    expect(commandsNamed('session_create')).toHaveLength(0)
   })
 })

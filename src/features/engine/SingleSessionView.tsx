@@ -10,6 +10,7 @@ import { useSessionDockStore } from '../../stores/sessionDock'
 import type { ReasoningEffort } from '../../lib/reasoning'
 import type { ModelSummary } from '../../services/engine'
 import { runUiCommand } from './slashUi'
+import { useConversationDraftStore } from '../../stores/conversationDraft'
 
 /**
  * Vista Normal: la sesión activa con las mismas primitivas y el mismo
@@ -30,22 +31,27 @@ export default function SingleSessionView({
   const store = useRuntimeStore()
   const sessionId = data.activeSession
   const record = data.sessionsById[sessionId] ?? null
+  // Sin sesión activa, la vista es el borrador de una conversación nueva.
+  const draft = useConversationDraftStore((state) => (sessionId ? null : state.normal))
+  const preferenceKey = sessionId || draft?.key || ''
   const messages = useSessionThread(store, sessionId)
   const timelines = useSessionTimelines(store, sessionId)
   const busy = useSessionBusy(store, sessionId)
   const steering = data.status?.capabilities.turn_steering_v1 === true
-  const reasoningEffort = useSessionUiStore(selectReasoning(sessionId))
+  const reasoningEffort = useSessionUiStore(selectReasoning(preferenceKey))
   const setReasoningFor = useSessionUiStore((state) => state.setReasoningFor)
   const onReasoningChange = useCallback(
-    (effort: ReasoningEffort) => setReasoningFor(sessionId, effort),
-    [sessionId, setReasoningFor],
+    (effort: ReasoningEffort) => setReasoningFor(preferenceKey, effort),
+    [preferenceKey, setReasoningFor],
   )
   const revealDock = useSessionDockStore((state) => state.reveal)
   const reviewChanges = useCallback(() => revealDock(sessionId, 'workspace', { workspaceTab: 'changes' }), [revealDock, sessionId])
   const projectRoot = record?.kind === 'PROJECT' ? (record.project_root ?? null) : null
   const project = record?.project_id
     ? data.projects.find((item) => item.id === record.project_id) ?? null
-    : data.projects.find((item) => item.root === record?.project_root) ?? null
+    : record
+      ? data.projects.find((item) => item.root === record.project_root) ?? null
+      : draft?.projectId ? data.projects.find((item) => item.id === draft.projectId) ?? null : null
   const gitStatus = projectRoot ? (data.projectStatusByRoot[projectRoot] ?? null) : null
 
   return (
@@ -64,11 +70,12 @@ export default function SingleSessionView({
         queue={steering ? <QueueBar sessionId={sessionId} refreshKey={busy} showInput={false} /> : undefined}
         processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
         homeContext={{
-          projectName: project?.name ?? projectRoot,
+          projectName: project?.name ?? projectRoot ?? project?.root ?? null,
           changedFiles: gitStatus?.status.available ? gitStatus.status.files.length : null,
         }}
         messages={messages}
         sessionId={sessionId}
+        composerDraftKey={draft?.key}
         isStreaming={busy}
         engineReady={data.ready}
         onSend={commands.send}
@@ -78,7 +85,7 @@ export default function SingleSessionView({
           fork: commands.forkSession,
           rename: commands.renameSession,
         })}
-        onPrepareAttachments={commands.prepareAttachments}
+        onPrepareAttachments={sessionId ? commands.prepareAttachments : undefined}
         onCancelAttachmentPreparation={commands.cancelAttachmentPreparation}
         onImplementPlan={commands.implementPlan}
         onStop={() => void commands.cancelTurn()}
@@ -92,7 +99,7 @@ export default function SingleSessionView({
         onUseModel={(model: ModelSummary) => void commands.useModel(model)}
         onDiscoverModels={() => void commands.discoverCatalog()}
         onRefreshModels={commands.refreshModels}
-        sessionMode={record?.mode ?? null}
+        sessionMode={record?.mode ?? draft?.mode ?? null}
         historyPhase={data.historyPhase}
         onRetryHistory={() => void commands.retryHistory()}
         onModeChange={(mode) => void commands.setMode(mode)}
@@ -100,8 +107,8 @@ export default function SingleSessionView({
         onReasoningChange={onReasoningChange}
         timelines={timelines}
         onResolveApproval={(id, decision) => void commands.resolveApproval(id, decision)}
-        permissionProfile={record?.permission_profile ?? 'workspace'}
-        effectivePermissionProfile={record?.effective_permission_profile ?? 'workspace'}
+        permissionProfile={record?.permission_profile ?? draft?.permissionProfile ?? 'workspace'}
+        effectivePermissionProfile={record?.effective_permission_profile ?? draft?.permissionProfile ?? 'workspace'}
         permissionProfilesV2={data.status?.capabilities.permission_profiles_v2 === true}
         onPermissionChange={(profile) => void commands.setPermission(profile)}
         onSearchFiles={commands.searchFiles}

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useEngineData, useRuntimeStore } from '../engine/EngineContext'
 import {
   derivePaneStatus,
@@ -10,7 +10,7 @@ import {
   type TerminalOutcome,
 } from '../engine/sessionSelectors'
 import type { TurnTimeline } from '../activity/types'
-import { useBoardStore } from '../../stores/board'
+import { isDraftPane, useBoardStore } from '../../stores/board'
 import { unreadPeerCount, unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
 import { useBoardStatusStore } from '../../stores/boardStatus'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
@@ -51,7 +51,9 @@ export default function BoardActivityController() {
   const data = useEngineData()
   const store = useRuntimeStore()
   const watches = useRef(new Map<string, SessionWatch>())
-  const members = useBoardStore((state) => state.panes)
+  const panes = useBoardStore((state) => state.panes)
+  // Los borradores no tienen sesión ni actividad que observar.
+  const members = useMemo(() => panes.filter((pane) => !isDraftPane(pane)), [panes])
   const memberIds = members.map((pane) => pane.sessionId).join('|')
 
   // Reinicio del Engine: las transiciones anteriores ya no son comparables.

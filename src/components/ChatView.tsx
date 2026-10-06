@@ -96,6 +96,8 @@ interface ChatViewProps {
   /** Paneles a los que se puede escribir con `@Panel mensaje` (solo Boards). */
   mentionTargets?: readonly PaneMentionTarget[]
   onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
+  /** Clave del borrador del composer cuando aún no hay sesión (conversación nueva). */
+  composerDraftKey?: string
 }
 
 function ChatView({
@@ -143,6 +145,7 @@ function ChatView({
   onReviewChanges,
   mentionTargets,
   onSendToTarget,
+  composerDraftKey,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -372,6 +375,7 @@ function ChatView({
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
       sessionId={sessionId}
+      draftKey={sessionId ? undefined : composerDraftKey}
       primary={composerPrimary}
       acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}
@@ -401,7 +405,7 @@ function ChatView({
   )
 
   return (
-    <ChatFileDropZone draftKey={sessionId || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
+    <ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>

@@ -5,7 +5,6 @@ import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { warnUntrusted } from './features/projects/trustWarning'
-import { revealSessionProject } from './features/projects/revealSessionProject'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
@@ -476,7 +475,8 @@ function App() {
         case 'new-chat': {
           // Contextual: en Boards abre "Añadir panel" (lo cablea el store del board).
           if (resolveContextualAction('new', { view }) === 'add-pane') { boardActionsRef.current.addPane(); break }
-          void session.createSession().then(id => id && goChat()); break
+          // Un borrador: la sesión se crea con el primer mensaje.
+          session.openDraft(); goChat(); break
         }
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break
@@ -625,7 +625,7 @@ function App() {
             onOpenProjectHome={
               session.activeProjectRoot ? () => goProject(session.activeProjectRoot as string) : null
             }
-            onNewProjectChat={(id) => void session.createSession(id).then(created => created && goChat())}
+            onNewProjectChat={(id) => { session.openDraft(id); goChat() }}
             onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(String(error)))}
             onNewChat={() => dispatchAction('new-chat')}
             onOpenFolder={() =>
@@ -766,24 +766,10 @@ function App() {
               void session.selectSession(id)
               goChat()
             }}
-            onNewSession={() =>
-              void engineApi
-                .createSession({
-                  project_id: session.projects.find((p) => p.root === projectRoot)?.id,
-                  cwd: projectRoot,
-                  mode: 'build',
-                  permission_profile: 'workspace',
-                })
-                .then(async (created) => {
-                  await revealSessionProject(created.session)
-                  await session.refreshSessions()
-                  await session.selectSession(created.session.id)
-                  goChat()
-                })
-                .catch((err: unknown) =>
-                  toast.error(err instanceof Error ? err.message : String(err)),
-                )
-            }
+            onNewSession={() => {
+              session.openDraft(session.projects.find((p) => p.root === projectRoot)?.id ?? null)
+              goChat()
+            }}
             onEnsure={() => {
               void session.loadProjectStatus(projectRoot)
               if (!session.projectIntelByRoot[projectRoot]) {

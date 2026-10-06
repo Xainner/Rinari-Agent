@@ -12,6 +12,7 @@ import { translate } from '../../i18n'
 import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
 import { revealSessionProject } from '../projects/revealSessionProject'
+import { useConversationDraftStore } from '../../stores/conversationDraft'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -31,6 +32,9 @@ export interface CreateSessionOptions {
   /** `false`: la sesión se crea sin convertirse en la sesión Normal activa (Boards). */
   activate?: boolean
   title?: string
+  /** Modo y permisos elegidos en el borrador antes del primer envío. */
+  mode?: string
+  permissionProfile?: string
 }
 
 export type HistoryPhase = 'unloaded' | 'loading' | 'loaded' | 'error'
@@ -194,6 +198,8 @@ export function useSessionList(options: {
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current
+        // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
+        if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''
       })
     } catch (err) {
@@ -382,8 +388,8 @@ export function useSessionList(options: {
         project_id: projectId,
         chat: !projectId,
         title: options.title ?? translate(useUIStore.getState().lang, 'sidebar.newChat'),
-        mode: 'build',
-        permission_profile: 'workspace',
+        mode: options.mode ?? 'build',
+        permission_profile: options.permissionProfile ?? 'workspace',
       })
       rememberRows([result.session])
       setRecentSessionIds((current) => [result.session.id, ...current.filter((item) => item !== result.session.id)])

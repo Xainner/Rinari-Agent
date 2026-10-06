@@ -249,9 +249,13 @@ function ChatView({
   // marcarlo leído (eso solo ocurre cuando su bloque queda visible). Si la
   // fila aún no existe (historial cargando), la petición espera a que llegue.
   const pendingRevealRef = useRef<string | null>(null)
+  // Cuenta las navegaciones explícitas: un envío que termina después de una
+  // de ellas no se lleva al lector a otro sitio.
+  const navigationRef = useRef(0)
   const revealTurn = useCallback((turnId: string): boolean => {
     const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.message.turnId === turnId)
     if (index < 0) return false
+    navigationRef.current += 1
     followRef.current = false
     setAtBottom(false)
     restoreRef.current = null
@@ -325,10 +329,45 @@ function ChatView({
     }
   }, [stream, isStreaming, atBottom, autoFollow])
 
+  // Enviar (o guiar) es una intención nueva: aunque se estuviera leyendo
+  // arriba, se va al final en cuanto el Engine acepta el mensaje. Con
+  // «seguir el final» desactivado es un salto único: los efectos de
+  // seguimiento siguen condicionados a la preferencia. Un envío fallido, el
+  // cambio de sesión durante la espera o una navegación explícita posterior
+  // no mueven nada.
+  const sessionRef = useRef(sessionId)
+  sessionRef.current = sessionId
+  const goToEnd = useCallback(() => {
+    followRef.current = true
+    setAtBottom(true)
+    anchorRef.current = { follow: true }
+    restoreRef.current = null
+    pendingRevealRef.current = null
+    requestAnimationFrame(() => {
+      const last = streamRef.current.length - 1
+      if (last >= 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
+    })
+  }, [])
+  const afterOwnMessage = useCallback(async (accepted: Promise<boolean>): Promise<boolean> => {
+    const origin = sessionRef.current
+    const navigation = navigationRef.current
+    const ok = await accepted
+    if (ok && sessionRef.current === origin && navigationRef.current === navigation) goToEnd()
+    return ok
+  }, [goToEnd])
+  const send = useCallback(
+    (text: string, attachments?: AttachmentRef[], options?: SendOptions) => afterOwnMessage(onSend(text, attachments, options)),
+    [afterOwnMessage, onSend],
+  )
+  const steer = useMemo(
+    () => onSteer && ((text: string) => afterOwnMessage(onSteer(text))),
+    [afterOwnMessage, onSteer],
+  )
+
   const composer = (
     <Composer
       placement={presentation === 'empty' ? 'centered' : 'bottom'}
-      onSend={onSend}
+      onSend={send}
       onUiCommand={onUiCommand}
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
@@ -337,7 +376,7 @@ function ChatView({
       acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}
       onStop={onStop}
-      onSteer={onSteer}
+      onSteer={steer}
       onQueue={onQueue}
       models={models}
       providers={providers}

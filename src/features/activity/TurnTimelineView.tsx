@@ -23,7 +23,7 @@ import {
   TriangleAlert,
   Wrench,
 } from 'lucide-react'
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
@@ -36,6 +36,7 @@ import TurnMeta from './TurnMeta'
 import CompactionDetails from '../context/CompactionDetails'
 import TokenUsage from './TokenUsageIndicator'
 import TurnResult from './TurnResult'
+import { ModelChangeNotice } from './ModelChangeNotice'
 import { commandMessage, engineApi } from '../../services/engine'
 import { formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
@@ -202,25 +203,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
       </div>
     )
   }
-  if (item.type === 'agent') return (
-    <details className="group/agent my-2 rounded-xl border border-[var(--border)] p-3">
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-[var(--text)]">
-        {item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
-        <span>{item.agent}</span>
-        <span className="text-xs text-[var(--text-muted)]">{item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</span>
-        <span className="ml-auto text-xs">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} />
-      </summary>
-      <div className="mt-3 max-h-[32rem] space-y-2 overflow-auto">
-        {item.objective && <p className="text-sm text-[var(--text-muted)]">{item.objective}</p>}
-        {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
-        {(item.items ?? []).map(child => child.type === 'model'
-          ? child.content ? <Markdown key={child.id}>{child.content}</Markdown> : null
-          : <ActivityRow key={child.id} item={child} onResolveApproval={onResolveApproval} />)}
-        {item.summary && !(item.items ?? []).some(child => child.type === 'model' && child.content === item.summary) && <Markdown>{item.summary}</Markdown>}
-        {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…'}</p>}
-      </div>
-    </details>
-  )
+  if (item.type === 'agent') return <AgentCard item={item} onResolveApproval={onResolveApproval} />
   if (item.type === 'changeset') return null
   if (item.type === 'question') return <details className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></details>
   if (item.type === 'system') return null
@@ -333,6 +316,91 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-muted)]"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 underline">{artifact}</span></FileLink>)}</div>}
     {argumentsText && <details className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono">{argumentsText}</pre></details>}
   </div>
+}
+
+type AgentItem = Extract<TimelineItem, { type: 'agent' }>
+
+/**
+ * Tarjeta de un subagente. Su actividad tiene un scroll propio (32rem): sigue
+ * el final mientras el lector esté abajo, incluido el crecimiento de un
+ * mensaje ya existente, y se pausa al subir, solo en esta tarjeta. Un agente
+ * ya terminado se abre desde el principio, para leerlo; uno en marcha, por
+ * el final. Nunca mueve la conversación exterior ni otras tarjetas.
+ */
+function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveApproval: (id: string, decision: string) => void }) {
+  const { lang } = useI18n()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const followingRef = useRef<boolean | null>(null)
+  const [open, setOpen] = useState(false)
+  const [showJump, setShowJump] = useState(false)
+
+  function toEnd() {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }
+
+  function onToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+    const next = event.currentTarget.open
+    // La primera apertura decide: en marcha sigue el final; terminado, se lee.
+    if (next && followingRef.current === null) followingRef.current = item.status === 'running'
+    setOpen(next)
+  }
+
+  useLayoutEffect(() => {
+    if (open && followingRef.current) toEnd()
+  }, [open, item.items, item.summary, item.status])
+
+  useEffect(() => {
+    const content = contentRef.current
+    if (!open || !content || typeof ResizeObserver === 'undefined') return
+    let frame = 0
+    // Markdown, imágenes y bloques que cambian de alto sin un evento nuevo.
+    const observer = new ResizeObserver(() => {
+      if (!followingRef.current) return
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => { if (followingRef.current) toEnd() })
+    })
+    observer.observe(content)
+    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
+  }, [open])
+
+  function trackScroll() {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 24
+    followingRef.current = atBottom
+    setShowJump(!atBottom)
+  }
+
+  function jumpToEnd() {
+    followingRef.current = true
+    toEnd()
+    setShowJump(false)
+  }
+
+  return (
+    <details data-testid="agent-card" className="group/agent relative my-2 rounded-xl border border-[var(--border)] p-3" onToggle={onToggle}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-[var(--text)]">
+        {item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
+        <span>{item.agent}</span>
+        <span className="text-xs text-[var(--text-muted)]">{item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</span>
+        <span className="ml-auto text-xs">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} />
+      </summary>
+      <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" className="mt-3 max-h-[32rem] overflow-auto">
+        <div ref={contentRef} className="space-y-2">
+        {item.objective && <p className="text-sm text-[var(--text-muted)]">{item.objective}</p>}
+        {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
+        {(item.items ?? []).map(child => child.type === 'model'
+          ? child.content ? <Markdown key={child.id}>{child.content}</Markdown> : null
+          : <ActivityRow key={child.id} item={child} onResolveApproval={onResolveApproval} />)}
+        {item.summary && !(item.items ?? []).some(child => child.type === 'model' && child.content === item.summary) && <Markdown>{item.summary}</Markdown>}
+        {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…'}</p>}
+        </div>
+      </div>
+      {open && showJump && <button type="button" onClick={jumpToEnd} className="absolute right-5 bottom-4 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-muted)] shadow hover:text-[var(--text)]">{lang === 'es' ? 'Ir al final' : 'Jump to end'}</button>}
+    </details>
+  )
 }
 
 function StreamOutput({ label, content, warning = false }: { label: string; content: string; warning?: boolean }) {
@@ -505,7 +573,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       <div className="space-y-1 pl-0.5">
         {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'steer' ? <SteerBubble key={item.id} item={item} /> : item.type === 'model' ? (
-          <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown></div>
+          <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown>{item.modelChange && <ModelChangeNotice change={item.modelChange} />}</div>
         ) : <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
         <VisualProgress items={visualItems} status={timeline.status} onResolveApproval={onResolveApproval} />
         {waiting && timeline.status !== 'approval' && !timeline.items.some(item => item.type === 'question' && item.request.status === 'pending') && (

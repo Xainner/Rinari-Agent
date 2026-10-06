@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -145,4 +145,59 @@ it('offers to compact and continue when a compaction stopped the turn', async ()
   expect(compact).toHaveBeenCalledWith('s1', 'Continúa')
   await userEvent.click(screen.getByText('Solo compactar'))
   expect(compact).toHaveBeenLastCalledWith('s1')
+})
+
+describe('agent activity follows its own end', () => {
+  type Child = NonNullable<Extract<TurnTimeline['items'][number], { type: 'agent' }>['items']>[number]
+  const message = (n: number, content = 'Paso ' + n): Child => ({ id: 'model:c' + n, type: 'model', activitySeq: n + 1, occurredAt: 1_100 + n, modelCallId: 'c' + n, status: 'completed', content, outputKind: 'progress' })
+  const agent = (status: 'running' | 'completed', items: Child[]): TurnTimeline => ({ ...base, items: [{
+    id: 'agent:a', type: 'agent', activitySeq: 1, occurredAt: 1_100, agentId: 'a', agent: 'explore', phase: status === 'running' ? 'started' : 'terminal', status, items,
+  }] })
+  /** Geometría simulada: viewport de 300 px y contenido de `height` px. */
+  function geometry(height: { value: number }) {
+    const box = screen.getByTestId('agent-activity')
+    let top = 0
+    Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => height.value })
+    Object.defineProperty(box, 'clientHeight', { configurable: true, value: 300 })
+    Object.defineProperty(box, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = Math.min(v, Math.max(0, height.value - 300)) } })
+    return box
+  }
+  const render2 = (timeline: TurnTimeline) => <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={1_300} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>
+
+  it('a running agent opens at its end, follows new and growing messages, pauses when the reader scrolls up and resumes with «Ir al final»', async () => {
+    const height = { value: 1_000 }
+    const rendered = view(agent('running', [message(1)]), 1_300)
+    const box = geometry(height)
+    await userEvent.click(screen.getByText('Ver actividad'))
+    await waitFor(() => expect(box.scrollTop).toBe(700))
+
+    height.value = 1_400
+    rendered.rerender(render2(agent('running', [message(1), message(2)])))
+    expect(box.scrollTop).toBe(1_100)
+    // Un mensaje existente que crece, sin elementos nuevos.
+    height.value = 1_600
+    rendered.rerender(render2(agent('running', [message(1), message(2, 'Paso 2, más largo')])))
+    expect(box.scrollTop).toBe(1_300)
+
+    box.scrollTop = 200
+    fireEvent.scroll(box)
+    height.value = 2_000
+    rendered.rerender(render2(agent('running', [message(1), message(2), message(3)])))
+    expect(box.scrollTop).toBe(200)
+    await userEvent.click(screen.getByRole('button', { name: 'Ir al final' }))
+    expect(box.scrollTop).toBe(1_700)
+    expect(screen.queryByRole('button', { name: 'Ir al final' })).toBeNull()
+    height.value = 2_400
+    rendered.rerender(render2(agent('completed', [message(1), message(2), message(3), message(4)])))
+    expect(box.scrollTop).toBe(2_100)
+  })
+
+  it('a finished agent opens from the start, to be read', async () => {
+    view(agent('completed', [message(1), message(2)]), 1_300)
+    const box = geometry({ value: 1_000 })
+    await userEvent.click(screen.getByText('Ver actividad'))
+    await waitFor(() => expect(box.closest('details')?.hasAttribute('open')).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(box.scrollTop).toBe(0)
+  })
 })

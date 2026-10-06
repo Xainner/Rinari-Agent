@@ -45,9 +45,13 @@ también `failure.png` y el final del texto visible en la consola.
 | [boards-side-panel](boards-side-panel/README.md) | Panel lateral cerrado por defecto en Boards |
 | [chat-image-overlay](chat-image-overlay/README.md) | Visor de adjuntos sobre toda la ventana |
 | [chat-scroll-button](chat-scroll-button/README.md) | Flecha de bajar junto al composer |
+| [chat-send-jump](chat-send-jump/README.md) | Enviar desde arriba del historial lleva al final |
 | [composer-file-drag](composer-file-drag/README.md) | Arrastrar archivos a todo el chat |
+| [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |
 | [session-menu-id](session-menu-id/README.md) | ID de sesión en una sola línea |
+| [session-title](session-title/README.md) | Título que resume el primer mensaje, en vivo |
+| [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |
 
 ## Escribir un escenario
 

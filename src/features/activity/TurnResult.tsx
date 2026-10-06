@@ -8,6 +8,7 @@ import { ChangeSetRow } from './ChangeSetRow'
 import type { TurnTimeline } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
 import { CoverageWarning } from './CoverageWarning'
+import { ModelChangeNotice } from './ModelChangeNotice'
 
 export interface TurnResultProps {
   timeline: TurnTimeline
@@ -46,10 +47,14 @@ function TurnResult({ timeline, planActions }: TurnResultProps) {
           <section aria-label={lang === 'es' ? 'Plan propuesto' : 'Proposed plan'} className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
             <div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />{lang === 'es' ? 'Plan propuesto' : 'Proposed plan'}</div>
             <Markdown>{final.content}</Markdown>
+            {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
             {planActions}
           </section>
         )
-        : <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />)}
+        : <>
+          <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />
+          {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
+        </>)}
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={ACTIVE.has(timeline.status)} />)}
       {emptyPartial.length > 0 && <CoverageWarning warnings={emptyPartial.flatMap(item => item.warnings)} />}
       {failed && (

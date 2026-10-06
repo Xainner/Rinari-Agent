@@ -131,6 +131,9 @@ export function useEngineSession() {
           return false
         }
       }
+      // Un modelo recién elegido aún puede estar guardándose: el turno debe
+      // salir con él, no con el anterior.
+      await modelChangeChain.current.get(sessionId)
       // Re-check after the await: another caller may have started a turn.
       if (runtime.store.getState().busySessions.has(sessionId)) return false
       const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`

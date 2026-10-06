@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
-import { act, cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
@@ -17,6 +17,7 @@ import { useBoardStore, defaultBoard } from '../../stores/board'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useBoardStatusStore } from '../../stores/boardStatus'
 import { useComposerStore } from '../../stores/composer'
+import { resetSessionDockForTests, useSessionDockStore } from '../../stores/sessionDock'
 import { resetPendingQuestionsForTests } from '../questions/usePendingQuestions'
 import BoardActivityController from './BoardActivityController'
 import BoardView from './BoardView'
@@ -35,6 +36,7 @@ beforeEach(() => {
   ;(window as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub
   Element.prototype.scrollTo = vi.fn() as unknown as Element['scrollTo']
   window.localStorage.clear()
+  resetSessionDockForTests()
   resetPendingQuestionsForTests()
   useBoardStore.getState().hydrate({ ...defaultBoard(), boardId: 'board_1' })
   useBoardAttentionStore.getState().hydrate({})
@@ -44,6 +46,42 @@ beforeEach(() => {
 afterEach(cleanup)
 
 const sessions = [sessionFixture('ses_a', 'Backend API', 'proj_a'), sessionFixture('ses_b', 'Docs'), sessionFixture('ses_c', 'Infra')]
+
+it('removes every pane after the app confirmation while preserving running sessions and drafts', async () => {
+  const engine = engineFixture({ sessions, activeSession: 'ses_a', historyInfo: Object.fromEntries(sessions.map(row => [row.id, { total: 0, hasMore: false }])) })
+  for (const row of sessions) useBoardStore.getState().addPane(row.id)
+  useComposerStore.getState().setTextFor('ses_a', 'borrador pendiente')
+  useSessionDockStore.getState().reveal('ses_a', 'files')
+  render(<BoardHarness engine={engine}><BoardActivityController /><BoardView /></BoardHarness>)
+  act(() => {
+    engine.runtime.getState().dispatch(event('turn.started', { turn_id: 'running', session_id: 'ses_b' }))
+    useBoardStore.getState().setFocusMode(true)
+  })
+  const runtime = engine.runtime.getState()
+  const button = screen.getByRole('button', { name: 'Quitar todos' })
+  expect(button.title).toContain('Las conversaciones y su trabajo en curso se conservan')
+  await userEvent.click(button)
+  // Cancelar el diálogo de la app no toca el board.
+  const dialog = await screen.findByRole('alertdialog')
+  expect(dialog.textContent).toContain('¿Quitar los 3 paneles del board?')
+  await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+  expect(useBoardStore.getState().panes).toHaveLength(3)
+  expect(screen.queryByRole('alertdialog')).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Quitar todos' }))
+  await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Quitar todos' }))
+  await waitFor(() => expect(useBoardStore.getState().panes).toEqual([]))
+  expect(screen.queryByTestId('board-toolbar')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Añadir panel' })).toBeTruthy()
+  expect(engine.closeSession).not.toHaveBeenCalled()
+  expect(engine.cancelTurnFor).not.toHaveBeenCalled()
+  expect(engine.setActiveSession).not.toHaveBeenCalled()
+  expect(engine.runtime.getState()).toBe(runtime)
+  expect(useComposerStore.getState().getDraft('ses_a').text).toBe('borrador pendiente')
+  expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ visible: true, activeSurface: 'files' })
+  await userEvent.click(screen.getByRole('button', { name: 'Añadir conversación actual' }))
+  expect(screen.getByRole('region', { name: 'Backend API' })).toBeTruthy()
+  expect(screen.getByRole('textbox', { name: 'Mensaje' })).toHaveProperty('value', 'borrador pendiente')
+})
 
 it('collapses a pane into a 48px strip without its chat, and expands it back from the strip button', async () => {
   const engine = engineFixture({ sessions, historyInfo: { ses_a: { total: 0, hasMore: false }, ses_b: { total: 0, hasMore: false } } })

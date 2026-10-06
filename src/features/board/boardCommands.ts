@@ -50,6 +50,10 @@ export function toggleFitToView(): void {
   }
 }
 
+export function removeAllPanes(): void {
+  useBoardStore.getState().removeAllPanes()
+}
+
 /** Instantánea del controlador con la forma mínima que acepta el store. */
 export function collapsibleSnapshot(): Record<string, CollapsibleStatus> {
   const byPane = useBoardStatusStore.getState().byPane

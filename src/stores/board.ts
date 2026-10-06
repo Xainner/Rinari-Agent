@@ -83,6 +83,8 @@ interface BoardState extends PersistedBoard {
   persistError: string | null
   addPane: (sessionId: string, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
   removePane: (paneId: string) => void
+  /** Vacía la composición visual; conserva sesiones, borradores y layouts laterales. */
+  removeAllPanes: () => void
   movePane: (paneId: string, toIndex: number) => void
   focusPane: (paneId: string | null) => void
   setPaneWidth: (paneId: string, width: number) => void
@@ -381,6 +383,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     })
     return pane
   },
+
+  removeAllPanes: () => set((state) => {
+    if (state.panes.length === 0) return state
+    return {
+      panes: [],
+      focusedPaneId: null,
+      lastExpandedPaneId: null,
+      focusMode: false,
+      focusModeSnapshot: null,
+      paneErrors: {},
+    }
+  }),
 
   removePane: (paneId) => set((state) => {
     if (!state.panes.some((pane) => pane.paneId === paneId)) return state

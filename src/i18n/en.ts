@@ -439,6 +439,8 @@ export const en: Record<I18nKey, string> = {
   "composer.steerHintNow": "Enter: read after the current step, without stopping",
   "steer.pending": "Read after the current step",
   "steer.applied": "Sent while she worked",
+  "model.changed": "Model changed from {previous} to {next}.",
+  "model.changedTo": "Model changed to {next}.",
   "steer.returned": "Rinari did not get to read your message: it is back in the box.",
   "steer.queued": "She will read it when this turn ends.",
   'composer.stop': 'Stop generating',

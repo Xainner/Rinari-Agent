@@ -88,3 +88,20 @@ it('puts what a stopped turn did not read back in its draft, ahead of what you t
   })
   expect(useComposerStore.getState().getDraft('S').text).toBe('uno\n\ndos\n\nlo que escribía')
 })
+
+it('refreshes the session list when the Engine stores a title and on every turn end', () => {
+  for (const name of ['session.renamed', 'turn.failed', 'turn.cancelled']) {
+    const onSessionsChanged = vi.fn()
+    const hook = renderHook(() => useTurnRuntime({ onSessionsChanged }))
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+    onSessionsChanged.mockClear()
+    act(() => {
+      emit(name, { turn_id: 't1', session_id: 'A', title: 'Poema francés sobre los huskies', source: 'generated' })
+      vi.advanceTimersByTime(SESSION_REFRESH_DEBOUNCE_MS)
+    })
+    expect(onSessionsChanged, name).toHaveBeenCalledTimes(1)
+    hook.unmount()
+  }
+})

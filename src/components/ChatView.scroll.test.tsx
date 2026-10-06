@@ -148,3 +148,49 @@ it('FLOW-10: a queued reveal for another session is ignored and left for that se
   expect(scrollToIndex).not.toHaveBeenCalledWith(1, { align: 'start' })
   expect(takeQueuedTurnReveal('ses_other')).toBe('t1')
 })
+
+function sendFromComposer(text: string) {
+  const box = screen.getByRole('textbox', { name: /mensaje|message/i })
+  fireEvent.change(box, { target: { value: text } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+}
+
+it('sending while reading history jumps to the end once the Engine accepts the message', async () => {
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  scrollToIndex.mockClear()
+  sendFromComposer('otra pregunta')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
+  expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
+})
+
+it('a refused send leaves the reader where they were', async () => {
+  const engine = engineWithTurns(10)
+  ;(engine.send as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  scrollToIndex.mockClear()
+  sendFromComposer('no llega')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  expect(scrollToIndex).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+})
+
+it('an explicit turn reveal during the send wins over the jump', async () => {
+  const engine = engineWithTurns(10)
+  let accept!: (ok: boolean) => void
+  ;(engine.send as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise<boolean>((resolve) => { accept = resolve }))
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  sendFromComposer('mientras tanto')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  requestTurnReveal({ sessionId: 'ses_a', turnId: 't2' })
+  scrollToIndex.mockClear()
+  accept(true)
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  expect(scrollToIndex).not.toHaveBeenCalledWith(9, expect.anything())
+})

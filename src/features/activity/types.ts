@@ -26,6 +26,22 @@ export interface ModelTimelineItem extends TimelineItemBase {
   outputKind?: 'progress' | 'final'
   model?: string
   durationMs?: number
+  /** `model.changed`: este es el primer texto de otro modelo que el anterior que escribió. */
+  modelChange?: ModelChange
+}
+
+/** Un modelo tal como se llamaba cuando el Engine registró el cambio. */
+export interface ModelLabel {
+  modelId: string
+  alias?: string
+  providerModelId?: string
+  providerAlias?: string
+}
+
+export interface ModelChange {
+  /** Sin nombre si el modelo anterior ya no existe y nunca se registró. */
+  previous: ModelLabel
+  next: ModelLabel
 }
 
 export interface ToolTimelineItem extends TimelineItemBase {

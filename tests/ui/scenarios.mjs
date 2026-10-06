@@ -10,9 +10,19 @@
 import { createServer } from 'node:http'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { scriptedModel, startFakeModel } from '../../scripts/fake-model.mjs'
+import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 
 const paragraphs = (count, line) => Array.from({ length: count }, (_, i) => line(i + 1)).join('\n\n')
+
+/** Texto de un mensaje de la API de chat (cadena o partes). */
+const contentText = (content) => typeof content === 'string' ? content : Array.isArray(content) ? content.map((part) => part?.text ?? '').join('') : ''
+/** Carril de cada petición: el título de la conversación, un subagente o el coordinador. */
+function laneOf(body) {
+  const messages = body.messages ?? []
+  if (contentText(messages[0]?.content).includes('concise conversation title')) return 'title'
+  if (messages.some((m) => m.role === 'user' && contentText(m.content).includes('OBJETIVO-SUB'))) return 'sub'
+  return 'main'
+}
 
 /**
  * Modelo que retiene la primera petición hasta `/__release`: deja un turno
@@ -73,6 +83,13 @@ export const scenarios = {
       text: paragraphs(80, (n) => `Párrafo ${n}: Historial de prueba para comprobar el desplazamiento y la posición de la flecha junto al cuadro de mensaje.`) + '\n\nFIN DEL HISTORIAL DE PRUEBA',
     }))),
   },
+  'chat-send-jump': {
+    title: 'Chat: enviar desde arriba lleva al final',
+    phases: ['exercise'],
+    model: () => startFakeModel([1, 2, 3, 4].map((n) => ({
+      text: paragraphs(60, (i) => `Párrafo ${i} del turno ${n}: historial para comprobar el salto al enviar.`) + (n % 2 ? `\n\nFIN DEL HISTORIAL ${n}` : `\n\nRESPUESTA AL ENVÍO ${n}`),
+    }))),
+  },
   'composer-file-drag': {
     title: 'Composer: arrastrar archivos a todo el chat',
     phases: ['exercise'],
@@ -82,6 +99,11 @@ export const scenarios = {
       writeFileSync(join(data, 'imagen.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'))
     },
   },
+  'model-change-notice': {
+    title: 'Chat: aviso de cambio de modelo',
+    phases: ['exercise', 'restart'],
+    model: () => startFakeModel([{ text: 'RESPUESTA UNO' }, { text: 'RESPUESTA DOS' }, { text: 'RESPUESTA TRES' }]),
+  },
   'project-reveal': {
     title: 'Barra lateral: desplegar el proyecto al crear',
     phases: ['exercise', 'restart'],
@@ -89,5 +111,29 @@ export const scenarios = {
   'session-menu-id': {
     title: 'Barra lateral: ID de sesión en una línea',
     phases: ['exercise'],
+  },
+  'session-title': {
+    title: 'Barra lateral: título que resume el primer mensaje',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Poema francés sobre los huskies' }],
+      main: [{ text: 'Les huskies sont de merveilleux chiens…' }],
+    }, laneOf, { held: ['main'] }),
+  },
+  'subagent-follow': {
+    title: 'Actividad de subagente: seguir el final',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      main: [
+        { tool: 'agent.spawn', args: { agent: 'explore', objective: 'OBJETIVO-SUB: revisa la carpeta' }, say: 'Voy a pedir a un explorador que revise la carpeta.' },
+        { tool: 'agent.wait', args: { agent_id: 'agt_001', timeout_s: 300 }, say: '' },
+        { text: 'FIN DEL COORDINADOR' },
+      ],
+      sub: [
+        // Pasos distintos: repetir la misma llamada activaría el detector de bucles.
+        ...['*', '*.txt', '*.md', '*.json', '**/*'].map((pattern, i) => ({ tool: 'fs.glob', args: { pattern }, say: `Paso ${i + 1} del subagente.\n\n` + paragraphs(12, (line) => `Línea ${line} del paso ${i + 1}: actividad larga del subagente para desbordar la tarjeta.`) })),
+        { text: 'RESUMEN DEL SUBAGENTE' },
+      ],
+    }, laneOf, { held: ['sub'] }),
   },
 }

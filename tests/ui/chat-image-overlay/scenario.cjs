@@ -39,6 +39,34 @@ async function startOfChat(prefix = '') {
   }
   throw new Error('Image attachment did not become visible at start of chat')
 }
+/**
+ * Abre el visor desde el adjunto del historial. El virtualizador puede seguir
+ * midiendo filas justo después de volver al inicio y mover el botón bajo el
+ * clic: se espera a que su posición se asiente y, si el visor no se abre,
+ * se repite el recorrido.
+ */
+async function openFromHistory(prefix = '') {
+  const button = (prefix ? prefix + ' ' : '') + historical
+  const top = () => evaluate(`${q(button)}?.getBoundingClientRect().top ?? null`)
+  for (let attempt = 1; ; attempt += 1) {
+    await startOfChat(prefix)
+    let last = await top()
+    await until(async () => {
+      await delay(250)
+      const now = await top()
+      const settled = now !== null && now === last
+      last = now
+      return settled
+    }, 'history attachment settles')
+    await click(button)
+    try {
+      await wait(`Boolean(${q(preview)})`, 3_000)
+      return
+    } catch (error) {
+      if (attempt === 3) throw error
+    }
+  }
+}
 const metrics = []
 async function verify(prefix, name) {
   await wait(`${q(preview + ' img')}?.naturalWidth>0`)
@@ -89,16 +117,15 @@ scenario(async () => {
     await wait(`document.body.innerText.includes(${JSON.stringify('FIN DEL TURNO ' + i)})`)
     await wait(`!document.querySelector('button[aria-label="Detener generación"]')`)
   }
-  await startOfChat()
-  await click(historical)
+  await openFromHistory()
   await verify('', 'normal-history')
-  await startOfChat(); await click(historical)
+  await openFromHistory()
   await click(preview + ' button[aria-label="Cerrar"]'); await wait(`!${q(preview)}`)
-  await click(historical); await clickAt(25, 200); await wait(`!${q(preview)}`)
+  await openFromHistory(); await clickAt(25, 200); await wait(`!${q(preview)}`)
 
   await seedBoard({ boardId: 'image_acceptance', panes: panesFor(ids), focusedPaneId: 'pane_0' })
   const a = '[data-pane-id="pane_0"]'
-  await startOfChat(a); await click(a + ' ' + historical)
+  await openFromHistory(a)
   await verify(a, 'board-history')
   await startOfChat(a)
   await attach(a, 'imagen.png'); await click(a + ' .composer-surface ' + historical)
@@ -119,11 +146,11 @@ scenario(async () => {
   await screenshot('text-internal-scroll')
   await key('Escape'); await wait(`!${q(preview)}`)
   await size(1100, 720)
-  await startOfChat(a); await click(a + ' ' + historical)
+  await openFromHistory(a)
   await verify(a, 'board-short-window')
   await size(1500, 900)
   await click('.view-switcher button[aria-label^="Normal"]')
-  await startOfChat(); await click(historical)
+  await openFromHistory()
   await wait(`${q(preview + ' img')}?.naturalWidth>0`)
   await screenshot('ready-for-review')
   report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })

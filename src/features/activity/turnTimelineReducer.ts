@@ -3,6 +3,8 @@ import { mergeTokenUsage, newestUsage, legacyTokenUsage } from './tokenUsage'
 import type { EngineEventMsg, MessageOrigin, TimelineTurn, TurnChangedFile } from '../../services/engine'
 import type {
   ApprovalTimelineItem,
+  ModelChange,
+  ModelLabel,
   TimelineItem,
   TimelineStatus,
   ToolTimelineItem,
@@ -11,12 +13,18 @@ import type {
   TurnTimelineState,
 } from './types'
 
+// Releen la lista de sesiones. Todo final de turno cuenta (también fallido o
+// cancelado), y `session.renamed` trae el título automático en cuanto el
+// Engine lo guarda, a mitad de turno o en uno posterior.
 export const TRIGGERS_SESSION_REFRESH = new Set([
   'turn.started',
   'turn.completed',
   'turn.stopped',
+  'turn.failed',
+  'turn.cancelled',
   'session.mode.changed',
   'session.model.changed',
+  'session.renamed',
 ])
 
 export type TimelineAction =
@@ -84,12 +92,32 @@ function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('question.')) return `question:${payload.request_id}`
   if (event.startsWith('agent.') && payload.agent_id) return `agent:${payload.agent_id}`
   if (payload.tool_call_id) return `tool:${payload.tool_call_id}`
+  if (event === 'model.changed') return `model:${payload.after_model_call_id}`
   if (event.startsWith('model.')) return `model:${payload.model_call_id || 'legacy'}`
   if (payload.approval_id) return `approval:${payload.approval_id}`
   if (payload.agent_id) return `agent:${payload.agent_id}`
   if (event.startsWith('verification.')) return 'verification:completion-gate'
   if (event === 'governor.compact') return `context:${payload.compaction_id ?? payload.activity_seq ?? 0}`
   return `system:${payload.activity_seq ?? event}`
+}
+
+function modelLabel(value: unknown): ModelLabel | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Record<string, unknown>
+  const modelId = text(raw.model_id)
+  if (!modelId) return undefined
+  return {
+    modelId,
+    alias: text(raw.alias) || undefined,
+    providerModelId: text(raw.provider_model_id) || undefined,
+    providerAlias: text(raw.provider_alias) || undefined,
+  }
+}
+
+function modelChange(payload: Record<string, unknown>): ModelChange | undefined {
+  const previous = modelLabel(payload.previous)
+  const next = modelLabel(payload.next)
+  return previous && next ? { previous, next } : undefined
 }
 
 function errorMessage(value: unknown): string | undefined {
@@ -148,6 +176,11 @@ function mergeEventItem(
   const id = itemId(event, payload)
   const activitySeq = number(payload.activity_seq) ?? current?.activitySeq ?? Number.MAX_SAFE_INTEGER
   const occurredAt = parseTime(payload.occurred_at, current?.occurredAt ?? now)
+  if (event === 'model.changed') {
+    // Se ancla al bloque de texto que lo confirma; sin él no hay nada que anunciar.
+    const change = modelChange(payload)
+    return current?.type === 'model' && change ? { ...current, modelChange: change } : null
+  }
   if (event.startsWith('model.')) {
     const prior = current?.type === 'model' ? current : undefined
     const delta = event === 'model.content.delta' ? text(payload.delta) : ''
@@ -175,6 +208,7 @@ function mergeEventItem(
           : prior?.outputKind,
       model: text(payload.model) || prior?.model,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
+      modelChange: prior?.modelChange,
     }
   }
   if (event === 'steer.applied') {

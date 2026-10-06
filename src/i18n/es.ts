@@ -444,6 +444,8 @@ export const es = {
   "composer.steerHintNow": "Enter: lo lee al terminar el paso actual, sin detenerse",
   "steer.pending": "Lo leerá al terminar el paso actual",
   "steer.applied": "Enviado mientras trabajaba",
+  "model.changed": "Se cambió de modelo de {previous} a {next}.",
+  "model.changedTo": "Se cambió de modelo a {next}.",
   "steer.returned": "Rinari no llegó a leer tu mensaje: lo dejé de vuelta en el cuadro.",
   "steer.queued": "Lo leerá cuando termine este turno.",
   'composer.stop': 'Detener generación',

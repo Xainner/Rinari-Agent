@@ -6,6 +6,7 @@ Rinari Agent presents observable work as a chronological narrative attached to e
 | --- | --- | --- | --- |
 | `model.content.completed` (`progress`) | Visible prose | Same | Normal provider-visible content before an action. |
 | `model.content.completed` (`final`) | Normal assistant response | Same | Rendered with the standard Markdown message renderer. |
+| `model.changed` | «Se cambió de modelo de A a B» under that text block | Same | Anchored to the first text of the new model (`after_model_call_id`); A is the last model that wrote, not the last one selected. |
 | `model.started`, deltas, `model.completed` | Waiting/stream state only | Same | Token deltas are not separate rows or aria announcements. |
 | `usage.updated` | Compact turn token counter | Same | Aggregate metadata, not an activity row. Estimates and mixed totals use `~`; reconciliation may decrease the value. |
 | `tool.*` | Semantic narrative label | Adds the protocol tool name | Arguments and sanitized results stay collapsed. |

@@ -295,7 +295,7 @@ describe('new conversations are drafts until their first message', () => {
 
   it('a failed first turn keeps the draft and the retry reuses the created session', async () => {
     const hook = await mount([session('s1')])
-    const base = vi.mocked(invoke).getMockImplementation()!
+    const base = vi.mocked(invoke).getMockImplementation() as (command: string, args?: unknown) => Promise<unknown>
     let failTurns = true
     vi.mocked(invoke).mockImplementation(async (command: string, args?: unknown) => {
       if (command === 'turn_start' && failTurns) {

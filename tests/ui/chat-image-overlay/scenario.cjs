@@ -6,7 +6,7 @@ const { dialog } = require('electron')
 const assert = require('node:assert/strict')
 const { writeFileSync } = require('node:fs')
 const { join } = require('node:path')
-const { ui, click, clickAt, clickText, command, evaluate, input, key, panesFor, q, reload, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, wheel, delay } = require('../harness.cjs')
+const { ui, click, clickAt, clickText, command, evaluate, input, key, panesFor, q, reload, report, scenario, screenshot, seedBoard, size, until, useLocalModel, wait, wheel, delay } = require('../harness.cjs')
 
 const scroller = '.conversation-enter > .overflow-y-auto'
 const preview = '[role="dialog"][aria-label^="Vista previa"]'
@@ -27,7 +27,8 @@ async function attach(prefix, name) {
   }
 }
 async function startOfChat(prefix = '') {
-  await wait(`${q(prefix + ' ' + scroller)}?.scrollHeight>4000`)
+  // Un panel nuevo prepara la sesión y carga el historial antes de pintarlo.
+  await wait(`${q(prefix + ' ' + scroller)}?.scrollHeight>4000`, 60_000)
   // La carga y las medidas del virtualizador pueden restaurar un ancla de
   // lectura: se navega después y se avisa al manejador de scroll real.
   const deadline = Date.now() + 10_000
@@ -106,9 +107,14 @@ scenario(async () => {
   await evaluate(`(()=>{const b=[...document.querySelectorAll(${JSON.stringify(a + ' .composer-surface ' + historical)})].find(b=>b.textContent.includes("nota.txt"));b.focus();b.click()})()`)
   await wait(`${q(preview)}?.textContent.includes("Línea 150")`)
   const initial = await evaluate(`${q(a + ' ' + scroller)}.scrollTop`)
+  // Con el diálogo aún animando su entrada, la rueda puede perderse: se
+  // espera a que termine y se repite hasta que el texto se desplaza.
+  await wait(`${q(preview)}.getAnimations().every(a=>a.playState!=='running')`)
   const textPoint = await evaluate(`(()=>{const r=${q(preview + ' pre')}.getBoundingClientRect();return {x:Math.round(r.x+100),y:Math.round(r.y+100)}})()`)
-  await wheel(textPoint.x, textPoint.y, -1000)
-  await wait(`${q(preview + ' pre')}.parentElement.scrollTop>0`)
+  await until(async () => {
+    await wheel(textPoint.x, textPoint.y, -1000)
+    return evaluate(`${q(preview + ' pre')}.parentElement.scrollTop>0`)
+  }, 'text attachment scrolls inside the viewer')
   assert.equal(await evaluate(`${q(a + ' ' + scroller)}.scrollTop`), initial)
   await screenshot('text-internal-scroll')
   await key('Escape'); await wait(`!${q(preview)}`)

@@ -43,7 +43,7 @@ export function historyToMessages(rows: HistoryMessage[]): ChatMessage[] {
         sha256: attachment.sha256,
         mime_type: attachment.content_type,
         size: attachment.size,
-        kind: (attachment.kind as 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | undefined) ?? 'image',
+        kind: (attachment.kind as 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | undefined) ?? 'image',
         derivedUri: attachment.derived_uri,
         images: attachment.images,
         ocr: attachment.ocr,

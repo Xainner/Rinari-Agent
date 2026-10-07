@@ -246,6 +246,90 @@
       ]
     },
     {
+      "command": "documents_capabilities_get",
+      "kind": "engine",
+      "method": "documents.capabilities.get",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_import",
+      "kind": "engine",
+      "method": "documents.import",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_inspect",
+      "kind": "engine",
+      "method": "documents.inspect",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_job_cancel",
+      "kind": "engine",
+      "method": "documents.job.cancel",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_job_get",
+      "kind": "engine",
+      "method": "documents.job.get",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_job_start",
+      "kind": "engine",
+      "method": "documents.job.start",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_preview_get",
+      "kind": "engine",
+      "method": "documents.preview.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "documents_range_get",
+      "kind": "engine",
+      "method": "documents.range.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "documents_report_get",
+      "kind": "engine",
+      "method": "documents.report.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "documents_revisions_list",
+      "kind": "engine",
+      "method": "documents.revisions.list",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
       "command": "engine_restart",
       "kind": "host",
       "method": null,
@@ -1505,10 +1589,10 @@
     }
   ],
   "summary": {
-    "commands": 179,
-    "engine_backed": 173,
+    "commands": 189,
+    "engine_backed": 183,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 58
+    "without_callers": 61
   }
 }

@@ -15,7 +15,8 @@ Qué comprueba:
 
 - El video se reproduce y salta a mitad (peticiones `Range`).
 - Un PNG de más de 512 KiB se ve como imagen.
-- Un PDF ofrece «Abrir externamente» y «Abrir en el Explorador»; este último
+- Un PDF (`manual.pdf`, 2 páginas) se abre en el visor documental con sus
+  páginas renderizadas por el Engine (pdfium), y su «Abrir en el Explorador»
   entrega al sistema la ruta que aprobó el Engine.
 - Un enlace a un audio en la respuesta lleva su reproductor: no carga nada
   hasta pulsar «Reproducir» y luego suena desde la URL aprobada.

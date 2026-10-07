@@ -62,13 +62,18 @@ function Finding({ finding }: { finding: Record<string, unknown> }) {
 }
 
 function changeLabel(change: SemanticChange, t: ReturnType<typeof useI18n>['t']): string {
-  const n = String(change.index ?? '')
+  const n = String(change.index ?? change.block ?? change.page ?? '')
   switch (change.change) {
+    case 'block_added': return t('documents.change.blockAdded', { n })
+    case 'block_removed': return t('documents.change.blockRemoved', { n })
+    case 'page_added': return t('documents.change.pageAdded', { n })
+    case 'page_removed': return t('documents.change.pageRemoved', { n })
+    case 'page_count': return t('documents.change.pageCount', { before: String(change.before ?? ''), after: String(change.after ?? '') })
     case 'slide_added': return t('documents.change.slideAdded', { n })
     case 'slide_removed': return t('documents.change.slideRemoved')
     case 'slides_reordered': return t('documents.change.reordered')
     case 'notes_changed': return t('documents.change.notes', { n })
-    default: return t('documents.change.content', { n })
+    default: return change.block !== undefined ? t('documents.change.blockContent', { n }) : t('documents.change.content', { n })
   }
 }
 

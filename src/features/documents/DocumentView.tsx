@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ExternalLink, FileSpreadsheet, FileText, FolderOpen, LoaderCircle, MessageSquarePlus, Presentation, RefreshCw, Square } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, ExternalLink, FileDown, FileSpreadsheet, FileText, FolderOpen, LoaderCircle, MessageSquarePlus, Presentation, RefreshCw, Square } from 'lucide-react'
+import { platform } from '../../platform'
 import { requestComposerFocus } from '../../components/composer/focusComposer'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -290,14 +291,78 @@ function PreviewPane({ document, kind, name, sessionId, onOpenExternally, onReve
     )
   }
   return (
-    <div className="h-full space-y-4 overflow-auto bg-[var(--bg-subtle)] p-4">
-      {pages.map((page) => (
-        <figure key={page.page} className="mx-auto max-w-3xl">
-          <PreviewImage page={page} size={1600} alt={t('documents.pageAlt', { n: page.page, name })} />
-          <figcaption className="mt-1 text-center text-[10px] text-[var(--text-subtle)]">{page.page}</figcaption>
-        </figure>
-      ))}
-      {partial && <p className="text-center text-[11px] text-[var(--text-subtle)]">{t('documents.partialRender', { shown: pages.length, total: job!.result!.page_count! })}</p>}
+    <PagedPreview pages={pages} name={name} kind={kind} sessionId={sessionId} revisionId={revision?.id} pdfUri={document.preview?.pdf_uri ?? null}
+      partial={partial ? { shown: pages.length, total: job!.result!.page_count! } : null} />
+  )
+}
+
+/**
+ * Páginas de un Word o un PDF: navegación por número, la página visible
+ * marcada, «Pedir cambios» sobre ella y el PDF renderizado para abrirlo fuera.
+ */
+function PagedPreview({ pages, name, kind, sessionId, revisionId, pdfUri, partial }: {
+  pages: PreviewPage[]
+  name: string
+  kind: string
+  sessionId: string
+  revisionId?: string
+  pdfUri: string | null
+  partial: { shown: number; total: number } | null
+}) {
+  const { t } = useI18n()
+  const container = useRef<HTMLDivElement>(null)
+  const [current, setCurrent] = useState(pages[0]?.page ?? 1)
+  useEffect(() => {
+    const root = container.current
+    if (!root || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+      const page = Number((visible?.target as HTMLElement | undefined)?.dataset.page)
+      if (page) setCurrent(page)
+    }, { root, threshold: [0.3, 0.6] })
+    root.querySelectorAll('[data-page]').forEach((node) => observer.observe(node))
+    return () => observer.disconnect()
+  }, [pages])
+  const go = (page: number) => {
+    const target = container.current?.querySelector<HTMLElement>(`[data-page="${page}"]`)
+    target?.scrollIntoView?.({ block: 'start' })
+    setCurrent(page)
+  }
+  const index = pages.findIndex((page) => page.page === current)
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-3 py-1 text-[11px] text-[var(--text-muted)]">
+        <button type="button" aria-label={t('documents.previousPage')} title={t('documents.previousPage')} disabled={index <= 0} onClick={() => go(pages[index - 1].page)}
+          className="rounded p-0.5 hover:bg-[var(--bg-hover)] disabled:opacity-40"><ChevronUp size={13} /></button>
+        <button type="button" aria-label={t('documents.nextPage')} title={t('documents.nextPage')} disabled={index < 0 || index >= pages.length - 1} onClick={() => go(pages[index + 1].page)}
+          className="rounded p-0.5 hover:bg-[var(--bg-hover)] disabled:opacity-40"><ChevronDown size={13} /></button>
+        <span data-testid="page-indicator">{t('documents.pageOf', { n: current, total: partial?.total ?? pages.length })}</span>
+        <span className="ml-auto flex items-center gap-1.5">
+          {revisionId && (
+            <button type="button" title={t('documents.askChangesPageTitle')}
+              onClick={() => askForChanges(sessionId, t('documents.askChangesPagePrompt', { n: current, name, rev: revisionId }))}
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
+              <MessageSquarePlus size={12} aria-hidden="true" />{t('documents.askChanges')}
+            </button>
+          )}
+          {pdfUri && kind !== 'pdf' && (
+            <button type="button" title={t('documents.openPdfTitle')}
+              onClick={() => { void platform().files.openExternal({ session_id: sessionId, path: pdfUri }).catch(() => undefined) }}
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
+              <FileDown size={12} aria-hidden="true" />{t('documents.openPdf')}
+            </button>
+          )}
+        </span>
+      </div>
+      <div ref={container} className="min-h-0 flex-1 space-y-4 overflow-auto bg-[var(--bg-subtle)] p-4">
+        {pages.map((page) => (
+          <figure key={page.page} data-page={page.page} className="mx-auto max-w-3xl">
+            <PreviewImage page={page} size={1600} alt={t('documents.pageAlt', { n: page.page, name })} />
+            <figcaption className="mt-1 text-center text-[10px] text-[var(--text-subtle)]">{page.page}</figcaption>
+          </figure>
+        ))}
+        {partial && <p className="text-center text-[11px] text-[var(--text-subtle)]">{t('documents.partialRender', partial)}</p>}
+      </div>
     </div>
   )
 }

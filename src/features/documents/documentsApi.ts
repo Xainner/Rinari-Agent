@@ -35,11 +35,14 @@ export interface DocumentCheck {
 
 export interface SemanticChange {
   change: 'content_changed' | 'shape_added' | 'shape_removed' | 'slide_added' | 'slide_removed' | 'slides_reordered' | 'notes_changed'
+    | 'block_added' | 'block_removed' | 'page_added' | 'page_removed' | 'page_count'
   slide_id?: number
   index?: number
+  block?: number
+  page?: number
   shape_id?: number
-  before?: string
-  after?: string
+  before?: string | number
+  after?: string | number
 }
 
 export interface DocumentReport {

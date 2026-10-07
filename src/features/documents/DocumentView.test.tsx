@@ -151,3 +151,25 @@ it('lists the revisions and opens another one', async () => {
   await userEvent.click(edited)
   await waitFor(() => expect(platform.invoke.mock.calls.some(([name, args]) => name === 'documents_inspect' && (args as { ref?: string }).ref === 'rev_2')).toBe(true))
 })
+
+it('pages through a Word document, asks for changes on a page and opens its PDF', async () => {
+  const word = { ...revision, id: 'rev_w', kind: 'docx', name: 'informe.docx' }
+  const wordPages = [1, 2, 3].map((page) => ({ page, uri: `artifact://s/previews/rev_w-office-p000${page}.png`, width: 1240, height: 1754 }))
+  platform.invoke.mockImplementation(async (name: string) => {
+    if (name === 'engine_status') return { state: 'ready', capabilities: { document_preview_v1: true } }
+    if (name === 'documents_inspect') return { revision: word, container: { kind: 'docx', part_count: 10, expanded_bytes: 1, encrypted: false, risks: [] }, inspection: { paragraphs: 40 } }
+    if (name === 'documents_preview_get') return { revision: word, preview: { revision_id: 'rev_w', backend: 'office', pdf_uri: 'artifact://s/previews/rev_w-office-render.pdf', pages: wordPages } }
+    if (name === 'attachment_preview') return { data_url: 'data:image/png;base64,AA==' }
+    return {}
+  })
+  render(<I18nProvider lang="es"><DocumentView source={{ sessionId: 's', ref: 'rev_w' }} name="informe.docx" /></I18nProvider>)
+  expect(await screen.findByTestId('page-indicator')).toBeTruthy()
+  expect(screen.getByTestId('page-indicator').textContent).toBe('Página 1 de 3')
+  await userEvent.click(screen.getByRole('button', { name: 'Página siguiente' }))
+  expect(screen.getByTestId('page-indicator').textContent).toBe('Página 2 de 3')
+  useComposerStore.getState().setTextFor('s', '')
+  await userEvent.click(screen.getByRole('button', { name: /Pedir cambios/ }))
+  expect(useComposerStore.getState().getDraft('s').text).toBe('En la página 2 de «informe.docx» (revisión rev_w): ')
+  await userEvent.click(screen.getByRole('button', { name: /Abrir PDF/ }))
+  await waitFor(() => expect(platform.bridge.openedFiles).toContainEqual({ session_id: 's', path: 'artifact://s/previews/rev_w-office-render.pdf' }))
+})

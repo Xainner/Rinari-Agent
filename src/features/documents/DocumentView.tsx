@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils'
 import { useComposerStore } from '../../stores/composer'
 import { useArtifactImage } from '../files/artifactImage'
 import { DocumentChecks, DocumentRevisions } from './DocumentChecks'
+import { SheetGrid } from './SheetGrid'
 import { documentsApi, ACTIVE_JOB, documentKind, type PreviewPage } from './documentsApi'
 import { useDocument, type DocumentSource } from './useDocument'
 
@@ -132,6 +133,8 @@ export function DocumentView({ source, name, onOpenExternally, onReveal, headerA
             <p className="text-sm break-words text-[var(--text)]">{document.error}</p>
             <OpenButtons onOpenExternally={onOpenExternally} onReveal={onReveal} />
           </div>
+        ) : tab === 'content' && kind === 'xlsx' ? (
+          <SheetGrid key={document.inspection!.revision.id} sessionId={source.sessionId} revisionId={document.inspection!.revision.id} />
         ) : tab === 'content' ? (
           <DocumentContent source={active} revisionId={document.inspection!.revision.id} kind={kind} />
         ) : tab === 'checks' ? (

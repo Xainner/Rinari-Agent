@@ -33,12 +33,25 @@ export interface DocumentCheck {
   findings?: Array<Record<string, unknown>>
 }
 
+export interface SemanticChange {
+  change: 'content_changed' | 'shape_added' | 'shape_removed' | 'slide_added' | 'slide_removed' | 'slides_reordered' | 'notes_changed'
+  slide_id?: number
+  index?: number
+  shape_id?: number
+  before?: string
+  after?: string
+}
+
 export interface DocumentReport {
   revision_id: string
   sha256: string
   status: DocumentCheck['status']
   checks: Record<string, DocumentCheck>
   warnings: Array<{ code: string; severity?: string; scope?: string; detail?: string }>
+  /** draft | final | accepted_draft */
+  deliverable_state?: string
+  semantic_diff?: SemanticChange[]
+  visual_review?: { pages: number[]; page_count: number; reviewer?: string; at?: string }
 }
 
 export interface DocumentRisk { code: string; detail: string; count?: number }
@@ -114,8 +127,9 @@ export const documentsApi = {
       selection: selection ?? null,
       cursor: cursor ?? null,
     }),
-  report: (session_id: string, revision_id: string) =>
-    platform().command<{ revision_id: string; report: DocumentReport | null }>('documents_report_get', { session_id, revision_id }),
+  /** `validate` corre la validación si la revisión aún no tiene informe. */
+  report: (session_id: string, revision_id: string, validate = false) =>
+    platform().command<{ revision_id: string; report: DocumentReport | null }>('documents_report_get', { session_id, revision_id, validate }),
   revisions: (session_id: string, document_id?: string) =>
     platform().command<{ revisions: DocumentRevision[] }>('documents_revisions_list', { session_id, document_id: document_id ?? null }),
 }

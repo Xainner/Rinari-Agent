@@ -2,7 +2,8 @@
 // diapositivas renderizadas por el Engine (Office local o LibreOffice) con su
 // lista de miniaturas y, si el equipo no tiene ninguno, un aviso que lo dice y
 // ofrece abrirlo con su aplicación. La pestaña «Contenido» muestra lo que el
-// Engine leyó: texto, datos del gráfico y notas.
+// Engine leyó: texto, datos del gráfico y notas. «Verificación» valida bajo
+// demanda y nunca da por revisado lo visual; «Revisiones» lista el original.
 const assert = require('node:assert/strict')
 const { copyFileSync, mkdirSync } = require('node:fs')
 const { join } = require('node:path')
@@ -46,5 +47,17 @@ scenario(async () => {
   assert.match(content, /Diapositiva 1: crecimiento del año ñandú/)
   assert.match(content, /Gráfico COLUMN_CLUSTERED: 2026 \(2\)/)
   await screenshot('content')
-  report({ passed: [rendered ? 'slides rendered by the installed Office/LibreOffice' : 'no renderer: explicit notice and open externally', 'content tab shows text, chart data and notes', 'never binary as text'], rendered })
+
+  await clickText('Verificación', '[data-document-kind="pptx"] [role="tab"]')
+  await clickText('Validar', '[data-document-kind="pptx"] button')
+  await wait(`Boolean(document.querySelector('[data-testid="document-checks"] [data-check="structure"]'))`, 60_000)
+  const checks = await evaluate(`Object.fromEntries([...document.querySelectorAll('[data-testid="document-checks"] [data-check]')].map((row) => [row.dataset.check, row.dataset.status]))`)
+  assert.equal(checks.structure, 'passed')
+  assert.notEqual(checks.visual, 'passed', 'nobody reviewed the pages, so visual is not passed')
+  await screenshot('checks')
+
+  await clickText('Revisiones', '[data-document-kind="pptx"] [role="tab"]')
+  await wait(`Boolean(document.querySelector('[data-document-kind="pptx"] ol[aria-label="Revisiones"] button[aria-current="true"]'))`)
+  assert.match(await evaluate(`document.querySelector('[data-document-kind="pptx"] ol[aria-label="Revisiones"]').innerText`), /Original/)
+  report({ passed: [rendered ? 'slides rendered by the installed Office/LibreOffice' : 'no renderer: explicit notice and open externally', 'content tab shows text, chart data and notes', 'never binary as text', 'checks validated on request, visual not claimed', 'revisions list the original'], rendered, checks })
 }, { width: 1500, height: 900 })

@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ExternalLink, FileSpreadsheet, FileText, FolderOpen, LoaderCircle, Presentation, RefreshCw, Square } from 'lucide-react'
+import { AlertTriangle, ExternalLink, FileSpreadsheet, FileText, FolderOpen, LoaderCircle, MessageSquarePlus, Presentation, RefreshCw, Square } from 'lucide-react'
+import { requestComposerFocus } from '../../components/composer/focusComposer'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
+import { useComposerStore } from '../../stores/composer'
 import { useArtifactImage } from '../files/artifactImage'
+import { DocumentChecks, DocumentRevisions } from './DocumentChecks'
 import { documentsApi, ACTIVE_JOB, documentKind, type PreviewPage } from './documentsApi'
 import { useDocument, type DocumentSource } from './useDocument'
+
+type Tab = 'preview' | 'content' | 'checks' | 'revisions'
+const TABS: readonly Tab[] = ['preview', 'content', 'checks', 'revisions']
+const TAB_LABEL: Record<Tab, I18nKey> = {
+  preview: 'documents.preview',
+  content: 'documents.content',
+  checks: 'documents.checks',
+  revisions: 'documents.revisions',
+}
 
 const KIND_ICON = { pptx: Presentation, xlsx: FileSpreadsheet, docx: FileText, pdf: FileText } as const
 
@@ -53,8 +65,14 @@ export function DocumentView({ source, name, onOpenExternally, onReveal, headerA
   headerActions?: boolean
 }) {
   const { t } = useI18n()
-  const document = useDocument(source)
-  const [tab, setTab] = useState<'preview' | 'content'>('preview')
+  // Otra revisión del mismo documento (las que Rinari creó o editó).
+  const [revisionRef, setRevisionRef] = useState<string>()
+  const active = useMemo<DocumentSource>(
+    () => (revisionRef ? { sessionId: source.sessionId, ref: revisionRef } : source),
+    [revisionRef, source],
+  )
+  const document = useDocument(active)
+  const [tab, setTab] = useState<Tab>('preview')
   const kind = (document.inspection?.revision.kind ?? documentKind(name) ?? 'pdf') as keyof typeof KIND_ICON
   const Icon = KIND_ICON[kind] ?? FileText
   const inspection = document.inspection?.inspection as Record<string, unknown> | null | undefined
@@ -88,10 +106,10 @@ export function DocumentView({ source, name, onOpenExternally, onReveal, headerA
           )}
         </div>
         <div role="tablist" aria-label={t('documents.views')} className="inline-flex rounded-lg border border-[var(--border)] p-0.5 text-xs">
-          {(['preview', 'content'] as const).map((value) => (
+          {TABS.map((value) => (
             <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}
               className={cn('rounded-md px-2.5 py-1 transition-colors', tab === value ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]')}>
-              {t(value === 'preview' ? 'documents.preview' : 'documents.content')}
+              {t(TAB_LABEL[value])}
             </button>
           ))}
         </div>
@@ -115,9 +133,15 @@ export function DocumentView({ source, name, onOpenExternally, onReveal, headerA
             <OpenButtons onOpenExternally={onOpenExternally} onReveal={onReveal} />
           </div>
         ) : tab === 'content' ? (
-          <DocumentContent source={source} revisionId={document.inspection!.revision.id} kind={kind} />
+          <DocumentContent source={active} revisionId={document.inspection!.revision.id} kind={kind} />
+        ) : tab === 'checks' ? (
+          <DocumentChecks key={document.inspection!.revision.id} sessionId={source.sessionId} revisionId={document.inspection!.revision.id} />
+        ) : tab === 'revisions' ? (
+          <DocumentRevisions sessionId={source.sessionId} documentId={document.inspection!.revision.document_id}
+            currentId={document.inspection!.revision.id}
+            onSelect={(revision) => { setRevisionRef(revision.id); setTab('preview') }} />
         ) : (
-          <PreviewPane document={document} kind={kind} name={name} onOpenExternally={onOpenExternally} onReveal={onReveal} />
+          <PreviewPane document={document} kind={kind} name={name} sessionId={source.sessionId} onOpenExternally={onOpenExternally} onReveal={onReveal} />
         )}
       </div>
       {document.preview?.backend && (
@@ -150,7 +174,33 @@ function Centered({ children, role }: { children: React.ReactNode; role?: string
   return <div role={role ?? 'status'} className="flex h-full items-center justify-center gap-2 p-6 text-center text-sm text-[var(--text-muted)]">{children}</div>
 }
 
-function PreviewPane({ document, kind, name, onOpenExternally, onReveal }: { document: ReturnType<typeof useDocument>; kind: string; name: string; onOpenExternally?: () => void; onReveal?: () => void }) {
+/** Las notas del orador de una diapositiva, leídas por el Engine. */
+function useSlideNotes(sessionId: string, revisionId: string | undefined, slide: number): string | null {
+  const [notes, setNotes] = useState<string | null>(null)
+  useEffect(() => {
+    if (!revisionId) return
+    let alive = true
+    setNotes(null)
+    documentsApi.range(sessionId, revisionId, String(slide))
+      .then((result) => {
+        const slides = result.slides as Array<{ notes?: string }> | undefined
+        if (alive) setNotes(slides?.[0]?.notes?.trim() || null)
+      })
+      .catch(() => undefined)
+    return () => { alive = false }
+  }, [revisionId, sessionId, slide])
+  return notes
+}
+
+/** Deja en el composer de la sesión una referencia exacta a la diapositiva. */
+function askForChanges(sessionId: string, text: string) {
+  const store = useComposerStore.getState()
+  const current = store.getDraft(sessionId).text
+  store.setTextFor(sessionId, current.trim() ? `${current.trimEnd()}\n${text}` : text)
+  requestComposerFocus(sessionId)
+}
+
+function PreviewPane({ document, kind, name, sessionId, onOpenExternally, onReveal }: { document: ReturnType<typeof useDocument>; kind: string; name: string; sessionId: string; onOpenExternally?: () => void; onReveal?: () => void }) {
   const { t } = useI18n()
   const pages = document.preview?.pages ?? []
   const [selected, setSelected] = useState(1)
@@ -158,6 +208,8 @@ function PreviewPane({ document, kind, name, onOpenExternally, onReveal }: { doc
   useEffect(() => { if (pages.length && !pages.some((page) => page.page === selected)) setSelected(pages[0].page) }, [pages, selected])
   const job = document.job
   const working = job && ACTIVE_JOB.has(job.status)
+  const revision = document.inspection?.revision
+  const notes = useSlideNotes(sessionId, kind === 'pptx' ? revision?.id : undefined, selected)
 
   if (!pages.length) {
     if (working) {
@@ -215,6 +267,20 @@ function PreviewPane({ document, kind, name, onOpenExternally, onReveal }: { doc
         </ol>
         <div ref={main} className="flex min-w-0 flex-1 flex-col items-center gap-2 overflow-auto bg-[var(--bg-subtle)] p-4">
           <PreviewImage page={current} size={1600} alt={t('documents.slideAlt', { n: current.page, name })} className="w-full max-w-5xl" />
+          <div className="flex w-full max-w-5xl flex-col gap-2">
+            {revision && (
+              <button type="button" title={t('documents.askChangesTitle')}
+                onClick={() => askForChanges(sessionId, t('documents.askChangesPrompt', { n: current.page, name, rev: revision.id }))}
+                className="self-end inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
+                <MessageSquarePlus size={13} aria-hidden="true" />{t('documents.askChanges')}
+              </button>
+            )}
+            {notes && (
+              <p className="w-full whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-[11px] text-[var(--text-muted)]" aria-label={t('documents.notes')}>
+                <span className="mr-1 font-medium text-[var(--text)]">{t('documents.notes')}:</span>{notes}
+              </p>
+            )}
+          </div>
           {partial && <p className="text-[11px] text-[var(--text-subtle)]">{t('documents.partialRender', { shown: pages.length, total: job!.result!.page_count! })}</p>}
         </div>
       </div>

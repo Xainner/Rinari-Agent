@@ -5747,6 +5747,11 @@
           "name": "revision_id",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "validate",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -5762,6 +5767,11 @@
           "key": "revision_id",
           "from": "revision_id",
           "optional": false
+        },
+        {
+          "key": "validate",
+          "from": "validate",
+          "optional": true
         }
       ],
       "passthrough": null,

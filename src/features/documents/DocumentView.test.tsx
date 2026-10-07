@@ -5,6 +5,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it } from 'vitest'
 import { I18nProvider } from '../../i18n'
+import { useComposerStore } from '../../stores/composer'
 import { DocumentView } from './DocumentView'
 import { documentKind } from './documentsApi'
 
@@ -20,10 +21,13 @@ const pages = [
 ]
 let preview: unknown = null
 let startError: unknown = null
+let report: unknown = null
+const child = { ...revision, id: 'rev_2', parent_id: 'rev_1', operation: 'edit', sha256: '99887766aabbccdd', state: 'final', created_at: '2026-10-06T10:00:00Z' }
 
 beforeEach(() => {
   preview = null
   startError = null
+  report = null
   platform.invoke.mockImplementation(async (name: string) => {
     if (name === 'engine_status') return { state: 'ready', capabilities: { document_preview_v1: true } }
     if (name === 'documents_inspect') return inspection
@@ -34,6 +38,8 @@ beforeEach(() => {
     }
     if (name === 'documents_job_get') return { job_id: 'djob_1', session_id: 's', operation: 'render', status: 'running', phase: 'render', progress: null, result: null, error: null }
     if (name === 'attachment_preview') return { data_url: 'data:image/png;base64,AA==' }
+    if (name === 'documents_report_get') return { revision_id: 'rev_1', report }
+    if (name === 'documents_revisions_list') return { revisions: [revision, child] }
     if (name === 'documents_range_get') {
       return { slides: [{ index: 1, shapes: [{ shape_id: 2, kind: 'text', text: 'Crecimiento del norte' }, { shape_id: 3, kind: 'chart', chart: { type: 'COLUMN_CLUSTERED', series: [{ name: '2026', values: [1, 2] }] } }], notes: 'Nota 1' }], truncated: false, next_cursor: null }
     }
@@ -92,4 +98,56 @@ it('shows what the Engine read in the content tab', async () => {
   expect(await screen.findByText('Crecimiento del norte')).toBeTruthy()
   expect(screen.getByText('Nota 1')).toBeTruthy()
   expect(screen.getByText(/Gráfico COLUMN_CLUSTERED: 2026 \(2\)/)).toBeTruthy()
+})
+
+it('shows the speaker notes and asks for changes on the selected slide', async () => {
+  preview = { revision_id: 'rev_1', backend: 'office', pdf_uri: null, pages }
+  view()
+  await screen.findAllByRole('button', { name: /Diapositiva \d/ })
+  expect(await screen.findByLabelText('Notas')).toBeTruthy()
+  useComposerStore.getState().setTextFor('s', 'Hola')
+  await userEvent.click(screen.getByRole('button', { name: /Pedir cambios/ }))
+  expect(useComposerStore.getState().getDraft('s').text).toBe('Hola\nEn la diapositiva 1 de «ventas.pptx» (revisión rev_1): ')
+})
+
+it('reports each check as the Engine does, without promoting not-run to passed', async () => {
+  preview = { revision_id: 'rev_1', backend: 'office', pdf_uri: null, pages }
+  report = {
+    revision_id: 'rev_1', sha256: 'abc', status: 'partial', warnings: [], deliverable_state: 'draft',
+    checks: {
+      structure: { status: 'passed' },
+      layout: { status: 'failed', findings: [{ code: 'TEXT_OVERFLOW', severity: 'error', slide: 2, message: 'El título no cabe' }] },
+      visual: { status: 'not_run', reason: 'RENDER_UNAVAILABLE' },
+    },
+    semantic_diff: [{ change: 'content_changed', index: 2, shape_id: 3, before: 'Norte', after: 'Sur' }],
+  }
+  view()
+  await screen.findAllByRole('button', { name: /Diapositiva \d/ })
+  await userEvent.click(screen.getByRole('tab', { name: 'Verificación' }))
+  const checks = await screen.findByTestId('document-checks')
+  expect(checks.querySelector('[data-check="visual"]')?.getAttribute('data-status')).toBe('not_run')
+  expect(screen.getByText(/no hubo revisión visual/)).toBeTruthy()
+  expect(screen.getByText('El título no cabe')).toBeTruthy()
+  expect(screen.getByText('Diapositiva 2: contenido cambiado')).toBeTruthy()
+  expect(screen.getByText('Borrador')).toBeTruthy()
+})
+
+it('validates on request when the revision has no report yet', async () => {
+  preview = { revision_id: 'rev_1', backend: 'office', pdf_uri: null, pages }
+  view()
+  await screen.findAllByRole('button', { name: /Diapositiva \d/ })
+  await userEvent.click(screen.getByRole('tab', { name: 'Verificación' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Validar' }))
+  expect(platform.invoke.mock.calls.some(([name, args]) => name === 'documents_report_get' && (args as { validate?: boolean }).validate === true)).toBe(true)
+})
+
+it('lists the revisions and opens another one', async () => {
+  preview = { revision_id: 'rev_1', backend: 'office', pdf_uri: null, pages }
+  view()
+  await screen.findAllByRole('button', { name: /Diapositiva \d/ })
+  await userEvent.click(screen.getByRole('tab', { name: 'Revisiones' }))
+  const edited = await screen.findByRole('button', { name: /Editada por Rinari/ })
+  expect(screen.getByRole('button', { name: /Original/ }).getAttribute('aria-current')).toBe('true')
+  await userEvent.click(edited)
+  await waitFor(() => expect(platform.invoke.mock.calls.some(([name, args]) => name === 'documents_inspect' && (args as { ref?: string }).ref === 'rev_2')).toBe(true))
 })

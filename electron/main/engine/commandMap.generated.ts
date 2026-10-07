@@ -51,7 +51,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "documents_job_start": {"method":"documents.job.start","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"operation","from":"operation","optional":false},{"key":"ref","from":"ref","optional":false},{"key":"pages","from":"pages","optional":true}]},
   "documents_preview_get": {"method":"documents.preview.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"ref","from":"ref","optional":false}]},
   "documents_range_get": {"method":"documents.range.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"ref","from":"ref","optional":false},{"key":"selection","from":"selection","optional":true},{"key":"cursor","from":"cursor","optional":true}]},
-  "documents_report_get": {"method":"documents.report.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"revision_id","from":"revision_id","optional":false}]},
+  "documents_report_get": {"method":"documents.report.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"revision_id","from":"revision_id","optional":false},{"key":"validate","from":"validate","optional":true}]},
   "documents_revisions_list": {"method":"documents.revisions.list","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"document_id","from":"document_id","optional":true}]},
   "mcp_create": {"method":"mcp.create","params":[{"key":"name","from":"name","optional":false},{"key":"command","from":"command","optional":false}]},
   "mcp_get": {"method":"mcp.get","params":[{"key":"name","from":"name","optional":false}]},

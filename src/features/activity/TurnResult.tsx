@@ -10,7 +10,6 @@ import { useResultVisibility } from '../board/useResultVisibility'
 import { ChangeSetRow } from './ChangeSetRow'
 import type { TurnTimeline } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
-import { CoverageWarning } from './CoverageWarning'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { failureTab, turnFailure, type TurnFailure } from './turnFailure'
 
@@ -39,11 +38,11 @@ const ACTIVE = new Set(['running', 'approval', 'cancelling'])
 function TurnResult({ timeline, planActions }: TurnResultProps) {
   const { lang } = useI18n()
   const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
-  const { changes: changeSets, emptyPartial } = presentedChangeSets(timeline)
+  const { changes: changeSets } = presentedChangeSets(timeline)
   const terminal = TERMINAL.has(timeline.status)
   const ref = useResultVisibility(timeline.turnId, terminal)
   const failed = timeline.status === 'failed'
-  if (!final && changeSets.length === 0 && emptyPartial.length === 0 && !failed) return null
+  if (!final && changeSets.length === 0 && !failed) return null
   return (
     <div ref={ref} data-testid="turn-result" data-turn-id={timeline.turnId} data-status={timeline.status} className="space-y-3">
       {final?.type === 'model' && (timeline.mode === 'plan'
@@ -60,7 +59,6 @@ function TurnResult({ timeline, planActions }: TurnResultProps) {
           {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
         </>)}
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={ACTIVE.has(timeline.status)} />)}
-      {emptyPartial.length > 0 && <CoverageWarning warnings={emptyPartial.flatMap(item => item.warnings)} />}
       {failed && <FailureCause timeline={timeline} />}
       {failed && timeline.errorDetails?.history_preserved === true && (
         <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'El trabajo previo está conservado. Puedes enviar un nuevo mensaje; las acciones de resultado desconocido requieren comprobar su estado.' : 'Previous work is preserved. You can send a new message; unknown action outcomes require checking their state.'}</p>

@@ -42,6 +42,7 @@ import {
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
 import { assertBackgroundPatch } from '../native/background'
+import { assertIndicators, type AttentionIndicators } from '../native/indicators'
 import {
   MIGRATION_ALLOWED_KEYS,
   MIGRATION_MAX_ENTRIES,
@@ -100,6 +101,8 @@ export interface HostServices {
     setBackground(patch: BackgroundPatch): BackgroundSettings
     /** Idioma de la interfaz para lo que pinta main (menú, bandeja, diálogos). */
     setLanguage(language: 'es' | 'en'): void
+    /** Número de chats pendientes y marca de la bandeja (indicators.ts). */
+    setIndicators(state: AttentionIndicators): void
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -398,6 +401,12 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, language) => {
         if (language !== 'es' && language !== 'en') throw new ValidationError('language must be "es" or "en"')
         services.app.setLanguage(language)
+      }),
+    ],
+    [
+      CHANNEL.appIndicatorsSet,
+      guarded(registry, (_event, state) => {
+        services.app.setIndicators(assertIndicators(state))
       }),
     ],
     [

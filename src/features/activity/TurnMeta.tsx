@@ -1,7 +1,7 @@
 import { CheckCheck, FileDiff, RotateCcw } from 'lucide-react'
 import { memo, useMemo } from 'react'
-import { useI18n } from '../../i18n'
-import type { ChatMessage } from '../../types'
+import { useI18n, type I18nKey } from '../../i18n'
+import type { ChatMessage, TurnStopReason } from '../../types'
 import { terminalOutcomeOf } from '../engine/sessionSelectors'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useReadTracking } from '../board/useResultVisibility'
@@ -52,7 +52,7 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
   if (!outcome) return null
 
   const unread = receipt?.state === 'unread'
-  const { latest: changeset, emptyPartial } = presentedChangeSets(timeline)
+  const { latest: changeset } = presentedChangeSets(timeline)
   const filesChanged = changeset?.files.length ?? null
   const duration = timeline.completedAt !== undefined && timeline.startedAt > 0 ? Math.max(0, timeline.completedAt - timeline.startedAt) : null
   const finalItem = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
@@ -76,9 +76,8 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
       {timeline.usage && <><span aria-hidden="true">·</span><TokenUsage usage={timeline.usage} /></>}
       {actions > 0 && <><span aria-hidden="true">·</span><span>{actions} {lang === 'es' ? 'acciones' : 'actions'}</span></>}
       {filesChanged !== null && <><span aria-hidden="true">·</span><span>{t('board.result.files', { n: filesChanged })}</span></>}
-      {emptyPartial.length > 0 && <><span aria-hidden="true">·</span><span>{t('changes.coverage.meta')}</span></>}
       {executor && <><span aria-hidden="true">·</span><span>{t('board.result.model', { model: executor })}</span></>}
-      {outcome === 'stopped' && timeline.stopReason && <><span aria-hidden="true">·</span><span>{timeline.stopReason.message || t('turn.stoppedFallback')}</span></>}
+      {outcome === 'stopped' && timeline.stopReason && <><span aria-hidden="true">·</span><span title={timeline.stopReason.loop ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
       {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (
@@ -103,3 +102,11 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
 }
 
 export default memo(TurnMeta)
+
+const LOOP_KINDS = ['same-tool-args', 'two-action-oscillation', 'repeated-rewrites', 'same-error', 'repeated-denied-approval', 'duplicated-subagent-work']
+
+/** Un corte por bucle se dice en el idioma de la app; el texto técnico del Engine queda en el título. */
+export function stopText(reason: TurnStopReason, t: (key: I18nKey) => string): string {
+  if (reason.loop) return t(`turn.loop.${LOOP_KINDS.includes(reason.loop) ? reason.loop : 'other'}` as I18nKey)
+  return reason.message || t('turn.stoppedFallback')
+}

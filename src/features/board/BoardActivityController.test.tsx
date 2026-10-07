@@ -95,8 +95,21 @@ it('does not turn live terminals seen before the history load into baseline', ()
   expect(session.turns.t1.state).toBe('unread')
 })
 
-it('ignores sessions that are not on the board', () => {
+it('follows Normal chats too: a live result there counts as pending', () => {
+  // Para el número de la barra de tareas: un chat fuera del board que termina
+  // mientras miras otro queda pendiente, como en un panel.
   const engine = harness(true)
+  const { dispatch } = engine.runtime.getState()
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+  })
+  expect(useBoardAttentionStore.getState().sessions.ses_a.turns.t1.state).toBe('unread')
+})
+
+it('never counts the past of a chat whose history is not loaded', () => {
+  const engine = harness(false)
   const { dispatch } = engine.runtime.getState()
   render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
   act(() => {

@@ -10,6 +10,7 @@
  * parezca funcionar.
  */
 
+import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
@@ -118,6 +119,7 @@ interface DesktopHostApi {
     background(): Promise<BackgroundSettings>
     setBackground(patch: BackgroundPatch): Promise<BackgroundSettings>
     setLanguage(language: 'es' | 'en'): Promise<void>
+    setIndicators(state: AttentionIndicators): Promise<void>
   }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
@@ -240,6 +242,7 @@ export const electronBridge: DesktopBridge = {
     backgroundSettings: () => required().app.background(),
     setBackgroundSettings: (patch) => required().app.setBackground(patch),
     setLanguage: (language) => required().app.setLanguage(language),
+    setIndicators: (state) => required().app.setIndicators(state),
   },
 
   events: {

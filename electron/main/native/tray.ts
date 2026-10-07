@@ -39,6 +39,16 @@ export function trayMenuEntries(deps: TrayDeps): TrayEntry[] {
 export function createTrayController(deps: TrayDeps) {
   let tray: Tray | null = null
   let creating: Promise<void> | null = null
+  let base: NativeImage | null = null
+  // Indicador de atención vigente: se recuerda aunque la bandeja no exista,
+  // para que aparezca al día cuando se active (o termine de cargar).
+  let face: NativeImage | null = null
+  let tooltip = 'Rinari Agent'
+  const paint = () => {
+    if (!tray) return
+    tray.setImage(face ?? base ?? nativeImage.createEmpty())
+    tray.setToolTip(tooltip)
+  }
   // Se pidió ocultar mientras el icono se cargaba: no se crea al llegar.
   let wanted = false
 
@@ -67,8 +77,9 @@ export function createTrayController(deps: TrayDeps) {
       creating = icon()
         .then((image) => {
           if (!wanted) return
-          tray = new Tray(image)
-          tray.setToolTip('Rinari Agent')
+          base = image
+          tray = new Tray(face ?? image)
+          tray.setToolTip(tooltip)
           tray.setContextMenu(contextMenu())
           // Un clic abre; el menú queda en el clic derecho, como en Windows.
           tray.on('click', () => deps.onOpen())
@@ -84,6 +95,13 @@ export function createTrayController(deps: TrayDeps) {
       wanted = false
       tray?.destroy()
       tray = null
+    },
+
+    /** Marca de atención y texto; `null` vuelve a la cara de siempre. */
+    setIndicator(image: NativeImage | null, text: string): void {
+      face = image
+      tooltip = text || 'Rinari Agent'
+      paint()
     },
 
     /** Cambió el idioma: se rehace el menú del icono si existe. */

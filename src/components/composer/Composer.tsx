@@ -5,6 +5,10 @@ import { ArrowUp, Brain, Check, Columns3, FileText, Image as ImageIcon, LoaderCi
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
+import { cn } from '../../lib/utils'
+import { ReadingBadges, RecognizedPreview, coverageDetail } from '../AttachmentReading'
+
+type ImageReadMode = 'image' | 'text' | 'both'
 import { selectDraft, useComposerStore } from '../../stores/composer'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
@@ -301,7 +305,7 @@ export default function Composer({
   const visualAttachments = attachments.filter((file) =>
     (file.images?.length ?? 0) > 0
     || (file.kind === 'pdf' && (file.visualPages?.length ?? 0) > 0)
-    || (imageAttachments.includes(file) && file.ocr !== true),
+    || (imageAttachments.includes(file) && (file.ocr !== true || file.keepImage === true)),
   )
   const visionModelId = activeModel?.id ?? models.find(model => model.alias === activeAlias)?.id
   const visionRouteKey = `${sessionId || 'draft'}:${visionModelId || activeAlias}`
@@ -528,9 +532,17 @@ export default function Composer({
     if (onPrepareAttachments) void prepareOne(pending)
   }
 
-  function useOcrForImages() {
+  /** Cómo leer las imágenes: píxeles (visión), texto (OCR) o ambos. */
+  const imageReadMode: ImageReadMode | undefined = (() => {
+    const modes = new Set(imageAttachments.map(file => !file.ocr ? 'image' : file.keepImage ? 'both' : 'text'))
+    return modes.size === 1 ? [...modes][0] as ImageReadMode : undefined
+  })()
+  function setImageReadMode(mode: ImageReadMode) {
+    const ocr = mode !== 'image'
+    const keepImage = mode === 'both'
     for (const file of imageAttachments) {
-      if (!file.ocr) void prepareOne({ ...file, ocr: true })
+      if (Boolean(file.ocr) === ocr && Boolean(file.keepImage) === keepImage) continue
+      void prepareOne({ ...file, ocr, keepImage: keepImage || undefined, derivedUri: ocr ? file.derivedUri : undefined })
     }
   }
 
@@ -642,7 +654,7 @@ export default function Composer({
                   {file.previewUrl ? <img src={file.previewUrl} alt="" className="size-7 rounded object-cover" /> : file.kind === 'image' ? <ImageIcon size={12} className="shrink-0" /> : <FileText size={12} className="shrink-0" />}
                   <span className="truncate">{file.name}</span>
                 </button>
-                {file.ocr && <span className="rounded bg-[var(--accent-2)]/10 px-1 text-[10px] text-[var(--accent-2)]">OCR</span>}
+                <ReadingBadges attachment={file} />
                 {file.warning && <span title={file.warning} className="text-amber-300">⚠</span>}
                 {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfPages')}<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfVisualPages')}<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">{t('attach.pdfPrepareAgain')}</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={t('attach.cancelPrepare', { name: file.name })} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
@@ -655,7 +667,25 @@ export default function Composer({
         {attachmentNotice && <div className="mb-2 rounded-lg border border-red-400/30 bg-red-400/5 px-2.5 py-2 text-[11px] text-red-300">{attachmentNotice}</div>}
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-amber-400/30 p-2 text-xs">{visionRoute?.reason}</div>}
         {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">{t('attach.visionRoute', { destination: visionRoute.destination })}</p>}
-        {imageAttachments.some(file => !file.ocr) && <button type="button" onClick={useOcrForImages} className="mb-2 text-[11px] text-[var(--text-muted)]">{t('attach.useOcr')}</button>}
+        {imageAttachments.length > 0 && onPrepareAttachments && (
+          <div role="radiogroup" aria-label={t('attach.read.label')} className="mb-2 flex flex-wrap items-center gap-1 px-1 text-[11px]">
+            <span className="mr-1 text-[var(--text-subtle)]">{t('attach.read.label')}</span>
+            {(['image', 'text', 'both'] as const).map(mode => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={imageReadMode === mode}
+                title={t(`attach.read.${mode}Hint`)}
+                disabled={imageAttachments.some(file => file.status === 'preparing')}
+                onClick={() => setImageReadMode(mode)}
+                className={cn('rounded-md border px-2 py-0.5 transition-colors disabled:opacity-50', imageReadMode === mode ? 'border-[var(--accent-2)]/50 bg-[var(--accent-2)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]')}
+              >
+                {t(`attach.read.${mode}`)}
+              </button>
+            ))}
+          </div>
+        )}
         {paneMention && (
           <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--accent-2)]" data-testid="pane-mention-chip">
             <MessageSquareShare size={12} aria-hidden="true" />
@@ -949,9 +979,11 @@ export default function Composer({
       {previewAttachment && (
         <AttachmentPreview name={previewAttachment.name} open onOpenChange={(open) => { if (!open) setPreviewAttachment(null) }}>
           {previewLoading && <div className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--text-muted)]"><LoaderCircle size={16} className="animate-spin" /> {t('attach.previewLoading')}</div>}
-          {!previewLoading && previewUrl && previewAttachment.kind === 'image' && <img src={previewUrl} alt={previewAttachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}
+          {previewAttachment.coverage && <p className="mb-3 text-xs text-[var(--text-muted)]">{t('attach.coverage.pages', { read: previewAttachment.coverage.prepared_pages, total: previewAttachment.coverage.total_pages })} · {coverageDetail(previewAttachment.coverage, t)}</p>}
+          {!previewLoading && previewAttachment.ocr && previewAttachment.kind === 'image' && previewAttachment.derivedUri && <RecognizedPreview attachment={previewAttachment} previewUrl={previewUrl} />}
+          {!previewLoading && previewUrl && previewAttachment.kind === 'image' && !(previewAttachment.ocr && previewAttachment.derivedUri) && <img src={previewUrl} alt={previewAttachment.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />}
           {!previewLoading && previewText !== undefined && <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-[var(--text-muted)]">{previewText}</pre>}
-          {!previewLoading && !previewUrl && previewText === undefined && <p className="py-10 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}
+          {!previewLoading && !previewUrl && previewText === undefined && !(previewAttachment.ocr && previewAttachment.derivedUri) && <p className="py-10 text-center text-sm text-[var(--text-muted)]">{t('attach.previewUnavailable')}</p>}
         </AttachmentPreview>
       )}
     </div>

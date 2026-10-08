@@ -314,6 +314,15 @@ describe('final de la conexión', () => {
     expect(transport.isRunning()).toBe(false)
   })
 
+  it('una línea excesiva falla lo pendiente y termina el Engine, no lo deja vivo', async () => {
+    const { transport, exits } = await connect()
+    const error = await transport.request('big', { size: 17 * 1024 * 1024 }).catch((reason: TransportError) => reason)
+    expect((error as TransportError).message).toMatch(/exceeded/)
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(exits).toHaveLength(1)
+    expect(transport.isRunning()).toBe(false)
+  })
+
   it('stderr voluminoso se drena sin perder el protocolo', async () => {
     const { transport, stderr } = await connect('loud-stderr')
     await expect(transport.request('echo')).resolves.toBeTruthy()

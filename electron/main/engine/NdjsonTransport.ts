@@ -226,11 +226,17 @@ export class NdjsonTransport {
     })
 
     this.child.stdout.on('data', (chunk: Buffer) => {
+      // Tras una línea excesiva, el resto de esa línea no es protocolo.
+      if (this.dead) return
       let lines: string[]
       try {
         lines = this.splitter.push(chunk)
       } catch (reason) {
         this.fail(reason as TransportError)
+        // Sin esta conexión el Engine ya no sirve a nadie: se termina para que
+        // el supervisor lo vea caído y «Reiniciar» arranque uno nuevo, en vez
+        // de dejarlo vivo detrás de una tubería que nadie lee.
+        if (!this.exited) this.child.kill()
         return
       }
       for (const line of lines) {

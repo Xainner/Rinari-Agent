@@ -37,7 +37,7 @@ import CompactionDetails from '../context/CompactionDetails'
 import TurnResult from './TurnResult'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { commandMessage, engineApi } from '../../services/engine'
-import { formatTool, toolCategory, type ToolCategory } from './formatActivity'
+import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
@@ -121,6 +121,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     // código en ámbar. El rojo queda para lo que no llegó a ejecutarse bien.
     const exitCode = item.presentation?.kind === 'command' ? item.presentation.exit_code : undefined
     const exited = failed && !item.error && !item.presentation?.error && typeof exitCode === 'number' && exitCode !== 0
+    const instruction = agentInstruction(item)
     return (
       <InspectionDetails inspectionId="tool" className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
         <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
@@ -133,6 +134,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           {shownDuration(item.durationMs) && <span className="ml-auto text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}
           <ChevronDown size={12} className="transition-transform group-open/activity:rotate-180" />
         </summary>
+        {instruction && <blockquote data-testid="agent-instruction" className="mt-1.5 max-h-60 overflow-auto whitespace-pre-wrap border-l-2 border-[var(--accent)]/40 pl-3 text-[12px] leading-relaxed text-[var(--text)] [overflow-wrap:anywhere]">{instruction.text}</blockquote>}
         {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-subtle)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}
@@ -549,7 +551,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const technical = useUIStore(s => s.showTechnicalActivityNames)
   const projection = useMemo(() => projectActivity(timeline), [timeline.items, timeline.status])
   const state = useMemo(() => activityState(timeline), [timeline.items, timeline.status])
-  const working = ['preparing', 'recovering', 'action', 'thinking', 'responding'].includes(state.kind)
+  const working = ['preparing', 'recovering', 'retrying', 'action', 'thinking', 'responding'].includes(state.kind)
     || state.kind === 'waiting' && state.parallel > 0
   const active = turnIsActive(timeline.status)
   const showHeader = !active || timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling'

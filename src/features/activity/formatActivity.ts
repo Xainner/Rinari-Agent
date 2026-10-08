@@ -75,6 +75,14 @@ function details(item: ToolTimelineItem): Record<string, unknown> {
   }
 }
 
+/** Lo que el agente principal le escribió a un subagente con `agent.message`. */
+export function agentInstruction(item: ToolTimelineItem): { agentId: string; text: string } | null {
+  if (item.tool !== 'agent.message') return null
+  const args = details(item)
+  const text = typeof args.text === 'string' ? args.text.trim() : ''
+  return text ? { agentId: typeof args.agent_id === 'string' ? args.agent_id : '', text } : null
+}
+
 function basename(value: unknown): string {
   const text = typeof value === 'string' ? value : ''
   return text.split(/[\\/]/).filter(Boolean).at(-1) ?? text
@@ -128,6 +136,8 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
   const args = details(item)
   if (item.tool.startsWith('agent.')) {
     const label = AGENT[item.tool.slice('agent.'.length)]
+    const agentId = typeof args.agent_id === 'string' ? args.agent_id : ''
+    if (label && item.tool === 'agent.message' && agentId) return `${pick(label)} ${agentId}`
     return label ? pick(label) : item.tool
   }
   const target = basename(args.path ?? args.file ?? args.cwd)

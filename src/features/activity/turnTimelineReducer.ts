@@ -192,6 +192,21 @@ function mergeEventItem(
   }
   if (event.startsWith('model.')) {
     const prior = current?.type === 'model' ? current : undefined
+    if (event === 'model.retrying') {
+      // El reintento vuelve a escribir su respuesta desde el principio.
+      return {
+        ...(prior ?? { id, type: 'model' as const, modelCallId: text(payload.model_call_id) }),
+        activitySeq,
+        occurredAt,
+        status: 'thinking',
+        content: '',
+        retry: {
+          attempt: number(payload.attempt) ?? 2,
+          maxAttempts: number(payload.max_attempts) ?? 3,
+          reason: text(payload.reason),
+        },
+      }
+    }
     const delta = event === 'model.content.delta' ? text(payload.delta) : ''
     return {
       id,
@@ -218,6 +233,7 @@ function mergeEventItem(
       model: text(payload.model) || prior?.model,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
       modelChange: prior?.modelChange,
+      retry: event === 'model.completed' || event === 'model.content.completed' ? undefined : prior?.retry,
     }
   }
   if (event === 'steer.applied') {
@@ -703,6 +719,9 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
               code: text(payload.reason) || 'stopped',
               message: text((payload.details as Record<string, unknown> | undefined)?.content),
               loop: text(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.loop) || undefined,
+              budget: text(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.budget) || undefined,
+              limit: number(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.limit),
+              recoverable: payload.recoverable === true || undefined,
             } satisfies TurnStopReason
           : timeline.stopReason,
       }

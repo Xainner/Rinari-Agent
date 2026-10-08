@@ -41,6 +41,11 @@ export interface TurnStopReason {
   message: string
   /** Detector que cortó un bucle (`same-tool-args`, `repeated-rewrites`…), para decirlo traducido. */
   loop?: string
+  /** Límite de seguridad que cortó el turno (`model-calls`, `tool-calls`, `wall-time`…) y su valor. */
+  budget?: string
+  limit?: number
+  /** El Engine dice que se puede seguir: «Continuar» retoma el trabajo. */
+  recoverable?: boolean
   modelCalls?: number
   toolCalls?: number
   wallTimeS?: number

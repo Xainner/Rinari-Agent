@@ -131,6 +131,11 @@ export function useEngineCommands(): EngineCommands {
   return value
 }
 
+/** Como useEngineCommands, pero null fuera del proveedor (vistas que también se prueban solas). */
+export function useOptionalEngineCommands(): EngineCommands | null {
+  return useContext(EngineCommandsContext)
+}
+
 /** Como useEngineData, pero null fuera del proveedor (vistas que también se prueban solas). */
 export function useOptionalEngineData(): EngineData | null {
   return useContext(EngineDataContext)

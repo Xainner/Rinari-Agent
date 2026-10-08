@@ -44,6 +44,29 @@ describe('narrative activity timeline', () => {
     expect(state.timelines.t1.items[0]).toMatchObject({ type: 'model', content: 'Hola', outputKind: 'final' })
   })
 
+  it('a retried model call drops the failed attempt text and says it is retrying', () => {
+    const ids = { turn_id: 't1', session_id: 's1', model_call_id: 'm1', activity_seq: 1 }
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 's1' }))
+    state = turnTimelineReducer(state, event('model.started', ids))
+    state = turnTimelineReducer(state, event('model.content.delta', { ...ids, delta: 'Voy a re' }))
+    state = turnTimelineReducer(state, event('model.retrying', { ...ids, attempt: 2, max_attempts: 3, reason: 'STREAM_INTERRUPTED' }))
+    expect(state.timelines.t1.items).toHaveLength(1)
+    expect(state.timelines.t1.items[0]).toMatchObject({ type: 'model', status: 'thinking', content: '', retry: { attempt: 2, maxAttempts: 3, reason: 'STREAM_INTERRUPTED' } })
+    state = turnTimelineReducer(state, event('model.content.delta', { ...ids, delta: 'Voy a revisar' }))
+    expect(state.timelines.t1.items[0]).toMatchObject({ content: 'Voy a revisar' })
+    state = turnTimelineReducer(state, event('model.content.completed', { ...ids, content: 'Voy a revisar', output_kind: 'final' }))
+    expect(state.timelines.t1.items[0]).toMatchObject({ content: 'Voy a revisar', retry: undefined })
+  })
+
+  it('a stop at a safety limit keeps which limit and that it can continue', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 's1' }))
+    state = turnTimelineReducer(state, event('turn.stopped', {
+      turn_id: 't1', session_id: 's1', reason: 'emergency_limit', recoverable: true,
+      details: { content: 'Stopped: turn budget exhausted (model-calls).', stop: { budget: 'model-calls', limit: 500 } },
+    }))
+    expect(state.timelines.t1.stopReason).toMatchObject({ code: 'emergency_limit', budget: 'model-calls', limit: 500, recoverable: true })
+  })
+
   it('keeps separate tool calls ordered and settles the turn', () => {
     let state = createInitialTimelineState()
     state = turnTimelineReducer(state, event('turn.started', { turn_id: 't1', session_id: 's1' }))

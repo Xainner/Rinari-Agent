@@ -31,6 +31,8 @@ export function ActivityHeader({ timeline, now, previous = false }: { timeline: 
     label = t(`activity.terminal.${timeline.status}` as I18nKey)
     if (duration !== null) label = t(`activity.terminal.${timeline.status}Duration` as I18nKey, { duration: elapsedLabel(duration) })
     else label += ` · ${t('activity.durationUnknown')}`
+  } else if (state.kind === 'retrying') {
+    label = t('activity.live.retrying', { n: state.retry.attempt, total: state.retry.maxAttempts })
   } else label = t(`activity.live.${state.kind}` as I18nKey)
   return <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
     {active && <span className="w-full tabular-nums">{duration === null ? t('activity.inProgressUnknown') : t('activity.inProgress', { duration: elapsedLabel(duration) })}</span>}

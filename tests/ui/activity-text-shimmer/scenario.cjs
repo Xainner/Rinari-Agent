@@ -37,7 +37,14 @@ async function seamlessCycle(selector, name) {
   assert(!frames[0].equals(frames[2]),`${name}: the middle of the sweep must visibly highlight the text`)
   await evaluate(`document.querySelector(${select}).getAnimations().find(a=>a.animationName==='activity-text-sheen').play()`)
 }
+// The CI's Windows runner reports system animations off (prefers-reduced-motion: reduce),
+// which correctly disables the sheen. Emulate an explicit baseline so the scenario
+// tests the same thing on every machine; individual steps override it below.
+const MOTION={name:'prefers-reduced-motion',value:'no-preference'}
+const emulate=(features=[])=>ui.win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[...(features.some(f=>f.name===MOTION.name)?[]:[MOTION]),...features]})
 scenario(async()=>{
+  ui.win.webContents.debugger.attach('1.3')
+  await emulate()
   await useLocalModel()
   const ids=[]
   for(const title of ['Brillo de actividad','Panel vecino']) ids.push((await command('session_create',{chat:true,title,permission_profile:'full-access'})).session.id)
@@ -67,21 +74,19 @@ scenario(async()=>{
   await screenshot('boards-running')
   await size(950,760)
   await screenshot('boards-narrow')
-  await ui.win.webContents.debugger.attach('1.3')
-  await ui.win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]})
+  await emulate([{name:'prefers-reduced-motion',value:'reduce'}])
   await delay(100) // allow Chromium to apply the media change on a rendered frame
   let s=await state(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
   await screenshot('system-reduced-motion')
-  await ui.win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[]})
+  await emulate()
   await evaluate(`document.documentElement.dataset.motion='reduced'`)
   await delay(100)
   s=await state(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
   await evaluate(`delete document.documentElement.dataset.motion`)
-  await ui.win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'forced-colors',value:'active'}]})
+  await emulate([{name:'forced-colors',value:'active'}])
   await delay(100)
   s=await state(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
-  await ui.win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[]})
-  ui.win.webContents.debugger.detach()
+  await emulate()
   await size(1400,900)
   await moving(group)
   await until(async()=>await pending()>0,'command completed',45000)

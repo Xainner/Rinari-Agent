@@ -24,6 +24,8 @@ import {
   type BrowserSlotLease,
   type BackgroundPatch,
   type BackgroundSettings,
+  type DiagnosticsExportResult,
+  type DiagnosticsPreview,
   type OpenExternalFileRequest,
   type WorkspaceMedia,
   type OpenFilesRequest,
@@ -95,6 +97,10 @@ export interface HostServices {
     media(request: OpenExternalFileRequest): Promise<WorkspaceMedia>
   }
   clipboard: { writeText(text: string): void | Promise<void> }
+  diagnostics: {
+    preview(): Promise<DiagnosticsPreview>
+    export(): Promise<DiagnosticsExportResult>
+  }
   /** Bandeja al cerrar e inicio con el sistema: preferencias que main necesita antes que el renderer. */
   app: {
     background(): BackgroundSettings
@@ -390,6 +396,11 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.clipboardWriteText,
       guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
+    ],
+    [CHANNEL.diagnosticsPreview, guarded(registry, () => services.diagnostics.preview())],
+    [
+      CHANNEL.diagnosticsExport,
+      guarded(registry, () => services.diagnostics.export()),
     ],
     [CHANNEL.appBackgroundGet, guarded(registry, () => services.app.background())],
     [

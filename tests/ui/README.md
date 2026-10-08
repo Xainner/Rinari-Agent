@@ -40,6 +40,7 @@ también `failure.png` y el final del texto visible en la consola.
 
 | Escenario | Qué cubre |
 |---|---|
+| [diagnostics-export](diagnostics-export/scenario.cjs) | Acerca de: «Exportar diagnóstico» muestra el contenido, guarda el ZIP y el paquete lleva registros y el resumen del Engine sin argumentos, títulos ni la carpeta personal |
 | [activity-disclosure](activity-disclosure/README.md) | Avances visibles en vivo, operaciones plegadas y resumen al terminar en Normal y Boards |
 | [attention-taskbar](attention-taskbar/README.md) | Un resultado en otro chat de Normal sube el número de pendientes |
 | [boards-fit](boards-fit/README.md) | Ajustar a la vista en Boards |

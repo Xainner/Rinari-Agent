@@ -20,7 +20,7 @@
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -36,7 +36,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
@@ -158,6 +158,16 @@ export interface DesktopBridge {
   clipboard: {
     /** Escribe texto mediante el host nativo; nunca pide permisos web. */
     writeText(text: string): Promise<void>
+  }
+
+  /**
+   * «Exportar diagnóstico»: registros del host, volcados de fallo y un resumen
+   * del Engine (tamaños y estado, nunca contenido) en un ZIP que la persona
+   * guarda donde quiera. Nada se envía desde aquí.
+   */
+  diagnostics: {
+    preview(): Promise<DiagnosticsPreview>
+    export(): Promise<DiagnosticsExportResult>
   }
 
   app: {

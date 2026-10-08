@@ -33,6 +33,8 @@ import type {
   MigrationStatus,
   BackgroundPatch,
   BackgroundSettings,
+  DiagnosticsExportResult,
+  DiagnosticsPreview,
 } from './contract'
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
@@ -115,6 +117,10 @@ interface DesktopHostApi {
     media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
   }
   clipboard: { writeText(text: string): Promise<void> }
+  diagnostics: {
+    preview(): Promise<DiagnosticsPreview>
+    export(): Promise<DiagnosticsExportResult>
+  }
   app: {
     background(): Promise<BackgroundSettings>
     setBackground(patch: BackgroundPatch): Promise<BackgroundSettings>
@@ -236,6 +242,11 @@ export const electronBridge: DesktopBridge = {
 
   clipboard: {
     writeText: (text) => required().clipboard.writeText(text),
+  },
+
+  diagnostics: {
+    preview: () => required().diagnostics.preview(),
+    export: () => required().diagnostics.export(),
   },
 
   app: {

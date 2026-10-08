@@ -49,3 +49,21 @@ it('the diagnostics carry versions and system, never paths', () => {
   expect(text).not.toMatch(/[A-Za-z]:\\|\/Users\//)
   expect(issueUrl('idea', 'x')).toContain('labels=enhancement')
 })
+
+it('exports diagnostics only after showing what the bundle contains', async () => {
+  const bridge = createTestBridge()
+  setPlatformForTests(bridge)
+  view()
+  fireEvent.click(screen.getByRole('button', { name: /^Exportar$/ }))
+  await waitFor(() => expect(screen.getByText('logs/app.log')).toBeTruthy())
+  expect(screen.getByText('2.0 KB')).toBeTruthy()
+  expect(bridge.diagnosticsState.exports).toBe(0)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+  await waitFor(() => expect(screen.queryByText('logs/app.log')).toBeNull())
+  expect(bridge.diagnosticsState.exports).toBe(0)
+
+  fireEvent.click(screen.getByRole('button', { name: /^Exportar$/ }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Guardar…' }))
+  await waitFor(() => expect(bridge.diagnosticsState.exports).toBe(1))
+})

@@ -25,6 +25,9 @@ export const CHANNEL = {
   filesRevealInFolder: 'rinari:files.revealInFolder',
   filesMedia: 'rinari:files.media',
   clipboardWriteText: 'rinari:clipboard.writeText',
+  /** «Exportar diagnóstico»: qué incluiría el paquete y guardarlo donde diga la persona. */
+  diagnosticsPreview: 'rinari:diagnostics.preview',
+  diagnosticsExport: 'rinari:diagnostics.export',
   /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
   appBackgroundGet: 'rinari:app.background.get',
   appBackgroundSet: 'rinari:app.background.set',
@@ -217,6 +220,17 @@ export interface OpenExternalFileRequest {
   session_id: string
   path: string
   turn_id?: string
+}
+
+/** Archivos que llevaría el paquete de diagnóstico, con su tamaño. */
+export interface DiagnosticsPreview {
+  /** `bytes` es `null` para el resumen, que se genera al guardar. */
+  files: Array<{ name: string; bytes: number | null }>
+  totalBytes: number
+}
+
+export interface DiagnosticsExportResult {
+  saved: boolean
 }
 
 /** Qué es un archivo autorizado; `url` solo para imagen, video o audio. */

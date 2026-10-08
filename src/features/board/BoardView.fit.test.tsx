@@ -19,6 +19,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 it('toggles through the accessible toolbar without remounting composers or changing widths', async () => {
+  useBoardStore.getState().setFitToView(false)
   const sessions = [sessionFixture('ses_a', 'A'), sessionFixture('ses_b', 'B')]
   const engine = engineFixture({ sessions, historyInfo: Object.fromEntries(sessions.map(({ id }) => [id, { total: 0, hasMore: false }])) })
   const a = useBoardStore.getState().addPane('ses_a')
@@ -53,6 +54,7 @@ it('toggles through the accessible toolbar without remounting composers or chang
 })
 
 it.each(['all', 'one', 'focus'] as const)('reveals %s collapsed panes when fitting from manual mode', async (scenario) => {
+  useBoardStore.getState().setFitToView(false)
   const sessions = [sessionFixture('ses_a', 'A'), sessionFixture('ses_b', 'B')]
   const engine = engineFixture({ sessions, historyInfo: Object.fromEntries(sessions.map(({ id }) => [id, { total: 0, hasMore: false }])) })
   const store = useBoardStore.getState()

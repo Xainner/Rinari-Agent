@@ -43,6 +43,14 @@ const collapsePane = '.pane-header button[aria-label="Colapsar panel"]'
 const sidePanel = '.pane-header button[aria-label="Mostrar u ocultar panel lateral"]'
 
 scenario(async () => {
+  // A genuinely fresh profile opens Boards in fit mode, without toggling it.
+  await domClick('.view-switcher button[aria-label^="Boards"]')
+  await domClick('.board-empty-primary')
+  await wait('Boolean(document.querySelector("[role=dialog]"))')
+  await evaluate(`[...document.querySelectorAll('[role="dialog"] button')].find(b => b.textContent.includes('Chat general')).click()`)
+  await wait('document.querySelectorAll(".session-pane").length === 1')
+  await wait(`document.querySelector('${fit}').getAttribute('aria-pressed') === 'true'`)
+  assert.equal((await geometry()).handles, 0)
   await useLocalModel()
   const ids = []
   for (let i = 0; i < 16; i++) ids.push((await command('session_create', { chat: true, title: 'Prueba Boards ' + (i + 1) })).session.id)
@@ -158,9 +166,10 @@ scenario(async () => {
   checkFit(await geometry(), true)
   await screenshot('collapsed-overflow')
   await size(1500, 850)
+  await load(3, [], false)
+  assert.equal(await evaluate(`document.querySelector('${fit}').getAttribute('aria-pressed')`), 'false')
+  assert.deepEqual((await geometry()).panes.map((p) => p.width), [650, 700, 750])
   await load(3, [], true, 3)
-  assert.equal((await geometry()).handles, 3)
-  await domClick(fit)
   checkFit(await geometry(), false)
   // Sin máximo manual al ajustar, también en un monitor ancho (1920 px con
   // la barra lateral colapsada: el panel supera los 1600 px del modo manual).
@@ -181,7 +190,7 @@ scenario(async () => {
   report({ realEngine: true, provider: 'dead loopback port; failed turn expected, no external model calls',
     checks: ['equal widths: 1/2/3/6 panes', 'manual width restoration', 'composer identity and draft',
       'collapse, expand, focus mode', 'fit reveals collapsed panes from manual, fit and focus modes', 'resize, sidebar, 125% zoom', 'side panel drawer preference',
-      'reload persistence', 'real failed turn does not redistribute', 'compact accessible toolbar',
+      'fresh profile defaults to fit', 'saved manual preference respected', 'reload persistence', 'real failed turn does not redistribute', 'compact accessible toolbar',
       'add and remove through UI', 'all collapsed overflow', 'schema 3 migration',
       'single pane above 1600px', 'future schema write protection'], cases: passed })
 }, { width: 1500, height: 850 })

@@ -423,7 +423,7 @@ function mergeEventItem(
       activitySeq,
       occurredAt,
       kind: event === 'turn.preparing' ? 'turn_preparing' : 'governor',
-      status: text(payload.status) || text(payload.action),
+      status: text(payload.status) || text(payload.action) || (event.startsWith('governor.') ? event.slice('governor.'.length) : undefined),
       label: text(payload.reason) || text(payload.stage),
     }
   }

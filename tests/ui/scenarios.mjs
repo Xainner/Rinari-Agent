@@ -53,6 +53,24 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'activity-disclosure': {
+    title: 'Avances visibles, operaciones plegadas y resumen al terminar en Normal y Boards',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Actividad de prueba' }],
+      main: [
+        ...Array.from({ length: 24 }, (_, i) => ({ tool: 'fs.glob', args: { pattern: `actividad-${i}-*.txt` }, say: `PROGRESO ${i + 1}.\n\n` + paragraphs(10, n => `Detalle ${n} del paso ${i + 1}: revisión local de la actividad y conservación de lectura.`) })),
+        { text: 'RESULTADO COMPLETO\n\n' + paragraphs(35, n => `Párrafo final ${n}: la respuesta sigue completa y fuera del bloque de actividad.`) },
+        { httpError: { status: 400, body: { error: { message: 'Fallo controlado del proveedor local', type: 'invalid_request_error' } } } },
+        { text: 'RESPUESTA PARA EL PANEL VECINO' },
+        { text: 'ESTA RESPUESTA CANCELADA NO DEBE APARECER' },
+        ...Array.from({ length: 10 }, (_, i) => [
+          { tool: 'fs.glob', args: { pattern: `prueba-${i}-*.txt` }, say: 'Voy a revisar la carpeta para que puedas probar la actividad plegable.' },
+          { text: 'Prueba terminada. Puedes abrir la actividad, cambiar entre Normal y Boards o enviar otro mensaje.' },
+        ]).flat(),
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'attention-taskbar': {
     title: 'Pendientes: un resultado en otro chat de Normal sube el número',
     phases: ['exercise'],

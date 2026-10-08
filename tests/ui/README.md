@@ -40,6 +40,7 @@ también `failure.png` y el final del texto visible en la consola.
 
 | Escenario | Qué cubre |
 |---|---|
+| [activity-disclosure](activity-disclosure/README.md) | Avances visibles en vivo, operaciones plegadas y resumen al terminar en Normal y Boards |
 | [attention-taskbar](attention-taskbar/README.md) | Un resultado en otro chat de Normal sube el número de pendientes |
 | [boards-fit](boards-fit/README.md) | Ajustar a la vista en Boards |
 | [boards-remove-all](boards-remove-all/README.md) | Quitar todos los paneles, con confirmación |

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import TurnTimelineView from './TurnTimelineView'
+import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import type { ToolPresentation, TurnTimeline } from './types'
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); useActivityDisclosure.getState().reset() })
 
 function show(presentation: ToolPresentation) {
   const timeline: TurnTimeline = {
@@ -16,7 +17,10 @@ function show(presentation: ToolPresentation) {
       status: presentation.status === 'failed' ? 'failed' : 'completed',
       durationMs: 500, presentation }],
   }
-  return render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={2000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
+  const rendered = render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={2000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
+  fireEvent.click(rendered.container.querySelector('details > summary')!)
+  return rendered
 }
 
 it('preserves output newlines and separates stderr from stdout', () => {

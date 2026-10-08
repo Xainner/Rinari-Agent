@@ -7,6 +7,7 @@ import { useComposerStore } from '../../stores/composer'
 import { translate } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { createRuntimeStore, type RuntimeStore } from './runtimeStore'
+import { useActivityDisclosure } from '../../stores/activityDisclosure'
 
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
 export const SESSION_REFRESH_DEBOUNCE_MS = 150
@@ -81,6 +82,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
 
   /** Nuevo proceso de Engine: la proyección anterior ya no describe nada vivo. */
   const resetForNewEngine = useCallback(() => {
+    useActivityDisclosure.getState().reset()
     store.getState().reset()
   }, [store])
 

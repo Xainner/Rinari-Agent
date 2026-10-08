@@ -11,6 +11,7 @@ import type { TurnTimeline } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
 import TokenUsage from './TokenUsageIndicator'
 import { useOptionalEngineData } from '../engine/EngineContext'
+import { turnDuration } from './activityPresentation'
 
 export interface TurnMetaProps {
   timeline: TurnTimeline
@@ -20,6 +21,7 @@ export interface TurnMetaProps {
   actions: number
   /** La conversación pide la fila aunque no haya no-leído ni changeset. */
   emphasis: boolean
+  durationInHeader?: boolean
   onReviewChanges?: () => void
 }
 
@@ -27,6 +29,7 @@ export function elapsedLabel(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000))
   if (seconds < 60) return `${seconds}s`
   const minutes = Math.floor(seconds / 60)
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}h ${minutes % 60}m ${seconds % 60}s`
   return `${minutes}m ${seconds % 60}s`
 }
 
@@ -40,7 +43,7 @@ export function elapsedLabel(ms: number): string {
  * Sustituye al resumen anterior de duración/acciones y a la tarjeta de
  * resultado dentro de la conversación expandida.
  */
-function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMetaProps) {
+function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false, onReviewChanges }: TurnMetaProps) {
   const { t, lang } = useI18n()
   const outcome = terminalOutcomeOf(timeline)
   const tracking = useReadTracking()
@@ -54,7 +57,7 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
   const unread = receipt?.state === 'unread'
   const { latest: changeset } = presentedChangeSets(timeline)
   const filesChanged = changeset?.files.length ?? null
-  const duration = timeline.completedAt !== undefined && timeline.startedAt > 0 ? Math.max(0, timeline.completedAt - timeline.startedAt) : null
+  const duration = durationInHeader ? null : turnDuration(timeline)
   const finalItem = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
   const executorId = finalItem && finalItem.type === 'model' ? finalItem.model ?? null : null
   // The Engine reports the model id (mdl_…); the owner knows its name.
@@ -63,6 +66,7 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
   const retryable = outcome === 'failed' || outcome === 'stopped' || outcome === 'cancelled'
   if (!emphasis && !unread && filesChanged === null && !retryable && !timeline.usage) return null
 
+  const hasPrefix = !durationInHeader || duration !== null
   return (
     <div
       data-testid="turn-meta"
@@ -71,13 +75,13 @@ function TurnMeta({ timeline, user, actions, emphasis, onReviewChanges }: TurnMe
       data-unread={unread || undefined}
       className={cn('turn-meta flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-[var(--text-subtle)]', `is-${outcome}`)}
     >
-      <span className="turn-meta-outcome">{t(`board.result.outcome.${outcome}`)}</span>
+      {!durationInHeader && <span className="turn-meta-outcome">{t(`board.result.outcome.${outcome}`)}</span>}
       {duration !== null && <><span aria-hidden="true">·</span><span>{elapsedLabel(duration)}</span></>}
-      {timeline.usage && <><span aria-hidden="true">·</span><TokenUsage usage={timeline.usage} /></>}
-      {actions > 0 && <><span aria-hidden="true">·</span><span>{actions} {lang === 'es' ? 'acciones' : 'actions'}</span></>}
-      {filesChanged !== null && <><span aria-hidden="true">·</span><span>{t('board.result.files', { n: filesChanged })}</span></>}
-      {executor && <><span aria-hidden="true">·</span><span>{t('board.result.model', { model: executor })}</span></>}
-      {outcome === 'stopped' && timeline.stopReason && <><span aria-hidden="true">·</span><span title={timeline.stopReason.loop ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
+      {timeline.usage && <>{hasPrefix && <span aria-hidden="true">·</span>}<TokenUsage usage={timeline.usage} /></>}
+      {actions > 0 && <>{(hasPrefix || timeline.usage) && <span aria-hidden="true">·</span>}<span>{actions} {lang === 'es' ? 'acciones' : 'actions'}</span></>}
+      {filesChanged !== null && <>{(hasPrefix || timeline.usage || actions > 0) && <span aria-hidden="true">·</span>}<span>{t('board.result.files', { n: filesChanged })}</span></>}
+      {executor && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null) && <span aria-hidden="true">·</span>}<span>{t('board.result.model', { model: executor })}</span></>}
+      {outcome === 'stopped' && timeline.stopReason && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null || executor) && <span aria-hidden="true">·</span>}<span title={timeline.stopReason.loop ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
       {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (

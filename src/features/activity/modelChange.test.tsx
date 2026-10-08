@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 // «Se cambió de modelo de A a B»: lo decide el Engine (`model.changed`) y se
 // pinta debajo del primer texto de B, en vivo y al reconstruir el historial.
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { TimelineTurn } from '../../services/engine'
 import TurnTimelineView from './TurnTimelineView'
+import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { createInitialTimelineState, engineEventAction, turnTimelineReducer } from './turnTimelineReducer'
 
 const NOW = 1_700_000_000_000
@@ -19,7 +20,7 @@ const change = {
   activity_seq: 4,
 }
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); useActivityDisclosure.getState().reset() })
 
 function view(timeline: Parameters<typeof TurnTimelineView>[0]['timeline'], lang: 'es' | 'en' = 'es') {
   return render(<I18nProvider lang={lang}><TurnTimelineView timeline={timeline} now={NOW} onResolveApproval={vi.fn()} /></I18nProvider>)
@@ -35,6 +36,7 @@ describe('model change notice', () => {
     state = turnTimelineReducer(state, event('model.content.completed', { ...ids, model_call_id: 'model_2', content: 'Listo.', output_kind: 'final', activity_seq: 3 }))
     state = turnTimelineReducer(state, event('turn.completed', ids))
     view(state.timelines.t2)
+    fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
     const notices = screen.getAllByTestId('model-change')
     expect(notices).toHaveLength(1)
     expect(notices[0].textContent).toBe('Se cambió de modelo de deepseek-v4.1-flash a glm-5.3-flash.')

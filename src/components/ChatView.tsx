@@ -1,3 +1,4 @@
+import { ActivityImageProvider } from '../features/activity/ImageActivity'
 import type { SendOptions } from '../features/engine/useEngineSession'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
@@ -7,6 +8,7 @@ import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
 import { selectLatestTurn } from '../features/engine/sessionSelectors'
 import TurnTimelineView from '../features/activity/TurnTimelineView'
+import { ActivityLayoutContext, type ActivityLayout } from '../features/activity/activityLayout'
 import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
@@ -219,6 +221,30 @@ function ChatView({
     anchorRef.current = snapshotAnchor()
   }
 
+  const activityLayout = useMemo<ActivityLayout>(() => ({
+    begin(anchor, manual = true) {
+      const scroll = scrollRef.current
+      if (!scroll || (!manual && followRef.current)) return () => {}
+      const viewport = scroll.getBoundingClientRect()
+      const top = anchor.getBoundingClientRect().top
+      // Updates above/below the viewport must not pull the reader to this turn.
+      if (!manual && (anchor.getBoundingClientRect().bottom < viewport.top || top > viewport.bottom)) return () => {}
+      followRef.current = false
+      jumpRef.current = false
+      setAtBottom(false)
+      const offset = Math.max(viewport.top, Math.min(top, viewport.bottom - 40))
+      return () => {
+        const restore = () => {
+          if (!anchor.isConnected || scrollRef.current !== scroll) return
+          scroll.scrollTop += anchor.getBoundingClientRect().top - offset
+          anchorRef.current = snapshotAnchor()
+        }
+        restore()
+        requestAnimationFrame(restore)
+      }
+    },
+  }), [sessionId])
+
   // Al montar o cambiar de sesión: sin ancla guardada (o con «seguir el
   // final») el scroll va al fondo antes de pintar, sin destello; con ancla de
   // lectura se restaura cuando las filas existan. Al salir, se guarda la
@@ -280,6 +306,18 @@ function ChatView({
     setAtBottom(false)
     restoreRef.current = null
     virtRef.current?.scrollToIndex(index, { align: 'start' })
+    const request = navigationRef.current
+    let frames = 0
+    const revealResult = () => {
+      if (request !== navigationRef.current || !contentRef.current) return
+      const scroll = scrollRef.current
+      const result = [...(contentRef.current?.querySelectorAll<HTMLElement>('[data-testid="turn-result"]') ?? [])].find(el => el.dataset.turnId === turnId)
+      if (!scroll) return
+      if (!result) { if (++frames < 60) requestAnimationFrame(revealResult); return }
+      scroll.scrollTop += result.getBoundingClientRect().top - scroll.getBoundingClientRect().top
+      anchorRef.current = snapshotAnchor()
+    }
+    requestAnimationFrame(() => { revealResult(); requestAnimationFrame(revealResult) })
     return true
   }, [])
   useEffect(() => {
@@ -423,7 +461,7 @@ function ChatView({
   )
 
   return (
-    <ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
+    <ActivityImageProvider key={sessionId}><ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={userScrolls} onKeyDown={userScrolls}>
@@ -433,6 +471,7 @@ function ChatView({
               </p>
             )}
             <div ref={contentRef}>
+            <ActivityLayoutContext.Provider value={activityLayout}>
             <Virtualizer ref={virtRef} scrollRef={scrollRef} data={stream} bufferSize={800}>
               {(row, index) => (
                 <div
@@ -454,6 +493,7 @@ function ChatView({
                 </div>
               )}
             </Virtualizer>
+            </ActivityLayoutContext.Provider>
             </div>
           </div>
           <ScrollToBottom
@@ -496,7 +536,7 @@ function ChatView({
         </>
       )}
     </HomeWelcome>
-    </ChatFileDropZone>
+    </ChatFileDropZone></ActivityImageProvider>
   )
 }
 

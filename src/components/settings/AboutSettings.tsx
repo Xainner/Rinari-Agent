@@ -6,31 +6,12 @@ import { useI18n } from '../../i18n'
 import { platform, type UpdateState } from '../../platform'
 import { engineApi, type EngineStatus } from '../../services/engine'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, updateSnapshot } from '../../services/updates'
+import { APP_REPOSITORY, SOUL_VERSION, bugReportUrl, diagnostics, issueUrl } from '../../services/support'
 import { useConfirm } from '../ui/useConfirm'
 import { Row, Section } from './parts'
 import engineManifest from '../../../engine-manifest.json'
 
-const APP_REPOSITORY = 'https://github.com/Xainner/Rinari-Agent'
 const ENGINE_REPOSITORY = `https://github.com/${engineManifest.engine_repository}`
-const SOUL_VERSION = '3.0'
-
-/** Lo que un reporte necesita para reproducir: versiones y sistema, nunca rutas ni datos. */
-export function diagnostics(version: string, status: EngineStatus | null): string {
-  return [
-    `Rinari Agent: ${version}`,
-    `Rinari Engine: ${status?.engine_version ?? 'unknown'} (${engineManifest.engine_git_sha.slice(0, 7)})`,
-    `Engine Protocol: ${status?.protocol_version ?? 'unknown'}`,
-    `Engine state: ${status?.state ?? 'unknown'}`,
-    `Soul: rinari-default ${SOUL_VERSION}`,
-    `OS: ${typeof navigator === 'undefined' ? 'unknown' : navigator.userAgent.match(/\(([^)]+)\)/)?.[1] ?? 'unknown'}`,
-  ].join('\n')
-}
-
-/** Issue nuevo en GitHub, ya con la plantilla y el diagnóstico. */
-export function issueUrl(kind: 'bug' | 'idea', body: string, title = ''): string {
-  const query = new URLSearchParams({ labels: kind === 'bug' ? 'bug' : 'enhancement', title, body })
-  return `${APP_REPOSITORY}/issues/new?${query.toString()}`
-}
 
 /**
  * Settings > Acerca de: versión, actualizaciones, ayuda y enlaces.
@@ -126,7 +107,6 @@ export default function AboutSettings({ version }: { version: string }) {
   const UpdateIcon = updateButton.icon
 
   const engineSha = engineManifest.engine_git_sha
-  const bugBody = `${t('settings.about.issueTemplate')}\n\n---\n${diagnostics(version, status)}`
 
   return (
     <div className="space-y-6">
@@ -177,7 +157,7 @@ export default function AboutSettings({ version }: { version: string }) {
         <Row
           title={t('settings.about.reportBug')}
           desc={t('settings.about.reportBugDesc')}
-          control={<LinkButton icon={Bug} label={t('settings.about.reportBugAction')} onClick={() => open(issueUrl('bug', bugBody))} />}
+          control={<LinkButton icon={Bug} label={t('settings.about.reportBugAction')} onClick={() => open(bugReportUrl(version, status, t('settings.about.issueTemplate')))} />}
         />
         <Row
           title={t('settings.about.suggest')}

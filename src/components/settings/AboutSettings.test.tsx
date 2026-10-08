@@ -4,7 +4,8 @@ import { afterEach, expect, it } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { setPlatformForTests } from '../../platform'
 import { createTestBridge } from '../../platform/testBridge'
-import AboutSettings, { diagnostics, issueUrl } from './AboutSettings'
+import AboutSettings from './AboutSettings'
+import { diagnostics, issueUrl } from '../../services/support'
 
 afterEach(cleanup)
 

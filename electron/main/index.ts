@@ -112,6 +112,7 @@ function installApplicationMenu(): void {
 
 const tray = createTrayController({
   onOpen: showMainWindow,
+  onAction: (id) => send(PUSH.menuAction, id),
   // «Salir» del icono entra por la misma autoridad que el menú y la X.
   onQuit: () => void quitCoordinator.requestQuit('tray'),
   text: currentHostText,

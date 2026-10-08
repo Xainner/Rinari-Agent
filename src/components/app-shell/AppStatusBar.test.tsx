@@ -16,7 +16,6 @@ const base = {
   onToggleSidebar: vi.fn(),
   sidebarCollapsed: false,
   selectedView: 'chat' as const,
-  workingCount: 0,
   attentionCount: 0,
 }
 
@@ -40,13 +39,12 @@ it('renders the selector without any conversation and no engine indicator', () =
   expect(screen.queryByRole('status')).toBeNull()
 })
 
-it('summarizes running and pending sessions and shows contextual content', () => {
+it('shows pending attention and context without an execution counter', () => {
   render(
     <I18nProvider lang="es">
       <AppStatusBar
         {...base}
         selectedView="board"
-        workingCount={2}
         attentionCount={1}
         boardAttentionCount={1}
         context={<span>Proyecto A</span>}
@@ -54,7 +52,7 @@ it('summarizes running and pending sessions and shows contextual content', () =>
     </I18nProvider>,
   )
   const status = screen.getByRole('status').textContent ?? ''
-  expect(status).toContain('2 en ejecución')
+  expect(status).not.toContain('en ejecución')
   expect(status).toContain('1 pendientes de ti')
   expect(screen.getByText('Proyecto A')).toBeTruthy()
   expect(screen.getByRole('button', { name: /Boards · 1 paneles/ }).getAttribute('aria-pressed')).toBe('true')

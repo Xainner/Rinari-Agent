@@ -432,7 +432,7 @@ export function AppSidebar({
   }
 
   return (
-    <div className="concept-sidebar flex h-full w-full flex-col gap-4 overflow-hidden px-3 pt-3 pb-0">
+    <div className="concept-sidebar flex h-full w-full min-w-0 flex-col gap-4 overflow-hidden px-3 pt-3 pb-0">
       <div className="shrink-0 space-y-1">
       <div className="flex items-center gap-1">
         <button
@@ -469,7 +469,7 @@ export function AppSidebar({
           className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
         />
       </div>
-      <div className={cn('sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
+      <div className={cn('sidebar-scroll min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
 
         {model.pinned.length > 0 && (
           <section aria-label={t('sidebar.pinned')}>

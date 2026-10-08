@@ -1427,7 +1427,6 @@ export const en: Record<I18nKey, string> = {
   'topbar.workspaceView': 'Workspace view',
   'topbar.attentionCount': '{n} panes need attention',
   'topbar.engine.starting': 'Engine starting',
-  'topbar.working': '{n} running',
   'topbar.attention': '{n} waiting for you',
   'topbar.view.settings': 'Settings',
   'topbar.view.engine': 'Engine status',

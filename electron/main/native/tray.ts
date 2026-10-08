@@ -15,6 +15,8 @@ import type { HostText } from './hostText'
 export interface TrayDeps {
   /** Muestra y enfoca la ventana principal (o la revela si nunca se mostró). */
   onOpen(): void
+  /** Acciones existentes del renderer, después de mostrar la ventana. */
+  onAction(action: 'settings' | 'updates' | 'report-bug'): void
   onQuit(): void
   /** Etiquetas en el idioma actual de la interfaz. */
   text(): HostText
@@ -29,8 +31,16 @@ export interface TrayEntry {
 /** Entradas del menú; se prueban sin Electron. */
 export function trayMenuEntries(deps: TrayDeps): TrayEntry[] {
   const text = deps.text()
+  const action = (id: 'settings' | 'updates' | 'report-bug') => () => {
+    deps.onOpen()
+    deps.onAction(id)
+  }
   return [
     { label: text.trayOpen, run: deps.onOpen },
+    { label: '', separator: true },
+    { label: text.menuSettings, run: action('settings') },
+    { label: text.menuUpdates, run: action('updates') },
+    { label: text.menuReportBug, run: action('report-bug') },
     { label: '', separator: true },
     { label: text.trayQuit, run: deps.onQuit },
   ]

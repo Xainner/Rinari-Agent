@@ -1444,7 +1444,6 @@ export const es = {
   'topbar.workspaceView': 'Vista de trabajo',
   'topbar.attentionCount': '{n} paneles requieren atención',
   'topbar.engine.starting': 'Motor iniciando',
-  'topbar.working': '{n} en ejecución',
   'topbar.attention': '{n} pendientes de ti',
   'topbar.view.settings': 'Ajustes',
   'topbar.view.engine': 'Estado del motor',

@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { dispatchAction, resolveContextualAction, type DesktopAction } from './services/actions'
+import { bugReportUrl } from './services/support'
 import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
@@ -506,6 +507,10 @@ function App() {
         case 'settings': goSettings(); break
         case 'appearance': goSettings('appearance'); break
         case 'about': goSettings('about'); break
+        case 'report-bug':
+          void platform().opener.openUrl(bugReportUrl(APP_VERSION, session.status, translate(lang, 'settings.about.issueTemplate')))
+            .catch(error => toast.error(String(error)))
+          break
         case 'engine': goEngine(); break
         case 'schedules': if (schedulesEnabled) goSchedules(); break
         case 'sidebar': toggleSidebarCollapsed(); break
@@ -532,7 +537,7 @@ function App() {
           }
           break
         case 'undo': case 'redo': document.execCommand(action); break
-        case 'updates': void checkForUpdates().then(found => {
+        case 'updates': goSettings('about'); void checkForUpdates().then(found => {
           if (!found) { toast.success(translate(lang, 'update.upToDate')); return }
           toast(translate(lang, 'update.available', { v: found.version }), {
             description: found.unsigned ? translate(lang, 'update.unsigned') : undefined,
@@ -707,7 +712,6 @@ function App() {
             selectedView={view === 'chat' || view === 'board' || view === 'flows' ? view : null}
             onSelectView={(next) => (next === 'board' ? goBoard() : next === 'flows' ? goFlows() : goNormal())}
             toggleShortcut={shortcutBindings.boards}
-            workingCount={session.busySessionIds.size}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
             attentionMenu={

@@ -53,6 +53,11 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'tray-menu-titlebar': {
+    title: 'Acciones de la bandeja con ventana oculta y barra superior sin contador de ejecuciones',
+    phases: ['exercise'],
+    model: () => heldModel([{ text: 'PRUEBA DE BANDEJA TERMINADA' }]),
+  },
   'activity-disclosure': {
     title: 'Avances visibles, operaciones plegadas y resumen al terminar en Normal y Boards',
     phases: ['exercise'],

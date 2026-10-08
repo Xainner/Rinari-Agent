@@ -1,5 +1,5 @@
-import { CheckCheck, FileDiff, RotateCcw } from 'lucide-react'
-import { memo, useMemo } from 'react'
+import { CheckCheck, FileDiff, Play, RotateCcw } from 'lucide-react'
+import { memo, useMemo, useState } from 'react'
 import { useI18n, type I18nKey } from '../../i18n'
 import type { ChatMessage, TurnStopReason } from '../../types'
 import { terminalOutcomeOf } from '../engine/sessionSelectors'
@@ -10,7 +10,7 @@ import { usePrepareRetry } from './usePrepareRetry'
 import type { TurnTimeline } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
 import TokenUsage from './TokenUsageIndicator'
-import { useOptionalEngineData } from '../engine/EngineContext'
+import { useOptionalEngineCommands, useOptionalEngineData } from '../engine/EngineContext'
 import { turnDuration } from './activityPresentation'
 
 export interface TurnMetaProps {
@@ -52,7 +52,21 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
   const markTurnSeen = useBoardAttentionStore((state) => state.markTurnSeen)
   const messages = useMemo<readonly ChatMessage[]>(() => (user ? [user] : []), [user])
   const { retry, dialog } = usePrepareRetry(sessionId, timeline, messages)
+  const commands = useOptionalEngineCommands()
+  const [continuing, setContinuing] = useState(false)
   if (!outcome) return null
+  // Un límite de seguridad o un bucle cortado no es un fallo: el trabajo sigue
+  // donde quedó con un mensaje nuevo, sin volver a escribir la petición.
+  const canContinue = outcome === 'stopped' && timeline.stopReason?.recoverable === true && Boolean(sessionId && commands)
+  const continueWork = async () => {
+    if (!sessionId || !commands || continuing) return
+    setContinuing(true)
+    try {
+      await commands.sendTo(sessionId, t('turn.continuePrompt'))
+    } finally {
+      setContinuing(false)
+    }
+  }
 
   const unread = receipt?.state === 'unread'
   const { latest: changeset } = presentedChangeSets(timeline)
@@ -81,7 +95,7 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
       {actions > 0 && <>{(hasPrefix || timeline.usage) && <span aria-hidden="true">·</span>}<span>{actions} {lang === 'es' ? 'acciones' : 'actions'}</span></>}
       {filesChanged !== null && <>{(hasPrefix || timeline.usage || actions > 0) && <span aria-hidden="true">·</span>}<span>{t('board.result.files', { n: filesChanged })}</span></>}
       {executor && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null) && <span aria-hidden="true">·</span>}<span>{t('board.result.model', { model: executor })}</span></>}
-      {outcome === 'stopped' && timeline.stopReason && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null || executor) && <span aria-hidden="true">·</span>}<span title={timeline.stopReason.loop ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
+      {outcome === 'stopped' && timeline.stopReason && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null || executor) && <span aria-hidden="true">·</span>}<span title={timeline.stopReason.loop || timeline.stopReason.budget ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
       {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (
@@ -92,6 +106,11 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
         {unread && sessionId && (
           <button type="button" className="turn-meta-action" onClick={() => markTurnSeen(sessionId, timeline.turnId)}>
             <CheckCheck size={11} aria-hidden="true" /> {t('board.result.markRead')}
+          </button>
+        )}
+        {canContinue && (
+          <button type="button" className="turn-meta-action" data-testid="turn-continue" disabled={continuing} onClick={() => void continueWork()}>
+            <Play size={11} aria-hidden="true" /> {t('turn.continue')}
           </button>
         )}
         {retryable && sessionId && (
@@ -107,10 +126,16 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
 
 export default memo(TurnMeta)
 
+const BUDGET_KINDS = ['model-calls', 'tool-calls', 'wall-time']
 const LOOP_KINDS = ['same-tool-args', 'two-action-oscillation', 'repeated-rewrites', 'same-error', 'repeated-denied-approval', 'duplicated-subagent-work']
 
 /** Un corte por bucle se dice en el idioma de la app; el texto técnico del Engine queda en el título. */
-export function stopText(reason: TurnStopReason, t: (key: I18nKey) => string): string {
+export function stopText(reason: TurnStopReason, t: (key: I18nKey, vars?: Record<string, string | number>) => string): string {
   if (reason.loop) return t(`turn.loop.${LOOP_KINDS.includes(reason.loop) ? reason.loop : 'other'}` as I18nKey)
+  if (reason.budget) {
+    const key = BUDGET_KINDS.includes(reason.budget) && reason.limit !== undefined ? reason.budget : 'other'
+    const n = reason.budget === 'wall-time' && reason.limit !== undefined ? Math.round(reason.limit / 60) : reason.limit
+    return t(`turn.budget.${key}` as I18nKey, { n: n ?? 0 })
+  }
   return reason.message || t('turn.stoppedFallback')
 }

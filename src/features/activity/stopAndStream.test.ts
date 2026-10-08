@@ -28,3 +28,15 @@ describe('a loop stop', () => {
     expect(stopText({ code: 'budget', message: '' }, t)).toBe('Turno detenido.')
   })
 })
+
+describe('a safety-limit stop', () => {
+  const t = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate('es', key, vars)
+  it('names the limit and its value in the app language', () => {
+    expect(stopText({ code: 'emergency_limit', message: 'Stopped: turn budget exhausted (model-calls: model-call limit reached).', budget: 'model-calls', limit: 500 }, t))
+      .toBe('Se pausó al llegar al límite de seguridad de 500 llamadas al modelo en un turno.')
+    expect(stopText({ code: 'emergency_limit', message: 'x', budget: 'wall-time', limit: 7200 }, t))
+      .toBe('Se pausó al cumplir el tiempo máximo de un turno (120 min).')
+    expect(stopText({ code: 'emergency_limit', message: 'x', budget: 'cost' }, t))
+      .toBe('Se pausó al llegar a un límite de seguridad del turno.')
+  })
+})

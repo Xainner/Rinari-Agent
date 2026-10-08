@@ -28,6 +28,15 @@ export interface ModelTimelineItem extends TimelineItemBase {
   durationMs?: number
   /** `model.changed`: este es el primer texto de otro modelo que el anterior que escribió. */
   modelChange?: ModelChange
+  /** `model.retrying`: la llamada falló de forma transitoria y se repite. */
+  retry?: ModelRetry
+}
+
+export interface ModelRetry {
+  attempt: number
+  maxAttempts: number
+  /** SERVER_ERROR, RATE_LIMIT, TIMEOUT, STREAM_INTERRUPTED, NETWORK… */
+  reason: string
 }
 
 /** Un modelo tal como se llamaba cuando el Engine registró el cambio. */

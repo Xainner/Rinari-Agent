@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { formatTool, toolCategory } from './formatActivity'
+import { agentInstruction, formatTool, toolCategory } from './formatActivity'
 import type { ToolTimelineItem } from './types'
 
 const tool = (name: string, args: Record<string, unknown> = {}, status: ToolTimelineItem['status'] = 'completed') =>
@@ -34,4 +34,12 @@ it('clasifica por nombre exacto o familia, no por palabras sueltas', () => {
   expect(toolCategory('search.regex')).toBe('search')
   expect(formatTool(tool('browser.open', { url: 'https://rinari.ai/docs' }), 'en')).toBe('Opened rinari.ai')
   expect(formatTool(tool('web.search', { query: 'vite csp' }), 'es')).toBe('Buscó en la web “vite csp”')
+})
+
+it('las instrucciones a un subagente dicen a cuál y qué se le pidió', () => {
+  const sent = tool('agent.message', { agent_id: 'agt_012', text: '  Revisa también los tests de integración.  ' })
+  expect(formatTool(sent, 'es')).toBe('Envió instrucciones al subagente agt_012')
+  expect(agentInstruction(sent)).toEqual({ agentId: 'agt_012', text: 'Revisa también los tests de integración.' })
+  expect(agentInstruction(tool('agent.message', { agent_id: 'agt_012' }))).toBeNull()
+  expect(agentInstruction(tool('agent.status', { agent_id: 'agt_012', text: 'x' }))).toBeNull()
 })

@@ -256,7 +256,7 @@ export default function ProvidersView({
                 onClick={() => setExpanded(isOpen ? null : provider.alias)}
                 className="flex w-full items-center gap-2.5 text-left"
               >
-                <ProviderLogo alias={provider.alias} endpoint={provider.endpoint} size={22} />
+                <ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={22} />
                 <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
                 <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>

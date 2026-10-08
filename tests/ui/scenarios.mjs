@@ -53,6 +53,11 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'provider-logos': {
+    title: 'Logos oficiales: catálogo, configuración, modelos, Normal, Boards y Flujos',
+    phases: ['exercise'],
+    model: () => startFakeModel(Array.from({ length: 30 }, () => ({ text: 'LOGOS LISTOS. Respuesta local sin consultas a proveedores externos.' }))),
+  },
   'tray-menu-titlebar': {
     title: 'Acciones de la bandeja con ventana oculta y barra superior sin contador de ejecuciones',
     phases: ['exercise'],

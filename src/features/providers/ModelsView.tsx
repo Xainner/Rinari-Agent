@@ -40,7 +40,7 @@ export default function ModelsView({
           key={provider.id}
           title={
             <span className="flex items-center gap-2.5">
-              <ProviderLogo alias={provider.alias} endpoint={provider.endpoint} size={22} />
+              <ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={22} />
               <span>{provider.alias}</span>
             </span>
           }

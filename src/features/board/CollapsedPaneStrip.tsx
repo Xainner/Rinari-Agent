@@ -42,7 +42,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onO
   const statusLabel = t(STATUS_LABEL_KEY[status.kind])
   const interventions = approvals.length + pendingQuestions
   const providerAlias = activeModel?.provider ?? null
-  const providerEndpoint = providers.find((provider) => provider.alias === providerAlias)?.endpoint ?? null
+  const providerRecord = providers.find((provider) => provider.id === activeModel?.provider_id) ?? providers.find((provider) => provider.alias === providerAlias)
   const modelLabel = activeModel ? `${activeModel.provider} › ${activeModel.alias}` : record?.model_id ?? t('board.pane.modelMissing')
   const summary = [title, projectName, modelLabel, statusLabel].filter(Boolean).join(' · ')
   const working = status.kind === 'working' || status.kind === 'cancelling'
@@ -72,7 +72,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onO
         </span>
         <span className="pane-strip-title" aria-hidden="true">{title}</span>
         <span className="pane-strip-model" aria-hidden="true">
-          <ProviderLogo alias={providerAlias} endpoint={providerEndpoint} size={14} />
+          <ProviderLogo productId={providerRecord?.product_id} alias={providerAlias} endpoint={providerRecord?.endpoint} size={14} />
         </span>
       </button>
       <div className="pane-strip-badges" role="group" aria-label={statusLabel}>

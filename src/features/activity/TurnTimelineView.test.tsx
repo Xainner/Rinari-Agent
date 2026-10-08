@@ -111,7 +111,6 @@ it('opens an agent card with its own messages and execution context', async () =
     objective: 'Inspeccionar SSH', cwd: 'C:/Proyecto', profile: 'full-access',
     items: [{ id: 'model:child', type: 'model', activitySeq: 2, occurredAt: 1_200, modelCallId: 'child', status: 'completed', content: 'Hardware encontrado', outputKind: 'progress' }],
   }] }, 1_300)
-  fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
   const action = screen.getByText('Ver actividad')
   await userEvent.click(action)
   expect(action.closest('details')?.hasAttribute('open')).toBe(true)
@@ -169,9 +168,9 @@ describe('agent activity follows its own end', () => {
   it('a running agent opens at its end, follows new and growing messages, pauses when the reader scrolls up and resumes with «Ir al final»', async () => {
     const height = { value: 1_000 }
     const rendered = view(agent('running', [message(1)]), 1_300)
-    fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
+      fireEvent.click(screen.getByText('Ver actividad'))
     const box = geometry(height)
-    await userEvent.click(screen.getByText('Ver actividad'))
+    fireEvent(screen.getByTestId('agent-card'), new Event('toggle'))
     await waitFor(() => expect(box.scrollTop).toBe(700))
 
     height.value = 1_400
@@ -197,9 +196,8 @@ describe('agent activity follows its own end', () => {
 
   it('a finished agent opens from the start, to be read', async () => {
     view(agent('completed', [message(1), message(2)]), 1_300)
-    fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
+      await userEvent.click(screen.getByText('Ver actividad'))
     const box = geometry({ value: 1_000 })
-    await userEvent.click(screen.getByText('Ver actividad'))
     await waitFor(() => expect(box.closest('details')?.hasAttribute('open')).toBe(true))
     await new Promise((resolve) => setTimeout(resolve, 10))
     expect(box.scrollTop).toBe(0)

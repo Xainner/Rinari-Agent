@@ -42,13 +42,11 @@ import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
-import { projectActivity, turnDuration, turnIsActive } from './activityPresentation'
-import { ActivityDisclosure } from './ActivityDisclosure'
+import { activityBlocks, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
+import { ActivityDisclosure, InspectionDetails, InspectionItem, InspectionScope, childInspectionKey } from './ActivityDisclosure'
 import { ActivityTransition } from './ActivityTransition'
 import { ActivityHeader } from './ActivityHeader'
-import { activityKey } from '../../stores/activityDisclosure'
-
-type DisplayItem = TimelineItem | { id: string; type: 'tool-group'; items: Extract<TimelineItem, { type: 'tool' }>[] }
+import { activityKey, useActivityDisclosure } from '../../stores/activityDisclosure'
 
 interface Props {
   timeline: TurnTimeline
@@ -89,82 +87,29 @@ function elapsed(ms: number): string {
 /** Lo instantáneo no lleva duración: «0.0 s» no dice nada. */
 const shownDuration = (ms: number | undefined): ms is number => ms !== undefined && ms >= 100
 
-function groupAdjacent(items: TimelineItem[]): DisplayItem[] {
-  const output: DisplayItem[] = []
-  for (const item of items) {
-    const category = item.type === 'tool' ? toolCategory(item.tool) : null
-    const groupable = category === 'read' || category === 'search' || category === 'list' || category === 'command'
-    const previous = output.at(-1)
-    if (item.type === 'tool' && groupable && previous?.type === 'tool-group') {
-      const last = previous.items.at(-1)!
-      if (last.modelCallId === item.modelCallId && toolCategory(last.tool) === category && item.occurredAt - last.occurredAt <= 2000) {
-        previous.items.push(item)
-        continue
-      }
-    }
-    if (item.type === 'tool' && groupable) {
-      const prior = output.at(-1)
-      if (prior?.type === 'tool') {
-        const priorCategory = toolCategory(prior.tool)
-        if (priorCategory === category && prior.modelCallId === item.modelCallId && item.occurredAt - prior.occurredAt <= 2000) {
-          output.splice(-1, 1, { id: `group:${prior.id}`, type: 'tool-group', items: [prior, item] })
-          continue
-        }
-      }
-    }
-    output.push(item)
-  }
-  return output
-}
-
-function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineItem, { type: 'tool' }>[]; onResolveApproval: (id: string, decision: string) => void }) {
-  const { lang } = useI18n()
-  const category = toolCategory(items[0].tool)
-  const Icon = ICONS[category]
-  const files = new Set(items.flatMap(item => item.presentation?.file_paths ?? []))
-  const fileCount = files.size ? ` · ${files.size} ${lang === 'es' ? 'archivos' : 'files'}` : ''
-  const label = lang === 'es'
-    ? category === 'read' ? `${items.length} lecturas${fileCount}` : category === 'search' ? `Hizo ${items.length} búsquedas` : category === 'command' ? `Ejecutó ${items.length} comandos` : `Listó archivos ${items.length} veces`
-    : category === 'read' ? `${items.length} reads${fileCount}` : category === 'search' ? `Ran ${items.length} searches` : category === 'command' ? `Ran ${items.length} commands` : `Listed files ${items.length} times`
-  return (
-    <details className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
-        <Icon size={13} className="text-[var(--text-subtle)]" />
-        <span>{label}</span>
-        <ChevronDown size={12} className="ml-auto transition-transform group-open/activity:rotate-180" />
-      </summary>
-      <div className="mt-1 space-y-0.5 border-l border-[var(--border)] pl-4">
-        {items.map((item) => category === 'command'
-          ? <div key={item.id} data-activity-item={item.id}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></div>
-          : <div key={item.id} className="text-[11px] text-[var(--text-subtle)]">{formatTool(item, lang)}</div>)}
-      </div>
-    </details>
-  )
-}
-
 function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, { type: 'model' }>; onResolveApproval: (id: string, decision: string) => void }) {
   const { t, lang } = useI18n()
   const peerNavigation = usePeerNavigation()
   const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.route === 'conversation') return null
-  if (item.type === 'vision') return <details className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
+  if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
     <summary className="cursor-pointer">{!active && visualPending(item) ? t('activity.interrupted') : item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</summary>
-    {technical && <details><summary>{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</details>}
+    {technical && <InspectionDetails inspectionId="vision-technical"><summary>{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</InspectionDetails>}
     <div className="flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
     {item.analysis && <p className="whitespace-pre-wrap">{item.analysis}</p>}
     {item.error && <p role="alert" className="text-red-400">{item.error}</p>}
-  </details>
+  </InspectionDetails>
   if (item.type === 'tool') {
     const category = toolCategory(item.tool)
     const Icon = ICONS[category]
     const running = active && (item.status === 'requested' || item.status === 'running')
     const failed = item.status === 'failed' || item.status === 'cancelled'
     if (item.presentation?.kind === 'image' && item.presentation.image && item.status === 'completed') {
-      return <div className="py-1 text-[13px] text-[var(--text-muted)]">
-        <div className="flex items-center gap-2"><ImageIcon size={13} /><span>{formatTool(item, lang)}</span>{shownDuration(item.durationMs) && <span className="text-[10px] text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}</div>
+      return <InspectionDetails inspectionId="tool" className="py-1 text-[13px] text-[var(--text-muted)]">
+        <summary className="flex cursor-pointer items-center gap-2"><ImageIcon size={13} /><span>{formatTool(item, lang)}</span>{shownDuration(item.durationMs) && <span className="text-[10px] text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}</summary>
         <ImageActivity key={item.presentation.image.uri} image={item.presentation.image} />
-      </div>
+      </InspectionDetails>
     }
     let outputPath: string | undefined = item.status === 'completed' ? item.filePath : undefined
     if (item.status === 'completed' && ['fs.write', 'fs.patch'].includes(item.tool)) {
@@ -176,7 +121,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const exitCode = item.presentation?.kind === 'command' ? item.presentation.exit_code : undefined
     const exited = failed && !item.error && !item.presentation?.error && typeof exitCode === 'number' && exitCode !== 0
     return (
-      <details className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
+      <InspectionDetails inspectionId="tool" className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
         <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
           {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : exited ? <TriangleAlert size={13} className="text-amber-400" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
           <span>{formatTool(item, lang)}</span>
@@ -190,7 +135,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
         {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-subtle)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}
-      </details>
+      </InspectionDetails>
     )
   }
   if (item.type === 'approval') {
@@ -213,7 +158,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   }
   if (item.type === 'agent') return <AgentCard item={item} onResolveApproval={onResolveApproval} />
   if (item.type === 'changeset') return null
-  if (item.type === 'question') return <details className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></details>
+  if (item.type === 'question') return <InspectionDetails inspectionId="question" className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></InspectionDetails>
   if (item.type === 'system') return null
   const labels = !active && 'status' in item && item.status === 'running' ? t('activity.interrupted') : item.type === 'context'
       ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
@@ -229,7 +174,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
         <button className="underline" onClick={() => { void engineApi.contextCompact(item.sessionId!).catch(e => toast.error(commandMessage(e))) }}>{lang === 'es' ? 'Solo compactar' : 'Compact only'}</button>
       </>}
     </div>
-    {(item.error || item.contextDetails) && <details className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<CompactionDetails details={item.contextDetails} /></details>}
+    {(item.error || item.contextDetails) && <InspectionDetails inspectionId="context" className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<CompactionDetails details={item.contextDetails} /></InspectionDetails>}
   </div>
   const Icon = item.type === 'verification' ? Check : Sparkles
   return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" />{labels}</div>
@@ -306,7 +251,7 @@ function StructuredPresentation({ presentation, fallback }: {
     </dl> : data !== undefined ? <div className="p-2.5"><StructuredValue value={data} /></div> : fallback ? <pre className="max-h-44 overflow-auto whitespace-pre-wrap p-2.5 font-mono">{fallback}</pre> : <div className="p-2.5 text-[var(--text-subtle)]">{lang === 'es' ? 'Sin datos' : 'No data'}</div>}
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] p-2.5"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 break-all text-[var(--accent)] underline">{artifact}</span></FileLink>)}</div>}
     {presentation.error?.message && <div className="border-t border-red-400/20 p-2.5 text-red-300">{presentation.error.message}</div>}
-    {raw && <details className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">JSON</summary><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono">{raw}</pre></details>}
+    {raw && <InspectionDetails inspectionId="json" className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">JSON</summary><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono">{raw}</pre></InspectionDetails>}
   </div>
 }
 
@@ -335,7 +280,7 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
     {!presentation.stdout && !presentation.stderr && <div className="border-t border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{lang === 'es' ? 'Sin salida' : 'No output'}</div>}
     {presentation.error?.message && <div className="border-t border-red-400/20 px-2.5 py-2 text-[11px] text-red-300"><span className="mr-1 font-mono">{presentation.error.code ?? 'error'}:</span>{presentation.error.message}</div>}
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-muted)]"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 underline">{artifact}</span></FileLink>)}</div>}
-    {argumentsText && <details className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono">{argumentsText}</pre></details>}
+    {argumentsText && <InspectionDetails inspectionId="command-technical" className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono">{argumentsText}</pre></InspectionDetails>}
   </div>
 }
 
@@ -360,6 +305,11 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
   useLayoutEffect(() => {
     const node = scrollRef.current
     if (!node) return
+    // The lazy body restores before this parent's layout effect attaches.
+    if (node.dataset.inspectionFollowing !== undefined) {
+      followingRef.current = node.dataset.inspectionFollowing === 'true'
+      setShowJump(!followingRef.current)
+    }
     const restore = (event: Event) => {
       followingRef.current = (event as CustomEvent<{ following: boolean }>).detail.following
       node.dataset.inspectionFollowing = String(followingRef.current)
@@ -367,7 +317,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
     }
     node.addEventListener('activity-inspection-restore', restore)
     return () => node.removeEventListener('activity-inspection-restore', restore)
-  }, [])
+  }, [open])
 
   function toEnd() {
     const el = scrollRef.current
@@ -415,7 +365,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
   }
 
   return (
-    <details data-testid="agent-card" className="group/agent relative my-2 rounded-xl border border-[var(--border)] p-3" onToggle={onToggle}>
+    <InspectionDetails inspectionId="agent" data-testid="agent-card" className="group/agent relative my-2 rounded-xl border border-[var(--border)] p-3" onToggle={onToggle}>
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-[var(--text)]">
         {active && item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
         <span>{item.agent}</span>
@@ -426,15 +376,15 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
         <div ref={contentRef} className="space-y-2">
         {item.objective && <p className="text-sm text-[var(--text-muted)]">{item.objective}</p>}
         {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
-        <ActivityActive.Provider value={active && item.status === 'running'}>{(item.items ?? []).map(child => <div key={child.id} data-activity-item={`${item.id}/${child.id}`}>{child.type === 'model'
+        <ActivityActive.Provider value={active && item.status === 'running'}>{(item.items ?? []).map(child => <InspectionItem key={child.id} id={child.id}>{child.type === 'model'
           ? child.content ? <Markdown>{child.content}</Markdown> : null
-          : <ActivityRow item={child} onResolveApproval={onResolveApproval} />}</div>)}</ActivityActive.Provider>
+          : <ActivityRow item={child} onResolveApproval={onResolveApproval} />}</InspectionItem>)}</ActivityActive.Provider>
         {item.summary && !(item.items ?? []).some(child => child.type === 'model' && child.content === item.summary) && <Markdown>{item.summary}</Markdown>}
         {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{active && item.status === 'running' ? (lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…') : t('activity.noDetails')}</p>}
         </div>
       </div>
       {open && showJump && <button type="button" onClick={jumpToEnd} className="absolute right-5 bottom-4 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-muted)] shadow hover:text-[var(--text)]">{lang === 'es' ? 'Ir al final' : 'Jump to end'}</button>}
-    </details>
+    </InspectionDetails>
   )
 }
 
@@ -546,18 +496,18 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
       <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
       <span>{status === 'cancelling' ? (es ? 'Cancelando análisis' : 'Cancelling analysis') : (es ? 'Analizando imágenes' : 'Analyzing images')} · {finished} {es ? 'de' : 'of'} {total}</span>
     </div>}
-    {issues.length > 0 && <details data-activity-item="vision-issues" className="py-1 text-xs text-amber-300">
+    {issues.length > 0 && <InspectionDetails inspectionId="vision-issues" data-activity-item="vision-issues" className="py-1 text-xs text-amber-300">
       <summary className="cursor-pointer">{es ? 'Revisión de imágenes con incidencias' : 'Image review issues'} · {issues.length}</summary>
       <div className="mt-2 space-y-3">{issues.map(item => <div key={item.id}>
         <p>{item.status === 'partial' ? (es ? 'Análisis parcial · límite de salida' : 'Partial analysis · output limit') : item.status === 'cancelled' ? (es ? 'Análisis cancelado' : 'Analysis cancelled') : item.status === 'failed' ? (es ? 'No se pudo analizar la imagen' : 'Image analysis failed') : (es ? 'Análisis interrumpido' : 'Analysis interrupted')}</p>
         <div className="mt-1 flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
         {!item.images.length && <p className="text-[var(--text-muted)]">{es ? 'Referencia de imagen no disponible' : 'Image reference unavailable'}</p>}
       </div>)}</div>
-    </details>}
-    {technical && items.length > 0 && <details data-activity-item="vision-technical" className="py-1 text-xs text-[var(--text-subtle)]">
+    </InspectionDetails>}
+    {technical && items.length > 0 && <InspectionDetails inspectionId="vision-all" data-activity-item="vision-technical" className="py-1 text-xs text-[var(--text-subtle)]">
       <summary className="cursor-pointer">{es ? 'Detalles técnicos de visión' : 'Vision technical details'} · {items.length}</summary>
-      {items.map(item => <div key={item.id} data-activity-item={item.id}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></div>)}
-    </details>}
+      {items.map(item => <InspectionItem key={item.id} id={item.id}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionItem>)}
+    </InspectionDetails>}
   </>
 }
 
@@ -598,37 +548,35 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const technical = useUIStore(s => s.showTechnicalActivityNames)
   const projection = useMemo(() => projectActivity(timeline), [timeline.items, timeline.status])
   const active = turnIsActive(timeline.status)
-  const hasDetails = projection.segments.some(segment => renderableActivity(segment.items, technical, active).length > 0)
-  const showHeader = !active || hasDetails || projection.segments.length > 1 || (active && (timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling'))
+  const showHeader = !active || timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling'
   const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
   return (
-    <ActivityActive.Provider value={active}><ActivityTransition identity={`${projection.provisional?.id ?? ""}:${projection.segments.length}`}>
+    <ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
+      {active && showHeader && <div data-live-activity className="border-b border-[var(--border)] pb-2 text-[13px] text-[var(--text-muted)]">
+        <ActivityHeader timeline={timeline} now={now} />
+      </div>}
       {projection.segments.map((segment, index) => {
         const previous = index < projection.segments.length - 1
-        const hasContent = renderableActivity(segment.items, technical, active).length > 0
+        const items = renderableActivity(segment.items, technical, active)
         const issues = activityIssues(segment.items, active)
-        return <div key={segment.id} className="space-y-2">
+        const stateKey = activityKey(home, timeline.sessionId, timeline.turnId, segment.id)
+        const content = items.length ? <ActivityDetails items={items} status={timeline.status} onResolveApproval={onResolveApproval} /> : undefined
+        return <InspectionScope.Provider key={segment.id} value={stateKey}><div className="space-y-2">
           {segment.steer && <SteerBubble item={segment.steer} />}
-          {(hasContent || (!previous && showHeader)) && <ActivityDisclosure
-            stateKey={activityKey(home, timeline.sessionId, timeline.turnId, segment.id)}
+          {active ? content : (content || !previous) && <ActivityDisclosure
+            stateKey={childInspectionKey(stateKey, 'summary')}
             header={<ActivityHeader timeline={timeline} now={now} previous={previous} />}
             inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
-          >
-            {hasContent ? <ActivityDetails items={segment.items} status={timeline.status} onResolveApproval={onResolveApproval} /> : undefined}
-          </ActivityDisclosure>}
-          {segment.publicTexts.filter(item => item !== projection.provisional || (active && previous)).map(item => <div key={item.id}>
-            <MessageBubble message={{ id: item.id, role: 'assistant', content: item.content, createdAt: item.occurredAt, turnId: timeline.turnId }} />
-            {item.modelChange && <ModelChangeNotice change={item.modelChange} />}
-          </div>)}
-        </div>
+          >{content}</ActivityDisclosure>}
+        </div></InspectionScope.Provider>
       })}
       {projection.approvals.map(({ item, agent }) => <div key={item.approvalId}>
         {agent && <p className="text-xs text-[var(--text-muted)]">{agent}</p>}
         <ActivityRow item={item} onResolveApproval={onResolveApproval} />
       </div>)}
-      {projection.recoveries.map(item => item.type !== 'model' && <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
-      <TurnResult timeline={timeline} planActions={planActions} provisional={!active || projection.segments.at(-1)?.publicTexts.includes(projection.provisional!) ? projection.provisional : undefined} />
+      {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
+      <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />
     </ActivityTransition></ActivityActive.Provider>
   )
@@ -646,14 +594,38 @@ function renderableActivity(items: TimelineItem[], technical: boolean, active: b
 const ActivityDetails = memo(function ActivityDetails({ items, status, onResolveApproval }: {
   items: TimelineItem[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']
 }) {
-  const display = useMemo(() => groupAdjacent(items.filter(i => i.type !== 'vision')), [items])
-  const images = useMemo(() => items.filter((i): i is VisionTimelineItem => i.type === 'vision'), [items])
-  return <>
-    {display.map(item => <div key={item.id} data-activity-item={item.id}>
-      {item.type === 'tool-group' ? <ToolGroupRow items={item.items} onResolveApproval={onResolveApproval} />
-        : item.type === 'model' ? <div className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown>{item.modelChange && <ModelChangeNotice change={item.modelChange} />}</div>
-          : <ActivityRow item={item} onResolveApproval={onResolveApproval} />}
-    </div>)}
-    <VisualProgress items={images} status={status} onResolveApproval={onResolveApproval} showProgress={false} />
-  </>
+  const blocks = useMemo(() => activityBlocks(items), [items])
+  return <>{blocks.map(block => block.type === 'text'
+    ? <div key={block.id} data-activity-item={block.id} className="py-1 text-[13px] leading-relaxed text-[var(--text)]">
+        <Markdown>{block.item.content}</Markdown>
+        {block.item.modelChange && <ModelChangeNotice change={block.item.modelChange} />}
+      </div>
+    : <OperationGroup key={block.id} items={block.items} status={status} onResolveApproval={onResolveApproval} />)}</>
 })
+
+function OperationGroup({ items, status, onResolveApproval }: {
+  items: Exclude<TimelineItem, { type: 'model' }>[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']
+}) {
+  const { t } = useI18n()
+  const scope = useContext(InspectionScope)
+  const active = turnIsActive(status)
+  const first = items[0]
+  const firstDetail = childInspectionKey(childInspectionKey(scope, first.id), first.type)
+  const firstOpen = useActivityDisclosure(state => state.entries[firstDetail]?.open ?? false)
+  const issues = activityIssues(items, active)
+  const categories = [...new Set(items.map(item => item.type === 'tool' ? toolCategory(item.tool) : item.type))]
+  const label = categories.map(category => t(`activity.group.${category}` as I18nKey)).join(' · ')
+  const images = items.filter((item): item is VisionTimelineItem => item.type === 'vision')
+  const content = <>{items.filter(item => item.type !== 'vision').map(item => <InspectionItem key={item.id} id={item.id}>
+    <ActivityRow item={item} onResolveApproval={onResolveApproval} />
+  </InspectionItem>)}<VisualProgress items={images} status={status} onResolveApproval={onResolveApproval} showProgress={false} /></>
+  // Keep a group wrapper from its very first operation. Growing the run must
+  // never replace its identity or lose the inspection of that first operation.
+  const key = childInspectionKey(scope, 'group:' + items[0].id)
+  return <div data-operation-group={items[0].id}>
+    {items.length === 1 || images.length === items.length ? content : <ActivityDisclosure stateKey={key} operations defaultOpen={firstOpen}
+      header={<span>{label} · {items.length}</span>}
+      inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
+    >{content}</ActivityDisclosure>}
+  </div>
+}

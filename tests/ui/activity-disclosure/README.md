@@ -1,4 +1,4 @@
-# Actividad plegable en vivo y resumen al terminar
+# Actividad visible en vivo y resumen plegado al terminar
 
 ```bash
 npm run build
@@ -15,16 +15,21 @@ ni modifica las conversaciones personales.
 El recorrido ejecuta 24 herramientas con progreso público extenso e
 intercala una instrucción mediante el composer. Comprueba:
 
-- Actividad inicialmente plegada y sin montar su cuerpo.
+- Leyenda de tiempo sin desplegable del turno; progreso visible tras clasificarse.
+- Operaciones plegadas con los detalles pesados sin montar hasta abrirlas.
 - Instrucción visible entre segmentos, con identidades independientes.
-- Apertura manual conservada durante la ejecución, al terminar y al pasar
-  de Normal a Boards; restauración de los detalles interiores.
+- Inspección conservada durante la ejecución y al pasar de Normal a Boards.
+- Plegado automático de todos los segmentos al terminar, aunque hubiera
+  operaciones abiertas; reapertura que restaura los detalles interiores.
 - Respuesta final completa y única, fuera de la actividad.
 - Navegación al cuerpo del resultado aunque la actividad esté abierta.
 - Cabecera visible y foco conservado al plegar un historial largo.
 - Apertura y cierre mediante teclado, dos paneles, ventana estrecha y
   preferencia de movimiento reducido.
 - Error real del proveedor visible fuera, seguido de un turno nuevo válido.
+- Cancelación real mientras el proveedor espera; su respuesta tardía no revive
+  el turno ni altera la lectura del panel vecino.
+- Colapsar y expandir paneles conserva la inspección.
 - Reconstrucción del historial al recargar; la apertura no persiste entre
   ejecuciones de la app.
 
@@ -32,8 +37,8 @@ intercala una instrucción mediante el composer. Comprueba:
 y el tiempo desde abrir hasta el segundo frame (`expandTwoFramesMs`). Es una
 medición diagnóstica del equipo que ejecuta la prueba, no un benchmark.
 
-Con `--keep`, el proveedor deja de retener peticiones tras verificar el
-recorrido. La ventana queda disponible para revisar el historial y enviar
+Con `--keep`, el proveedor libera un paso cada cuatro segundos tras verificar
+el recorrido para poder inspeccionar la presentación durante la ejecución. La ventana queda disponible para revisar el historial y enviar
 mensajes de prueba. El watchdog del lanzador se desactiva solo cuando el
 escenario confirma éxito.
 

@@ -77,7 +77,11 @@ export function projectActivity(timeline: TurnTimeline) {
   }
   for (const item of timeline.items) {
     if (item.type === 'steer') { segments.push({ id: item.id, steer: item, items: [], publicTexts: [] }); continue }
-    if (item.type === 'model' && !item.outputKind && item.content) { segments.at(-1)!.publicTexts.push(item); continue }
+    if (item.type === 'model' && !item.outputKind && item.content) {
+      segments.at(-1)!.publicTexts.push(item)
+      // A partial answer is kept outside only after interruption; live text keeps its position.
+      if (!active && item === provisional) continue
+    }
     if (item === final) continue
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
@@ -119,4 +123,22 @@ export function turnDuration(timeline: TurnTimeline, now?: number): number | nul
   const end = turnIsActive(timeline.status) ? now : timeline.completedAt
   if (!Number.isFinite(timeline.startedAt) || timeline.startedAt <= 0 || end === undefined || !Number.isFinite(end) || end < timeline.startedAt) return null
   return end - timeline.startedAt
+}
+
+export type ActivityBlock = { id: string; type: 'text'; item: ModelTimelineItem }
+  | { id: string; type: 'operations'; items: Exclude<TimelineItem, ModelTimelineItem>[] }
+
+/** Consecutive operations share the first operation's identity, independent of deltas. */
+export function activityBlocks(items: TimelineItem[]): ActivityBlock[] {
+  const blocks: ActivityBlock[] = []
+  for (const item of items) {
+    if (item.type === 'model') {
+      blocks.push({ id: item.id, type: 'text', item })
+    } else {
+      const previous = blocks.at(-1)
+      if (previous?.type === 'operations') previous.items.push(item)
+      else blocks.push({ id: item.id, type: 'operations', items: [item] })
+    }
+  }
+  return blocks
 }

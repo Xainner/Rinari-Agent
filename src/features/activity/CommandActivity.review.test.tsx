@@ -19,6 +19,7 @@ function show(presentation: ToolPresentation) {
   }
   const rendered = render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={2000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
   fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
+  fireEvent.click(rendered.container.querySelector('details > summary')!)
   return rendered
 }
 

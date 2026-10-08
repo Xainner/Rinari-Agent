@@ -1,3 +1,4 @@
+import { ActivityImageProvider } from '../features/activity/ImageActivity'
 import type { SendOptions } from '../features/engine/useEngineSession'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
@@ -460,7 +461,7 @@ function ChatView({
   )
 
   return (
-    <ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
+    <ActivityImageProvider key={sessionId}><ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={userScrolls} onKeyDown={userScrolls}>
@@ -535,7 +536,7 @@ function ChatView({
         </>
       )}
     </HomeWelcome>
-    </ChatFileDropZone>
+    </ChatFileDropZone></ActivityImageProvider>
   )
 }
 

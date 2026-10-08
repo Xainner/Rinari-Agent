@@ -32,11 +32,11 @@ export function ActivityHeader({ timeline, now, previous = false }: { timeline: 
     else label += ` · ${t('activity.durationUnknown')}`
   } else label = t(`activity.live.${state.kind}` as I18nKey)
   return <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+    {active && <span className="w-full tabular-nums">{duration === null ? t('activity.inProgressUnknown') : t('activity.inProgress', { duration: elapsedLabel(duration) })}</span>}
     {active && <LoaderCircle size={13} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none" />}
     <span role={active ? 'status' : undefined} aria-live={active ? 'polite' : undefined} className="min-w-0 break-words">{label}</span>
     {active && state.parallel > 0 && <span className="text-xs">{t('activity.parallelAgents', { n: state.parallel })}</span>}
     {state.kind === 'action' && state.simultaneous > 1 && <span className="text-xs">{t('activity.parallelActions', { n: state.simultaneous })}</span>}
-    {active && duration !== null && <span className="text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsedLabel(duration)}</span>}
     {active && <TokenUsage usage={timeline.usage} />}
   </span>
 }

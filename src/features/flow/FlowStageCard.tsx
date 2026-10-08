@@ -126,10 +126,10 @@ function FlowStageCard({ stage, order, selected, models, providers, onOpen, onGo
           {stage.executors.map((executor) => {
             const resolved = resolveExecutor(executor.model, models)
             const provider = resolved?.provider ?? null
-            const endpoint = providers.find((item) => item.alias === provider)?.endpoint ?? null
+            const providerRecord = providers.find((item) => item.id === resolved?.provider_id) ?? providers.find((item) => item.alias === provider)
             return (
               <li key={`model:${executor.model}`} className="flow-chip" title={t('flow.stage.executorCalls', { n: executor.calls })}>
-                <ProviderLogo alias={provider} endpoint={endpoint} size={12} />
+                <ProviderLogo productId={providerRecord?.product_id} alias={provider} endpoint={providerRecord?.endpoint} size={12} />
                 <span>{resolved?.alias ?? executor.model}</span>
               </li>
             )

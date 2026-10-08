@@ -53,6 +53,11 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'provider-logos': {
+    title: 'Logos oficiales: catálogo, configuración, modelos, Normal, Boards y Flujos',
+    phases: ['exercise'],
+    model: () => startFakeModel(Array.from({ length: 30 }, () => ({ text: 'LOGOS LISTOS. Respuesta local sin consultas a proveedores externos.' }))),
+  },
   'chat-interaction-fixes': {
     title: 'Chat: plegado sin flecha residual, checkpoints, sidebar y Enviar/Stop',
     phases: ['exercise'],

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Box, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../components/settings/parts'
-import { brandForProvider, providerBrand } from '../../lib/providerBrand'
+import { brandForProvider } from '../../lib/providerBrand'
 import ProviderLogo from '../../components/ProviderLogo'
 import { PROVIDER_PRESETS, useProviderPresets, type ProviderPreset, type ProviderAuth } from './presets'
 
@@ -46,11 +46,9 @@ export default function ProviderForm({
   const { t } = useI18n()
   const presets = useProviderPresets()
   const [showSecret, setShowSecret] = useState(false)
-  // El logo se resuelve con los datos reales del formulario (válido también en
-  // edición, donde el preset queda neutro); el preset solo aporta su marca.
-  const brand =
-    brandForProvider({ alias: form.alias, endpoint: form.endpoint }) ??
-    (allowPresetChange ? providerBrand(form.preset.brand) : null)
+  const brand = brandForProvider({
+    product_id: form.preset.id, alias: form.alias, endpoint: form.endpoint,
+  })
 
   return (
     <div className="space-y-4">
@@ -61,11 +59,7 @@ export default function ProviderForm({
           </label>
           <div className="flex items-center gap-2">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]">
-              {brand ? (
-                <ProviderLogo brand={brand} size={24} />
-              ) : (
-                <Box size={18} aria-hidden="true" className="text-[var(--text-subtle)]" />
-              )}
+              <ProviderLogo brand={brand} size={24} />
             </span>
             <select
               id="provider-preset"

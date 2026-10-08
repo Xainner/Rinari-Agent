@@ -114,6 +114,7 @@ describe('board layout store', () => {
 
   it('clamps widths and keeps other preferences per pane', () => {
     const pane = useBoardStore.getState().addPane('ses_a')
+    useBoardStore.getState().setFitToView(false)
     useBoardStore.getState().setPaneWidth(pane.paneId, 10)
     expect(useBoardStore.getState().panes[0].width).toBe(PANE_MIN_WIDTH)
     useBoardStore.getState().setPaneWidth(pane.paneId, 99999)
@@ -139,6 +140,7 @@ describe('board layout store', () => {
 
   it('round trips fit mode while preserving manual widths and focus composition', () => {
     const store = useBoardStore.getState()
+    store.setFitToView(false)
     const a = store.addPane('ses_a')
     const b = store.addPane('ses_b')
     store.setPaneWidth(a.paneId, 650)
@@ -164,11 +166,14 @@ describe('board layout store', () => {
     expect(useBoardStore.getState().panes[0].width).toBe(750)
   })
 
-  it('defaults old and invalid fit preferences to manual without losing panes', () => {
+  it('defaults new, old and invalid fit preferences to fitting without losing panes', () => {
+    expect(defaultBoard().fitToView).toBe(true)
+    expect(normalizeBoard(null).fitToView).toBe(true)
     for (const version of [1, 2, 3, 4]) {
       const layout = { version, panes: [{ paneId: 'a', sessionId: 'ses_a', width: 650 }] }
-      expect(normalizeBoard(layout)).toMatchObject({ fitToView: false, panes: [{ width: 650 }] })
-      expect(normalizeBoard({ ...layout, fitToView: 'true' }).fitToView).toBe(false)
+      expect(normalizeBoard(layout)).toMatchObject({ fitToView: true, panes: [{ width: 650 }] })
+      expect(normalizeBoard({ ...layout, fitToView: 'true' }).fitToView).toBe(true)
+      expect(normalizeBoard({ ...layout, fitToView: false })).toMatchObject({ fitToView: false, panes: [{ width: 650 }] })
     }
   })
 
@@ -284,6 +289,7 @@ describe('collapse and focus mode (§7.6)', () => {
   it('collapsing the focused pane moves focus to the nearest expanded neighbour and keeps its width', () => {
     const { a, b, c } = threePanes()
     const store = useBoardStore.getState()
+    store.setFitToView(false)
     store.setPaneWidth(b, 900)
     store.focusPane(b)
     store.setCollapsed(b, true)

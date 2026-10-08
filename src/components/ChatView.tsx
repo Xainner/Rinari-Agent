@@ -186,7 +186,7 @@ function ChatView({
   const streamRef = useRef(stream)
   streamRef.current = stream
 
-  function snapshotAnchor(): ScrollAnchor {
+  const snapshotAnchor = useCallback((): ScrollAnchor => {
     const el = scrollRef.current
     const virt = virtRef.current
     if (!el || el.scrollHeight - el.scrollTop - el.clientHeight < 80) return { follow: true }
@@ -195,7 +195,7 @@ function ChatView({
     const row = streamRef.current[index]
     if (!row) return { follow: true }
     return { follow: false, rowId: row.id, offset: Math.max(0, virt.scrollOffset - virt.getItemOffset(index)) }
-  }
+  }, [])
 
   // Tras un salto pedido (enviar o guiar) y mientras llega esa respuesta, solo
   // un gesto de la persona apaga «seguir el final». Los `scroll` que provoca
@@ -210,7 +210,7 @@ function ChatView({
     if (!isStreaming) jumpRef.current = false
   }, [isStreaming])
 
-  function handleScroll() {
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
     const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
@@ -219,7 +219,7 @@ function ChatView({
     setAtBottom(bottom)
     followRef.current = bottom
     anchorRef.current = snapshotAnchor()
-  }
+  }, [snapshotAnchor])
 
   const activityLayout = useMemo<ActivityLayout>(() => ({
     begin(anchor, manual = true) {
@@ -237,13 +237,13 @@ function ChatView({
         const restore = () => {
           if (!anchor.isConnected || scrollRef.current !== scroll) return
           scroll.scrollTop += anchor.getBoundingClientRect().top - offset
-          anchorRef.current = snapshotAnchor()
+          handleScroll()
         }
         restore()
         requestAnimationFrame(restore)
       }
     },
-  }), [sessionId])
+  }), [sessionId, handleScroll])
 
   // Al montar o cambiar de sesión: sin ancla guardada (o con «seguir el
   // final») el scroll va al fondo antes de pintar, sin destello; con ancla de
@@ -342,42 +342,27 @@ function ChatView({
 
   useEffect(() => {
     const content = contentRef.current
-    if (!content || !autoFollow) return
+    const scroller = scrollRef.current
+    if (!content || !scroller) return
     let frame = 0
-    const observer = new ResizeObserver(() => {
-      if (!followRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      const viewportChanged = entries.some(entry => entry.target === scroller)
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => {
-        const scroller = scrollRef.current
-        if (scroller && followRef.current) scroller.scrollTop = scroller.scrollHeight
+        if (restoreRef.current) return
+        if (autoFollow && followRef.current) {
+          scroller.scrollTop = scroller.scrollHeight
+          if (viewportChanged && streamRef.current.length > 0) virtRef.current?.scrollToIndex(streamRef.current.length - 1, { align: 'end' })
+        }
+        // Folding activity can remove all overflow without firing `scroll`.
+        // Measure even while reading above or when auto-follow is disabled.
+        handleScroll()
       })
     })
     observer.observe(content)
-    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [autoFollow, presentation, sessionId])
-
-  // El dock de procesos vive en la zona inferior y su inspector expande
-  // esa zona, encogiendo el transcript. Si el usuario ya estaba abajo,
-  // acompañar el fondo para que el último texto no quede tapado; si
-  // estaba leyendo arriba, conservar su posición sin saltos.
-  useEffect(() => {
-    const scroller = scrollRef.current
-    if (!scroller || !autoFollow) return
-    let frame = 0
-    const observer = new ResizeObserver(() => {
-      if (!followRef.current) return
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const el = scrollRef.current
-        if (el && followRef.current) {
-          el.scrollTop = el.scrollHeight
-          if (stream.length > 0) virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
-        }
-      })
-    })
     observer.observe(scroller)
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [autoFollow, sessionId, presentation, stream.length])
+  }, [autoFollow, presentation, sessionId, handleScroll])
 
   useEffect(() => {
     // Autoscroll inteligente: solo sigue si el usuario ya estaba abajo

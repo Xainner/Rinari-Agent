@@ -1061,6 +1061,8 @@ export const en: Record<I18nKey, string> = {
   'workspace.planBuild': 'Build',
   'workspace.planRisk': 'Risk',
   'workspace.checkpointsEmpty': 'No checkpoints.',
+  'workspace.loadingCheckpoints': 'Loading checkpoints…',
+  'workspace.retry': 'Retry',
   'workspace.preview': 'Preview',
   'workspace.restore': 'Restore',
   'workspace.confirmRestore': 'Restores files from the checkpoint. Current worktree changes may be lost.',

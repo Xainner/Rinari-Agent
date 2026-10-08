@@ -53,6 +53,19 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'chat-interaction-fixes': {
+    title: 'Chat: plegado sin flecha residual, checkpoints, sidebar y Enviar/Stop',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Prueba de interacción' }],
+      main: [
+        ...Array.from({ length: 12 }, (_, i) => ({ tool: 'fs.glob', args: { pattern: `revision-${i}-*.txt` }, say: i === 0 ? 'Reviso la carpeta local.' : '' })),
+        { text: 'REVISIÓN TERMINADA' },
+        { text: 'MENSAJE RECIBIDO' },
+        { text: 'NO DEBE APARECER TRAS DETENER' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'tray-menu-titlebar': {
     title: 'Acciones de la bandeja con ventana oculta y barra superior sin contador de ejecuciones',
     phases: ['exercise'],

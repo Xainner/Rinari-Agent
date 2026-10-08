@@ -1079,6 +1079,8 @@ export const es = {
   'workspace.planBuild': 'Build',
   'workspace.planRisk': 'Riesgo',
   'workspace.checkpointsEmpty': 'Sin checkpoints.',
+  'workspace.loadingCheckpoints': 'Cargando checkpoints…',
+  'workspace.retry': 'Reintentar',
   'workspace.preview': 'Vista previa',
   'workspace.restore': 'Restaurar',
   'workspace.confirmRestore': 'Restaura archivos desde el checkpoint. Los cambios actuales del worktree pueden perderse.',

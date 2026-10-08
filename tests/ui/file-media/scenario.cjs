@@ -1,8 +1,8 @@
 // Los enlaces del resultado a un video, una imagen grande o un PDF del
 // workspace ya no pasan por la vista de texto (512 KiB): el video se
-// reproduce por tramos, la imagen se ve y el PDF ofrece abrirse fuera o en su
-// carpeta, con la ruta que aprobó el Engine. Los tonos de aviso se sirven
-// desde la app.
+// reproduce por tramos, la imagen se ve y el PDF se ve renderizado por el
+// Engine (pdfium), con «abrir fuera» y «en su carpeta» desde la ruta que
+// aprobó el Engine. Los tonos de aviso se sirven desde la app.
 const assert = require('node:assert/strict')
 const { shell } = require('electron')
 const { copyFileSync, mkdirSync, realpathSync, writeFileSync } = require('node:fs')
@@ -13,7 +13,7 @@ scenario(async () => {
   await useLocalModel()
   const root = join(ui.data, 'Promo'); mkdirSync(join(root, 'out'), { recursive: true })
   copyFileSync(join(__dirname, 'clip.mp4'), join(root, 'out', 'clip.mp4'))
-  writeFileSync(join(root, 'out', 'manual.pdf'), '%PDF-1.4\n% prueba\n')
+  copyFileSync(join(__dirname, 'manual.pdf'), join(root, 'out', 'manual.pdf'))
   // Un audio real (un tono de la app) para el reproductor del chat.
   copyFileSync(join(__dirname, '..', '..', '..', 'public', 'sounds', 'rinari', 'success.mp3'), join(root, 'out', 'voz.mp3'))
   const { project } = await command('project_add', { path: root, name: 'Promo' })
@@ -43,13 +43,15 @@ scenario(async () => {
   await screenshot('poster')
 
   await click('a[data-file-path="out/manual.pdf"]')
-  await wait(`document.body.innerText.includes('no tiene un visor')`)
+  // Sus páginas, renderizadas por el Engine; nunca sus bytes como texto.
+  await wait(`Boolean(document.querySelector('[data-document-kind="pdf"] img[alt="Página 2 de manual.pdf"]'))`, 60_000)
+  assert.match(await evaluate(`document.querySelector('[data-document-kind="pdf"]').innerText`), /2 páginas/)
   // «Abrir en el Explorador»: el host recibe la ruta aprobada por el Engine.
   const revealed = []
   const original = shell.showItemInFolder
   shell.showItemInFolder = (path) => { revealed.push(path) }
   try {
-    await evaluate(`[...document.querySelectorAll('button')].filter(b=>b.textContent.includes('Abrir en el Explorador de archivos')).at(-1).click()`)
+    await evaluate(`[...document.querySelectorAll('button')].filter(b=>b.getAttribute('aria-label')==='Abrir en el Explorador de archivos'||b.title==='Abrir en el Explorador de archivos').at(-1).click()`)
     await wait('true')
     const deadline = Date.now() + 5000
     while (!revealed.length && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100))
@@ -72,5 +74,5 @@ scenario(async () => {
   const tone = await evaluate(`(async () => {const r=await fetch('sounds/rinari/success.mp3');const a=new Audio('sounds/soft/attention.mp3');await new Promise((ok,ko)=>{a.onloadedmetadata=ok;a.onerror=ko});return {type:r.headers.get('content-type'),duration:a.duration}})()`)
   assert.equal(tone.type, 'audio/mpeg')
   assert(tone.duration > 0.3)
-  report({ passed: ['video plays and seeks by ranges', 'large PNG shown as an image', 'PDF offers outside/folder; reveal gets the Engine path', 'audio link plays inline after a click', 'notification tones are served'] })
+  report({ passed: ['video plays and seeks by ranges', 'large PNG shown as an image', 'PDF pages rendered by the Engine; reveal gets the Engine path', 'audio link plays inline after a click', 'notification tones are served'] })
 }, { width: 1500, height: 900 })

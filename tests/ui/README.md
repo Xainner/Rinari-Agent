@@ -49,6 +49,8 @@ también `failure.png` y el final del texto visible en la consola.
 | [chat-send-jump](chat-send-jump/README.md) | Enviar desde arriba del historial lleva al final |
 | [composer-file-drag](composer-file-drag/README.md) | Arrastrar archivos a todo el chat |
 | [conversation-draft](conversation-draft/README.md) | Conversación nueva como borrador hasta el primer mensaje |
+| [document-sheet](document-sheet/README.md) | Un XLSX del workspace se ve como cuadrícula, con fórmulas pendientes honestas |
+| [document-preview](document-preview/README.md) | Un PPTX del workspace se ve renderizado, con su contenido, su verificación y sus revisiones |
 | [file-media](file-media/README.md) | Video, imagen grande, PDF y audio del workspace; tonos de aviso |
 | [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |

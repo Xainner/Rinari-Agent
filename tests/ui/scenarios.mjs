@@ -113,6 +113,16 @@ export const scenarios = {
       writeFileSync(join(data, 'imagen.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64'))
     },
   },
+  'document-sheet': {
+    title: 'Documentos: un XLSX del workspace se ve como cuadrícula, con fórmulas pendientes honestas',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'Lista: [Presupuesto](out/presupuesto.xlsx)' }]),
+  },
+  'document-preview': {
+    title: 'Documentos: un PPTX del workspace se ve renderizado, con su contenido',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'Lista: [Ventas](out/ventas.pptx)' }]),
+  },
   'file-media': {
     title: 'Archivos: video, imagen, PDF y audio del workspace',
     phases: ['exercise'],

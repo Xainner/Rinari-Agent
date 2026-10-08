@@ -8,6 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { DocumentView } from '../documents/DocumentView'
+import { documentKind } from '../documents/documentsApi'
+import type { DocumentSource } from '../documents/useDocument'
 import { Copy, ExternalLink, FileText, Film, FolderOpen, Music, Play, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { desktopApi, type FilePreview } from '../../services/desktop'
@@ -204,6 +207,8 @@ export type FileTab = {
   media?: WorkspaceMedia
   /** Artefacto de texto mostrado solo en parte. */
   truncated?: boolean
+  /** Office o PDF: lo muestra el visor documental con el render del Engine. */
+  document?: DocumentSource
   error?: string
   watchId?: string
   revision?: number
@@ -281,6 +286,12 @@ export function FileWorkspaceProvider({
     const tab = tabsRef.current.find((candidate) => candidate.key === key)
     const owner = owners.current.get(key)
     if (!tab || !owner || tab.target.startsWith('artifact://')) return
+    if (tab.document) {
+      // Un documento no se relee como texto: se vuelve a abrir (un archivo
+      // cambiado se importa como revisión nueva y se renderiza de nuevo).
+      updateTabs((current) => current.map((candidate) => candidate.key === key ? { ...candidate, revision: (candidate.revision ?? 0) + 1 } : candidate))
+      return
+    }
     if (tab.media) {
       // Sin watch: refrescar pide otra URL, que vuelve a leer el archivo.
       const sequence = ++owner.sequence
@@ -345,7 +356,16 @@ export function FileWorkspaceProvider({
       let image: string | undefined
       let media: WorkspaceMedia | undefined
       let truncated = false
-      if (isArtifactImage(target)) {
+      let document: DocumentSource | undefined
+      const kind = documentKind(target)
+      if (kind && (await platform().engine.status()).capabilities?.document_preview_v1) {
+        // Un PPTX, DOCX, XLSX o PDF no se lee como texto: se ve su render.
+        if (!isCurrent()) return
+        document = target.startsWith('artifact://') || target.startsWith('rev_')
+          ? { sessionId, ref: target, turnId }
+          : { sessionId, path: target, turnId }
+        file = { path: target, name: target.split(/[\\/]/).at(-1) || target, content: '', language: kind, size: 0 } as FilePreview
+      } else if (isArtifactImage(target)) {
         image = await artifactImageUrl(target)
         file = { path: target, name: target.split('/').at(-1) || 'Artifact', content: '', language: '', size: 0 } as FilePreview
       } else if (target.startsWith('artifact://') && (await platform().engine.status()).capabilities?.artifact_resolve_v1
@@ -398,7 +418,7 @@ export function FileWorkspaceProvider({
       }
       updateTabs((current) =>
         current.map((tab) =>
-          tab.key === key ? { ...tab, file, image, media, truncated, watchId, error: undefined } : tab,
+          tab.key === key ? { ...tab, file, image, media, truncated, document, watchId, error: undefined } : tab,
         ),
       )
       // Covers changes emitted between watch registration and its response.
@@ -620,10 +640,19 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
           )}
           <div
             role="tabpanel"
-            className={`min-h-0 flex-1 overflow-auto ${selected.file && ['html', 'htm'].includes(selected.file.language) && !selected.target.startsWith('artifact:') ? '' : 'p-4'}`}
+            className={`min-h-0 flex-1 overflow-auto ${selected.document || (selected.file && ['html', 'htm'].includes(selected.file.language) && !selected.target.startsWith('artifact:')) ? '' : 'p-4'}`}
           >
             {selected.error ? (
               <p role="alert">{selected.error}</p>
+            ) : selected.document ? (
+              <DocumentView
+                key={`${selected.key}:${selected.revision ?? 0}`}
+                source={selected.document}
+                name={selected.file?.name ?? selected.target}
+                headerActions={false}
+                onOpenExternally={() => openExternal(selected.target, selected.turnId)}
+                onReveal={selected.target.startsWith('artifact:') || selected.target.startsWith('rev_') ? undefined : () => reveal(selected.target, selected.turnId)}
+              />
             ) : selected.media ? (
               <MediaView media={selected.media} onOpenExternally={() => openExternal(selected.target.startsWith('artifact:') ? selected.target : selected.media!.path, selected.turnId)} onReveal={selected.target.startsWith('artifact:') ? undefined : () => reveal(selected.media!.path, selected.turnId)} />
             ) : selected.image ? (

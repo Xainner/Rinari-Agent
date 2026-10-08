@@ -5,6 +5,9 @@ import { useI18n } from '../../i18n'
 import { artifactImageUrl, isArtifactImage } from '../files/artifactImage'
 import { MediaPlayer } from '../files/MediaPlayer'
 import { platform, type WorkspaceMedia } from '../../platform'
+import { useFileWorkspace } from '../files/FileWorkspace'
+import { DocumentView } from '../documents/DocumentView'
+import { documentKind } from '../documents/documentsApi'
 
 /** Whether an Engine event may have added artifacts to the session. */
 export function producedArtifacts(event: string, payload: Record<string, unknown> | undefined): boolean {
@@ -33,11 +36,14 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
   const [image, setImage] = useState<string | null>(null)
   const [media, setMedia] = useState<WorkspaceMedia | null>(null)
   const [truncated, setTruncated] = useState(false)
+  const [document, setDocument] = useState<string | null>(null)
+  const files = useFileWorkspace()
 
   const reload = useCallback(async () => {
     try {
       const result = await engineApi.artifactList(sessionId)
-      setArtifacts(result.artifacts)
+      // Las capturas de un render son derivadas: se ven en el documento, no aquí.
+      setArtifacts(result.artifacts.filter((artifact) => artifact.namespace !== 'previews'))
     } catch (err) {
       toast.error(commandMessage(err))
     }
@@ -71,9 +77,25 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
       setText(null)
       setImage(null)
       setMedia(null)
+      setDocument(null)
       return
     }
     try {
+      // Office y PDF: su render, no sus bytes como texto. En el visor de
+      // archivos si existe; si no, aquí mismo.
+      if (documentKind(artifact.name) && (await platform().engine.status()).capabilities?.document_preview_v1) {
+        if (files) {
+          files.open(uri)
+          return
+        }
+        setSelected(uri)
+        setImage(null)
+        setMedia(null)
+        setText(null)
+        setDocument(uri)
+        return
+      }
+      setDocument(null)
       // An image is shown as one; reading its bytes as text would print noise.
       if (isArtifactImage(uri, artifact.content_type)) {
         const url = await artifactImageUrl(uri)
@@ -127,6 +149,11 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
               {artifact.byte_count} B
             </span>
           </button>
+          {selected === artifact.uri && document !== null && (
+            <div className="h-96 border-t border-[var(--border)]">
+              <DocumentView source={{ sessionId, ref: artifact.uri }} name={artifact.name} />
+            </div>
+          )}
           {selected === artifact.uri && image !== null && (
             <div className="border-t border-[var(--border)] px-3 py-2">
               <img src={image} alt={artifact.name} className="artifact-image" />

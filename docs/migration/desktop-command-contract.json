@@ -5462,6 +5462,396 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "documents_capabilities_get",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "kind",
+          "type": "String",
+          "optional": true
+        },
+        {
+          "name": "operation",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.capabilities.get",
+      "engine_params": [
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
+        },
+        {
+          "key": "operation",
+          "from": "operation",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_inspect",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.inspect",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_job_start",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "operation",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "pages",
+          "type": "Vec<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.job.start",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "operation",
+          "from": "operation",
+          "optional": false
+        },
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        },
+        {
+          "key": "pages",
+          "from": "pages",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_job_get",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "job_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.job.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "job_id",
+          "from": "job_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_job_cancel",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "job_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.job.cancel",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "job_id",
+          "from": "job_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_preview_get",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.preview.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_range_get",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "ref",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "selection",
+          "type": "String",
+          "optional": true
+        },
+        {
+          "name": "cursor",
+          "type": "u32",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.range.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": false
+        },
+        {
+          "key": "selection",
+          "from": "selection",
+          "optional": true
+        },
+        {
+          "key": "cursor",
+          "from": "cursor",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_report_get",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "revision_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "validate",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.report.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "revision_id",
+          "from": "revision_id",
+          "optional": false
+        },
+        {
+          "key": "validate",
+          "from": "validate",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_revisions_list",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "document_id",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.revisions.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "document_id",
+          "from": "document_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "documents_import",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "turn_id",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "documents.import",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "turn_id",
+          "from": "turn_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

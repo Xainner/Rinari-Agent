@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **179**
-- Respaldados por Engine: **173**
+- Comandos: **189**
+- Respaldados por Engine: **183**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -41,6 +41,16 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `context_settings_get` | engine | `context.settings.get` | `src/services/engine.ts` |
 | `context_settings_set` | engine | `context.settings.set` | `src/services/engine.ts` |
 | `context_status` | engine | `context.status` | `src/services/engine.ts` |
+| `documents_capabilities_get` | engine | `documents.capabilities.get` | `src/features/documents/documentsApi.ts` |
+| `documents_import` | engine | `documents.import` | `src/features/documents/documentsApi.ts` |
+| `documents_inspect` | engine | `documents.inspect` | `src/features/documents/documentsApi.ts` |
+| `documents_job_cancel` | engine | `documents.job.cancel` | `src/features/documents/documentsApi.ts` |
+| `documents_job_get` | engine | `documents.job.get` | `src/features/documents/documentsApi.ts` |
+| `documents_job_start` | engine | `documents.job.start` | `src/features/documents/documentsApi.ts` |
+| `documents_preview_get` | engine | `documents.preview.get` | **ninguno** |
+| `documents_range_get` | engine | `documents.range.get` | **ninguno** |
+| `documents_report_get` | engine | `documents.report.get` | **ninguno** |
+| `documents_revisions_list` | engine | `documents.revisions.list` | `src/features/documents/documentsApi.ts` |
 | `engine_restart` | host | — | **ninguno** |
 | `engine_shutdown` | host | — | **ninguno** |
 | `engine_start` | host | — | **ninguno** |

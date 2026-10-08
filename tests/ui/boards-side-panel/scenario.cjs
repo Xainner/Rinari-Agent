@@ -92,7 +92,8 @@ async function exercise() {
   const narrow = await pane(a.id)
   await click(narrow + ' ' + toggle); await state(a.id, true)
   await wait(`document.querySelector(${JSON.stringify(narrow + ' [data-testid="session-dock"]')})?.dataset.layout==='drawer'`)
-  assert(await evaluate(`document.querySelector(${JSON.stringify(narrow + ' [data-testid="session-dock"]')}).contains(document.activeElement)`))
+  // The drawer takes focus once it has laid out, a frame after `data-layout` changes.
+  await wait(`document.querySelector(${JSON.stringify(narrow + ' [data-testid="session-dock"]')}).contains(document.activeElement)`)
   await key('Escape')
   await state(a.id, false)
   passed.push('Narrow closed pane has no drawer; explicit opening creates a focused drawer and Escape closes it')

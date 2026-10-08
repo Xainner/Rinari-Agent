@@ -76,6 +76,11 @@ h1 { margin: 0; max-width: 650px; font-size: clamp(34px, 4vw, 58px); line-height
 .primary, .danger, .secondary { min-height: 49px; border-radius: 10px; padding: 0 19px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; cursor: pointer; font-weight: 650; font-size: 13px; }
 .primary { width: 100%; border: 1px solid #d448f7; background: linear-gradient(100deg, #6b22c8, #a70998); box-shadow: 0 0 22px #9420d53d, inset 0 1px #ffffff33; }
 .primary:hover { filter: brightness(1.15); }.primary svg, .danger svg { width: 18px; }
+.primary:disabled, .link-button:disabled { cursor: default; opacity: .6; filter: none; }
+.ready-error { margin: 0 0 12px; }
+.ready-error span { min-width: 0; }
+.ready-error small { max-height: 80px; overflow: auto; }
+.ready-screen > .primary { flex-shrink: 0; }
 .secondary { border: 1px solid #564269; background: #11101a; }.secondary:hover { border-color: #a14fe8; background: #1a1224; }
 .secondary:disabled { cursor: default; opacity: .5; border-color: #3a3042; background: #0d0c12; }
 .danger { border: 1px solid #e84bcc; background: linear-gradient(100deg, #811d87, #bd087f); }

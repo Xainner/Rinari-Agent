@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -138,13 +138,54 @@ function Progress({ progress, onCancel, onRetry, onBack, t }: {
   </div>
 }
 
-function Ready({ status, onClose, t }: { status: SetupStatus; onClose: () => void; t: ReturnType<typeof translator> }) {
-  return <div className="panel-inner centered">
+function Ready({ status, onClose, t }: { status: SetupStatus; onClose: () => Promise<boolean>; t: ReturnType<typeof translator> }) {
+  const pending = useRef(false)
+  const launched = useRef(false)
+  const [phase, setPhase] = useState<'idle' | 'launching' | 'closing'>('idle')
+  const [error, setError] = useState<{ key: MessageKey; detail?: string } | null>(null)
+  const [previewComplete, setPreviewComplete] = useState(false)
+  const busy = phase !== 'idle'
+  const actionLabel = t(busy ? phase : launched.current ? 'retryClose' : 'run')
+
+  const finish = async (run: boolean) => {
+    // The ref also guards two activations before React has disabled the button.
+    if (pending.current) return
+    pending.current = true
+    setError(null)
+    let stage: 'launchFailed' | 'closeFailed' = 'closeFailed'
+    try {
+      if (run && !launched.current) {
+        stage = 'launchFailed'
+        setPhase('launching')
+        await command('launch_agent')
+        launched.current = true
+      }
+      if (!isTauri()) {
+        setPreviewComplete(true)
+        return
+      }
+      stage = 'closeFailed'
+      setPhase('closing')
+      if (!await onClose()) setError({ key: 'closeDeferred' })
+    } catch (cause) {
+      setError({ key: stage, detail: String(cause) })
+    } finally {
+      pending.current = false
+      setPhase('idle')
+    }
+  }
+
+  return <div className="panel-inner centered ready-screen scrollable">
     <p className="eyebrow">{t('readyEyebrow')}</p><h1>{t('readyTitle')}</h1><p className="lead">{t('readyBody')}</p>
     <div className="success-card"><span><Check /></span><div><strong>Rinari Agent {status.available_version}</strong><small>{status.install_dir}</small></div></div>
     <div className="button-grid"><button className="secondary" onClick={() => command('open_install_directory')}><FolderOpen />{t('openFolder')}</button><button className="secondary" onClick={() => command('open_install_log')}>{t('viewLog')}</button></div>
-    <button className="primary" onClick={() => command('launch_agent')}><Sparkles />{t('run')}</button>
-    <button className="link-button" onClick={onClose}>{t('close')}</button>
+    {error && <div className="warning ready-error" role="alert"><AlertTriangle /><span><strong>{t(error.key)}</strong>{error.detail && <small>{error.detail}</small>}</span></div>}
+    {previewComplete && <p role="status" className="lead">{t('launchPreview')}</p>}
+    <button className="primary" disabled={busy || previewComplete} aria-busy={busy} aria-label={actionLabel} onClick={() => void finish(true)}>
+      {busy ? <RefreshCw className="spin" /> : <Sparkles />}
+      <span role="status">{actionLabel}</span>
+    </button>
+    <button className="link-button" disabled={busy} onClick={() => void finish(false)}>{t('close')}</button>
   </div>
 }
 
@@ -224,16 +265,17 @@ export default function App() {
   }, [])
 
   const close = async () => {
-    if (!isTauri()) return
+    if (!isTauri()) return false
     const state = await command<{ active: boolean; cancellable: boolean }>('setup_operation_state')
     if (state.active) {
       if (state.cancellable) {
         await command('cancel_operation')
         setProgress((current) => current ? { ...current, detail: t('cancelling') } : current)
       }
-      return
+      return false
     }
     await getCurrentWindow().close()
+    return true
   }
   const execute = async (operation: SetupOperation) => {
     setProgress({ operation, phase: 'validate', detail: t('progressBody'), completed: 0, total: 100 })

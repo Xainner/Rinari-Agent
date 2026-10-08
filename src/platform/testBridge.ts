@@ -32,6 +32,7 @@ import type {
   MigrationStatus,
   FlowScopeRequest,
   BackgroundSettings,
+  DiagnosticsPreview,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -64,6 +65,8 @@ export interface TestBridge extends DesktopBridge {
   readonly mediaKinds: Record<string, WorkspaceMedia['kind']>
   /** Textos que el host de prueba confirmó en el portapapeles. */
   readonly copiedTexts: string[]
+  /** Paquete de diagnóstico que devolvería el host y exportaciones pedidas. */
+  diagnosticsState: { preview: DiagnosticsPreview; exports: number; saved: boolean }
   /** Ajustes de segundo plano del host de prueba. */
   background: BackgroundSettings
   /** Último idioma que el renderer comunicó al host (`null` si ninguno). */
@@ -170,6 +173,11 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     revealedFiles: [],
     mediaKinds: {},
     copiedTexts: [],
+    diagnosticsState: {
+      preview: { files: [{ name: 'summary.json', bytes: null }, { name: 'logs/app.log', bytes: 2048 }], totalBytes: 2048 },
+      exports: 0,
+      saved: true,
+    },
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     hostLanguage: null,
     indicators: [],
@@ -250,6 +258,16 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     clipboard: {
       async writeText(text) {
         bridge.copiedTexts.push(text)
+      },
+    },
+
+    diagnostics: {
+      async preview() {
+        return bridge.diagnosticsState.preview
+      },
+      async export() {
+        bridge.diagnosticsState.exports += 1
+        return { saved: bridge.diagnosticsState.saved }
       },
     },
 

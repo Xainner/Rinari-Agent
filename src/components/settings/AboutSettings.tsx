@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowUpRight, Bug, Check, Copy, Download, LoaderCircle, Lightbulb, RefreshCw, ScrollText } from 'lucide-react'
+import { ArrowUpRight, Bug, Check, Copy, Download, FileArchive, LoaderCircle, Lightbulb, RefreshCw, ScrollText } from 'lucide-react'
 import { copyText } from '../../lib/clipboard'
 import { useI18n } from '../../i18n'
 import { platform, type UpdateState } from '../../platform'
@@ -27,6 +27,7 @@ export default function AboutSettings({ version }: { version: string }) {
   const [update, setUpdate] = useState<UpdateState | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -82,6 +83,39 @@ export default function AboutSettings({ version }: { version: string }) {
   }
 
   const open = (url: string) => void platform().opener.openUrl(url).catch(fail)
+
+  /** Lo que lleva el paquete se ve antes de guardarlo; nada se envía desde aquí. */
+  async function onExportDiagnostics() {
+    setExporting(true)
+    try {
+      const preview = await platform().diagnostics.preview()
+      const ok = await confirm({
+        title: t('settings.about.exportTitle'),
+        body: (
+          <span className="block space-y-3">
+            <span className="block">{t('settings.about.exportBody')}</span>
+            <span className="block max-h-48 overflow-auto rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-xs">
+              {preview.files.map((file) => (
+                <span key={file.name} className="flex justify-between gap-4">
+                  <span className="min-w-0 truncate">{file.name}</span>
+                  {file.bytes !== null && <span className="shrink-0 tabular-nums">{formatBytes(file.bytes)}</span>}
+                </span>
+              ))}
+            </span>
+          </span>
+        ),
+        confirmLabel: t('settings.about.exportConfirm'),
+        cancelLabel: t('common.cancel'),
+      })
+      if (!ok) return
+      const result = await platform().diagnostics.export()
+      if (result.saved) toast.success(t('settings.about.exportSaved'))
+    } catch (err) {
+      fail(err)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   async function onCopyDiagnostics() {
     const ok = await copyText(diagnostics(version, status))
@@ -160,6 +194,11 @@ export default function AboutSettings({ version }: { version: string }) {
           control={<LinkButton icon={Bug} label={t('settings.about.reportBugAction')} onClick={() => open(bugReportUrl(version, status, t('settings.about.issueTemplate')))} />}
         />
         <Row
+          title={t('settings.about.export')}
+          desc={t('settings.about.exportDesc')}
+          control={<LinkButton icon={exporting ? LoaderCircle : FileArchive} label={t('settings.about.exportAction')} onClick={() => void onExportDiagnostics()} />}
+        />
+        <Row
           title={t('settings.about.suggest')}
           desc={t('settings.about.suggestDesc')}
           control={<LinkButton icon={Lightbulb} label={t('settings.about.suggestAction')} onClick={() => open(issueUrl('idea', `\n\n---\nRinari Agent ${version}`))} />}
@@ -218,4 +257,10 @@ function LinkButton({
       {label}
     </button>
   )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

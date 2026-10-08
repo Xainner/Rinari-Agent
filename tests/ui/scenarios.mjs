@@ -53,6 +53,11 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'diagnostics-export': {
+    title: 'Acerca de: exportar diagnóstico con registros, volcados y resumen del Engine, sin contenido',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'DIAGNÓSTICO' }]),
+  },
   'provider-logos': {
     title: 'Logos oficiales: catálogo, configuración, modelos, Normal, Boards y Flujos',
     phases: ['exercise'],

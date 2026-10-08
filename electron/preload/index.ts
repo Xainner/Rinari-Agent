@@ -33,6 +33,8 @@ import {
   type BrowserSlotLayoutRequest,
   type BrowserSlotLease,
   type ContextMenuRequest,
+  type DiagnosticsExportResult,
+  type DiagnosticsPreview,
   type EngineStatus,
   type NotificationSupport,
   type NotificationTarget,
@@ -139,6 +141,11 @@ const api = {
 
   clipboard: {
     writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
+  },
+
+  diagnostics: {
+    preview: () => call<DiagnosticsPreview>(CHANNEL.diagnosticsPreview),
+    export: () => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExport),
   },
 
   app: {

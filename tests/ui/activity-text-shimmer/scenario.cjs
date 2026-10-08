@@ -21,11 +21,13 @@ async function moving(selector) {
 }
 async function seamlessCycle(selector, name) {
   const select=JSON.stringify(selector)
-  const duration=await evaluate(`(()=>{const a=document.querySelector(${select}).getAnimations().find(a=>a.animationName==='activity-text-sheen');a.pause();return a.effect.getTiming().duration})()`)
+  const duration=await evaluate(`(async()=>{const a=document.querySelector(${select}).getAnimations().find(a=>a.animationName==='activity-text-sheen');a.pause();await a.ready;return a.effect.getTiming().duration})()`)
   const frames=[]
   for(const fraction of [0,0.001,0.5,0.999,1,1.001]){
     await evaluate(`document.querySelector(${select}).getAnimations().find(a=>a.animationName==='activity-text-sheen').currentTime=${duration*fraction}`)
     await evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))`)
+    // capturePage can still return the previous compositor frame under CPU load.
+    await delay(150)
     const rect=await evaluate(`(()=>{const r=document.querySelector(${select}).getBoundingClientRect();return {x:Math.floor(r.x),y:Math.floor(r.y),width:Math.ceil(r.width),height:Math.ceil(r.height)}})()`)
     const capture=await ui.win.webContents.capturePage(rect)
     frames.push(capture.toBitmap())

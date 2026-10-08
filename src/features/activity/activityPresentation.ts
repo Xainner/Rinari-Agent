@@ -5,6 +5,11 @@ export const pendingApproval = (item: TimelineItem): item is ApprovalTimelineIte
 export const recoveryAction = (item: TimelineItem) => item.type === 'context' && Boolean(item.sessionId) && ['failed', 'cancelled'].includes(item.status)
 export const visualPending = (item: TimelineItem) => item.type === 'vision' && item.route !== 'conversation' && ['queued', 'preparing', 'running'].includes(item.status)
 
+/** A finished operation stays still even when another operation in its turn is running. */
+export const operationIsActive = (item: TimelineItem) => item.type === 'tool'
+  ? ['requested', 'running'].includes(item.status)
+  : ['agent', 'context', 'verification'].includes(item.type) && 'status' in item && item.status === 'running' || visualPending(item)
+
 export interface ActivitySegment {
   id: string
   items: TimelineItem[]

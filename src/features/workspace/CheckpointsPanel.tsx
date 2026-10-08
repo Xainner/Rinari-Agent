@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { commandMessage, engineApi } from '../../services/engine'
 import { useI18n } from '../../i18n'
@@ -31,22 +31,30 @@ export default function CheckpointsPanel({ path }: { path: string }) {
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
-
-  const reload = useCallback(async () => {
-    try {
-      const result = await engineApi.checkpointList(path)
-      setPoints(result.checkpoints)
-    } catch (err) {
-      toast.error(commandMessage(err))
-    }
-  }, [path])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
+    let active = true
+    setPoints([])
     setDetail(null)
     setOpenId(null)
     setPreview(null)
-    void reload()
-  }, [reload])
+    setLoading(true)
+    setLoadError(null)
+    // A stale request (including StrictMode's first mount) must not report
+    // errors after the panel has been replaced. Loading errors belong here,
+    // once, rather than in global toasts for every mounted workspace.
+    void engineApi.checkpointList(path).then(result => {
+      if (active) setPoints(result.checkpoints)
+    }).catch(err => {
+      if (active) setLoadError(commandMessage(err))
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [path, reload])
 
   async function openCheckpoint(id: string) {
     if (openId === id) {
@@ -103,6 +111,13 @@ export default function CheckpointsPanel({ path }: { path: string }) {
       ? value.map((v) => (typeof v === 'string' ? v : str((v as Checkpoint)['path'])))
       : []
   }
+
+  if (loading) return <p role="status" className="text-sm text-[var(--text-subtle)]">{t('workspace.loadingCheckpoints')}</p>
+
+  if (loadError) return <div className="space-y-2 text-sm">
+    <p role="alert" className="break-words text-red-400">{loadError}</p>
+    <button type="button" onClick={() => setReload(value => value + 1)} className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs hover:bg-[var(--bg-hover)]">{t('workspace.retry')}</button>
+  </div>
 
   if (points.length === 0) {
     return <p className="text-sm text-[var(--text-subtle)]">{t('workspace.checkpointsEmpty')}</p>

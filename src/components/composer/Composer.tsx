@@ -936,7 +936,7 @@ export default function Composer({
             </PopoverContent>
           </Popover>
 
-          {canSteer && text.trim() && (
+          {canSteer && text.trim() ? (
             <button
               type="button"
               onClick={() => void handleSteer(false)}
@@ -947,8 +947,7 @@ export default function Composer({
             >
               <ArrowUp size={17} aria-hidden="true" />
             </button>
-          )}
-          {isStreaming ? (
+          ) : isStreaming ? (
             <button
               type="button"
               onClick={onStop}

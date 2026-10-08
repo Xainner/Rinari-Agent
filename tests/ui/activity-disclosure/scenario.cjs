@@ -143,8 +143,9 @@ scenario(async () => {
   await reload()
   await click('.view-switcher button[aria-label^="Boards"]')
   await wait(`Boolean(${q(a + ' ' + show)})`)
+  // History rows arrive and are measured separately; a slower machine paints the result later.
+  await wait(`${q(a)}.innerText.includes('RESULTADO COMPLETO')`)
   assert.equal(await evaluate(`${q(a)}.querySelectorAll(${JSON.stringify(body)}).length`), 0)
-  assert(await evaluate(`${q(a)}.innerText.includes('RESULTADO COMPLETO')`))
   await evaluate(`for(const el of document.querySelectorAll(${JSON.stringify(scroller)})){el.scrollTop=0;el.dispatchEvent(new Event('scroll'))}`)
   await screenshot('history-restored')
   // Keep manual test turns slow enough to inspect their live presentation.

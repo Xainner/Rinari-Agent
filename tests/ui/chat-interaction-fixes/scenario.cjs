@@ -13,9 +13,29 @@ async function release() {
   assert.equal(await fetch(new URL('/__release?lane=main', ui.model)).then(r => r.json()), true)
 }
 async function above(prefix = '') {
-  await evaluate(`(() => {const el=${q(prefix + ' ' + scroller)};el.scrollTop=0;el.dispatchEvent(new Event('scroll'))})()`)
+  // A person scrolls with a gesture; only a gesture ends «follow the end» after sending.
+  // Disclosures restore their reading anchor on the next frames, so settle first and
+  // scroll again if a pending restoration moved the view back.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await evaluate(`new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`)
+    await evaluate(`(() => {const el=${q(prefix + ' ' + scroller)};el.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:-120}));el.scrollTop=0;el.dispatchEvent(new Event('scroll'))})()`)
+    try { await wait(`Boolean(${q(prefix + ' ' + arrow)})`, 3_000); return } catch { /* settle and retry */ }
+  }
   await wait(`Boolean(${q(prefix + ' ' + arrow)})`)
 }
+/**
+ * A real click at a toggle that moves the content around it can land beside
+ * its target. Click until the expected state holds, at most three times.
+ */
+async function press(selector, done) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await evaluate(done)) return
+    await click(selector)
+    try { await wait(done, 3_000); return } catch { /* retry */ }
+  }
+  await wait(done)
+}
+const expanded = (selector, value) => `${q(selector)}?.getAttribute('aria-expanded')==='${value}'`
 async function fits(prefix = '') {
   await wait(`(() => {const el=${q(prefix + ' ' + scroller)};return el && el.scrollHeight <= el.clientHeight+1})()`)
   await wait(`!${q(prefix + ' ' + arrow)}`)
@@ -47,13 +67,13 @@ scenario(async () => {
   for (let step = 0; step < 12; step++) await release()
   await until(async () => await pending() > 0, 'final held')
   await wait(`Boolean(${q(operations)})`)
-  await click(operations)
+  await press(operations, expanded(operations, 'true'))
   // Open each operation through its actual summary, retaining inspection state.
   await evaluate(`for(const d of document.querySelectorAll('[data-operation-group] details')) if(!d.open)d.querySelector('summary').click()`)
   await wait(`(()=>{const el=${q(scroller)};return el.scrollHeight>el.clientHeight+100})()`)
   await above()
   await screenshot('normal-expanded-above')
-  await click(operations)
+  await press(operations, expanded(operations, 'false'))
   await fits()
   await screenshot('normal-folded-no-arrow')
 
@@ -73,21 +93,21 @@ scenario(async () => {
   }, 'turn completed after steering')
   await wait(`Boolean(${q(show)})`)
   await fits()
-  await click(show)
-  await click(operations)
+  await press(show, `Boolean(${q(hide)})`)
+  await press(operations, expanded(operations, 'true'))
   await above()
-  await click(hide)
+  await press(hide, `!${q(hide)}`)
   await fits()
 
   await click('.app-topbar-dock-button')
   await checkpointError()
   await seedBoard({ boardId: 'interaction-fixes', panes: panesFor(ids.slice(0, 2)), focusedPaneId: 'pane_0' })
   const a = '[data-pane-id="pane_0"]', b = '[data-pane-id="pane_1"]'
-  await click(a + ' ' + show)
+  await press(a + ' ' + show, `Boolean(${q(a + ' ' + hide)})`)
   // The outer summary restores the inspected operations and their scroll.
-  if (await evaluate(`${q(a + ' ' + operations)}.getAttribute('aria-expanded')==='false'`)) await click(a + ' ' + operations)
+  await press(a + ' ' + operations, expanded(a + ' ' + operations, 'true'))
   await above(a)
-  await click(a + ' ' + hide)
+  await press(a + ' ' + hide, `!${q(a + ' ' + hide)}`)
   await fits(a)
   assert.equal(await evaluate(`Boolean(${q(b + ' ' + arrow)})`), false)
   await click(a + ' button[aria-label="Mostrar u ocultar panel lateral"]')

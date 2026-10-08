@@ -6,8 +6,9 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, clipboard, dialog, shell } from 'electron'
+import { app, protocol, BrowserWindow, Menu, clipboard, crashReporter, dialog, shell } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
+import { release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
@@ -15,6 +16,7 @@ import { BrowserRegistry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
 import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
+import { bundleFileName, createDiagnostics, logsDirFor } from './diagnostics'
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
@@ -53,6 +55,24 @@ if (app.isPackaged) {
 }
 const updateE2EProfile = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_PROFILE : undefined
 if (updateE2EProfile) app.setPath('userData', updateE2EProfile)
+
+// Registros persistentes y volcados de fallo, solo en este equipo: «Exportar
+// diagnóstico» los empaqueta si la persona lo pide. Nada se sube.
+crashReporter.start({ uploadToServer: false })
+const diagnostics = createDiagnostics({
+  logsDir: logsDirFor(app.getPath('userData')),
+  crashDir: app.getPath('crashDumps'),
+  appVersion: app.getVersion(),
+  versions: { electron: process.versions.electron, chrome: process.versions.chrome, node: process.versions.node },
+  os: { platform: process.platform, release: osRelease(), arch: process.arch },
+  engine: {
+    status: () => engine.status(),
+    diagnostics: () => engine.request('engine.diagnostics', {}),
+  },
+  extraLogFiles: [join(logsDirFor(app.getPath('userData')), 'updater.log')],
+})
+diagnostics.captureConsole()
+diagnostics.watchProcess()
 
 /** Raíz del renderer construido: en los recursos si está empaquetado. */
 function rendererRoot(): string {
@@ -180,6 +200,7 @@ const engine = new EngineSupervisor({
     send(PUSH.engineEvent, event)
   },
   onStatus: (status: EngineStatus) => {
+    diagnostics.engineStatus(status)
     send(PUSH.engineStatus, status)
     // Dejar de estar listo revoca el binding. Sin esto, reiniciar el Engine
     // sin cerrar la ventana dejaba `registered` en `true` para siempre y la
@@ -202,7 +223,7 @@ const engine = new EngineSupervisor({
       void browserHost.register()
     }
   },
-  onStderr: (line) => console.error(`[rinari-engine] ${line}`),
+  onStderr: (line) => diagnostics.engineStderr(line),
   resourceDir: process.resourcesPath,
   packaged: app.isPackaged,
 })
@@ -485,9 +506,14 @@ function buildServices(): HostServices {
       // El renderer llama por nombre de comando; el Engine habla por método
       // del protocolo y con otras claves. Sin traducir, ninguna llamada de
       // dominio llegaría a su destino.
-      request: (name, params) => {
-        const call = translateCommand(name, params ?? {})
-        return engine.request(call.method, call.params)
+      request: async (name, params) => {
+        try {
+          const call = translateCommand(name, params ?? {})
+          return await engine.request(call.method, call.params)
+        } catch (error) {
+          diagnostics.commandFailed(name, error instanceof EngineCommandError ? error.code : 'HOST_ERROR')
+          throw error
+        }
       },
     },
     window: {
@@ -541,6 +567,23 @@ function buildServices(): HostServices {
     },
     clipboard: {
       writeText: (text) => clipboard.writeText(text),
+    },
+    diagnostics: {
+      preview: () => diagnostics.preview(),
+      /** La persona elige dónde guardarlo; después se muestra en su carpeta. */
+      async export() {
+        const window = getWindow()
+        const options = {
+          title: currentHostText().diagnosticsSaveTitle,
+          defaultPath: join(app.getPath('downloads'), bundleFileName()),
+          filters: [{ name: 'ZIP', extensions: ['zip'] }],
+        }
+        const choice = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+        if (choice.canceled || !choice.filePath) return { saved: false }
+        await writeFile(choice.filePath, await diagnostics.bundle())
+        shell.showItemInFolder(choice.filePath)
+        return { saved: true }
+      },
     },
     app: {
       background: () => requireBackground().settings(),

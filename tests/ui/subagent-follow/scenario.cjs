@@ -25,6 +25,7 @@ scenario(async () => {
   await wait('Boolean(document.querySelector(".composer-surface"))')
   await input('.composer-surface textarea', 'Revisa esto con un subagente')
   await click('.composer-surface button[aria-label="Enviar mensaje"]')
+  await click('button[aria-label="Ver actividad del turno"]')
   await wait(`Boolean(document.querySelector(${JSON.stringify(card)}))`)
   await step(1)
   await click(card + ' > summary')

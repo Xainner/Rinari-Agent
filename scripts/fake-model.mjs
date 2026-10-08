@@ -215,6 +215,13 @@ export async function startRoutedModel(lanes, route, { held = [] } = {}) {
       response.end(JSON.stringify(waiting[lane]?.length ?? 0))
       return
     }
+    if (url.pathname === '/__resume') {
+      const queued = waiting[lane] ?? []
+      delete waiting[lane]
+      for (const answer of queued) answer()
+      response.end(JSON.stringify({ resumed: queued.length }))
+      return
+    }
     if (url.pathname === '/__release') {
       const next = waiting[lane]?.shift()
       if (next) next()

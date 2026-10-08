@@ -13,6 +13,7 @@ import { translate } from '../../i18n'
 import type { Language } from '../../types'
 import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
+import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { revealSessionProject } from '../projects/revealSessionProject'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
 import { historyToMessages } from './history'
@@ -491,6 +492,7 @@ export function useSessionList(options: {
     async (id: string, cascade: boolean): Promise<SessionDeleteResult | null> => {
       try {
         const result = await engineApi.deleteSession(id, cascade)
+        useActivityDisclosure.getState().forgetSession(id)
         forgetRow(id)
         await refreshSessions()
         return result

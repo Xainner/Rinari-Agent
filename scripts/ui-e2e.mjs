@@ -85,11 +85,19 @@ const electron = (await import('electron')).default
 
 function runPhase(name, env) {
   return new Promise((resolve) => {
-    const child = spawn(electron, [join(ROOT, 'tests/ui', name, 'scenario.cjs')], { cwd: ROOT, env, stdio: 'inherit' })
+    const child = spawn(electron, [join(ROOT, 'tests/ui', name, 'scenario.cjs')], { cwd: ROOT, env, stdio: ['inherit', 'pipe', 'inherit'] })
     const timer = setTimeout(() => {
       console.error(`${name} (${env.RINARI_UI_PHASE}): sin terminar en ${PHASE_TIMEOUT_MS / 60_000} min; se detiene.`)
       child.kill()
     }, PHASE_TIMEOUT_MS)
+    // A reviewed --keep window is no longer a running test. Keep the watchdog
+    // until success, then leave the isolated app and provider alive for the owner.
+    let tail = ''
+    child.stdout.on('data', chunk => {
+      process.stdout.write(chunk)
+      tail = (tail + chunk.toString()).slice(-1000)
+      if (keep && env.RINARI_UI_LAST_PHASE === '1' && tail.includes(`RINARI_UI_OK ${name} ${env.RINARI_UI_PHASE}`)) clearTimeout(timer)
+    })
     child.on('error', (error) => { clearTimeout(timer); console.error(error); resolve(1) })
     child.on('exit', (code) => { clearTimeout(timer); resolve(code ?? 1) })
   })

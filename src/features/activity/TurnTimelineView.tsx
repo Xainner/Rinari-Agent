@@ -23,7 +23,7 @@ import {
   TriangleAlert,
   Wrench,
 } from 'lucide-react'
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
+import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
@@ -34,7 +34,6 @@ import MessageBubble from '../../components/MessageBubble'
 import { usePeerNavigation } from '../board/PeerNavigationContext'
 import TurnMeta from './TurnMeta'
 import CompactionDetails from '../context/CompactionDetails'
-import TokenUsage from './TokenUsageIndicator'
 import TurnResult from './TurnResult'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { commandMessage, engineApi } from '../../services/engine'
@@ -43,6 +42,11 @@ import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
+import { projectActivity, turnDuration, turnIsActive } from './activityPresentation'
+import { ActivityDisclosure } from './ActivityDisclosure'
+import { ActivityTransition } from './ActivityTransition'
+import { ActivityHeader } from './ActivityHeader'
+import { activityKey } from '../../stores/activityDisclosure'
 
 type DisplayItem = TimelineItem | { id: string; type: 'tool-group'; items: Extract<TimelineItem, { type: 'tool' }>[] }
 
@@ -56,6 +60,8 @@ interface Props {
   /** Abre la superficie de cambios de la sesión (fila de metadatos del turno). */
   onReviewChanges?: () => void
 }
+
+const ActivityActive = createContext(true)
 
 const ICONS: Record<ToolCategory, typeof FileText> = {
   image: ImageIcon,
@@ -129,7 +135,7 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
       </summary>
       <div className="mt-1 space-y-0.5 border-l border-[var(--border)] pl-4">
         {items.map((item) => category === 'command'
-          ? <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />
+          ? <div key={item.id} data-activity-item={item.id}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></div>
           : <div key={item.id} className="text-[11px] text-[var(--text-subtle)]">{formatTool(item, lang)}</div>)}
       </div>
     </details>
@@ -139,10 +145,11 @@ function ToolGroupRow({ items, onResolveApproval }: { items: Extract<TimelineIte
 function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, { type: 'model' }>; onResolveApproval: (id: string, decision: string) => void }) {
   const { t, lang } = useI18n()
   const peerNavigation = usePeerNavigation()
+  const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <details className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
-    <summary className="cursor-pointer">{item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</summary>
+    <summary className="cursor-pointer">{!active && visualPending(item) ? t('activity.interrupted') : item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</summary>
     {technical && <details><summary>{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</details>}
     <div className="flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
     {item.analysis && <p className="whitespace-pre-wrap">{item.analysis}</p>}
@@ -151,7 +158,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'tool') {
     const category = toolCategory(item.tool)
     const Icon = ICONS[category]
-    const running = item.status === 'requested' || item.status === 'running'
+    const running = active && (item.status === 'requested' || item.status === 'running')
     const failed = item.status === 'failed' || item.status === 'cancelled'
     if (item.presentation?.kind === 'image' && item.presentation.image && item.status === 'completed') {
       return <div className="py-1 text-[13px] text-[var(--text-muted)]">
@@ -173,6 +180,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
         <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
           {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : exited ? <TriangleAlert size={13} className="text-amber-400" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
           <span>{formatTool(item, lang)}</span>
+          {!active && ['requested', 'running'].includes(item.status) && <span className="text-xs">{t('activity.interrupted')}</span>}
           {exited && <span className="font-mono text-[10px] text-amber-300">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
           {outputPath && <span onClick={e => e.stopPropagation()} className="text-[var(--accent)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
           {technical && <span className="font-mono text-[10px] text-[var(--text-subtle)]">{item.tool}</span>}
@@ -207,14 +215,14 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'changeset') return null
   if (item.type === 'question') return <details className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></details>
   if (item.type === 'system') return null
-  const labels = item.type === 'context'
+  const labels = !active && 'status' in item && item.status === 'running' ? t('activity.interrupted') : item.type === 'context'
       ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
       : item.type === 'verification'
         ? (item.status === 'running' ? (lang === 'es' ? 'Verificando…' : 'Verifying…') : item.status === 'failed' ? (lang === 'es' ? 'La verificación falló' : 'Verification failed') : (lang === 'es' ? 'Verificación completada' : 'Verification completed'))
         : ''
   if (!labels) return null
   if (item.type === 'context') return <div className="py-1 text-[13px] text-[var(--text-muted)]">
-    <div className="flex items-center gap-2">{item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}{item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}
+    <div className="flex items-center gap-2">{active && item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}{active && item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}
       {(item.status === 'failed' || item.status === 'cancelled') && item.sessionId && <>
         {/* El turno se detuvo aquí: compactar y seguir en un solo paso, sin escribir «Continúa». */}
         <button className="underline" onClick={() => { void engineApi.contextCompact(item.sessionId!, lang === 'es' ? 'Continúa' : 'Continue').catch(e => toast.error(commandMessage(e))) }}>{lang === 'es' ? 'Compactar y continuar' : 'Compact and continue'}</button>
@@ -341,22 +349,35 @@ type AgentItem = Extract<TimelineItem, { type: 'agent' }>
  * el final. Nunca mueve la conversación exterior ni otras tarjetas.
  */
 function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveApproval: (id: string, decision: string) => void }) {
-  const { lang } = useI18n()
+  const { lang, t } = useI18n()
+  const active = useContext(ActivityActive)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const followingRef = useRef<boolean | null>(null)
   const [open, setOpen] = useState(false)
   const [showJump, setShowJump] = useState(false)
 
+  useLayoutEffect(() => {
+    const node = scrollRef.current
+    if (!node) return
+    const restore = (event: Event) => {
+      followingRef.current = (event as CustomEvent<{ following: boolean }>).detail.following
+      node.dataset.inspectionFollowing = String(followingRef.current)
+      setShowJump(!followingRef.current)
+    }
+    node.addEventListener('activity-inspection-restore', restore)
+    return () => node.removeEventListener('activity-inspection-restore', restore)
+  }, [])
+
   function toEnd() {
     const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (el) { el.scrollTop = el.scrollHeight; el.dataset.inspectionFollowing = 'true' }
   }
 
   function onToggle(event: SyntheticEvent<HTMLDetailsElement>) {
     const next = event.currentTarget.open
     // La primera apertura decide: en marcha sigue el final; terminado, se lee.
-    if (next && followingRef.current === null) followingRef.current = item.status === 'running'
+    if (next && followingRef.current === null) followingRef.current = active && item.status === 'running'
     setOpen(next)
   }
 
@@ -383,6 +404,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
     if (!el) return
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 24
     followingRef.current = atBottom
+    el.dataset.inspectionFollowing = String(atBottom)
     setShowJump(!atBottom)
   }
 
@@ -395,20 +417,20 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
   return (
     <details data-testid="agent-card" className="group/agent relative my-2 rounded-xl border border-[var(--border)] p-3" onToggle={onToggle}>
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-[var(--text)]">
-        {item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
+        {active && item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
         <span>{item.agent}</span>
-        <span className="text-xs text-[var(--text-muted)]">{item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</span>
+        <span className="text-xs text-[var(--text-muted)]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</span>
         <span className="ml-auto text-xs">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} />
       </summary>
-      <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" className="mt-3 max-h-[32rem] overflow-auto">
+      <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" data-inspection-scroll className="mt-3 max-h-[32rem] overflow-auto">
         <div ref={contentRef} className="space-y-2">
         {item.objective && <p className="text-sm text-[var(--text-muted)]">{item.objective}</p>}
         {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
-        {(item.items ?? []).map(child => child.type === 'model'
-          ? child.content ? <Markdown key={child.id}>{child.content}</Markdown> : null
-          : <ActivityRow key={child.id} item={child} onResolveApproval={onResolveApproval} />)}
+        <ActivityActive.Provider value={active && item.status === 'running'}>{(item.items ?? []).map(child => <div key={child.id} data-activity-item={`${item.id}/${child.id}`}>{child.type === 'model'
+          ? child.content ? <Markdown>{child.content}</Markdown> : null
+          : <ActivityRow item={child} onResolveApproval={onResolveApproval} />}</div>)}</ActivityActive.Provider>
         {item.summary && !(item.items ?? []).some(child => child.type === 'model' && child.content === item.summary) && <Markdown>{item.summary}</Markdown>}
-        {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…'}</p>}
+        {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{active && item.status === 'running' ? (lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…') : t('activity.noDetails')}</p>}
         </div>
       </div>
       {open && showJump && <button type="button" onClick={jumpToEnd} className="absolute right-5 bottom-4 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-muted)] shadow hover:text-[var(--text)]">{lang === 'es' ? 'Ir al final' : 'Jump to end'}</button>}
@@ -422,6 +444,18 @@ function StreamOutput({ label, content, warning = false }: { label: string; cont
   const followingRef = useRef(true)
   const [showJump, setShowJump] = useState(false)
 
+  useLayoutEffect(() => {
+    const node = outputRef.current
+    if (!node) return
+    const restore = (event: Event) => {
+      followingRef.current = (event as CustomEvent<{ following: boolean }>).detail.following
+      node.dataset.inspectionFollowing = String(followingRef.current)
+      setShowJump(!followingRef.current)
+    }
+    node.addEventListener('activity-inspection-restore', restore)
+    return () => node.removeEventListener('activity-inspection-restore', restore)
+  }, [])
+
   useEffect(() => {
     const output = outputRef.current
     if (!output || !followingRef.current) return
@@ -433,6 +467,7 @@ function StreamOutput({ label, content, warning = false }: { label: string; cont
     if (!output) return
     const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight <= 24
     followingRef.current = atBottom
+    output.dataset.inspectionFollowing = String(atBottom)
     setShowJump(!atBottom)
   }
 
@@ -441,12 +476,13 @@ function StreamOutput({ label, content, warning = false }: { label: string; cont
     if (!output) return
     output.scrollTop = output.scrollHeight
     followingRef.current = true
+    output.dataset.inspectionFollowing = 'true'
     setShowJump(false)
   }
 
   return <div className={`relative border-t px-2.5 py-2 ${warning ? 'border-amber-400/20' : 'border-[var(--border)]'}`}>
     <div className={`mb-1 text-[10px] uppercase tracking-wide ${warning ? 'text-amber-300' : 'text-[var(--text-subtle)]'}`}>{label}</div>
-    <pre ref={outputRef} onScroll={trackScroll} className={`max-h-64 overflow-auto whitespace-pre-wrap font-mono text-[11px] ${warning ? 'text-amber-100/80' : 'text-[var(--text-muted)]'}`}>{content}</pre>
+    <pre ref={outputRef} onScroll={trackScroll} data-inspection-scroll className={`max-h-64 overflow-auto whitespace-pre-wrap font-mono text-[11px] ${warning ? 'text-amber-100/80' : 'text-[var(--text-muted)]'}`}>{content}</pre>
     {showJump && <button type="button" onClick={jumpToEnd} className="absolute right-4 bottom-3 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-muted)] shadow hover:text-[var(--text)]">{lang === 'es' ? 'Ir al final' : 'Jump to end'}</button>}
   </div>
 }
@@ -494,8 +530,8 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
 
 const visualPending = (item: VisionTimelineItem) => ['queued', 'preparing', 'running'].includes(item.status)
 
-function VisualProgress({ items, status, onResolveApproval }: {
-  items: VisionTimelineItem[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']
+function VisualProgress({ items, status, onResolveApproval, showProgress = true }: {
+  items: VisionTimelineItem[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']; showProgress?: boolean
 }) {
   const { lang } = useI18n()
   const technical = useUIStore(state => state.showTechnicalActivityNames)
@@ -506,11 +542,11 @@ function VisualProgress({ items, status, onResolveApproval }: {
   const total = items.reduce((count, item) => count + Math.max(1, item.images.length), 0)
   const finished = items.filter(item => !visualPending(item)).reduce((count, item) => count + Math.max(1, item.images.length), 0)
   return <>
-    {active && pending.length > 0 && <div role="status" aria-live="polite" className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
+    {showProgress && active && pending.length > 0 && <div role="status" aria-live="polite" className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
       <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
       <span>{status === 'cancelling' ? (es ? 'Cancelando análisis' : 'Cancelling analysis') : (es ? 'Analizando imágenes' : 'Analyzing images')} · {finished} {es ? 'de' : 'of'} {total}</span>
     </div>}
-    {issues.length > 0 && <details className="py-1 text-xs text-amber-300">
+    {issues.length > 0 && <details data-activity-item="vision-issues" className="py-1 text-xs text-amber-300">
       <summary className="cursor-pointer">{es ? 'Revisión de imágenes con incidencias' : 'Image review issues'} · {issues.length}</summary>
       <div className="mt-2 space-y-3">{issues.map(item => <div key={item.id}>
         <p>{item.status === 'partial' ? (es ? 'Análisis parcial · límite de salida' : 'Partial analysis · output limit') : item.status === 'cancelled' ? (es ? 'Análisis cancelado' : 'Analysis cancelled') : item.status === 'failed' ? (es ? 'No se pudo analizar la imagen' : 'Image analysis failed') : (es ? 'Análisis interrumpido' : 'Analysis interrupted')}</p>
@@ -518,9 +554,9 @@ function VisualProgress({ items, status, onResolveApproval }: {
         {!item.images.length && <p className="text-[var(--text-muted)]">{es ? 'Referencia de imagen no disponible' : 'Image reference unavailable'}</p>}
       </div>)}</div>
     </details>}
-    {technical && items.length > 0 && <details className="py-1 text-xs text-[var(--text-subtle)]">
+    {technical && items.length > 0 && <details data-activity-item="vision-technical" className="py-1 text-xs text-[var(--text-subtle)]">
       <summary className="cursor-pointer">{es ? 'Detalles técnicos de visión' : 'Vision technical details'} · {items.length}</summary>
-      {items.map(item => <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
+      {items.map(item => <div key={item.id} data-activity-item={item.id}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></div>)}
     </details>}
   </>
 }
@@ -557,52 +593,67 @@ function SteerBubble({ item }: { item: SteerTimelineItem }) {
 }
 
 function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges }: Props) {
-  const { lang } = useI18n()
-  const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
-  const visualItems = timeline.items.filter((item): item is VisionTimelineItem => item.type === 'vision' && item.route !== 'conversation')
-  const visualRunning = ['running', 'approval', 'cancelling'].includes(timeline.status) && visualItems.some(visualPending)
-  const visible = timeline.items.filter((item) => item !== final && item.type !== 'changeset' && item.type !== 'vision' && (item.type !== 'model' || Boolean(item.content)))
-  const displayItems = groupAdjacent(visible)
-  const significant = visible.filter((item) => item.type !== 'model' && item.type !== 'system' && item.type !== 'steer')
-  const lastActivity = visible.at(-1)?.occurredAt ?? timeline.startedAt
-  // A subagent runs beside the coordinator, not instead of it: while the
-  // main agent waits for its own model call «Pensando…» must stay. When it
-  // waits for the subagent, `agent.wait` is a running tool and covers it.
-  const actionRunning = visible.some((item) =>
-    item.type === 'tool' && (item.status === 'requested' || item.status === 'running') ||
-    item.type === 'context' && item.status === 'running' ||
-    item.type === 'verification' && item.status === 'running',
-  )
-  const initialWait = visible.length === 0 && now - timeline.startedAt >= 300
-  const betweenSteps = visible.length > 0 && now - lastActivity >= 1000
-  const waiting = !visualRunning && (timeline.status === 'cancelling' || (!actionRunning && (timeline.status === 'running' || timeline.status === 'approval') && (initialWait || betweenSteps)))
-  const terminalExceptional = ['failed', 'cancelled', 'stopped'].includes(timeline.status)
-  const duration = (timeline.completedAt ?? now) - timeline.startedAt
-  // La fila de metadatos se muestra siempre para turnos excepcionales y para
-  // los largos; TurnMeta la añade además cuando hay no leído o changeset.
-  const emphasis = Boolean(final) && (significant.length >= 3 || duration >= 10_000 || terminalExceptional)
+  const { t } = useI18n()
+  const home = useUIStore(s => s.flowHomeId)
+  const technical = useUIStore(s => s.showTechnicalActivityNames)
+  const projection = useMemo(() => projectActivity(timeline), [timeline.items, timeline.status])
+  const active = turnIsActive(timeline.status)
+  const hasDetails = projection.segments.some(segment => renderableActivity(segment.items, technical, active).length > 0)
+  const showHeader = !active || hasDetails || projection.segments.length > 1 || (active && (timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling'))
+  const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
   return (
-    <div className="space-y-3">
+    <ActivityActive.Provider value={active}><ActivityTransition identity={`${projection.provisional?.id ?? ""}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
-      <div className="space-y-1 pl-0.5">
-        {displayItems.map((item) => item.type === 'tool-group' ? <ToolGroupRow key={item.id} items={item.items} onResolveApproval={onResolveApproval} /> : item.type === 'steer' ? <SteerBubble key={item.id} item={item} /> : item.type === 'model' ? (
-          <div key={item.id} className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown>{item.modelChange && <ModelChangeNotice change={item.modelChange} />}</div>
-        ) : <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
-        <VisualProgress items={visualItems} status={timeline.status} onResolveApproval={onResolveApproval} />
-        {waiting && timeline.status !== 'approval' && !timeline.items.some(item => item.type === 'question' && item.request.status === 'pending') && (
-          <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
-            <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
-            <span role="status" aria-live="polite">{timeline.status === 'cancelling' ? (lang === 'es' ? 'Cancelando…' : 'Cancelling…') : (lang === 'es' ? 'Pensando…' : 'Thinking…')}</span>
-            <TokenUsage usage={timeline.usage} />
-            <span className="text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(duration)}</span>
-          </div>
-        )}
-        {timeline.usage && ['running', 'approval', 'cancelling'].includes(timeline.status) &&
-          (!waiting || timeline.status === 'approval' || timeline.items.some(item => item.type === 'question' && item.request.status === 'pending')) &&
-          <div className="py-1 text-xs text-[var(--text-subtle)]"><TokenUsage usage={timeline.usage} /></div>}
-      </div>
-      <TurnResult timeline={timeline} planActions={planActions} />
-      <TurnMeta timeline={timeline} user={user} actions={significant.length} emphasis={emphasis} onReviewChanges={onReviewChanges} />
-    </div>
+      {projection.segments.map((segment, index) => {
+        const previous = index < projection.segments.length - 1
+        const hasContent = renderableActivity(segment.items, technical, active).length > 0
+        const issues = activityIssues(segment.items, active)
+        return <div key={segment.id} className="space-y-2">
+          {segment.steer && <SteerBubble item={segment.steer} />}
+          {(hasContent || (!previous && showHeader)) && <ActivityDisclosure
+            stateKey={activityKey(home, timeline.sessionId, timeline.turnId, segment.id)}
+            header={<ActivityHeader timeline={timeline} now={now} previous={previous} />}
+            inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
+          >
+            {hasContent ? <ActivityDetails items={segment.items} status={timeline.status} onResolveApproval={onResolveApproval} /> : undefined}
+          </ActivityDisclosure>}
+          {segment.publicTexts.filter(item => item !== projection.provisional || (active && previous)).map(item => <div key={item.id}>
+            <MessageBubble message={{ id: item.id, role: 'assistant', content: item.content, createdAt: item.occurredAt, turnId: timeline.turnId }} />
+            {item.modelChange && <ModelChangeNotice change={item.modelChange} />}
+          </div>)}
+        </div>
+      })}
+      {projection.approvals.map(({ item, agent }) => <div key={item.approvalId}>
+        {agent && <p className="text-xs text-[var(--text-muted)]">{agent}</p>}
+        <ActivityRow item={item} onResolveApproval={onResolveApproval} />
+      </div>)}
+      {projection.recoveries.map(item => item.type !== 'model' && <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
+      <TurnResult timeline={timeline} planActions={planActions} provisional={!active || projection.segments.at(-1)?.publicTexts.includes(projection.provisional!) ? projection.provisional : undefined} />
+      <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />
+    </ActivityTransition></ActivityActive.Provider>
   )
 }
+
+function activityIssues(items: TimelineItem[], active: boolean): number {
+  return items.reduce((count, item) => count + (item.type === 'agent' ? activityIssues(item.items ?? [], active) : 0)
+    + ('status' in item && (['failed', 'partial', 'cancelled'].includes(item.status ?? '') || item.type === 'vision' && !active && visualPending(item)) ? 1 : item.type === 'tool' && item.presentation?.stderr_warning ? 1 : 0), 0)
+}
+
+function renderableActivity(items: TimelineItem[], technical: boolean, active: boolean) {
+  return items.filter(item => item.type !== 'vision' || technical || ['partial', 'failed', 'cancelled'].includes(item.status) || (!active && visualPending(item)))
+}
+
+const ActivityDetails = memo(function ActivityDetails({ items, status, onResolveApproval }: {
+  items: TimelineItem[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']
+}) {
+  const display = useMemo(() => groupAdjacent(items.filter(i => i.type !== 'vision')), [items])
+  const images = useMemo(() => items.filter((i): i is VisionTimelineItem => i.type === 'vision'), [items])
+  return <>
+    {display.map(item => <div key={item.id} data-activity-item={item.id}>
+      {item.type === 'tool-group' ? <ToolGroupRow items={item.items} onResolveApproval={onResolveApproval} />
+        : item.type === 'model' ? <div className="py-1 text-[13px] leading-relaxed text-[var(--text-muted)]"><Markdown>{item.content}</Markdown>{item.modelChange && <ModelChangeNotice change={item.modelChange} />}</div>
+          : <ActivityRow item={item} onResolveApproval={onResolveApproval} />}
+    </div>)}
+    <VisualProgress items={images} status={status} onResolveApproval={onResolveApproval} showProgress={false} />
+  </>
+})

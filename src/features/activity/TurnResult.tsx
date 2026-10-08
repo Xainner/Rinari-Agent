@@ -8,7 +8,7 @@ import Markdown from '../../components/Markdown'
 import MessageBubble from '../../components/MessageBubble'
 import { useResultVisibility } from '../board/useResultVisibility'
 import { ChangeSetRow } from './ChangeSetRow'
-import type { TurnTimeline } from './types'
+import type { TurnTimeline, ModelTimelineItem } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { failureTab, turnFailure, type TurnFailure } from './turnFailure'
@@ -17,6 +17,7 @@ export interface TurnResultProps {
   timeline: TurnTimeline
   /** Acción única de implementación para un PLAN (la aporta la conversación). */
   planActions?: ReactNode
+  provisional?: ModelTimelineItem
 }
 
 const TERMINAL = new Set(['completed', 'failed', 'stopped', 'cancelled'])
@@ -35,9 +36,9 @@ const ACTIVE = new Set(['running', 'approval', 'cancelling'])
  * resultado cuenta como leído cuando su cuerpo real está en pantalla, no
  * cuando un marcador de 1 px asoma.
  */
-function TurnResult({ timeline, planActions }: TurnResultProps) {
-  const { lang } = useI18n()
-  const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
+function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
+  const { lang, t } = useI18n()
+  const final = provisional ?? [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
   const { changes: changeSets } = presentedChangeSets(timeline)
   const terminal = TERMINAL.has(timeline.status)
   const ref = useResultVisibility(timeline.turnId, terminal)
@@ -45,7 +46,8 @@ function TurnResult({ timeline, planActions }: TurnResultProps) {
   if (!final && changeSets.length === 0 && !failed) return null
   return (
     <div ref={ref} data-testid="turn-result" data-turn-id={timeline.turnId} data-status={timeline.status} className="space-y-3">
-      {final?.type === 'model' && (timeline.mode === 'plan'
+      {provisional && terminal && <p className="text-xs text-amber-300">{t('activity.partialText')}</p>}
+      {final?.type === 'model' && (timeline.mode === 'plan' && !provisional
         ? (
           <section aria-label={lang === 'es' ? 'Plan propuesto' : 'Proposed plan'} className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
             <div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />{lang === 'es' ? 'Plan propuesto' : 'Proposed plan'}</div>

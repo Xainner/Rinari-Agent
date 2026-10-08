@@ -98,8 +98,8 @@ function assertCanonical(container: HTMLElement) {
   // Metadata row once, without repeating the body.
   const meta = within(container).getAllByTestId('turn-meta')
   expect(meta).toHaveLength(1)
-  expect(meta[0]!.textContent).toContain('Turno finalizado')
-  expect(meta[0]!.textContent).toContain('15s')
+  expect(container.textContent).toContain('Ha trabajado durante 15s')
+  expect(meta[0]!.textContent).not.toContain('15s')
   expect(meta[0]!.textContent).toContain('Ejecutado por gpt-fake')
   expect(meta[0]!.textContent).not.toContain('zanahoria')
 }
@@ -167,7 +167,7 @@ function terminal(status: TurnTimeline['status'], extra: Partial<TurnTimeline> =
 
 it('UX-05: failed, stopped and cancelled keep distinct labels and the previous content', () => {
   const failed = terminal('failed', { error: 'boom', errorDetails: { history_preserved: true, code: 'E1' } })
-  expect(failed.getByTestId('turn-meta').textContent).toContain('El turno falló')
+  expect(failed.container.textContent).toContain('El turno falló')
   expect(failed.getByRole('alert').textContent).toContain('boom')
   expect(failed.getByText('Trabajo parcial conservado')).toBeTruthy()
   expect(failed.getByText('Diagnóstico de la interrupción')).toBeTruthy()
@@ -175,15 +175,15 @@ it('UX-05: failed, stopped and cancelled keep distinct labels and the previous c
   failed.unmount()
 
   const stopped = terminal('stopped', { stopReason: { code: 'user', message: 'Detenido por el usuario' } })
-  expect(stopped.getByTestId('turn-meta').textContent).toContain('Turno detenido')
-  expect(stopped.getByTestId('turn-meta').textContent).toContain('Detenido por el usuario')
+  expect(stopped.container.textContent).toContain('Turno detenido')
+  expect(stopped.container.textContent).toContain('Detenido por el usuario')
   expect(stopped.getByText('Trabajo parcial conservado')).toBeTruthy()
   expect(stopped.queryByRole('alert')).toBeNull()
   stopped.unmount()
 
   const cancelled = terminal('cancelled')
-  expect(cancelled.getByTestId('turn-meta').textContent).toContain('Turno cancelado')
-  expect(cancelled.getByTestId('turn-meta').textContent).not.toContain('Turno finalizado')
+  expect(cancelled.container.textContent).toContain('Turno cancelado')
+  expect(cancelled.container.textContent).not.toContain('Turno finalizado')
 })
 
 it('UX-05: "Preparar reintento" fills the draft of that session and never sends', async () => {

@@ -1300,6 +1300,12 @@ pub fn open_install_log() -> Result<()> {
 }
 pub fn launch_agent() -> Result<()> {
     let mut command = Command::new(PathBuf::from(status()?.install_dir).join("rinari-agent.exe"));
+    // Agent outlives setup. Inherited pipes can close with the launcher and
+    // make Electron logging fail with EPIPE after an otherwise successful spawn.
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
     // Never from the installation folder: whatever the app starts inherits
     // its working directory, and a child still alive there blocks the next
     // update from moving the folder.

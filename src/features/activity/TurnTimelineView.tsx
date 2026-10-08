@@ -42,7 +42,8 @@ import { copyText } from '../../lib/clipboard'
 import { ImageActivity } from './ImageActivity'
 import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
-import { activityBlocks, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
+import { activityBlocks, activityState, operationIsActive, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
+import { ActivityMotion, ActivityText } from './ActivityText'
 import { ActivityDisclosure, InspectionDetails, InspectionItem, InspectionScope, childInspectionKey } from './ActivityDisclosure'
 import { ActivityTransition } from './ActivityTransition'
 import { ActivityHeader } from './ActivityHeader'
@@ -94,7 +95,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
-    <summary className="cursor-pointer">{!active && visualPending(item) ? t('activity.interrupted') : item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</summary>
+    <summary className="cursor-pointer"><ActivityText active={active && visualPending(item)}>{!active && visualPending(item) ? t('activity.interrupted') : item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</ActivityText></summary>
     {technical && <InspectionDetails inspectionId="vision-technical"><summary>{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</InspectionDetails>}
     <div className="flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
     {item.analysis && <p className="whitespace-pre-wrap">{item.analysis}</p>}
@@ -124,7 +125,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
       <InspectionDetails inspectionId="tool" className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
         <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
           {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : exited ? <TriangleAlert size={13} className="text-amber-400" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
-          <span>{formatTool(item, lang)}</span>
+          <ActivityText active={running}>{formatTool(item, lang)}</ActivityText>
           {!active && ['requested', 'running'].includes(item.status) && <span className="text-xs">{t('activity.interrupted')}</span>}
           {exited && <span className="font-mono text-[10px] text-amber-300">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
           {outputPath && <span onClick={e => e.stopPropagation()} className="text-[var(--accent)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
@@ -167,7 +168,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
         : ''
   if (!labels) return null
   if (item.type === 'context') return <div className="py-1 text-[13px] text-[var(--text-muted)]">
-    <div className="flex items-center gap-2">{active && item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}{active && item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}
+    <div className="flex items-center gap-2">{active && item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}<ActivityText active={active && item.status === 'running'}>{active && item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}</ActivityText>
       {(item.status === 'failed' || item.status === 'cancelled') && item.sessionId && <>
         {/* El turno se detuvo aquí: compactar y seguir en un solo paso, sin escribir «Continúa». */}
         <button className="underline" onClick={() => { void engineApi.contextCompact(item.sessionId!, lang === 'es' ? 'Continúa' : 'Continue').catch(e => toast.error(commandMessage(e))) }}>{lang === 'es' ? 'Compactar y continuar' : 'Compact and continue'}</button>
@@ -177,7 +178,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     {(item.error || item.contextDetails) && <InspectionDetails inspectionId="context" className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<CompactionDetails details={item.contextDetails} /></InspectionDetails>}
   </div>
   const Icon = item.type === 'verification' ? Check : Sparkles
-  return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" />{labels}</div>
+  return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" /><ActivityText active={active && operationIsActive(item)}>{labels}</ActivityText></div>
 }
 
 /**
@@ -369,7 +370,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-[var(--text)]">
         {active && item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
         <span>{item.agent}</span>
-        <span className="text-xs text-[var(--text-muted)]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</span>
+        <ActivityText active={active && item.status === 'running'} className="text-xs text-[var(--text-muted)]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</ActivityText>
         <span className="ml-auto text-xs">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} />
       </summary>
       <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" data-inspection-scroll className="mt-3 max-h-[32rem] overflow-auto">
@@ -494,7 +495,7 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
   return <>
     {showProgress && active && pending.length > 0 && <div role="status" aria-live="polite" className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
       <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
-      <span>{status === 'cancelling' ? (es ? 'Cancelando análisis' : 'Cancelling analysis') : (es ? 'Analizando imágenes' : 'Analyzing images')} · {finished} {es ? 'de' : 'of'} {total}</span>
+      <ActivityText active={active}>{status === 'cancelling' ? (es ? 'Cancelando análisis' : 'Cancelling analysis') : (es ? 'Analizando imágenes' : 'Analyzing images')} · {finished} {es ? 'de' : 'of'} {total}</ActivityText>
     </div>}
     {issues.length > 0 && <InspectionDetails inspectionId="vision-issues" data-activity-item="vision-issues" className="py-1 text-xs text-amber-300">
       <summary className="cursor-pointer">{es ? 'Revisión de imágenes con incidencias' : 'Image review issues'} · {issues.length}</summary>
@@ -547,11 +548,14 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const home = useUIStore(s => s.flowHomeId)
   const technical = useUIStore(s => s.showTechnicalActivityNames)
   const projection = useMemo(() => projectActivity(timeline), [timeline.items, timeline.status])
+  const state = useMemo(() => activityState(timeline), [timeline.items, timeline.status])
+  const working = ['preparing', 'recovering', 'action', 'thinking', 'responding'].includes(state.kind)
+    || state.kind === 'waiting' && state.parallel > 0
   const active = turnIsActive(timeline.status)
   const showHeader = !active || timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling'
   const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
   return (
-    <ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
+    <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       {active && showHeader && <div data-live-activity className="border-b border-[var(--border)] pb-2 text-[13px] text-[var(--text-muted)]">
         <ActivityHeader timeline={timeline} now={now} />
@@ -578,7 +582,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />
-    </ActivityTransition></ActivityActive.Provider>
+    </ActivityTransition></ActivityActive.Provider></ActivityMotion.Provider>
   )
 }
 
@@ -624,7 +628,7 @@ function OperationGroup({ items, status, onResolveApproval }: {
   const key = childInspectionKey(scope, 'group:' + items[0].id)
   return <div data-operation-group={items[0].id}>
     {items.length === 1 || images.length === items.length ? content : <ActivityDisclosure stateKey={key} operations defaultOpen={firstOpen}
-      header={<span>{label} · {items.length}</span>}
+      header={<ActivityText active={active && items.some(operationIsActive)}>{label} · {items.length}</ActivityText>}
       inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
     >{content}</ActivityDisclosure>}
   </div>

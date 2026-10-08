@@ -4,13 +4,52 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { activityKey, useActivityDisclosure } from '../../stores/activityDisclosure'
 import TurnTimelineView from './TurnTimelineView'
-import type { ModelTimelineItem, TurnTimeline } from './types'
+import type { ModelTimelineItem, ToolTimelineItem, TurnTimeline } from './types'
 
 const model: ModelTimelineItem = { id: 'm', type: 'model', modelCallId: 'm', activitySeq: 1, occurredAt: 1000, content: 'Texto público', status: 'streaming' }
 const base: TurnTimeline = { turnId: 't', sessionId: 's', status: 'running', startedAt: 1000, userMessage: 'Hola', items: [model] }
 const view = (timeline = base) => <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={5000} onResolveApproval={vi.fn()} /></I18nProvider>
 const open = () => fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
 afterEach(() => { cleanup(); useActivityDisclosure.getState().reset() })
+
+const workingTool: ToolTimelineItem = { id: 'tool:live', type: 'tool', toolCallId: 'live', tool: 'shell.exec', status: 'running', activitySeq: 3, occurredAt: 2000 }
+
+it('animates active summaries, keeps public text and finished operations still, and preserves inspection on deltas', () => {
+  const done: ToolTimelineItem = { ...workingTool, id: 'tool:done', toolCallId: 'done', status: 'completed', activitySeq: 2 }
+  const timeline = { ...base, items: [model, done, workingTool] }
+  const rendered = render(view(timeline))
+  const group = screen.getByText('Comandos · 2')
+  expect(group.classList.contains('activity-text-shimmer')).toBe(true)
+  expect(screen.getByText('Texto público').closest('.activity-text-shimmer')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Ver operaciones' }))
+  const rows = rendered.container.querySelectorAll('details > summary')
+  expect(rows[0].querySelector('.activity-text-shimmer')).toBeNull()
+  expect(rows[1].querySelector('.activity-text-shimmer')).not.toBeNull()
+  fireEvent.click(rows[1])
+  rendered.rerender(view({ ...timeline, items: [model, done, { ...workingTool, result: 'Output delta' }] }))
+  expect(screen.getByText('Comandos · 2')).toBe(group)
+  expect(rendered.container.querySelectorAll('details')[1].open).toBe(true)
+  rendered.rerender(view({ ...timeline, items: [model, done, { ...workingTool, status: 'completed' }] }))
+  expect(group.classList.contains('activity-text-shimmer')).toBe(false)
+})
+
+it.each(['completed', 'failed', 'cancelled', 'stopped', 'cancelling', 'approval'] as const)('does not animate %s even if an operation still has a running snapshot', status => {
+  const rendered = render(view({ ...base, status, items: [workingTool] }))
+  const summary = screen.queryByRole('button', { name: 'Ver actividad del turno' })
+  if (summary) fireEvent.click(summary)
+  expect(rendered.container.querySelector('.activity-text-shimmer')).toBeNull()
+})
+
+it('stops motion while a subagent approval is pending and resumes after it is resolved', () => {
+  const agent = { id: 'a', type: 'agent' as const, agentId: 'a', agent: 'explore', status: 'running' as const, phase: 'started' as const, activitySeq: 2, occurredAt: 2000, items: [
+    { id: 'p', type: 'approval' as const, approvalId: 'p', status: 'pending' as const, capability: 'shell.exec', risk: 'high', description: 'Ejecutar', activitySeq: 3, occurredAt: 3000 },
+  ] }
+  const rendered = render(view({ ...base, items: [workingTool, agent] }))
+  expect(rendered.container.querySelector('.activity-text-shimmer')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Permitir una vez' })).toBeTruthy()
+  rendered.rerender(view({ ...base, items: [workingTool, { ...agent, items: [{ ...agent.items[0], status: 'allowed' }] }] }))
+  expect(rendered.container.querySelector('.activity-text-shimmer')).not.toBeNull()
+})
 
 it('keeps progress in place until completion and renders the final once', () => {
   const rendered = render(view())
@@ -172,4 +211,13 @@ it('restores a paused subagent without resuming its follow on remount', async ()
   expect(restored.scrollTop).toBe(43)
   second.rerender(view({ ...base, items: [{ ...agent, items: [model, { ...model, id: 'later', content: 'Nuevo avance' }] }] }))
   expect(restored.scrollTop).toBe(43)
+})
+
+it('keeps pending questions still without hiding their surrounding public progress', () => {
+  const rendered = render(view({ ...base, items: [model, workingTool, {
+    id: 'q', type: 'question', activitySeq: 4, occurredAt: 3000,
+    request: { request_id: 'q', session_id: 's', turn_id: 't', status: 'pending', questions: [] },
+  }] }))
+  expect(rendered.container.querySelector('.activity-text-shimmer')).toBeNull()
+  expect(screen.getByText('Texto público')).toBeTruthy()
 })

@@ -5,6 +5,7 @@ import { toolCategory } from './formatActivity'
 import { elapsedLabel } from './TurnMeta'
 import TokenUsage from './TokenUsageIndicator'
 import type { TurnTimeline } from './types'
+import { ActivityText } from './ActivityText'
 
 export function ActivityHeader({ timeline, now, previous = false }: { timeline: TurnTimeline; now: number; previous?: boolean }) {
   const { t } = useI18n()
@@ -34,7 +35,7 @@ export function ActivityHeader({ timeline, now, previous = false }: { timeline: 
   return <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
     {active && <span className="w-full tabular-nums">{duration === null ? t('activity.inProgressUnknown') : t('activity.inProgress', { duration: elapsedLabel(duration) })}</span>}
     {active && <LoaderCircle size={13} aria-hidden="true" className="shrink-0 animate-spin motion-reduce:animate-none" />}
-    <span role={active ? 'status' : undefined} aria-live={active ? 'polite' : undefined} className="min-w-0 break-words">{label}</span>
+    <ActivityText active={active} role={active ? 'status' : undefined} aria-live={active ? 'polite' : undefined} className="min-w-0 break-words">{label}</ActivityText>
     {active && state.parallel > 0 && <span className="text-xs">{t('activity.parallelAgents', { n: state.parallel })}</span>}
     {state.kind === 'action' && state.simultaneous > 1 && <span className="text-xs">{t('activity.parallelActions', { n: state.simultaneous })}</span>}
     {active && <TokenUsage usage={timeline.usage} />}

@@ -53,6 +53,22 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'activity-text-shimmer': {
+    title: 'Brillo del texto de actividad: ejecución, grupos, finalización y movimiento reducido',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Animación de actividad' }],
+      main: [
+        { tool: 'fs.glob', args: { pattern: '*.txt' }, say: 'Voy a ejecutar una comprobación local.' },
+        { tool: 'shell.exec', args: { argv: ['python', '-c', "import time; print('Actividad local', flush=True); time.sleep(25); print('Listo', flush=True)"], timeout_s: 40 }, say: '' },
+        { text: 'ACTIVIDAD TERMINADA. La respuesta queda sin animación.' },
+        { text: 'RESPUESTA CANCELADA' },
+        { tool: 'fs.glob', args: { pattern: '*.txt' }, say: 'Puedes abrir el grupo para ver los detalles. El brillo indica que sigo trabajando.' },
+        { tool: 'shell.exec', args: { argv: ['python', '-c', "import time; print('Demostración de actividad', flush=True); time.sleep(120); print('Demostración terminada', flush=True)"], timeout_s: 150 }, say: '' },
+        { text: 'Demostración terminada.' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'diagnostics-export': {
     title: 'Acerca de: exportar diagnóstico con registros, volcados y resumen del Engine, sin contenido',
     phases: ['exercise'],

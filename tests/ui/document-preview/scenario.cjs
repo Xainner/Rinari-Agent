@@ -37,7 +37,8 @@ scenario(async () => {
     await wait(`Boolean(document.querySelector('[data-document-kind="pptx"] img[alt="Diapositiva 2 de ventas.pptx"]')?.naturalWidth)`)
     await screenshot('slides')
   } else {
-    assert(await evaluate(`Boolean(document.querySelector('[data-document-kind="pptx"] button[aria-label="Abrir externamente"]'))`))
+    // El aviso ofrece abrirlo con su aplicación (botón con texto, no solo icono).
+    assert(await evaluate(`[...document.querySelectorAll('[data-document-kind="pptx"] [role="status"] button')].some((b) => b.textContent.includes('Abrir externamente'))`))
     await screenshot('no-renderer')
   }
 

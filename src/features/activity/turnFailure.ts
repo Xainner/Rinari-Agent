@@ -5,7 +5,7 @@ import type { ProviderTab } from '../../stores/ui'
  * `limit_kind`, `http_status`), nunca del texto del mensaje. Sin una causa
  * acreditada devuelve `null` y la vista muestra solo el mensaje recibido.
  */
-export type FailureKind = 'quota' | 'rate' | 'limit' | 'auth' | 'access' | 'model' | 'context' | 'request' | 'upstream' | 'stream'
+export type FailureKind = 'quota' | 'rate' | 'limit' | 'auth' | 'access' | 'model' | 'context' | 'request' | 'upstream' | 'stream' | 'engine'
 
 export interface TurnFailure {
   kind: FailureKind
@@ -39,6 +39,8 @@ export function turnFailure(details: Record<string, unknown> | undefined): TurnF
   // La respuesta llegó a medias y terminó sin su evento final (EOF o [DONE]
   // sin finish_reason): no se culpa a nadie, se dice lo que pasó.
   else if (!code && text(details.kind) === 'STREAM_INTERRUPTED' && text(details.close)) kind = 'stream'
+  // El Engine se cerró con el turno en marcha; al reabrir lo cerró él mismo.
+  else if (text(details.reason) === 'engine_exited') kind = 'engine'
   if (!kind) return null
   return {
     kind,

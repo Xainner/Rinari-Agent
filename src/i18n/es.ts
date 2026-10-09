@@ -1015,6 +1015,8 @@ export const es = {
   'failure.request': '{provider} rechazó la solicitud: no es compatible con {model} o con su endpoint.',
   'failure.upstream': 'El servicio de {provider} falló o no respondió a tiempo.',
   'failure.stream': 'La respuesta de {provider} terminó sin confirmar su final.',
+  'failure.engine': 'Rinari se cerró mientras este turno trabajaba. Lo que hizo hasta ahí se conserva; puedes pedirle que continúe.',
+  'vision.withoutImages': 'Este modelo no puede ver imágenes; siguió sin ellas. Para que las vea, usa un modelo con visión.',
   'failure.retryAfter': 'Pide esperar {seconds} s.',
   'failure.action.usage': 'Revisar uso y límites',
   'failure.action.connection': 'Revisar conexión',

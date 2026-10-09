@@ -257,6 +257,7 @@ function mergeEventItem(
       providerName: text(payload.provider_name) || prior?.providerName || '', modelName: text(payload.model_name) || prior?.modelName || '',
       question: text(payload.question) || prior?.question || '', analysis: text(payload.analysis) || prior?.analysis || '',
       error: errorMessage(payload.error), cached: payload.cached === true,
+      fallback: text(payload.fallback) || prior?.fallback,
       images: Array.isArray(payload.images) ? payload.images.flatMap(image => {
         const parsed = presentation({ kind: 'image', image })?.image
         return parsed ? [parsed] : []

@@ -62,7 +62,7 @@ export default function SkillDuplicates() {
     <section
       data-testid="skill-duplicates"
       aria-label={t('skills.duplicates.title')}
-      className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"
+      className="space-y-2 settings-card p-4"
     >
       <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
         <Combine size={14} aria-hidden="true" /> {t('skills.duplicates.title')} · {pairs.length}

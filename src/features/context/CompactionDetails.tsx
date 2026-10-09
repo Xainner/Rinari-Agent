@@ -20,7 +20,7 @@ export default function CompactionDetails({ details }: { details: Record<string,
     {Object.keys(checks).length > 0 && <ul aria-label={t('context.checks')} className="space-y-0.5">
       {CHECKS.flatMap((name) => {
         const outcome = checks[name]
-        return outcome ? [<li key={name}>{t(`context.check.${name}`)}: <span className={outcome === 'failed' ? 'text-red-400' : outcome === 'repaired' ? 'text-amber-400' : 'text-[var(--text)]'}>{t(`context.check.${outcome}`)}</span></li>] : []
+        return outcome ? [<li key={name}>{t(`context.check.${name}`)}: <span className={outcome === 'failed' ? 'text-[var(--danger)]' : outcome === 'repaired' ? 'text-[var(--warning)]' : 'text-[var(--text)]'}>{t(`context.check.${outcome}`)}</span></li>] : []
       })}
     </ul>}
     {Object.keys(checks).length > 0 && <p className="text-[11px] text-[var(--text-subtle)]">{t('context.checks.note')}</p>}

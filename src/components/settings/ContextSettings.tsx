@@ -58,7 +58,7 @@ export default function ContextSettings({ models, providers }: { models: ModelSu
 
   return <div className="max-w-3xl space-y-6">
     <h2 className="text-xl font-semibold text-[var(--text)]">{t('context.title')}</h2>
-    {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+    {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
 
     {draft && <Section title={t('context.behavior')} desc={t('context.behavior.desc')}>
       <Row title={t('context.auto')} desc={t('context.auto.desc')} control={
@@ -70,7 +70,7 @@ export default function ContextSettings({ models, providers }: { models: ModelSu
           <input className={inputClass} type="number" min={1} max={100} inputMode="numeric" value={draft.threshold} aria-invalid={!validThreshold(draft.threshold)}
             aria-describedby="context-threshold-help" onChange={(e) => change({ threshold: e.target.value })} />
         </label>
-        <p id="context-threshold-help" className={`mt-1 text-xs ${validThreshold(draft.threshold) ? 'text-[var(--text-subtle)]' : 'text-red-400'}`}>
+        <p id="context-threshold-help" className={`mt-1 text-xs ${validThreshold(draft.threshold) ? 'text-[var(--text-subtle)]' : 'text-[var(--danger)]'}`}>
           {validThreshold(draft.threshold) ? t('context.threshold.desc') : t('context.threshold.invalid')}
         </p>
       </div>

@@ -58,14 +58,14 @@ export function ImageActivity({ image, dialogOnly = false, onClose, restoreFocus
       <span className="min-w-0"><span className="block truncate text-xs text-[var(--text)]">{image.name}</span><span className="text-[11px] text-[var(--text-subtle)]">{image.width} × {image.height}</span></span>
       {loading && <LoaderCircle size={14} className="animate-spin" />}
     </button>}
-    {error && !open && <p role="alert" className="text-xs text-red-400">{error}</p>}
+    {error && !open && <p role="alert" className="text-xs text-[var(--danger)]">{error}</p>}
     <Dialog open={open} onOpenChange={next => { setOpen(next); if (!next) onClose?.() }}>
       <DialogContent className="max-w-6xl" onCloseAutoFocus={restoreFocus ? event => { event.preventDefault(); restoreFocus() } : undefined}>
         <DialogTitle className="break-all pr-8">{image.name}</DialogTitle>
         <DialogDescription className="break-all">{image.path} · {image.width} × {image.height}</DialogDescription>
         {loading && <LoaderCircle aria-label={lang === 'es' ? 'Cargando imagen' : 'Loading image'} className="animate-spin" />}
         {(large || thumbnail) && <img src={large || thumbnail} alt={image.name} className="mx-auto max-h-[65vh] max-w-full object-contain" />}
-        {error && <div role="alert" className="text-sm text-red-400">{error}<button type="button" onClick={() => setRetry(n => n + 1)} className="ml-3 inline-flex items-center gap-1"><RotateCcw size={14} />{lang === 'es' ? 'Reintentar' : 'Retry'}</button></div>}
+        {error && <div role="alert" className="text-sm text-[var(--danger)]">{error}<button type="button" onClick={() => setRetry(n => n + 1)} className="ml-3 inline-flex items-center gap-1"><RotateCcw size={14} />{lang === 'es' ? 'Reintentar' : 'Retry'}</button></div>}
       </DialogContent>
     </Dialog>
   </>

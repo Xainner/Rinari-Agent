@@ -585,7 +585,7 @@ export function AppSidebar({
                       <ArchiveRestore size={13} />
                     </button>
                     {onDeleteProject && (
-                      <button type="button" onClick={() => onDeleteProject(project.id)} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)] hover:text-red-400" aria-label={t('project.deleteForever')} title={t('project.deleteForever')}>
+                      <button type="button" onClick={() => onDeleteProject(project.id)} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]" aria-label={t('project.deleteForever')} title={t('project.deleteForever')}>
                         <Trash2 size={13} />
                       </button>
                     )}

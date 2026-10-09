@@ -120,7 +120,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.fallback === 'without_images') {
-    return <p data-testid="vision-without-images" className="flex items-center gap-2 py-1 text-[12px] text-amber-300"><TriangleAlert size={12} aria-hidden="true" />{t('vision.withoutImages')}</p>
+    return <p data-testid="vision-without-images" className="flex items-center gap-2 py-1 text-[12px] text-[var(--warning)]"><TriangleAlert size={12} aria-hidden="true" />{t('vision.withoutImages')}</p>
   }
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
@@ -128,7 +128,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     {technical && <InspectionDetails inspectionId="vision-technical"><summary>{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</InspectionDetails>}
     <div className="flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
     {item.analysis && <p className="whitespace-pre-wrap">{item.analysis}</p>}
-    {item.error && <p role="alert" className="text-red-400">{item.error}</p>}
+    {item.error && <p role="alert" className="text-[var(--danger)]">{item.error}</p>}
   </InspectionDetails>
   if (item.type === 'tool') {
     const category = toolCategory(item.tool)
@@ -299,7 +299,7 @@ function StructuredPresentation({ presentation, fallback }: {
       </div>)}
     </dl> : data !== undefined ? <div className="p-2.5"><StructuredValue value={data} /></div> : fallback ? <pre className="max-h-44 overflow-auto whitespace-pre-wrap p-2.5 font-mono">{fallback}</pre> : <div className="p-2.5 text-[var(--text-subtle)]">{lang === 'es' ? 'Sin datos' : 'No data'}</div>}
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] p-2.5"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 break-all text-[var(--accent)] underline">{artifact}</span></FileLink>)}</div>}
-    {presentation.error?.message && <div className="border-t border-red-400/20 p-2.5 text-red-300">{presentation.error.message}</div>}
+    {presentation.error?.message && <div className="border-t border-red-400/20 p-2.5 text-[var(--danger)]">{presentation.error.message}</div>}
     {raw && <InspectionDetails inspectionId="json" className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">JSON</summary><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono">{raw}</pre></InspectionDetails>}
   </div>
 }
@@ -319,16 +319,16 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
       <SquareTerminal size={12} aria-hidden="true" className="text-[var(--accent-2)]" />
       <span className="font-mono">{presentation.cwd ? `${presentation.cwd}` : 'shell'}</span>
       {typeof exitCode === 'number' && <span className={failed ? 'text-[var(--danger)]' : 'text-[var(--success)]'}>{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
-      {presentation.stderr_warning && <span className="text-amber-300">{lang === 'es' ? 'stderr con código 0' : 'stderr with exit 0'}</span>}
-      {presentation.truncated && <span className="text-amber-300">{lang === 'es' ? 'salida visible truncada' : 'visible output truncated'}</span>}
-      {presentation.capture_truncated && <span className="text-red-300">{lang === 'es' ? 'captura completa limitada a 50 MiB' : 'full capture limited to 50 MiB'}</span>}
+      {presentation.stderr_warning && <span className="text-[var(--warning)]">{lang === 'es' ? 'stderr con código 0' : 'stderr with exit 0'}</span>}
+      {presentation.truncated && <span className="text-[var(--warning)]">{lang === 'es' ? 'salida visible truncada' : 'visible output truncated'}</span>}
+      {presentation.capture_truncated && <span className="text-[var(--danger)]">{lang === 'es' ? 'captura completa limitada a 50 MiB' : 'full capture limited to 50 MiB'}</span>}
       <button type="button" onClick={copy} disabled={!displayCommand} className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-[var(--bg-hover)] disabled:opacity-40"><Copy size={11} />{lang === 'es' ? 'Copiar' : 'Copy'}</button>
     </div>
     {displayCommand && <pre className="overflow-auto whitespace-pre-wrap px-2.5 py-2 font-mono text-[11px] text-[var(--text)]"><span className="text-[var(--accent-2)]">{presentation.cwd?.match(/[A-Za-z]:/) ? 'PS> ' : '$ '}</span>{displayCommand}</pre>}
     {presentation.stdout && <StreamOutput label="stdout" content={presentation.stdout} />}
     {presentation.stderr && <StreamOutput label="stderr" content={presentation.stderr} warning />}
     {!presentation.stdout && !presentation.stderr && <div className="border-t border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{lang === 'es' ? 'Sin salida' : 'No output'}</div>}
-    {presentation.error?.message && <div className="border-t border-red-400/20 px-2.5 py-2 text-[11px] text-red-300"><span className="mr-1 font-mono">{presentation.error.code ?? 'error'}:</span>{presentation.error.message}</div>}
+    {presentation.error?.message && <div className="border-t border-red-400/20 px-2.5 py-2 text-[11px] text-[var(--danger)]"><span className="mr-1 font-mono">{presentation.error.code ?? 'error'}:</span>{presentation.error.message}</div>}
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] px-2.5 py-2 text-[11px] text-[var(--text-muted)]"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 underline">{artifact}</span></FileLink>)}</div>}
     {argumentsText && <InspectionDetails inspectionId="command-technical" className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap font-mono">{argumentsText}</pre></InspectionDetails>}
   </div>
@@ -489,7 +489,7 @@ function StreamOutput({ label, content, warning = false }: { label: string; cont
   }
 
   return <div className={`relative border-t px-2.5 py-2 ${warning ? 'border-amber-400/20' : 'border-[var(--border)]'}`}>
-    <div className={`mb-1 text-[10px] uppercase tracking-wide ${warning ? 'text-amber-300' : 'text-[var(--text-subtle)]'}`}>{label}</div>
+    <div className={`mb-1 text-[10px] uppercase tracking-wide ${warning ? 'text-[var(--warning)]' : 'text-[var(--text-subtle)]'}`}>{label}</div>
     <pre ref={outputRef} onScroll={trackScroll} data-inspection-scroll className={`max-h-64 overflow-auto whitespace-pre-wrap font-mono text-[11px] ${warning ? 'text-amber-100/80' : 'text-[var(--text-muted)]'}`}>{content}</pre>
     {showJump && <button type="button" onClick={jumpToEnd} className="absolute right-4 bottom-3 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-muted)] shadow hover:text-[var(--text)]">{lang === 'es' ? 'Ir al final' : 'Jump to end'}</button>}
   </div>
@@ -554,7 +554,7 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
       <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
       <ActivityText active={active}>{status === 'cancelling' ? (es ? 'Cancelando análisis' : 'Cancelling analysis') : (es ? 'Analizando imágenes' : 'Analyzing images')} · {finished} {es ? 'de' : 'of'} {total}</ActivityText>
     </div>}
-    {issues.length > 0 && <InspectionDetails inspectionId="vision-issues" data-activity-item="vision-issues" className="py-1 text-xs text-amber-300">
+    {issues.length > 0 && <InspectionDetails inspectionId="vision-issues" data-activity-item="vision-issues" className="py-1 text-xs text-[var(--warning)]">
       <summary className="cursor-pointer">{es ? 'Revisión de imágenes con incidencias' : 'Image review issues'} · {issues.length}</summary>
       <div className="mt-2 space-y-3">{issues.map(item => <div key={item.id}>
         <p>{item.status === 'partial' ? (es ? 'Análisis parcial · límite de salida' : 'Partial analysis · output limit') : item.status === 'cancelled' ? (es ? 'Análisis cancelado' : 'Analysis cancelled') : item.status === 'failed' ? (es ? 'No se pudo analizar la imagen' : 'Image analysis failed') : (es ? 'Análisis interrumpido' : 'Analysis interrupted')}</p>

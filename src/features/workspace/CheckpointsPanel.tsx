@@ -115,7 +115,7 @@ export default function CheckpointsPanel({ path }: { path: string }) {
   if (loading) return <p role="status" className="text-sm text-[var(--text-subtle)]">{t('workspace.loadingCheckpoints')}</p>
 
   if (loadError) return <div className="space-y-2 text-sm">
-    <p role="alert" className="break-words text-red-400">{loadError}</p>
+    <p role="alert" className="break-words text-[var(--danger)]">{loadError}</p>
     <button type="button" onClick={() => setReload(value => value + 1)} className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs hover:bg-[var(--bg-hover)]">{t('workspace.retry')}</button>
   </div>
 
@@ -173,7 +173,7 @@ export default function CheckpointsPanel({ path }: { path: string }) {
                     type="button"
                     onClick={() => setConfirming(true)}
                     disabled={working}
-                    className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-red-400 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
+                    className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
                   >
                     {t('workspace.restore')}
                   </button>

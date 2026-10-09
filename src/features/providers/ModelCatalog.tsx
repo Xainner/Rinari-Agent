@@ -240,7 +240,7 @@ export default function ModelCatalog({
             type="button"
             onClick={() => void removeModel(model.alias)}
             disabled={busy !== null}
-            className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs text-red-400 transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
+            className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
           >
             {t('providers.modelRemove')}
           </button>

@@ -131,7 +131,7 @@ export default function EngineConsole({ session }: { session: EngineSession }) {
               key={line.key}
               className={
                 line.kind === 'error'
-                  ? 'text-red-400'
+                  ? 'text-[var(--danger)]'
                   : line.kind === 'info'
                     ? 'text-[var(--text-subtle)]'
                     : 'text-[var(--text)]'

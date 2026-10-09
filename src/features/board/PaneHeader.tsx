@@ -273,7 +273,7 @@ function PaneHeader({
             <DropdownMenuItem disabled={!canMoveRight} onSelect={onMoveRight}><ArrowLeftRight size={13} /> {t('board.pane.moveRight')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onRemove}><X size={13} /> {t('board.pane.remove')}</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onRemoveAndClose} className="text-red-500 focus:text-red-500">
+            <DropdownMenuItem onSelect={onRemoveAndClose} className="text-[var(--danger)] focus:text-[var(--danger)]">
               {t('board.pane.removeAndClose')}
             </DropdownMenuItem>
           </DropdownMenuContent>

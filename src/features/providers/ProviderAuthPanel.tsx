@@ -50,7 +50,7 @@ export default function ProviderAuthPanel({ providerAlias, onConnected }: { prov
     <p className="text-xs text-[var(--text-muted)]">{t('providers.experimental')}</p>
     <p role="status" className="text-sm">{auth ? t(`providers.authState.${auth.status}`) : t('providers.loading')}</p>
     {auth?.detail && <p className="text-sm text-[var(--text-muted)]">{auth.detail}</p>}
-    {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+    {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
     {auth?.user_code && <p className="rounded-xl bg-[var(--bg-subtle)] p-3 font-mono text-xl tracking-wider select-all">{auth.user_code}</p>}
     <div className="flex flex-wrap gap-2">
       {auth?.authorization_url && <button className={button} onClick={() => void platform().opener.openUrl(auth.authorization_url!)}>{t('providers.openLogin')}</button>}

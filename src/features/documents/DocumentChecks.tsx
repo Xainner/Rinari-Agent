@@ -16,9 +16,9 @@ const STATUS_ICON = {
 } as const
 
 const STATUS_TONE: Record<DocumentCheck['status'], string> = {
-  passed: 'text-emerald-400',
-  failed: 'text-red-400',
-  partial: 'text-amber-300',
+  passed: 'text-[var(--success)]',
+  failed: 'text-[var(--danger)]',
+  partial: 'text-[var(--warning)]',
   not_run: 'text-[var(--text-subtle)]',
   not_applicable: 'text-[var(--text-subtle)]',
 }
@@ -50,7 +50,7 @@ function Finding({ finding }: { finding: Record<string, unknown> }) {
   const severity = String(finding.severity ?? '')
   return (
     <li className="flex gap-2 text-[11px] text-[var(--text-muted)]">
-      <AlertTriangle size={11} aria-hidden="true" className={cn('mt-0.5 shrink-0', severity === 'error' || severity === 'critical' ? 'text-red-400' : 'text-amber-300')} />
+      <AlertTriangle size={11} aria-hidden="true" className={cn('mt-0.5 shrink-0', severity === 'error' || severity === 'critical' ? 'text-[var(--danger)]' : 'text-[var(--warning)]')} />
       <span className="min-w-0 break-words">
         {where !== undefined && where !== null && <span className="mr-1 font-mono text-[var(--text-subtle)]">{t('documents.findingAt', { where: String(where) })}</span>}
         {finding.code && finding.message ? <span className="mr-1 font-mono text-[10px] text-[var(--text-subtle)]">{String(finding.code)}</span> : null}
@@ -100,7 +100,7 @@ export function DocumentChecks({ sessionId, revisionId }: { sessionId: string; r
   useEffect(() => { void load() }, [load])
 
   if (report === undefined && !error) return <p role="status" className="p-6 text-center text-xs text-[var(--text-muted)]"><LoaderCircle size={14} className="inline animate-spin" /></p>
-  if (error) return <p role="alert" className="p-6 text-center text-sm text-red-400">{error}</p>
+  if (error) return <p role="alert" className="p-6 text-center text-sm text-[var(--danger)]">{error}</p>
   if (!report) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
@@ -157,7 +157,7 @@ export function DocumentChecks({ sessionId, revisionId }: { sessionId: string; r
                 <span className="text-[var(--text)]">{changeLabel(change, t)}</span>
                 {change.change === 'content_changed' && (
                   <span className="block break-words">
-                    <span className="text-red-300/80 line-through">{change.before}</span>{' → '}<span className="text-emerald-300">{change.after}</span>
+                    <span className="text-red-300/80 line-through">{change.before}</span>{' → '}<span className="text-[var(--success)]">{change.after}</span>
                   </span>
                 )}
               </li>
@@ -192,7 +192,7 @@ export function DocumentRevisions({ sessionId, documentId, currentId, onSelect }
       .catch((err) => { if (alive) setError(commandMessage(err)) })
     return () => { alive = false }
   }, [documentId, sessionId])
-  if (error) return <p role="alert" className="p-6 text-center text-sm text-red-400">{error}</p>
+  if (error) return <p role="alert" className="p-6 text-center text-sm text-[var(--danger)]">{error}</p>
   if (!revisions) return <p role="status" className="p-6 text-center text-xs text-[var(--text-muted)]"><LoaderCircle size={14} className="inline animate-spin" /></p>
   return (
     <ol className="h-full space-y-2 overflow-auto p-4" aria-label={t('documents.revisions')}>

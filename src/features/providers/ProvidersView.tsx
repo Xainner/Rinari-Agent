@@ -289,7 +289,7 @@ export default function ProvidersView({
               </span>
             </div>
             {h && (
-              <p className={h.connected ? 'text-xs text-emerald-400' : 'text-xs text-red-400'}>
+              <p className={h.connected ? 'text-xs text-[var(--success)]' : 'text-xs text-[var(--danger)]'}>
                 {h.connected
                   ? t('providers.healthOk', { n: h.models_discovered })
                   : t('providers.healthFail', { detail: h.detail })}
@@ -334,7 +334,7 @@ export default function ProvidersView({
                   setDeleting(provider)
                   setSwitchTo(providers.find((p) => p.alias !== provider.alias)?.alias ?? '')
                 }}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-red-400 transition-colors hover:bg-[var(--bg-hover)]"
+                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
               >
                 {t('providers.delete')}
               </button>

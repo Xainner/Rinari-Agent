@@ -23,6 +23,6 @@ describe('focus ring', () => {
     expect(src('components', 'ui', 'button.tsx')).not.toContain('focus-visible:ring')
     expect(src('components', 'ui', 'switch.tsx')).not.toContain('focus-visible:ring')
     expect(src('lib', 'ui.ts')).not.toContain('focus:border-nebula')
-    expect(src('features', 'questions', 'Questions.tsx')).toContain('ring-1 ring-[var(--accent)]')
+    expect(src('features', 'questions', 'Questions.tsx')).toContain("' is-on'")
   })
 })

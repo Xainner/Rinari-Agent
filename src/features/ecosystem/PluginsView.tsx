@@ -66,13 +66,13 @@ export default function PluginsView({ onChanged }: { onChanged: () => void }) {
             {failing.length > 0 ? (
               <div className="space-y-1">
                 {failing.map((d, i) => (
-                  <p key={i} className="rounded-lg bg-red-500/10 px-2.5 py-1.5 font-mono text-xs text-red-300">
+                  <p key={i} className="rounded-lg bg-red-500/10 px-2.5 py-1.5 font-mono text-xs text-[var(--danger)]">
                     {d.code}: {d.message}
                   </p>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-emerald-400">{t('plugins.healthy')}</p>
+              <p className="text-xs text-[var(--success)]">{t('plugins.healthy')}</p>
             )}
             <div>
               <button

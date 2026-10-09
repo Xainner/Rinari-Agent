@@ -203,7 +203,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
                 <button
                   type="button"
                   onClick={() => setDeleting(soul)}
-                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-red-400 transition-colors hover:bg-[var(--bg-hover)]"
+                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
                 >
                   {t('soul.delete')}
                 </button>

@@ -68,9 +68,9 @@ export default function SkillChanges({ before, after }: { before: string; after:
           )
         }
         const tone = row.kind === 'added'
-          ? 'bg-emerald-500/10 text-emerald-400'
+          ? 'bg-emerald-500/10 text-[var(--success)]'
           : row.kind === 'removed'
-            ? 'bg-red-500/10 text-red-400'
+            ? 'bg-red-500/10 text-[var(--danger)]'
             : ''
         const mark = row.kind === 'added' ? '+' : row.kind === 'removed' ? '-' : ' '
         return (

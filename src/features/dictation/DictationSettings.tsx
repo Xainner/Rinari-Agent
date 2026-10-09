@@ -105,7 +105,7 @@ export default function DictationSettings() {
     }
   }
 
-  const card = 'rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4'
+  const card = 'settings-card p-4'
   if (unavailable) {
     return <p className="text-sm text-[var(--text-muted)]">{t('dictation.unavailable')}</p>
   }
@@ -121,7 +121,7 @@ export default function DictationSettings() {
         <p className="mt-1 text-sm text-[var(--text-muted)]">{t('dictation.desc')}</p>
       </div>
 
-      {!status.binary_found && <p role="status" className="text-sm text-amber-300">{t('dictation.noBinary')}</p>}
+      {!status.binary_found && <p role="status" className="text-sm text-[var(--warning)]">{t('dictation.noBinary')}</p>}
 
       <div className={card}>
         <h3 className="text-sm font-semibold text-[var(--text)]">{t('dictation.model')}</h3>
@@ -145,8 +145,8 @@ export default function DictationSettings() {
                 </button>
                 {model.installed ? (
                   <>
-                    <span className="text-xs text-emerald-400">{t('dictation.installed')}</span>
-                    <button type="button" aria-label={t('dictation.remove', { model: model.id })} onClick={() => void remove(model.id)} className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-red-400">
+                    <span className="text-xs text-[var(--success)]">{t('dictation.installed')}</span>
+                    <button type="button" aria-label={t('dictation.remove', { model: model.id })} onClick={() => void remove(model.id)} className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]">
                       <Trash2 size={13} aria-hidden="true" />
                     </button>
                   </>

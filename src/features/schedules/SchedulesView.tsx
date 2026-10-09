@@ -27,8 +27,8 @@ import {
 } from './scheduleModel'
 
 const TONE_CLASS: Record<ReturnType<typeof runTone>, string> = {
-  ok: 'border-emerald-500/40 text-emerald-400',
-  warn: 'border-amber-500/40 text-amber-400',
+  ok: 'border-emerald-500/40 text-[var(--success)]',
+  warn: 'border-amber-500/40 text-[var(--warning)]',
   bad: 'border-[var(--danger)]/50 text-[var(--danger)]',
   live: 'border-[var(--accent)]/50 text-[var(--accent)]',
   muted: 'border-[var(--border)] text-[var(--text-subtle)]',

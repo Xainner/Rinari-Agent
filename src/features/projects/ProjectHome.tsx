@@ -119,7 +119,7 @@ export default function ProjectHome({
             <button type="button" onClick={() => void onUpdate({ pinned: !project.pinned })} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-hover)]">
               <Pin size={13} /> {project.pinned ? t('project.unpin') : t('project.pin')}
             </button>
-            <button type="button" onClick={onArchive} className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+            <button type="button" onClick={onArchive} className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-2.5 py-1.5 text-xs text-[var(--danger)] hover:bg-red-500/10">
               <Archive size={13} /> {t('project.archive')}
             </button>
           </div>

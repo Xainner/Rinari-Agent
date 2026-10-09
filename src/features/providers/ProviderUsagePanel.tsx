@@ -42,7 +42,7 @@ export default function ProviderUsagePanel({ providerAlias, compact = false }: {
       <div><h3 className="text-sm font-semibold">{t('providers.accountUsage')}</h3><p className="mt-1 text-xs text-[var(--text-muted)]">{t('providers.accountUsageHint')}</p></div>
       <button type="button" disabled={busy} onClick={() => void refresh(true)} className="shrink-0 rounded-lg border border-[var(--border)] p-2 hover:bg-[var(--bg-hover)] disabled:opacity-40" aria-label={t('providers.refreshUsage')}><RefreshCw size={15} className={busy ? 'animate-spin motion-reduce:animate-none' : ''} /></button>
     </div>
-    {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+    {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
     {!snapshot && busy && <p role="status" className="text-sm text-[var(--text-muted)]">{t('providers.loading')}</p>}
     {snapshot && <>
       <p role="status" className="text-xs text-[var(--text-muted)]">{t(`providers.usageState.${snapshot.status}`)}</p>

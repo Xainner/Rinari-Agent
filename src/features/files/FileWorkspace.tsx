@@ -157,7 +157,7 @@ export function InlineMedia({ href }: { href: string }) {
         <Icon size={12} aria-hidden="true" />
         <Play size={10} aria-hidden="true" />
       </button>
-      {state.error && <span role="alert" className="ml-1.5 text-xs text-red-400">{state.error}</span>}
+      {state.error && <span role="alert" className="ml-1.5 text-xs text-[var(--danger)]">{state.error}</span>}
     </span>
   )
 }

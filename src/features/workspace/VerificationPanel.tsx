@@ -14,8 +14,8 @@ function str(value: unknown): string {
  * skipped`; comparing with `'pass'` painted every success red.
  */
 export function resultTone(result: string): string {
-  if (result === 'passed') return 'text-emerald-400'
-  if (result === 'failed' || result === 'error') return 'text-red-400'
+  if (result === 'passed') return 'text-[var(--success)]'
+  if (result === 'failed' || result === 'error') return 'text-[var(--danger)]'
   return 'text-[var(--text-muted)]'
 }
 

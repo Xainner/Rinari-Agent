@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory'
   activitySeq: number
   occurredAt: number
 }
@@ -193,7 +193,28 @@ export interface SteerTimelineItem extends TimelineItemBase {
   status: 'pending' | 'applied'
 }
 
+/**
+ * Memoria dentro del turno: una propuesta de Rinari (`memory.candidate.*`,
+ * modo «Preguntar») o algo que ya guardó sola (`memory.remembered`, modo
+ * «Automático»). Se muestra fuera de la actividad plegada.
+ */
+export interface MemoryTimelineItem extends TimelineItemBase {
+  type: 'memory'
+  memoryEvent: 'candidate' | 'remembered'
+  candidateId?: string
+  memoryId?: string
+  topic: string
+  text: string
+  kind?: string
+  scope?: string
+  reason?: string
+  sensitive?: boolean
+  /** Propuestas: `pending` hasta `memory.candidate.resolved`. Recuerdos: `remembered`. */
+  status: 'pending' | 'approved' | 'denied' | 'remembered'
+}
+
 export type TimelineItem =
+  | MemoryTimelineItem
   | SteerTimelineItem
   | VisionTimelineItem
   | QuestionTimelineItem

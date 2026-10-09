@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import {
   ArrowLeft,
   Bot,
+  Brain,
   Boxes,
   ChevronRight,
   Cpu,
@@ -29,6 +30,7 @@ const NAV: Array<{ id: SettingsSection; icon: typeof Info }> = [
   { id: 'models', icon: Cpu },
   { id: 'vision', icon: Sparkles },
   { id: 'context', icon: Layers },
+  { id: 'memory', icon: Brain },
   { id: 'agents', icon: Bot },
   { id: 'soul', icon: Sparkles },
   { id: 'skills', icon: Library },

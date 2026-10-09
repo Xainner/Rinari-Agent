@@ -36,6 +36,7 @@ import TurnMeta from './TurnMeta'
 import CompactionDetails from '../context/CompactionDetails'
 import TurnResult from './TurnResult'
 import { ModelChangeNotice } from './ModelChangeNotice'
+import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
@@ -588,6 +589,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
         <ActivityRow item={item} onResolveApproval={onResolveApproval} />
       </div>)}
       {projection.notices.map(item => item.type !== 'model' && <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
+      {projection.memories.map(item => <MemoryActivityCard key={item.id} item={item} />)}
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />

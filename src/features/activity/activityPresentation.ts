@@ -1,4 +1,4 @@
-import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem } from './types'
+import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem } from './types'
 
 export const turnIsActive = (status: TurnTimeline['status']) => ['running', 'approval', 'cancelling'].includes(status)
 export const pendingApproval = (item: TimelineItem): item is ApprovalTimelineItem => item.type === 'approval' && ['pending', 'resolving'].includes(item.status)
@@ -44,6 +44,8 @@ export function projectActivity(timeline: TurnTimeline) {
   const recoveries: TimelineItem[] = []
   // Avisos sobre el modelo que deben verse aunque la actividad esté plegada.
   const notices: TimelineItem[] = []
+  // Propuestas y recuerdos: tarjetas propias, también desde un subagente.
+  const memories: MemoryTimelineItem[] = []
   const segments: ActivitySegment[] = [{ id: 'initial', items: [], publicTexts: [] }]
   const actions = new Set<string>()
   const incidents = new Set<string>()
@@ -59,6 +61,10 @@ export function projectActivity(timeline: TurnTimeline) {
     if (pendingApproval(item) && ownerActive) {
       // Main and child events can expose the same approval. Render its controls once.
       approvals.set(item.approvalId, { item, agent })
+      return null
+    }
+    if (item.type === 'memory') {
+      if (!memories.some((memory) => memory.id === item.id)) memories.push(item)
       return null
     }
     if (item.type === 'question' && item.request.status === 'pending') return ownerActive ? null : { ...item, request: { ...item.request, status: 'expired' } }
@@ -98,7 +104,7 @@ export function projectActivity(timeline: TurnTimeline) {
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }
-  return { segments, approvals: [...approvals.values()], recoveries, notices, final, provisional, actions: actions.size, incidents: incidents.size }
+  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, final, provisional, actions: actions.size, incidents: incidents.size }
 }
 
 /** Active identities win over the last row or output timestamp. Token/stdout updates cannot rotate the header. */

@@ -46,6 +46,7 @@ export type SettingsSection =
   | 'models'
   | 'vision'
   | 'context'
+  | 'memory'
   | 'agents'
   | 'soul'
   | 'skills'

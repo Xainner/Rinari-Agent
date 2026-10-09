@@ -35,7 +35,9 @@ export default function StartupSplash({
   const technical = [state ? `state: ${state}` : null, detail ? `detail: ${detail}` : null].filter(Boolean).join('\n') || '—'
   return (
     <div className="startup">
-      <div className="startup-sky" aria-hidden="true" />
+      <div className="startup-sky" aria-hidden="true" style={{ backgroundImage: `url(${art.sky()})` }} />
+      <div className="startup-glow" aria-hidden="true" />
+      <div className="startup-stars" aria-hidden="true" />
       <main className="startup-stage">
         <div className="startup-halo" data-failed={failed || undefined} aria-hidden="true">
           <img src={art.chibi(failed ? 'oops' : 'wave')} alt="" draggable={false} />

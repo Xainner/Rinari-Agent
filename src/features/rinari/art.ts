@@ -21,4 +21,5 @@ export const art = {
   expression: (name: Expression): string => pick(`exp-${name}`, name === 'listen' ? 'exp-focused' : '', name === 'sleepy' ? 'exp-think' : '', 'exp-idle', 'exp-smug', 'avatar'),
   chibi: (name: ChibiPose): string => pick(`chibi-${name}`, name === 'oops' ? 'chibi-peek' : '', 'chibi-wave'),
   installerHero: (): string => pick('installer-hero', 'exp-idle'),
+  sky: (): string => pick('sky'),
 }

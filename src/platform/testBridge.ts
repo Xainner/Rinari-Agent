@@ -352,6 +352,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
         if (bridge.browserControlResult) return bridge.browserControlResult
         return { control: owner, control_state: owner, control_revision: (expectedRevision ?? 1) + 1 }
       },
+      async history(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop') {
+        bridge.browserCalls.push({ kind: 'history', sessionId, action })
+      },
       async navigate(sessionId: string, url: string) {
         bridge.browserCalls.push({ kind: 'navigate', sessionId, url })
       },

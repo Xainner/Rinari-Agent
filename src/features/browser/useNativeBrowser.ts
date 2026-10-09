@@ -85,6 +85,7 @@ export interface NativeBrowserState {
   takeControl(): Promise<void>
   returnControl(): Promise<void>
   navigate(url: string): Promise<void>
+  history(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>
   /** Se le pasa al slot para que reporte su geometría. */
   slotRef: (element: HTMLElement | null) => void
 }
@@ -390,6 +391,7 @@ export function useNativeBrowser(
         applyControlReply(result)
       }),
     navigate: (url) => guard(() => platform().browser.navigate(sessionId, url)),
+    history: (action) => guard(() => platform().browser.history(sessionId, action)),
     slotRef,
   }
 }

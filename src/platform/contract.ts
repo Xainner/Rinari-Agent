@@ -246,6 +246,8 @@ export interface DesktopBridge {
     ): Promise<NativeBrowserControl>
     /** Navegación pedida por el usuario desde la toolbar. */
     navigate(sessionId: string, url: string): Promise<void>
+    /** Atrás, adelante, recargar o detener la pestaña visible (requiere el control). */
+    history(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>
     /** Captura del mismo target mientras la superficie física está retirada. */
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
     /** Cambios de pestañas, control o estado. Sin sondeo. */

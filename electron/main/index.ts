@@ -483,6 +483,23 @@ function browserServices(): HostServices['browser'] {
       return { url }
     },
 
+    // Atrás, adelante, recargar y detener de la toolbar: como navegar, son del
+    // usuario sobre la pestaña visible y requieren que tenga el control.
+    history: async (sessionId, action) => {
+      const context = requireContext(sessionId)
+      requireUserControl(context, 'navigating')
+      const entry = browserRegistry!.target(context.contextId, null)
+      if (!entry) return { url: '' }
+      const contents = entry.view.webContents
+      const history = contents.navigationHistory
+      if (action === 'back' && history.canGoBack()) history.goBack()
+      else if (action === 'forward' && history.canGoForward()) history.goForward()
+      else if (action === 'reload') contents.reload()
+      else if (action === 'stop') contents.stop()
+      await browserHost?.publishTargets(context.contextId)
+      publishBrowserContext(sessionId)
+      return { url: contents.getURL() }
+    },
     preview: (sessionId) => browserHost?.preview(sessionId) ?? Promise.resolve(null),
     diagnostics: () => ({ layoutSlots: layoutCoordinator?.size ?? 0 }),
   }

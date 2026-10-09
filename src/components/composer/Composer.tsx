@@ -3,7 +3,7 @@ import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Brain, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
@@ -16,8 +16,9 @@ import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
+import { supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import EffortPicker from './EffortPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
 import { useChatFileReceiver } from './ChatFileDropZone'
@@ -222,7 +223,6 @@ export default function Composer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [permissionOpen, setPermissionOpen] = useState(false)
-  const [reasoningOpen, setReasoningOpen] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
@@ -679,7 +679,7 @@ export default function Composer({
 
   return (
     <div ref={rootRef} className="composer-root relative">
-      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
+      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} data-working={isStreaming || undefined} className="composer-surface rounded-[22px] border p-2.5 transition-colors">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
@@ -732,7 +732,7 @@ export default function Composer({
             ref={menuRef}
             data-testid="composer-suggestions"
             style={{ position: 'fixed', left: menuBox.left, width: menuBox.width, bottom: menuBox.bottom }}
-            className="z-50 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl"
+            className="r-pop z-50 max-h-64 overflow-auto rounded-[var(--r-lg)] p-1.5" data-state="open"
           >
             {slashMatches.length > 0 && (
               <div role="listbox" aria-label={t('composer.slash.heading')} data-testid="slash-command-list">
@@ -831,8 +831,8 @@ export default function Composer({
           <DictationButton textareaRef={textareaRef} disabled={isSubmitting} onText={insertDictation} />
           <Popover open={attachmentOpen} onOpenChange={setAttachmentOpen}>
             <PopoverTrigger asChild>
-              <button type="button" disabled={isStreaming} aria-label={t('attach.attachFiles')} title={t('attach.addToMessage')} className="flex size-8 cursor-pointer items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:opacity-40">
-                <Paperclip size={15} />
+              <button type="button" disabled={isStreaming} aria-label={t('attach.attachFiles')} title={t('attach.addToMessage')} className="composer-chip composer-chip-icon">
+                <Plus size={16} />
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-60 p-1.5">
@@ -849,9 +849,9 @@ export default function Composer({
           </Popover>
           <Popover open={permissionOpen} onOpenChange={setPermissionOpen}>
             <PopoverTrigger asChild>
-              <button type="button" disabled={isStreaming} title={t('perm.title')} style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-current/25 bg-[var(--bg-subtle)] p-2 text-xs transition-colors hover:border-current disabled:opacity-40">
-                <Shield size={13} />
-                <span className="sr-only">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : 'Workspace'}</span>
+              <button type="button" disabled={isStreaming} title={t('perm.title')} className="composer-chip">
+                <Shield size={13} style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} />
+                <span className="composer-chip-label">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : 'Workspace'}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1.5">
@@ -873,13 +873,13 @@ export default function Composer({
             ref={modesGroupRef}
             role="group"
             aria-label={t('mode.change')}
-            className="composer-modes relative inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] p-0.5"
+            className="composer-modes relative inline-flex items-center rounded-full border p-0.5"
           >
             <span
               aria-hidden="true"
               data-testid="mode-pill"
               ref={pillRef}
-              className="composer-mode-pill absolute top-0.5 bottom-0.5 left-0 rounded-full bg-[var(--accent)]"
+              className="composer-mode-pill absolute top-0.5 bottom-0.5 left-0 rounded-full"
               style={{
                 transition:
                   pillArmed
@@ -927,49 +927,12 @@ export default function Composer({
             disabled={isStreaming}
             openSignal={modelSignal}
           />
-          <Popover open={reasoningOpen} onOpenChange={setReasoningOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                disabled={isStreaming}
-                title={t('composer.thinkingMenu')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] disabled:opacity-40"
-              >
-                <Brain size={13} aria-hidden="true" />
-                <span>{t(`thinking.${reasoningEffort}` as 'thinking.high')}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="max-h-[min(70vh,32rem)] w-72 overflow-y-auto p-1.5"
-            >
-              <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">
-                {t('composer.thinkingMenu')}
-              </p>
-              {REASONING_LEVELS.map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  disabled={!supportsEffort(activeModel?.capabilities ?? models.find(model => model.alias === activeAlias)?.capabilities, level)}
-                  onClick={() => { setReasoningOpen(false); onReasoningChange(level) }}
-                  className="flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-[var(--text)]">
-                      {t(`thinking.${level}` as 'thinking.high')}
-                    </span>
-                    <span className="block text-[11px] leading-snug text-[var(--text-subtle)]">
-                      {t(`thinking.desc${level === 'off' ? 'Off' : level[0].toUpperCase() + level.slice(1)}` as 'thinking.descHigh')}
-                    </span>
-                  </span>
-                  {reasoningEffort === level && (
-                    <Check size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--accent-2)]" />
-                  )}
-                </button>
-              ))}
-              <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{t('thinking.compatibility')}</p>
-            </PopoverContent>
-          </Popover>
+          <EffortPicker
+            value={reasoningEffort}
+            capabilities={activeModel?.capabilities ?? models.find(model => model.alias === activeAlias)?.capabilities}
+            disabled={isStreaming}
+            onChange={onReasoningChange}
+          />
 
           {canSteer && text.trim() ? (
             <button
@@ -978,7 +941,7 @@ export default function Composer({
               disabled={isSubmitting}
               aria-label={t('composer.steer')}
               title={t('composer.steer')}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-30"
+              className="composer-send"
             >
               <ArrowUp size={17} aria-hidden="true" />
             </button>
@@ -988,9 +951,9 @@ export default function Composer({
               onClick={onStop}
               aria-label={t('composer.stop')}
               title={t('composer.stop')}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg-app)] transition-transform hover:scale-105 active:scale-95"
+              className="composer-send is-stop"
             >
-              <Square size={14} aria-hidden="true" fill="currentColor" />
+              <Square size={13} aria-hidden="true" fill="currentColor" />
             </button>
           ) : (
             <button
@@ -999,7 +962,7 @@ export default function Composer({
               disabled={!canSend || isSubmitting || visionUnavailable || attachments.some((item) => item.status === 'preparing' || item.status === 'error')}
               aria-label={t('composer.send')}
               title={t('composer.send')}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:hover:brightness-100"
+              className="composer-send"
             >
               <ArrowUp size={17} aria-hidden="true" />
             </button>

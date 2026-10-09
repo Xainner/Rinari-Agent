@@ -19,6 +19,20 @@ const ERROR_KEYS: Record<string, I18nKey> = {
 }
 
 /**
+ * Barras del micrófono: las últimas muestras del nivel real de entrada. Si no
+ * llega audio, se quedan planas; no hay una animación que finja escuchar.
+ */
+function LevelBars({ level }: { level: number }) {
+  const [history, setHistory] = useState<number[]>(() => Array(9).fill(0))
+  useEffect(() => { setHistory((previous) => [...previous.slice(1), level]) }, [level])
+  return (
+    <span className="dictation-bars" aria-hidden="true">
+      {history.map((value, index) => <i key={index} style={{ height: `${Math.round(3 + Math.min(1, value * 6) * 15)}px` }} />)}
+    </span>
+  )
+}
+
+/**
  * Micrófono del composer. Clic para empezar y clic para terminar, o mantener
  * Ctrl+Espacio en el texto. Lo dicho se inserta en el cursor; el composer
  * decide si se envía (ajuste «enviar al terminar», apagado por defecto).
@@ -151,7 +165,7 @@ export default function DictationButton({
             event.preventDefault()
             toggle()
           }}
-          className={`relative flex h-8 min-w-8 cursor-pointer items-center justify-center gap-1 rounded-full px-1.5 transition-colors disabled:opacity-40 ${recording ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
+          className={`composer-chip ${recording ? 'dictation-live' : 'composer-chip-icon'}`}
         >
           {busy ? (
             <LoaderCircle size={15} aria-hidden="true" className="motion-safe:animate-spin" />
@@ -162,11 +176,7 @@ export default function DictationButton({
           )}
           {recording && (
             <>
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 rounded-full border border-red-400/60"
-                style={{ transform: `scale(${1 + Math.min(0.35, dictation.level * 3)})` }}
-              />
+              <LevelBars level={dictation.level} />
               <span className="text-[11px] tabular-nums">{`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`}</span>
             </>
           )}

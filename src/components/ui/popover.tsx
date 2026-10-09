@@ -18,7 +18,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          'z-50 w-72 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] outline-none data-[state=open]:animate-[luma-zoom-in_.14s_ease-out]',
+          'r-pop z-50 w-72 rounded-[var(--r-lg)] p-1.5 outline-none',
           className,
         )}
         {...props}

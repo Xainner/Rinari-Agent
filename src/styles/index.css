@@ -17,170 +17,137 @@
   --font-display: 'Bricolage Grotesque Variable', 'Instrument Sans Variable', ui-sans-serif, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
 
-  /* Paleta histórica remapeada a tokens semánticos (dark/light vía vars). */
+  /* Paleta histórica remapeada a tokens semánticos. */
   --color-ink-950: var(--bg-app);
   --color-ink-900: var(--bg-elevated);
   --color-ink-850: var(--bg-subtle);
   --color-ink-800: var(--bg-hover);
-  --color-ink-700: var(--bg-hover);
-  --color-ink-600: var(--border-strong);
-
   --color-mist-100: var(--text);
   --color-mist-200: var(--text-muted);
   --color-mist-400: var(--text-muted);
   --color-mist-500: var(--text-subtle);
   --color-mist-600: var(--text-subtle);
-
   --color-nebula-300: var(--accent-2);
   --color-nebula-400: var(--accent-2);
   --color-nebula-500: var(--accent-2);
-
-  --color-iris-300: var(--accent);
-  --color-iris-400: var(--accent);
-  --color-iris-500: var(--accent);
-  --color-iris-600: var(--accent);
-
-  --color-flare-400: var(--accent-3);
-  --color-flare-500: var(--accent-3);
-
   --color-red-400: var(--danger);
   --color-red-500: var(--danger);
   --color-amber-400: var(--warning);
-
-  --animate-caret: caret-blink 1s step-end infinite;
-  --animate-float-a: float-a 9s ease-in-out infinite;
-  --animate-float-b: float-b 12s ease-in-out infinite;
 }
 
-/* Tokens semánticos (§3.2). :root = dark. */
+/* ---------------------------------------------------------------------------
+ * Obsidiana neón — tokens de Rinari (sistema de diseño v2).
+ *
+ * Única fuente de color, radio, sombra y movimiento. Las pantallas usan los
+ * nombres semánticos (`--bg-*`, `--text-*`, `--border*`, `--accent*`,
+ * `--status-*`), nunca hex. Tinta negra con el violeta neón de sus audífonos;
+ * magenta solo en degradados y cian para lo que hacen los subagentes.
+ *
+ * El tema claro está en preparación: cuando exista será un segundo bloque con
+ * los mismos nombres. Hasta entonces Ajustes no lo ofrece.
+ * ------------------------------------------------------------------------- */
 :root {
-  --bg-app: #09090b;
-  --bg-sidebar: #0c0c0f;
-  --bg-elevated: #111116;
-  /* Ojo: esta declaración **no** es la que se aplica. Más abajo, el bloque
-     «Rinari concept foundation» vuelve a declarar `--bg-subtle` sobre `:root`
-     y gana por orden de cascada. El valor efectivo está allí. */
-  --bg-subtle: #15151b;
-  --bg-hover: #1b1b22;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --text: #f5f5f6;
-  --text-muted: #a1a1aa;
-  --text-subtle: #71717a;
-  --accent: #8b5cf6;
-  --accent-2: #22d3ee;
-  --accent-3: #e879f9;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --success: #22c55e;
-  --access-workspace: #4ade80;
-  --access-full: #fb7c52;
-  --nebula-gradient: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 52%, #e879f9 100%);
   color-scheme: dark;
-}
 
-html[data-theme='light'] {
-  --bg-app: #ffffff;
-  --bg-sidebar: #f7f7f8;
-  --bg-elevated: #ffffff;
-  --bg-subtle: #f4f4f5;
-  --bg-hover: #ececef;
-  --border: rgba(24, 24, 27, 0.08);
-  --border-strong: rgba(24, 24, 27, 0.14);
-  --text: #18181b;
-  --text-muted: #52525b;
-  --text-subtle: #71717a;
-  --accent: #7c3aed;
-  --accent-2: #0891b2;
-  --accent-3: #c026d3;
-  --danger: #dc2626;
-  --warning: #d97706;
-  --success: #16a34a;
-  --access-workspace: #15803d;
-  --access-full: #c2410c;
-  color-scheme: light;
-}
+  /* Tinta: fondos, del más oscuro al más elevado. */
+  --ink-0: #06050b;
+  --ink-1: #0a0812;
+  --ink-2: #100c1b;
+  --ink-3: #171126;
+  --ink-4: #20182f;
+  --ink-5: #2b2040;
 
-/* Presets de acento (§20). Nebula = valores base, sin override. */
-html[data-accent='cyan'] {
-  --accent: #22d3ee;
-  --accent-2: #34d399;
-  --accent-3: #38bdf8;
-}
-html[data-theme='light'][data-accent='cyan'] {
-  --accent: #0e7490;
-  --accent-2: #059669;
-  --accent-3: #0284c7;
-}
-html[data-accent='fuchsia'] {
-  --accent: #e879f9;
-  --accent-2: #f0abfc;
-  --accent-3: #c084fc;
-}
-html[data-theme='light'][data-accent='fuchsia'] {
-  --accent: #a21caf;
-  --accent-2: #c026d3;
-  --accent-3: #9333ea;
-}
-html[data-accent='blue'] {
-  --accent: #60a5fa;
-  --accent-2: #38bdf8;
-  --accent-3: #818cf8;
-}
-html[data-theme='light'][data-accent='blue'] {
-  --accent: #1d4ed8;
-  --accent-2: #0284c7;
-  --accent-3: #4f46e5;
-}
-html[data-accent='green'] {
-  --accent: #34d399;
-  --accent-2: #a3e635;
-  --accent-3: #22d3ee;
-}
-html[data-theme='light'][data-accent='green'] {
-  --accent: #047857;
-  --accent-2: #4d7c0f;
-  --accent-3: #0e7490;
-}
-html[data-accent='orange'] {
-  --accent: #fb923c;
-  --accent-2: #fbbf24;
-  --accent-3: #f472b6;
-}
-html[data-theme='light'][data-accent='orange'] {
-  --accent: #c2410c;
-  --accent-2: #b45309;
-  --accent-3: #be123c;
-}
+  /* Violeta de marca (500 = el neón de sus audífonos), magenta y cian. */
+  --violet-100: #efe8ff;
+  --violet-200: #ddd0ff;
+  --violet-300: #c4b5fd;
+  --violet-400: #a78bfa;
+  --violet-500: #9358ff;
+  --violet-600: #7c3aed;
+  --violet-700: #5b21b6;
+  --violet-900: #241047;
+  --magenta-400: #e879f9;
+  --cyan-300: #82f4ef;
 
-@keyframes caret-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}
+  /* Semánticos de superficie. */
+  --bg-app: var(--ink-0);
+  --bg-sidebar: #0b0914;
+  --bg-elevated: #120e1f;
+  /* Fondo de `.app-topbar`. El host pinta con este mismo color la franja de
+     los controles nativos (`electron/shared/chrome.ts`): si cambia aquí,
+     cambia allí. Una prueba compara los dos. */
+  --bg-subtle: #0a0812;
+  --bg-hover: #1a1429;
+  --bg-active: #251a3d;
+  --bg-inset: #08060f;
 
-@keyframes float-a {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(30px, -24px, 0) scale(1.08);
-  }
-}
+  /* Líneas teñidas de violeta. */
+  --border: rgb(167 139 250 / 0.14);
+  --border-strong: rgb(196 181 253 / 0.28);
+  --line-1: rgb(167 139 250 / 0.1);
+  --line-2: rgb(167 139 250 / 0.2);
+  --line-3: rgb(196 181 253 / 0.38);
 
-@keyframes float-b {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-26px, 18px, 0) scale(0.94);
-  }
+  /* Texto. */
+  --text: #f6f2ff;
+  --text-muted: #bcb1d6;
+  --text-subtle: #8e82ab;
+
+  /* Acento: --accent es la marca, --accent-2 el violeta claro de enlaces e
+     iconos, --accent-3 el magenta de los degradados. */
+  --accent: var(--violet-500);
+  --accent-2: #b794ff;
+  --accent-3: var(--magenta-400);
+  --nebula-gradient: linear-gradient(135deg, var(--violet-400), var(--violet-600) 55%, var(--magenta-400));
+  --grad-brand: linear-gradient(135deg, #a78bfa, #7c3aed 55%, #c026d3);
+  --grad-edge: linear-gradient(135deg, rgb(196 181 253 / 0.55), rgb(147 88 255 / 0.12) 40%, rgb(232 121 249 / 0.35));
+  --grad-text: linear-gradient(100deg, var(--violet-100) 10%, var(--violet-300) 45%, var(--magenta-400));
+
+  /* Estado. El texto acompaña siempre al color (§49). */
+  --success: #5be0a5;
+  --warning: #f6c56d;
+  --danger: #ff7a93;
+  --info: #7cc4ff;
+  --agent: var(--cyan-300);
+  --status-ok: var(--success);
+  --status-wait: var(--warning);
+  --status-error: var(--danger);
+  --status-run: var(--violet-400);
+  --access-workspace: #5be0a5;
+  --access-full: #ff9a6b;
+
+  /* Vidrio sobre la nebulosa. */
+  --glass-0: rgb(14 10 24 / 0.55);
+  --glass-1: rgb(20 15 34 / 0.78);
+  --glass-2: rgb(26 19 44 / 0.9);
+
+  /* Radios. */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+  --radius-surface: var(--r-lg);
+  --radius-control: var(--r-sm);
+
+  /* Sombras y brillos. */
+  --sh-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --sh-2: 0 2px 6px rgb(0 0 0 / 0.45), 0 22px 48px -20px rgb(0 0 0 / 0.75);
+  --sh-3: 0 30px 80px -30px rgb(0 0 0 / 0.9);
+  --sh-pop: 0 0 0 1px rgb(0 0 0 / 0.35), 0 24px 60px -24px rgb(0 0 0 / 0.9), 0 0 0 1px var(--line-2) inset;
+  --glow-1: 0 0 0 1px rgb(167 139 250 / 0.25), 0 10px 30px -10px rgb(147 88 255 / 0.55);
+  --glow-2: 0 0 0 1px rgb(196 181 253 / 0.45), 0 0 40px -6px rgb(147 88 255 / 0.65);
+  --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --selection-glow: inset 0 0 20px rgb(142 67 240 / 0.05);
+
+  /* Movimiento (reflejado en src/lib/motion.ts). */
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * {
@@ -213,7 +180,9 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(56rem 36rem at 50% -12%, rgba(139, 92, 246, 0.1), transparent 60%);
+  background:
+    radial-gradient(60rem 34rem at 78% -14%, rgb(147 88 255 / 0.14), transparent 62%),
+    radial-gradient(44rem 28rem at -8% 112%, rgb(232 121 249 / 0.06), transparent 60%);
   pointer-events: none;
 }
 
@@ -237,7 +206,7 @@ html[data-theme='light'] body::after {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: rgb(130 244 239 / 0.28);
   color: #fff;
 }
 
@@ -410,25 +379,48 @@ html[data-theme='light'] body::after {
   padding: 0.4em 0;
 }
 
-/* Overlays/menús: entradas cortas, sin bounce. */
-@keyframes rinari-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes rinari-zoom-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97) translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
+/* ---------------------------------------------------------------------------
+ * Movimiento. Todo lo que aparece, entra; todo lo que se va, sale. Los bucles
+ * (brillo, órbita) solo significan «sigue trabajando» y se apagan al terminar.
+ * Con movimiento reducido las reglas de abajo dejan solo el cambio de estado.
+ * ------------------------------------------------------------------------- */
+@keyframes rinari-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rinari-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes rinari-pop-in { from { opacity: 0; transform: translateY(4px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes rinari-pop-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(2px) scale(0.98); } }
+/* Tailwind 4 centra con la propiedad `translate`; estas animan `transform`, que se compone con ella. */
+@keyframes rinari-dialog-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes rinari-dialog-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@keyframes rinari-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes rinari-slide-left { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes rinari-orbit { to { transform: rotate(360deg); } }
+@keyframes rinari-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes rinari-breathe { 0%, 100% { box-shadow: 0 0 0 3px rgb(147 88 255 / 0.12), 0 0 14px rgb(147 88 255 / 0.3); } 50% { box-shadow: 0 0 0 5px rgb(147 88 255 / 0.25), 0 0 26px rgb(147 88 255 / 0.6); } }
+@keyframes rinari-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+@keyframes rinari-check-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes rinari-flow { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+@keyframes rinari-travel { 0% { top: 0; opacity: 0; } 20%, 80% { opacity: 1; } 100% { top: calc(100% - 40px); opacity: 0; } }
+@keyframes rinari-bounce-dot { 0%, 80%, 100% { transform: translateY(0); opacity: 0.5; } 40% { transform: translateY(-3px); opacity: 1; } }
+
+/* Overlays de Radix: entrada y salida (Presence espera al fin de la animación). */
+.r-overlay { background: rgb(4 3 9 / 0.62); backdrop-filter: blur(6px); }
+.r-overlay[data-state='open'] { animation: rinari-fade-in var(--dur-base) var(--ease-out); }
+.r-overlay[data-state='closed'] { animation: rinari-fade-out var(--dur-fast) ease-in; }
+.r-dialog { background: linear-gradient(180deg, var(--glass-2), var(--bg-elevated)); border: 1px solid var(--line-2); box-shadow: var(--sh-3), var(--inset-hi); }
+.r-dialog[data-state='open'] { animation: rinari-dialog-in var(--dur-slow) var(--ease-out); }
+.r-dialog[data-state='closed'] { animation: rinari-dialog-out var(--dur-fast) ease-in; }
+.r-pop { background: var(--glass-2); border: 1px solid var(--line-2); box-shadow: var(--sh-pop); backdrop-filter: blur(14px); transform-origin: var(--radix-dropdown-menu-content-transform-origin, var(--radix-popover-content-transform-origin, var(--radix-context-menu-content-transform-origin, center))); }
+.r-pop[data-state='open'] { animation: rinari-pop-in var(--dur-base) var(--ease-out); }
+.r-pop[data-state='closed'] { animation: rinari-pop-out var(--dur-fast) ease-in; }
+.r-tip { background: var(--ink-4); border: 1px solid var(--line-2); box-shadow: var(--sh-2); }
+.r-tip[data-state='delayed-open'], .r-tip[data-state='instant-open'] { animation: rinari-pop-in var(--dur-fast) var(--ease-out); }
+.r-tip[data-state='closed'] { animation: rinari-fade-out 90ms ease-in; }
+
+/* Utilidades de movimiento. */
+.r-rise { animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.r-spin { animation: rinari-orbit 0.9s linear infinite; }
+.r-check path { stroke-dasharray: 24; animation: rinari-draw 0.5s 0.15s var(--ease-out) both; }
+.r-check-pop { animation: rinari-check-pop 0.45s 0.1s var(--ease-spring) both; }
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -494,34 +486,7 @@ input[type='password']::-ms-clear {
   display: block;
 }
 
-/* Rinari concept foundation. The fixed palette is applied before first paint. */
-:root, html[data-theme='dark'][data-accent='nebula'] {
-  --bg-app: #08080d;
-  --bg-sidebar: #0c0b13;
-  --bg-elevated: #12101c;
-  /* Fondo de `.app-topbar`, y el valor que gana la cascada. El host pinta con
-     este mismo color la franja de los controles nativos
-     (`electron/shared/chrome.ts`), así que cambiarlo aquí sin cambiarlo allí
-     devuelve la banda de color bajo minimizar, maximizar y cerrar. Hay una
-     prueba que compara los dos y que lee **esta** declaración, no la de
-     arriba. */
-  --bg-subtle: #14111f;
-  --bg-hover: #1c162b;
-  --bg-active: #291946;
-  --border: #292139;
-  --border-strong: #44335e;
-  --text: #f3effb;
-  --text-muted: #b8adce;
-  --text-subtle: #9284ab;
-  --accent: #983dff;
-  --accent-2: #b578ff;
-  --accent-3: #cc91ff;
-  --nebula-gradient: linear-gradient(135deg, #6926bd, #983dff 60%, #b578ff);
-  --radius-surface: 14px;
-  --radius-control: 8px;
-  --selection-glow: inset 0 0 20px #8e43f00d;
-}
-.concept-sidebar { background: linear-gradient(145deg, #100d19, #0b0a12 50%); }
+.concept-sidebar { background: linear-gradient(180deg, #0d0a17, var(--bg-sidebar) 40%, #08060f); }
 .concept-sidebar > button:last-of-type { border-top: 1px solid var(--border); border-radius: 0; }
 .concept-sidebar .sidebar-scroll > section > ul { margin-top: 7px; }
 .concept-sidebar .sidebar-scroll > section > ul > li { font-size: 13px; }
@@ -533,7 +498,23 @@ input[type='password']::-ms-clear {
   transition: none !important;
 }
 .composer-root { container-type: inline-size; }
-.composer-surface { background: linear-gradient(115deg, #14111f, #111019); border-color: var(--border-strong); }
+.composer-surface { position: relative; isolation: isolate; background: linear-gradient(180deg, rgb(26 19 44 / 0.92), rgb(18 14 31 / 0.94)); border-color: var(--line-2); box-shadow: var(--sh-2), var(--inset-hi); transition: border-color var(--dur-base), box-shadow var(--dur-base); }
+.composer-surface:focus-within { border-color: rgb(196 181 253 / 0.45); box-shadow: var(--sh-2), 0 0 0 4px rgb(147 88 255 / 0.1); }
+/* Mientras Rinari trabaja, el borde fluye y una luz respira bajo el composer. */
+.composer-surface[data-working]::before { content: ''; position: absolute; inset: -1px; z-index: -1; border-radius: inherit; padding: 1px; background: linear-gradient(90deg, rgb(167 139 250 / 0.18) 0%, rgb(167 139 250 / 0.18) 30%, var(--violet-500) 42%, var(--magenta-400) 50%, var(--cyan-300) 58%, rgb(167 139 250 / 0.18) 70%, rgb(167 139 250 / 0.18) 100%); background-size: 300% 100%; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: rinari-flow 3.2s linear infinite; pointer-events: none; }
+.composer-surface[data-working]::after { content: ''; position: absolute; left: 14%; right: 14%; bottom: -2px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--magenta-400), var(--violet-500), transparent); filter: blur(1px); animation: rinari-pulse 2s ease-in-out infinite; pointer-events: none; }
+.composer-chip { position: relative; display: inline-flex; min-height: 32px; min-width: 0; cursor: pointer; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.55); padding: 0 11px; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-base); }
+.composer-chip:hover:not(:disabled) { color: var(--text); border-color: var(--line-3); background: var(--bg-hover); }
+.composer-chip:disabled { cursor: default; opacity: 0.45; }
+.composer-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-chip-icon { width: 32px; padding: 0; justify-content: center; }
+@container (max-width: 820px) { .composer-chip-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+.composer-send { position: relative; display: flex; width: 38px; height: 38px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; color: #fff; background: var(--grad-brand); box-shadow: 0 0 0 1px rgb(196 181 253 / 0.3), 0 8px 22px -8px rgb(147 88 255 / 0.9); transition: transform var(--dur-fast), filter var(--dur-fast), box-shadow var(--dur-base), opacity var(--dur-fast); }
+.composer-send:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+.composer-send:active:not(:disabled) { transform: scale(0.94); }
+.composer-send:disabled { opacity: 0.35; box-shadow: none; filter: saturate(0.4); }
+.composer-send.is-stop { box-shadow: 0 0 0 4px rgb(147 88 255 / 0.18), 0 0 24px rgb(147 88 255 / 0.55); }
+.composer-send.is-stop::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--violet-200); animation: rinari-orbit 1.1s linear infinite; }
 .chat-file-drop-zone {
   position: relative;
   height: 100%;
@@ -574,7 +555,8 @@ input[type='password']::-ms-clear {
 .composer-model-controls > button:last-child { flex-shrink: 0; }
 .composer-model-controls > button:first-child { max-width: 175px; }
 .composer-modes { justify-self: center; }
-.composer-modes button[aria-pressed='true'] { box-shadow: 0 0 14px #982eff33; }
+.composer-modes { border-color: var(--line-2); background: rgb(10 8 18 / 0.55); }
+.composer-mode-pill { background: linear-gradient(135deg, var(--violet-500), var(--violet-600)); box-shadow: 0 6px 16px -6px rgb(147 88 255 / 0.9); }
 .composer-mode-pill { will-change: transform, width; }
 @media (prefers-reduced-motion: reduce) {
   .composer-mode-pill { transition: none !important; }
@@ -1159,3 +1141,130 @@ select option:disabled { color: var(--text-subtle); }
 .flow-detail-actions { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
 @media (max-width: 1100px) { .flow-detail { position: absolute; inset: 0 0 0 auto; z-index: 20; width: min(92%, 400px); box-shadow: -12px 0 32px rgba(0, 0, 0, 0.45); } }
 @media (prefers-reduced-motion: reduce) { .flow-stage, .flow-summary-progress-fill, .flow-stage-progress-fill { transition: none; } }
+
+/* -- Rinari: avatar con expresión ------------------------------------------ */
+.rinari-avatar { position: relative; display: inline-grid; flex-shrink: 0; border-radius: 50%; isolation: isolate; }
+.rinari-avatar > img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: 50% 18%; background: var(--ink-3); border: 1.5px solid rgb(196 181 253 / 0.5); animation: rinari-fade-in var(--dur-base) var(--ease-out); user-select: none; }
+.rinari-avatar[data-state='thinking'] > img, .rinari-avatar[data-state='streaming'] > img { animation: rinari-fade-in var(--dur-base) var(--ease-out), rinari-breathe 2.4s ease-in-out infinite; }
+.rinari-avatar[data-state='waiting'] > img { border-color: var(--warning); box-shadow: 0 0 0 3px rgb(246 197 109 / 0.16); }
+.rinari-avatar[data-state='error'] > img { border-color: var(--danger); box-shadow: 0 0 0 3px rgb(255 122 147 / 0.16); }
+.rinari-avatar[data-state='done'] > img { border-color: rgb(91 224 165 / 0.7); }
+.rinari-avatar[data-state='offline'] > img { filter: grayscale(0.6) brightness(0.8); }
+.rinari-avatar-orbit { position: absolute; inset: -3px; border-radius: 50%; background: conic-gradient(from 0deg, var(--violet-500), var(--magenta-400), var(--cyan-300), var(--violet-500)); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); animation: rinari-orbit 2.8s linear infinite; z-index: -1; }
+.rinari-avatar-dots { position: absolute; right: -5px; bottom: -3px; display: flex; gap: 2px; padding: 3px 4px; border-radius: 999px; background: var(--ink-3); border: 1px solid var(--line-3); }
+.rinari-avatar-dots i { width: 3px; height: 3px; border-radius: 50%; background: var(--violet-200); animation: rinari-bounce-dot 1.2s infinite; }
+.rinari-avatar-dots i:nth-child(2) { animation-delay: 0.15s; }
+.rinari-avatar-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+/* -- Conversación: turno de Rinari con riel y nodos -------------------------- */
+.turn-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.turn-head-name { font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); letter-spacing: -0.01em; }
+.turn-head-state { display: flex; min-width: 0; flex: 1; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); }
+.turn-rail { position: relative; padding-left: 26px; }
+.turn-rail::before { content: ''; position: absolute; left: 13px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, rgb(196 181 253 / 0.45), rgb(147 88 255 / 0.18) 70%, transparent); }
+.turn-rail[data-live='true']::after { content: ''; position: absolute; left: 11px; width: 6px; height: 40px; border-radius: 6px; background: linear-gradient(180deg, transparent, var(--violet-200), transparent); animation: rinari-travel 2.4s ease-in-out infinite; pointer-events: none; }
+.turn-node { position: absolute; left: -18px; top: 13px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-4); border: 2px solid var(--bg-app); box-sizing: content-box; }
+.turn-node[data-state='done'] { background: var(--success); }
+.turn-node[data-state='running'] { background: var(--violet-500); box-shadow: 0 0 10px var(--violet-500); animation: rinari-pulse 1.4s infinite; }
+.turn-node[data-state='failed'] { background: var(--danger); }
+.turn-node[data-state='warn'] { background: var(--warning); }
+.turn-node[data-state='agent'] { background: var(--agent); }
+
+/* Fila de operación: tarjeta compacta con mosaico de icono. */
+.act-row { position: relative; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.62); transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.act-row:hover, .act-row[open] { border-color: var(--line-2); background: rgb(20 15 34 / 0.78); }
+.act-row > summary { display: flex; min-height: 40px; cursor: pointer; list-style: none; align-items: center; gap: 10px; padding: 6px 12px 6px 7px; border-radius: inherit; }
+.act-row > summary::-webkit-details-marker { display: none; }
+.act-row > [data-activity-body] { margin: 0 12px 10px 42px; }
+.act-tile { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-hover); color: var(--text-muted); }
+.act-tile[data-state='done'] { color: var(--success); border-color: rgb(91 224 165 / 0.3); background: rgb(91 224 165 / 0.1); }
+.act-tile[data-state='running'] { color: var(--violet-300); border-color: rgb(167 139 250 / 0.4); background: rgb(147 88 255 / 0.12); }
+.act-tile[data-state='failed'] { color: var(--danger); border-color: rgb(255 122 147 / 0.35); background: rgb(255 122 147 / 0.1); }
+.act-tile[data-state='warn'] { color: var(--warning); border-color: rgb(246 197 109 / 0.35); background: rgb(246 197 109 / 0.1); }
+.act-label { min-width: 0; flex: 1 1 auto; overflow: hidden; color: var(--text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.act-meta { display: flex; flex-shrink: 0; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-subtle); }
+
+/* Autorización pendiente: la tarjeta más visible del turno. */
+.approval-card { position: relative; border-radius: var(--r-lg); padding: 16px 18px; background: linear-gradient(180deg, rgb(43 32 64 / 0.72), rgb(23 17 38 / 0.88)); border: 1px solid rgb(246 197 109 / 0.38); box-shadow: 0 0 0 4px rgb(246 197 109 / 0.05), 0 24px 60px -30px rgb(246 197 109 / 0.35); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.approval-card[data-state='settled'] { border-color: var(--line-2); box-shadow: none; background: rgb(16 12 27 / 0.62); padding: 10px 14px; }
+.approval-icon { display: grid; width: 34px; height: 34px; flex-shrink: 0; place-items: center; border-radius: 10px; color: var(--warning); background: rgb(246 197 109 / 0.12); border: 1px solid rgb(246 197 109 / 0.35); }
+.approval-badge { margin-left: auto; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; color: var(--warning); border: 1px solid rgb(246 197 109 / 0.4); background: rgb(246 197 109 / 0.08); }
+
+/* Terminal dentro de la conversación. */
+.term-card { overflow: hidden; border-radius: var(--r-md); border: 1px solid var(--line-2); background: #07060c; }
+.term-card-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line-1); background: rgb(147 88 255 / 0.07); font-size: 11px; color: var(--text-subtle); }
+.term-card pre { font-family: var(--font-mono); }
+
+/* Subagente en la conversación: una línea con su estado. */
+.agent-row { border: 1px dashed rgb(130 244 239 / 0.32); background: rgb(130 244 239 / 0.035); }
+.agent-row:hover, .agent-row[open] { border-color: rgb(130 244 239 / 0.5); background: rgb(130 244 239 / 0.06); }
+
+/* «Rinari está trabajando»: avatar y texto con brillo. */
+.rinari-working { display: flex; align-items: center; gap: 12px; padding: 4px 0; font-size: 13.5px; color: var(--text-muted); }
+
+/* Plegado de actividad: el resumen del turno y los grupos de operaciones. */
+.disclosure-button { display: flex; min-width: 0; flex: 1; align-items: center; gap: 8px; border-radius: var(--r-md); padding: 6px 10px; text-align: left; font-size: 13px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast); }
+.disclosure-button:hover { color: var(--text); background: var(--bg-hover); }
+.disclosure-button.is-turn { border: 1px solid var(--line-1); background: rgb(16 12 27 / 0.5); }
+.disclosure-button.is-turn:hover { border-color: var(--line-2); }
+.disclosure-button.is-operations { padding: 6px 8px; min-height: 38px; border: 1px solid var(--line-1); background: rgb(16 12 27 / 0.4); }
+
+/* -- Botones canónicos (también los usa <Button>) ---------------------------- */
+.btn { display: inline-flex; min-height: 34px; cursor: pointer; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; border-radius: var(--r-sm); border: 1px solid transparent; padding: 0 14px; font-size: 13px; font-weight: 600; line-height: 1; color: var(--text); user-select: none; transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-base), filter var(--dur-fast), transform var(--dur-fast); }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:disabled { cursor: default; opacity: 0.45; }
+.btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+.btn-primary { color: #fff; background: var(--grad-brand); box-shadow: 0 0 0 1px rgb(196 181 253 / 0.3), 0 10px 28px -12px rgb(147 88 255 / 0.85); }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 0 0 1px rgb(196 181 253 / 0.45), 0 12px 32px -10px rgb(147 88 255 / 0.95); }
+.btn-secondary { color: var(--violet-200); background: rgb(147 88 255 / 0.1); border-color: rgb(167 139 250 / 0.28); }
+.btn-secondary:hover:not(:disabled) { background: rgb(147 88 255 / 0.18); border-color: rgb(196 181 253 / 0.45); color: #fff; }
+.btn-ghost { color: var(--text-muted); background: transparent; border-color: var(--line-2); }
+.btn-ghost:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
+.btn-quiet { color: var(--text-muted); background: transparent; }
+.btn-quiet:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
+.btn-danger { color: #ffd1da; background: rgb(255 122 147 / 0.1); border-color: rgb(255 122 147 / 0.32); }
+.btn-danger:hover:not(:disabled) { background: rgb(255 122 147 / 0.18); color: #fff; }
+.btn-sm { min-height: 28px; padding: 0 10px; font-size: 12px; border-radius: var(--r-xs); }
+.btn-xs { min-height: 24px; padding: 0 8px; font-size: 11.5px; font-weight: 600; border-radius: var(--r-xs); }
+.btn-lg { min-height: 44px; padding: 0 22px; font-size: 14px; border-radius: var(--r-md); }
+.btn-icon { width: 34px; padding: 0; }
+.btn-icon.btn-sm { width: 28px; }
+
+/* Mensaje del usuario: violeta profundo; el recién enviado sube desde el composer. */
+@keyframes rinari-send { from { opacity: 0; transform: translateY(48px) scale(0.96); } to { opacity: 1; transform: none; } }
+.user-bubble { border-radius: 18px 18px 6px 18px; background: linear-gradient(135deg, rgb(124 58 237 / 0.4), rgb(91 33 182 / 0.34)); border: 1px solid rgb(196 181 253 / 0.2); box-shadow: var(--inset-hi); }
+.user-bubble.is-fresh { animation: rinari-send 0.5s var(--ease-out) both; }
+
+/* -- Esfuerzo: deslizador con brillo por nivel ------------------------------- */
+.effort-chip.is-xhigh { color: var(--violet-200); border-color: rgb(167 139 250 / 0.45); }
+.effort-chip.is-max { color: #f5d0fe; border-color: rgb(232 121 249 / 0.45); box-shadow: 0 0 14px -4px rgb(232 121 249 / 0.6); }
+.effort-chip.is-ultra { color: #cffafe; border-color: rgb(130 244 239 / 0.5); box-shadow: 0 0 16px -4px rgb(130 244 239 / 0.6), 0 0 22px -8px rgb(232 121 249 / 0.6); }
+.effort-track { position: relative; height: 34px; margin: 6px 6px 4px; cursor: pointer; touch-action: none; outline: none; border-radius: 10px; }
+.effort-track:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring); }
+.effort-rail, .effort-fill { position: absolute; left: 0; top: 14px; height: 6px; border-radius: 6px; }
+.effort-rail { right: 0; background: rgb(167 139 250 / 0.14); }
+.effort-fill { background: linear-gradient(90deg, var(--violet-600), var(--violet-500)); transition: width 0.35s var(--ease-spring); }
+.effort-tick { position: absolute; top: 12px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--ink-5); transition: background-color var(--dur-base); }
+.effort-tick[data-on] { background: var(--violet-300); }
+.effort-thumb { position: absolute; top: 4px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 4px rgb(147 88 255 / 0.35), 0 6px 18px rgb(0 0 0 / 0.5); transition: left 0.35s var(--ease-spring); }
+.effort-pop.is-xhigh .effort-fill { background: linear-gradient(90deg, var(--violet-600), var(--violet-400), var(--violet-300)); box-shadow: 0 0 14px rgb(167 139 250 / 0.7); }
+.effort-pop.is-max .effort-fill { background: linear-gradient(90deg, var(--violet-600), #c026d3, var(--magenta-400), var(--violet-600)); background-size: 200% 100%; animation: rinari-flow 1.8s linear infinite; box-shadow: 0 0 18px rgb(232 121 249 / 0.8); }
+.effort-pop.is-max .effort-thumb { animation: effort-aura 1.4s ease-in-out infinite; }
+.effort-pop.is-ultra .effort-fill { background: linear-gradient(90deg, var(--cyan-300), var(--violet-500), var(--magenta-400), var(--cyan-300)); background-size: 300% 100%; animation: rinari-flow 1.1s linear infinite; box-shadow: 0 0 22px rgb(130 244 239 / 0.7), 0 0 40px rgb(232 121 249 / 0.45); }
+.effort-pop.is-ultra .effort-thumb { background: radial-gradient(circle at 35% 35%, #fff, var(--violet-200) 60%, var(--violet-300)); animation: effort-aura 0.9s ease-in-out infinite; }
+.effort-thumb > i { position: absolute; left: 11px; top: 11px; width: 4px; height: 4px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px var(--magenta-400); animation: effort-spark 1.2s ease-out infinite; }
+.effort-thumb > i:nth-child(1) { --dx: -18px; --dy: -16px; }
+.effort-thumb > i:nth-child(2) { --dx: 16px; --dy: -20px; animation-delay: 0.3s; }
+.effort-thumb > i:nth-child(3) { --dx: 22px; --dy: 10px; animation-delay: 0.6s; }
+.effort-thumb > i:nth-child(4) { --dx: -20px; --dy: 14px; animation-delay: 0.9s; }
+@keyframes effort-aura { 0%, 100% { box-shadow: 0 0 0 4px rgb(232 121 249 / 0.35), 0 0 16px rgb(232 121 249 / 0.6); } 50% { box-shadow: 0 0 0 8px rgb(232 121 249 / 0.12), 0 0 32px rgb(232 121 249 / 0.9); } }
+@keyframes effort-spark { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); } }
+.effort-level { border-radius: var(--r-sm); border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.5); padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: all var(--dur-fast); }
+.effort-level:hover { color: var(--text); border-color: var(--line-3); }
+.effort-level.is-on { color: #fff; border-color: rgb(196 181 253 / 0.55); background: rgb(147 88 255 / 0.22); }
+
+/* -- Dictado: barras con el nivel real del micrófono -------------------------- */
+.dictation-bars { display: inline-flex; height: 18px; align-items: center; gap: 2px; }
+.dictation-bars i { width: 3px; min-height: 3px; border-radius: 3px; background: linear-gradient(#ffe4ea, var(--danger)); transition: height 90ms linear; }
+.composer-chip.dictation-live { color: #ffd1da; background: radial-gradient(circle at 30% 30%, rgb(255 122 147 / 0.32), rgb(192 38 75 / 0.22)); border-color: rgb(255 122 147 / 0.5); animation: dictation-ripple 1.6s infinite; }
+@keyframes dictation-ripple { 0% { box-shadow: 0 0 0 0 rgb(255 122 147 / 0.5); } 100% { box-shadow: 0 0 0 12px rgb(255 122 147 / 0); } }

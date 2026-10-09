@@ -50,6 +50,8 @@ import { ActivityDisclosure, InspectionDetails, InspectionItem, InspectionScope,
 import { ActivityTransition } from './ActivityTransition'
 import { ActivityHeader } from './ActivityHeader'
 import { activityKey, useActivityDisclosure } from '../../stores/activityDisclosure'
+import { RinariAvatar } from '../rinari/RinariAvatar'
+import { rinariStateForTurn } from '../rinari/turnState'
 
 interface Props {
   timeline: TurnTimeline
@@ -80,6 +82,24 @@ const ICONS: Record<ToolCategory, typeof FileText> = {
   code: Code,
   ask: MessageCircleQuestion,
   other: Wrench,
+}
+
+/**
+ * Mosaico del icono de una operación. Al pasar de «en curso» a «completada»
+ * mientras se mira, el check se dibuja; al volver a montarse (scroll,
+ * historial) aparece quieto: la animación cuenta lo que acaba de pasar.
+ */
+function ToolTile({ tone, Icon }: { tone: string; Icon: typeof FileText }) {
+  const wasRunning = useRef(tone === 'running')
+  const celebrate = tone === 'done' && wasRunning.current
+  useEffect(() => { if (tone === 'running') wasRunning.current = true }, [tone])
+  return <span className={`act-tile${celebrate ? ' r-check-pop' : ''}`} data-state={tone} aria-hidden="true">
+    {tone === 'running' ? <LoaderCircle size={14} className="r-spin" />
+      : tone === 'done' && celebrate ? <svg className="r-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+      : tone === 'warn' ? <TriangleAlert size={14} />
+      : tone === 'failed' ? <CircleAlert size={14} />
+      : <Icon size={14} />}
+  </span>
 }
 
 function elapsed(ms: number): string {
@@ -127,21 +147,24 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const exitCode = item.presentation?.kind === 'command' ? item.presentation.exit_code : undefined
     const exited = failed && !item.error && !item.presentation?.error && typeof exitCode === 'number' && exitCode !== 0
     const instruction = agentInstruction(item)
+    const tone = running ? 'running' : exited ? 'warn' : failed ? 'failed' : item.status === 'completed' ? 'done' : 'idle'
     return (
-      <InspectionDetails inspectionId="tool" className="group/activity py-1 text-[13px] text-[var(--text-muted)]">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg outline-none/50">
-          {running ? <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" /> : exited ? <TriangleAlert size={13} className="text-amber-400" /> : failed ? <CircleAlert size={13} className="text-red-400" /> : <Icon size={13} className="text-[var(--text-subtle)]" />}
-          <ActivityText active={running}>{formatTool(item, lang)}</ActivityText>
+      <InspectionDetails inspectionId="tool" className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone={tone}>
+        <summary>
+          <ToolTile tone={tone} Icon={Icon} />
+          <ActivityText active={running} className="act-label">{formatTool(item, lang)}</ActivityText>
           {!active && ['requested', 'running'].includes(item.status) && <span className="text-xs">{t('activity.interrupted')}</span>}
-          {exited && <span className="font-mono text-[10px] text-amber-300">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
-          {outputPath && <span onClick={e => e.stopPropagation()} className="text-[var(--accent)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
-          {technical && <span className="font-mono text-[10px] text-[var(--text-subtle)]">{item.tool}</span>}
-          {shownDuration(item.durationMs) && <span className="ml-auto text-[10px] tabular-nums text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}
-          <ChevronDown size={12} className="transition-transform group-open/activity:rotate-180" />
+          {exited && <span className="font-mono text-[10px] text-[var(--warning)]">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
+          {outputPath && <span onClick={e => e.stopPropagation()} className="text-[12px] text-[var(--accent-2)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
+          <span className="act-meta">
+            {technical && <span className="font-mono text-[10px]">{item.tool}</span>}
+            {shownDuration(item.durationMs) && <span className="tabular-nums">{elapsed(item.durationMs)}</span>}
+            <ChevronDown size={13} className="transition-transform group-open/activity:rotate-180" />
+          </span>
         </summary>
         {instruction && <blockquote data-testid="agent-instruction" className="mt-1.5 max-h-60 overflow-auto whitespace-pre-wrap border-l-2 border-[var(--accent)]/40 pl-3 text-[12px] leading-relaxed text-[var(--text)] [overflow-wrap:anywhere]">{instruction.text}</blockquote>}
         {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (
-          <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-subtle)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
+          <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-inset)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}
       </InspectionDetails>
     )
@@ -151,16 +174,27 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const pending = item.status === 'pending'
     const resolving = item.status === 'resolving'
     const status = item.status === 'allowed' ? (lang === 'es' ? 'Concedido' : 'Allowed') : item.status === 'denied' ? (lang === 'es' ? 'Denegado' : 'Denied') : item.status === 'expired' ? (lang === 'es' ? 'Expirado' : 'Expired') : ''
+    const open = pending || resolving
     return (
-      <div className="my-2 border-l-2 border-amber-400/50 py-1 pl-3 text-[13px]">
-        <div className="flex flex-wrap items-center gap-2 text-[var(--text)]"><ShieldAlert size={14} className="text-amber-400" /><span title={item.description}>{copy.title}</span>{copy.tool && <span className="font-mono text-[10px] text-[var(--text-subtle)]">{copy.tool}</span>}<span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] uppercase text-amber-300">{copy.risk}</span></div>
-        {copy.note && <div className="mt-1 text-[11px] text-amber-200/80">{copy.note}</div>}
-        {item.target && <div className="mt-1 font-mono text-[11px] text-[var(--text-subtle)]">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</div>}
-        {(pending || resolving) ? (
-          <div className="mt-2 flex flex-wrap gap-2">
+      <div className="approval-card my-2 text-[13px]" data-state={open ? 'open' : 'settled'}>
+        <div className="flex flex-wrap items-center gap-3 text-[var(--text)]">
+          <span className="approval-icon"><ShieldAlert size={17} aria-hidden="true" /></span>
+          <div className="min-w-0 flex-1">
+            {open && <div className="font-display text-[15px] font-bold tracking-[-0.01em]">{t('approval.heading')}</div>}
+            <div className={open ? 'mt-0.5 text-[13px] text-[var(--text-muted)]' : ''} title={item.description}>{copy.title}{copy.tool && <span className="ml-2 font-mono text-[11px] text-[var(--text-subtle)]">{copy.tool}</span>}</div>
+          </div>
+          {open ? <span className="approval-badge">{t('approval.waiting')}</span> : <span className="text-[12px] text-[var(--text-muted)]">{status}</span>}
+        </div>
+        {copy.note && <div className="mt-2 text-[12px] text-[var(--warning)]">{copy.note}</div>}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text-subtle)]">
+          <span>{t('approval.riskLabel')} <b className="font-semibold text-[var(--warning)]">{copy.risk}</b></span>
+          {item.target && <span className="min-w-0 break-all font-mono">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</span>}
+        </div>
+        {open && (
+          <div className="mt-3.5 flex flex-wrap gap-2">
             <ApprovalActions item={item} disabled={resolving} onResolve={onResolveApproval} />
           </div>
-        ) : <div className="mt-1 text-[11px] text-[var(--text-muted)]">{status}</div>}
+        )}
       </div>
     )
   }
@@ -276,10 +310,11 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
   }
   const exitCode = presentation.exit_code
   const failed = presentation.status === 'failed' || (typeof exitCode === 'number' && exitCode !== 0)
-  return <div className="mt-1.5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]">
-    <div className="flex items-center gap-2 border-b border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]">
+  return <div className="term-card mt-1.5">
+    <div className="term-card-head">
+      <SquareTerminal size={12} aria-hidden="true" className="text-[var(--accent-2)]" />
       <span className="font-mono">{presentation.cwd ? `${presentation.cwd}` : 'shell'}</span>
-      {typeof exitCode === 'number' && <span className={failed ? 'text-red-400' : 'text-emerald-400'}>{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
+      {typeof exitCode === 'number' && <span className={failed ? 'text-[var(--danger)]' : 'text-[var(--success)]'}>{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
       {presentation.stderr_warning && <span className="text-amber-300">{lang === 'es' ? 'stderr con código 0' : 'stderr with exit 0'}</span>}
       {presentation.truncated && <span className="text-amber-300">{lang === 'es' ? 'salida visible truncada' : 'visible output truncated'}</span>}
       {presentation.capture_truncated && <span className="text-red-300">{lang === 'es' ? 'captura completa limitada a 50 MiB' : 'full capture limited to 50 MiB'}</span>}
@@ -376,16 +411,19 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
   }
 
   return (
-    <InspectionDetails inspectionId="agent" data-testid="agent-card" className="group/agent relative my-2 rounded-xl border border-[var(--border)] p-3" onToggle={onToggle}>
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-[var(--text)]">
-        {active && item.status === 'running' ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Bot size={15} />}
-        <span>{item.agent}</span>
-        <ActivityText active={active && item.status === 'running'} className="text-xs text-[var(--text-muted)]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</ActivityText>
-        <span className="ml-auto text-xs">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} />
+    <InspectionDetails inspectionId="agent" data-testid="agent-card" className="act-row agent-row group/agent relative my-1" onToggle={onToggle}>
+      <summary className="text-sm text-[var(--text)]">
+        <span className="act-tile" data-state={active && item.status === 'running' ? 'running' : item.status === 'completed' ? 'done' : item.status === 'running' ? 'idle' : 'failed'} style={{ color: 'var(--agent)' }} aria-hidden="true">
+          {active && item.status === 'running' ? <LoaderCircle size={14} className="r-spin" /> : <Bot size={14} />}
+        </span>
+        <span className="font-semibold">{item.agent}</span>
+        {item.objective && <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--text-muted)]" title={item.objective}>{item.objective}</span>}
+        <ActivityText active={active && item.status === 'running'} className="act-meta text-[12px]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</ActivityText>
+        {item.agentId && <button type="button" className="btn btn-ghost btn-xs" onClick={event => { event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('rinari:show-agent', { detail: { agentId: item.agentId } })) }}>{t('activity.agentInPanel')}</button>}
+        <span className="sr-only">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} className="text-[var(--text-subtle)] transition-transform group-open/agent:rotate-180" />
       </summary>
-      <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" data-inspection-scroll className="mt-3 max-h-[32rem] overflow-auto">
+      <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" data-inspection-scroll className="mx-3 mb-3 mt-1 max-h-[32rem] overflow-auto">
         <div ref={contentRef} className="space-y-2">
-        {item.objective && <p className="text-sm text-[var(--text-muted)]">{item.objective}</p>}
         {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
         <ActivityActive.Provider value={active && item.status === 'running'}>{(item.items ?? []).map(child => <InspectionItem key={child.id} id={child.id}>{child.type === 'model'
           ? child.content ? <Markdown>{child.content}</Markdown> : null
@@ -465,7 +503,7 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
   ]
   // «Siempre…» solo si el Engine lo ofrece: uno anterior a permisos v3 no lo entiende.
   const offered = choices.filter(([decision]) => item.choices ? item.choices.includes(decision) : decision !== 'allow_project')
-  const buttonClass = 'min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--text)] disabled:opacity-50'
+  const buttonClass = (decision: string) => decision === 'allow_once' ? 'btn btn-primary' : decision === 'deny' ? 'btn btn-ghost' : 'btn btn-secondary'
   // La tarea suma el permiso y la ejecución sigue: las próximas no preguntan.
   const allowForTask = async () => {
     if (!runSession) return
@@ -480,9 +518,9 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
     }
   }
   return <>
-    {offered.map(([decision, label]) => <button key={decision} type="button" disabled={disabled} onClick={() => onResolve(item.approvalId, decision)} className={buttonClass}>{label}</button>)}
+    {offered.map(([decision, label]) => <button key={decision} type="button" disabled={disabled} onClick={() => onResolve(item.approvalId, decision)} className={buttonClass(decision)}>{label}</button>)}
     {runSession && item.reusable !== false && offered.some(([decision]) => decision === 'allow_session') && (
-      <button type="button" disabled={disabled || granting} onClick={() => void allowForTask()} className={buttonClass}>
+      <button type="button" disabled={disabled || granting} onClick={() => void allowForTask()} className={buttonClass('allow_task')}>
         {lang === 'es' ? 'Permitir para esta tarea' : 'Allow for this task'}
       </button>
     )}
@@ -567,8 +605,12 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   return (
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
-      {active && showHeader && <div data-live-activity className="border-b border-[var(--border)] pb-2 text-[13px] text-[var(--text-muted)]">
-        <ActivityHeader timeline={timeline} now={now} />
+      {active && showHeader && <div data-live-activity className="turn-head text-[13px] text-[var(--text-muted)]">
+        <RinariAvatar state={rinariStateForTurn(state.kind)} size={30} />
+        <div className="min-w-0 flex-1">
+          <div className="turn-head-name">{t('rinari.name')}</div>
+          <ActivityHeader timeline={timeline} now={now} />
+        </div>
       </div>}
       {projection.segments.map((segment, index) => {
         const previous = index < projection.segments.length - 1
@@ -580,7 +622,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
           {segment.steer && <SteerBubble item={segment.steer} />}
           {active ? content : (content || !previous) && <ActivityDisclosure
             stateKey={childInspectionKey(stateKey, 'summary')}
-            header={<ActivityHeader timeline={timeline} now={now} previous={previous} />}
+            header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <span className="turn-head"><RinariAvatar state={rinariStateForTurn(timeline.status)} size={20} /><ActivityHeader timeline={timeline} now={now} /></span>}
             inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
           >{content}</ActivityDisclosure>}
         </div></InspectionScope.Provider>
@@ -612,13 +654,23 @@ const ActivityDetails = memo(function ActivityDetails({ items, status, onResolve
   items: TimelineItem[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']
 }) {
   const blocks = useMemo(() => activityBlocks(items), [items])
-  return <>{blocks.map(block => block.type === 'text'
-    ? <div key={block.id} data-activity-item={block.id} className="py-1 text-[13px] leading-relaxed text-[var(--text)]">
+  const live = turnIsActive(status)
+  return <div className="turn-rail space-y-2" data-live={live}>{blocks.map(block => block.type === 'text'
+    ? <div key={block.id} data-activity-item={block.id} className="relative py-0.5 text-[14px] leading-relaxed text-[var(--text)]">
+        <span className="turn-node" data-state="text" aria-hidden="true" style={{ top: 9, width: 6, height: 6, left: -16 }} />
         <Markdown>{block.item.content}</Markdown>
         {block.item.modelChange && <ModelChangeNotice change={block.item.modelChange} />}
       </div>
-    : <OperationGroup key={block.id} items={block.items} status={status} onResolveApproval={onResolveApproval} />)}</>
+    : <div key={block.id} className="relative"><span className="turn-node" data-state={nodeState(block.items, live)} aria-hidden="true" /><OperationGroup items={block.items} status={status} onResolveApproval={onResolveApproval} /></div>)}</div>
 })
+
+/** Color del nodo de un grupo en el riel: lo peor que haya pasado, o en curso. */
+function nodeState(items: TimelineItem[], live: boolean): string {
+  if (items.some(item => 'status' in item && ['failed', 'cancelled'].includes(item.status ?? ''))) return 'failed'
+  if (live && items.some(operationIsActive)) return 'running'
+  if (items.some(item => item.type === 'agent')) return 'agent'
+  return 'done'
+}
 
 function OperationGroup({ items, status, onResolveApproval }: {
   items: Exclude<TimelineItem, { type: 'model' }>[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']

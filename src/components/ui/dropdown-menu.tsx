@@ -9,10 +9,10 @@ const DropdownMenuGroup = DropdownMenuPrimitive.Group
 const DropdownMenuSub = DropdownMenuPrimitive.Sub
 
 const MENU_CONTENT =
-  'z-50 min-w-52 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] data-[state=open]:animate-[luma-zoom-in_.14s_ease-out]'
+  'r-pop z-50 min-w-52 overflow-hidden rounded-[var(--r-md)] p-1.5'
 
 const MENU_ITEM =
-  'relative flex min-h-9 w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 text-sm text-[var(--text)] transition-colors outline-none select-none focus:bg-[var(--bg-hover)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]'
+  'relative flex min-h-9 w-full cursor-pointer items-center gap-2.5 rounded-[var(--r-sm)] px-2.5 py-1.5 text-[13px] text-[var(--text)] transition-colors outline-none select-none focus:bg-[var(--bg-hover)] focus:[&_svg]:text-[var(--accent-2)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]'
 
 function DropdownMenuContent({
   className,

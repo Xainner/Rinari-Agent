@@ -581,6 +581,28 @@ export interface SkillPage {
   next_offset: number | null
 }
 
+export interface SpeechModelInfo {
+  id: string
+  file: string
+  size: number
+  tier: 'light' | 'default' | 'best' | string
+  installed: boolean
+}
+
+/** Estado del dictado local que informa el Engine (`speech.status`). */
+export interface SpeechStatus {
+  model: string
+  /** Vacío: nunca elegido; la app manda su propio idioma. */
+  language: string
+  vocabulary: string
+  binary_found: boolean
+  model_installed: boolean
+  ready: boolean
+  models: SpeechModelInfo[]
+  languages: string[]
+  downloading?: string[]
+}
+
 /** Skill que Rinari propuso sola y espera la aprobación del dueño. */
 export interface SkillProposal {
   name: string
@@ -1001,6 +1023,18 @@ export const engineApi = {
   /** «No son duplicados»: el par deja de aparecer. */
   skillDuplicatesDismiss: (skills: [string, string]) =>
     platform().command<{ pairs: SkillDuplicatePair[] }>('skill_duplicates_dismiss', { skills }),
+  /** Dictado local (whisper.cpp en el Engine). */
+  speechStatus: () => platform().command<SpeechStatus>('speech_status'),
+  speechSettingsSet: (input: { model?: string; language?: string; vocabulary?: string }) =>
+    platform().command<SpeechStatus>('speech_settings_set', input),
+  speechModelDownload: (model: string) =>
+    platform().command<{ model: string; status: string }>('speech_model_download', { model }),
+  speechModelCancel: (model: string) => platform().command<{ cancelled: boolean }>('speech_model_cancel', { model }),
+  speechModelRemove: (model: string) =>
+    platform().command<{ removed: boolean; status: SpeechStatus }>('speech_model_remove', { model }),
+  /** Empieza a transcribir; el texto llega en `speech.transcribed` con el mismo `job_id`. */
+  speechTranscribe: (audio: string, language?: string) =>
+    platform().command<{ job_id: string; status: string }>('speech_transcribe', { audio, language: language ?? null }),
   skillSettingsGet: () => platform().command<{ auto_learn: 'propose' | 'never' }>('skill_settings_get'),
   skillSettingsSet: (autoLearn: 'propose' | 'never') =>
     platform().command<{ auto_learn: 'propose' | 'never' }>('skill_settings_set', { auto_learn: autoLearn }),

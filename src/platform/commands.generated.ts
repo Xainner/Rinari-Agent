@@ -178,6 +178,12 @@ export type DesktopCommand =
   | "soul_list"
   | "soul_remove"
   | "soul_update"
+  | "speech_model_cancel"
+  | "speech_model_download"
+  | "speech_model_remove"
+  | "speech_settings_set"
+  | "speech_status"
+  | "speech_transcribe"
   | "task_get"
   | "task_tree"
   | "tool_list"
@@ -383,6 +389,12 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "soul_list",
   "soul_remove",
   "soul_update",
+  "speech_model_cancel",
+  "speech_model_download",
+  "speech_model_remove",
+  "speech_settings_set",
+  "speech_status",
+  "speech_transcribe",
   "task_get",
   "task_tree",
   "tool_list",
@@ -603,6 +615,12 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "soul_list",
   "soul_remove",
   "soul_update",
+  "speech_model_cancel",
+  "speech_model_download",
+  "speech_model_remove",
+  "speech_settings_set",
+  "speech_status",
+  "speech_transcribe",
   "task_get",
   "task_tree",
   "tool_list",

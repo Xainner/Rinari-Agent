@@ -45,6 +45,7 @@ export type SettingsSection =
   | 'providers'
   | 'models'
   | 'vision'
+  | 'dictation'
   | 'context'
   | 'memory'
   | 'agents'

@@ -1174,7 +1174,7 @@ select option:disabled { color: var(--text-subtle); }
 /* -- Rinari: avatar con expresión ------------------------------------------ */
 .rinari-avatar { position: relative; display: inline-grid; flex-shrink: 0; border-radius: 50%; isolation: isolate; }
 .rinari-avatar-face { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, var(--ink-4), var(--ink-2)); border: 1.5px solid rgb(196 181 253 / 0.5); }
-.rinari-avatar-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.75); transform-origin: 50% 36%; animation: rinari-fade-in var(--dur-base) var(--ease-out); user-select: none; }
+.rinari-avatar-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(2.35); transform-origin: 50% 38%; animation: rinari-fade-in var(--dur-base) var(--ease-out); user-select: none; }
 .rinari-avatar[data-state='thinking'] .rinari-avatar-face, .rinari-avatar[data-state='streaming'] .rinari-avatar-face { animation: rinari-breathe 2.4s ease-in-out infinite; }
 .rinari-avatar[data-state='waiting'] .rinari-avatar-face { border-color: var(--warning); box-shadow: 0 0 0 3px rgb(246 197 109 / 0.16); }
 .rinari-avatar[data-state='error'] .rinari-avatar-face { border-color: var(--danger); box-shadow: 0 0 0 3px rgb(255 122 147 / 0.16); }

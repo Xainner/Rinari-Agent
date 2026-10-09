@@ -64,24 +64,34 @@ function OptionRow({ checked, disabled, onChange, title, body, badge, icon }: {
   </label>
 }
 
-function Artwork({ screen }: { screen: Screen }) {
-  const file = {
+/**
+ * Panel de arte: el mismo cielo y Rinari de medio cuerpo con el mismo encuadre
+ * en todas las pantallas; cambia su pose según lo que está pasando.
+ */
+function Artwork({ screen, failed, t }: { screen: Screen; failed: boolean; t: ReturnType<typeof translator> }) {
+  const file = failed ? 'rinari-error.png' : {
     configure: 'rinari-setup.png', progress: 'rinari-installing.png', ready: 'rinari-ready.png',
     maintenance: 'rinari-maintenance.png', uninstall: 'rinari-uninstall.png', goodbye: 'rinari-goodbye.png',
   }[screen]
+  const steps = screen === 'configure' || screen === 'progress' || screen === 'ready'
+  const order = ['configure', 'progress', 'ready'] as const
+  const at = order.indexOf(screen as typeof order[number])
   return <aside className={`art art-${screen}`}>
-    <div className="motto"><span>CODE</span><span>CREATE</span><span>EXPLORE</span><span>TOGETHER</span><i /></div>
-    <img src={`/assets/${file}`} alt="Rinari" />
-    <div className="art-glow" />
+    <div className="art-sky" aria-hidden="true" />
+    {steps && <ol className="art-steps" aria-label={t('steps')}>{order.map((step, index) => <li key={step} className={index < at ? 'done' : index === at ? 'on' : ''} style={{ listStyle: 'none', display: 'contents' }}>
+      {index > 0 && <i aria-hidden="true" />}<span>{t(`step_${step}` as MessageKey)}</span>
+    </li>)}</ol>}
+    <img key={file} src={`/assets/${file}`} alt="" className="floating" />
   </aside>
 }
 
-function Layout({ screen, locale, setLocale, onClose, children }: {
-  screen: Screen; locale: 'es' | 'en'; setLocale: (value: 'es' | 'en') => void; onClose: () => void; children: React.ReactNode
+function Layout({ screen, failed, locale, setLocale, onClose, children }: {
+  screen: Screen; failed: boolean; locale: 'es' | 'en'; setLocale: (value: 'es' | 'en') => void; onClose: () => void; children: React.ReactNode
 }) {
+  const t = translator(locale)
   return <main className="shell">
     <Titlebar locale={locale} setLocale={setLocale} onClose={onClose} />
-    <div className="content"><Artwork screen={screen} /><section className="panel">{children}</section></div>
+    <div className="content"><Artwork screen={screen} failed={failed} t={t} /><section className="panel" key={screen}>{children}</section></div>
   </main>
 }
 
@@ -122,7 +132,9 @@ function Configure({ status, options, setOptions, modifying, onBack, onSubmit, l
 function Progress({ progress, onCancel, onRetry, onBack, t }: {
   progress: SetupProgress | null; onCancel: () => void; onRetry: () => void; onBack: () => void; t: ReturnType<typeof translator>
 }) {
-  const value = progress?.total ? Math.round(progress.completed / progress.total * 100) : 8
+  // Sin un evento de progreso todavía no hay porcentaje que mostrar: la barra
+  // se mueve sin cifra en vez de inventar un «8 %».
+  const value = progress?.total ? Math.round(progress.completed / progress.total * 100) : null
   const phases = ['validate', 'stage', 'files', 'integrations', 'verify', 'commit']
   const active = Math.max(0, phases.indexOf(progress?.phase ?? 'validate'))
   const failed = progress?.phase === 'error'
@@ -130,8 +142,8 @@ function Progress({ progress, onCancel, onRetry, onBack, t }: {
   return <div className="panel-inner progress-screen">
     <p className="eyebrow">{t('progressEyebrow')}</p><h1>{failed ? t('operationFailed') : t('progressTitle')}</h1><p className="lead">{failed ? progress?.detail : t('progressBody')}</p>
     <div className={`progress-card ${failed ? 'failed' : ''}`}>
-      <div className="progress-heading">{failed ? <AlertTriangle /> : <RefreshCw className="spin" />}<strong>{progress ? progressText(t, progress.step, progress.detail) : t('progressBody')}</strong>{!failed && <span>{value}%</span>}</div>
-      <div className="progress-track"><i style={{ width: `${value}%` }} /></div>
+      <div className="progress-heading">{failed ? <AlertTriangle /> : <RefreshCw className="spin" />}<strong>{progress ? progressText(t, progress.step, progress.detail) : t('preparing')}</strong>{!failed && value !== null && <span className="progress-value">{value}%</span>}</div>
+      <div className={`progress-track ${value === null && !failed ? 'indeterminate' : ''}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value ?? undefined} aria-label={t('progressTitle')}><i style={{ width: `${Math.max(3, value ?? 0)}%` }} /></div>
       <div className="phase-list">{phases.map((phase, index) => <div className={index < active ? 'done' : index === active ? 'active' : ''} key={phase}><span>{index < active ? <Check /> : index + 1}</span>{t(`phase_${phase}` as MessageKey)}</div>)}</div>
     </div>
     {failed ? <div className="button-grid progress-actions"><button className="secondary" onClick={onBack}>{t('back')}</button><button className="primary" onClick={onRetry}>{t('retry')}</button></div> : <button className="secondary" disabled={!canCancel} onClick={onCancel}>{t('cancel')}</button>}
@@ -303,7 +315,7 @@ export default function App() {
   }
   const retry = () => { if (progress?.operation) void execute(progress.operation) }
 
-  return <Layout screen={screen} locale={locale} setLocale={setLocale} onClose={close}>
+  return <Layout screen={screen} failed={screen === 'progress' && progress?.phase === 'error'} locale={locale} setLocale={setLocale} onClose={close}>
     {screen === 'configure' && <Configure status={status} options={options} setOptions={setOptions} modifying={modifying} onBack={() => { setModifying(false); setScreen('maintenance') }} onSubmit={() => execute(modifying ? 'modify' : 'install')} locale={locale} t={t} />}
     {screen === 'progress' && <Progress progress={progress} onCancel={() => command('cancel_operation')} onRetry={retry} onBack={progressBack} t={t} />}
     {screen === 'ready' && <Ready status={status} onClose={close} t={t} />}

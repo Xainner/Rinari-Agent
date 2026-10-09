@@ -2,6 +2,7 @@ import { BellRing, CalendarClock, CheckCheck, Library, TriangleAlert, X } from '
 import { useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { useI18n, type I18nKey } from '../../i18n'
+import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
 import {
   NOTIFICATION_MODULES,
@@ -86,17 +87,22 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
           {total > 0 && <span className="app-topbar-attention-badge" aria-hidden="true">{total > 99 ? '99+' : total}</span>}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="max-h-[70vh] w-96 overflow-y-auto p-2" aria-label={t('notifications.title')}>
-        <div className="flex items-center justify-between px-1 pb-2">
-          <span className="text-sm font-semibold text-[var(--text)]">{t('notifications.title')}</span>
+      <PopoverContent align="end" className="notify-pop max-h-[70vh] w-96 overflow-y-auto p-2" aria-label={t('notifications.title')}>
+        <div className="flex items-center gap-2 px-2 pt-1 pb-2">
+          <span className="mr-auto font-display text-[15px] font-bold text-[var(--text)]">{t('notifications.title')}</span>
           {unread > 0 && (
             <button type="button" className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-2)] hover:underline" onClick={() => markRead()}>
               <CheckCheck size={12} aria-hidden="true" /> {t('notifications.markAll')}
             </button>
           )}
+          {items.length > 0 && (
+            <button type="button" className="btn btn-quiet btn-xs" onClick={() => useNotificationCenter.getState().clear()}>
+              {t('notifications.clearAll')}
+            </button>
+          )}
         </div>
         {boardTotal === 0 && items.length === 0 && (
-          <p className="px-1 py-3 text-center text-xs text-[var(--text-muted)]">{t('notifications.empty')}</p>
+          <div className="notify-empty"><img src={art.chibi('sleep')} alt="" draggable={false} /><p>{t('notifications.empty')}</p></div>
         )}
         <div className="space-y-3">
           <BoardAttentionSection labelFor={labelFor} goBoard={goBoard} onNavigate={close} />
@@ -105,13 +111,13 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
             if (entries.length === 0) return null
             const Icon = MODULE_ICON[module]
             return (
-              <section key={module} aria-label={t(MODULE_TITLE[module])} className="border-t border-[var(--border)] pt-2">
+              <section key={module} aria-label={t(MODULE_TITLE[module])} className="border-t border-[var(--line-1)] pt-2">
                 <p className="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold tracking-wide text-[var(--text-subtle)] uppercase">
                   <Icon size={12} aria-hidden="true" /> {t(MODULE_TITLE[module])}
                 </p>
                 <ul className="space-y-0.5">
                   {entries.map((item) => (
-                    <li key={item.id} className="group flex items-start gap-1 rounded-lg hover:bg-[var(--bg-hover)]">
+                    <li key={item.id} className="notify-item group flex items-start gap-1 rounded-[var(--r-sm)] hover:bg-[var(--bg-hover)]" data-unread={!item.read || undefined}>
                       <button type="button" onClick={() => go(item)} className="flex min-w-0 flex-1 items-start gap-2 px-2 py-1.5 text-left">
                         <span className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', item.read ? 'bg-transparent' : TONE_DOT[item.tone ?? 'info'])} aria-hidden="true" />
                         <span className="min-w-0 flex-1">

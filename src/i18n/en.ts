@@ -2516,4 +2516,5 @@ export const en: Record<I18nKey, string> = {
   'startup.step.connect': 'Connecting your conversations and providers',
   'startup.failedTitle': 'Rinari couldn\'t start',
   'startup.copyDetails': 'Copy details',
+  'notifications.clearAll': 'Clear',
 }

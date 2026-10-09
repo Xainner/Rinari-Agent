@@ -1477,3 +1477,20 @@ button.agent-entry:hover { border-color: var(--line-3); background: rgb(20 15 34
 .startup-step-mark { display: grid; width: 18px; height: 18px; flex-shrink: 0; place-items: center; border-radius: 50%; border: 1.5px dashed rgb(167 139 250 / 0.35); }
 li[data-state='done'] .startup-step-mark { border: 0; background: rgb(91 224 165 / 0.16); color: var(--success); }
 li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 / 0.25); border-top-color: var(--violet-300); animation: rinari-orbit 0.9s linear infinite; }
+
+/* -- Notificaciones: tostadas y centro --------------------------------------- */
+[data-sonner-toaster] .rinari-toast { border-radius: var(--r-lg) !important; border: 1px solid var(--line-2) !important; background: var(--glass-2) !important; color: var(--text) !important; box-shadow: var(--sh-3), var(--inset-hi) !important; backdrop-filter: blur(16px); font-family: var(--font-sans) !important; }
+[data-sonner-toaster] .rinari-toast[data-type='success'] { border-color: rgb(91 224 165 / 0.35) !important; }
+[data-sonner-toaster] .rinari-toast[data-type='error'] { border-color: rgb(255 122 147 / 0.4) !important; }
+[data-sonner-toaster] .rinari-toast[data-type='warning'] { border-color: rgb(246 197 109 / 0.4) !important; }
+[data-sonner-toaster] .rinari-toast [data-icon] { color: var(--violet-300); }
+[data-sonner-toaster] .rinari-toast[data-type='success'] [data-icon] { color: var(--success); }
+[data-sonner-toaster] .rinari-toast[data-type='error'] [data-icon] { color: var(--danger); }
+[data-sonner-toaster] .rinari-toast [data-description] { color: var(--text-muted) !important; }
+[data-sonner-toaster] .rinari-toast [data-close-button] { background: var(--ink-4) !important; border-color: var(--line-2) !important; color: var(--text-muted) !important; }
+[data-sonner-toaster] .rinari-toast [data-button] { background: var(--grad-brand) !important; color: #fff !important; border-radius: var(--r-xs) !important; }
+.notify-item { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.notify-item[data-unread] { background: rgb(147 88 255 / 0.06); }
+.notify-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px 18px; text-align: center; font-size: 12.5px; color: var(--text-muted); }
+.notify-empty img { width: 96px; height: 96px; object-fit: contain; }
+.app-topbar-attention-badge { background: var(--warning); box-shadow: 0 0 0 2px var(--bg-subtle); animation: rinari-pop-in var(--dur-base) var(--ease-spring); }

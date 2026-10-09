@@ -2534,6 +2534,7 @@ export const es = {
   'startup.step.connect': 'Conectando con tus conversaciones y proveedores',
   'startup.failedTitle': 'Rinari no pudo arrancar',
   'startup.copyDetails': 'Copiar detalles',
+  'notifications.clearAll': 'Limpiar',
 } as const
 
 export type I18nKey = keyof typeof es

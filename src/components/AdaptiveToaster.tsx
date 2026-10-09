@@ -207,6 +207,9 @@ export default function AdaptiveToaster() {
       ref={toaster}
       offset={MARGIN}
       position={active ? (frozen.current ?? decision.chosen) : placement}
+      theme="dark"
+      closeButton
+      toastOptions={{ className: 'rinari-toast' }}
     />
   )
 }

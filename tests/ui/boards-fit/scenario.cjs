@@ -3,11 +3,11 @@
 // foco, zoom, barra lateral, ventanas estrechas, recarga y migración del
 // schema 3. El proveedor es un puerto muerto: el turno falla a propósito.
 const assert = require('node:assert/strict')
-const { ui, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay } = require('../harness.cjs')
+const { ui, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay, settleAnimations } = require('../harness.cjs')
 
 async function geometry() {
   // Mide con el board quieto: plegar, desplegar y la barra lateral se animan.
-  await evaluate(`Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))`)
+  await settleAnimations()
   return evaluate(`(() => {
     const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x, right:r.right, width:r.width, height:r.height } }
     const row = document.querySelector('.board-pane-row')
@@ -74,6 +74,7 @@ scenario(async () => {
   }
   await load(3)
   // El borrador y la identidad del composer sobreviven al cambio de modo.
+  await wait('Boolean(document.querySelector("textarea"))')
   await evaluate(`(() => { const el=document.querySelector('textarea'); window.savedComposer=el;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Borrador de prueba');
     el.dispatchEvent(new Event('input',{bubbles:true})); })()`)

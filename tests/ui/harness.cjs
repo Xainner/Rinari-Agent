@@ -41,6 +41,20 @@ const ui = {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const evaluate = (code) => ui.win.webContents.executeJavaScript(code)
+
+/**
+ * Espera a que terminen las animaciones finitas, con tope: si la ventana no
+ * pinta (runner de CI), una animación puede no avanzar nunca y `finished` no
+ * se resolvería. Nada aquí lanza: una animación ya cancelada o sin efecto se
+ * ignora.
+ */
+const settleAnimations = (capMs = 2000) => evaluate(`(() => {
+  const finite = document.getAnimations().filter((a) => {
+    try { return a.effect && a.effect.getTiming().iterations !== Infinity } catch { return false }
+  })
+  const done = Promise.all(finite.map((a) => a.finished.then(() => {}, () => {})))
+  return Promise.race([done, new Promise((resolve) => setTimeout(resolve, ${capMs}))]).then(() => true)
+})()`)
 /** Expresión JS que devuelve el primer elemento del selector. */
 const q = (selector) => `document.querySelector(${JSON.stringify(selector)})`
 
@@ -243,7 +257,7 @@ function scenario(body, { width = 1500, height = 900, timeout = 300_000 } = {}) 
 }
 
 module.exports = {
-  ui, delay, evaluate, q, until, wait, center, clickAt, click, domClick, clickText, key, menuShortcut, wheel, input,
+  ui, delay, evaluate, settleAnimations, q, until, wait, center, clickAt, click, domClick, clickText, key, menuShortcut, wheel, input,
   command, stored, screenshot, ready, reload, size, language, useLocalModel, seedBoard, panesFor,
   report, scenario, DEAD_MODEL,
 }

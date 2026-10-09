@@ -71,6 +71,10 @@ scenario(async () => {
   await clickText('Colapsar todo')
   assert.equal(await evaluate(`Boolean(${q(a + ' [data-operation-group] details')})`), false)
   await clickText('Expandir todo')
+  // En el runner la ventana a veces no pinta y la animación de desplegar no
+  // avanza: se congela aquí a propósito y el panel debe llegar igual a su ancho.
+  await evaluate(`for(const el of document.querySelectorAll('[data-motion]'))for(const an of el.getAnimations({subtree:true}))an.pause()`)
+  await wait(`!document.querySelector('${a}[data-motion]') && ${q(a)}.getBoundingClientRect().width > 300`)
   await wait(`Boolean(${q(a + ' [data-operation-group] details[open]')})`)
   await release()
   await wait(`${q(a)}.innerText.includes('RESULTADO COMPLETO')`)

@@ -1,5 +1,5 @@
 import { runUiCommand } from '../engine/slashUi'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
@@ -98,6 +98,14 @@ function LiveSessionPane({
     observed.current.observe(element)
   }, [pane.width])
   const endFold = useCallback(() => setFold((current) => current.motion ? { ...current, motion: null } : current), [])
+  // `animationend` no llega si la ventana no pinta (oculta, minimizada, en
+  // segundo plano): sin este tope el panel se quedaría en el primer fotograma,
+  // a 48 px y con overflow oculto. Margen sobre la animación más larga (0,4 s).
+  useEffect(() => {
+    if (!fold.motion) return
+    const timer = window.setTimeout(endFold, 600)
+    return () => window.clearTimeout(timer)
+  }, [fold.motion, endFold])
   const forwardTargets = useMemo<PeerForwardTarget[]>(
     () => panes
       .filter((item) => item.sessionId !== pane.sessionId && !isDraftPane(item))

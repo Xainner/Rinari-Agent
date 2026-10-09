@@ -125,13 +125,40 @@ function harden(contents: WebContents, allowedOrigins: string[], openExternally:
     event.preventDefault()
   })
 
-  // Permisos del navegador: denegar por defecto. Cámara, micrófono,
-  // geolocalización o notificaciones se conceden por una UX propia, no porque
-  // una página lo pida.
-  contents.session.setPermissionRequestHandler((_contents, _permission, callback) => {
-    callback(false)
+  // Permisos del navegador: denegar por defecto. Cámara, geolocalización o
+  // notificaciones se conceden por una UX propia, no porque una página lo pida.
+  // La única excepción es el micrófono para el dictado del composer: solo
+  // audio, solo esta ventana y solo su propio origen. El navegador del agente
+  // vive en otra partición con su propia política y sigue sin micrófono.
+  contents.session.setPermissionRequestHandler((requester, permission, callback, details) => {
+    callback(dictationAllowed(requester === contents, permission, details, allowedOrigins))
   })
-  contents.session.setPermissionCheckHandler(() => false)
+  contents.session.setPermissionCheckHandler((requester, permission, origin, details) =>
+    dictationAllowed(
+      requester === contents,
+      permission,
+      { mediaType: details?.mediaType, requestingUrl: origin },
+      allowedOrigins,
+    ),
+  )
+}
+
+/**
+ * Micrófono para dictado: solo `media` de audio, pedido por la ventana de la
+ * app desde su origen. Cualquier vídeo (cámara, pantalla) o cualquier otro
+ * contenido se sigue denegando.
+ */
+export function dictationAllowed(
+  fromAppWindow: boolean,
+  permission: string,
+  details: { mediaTypes?: string[]; mediaType?: string; requestingUrl?: string } | undefined,
+  allowedOrigins: string[],
+): boolean {
+  if (!fromAppWindow || permission !== 'media') return false
+  const types = details?.mediaTypes ?? (details?.mediaType ? [details.mediaType] : [])
+  if (types.length === 0 || types.some((type) => type !== 'audio')) return false
+  const url = details?.requestingUrl ?? ''
+  return allowedOrigins.some((origin) => url === origin || url.startsWith(`${origin}/`))
 }
 
 export function createMainWindow(deps: WindowDeps): BrowserWindow {

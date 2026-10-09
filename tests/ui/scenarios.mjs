@@ -8,7 +8,7 @@
 //   (`127.0.0.1:9`) y los turnos que lance fallan a propósito.
 // - `fixtures(data)`: archivos que el escenario necesita en su carpeta.
 import { createServer } from 'node:http'
-import { writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 
@@ -53,6 +53,18 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  dictation: {
+    title: 'Dictado: micrófono del composer con whisper.cpp local (real con RINARI_E2E_WHISPER_DIR)',
+    phases: ['exercise'],
+    // The model goes where the Engine looks: <RINARI_HOME>/models/speech.
+    fixtures: (data) => {
+      const dir = process.env.RINARI_E2E_WHISPER_DIR
+      if (!dir || !existsSync(join(dir, 'ggml-small-q5_1.bin'))) return
+      mkdirSync(join(data, 'engine', 'models', 'speech'), { recursive: true })
+      copyFileSync(join(dir, 'ggml-small-q5_1.bin'), join(data, 'engine', 'models', 'speech', 'ggml-small-q5_1.bin'))
+    },
+    model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'DICTADO RECIBIDO' }))),
+  },
   'skill-manager': {
     title: 'Gestor de skills: lección desde el turno, freno de duplicados con motivo y fusión preparada',
     phases: ['exercise'],

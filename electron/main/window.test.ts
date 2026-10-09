@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { focusExistingWindow, presentWindow, revealMaximized } from './window'
+import { dictationAllowed, focusExistingWindow, presentWindow, revealMaximized } from './window'
 
 describe('revealMaximized', () => {
   it('maximizes before publishing without an eager show', async () => {
@@ -112,5 +112,27 @@ describe('presentWindow (bandeja, notificación, segunda instancia)', () => {
       focus: () => calls.push('focus'),
     } as never)
     expect(calls).toEqual(['show', 'focus'])
+  })
+})
+
+describe('dictationAllowed', () => {
+  const origins = ['app://rinari']
+  const audio = { mediaTypes: ['audio'], requestingUrl: 'app://rinari/index.html' }
+
+  it('lets the app window use the microphone for dictation', () => {
+    expect(dictationAllowed(true, 'media', audio, origins)).toBe(true)
+    // The permission check path reports one media type and the origin.
+    expect(dictationAllowed(true, 'media', { mediaType: 'audio', requestingUrl: 'app://rinari' }, origins)).toBe(true)
+  })
+
+  it('denies the camera, the screen, other origins, other contents and other permissions', () => {
+    expect(dictationAllowed(true, 'media', { ...audio, mediaTypes: ['audio', 'video'] }, origins)).toBe(false)
+    expect(dictationAllowed(true, 'media', { ...audio, mediaTypes: ['video'] }, origins)).toBe(false)
+    expect(dictationAllowed(true, 'media', { ...audio, mediaTypes: [] }, origins)).toBe(false)
+    expect(dictationAllowed(true, 'media', { ...audio, requestingUrl: 'https://evil.example/' }, origins)).toBe(false)
+    expect(dictationAllowed(true, 'media', { ...audio, requestingUrl: 'app://rinari.evil/' }, origins)).toBe(false)
+    expect(dictationAllowed(false, 'media', audio, origins)).toBe(false)
+    expect(dictationAllowed(true, 'geolocation', audio, origins)).toBe(false)
+    expect(dictationAllowed(true, 'notifications', audio, origins)).toBe(false)
   })
 })

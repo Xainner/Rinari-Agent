@@ -22,18 +22,27 @@ export const CHANNEL = {
   dialogOpenFiles: 'rinari:dialog.openFiles',
   openerOpenUrl: 'rinari:opener.openUrl',
   filesOpenExternal: 'rinari:files.openExternal',
+  filesRevealInFolder: 'rinari:files.revealInFolder',
+  filesMedia: 'rinari:files.media',
   clipboardWriteText: 'rinari:clipboard.writeText',
+  /** «Exportar diagnóstico»: qué incluiría el paquete y guardarlo donde diga la persona. */
+  diagnosticsPreview: 'rinari:diagnostics.preview',
+  diagnosticsExport: 'rinari:diagnostics.export',
   /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
   appBackgroundGet: 'rinari:app.background.get',
   appBackgroundSet: 'rinari:app.background.set',
   /** Idioma de la interfaz: main lo usa en el menú nativo, la bandeja y sus diálogos. */
   appLanguageSet: 'rinari:app.language.set',
+  /** Chats pendientes: número en la barra de tareas y marca en la bandeja. */
+  appIndicatorsSet: 'rinari:app.indicators.set',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
   updatesCheck: 'rinari:updates.check',
   updatesDownload: 'rinari:updates.download',
   updatesApply: 'rinari:updates.apply',
+  /** Estado actual del actualizador: lo que un renderer recargado no vio pasar. */
+  updatesSnapshot: 'rinari:updates.snapshot',
   migrationStatus: 'rinari:migration.status',
   migrationStage: 'rinari:migration.importPending',
   migrationCommit: 'rinari:migration.commit',
@@ -151,7 +160,9 @@ export type { MigrationStage, MigrationStatus } from './migration'
  * como excepciones serializadas: una excepción cruzando el puente pierde el
  * código de máquina que la UI necesita para decidir.
  */
-export type BridgeResult<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } }
+export type BridgeResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: { code: string; message: string; retryable?: boolean; details?: Record<string, unknown> } }
 
 /**
  * Un elemento del menú contextual tal como cruza el puente: la función que
@@ -201,12 +212,35 @@ export interface SystemNotificationRequest {
   title: string
   body: string
   target?: NotificationTarget
+  /** Sin sonido del sistema: la app reproduce su propio tono. */
+  silent?: boolean
 }
 
 export interface OpenExternalFileRequest {
   session_id: string
   path: string
   turn_id?: string
+}
+
+/** Archivos que llevaría el paquete de diagnóstico, con su tamaño. */
+export interface DiagnosticsPreview {
+  /** `bytes` es `null` para el resumen, que se genera al guardar. */
+  files: Array<{ name: string; bytes: number | null }>
+  totalBytes: number
+}
+
+export interface DiagnosticsExportResult {
+  saved: boolean
+}
+
+/** Qué es un archivo autorizado; `url` solo para imagen, video o audio. */
+export interface WorkspaceMedia {
+  path: string
+  name: string
+  size: number
+  kind: 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'binary'
+  mime: string
+  url: string | null
 }
 
 export interface OpenFilesRequest {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Check, ChevronDown, RefreshCw, Search } from 'lucide-react'
+import { Check, ChevronDown, RefreshCw, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
@@ -91,11 +91,13 @@ export default function ModelPicker({
     }
   }
   const providerGroups = [...new Set(models.map((model) => model.provider ?? 'Otros'))]
-  const providerEndpoint = (alias: string | null | undefined) =>
-    providers?.find((provider) => provider.alias === alias)?.endpoint ?? null
+  const providerRecord = (alias: string | null | undefined) =>
+    providers?.find((provider) => provider.alias === alias)
+  const selectedModel = activeModel ?? models.find((model) => model.alias === activeAlias)
   const activeProvider =
-    (activeModel ?? models.find((model) => model.alias === activeAlias))?.provider ?? activeAlias
-  const activeBrand = brandForProvider({ alias: activeProvider, endpoint: providerEndpoint(activeProvider) })
+    selectedModel?.provider ?? null
+  const activeRecord = providers?.find(provider => provider.id === selectedModel?.provider_id) ?? providerRecord(activeProvider)
+  const activeBrand = brandForProvider(activeRecord ?? { alias: activeProvider })
   const normalizedQuery = query.trim().toLowerCase()
   const matchingModels = normalizedQuery
     ? models.filter((model) => [model.alias, model.provider, model.provider_model_id, modelDisplayName(model), modelTechnicalId(model)].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery))
@@ -116,11 +118,7 @@ export default function ModelPicker({
             !activeAlias && missingLabel && 'text-[var(--text-subtle)]',
           )}
         >
-          {activeBrand ? (
-            <ProviderLogo brand={activeBrand} size={14} />
-          ) : (
-            <Box size={13} aria-hidden="true" className="shrink-0" />
-          )}
+          <ProviderLogo brand={activeBrand} size={14} />
           <span className="truncate">{label}</span>
         </button>
       </PopoverTrigger>
@@ -152,7 +150,7 @@ export default function ModelPicker({
             <h3 className="text-[11px] font-semibold text-[var(--text-subtle)]">
               <button type="button" aria-expanded={Boolean(query.trim()) || !collapsedProviders.has(provider)} onClick={() => setCollapsedProviders((current) => { const next = new Set(current); if (next.has(provider)) next.delete(provider); else next.add(provider); return next })} disabled={Boolean(query.trim())} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default">
                 <span className="flex size-3.5 shrink-0 items-center justify-center">
-                  <ProviderLogo alias={provider} endpoint={providerEndpoint(provider)} size={13} />
+                  <ProviderLogo productId={providerRecord(provider)?.product_id} alias={provider} endpoint={providerRecord(provider)?.endpoint} size={13} />
                 </span>
                 <span className="flex-1">{provider}</span>
                 <ChevronDown size={13} aria-hidden="true" className={`transition-transform ${!query.trim() && collapsedProviders.has(provider) ? '-rotate-90' : ''}`} />

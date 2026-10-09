@@ -8,17 +8,25 @@ import {
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { modelTechnicalId } from '../../lib/modelDisplay'
+import { registerProviderModels } from './registerModels'
 
 /**
- * Catálogo de modelos de un proveedor: descubiertos (guardar con alias)
- * + guardados (usar/probar/quitar). Compartido entre Ajustes y el wizard.
+ * Catálogo de modelos de un proveedor: guardados (usar/probar/quitar) y, si
+ * quedara alguno descubierto sin guardar, su alta. Al configurar el proveedor
+ * el Engine ya guarda todo el catálogo; «Actualizar» añade los nuevos.
+ * Compartido entre Ajustes y el wizard.
+ *
+ * Con `choice`, «Usar» no cambia el modelo activo del Engine: marca la
+ * elección, que el wizard aplica al continuar.
  */
 export default function ModelCatalog({
   providerAlias,
   onChanged,
+  choice,
 }: {
   providerAlias: string
   onChanged: () => void
+  choice?: { chosen: string | null; onChoose: (alias: string) => void }
 }) {
   const { t, lang } = useI18n()
   const [discovered, setDiscovered] = useState<DiscoveredModel[]>([])
@@ -78,6 +86,10 @@ export default function ModelCatalog({
   }
 
   async function useModel(ref: string) {
+    if (choice) {
+      choice.onChoose(ref)
+      return
+    }
     setBusy(`use:${ref}`)
     try {
       await engineApi.modelUse(ref, providerAlias)
@@ -119,7 +131,7 @@ export default function ModelCatalog({
   async function refresh() {
     setRefreshing(true)
     try {
-      await engineApi.modelRefresh(providerAlias)
+      await registerProviderModels(providerAlias)
       await reload()
       onChanged()
     } catch (err) {
@@ -191,7 +203,7 @@ export default function ModelCatalog({
           <span className="min-w-0 flex-1 basis-44">
             <span className="block truncate text-sm font-semibold text-[var(--text)]">
               {model.alias}
-              {model.active && (
+              {(choice ? choice.chosen === model.alias : model.active) && (
                 <span className="ml-2 rounded-md bg-[var(--accent)]/15 px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent-2)]">
                   {t('providers.active')}
                 </span>
@@ -206,7 +218,7 @@ export default function ModelCatalog({
               {model.capabilities?.reasoning_effort === true && <span>{t('providers.reasoningCapability')}</span>}
             </span>
           </span>
-          {!model.active && (
+          {!(choice ? choice.chosen === model.alias : model.active) && (
             <button
               type="button"
               onClick={() => void useModel(model.alias)}
@@ -234,8 +246,8 @@ export default function ModelCatalog({
           </button>
         </div>
       ))}
-      {saved.length > 0 && (
-        <p className="text-xs text-[var(--text-subtle)]">{t('providers.savedHint')}</p>
+      {pending.length > 0 && (
+        <p className="text-xs text-[var(--text-subtle)]">{t('providers.pendingHint', { n: pending.length })}</p>
       )}
     </div>
   )

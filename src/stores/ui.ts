@@ -19,6 +19,17 @@ import type { Language } from '../types'
 export type View = 'chat' | 'board' | 'flows' | 'settings' | 'engine' | 'workspace' | 'project' | 'schedules'
 /** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
 export type WorkspaceView = Extract<View, 'chat' | 'board' | 'flows'>
+export type ProviderTab = 'connection' | 'models' | 'usage' | 'diagnostics'
+/**
+ * Proveedor que Ajustes > Proveedores debe abrir al entrar, y en qué pestaña.
+ * Se busca por id: el alias puede haber cambiado desde que se guardó el
+ * aviso. Es una referencia de navegación; no activa ni cambia nada.
+ */
+export interface ProviderFocus {
+  providerId?: string
+  alias?: string
+  tab: ProviderTab
+}
 
 /** Alcance de la vista Flujos: un proyecto registrado o una sesión suelta. Preferencia, no dato. */
 export interface FlowScope {
@@ -197,6 +208,15 @@ interface UIState {
   /** Ajustes > Skills con la ficha de `name` abierta. */
   openSkill: (name: string) => void
   clearSkillFocus: () => void
+  /** Ajustes > Proveedores con esa tarjeta abierta en `tab`; en memoria. */
+  providerFocus: ProviderFocus | null
+  openProvider: (focus: ProviderFocus) => void
+  clearProviderFocus: () => void
+  /** Abre el selector de modelo del compositor de esa sesión (p. ej. tras un error de créditos); en memoria. */
+  modelPickerRequest: { sessionId: string; seq: number } | null
+  requestModelPicker: (sessionId: string) => void
+  /** Vuelve a la última vista de trabajo (Normal, Boards o Flujos). */
+  goBackToWork: () => void
   goChat: () => void
   /** Selección idempotente de Normal (alias de `goChat`). */
   goNormal: () => void
@@ -305,6 +325,14 @@ export const useUIStore = create<UIState>((set) => ({
   openSkill: (name) =>
     set({ view: 'settings', sidebarOpen: false, settingsSection: 'skills', projectRoot: null, skillFocus: name }),
   clearSkillFocus: () => set({ skillFocus: null }),
+  providerFocus: null,
+  openProvider: (focus) =>
+    set({ view: 'settings', sidebarOpen: false, settingsSection: 'providers', projectRoot: null, providerFocus: focus }),
+  clearProviderFocus: () => set({ providerFocus: null }),
+  modelPickerRequest: null,
+  requestModelPicker: (sessionId) =>
+    set((s) => ({ modelPickerRequest: { sessionId, seq: (s.modelPickerRequest?.seq ?? 0) + 1 } })),
+  goBackToWork: () => set((s) => ({ view: s.lastWorkspaceView, sidebarOpen: false, projectRoot: null })),
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   setLang: (lang) => {
     try {

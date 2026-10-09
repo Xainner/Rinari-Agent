@@ -10,10 +10,12 @@
  * parezca funcionar.
  */
 
+import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
+  WorkspaceMedia,
   EngineBackedCommand,
   EngineStatus,
   EngineEventMessage,
@@ -31,6 +33,8 @@ import type {
   MigrationStatus,
   BackgroundPatch,
   BackgroundSettings,
+  DiagnosticsExportResult,
+  DiagnosticsPreview,
 } from './contract'
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
@@ -91,6 +95,7 @@ interface DesktopHostApi {
   updates: {
     check(): Promise<UpdateAvailable | null>
     download(): Promise<UpdateState>
+    snapshot(): Promise<UpdateState>
     apply(): Promise<void>
     onState(callback: (state: UpdateState) => void): Unsubscribe
   }
@@ -106,12 +111,21 @@ interface DesktopHostApi {
     initial(): Promise<OpenRequest>
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
-  files: { openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void> }
+  files: {
+    openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    revealInFolder(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
+  }
   clipboard: { writeText(text: string): Promise<void> }
+  diagnostics: {
+    preview(): Promise<DiagnosticsPreview>
+    export(): Promise<DiagnosticsExportResult>
+  }
   app: {
     background(): Promise<BackgroundSettings>
     setBackground(patch: BackgroundPatch): Promise<BackgroundSettings>
     setLanguage(language: 'es' | 'en'): Promise<void>
+    setIndicators(state: AttentionIndicators): Promise<void>
   }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
@@ -122,8 +136,68 @@ declare global {
   }
 }
 
+/** Un fallo del host con lo que el main y el Engine dijeron de él. */
+export class HostError extends Error {
+  readonly code: string
+  readonly retryable?: boolean
+  readonly details?: Record<string, unknown>
+  constructor(raw: { code: string; message?: unknown; retryable?: unknown; details?: unknown }) {
+    super(typeof raw.message === 'string' ? raw.message : raw.code)
+    this.name = 'HostError'
+    this.code = raw.code
+    if (typeof raw.retryable === 'boolean') this.retryable = raw.retryable
+    if (raw.details && typeof raw.details === 'object' && !Array.isArray(raw.details)) this.details = raw.details as Record<string, unknown>
+  }
+}
+
+function toHostError(error: unknown): unknown {
+  if (error instanceof Error) return error
+  if (error && typeof error === 'object' && (error as { rinariBridgeError?: unknown }).rinariBridgeError === true && typeof (error as { code?: unknown }).code === 'string') {
+    return new HostError(error as { code: string })
+  }
+  return error
+}
+
+const wrapped = new WeakMap<object, object>()
+
+/**
+ * La API del preload con sus fallos vueltos `HostError`: una copia que envuelve
+ * cada función (también en objetos anidados) sin cambiar lo que devuelve. Una
+ * promesa rechazada o un `throw` síncrono pasan por `toHostError`. Es una copia
+ * y no un Proxy porque `contextBridge` entrega objetos congelados.
+ */
+function withHostErrors<T extends object>(target: T): T {
+  const cached = wrapped.get(target)
+  if (cached) return cached as T
+  const copy: Record<string, unknown> = {}
+  for (const key of Object.keys(target)) {
+    const value = (target as Record<string, unknown>)[key]
+    if (typeof value === 'function') {
+      copy[key] = (...args: unknown[]) => {
+        let result: unknown
+        try {
+          result = (value as (...a: unknown[]) => unknown).apply(target, args)
+        } catch (error) {
+          throw toHostError(error)
+        }
+        if (result && typeof (result as Promise<unknown>).then === 'function') {
+          return (result as Promise<unknown>).then(undefined, (error) => { throw toHostError(error) })
+        }
+        return result
+      }
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      copy[key] = withHostErrors(value as object)
+    } else {
+      copy[key] = value
+    }
+  }
+  wrapped.set(target, copy)
+  return copy as T
+}
+
 export function hostApi(): DesktopHostApi | undefined {
-  return typeof window === 'undefined' ? undefined : window.rinariDesktop
+  if (typeof window === 'undefined' || !window.rinariDesktop) return undefined
+  return withHostErrors(window.rinariDesktop)
 }
 
 class MissingBridge extends Error {
@@ -162,16 +236,24 @@ export const electronBridge: DesktopBridge = {
 
   files: {
     openExternal: (input) => required().files.openExternal(input),
+    revealInFolder: (input) => required().files.revealInFolder(input),
+    media: (input) => required().files.media(input),
   },
 
   clipboard: {
     writeText: (text) => required().clipboard.writeText(text),
   },
 
+  diagnostics: {
+    preview: () => required().diagnostics.preview(),
+    export: () => required().diagnostics.export(),
+  },
+
   app: {
     backgroundSettings: () => required().app.background(),
     setBackgroundSettings: (patch) => required().app.setBackground(patch),
     setLanguage: (language) => required().app.setLanguage(language),
+    setIndicators: (state) => required().app.setIndicators(state),
   },
 
   events: {
@@ -243,6 +325,7 @@ export const electronBridge: DesktopBridge = {
   updates: {
     check: () => required().updates.check(),
     download: () => required().updates.download(),
+    snapshot: () => required().updates.snapshot(),
     apply: () => required().updates.apply(),
     onState: (callback) => ready(required().updates.onState(callback)),
   },

@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { dispatchAction, resolveContextualAction, type DesktopAction } from './services/actions'
+import { bugReportUrl } from './services/support'
 import { useDesktopShortcuts } from './hooks/useDesktopShortcuts'
 import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
@@ -12,6 +13,7 @@ import { engineApi, type TrustState } from './services/engine'
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
+import { version as appVersion } from '../package.json'
 import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
@@ -21,6 +23,8 @@ import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
 import ScheduleNotifier from './features/schedules/ScheduleNotifier'
+import SoundCoordinator from './features/sounds/SoundCoordinator'
+import UpdateNotifier from './features/updates/UpdateNotifier'
 import NotificationCenter from './features/notifications/NotificationCenter'
 import { selectAttentionCounts, useBoardStatusStore } from './stores/boardStatus'
 import { projectDisplayName } from './features/projects/workspaceModel'
@@ -56,7 +60,9 @@ const BoardView = lazy(() => import('./features/board/BoardView'))
 const FlowView = lazy(() => import('./features/flow/FlowView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
 
-const APP_VERSION = '0.2.0'
+// De package.json al compilar: fija en el código se quedó en 0.2.0 tras publicar
+// la 0.2.1. `npm run release:bump` solo toca package.json y sus copias.
+const APP_VERSION = appVersion
 
 function App() {
   const view = useUIStore((s) => s.view)
@@ -472,7 +478,8 @@ function App() {
         case 'new-chat': {
           // Contextual: en Boards abre "Añadir panel" (lo cablea el store del board).
           if (resolveContextualAction('new', { view }) === 'add-pane') { boardActionsRef.current.addPane(); break }
-          void session.createSession().then(id => id && goChat()); break
+          // Un borrador: la sesión se crea con el primer mensaje.
+          session.openDraft(); goChat(); break
         }
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break
@@ -500,6 +507,10 @@ function App() {
         case 'settings': goSettings(); break
         case 'appearance': goSettings('appearance'); break
         case 'about': goSettings('about'); break
+        case 'report-bug':
+          void platform().opener.openUrl(bugReportUrl(APP_VERSION, session.status, translate(lang, 'settings.about.issueTemplate')))
+            .catch(error => toast.error(String(error)))
+          break
         case 'engine': goEngine(); break
         case 'schedules': if (schedulesEnabled) goSchedules(); break
         case 'sidebar': toggleSidebarCollapsed(); break
@@ -526,7 +537,7 @@ function App() {
           }
           break
         case 'undo': case 'redo': document.execCommand(action); break
-        case 'updates': void checkForUpdates().then(found => {
+        case 'updates': goSettings('about'); void checkForUpdates().then(found => {
           if (!found) { toast.success(translate(lang, 'update.upToDate')); return }
           toast(translate(lang, 'update.available', { v: found.version }), {
             description: found.unsigned ? translate(lang, 'update.unsigned') : undefined,
@@ -571,6 +582,8 @@ function App() {
       <EngineProvider session={session}>
       {confirmDialog}
       <BoardActivityController />
+      <SoundCoordinator activeSession={session.activeSession} />
+      <UpdateNotifier lang={lang} />
       <SkillLearnedNotifier />
       {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
       <ScheduleForm />
@@ -621,7 +634,7 @@ function App() {
             onOpenProjectHome={
               session.activeProjectRoot ? () => goProject(session.activeProjectRoot as string) : null
             }
-            onNewProjectChat={(id) => void session.createSession(id).then(created => created && goChat())}
+            onNewProjectChat={(id) => { session.openDraft(id); goChat() }}
             onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(String(error)))}
             onNewChat={() => dispatchAction('new-chat')}
             onOpenFolder={() =>
@@ -699,7 +712,6 @@ function App() {
             selectedView={view === 'chat' || view === 'board' || view === 'flows' ? view : null}
             onSelectView={(next) => (next === 'board' ? goBoard() : next === 'flows' ? goFlows() : goNormal())}
             toggleShortcut={shortcutBindings.boards}
-            workingCount={session.busySessionIds.size}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
             attentionMenu={
@@ -711,6 +723,7 @@ function App() {
                   if (target.kind === 'session') chooseSession(target.sessionId)
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
+                  else if (target.kind === 'update') goSettings('about')
                   else if (target.skill) useUIStore.getState().openSkill(target.skill)
                   else goSettings('skills')
                 }}
@@ -762,23 +775,10 @@ function App() {
               void session.selectSession(id)
               goChat()
             }}
-            onNewSession={() =>
-              void engineApi
-                .createSession({
-                  project_id: session.projects.find((p) => p.root === projectRoot)?.id,
-                  cwd: projectRoot,
-                  mode: 'build',
-                  permission_profile: 'workspace',
-                })
-                .then(async (created) => {
-                  await session.refreshSessions()
-                  await session.selectSession(created.session.id)
-                  goChat()
-                })
-                .catch((err: unknown) =>
-                  toast.error(err instanceof Error ? err.message : String(err)),
-                )
-            }
+            onNewSession={() => {
+              session.openDraft(session.projects.find((p) => p.root === projectRoot)?.id ?? null)
+              goChat()
+            }}
             onEnsure={() => {
               void session.loadProjectStatus(projectRoot)
               if (!session.projectIntelByRoot[projectRoot]) {

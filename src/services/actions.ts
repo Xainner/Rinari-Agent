@@ -6,6 +6,7 @@ export type DesktopAction =
   | 'appearance'
   | 'engine'
   | 'updates'
+  | 'report-bug'
   | 'about'
   | 'sidebar'
   | 'files'

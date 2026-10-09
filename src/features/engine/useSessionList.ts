@@ -7,10 +7,15 @@ import {
   type SessionDeleteResult,
   type SessionSummary,
   type TrustState,
+  type BranchChange,
 } from '../../services/engine'
 import { translate } from '../../i18n'
+import type { Language } from '../../types'
 import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
+import { useActivityDisclosure } from '../../stores/activityDisclosure'
+import { revealSessionProject } from '../projects/revealSessionProject'
+import { useConversationDraftStore } from '../../stores/conversationDraft'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -30,6 +35,9 @@ export interface CreateSessionOptions {
   /** `false`: la sesión se crea sin convertirse en la sesión Normal activa (Boards). */
   activate?: boolean
   title?: string
+  /** Modo y permisos elegidos en el borrador antes del primer envío. */
+  mode?: string
+  permissionProfile?: string
 }
 
 export type HistoryPhase = 'unloaded' | 'loading' | 'loaded' | 'error'
@@ -45,6 +53,15 @@ const EMPTY_SEARCH = { root: '', files: [] as Array<{ path: string; relative_pat
  * Reporta su error por separado para que el shell degrade sin atraparse en el
  * splash.
  */
+/** El cambio de rama, medido desde el último trabajo en ese checkout, en el idioma de la app. */
+export function branchChangeText(change: BranchChange, lang: Language): string {
+  const since = change.since ? new Date(change.since) : null
+  const when = since && !Number.isNaN(since.getTime())
+    ? since.toLocaleString(lang === 'es' ? 'es' : 'en', { dateStyle: 'medium', timeStyle: 'short' })
+    : '—'
+  return translate(lang, change.reference === 'last_work' ? 'git.branchChanged.lastWork' : 'git.branchChanged.firstSeen', { from: change.from, to: change.to, when })
+}
+
 export function useSessionList(options: {
   dispatch: Dispatch<TimelineAction>
   engineReady: boolean
@@ -193,6 +210,8 @@ export function useSessionList(options: {
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current
+        // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
+        if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''
       })
     } catch (err) {
@@ -265,7 +284,7 @@ export function useSessionList(options: {
     return () => { trustAsked.current.delete(root) }
   }, [])
 
-  const reportWarnings = useCallback((id: string, opened: { session: SessionSummary; warnings?: string[]; trust_state?: TrustState | null }) => {
+  const reportWarnings = useCallback((id: string, opened: { session: SessionSummary; warnings?: string[]; trust_state?: TrustState | null; branch_change?: BranchChange | null }) => {
     for (const warning of new Set(opened.warnings ?? [])) {
       // Working-tree drift is normal project state and already appears in
       // the Git surface. Do not present it as an application error.
@@ -274,6 +293,10 @@ export function useSessionList(options: {
         const root = opened.session.project_root
         if (root && trustAsked.current.has(root)) continue
         warnUntrusted(root, opened.trust_state, `project-trust-${opened.session.project_id ?? opened.session.project_root ?? id}`)
+        continue
+      }
+      if (warning.startsWith('[git-branch]') && opened.branch_change) {
+        toast.warning(branchChangeText(opened.branch_change, useUIStore.getState().lang), { id: `session-warning-${id}-${warning}` })
         continue
       }
       toast.warning(warning, { id: `session-warning-${id}-${warning}` })
@@ -381,14 +404,15 @@ export function useSessionList(options: {
         project_id: projectId,
         chat: !projectId,
         title: options.title ?? translate(useUIStore.getState().lang, 'sidebar.newChat'),
-        mode: 'build',
-        permission_profile: 'workspace',
+        mode: options.mode ?? 'build',
+        permission_profile: options.permissionProfile ?? 'workspace',
       })
       rememberRows([result.session])
       setRecentSessionIds((current) => [result.session.id, ...current.filter((item) => item !== result.session.id)])
       historyLoaded.current.add(result.session.id)
       setHistoryPhases((current) => ({ ...current, [result.session.id]: 'loaded' }))
       if (shouldActivate) activate(result.session.id)
+      await revealSessionProject(result.session)
       void refreshSessions()
       return result.session.id
     } catch (err) {
@@ -468,6 +492,7 @@ export function useSessionList(options: {
     async (id: string, cascade: boolean): Promise<SessionDeleteResult | null> => {
       try {
         const result = await engineApi.deleteSession(id, cascade)
+        useActivityDisclosure.getState().forgetSession(id)
         forgetRow(id)
         await refreshSessions()
         return result

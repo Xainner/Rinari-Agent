@@ -19,20 +19,34 @@ export type { EngineState, EngineStatus } from '../../shared/contracts'
 export interface CommandError {
   code: string
   message: string
+  /** Lo que el Engine dijo del error: si reintentar sirve y sus datos (proveedor, HTTP…). */
+  retryable?: boolean
+  details?: Record<string, unknown>
 }
 
 export class EngineCommandError extends Error implements CommandError {
   constructor(
     readonly code: string,
     message: string,
+    readonly retryable?: boolean,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message)
     this.name = 'EngineCommandError'
   }
 
   toJSON(): CommandError {
-    return { code: this.code, message: this.message }
+    return {
+      code: this.code,
+      message: this.message,
+      ...(this.retryable !== undefined ? { retryable: this.retryable } : {}),
+      ...(this.details ? { details: this.details } : {}),
+    }
   }
+}
+
+function plainDetails(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
 }
 
 /** La capability sin la que este desktop no puede ejecutar un turno. */
@@ -90,6 +104,8 @@ function toCommandError(error: unknown): EngineCommandError {
         return new EngineCommandError(
           error.engineError?.code ?? 'ENGINE_ERROR',
           error.engineError?.message ?? error.message,
+          error.engineError?.retryable,
+          plainDetails(error.engineError?.details),
         )
       case 'timeout':
         return new EngineCommandError('ENGINE_TIMEOUT', error.message)

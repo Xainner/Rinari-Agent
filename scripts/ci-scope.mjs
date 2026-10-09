@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Qué partes del job de empaquetado de Windows necesita un cambio.
+// Qué partes de los jobs de Windows necesita un cambio.
 //
 // Ese job tarda unos 27 minutos y casi nada es del instalador: 13 son el E2E
 // del updater, 8 el paquete con el sidecar del Engine y 4 el Rust del
@@ -58,6 +58,28 @@ const UPDATER = [
   ...CI_ITSELF,
 ]
 
+/**
+ * Pruebas nativas de interfaz (`npm run ui:e2e`): la app construida contra el
+ * Engine fijado. Las rompe el renderer, el host, el Engine o las propias
+ * pruebas; no la documentación ni el instalador.
+ */
+const UI = [
+  'src/',
+  'electron/',
+  'public/',
+  'index.html',
+  'vite.config.ts',
+  'tests/ui/',
+  'scripts/ui-e2e.mjs',
+  'scripts/set-display-resolution.ps1',
+  'scripts/fake-model.mjs',
+  'scripts/build-desktop.mjs',
+  'engine-manifest.json',
+  'package.json',
+  'package-lock.json',
+  ...CI_ITSELF,
+]
+
 /** `dir/` y `prefijo*` coinciden por prefijo; lo demás, por ruta exacta. */
 const matches = (file, pattern) =>
   pattern.endsWith('/') ? file.startsWith(pattern)
@@ -74,11 +96,11 @@ export function classify(files) {
   // sidecar del Engine y el payload: cualquiera de los dos arrastra el
   // paquete de revisión y su smoke instalado.
   const pkg = bootstrapper || updater || touches(files, PACKAGE)
-  return { bootstrapper, package: pkg, updater }
+  return { bootstrapper, package: pkg, updater, ui: touches(files, UI) }
 }
 
 /** Todo, sin mirar los ficheros. */
-export const EVERYTHING = { bootstrapper: true, package: true, updater: true }
+export const EVERYTHING = { bootstrapper: true, package: true, updater: true, ui: true }
 
 export function scopeFor({ event, full, files }) {
   if (event !== 'pull_request' || full) return { ...EVERYTHING, reason: event !== 'pull_request' ? event : 'ci:full' }

@@ -6,7 +6,7 @@ import { PROVIDER_PRESETS, providerCreateSettings } from './presets'
  * Glob de Vite sobre public/: valida que el asset exista de verdad sin
  * depender de tipos de Node (el proyecto no usa @types/node).
  */
-const LOGO_ASSETS = Object.keys(import.meta.glob('/public/logos/*.png')).map(
+const LOGO_ASSETS = Object.keys(import.meta.glob('/public/logos/*.{png,svg}')).map(
   (path) => path.split('/').pop() ?? '',
 )
 
@@ -29,7 +29,7 @@ it('mantiene OpenCode Zen fuera hasta que el engine enrute por modelo', () => {
 it('cada preset con marca tiene su logo en public/logos (y variante clara si aplica)', () => {
   const branded = PROVIDER_PRESETS.filter((preset) => preset.brand)
   expect(branded.map((preset) => preset.id).sort()).toEqual(
-    ['anthropic', 'claude-subscription', 'deepseek', 'gemini', 'mistral', 'openai', 'opencode-go', 'xai'].sort(),
+    ['anthropic', 'claude-subscription', 'deepseek', 'gemini', 'mistral', 'openai', 'opencode-go', 'xai', 'ollama', 'lmstudio'].sort(),
   )
   for (const preset of branded) {
     const brand = providerBrand(preset.brand)

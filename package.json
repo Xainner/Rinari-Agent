@@ -1,7 +1,7 @@
 {
   "name": "rinari-agent",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.5",
   "description": "Native desktop workspace for the Rinari Engine",
   "author": "Xainner",
   "homepage": "https://github.com/Xainner/Rinari-Agent",
@@ -26,6 +26,7 @@
     "parity:check": "node scripts/desktop-parity.mjs --check",
     "browser:probe": "node scripts/browser-probe.mjs",
     "browser:vertical": "node scripts/browser-vertical.mjs",
+    "ui:e2e": "node scripts/ui-e2e.mjs",
     "icon:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-icon.ps1",
     "installer:art": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/compose-installer-art.ps1",
     "setup:web:build": "npm run installer:art && vite build --config installer/setup/vite.config.ts",

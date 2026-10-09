@@ -24,7 +24,10 @@ import {
   type BrowserSlotLease,
   type BackgroundPatch,
   type BackgroundSettings,
+  type DiagnosticsExportResult,
+  type DiagnosticsPreview,
   type OpenExternalFileRequest,
+  type WorkspaceMedia,
   type OpenFilesRequest,
   type SystemNotificationRequest,
   type FlowScopeRequest,
@@ -41,6 +44,7 @@ import {
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
 import { assertBackgroundPatch } from '../native/background'
+import { assertIndicators, type AttentionIndicators } from '../native/indicators'
 import {
   MIGRATION_ALLOWED_KEYS,
   MIGRATION_MAX_ENTRIES,
@@ -87,14 +91,24 @@ export interface HostServices {
   }
   dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
   opener: { openUrl(url: string): Promise<void> }
-  files: { openExternal(request: OpenExternalFileRequest): Promise<void> }
+  files: {
+    openExternal(request: OpenExternalFileRequest): Promise<void>
+    revealInFolder(request: OpenExternalFileRequest): Promise<void>
+    media(request: OpenExternalFileRequest): Promise<WorkspaceMedia>
+  }
   clipboard: { writeText(text: string): void | Promise<void> }
+  diagnostics: {
+    preview(): Promise<DiagnosticsPreview>
+    export(): Promise<DiagnosticsExportResult>
+  }
   /** Bandeja al cerrar e inicio con el sistema: preferencias que main necesita antes que el renderer. */
   app: {
     background(): BackgroundSettings
     setBackground(patch: BackgroundPatch): BackgroundSettings
     /** Idioma de la interfaz para lo que pinta main (menú, bandeja, diálogos). */
     setLanguage(language: 'es' | 'en'): void
+    /** Número de chats pendientes y marca de la bandeja (indicators.ts). */
+    setIndicators(state: AttentionIndicators): void
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -103,6 +117,7 @@ export interface HostServices {
   }
   updates: {
     check(): Promise<unknown>
+    snapshot(): unknown
     download(): Promise<unknown>
     apply(confirmed?: boolean): Promise<void>
   }
@@ -148,7 +163,15 @@ function toResult(error: unknown): BridgeResult<never> {
   if (error instanceof ValidationError) return failure(error.code, error.message)
   const code = (error as { code?: unknown })?.code
   const message = error instanceof Error ? error.message : String(error)
-  return failure(typeof code === 'string' ? code : 'HOST_ERROR', message)
+  const result = failure(typeof code === 'string' ? code : 'HOST_ERROR', message)
+  // What the Engine said about the error travels with it: whether retrying
+  // helps and its data (provider that failed, HTTP status…).
+  const { retryable, details } = (error ?? {}) as { retryable?: unknown; details?: unknown }
+  if (!result.ok && typeof retryable === 'boolean') result.error.retryable = retryable
+  if (!result.ok && details && typeof details === 'object' && !Array.isArray(details)) {
+    result.error.details = details as Record<string, unknown>
+  }
+  return result
 }
 
 /**
@@ -219,6 +242,7 @@ function assertNotification(value: unknown): SystemNotificationRequest {
   return {
     title: assertString(raw.title, 'title', 120),
     body: assertString(raw.body, 'body', 400),
+    silent: raw.silent === true,
     target: {
       sessionId: entry.sessionId === undefined ? undefined : assertString(entry.sessionId, 'sessionId', 128),
       turnId: entry.turnId === undefined ? undefined : assertString(entry.turnId, 'turnId', 128),
@@ -362,8 +386,21 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, request) => services.files.openExternal(assertOpenExternal(request))),
     ],
     [
+      CHANNEL.filesRevealInFolder,
+      guarded(registry, (_event, request) => services.files.revealInFolder(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.filesMedia,
+      guarded(registry, (_event, request) => services.files.media(assertOpenExternal(request))),
+    ],
+    [
       CHANNEL.clipboardWriteText,
       guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
+    ],
+    [CHANNEL.diagnosticsPreview, guarded(registry, () => services.diagnostics.preview())],
+    [
+      CHANNEL.diagnosticsExport,
+      guarded(registry, () => services.diagnostics.export()),
     ],
     [CHANNEL.appBackgroundGet, guarded(registry, () => services.app.background())],
     [
@@ -378,6 +415,12 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       }),
     ],
     [
+      CHANNEL.appIndicatorsSet,
+      guarded(registry, (_event, state) => {
+        services.app.setIndicators(assertIndicators(state))
+      }),
+    ],
+    [
       CHANNEL.contextMenuShow,
       guarded(registry, (_event, request) => services.contextMenu.show(assertContextMenu(request))),
     ],
@@ -388,6 +431,7 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     ],
     [CHANNEL.updatesCheck, guarded(registry, () => services.updates.check())],
     [CHANNEL.updatesDownload, guarded(registry, () => services.updates.download())],
+    [CHANNEL.updatesSnapshot, guarded(registry, () => services.updates.snapshot())],
     // El renderer ya preguntó con su diálogo: no se vuelve a preguntar en main.
     [CHANNEL.updatesApply, guarded(registry, () => services.updates.apply(true))],
     [CHANNEL.migrationStatus, guarded(registry, () => services.migration.status())],

@@ -16,12 +16,14 @@ vi.mock('../workspace/WorkspaceView', () => ({
 
 import { useBoardStore, defaultBoard } from '../../stores/board'
 import { useComposerStore } from '../../stores/composer'
+import { resetSessionDockForTests } from '../../stores/sessionDock'
 import { resetPendingQuestionsForTests } from '../questions/usePendingQuestions'
 import BoardView from './BoardView'
 import { BoardHarness, engineFixture, sessionFixture } from './testUtils'
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetSessionDockForTests()
   resetPendingQuestionsForTests()
   useBoardStore.getState().hydrate(defaultBoard())
   useComposerStore.setState({ sessionKey: 'draft', text: '', attachments: [], draftsBySession: {} })
@@ -39,10 +41,22 @@ it('renders one pane per session with its own composer, workspace and focus', as
   const paneB = screen.getByRole('region', { name: 'Docs' })
   expect(within(paneA).getByRole('textbox', { name: 'Mensaje' })).toBeTruthy()
   expect(within(paneB).getByRole('textbox', { name: 'Mensaje' })).toBeTruthy()
+  expect(screen.queryByTestId('session-dock')).toBeNull()
+  expect(paneA.querySelector('.session-workspace')?.getAttribute('data-dock')).toBe('hidden')
+  expect(paneB.querySelector('.session-workspace')?.getAttribute('data-dock')).toBe('hidden')
+  const user = userEvent.setup()
+  await user.click(within(paneA).getByRole('button', { name: 'Mostrar u ocultar panel lateral' }))
   expect(within(paneA).getByTestId('workspace-ses_a').getAttribute('data-embedded')).toBe('yes')
+  expect(within(paneB).queryByTestId('session-dock')).toBeNull()
+  await user.click(within(paneB).getByRole('button', { name: 'Mostrar u ocultar panel lateral' }))
   expect(within(paneB).getByTestId('workspace-ses_b')).toBeTruthy()
-  // Focus follows the last added pane; sessions are prepared without touching Normal.
-  expect(paneB.getAttribute('data-focused')).toBe('true')
+  await user.click(within(paneA).getByRole('button', { name: 'Cerrar panel lateral' }))
+  expect(within(paneA).queryByTestId('session-dock')).toBeNull()
+  expect(within(paneB).getByTestId('session-dock')).toBeTruthy()
+  expect(engine.closeSession).not.toHaveBeenCalled()
+  expect(useBoardStore.getState().panes).toHaveLength(2)
+  // Interacting with a pane focuses it; preparing sessions never changes Normal.
+  expect(paneA.getAttribute('data-focused')).toBe('true')
   await waitFor(() => expect(engine.ensureSessionReady).toHaveBeenCalledTimes(2))
   expect(engine.selectSession).not.toHaveBeenCalled()
   expect(engine.setActiveSession).not.toHaveBeenCalled()

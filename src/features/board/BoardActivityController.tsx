@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useEngineData, useRuntimeStore } from '../engine/EngineContext'
 import {
   derivePaneStatus,
@@ -10,11 +10,11 @@ import {
   type TerminalOutcome,
 } from '../engine/sessionSelectors'
 import type { TurnTimeline } from '../activity/types'
-import { useBoardStore } from '../../stores/board'
+import { isDraftPane, useBoardStore } from '../../stores/board'
 import { unreadPeerCount, unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
 import { useBoardStatusStore } from '../../stores/boardStatus'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
-import { selectAttentionCounts } from '../../stores/boardStatus'
+import { useAttentionIndicators } from '../notifications/attentionIndicators'
 import { useUIStore } from '../../stores/ui'
 import { useWindowAttention } from '../../hooks/useWindowAttention'
 import { useWindowTitle } from '../../hooks/useWindowTitle'
@@ -35,8 +35,9 @@ interface SessionWatch {
 
 /**
  * Controlador sin UI, montado **una vez** bajo el contexto del Engine. Sigue a
- * las sesiones miembro del board mientras el shell viva (Normal, Boards o
- * Ajustes) y traduce el runtime a recibos de lectura:
+ * las sesiones del board y a las de Normal que tiene el runtime mientras el
+ * shell viva (Normal, Boards o Ajustes) y traduce el runtime a recibos de
+ * lectura (el número de la barra de tareas los usa):
  *
  * - primera observación con historial cargado → los terminales existentes son
  *   baseline (no "resultados nuevos");
@@ -51,7 +52,9 @@ export default function BoardActivityController() {
   const data = useEngineData()
   const store = useRuntimeStore()
   const watches = useRef(new Map<string, SessionWatch>())
-  const members = useBoardStore((state) => state.panes)
+  const panes = useBoardStore((state) => state.panes)
+  // Los borradores no tienen sesión ni actividad que observar.
+  const members = useMemo(() => panes.filter((pane) => !isDraftPane(pane)), [panes])
   const memberIds = members.map((pane) => pane.sessionId).join('|')
 
   // Reinicio del Engine: las transiciones anteriores ya no son comparables.
@@ -60,9 +63,16 @@ export default function BoardActivityController() {
   }, [data.engineGeneration])
 
   useEffect(() => {
-    const ids = new Set(memberIds ? memberIds.split('|') : [])
-    for (const id of [...watches.current.keys()]) if (!ids.has(id)) watches.current.delete(id)
-    for (const id of ids) if (!watches.current.has(id)) watches.current.set(id, { statuses: new Map(), liveBeforeInit: new Set() })
+    const members = memberIds ? memberIds.split('|') : []
+    // También los chats de Normal: un resultado que llega mientras miras otro
+    // chat queda pendiente igual que en un panel. Sin historial cargado no se
+    // inicializa (no hay baseline), así que el pasado nunca cuenta como nuevo.
+    const syncWatches = () => {
+      const ids = new Set(members)
+      for (const turn of Object.values(store.getState().timelines)) ids.add(turn.sessionId)
+      for (const id of [...watches.current.keys()]) if (!ids.has(id)) watches.current.delete(id)
+      for (const id of ids) if (!watches.current.has(id)) watches.current.set(id, { statuses: new Map(), liveBeforeInit: new Set() })
+    }
 
     const attention = useBoardAttentionStore.getState()
 
@@ -84,6 +94,7 @@ export default function BoardActivityController() {
     }
 
     const scan = () => {
+      syncWatches()
       const timelines = store.getState().timelines
       const historyInfo = data.historyInfo
       for (const [sessionId, watch] of watches.current) {
@@ -182,8 +193,14 @@ export default function BoardActivityController() {
     focusedSessionId,
     focusSession,
   })
-  const counts = useBoardStatusStore(selectAttentionCounts)
-  useWindowTitle(counts.attentionPaneCount)
+  // Una sola cuenta para el título, la barra de tareas y la bandeja.
+  const { lang } = useI18n()
+  const liveSessionIds = useMemo(
+    () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : [])])],
+    [members, data.activeSession],
+  )
+  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds })
+  useWindowTitle(summary.count)
 
   // Mensajes de pares: se reconocen al atender el panel (expandido, enfocado,
   // ventana con foco) durante un instante; abrir un resultado no los marca.

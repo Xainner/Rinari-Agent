@@ -10,8 +10,6 @@ interface AppStatusBarProps {
   selectedView: WorkspaceView | null
   onSelectView: (view: WorkspaceView) => void
   toggleShortcut: string
-  /** Sesiones ejecutando un turno. */
-  workingCount: number
   /** Sesiones que requieren intervención (aprobaciones, preguntas). */
   attentionCount: number
   /** Sesiones del board con atención pendiente (badge del selector). */
@@ -61,7 +59,6 @@ export default function AppStatusBar({
   selectedView,
   onSelectView,
   toggleShortcut,
-  workingCount,
   attentionCount,
   boardAttentionCount = 0,
   onOpenMobileSidebar,
@@ -78,10 +75,6 @@ export default function AppStatusBar({
   // con utilidades de Tailwind que `.app-topbar-icon` anulaba, y se veían ambos.
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, () => true)
   const sidebarLabel = !desktop ? t('chat.openMenu') : sidebarCollapsed ? t('shell.expand') : t('shell.collapse')
-  const summary = [
-    workingCount > 0 ? t('topbar.working', { n: workingCount }) : null,
-    attentionCount > 0 ? t('topbar.attention', { n: attentionCount }) : null,
-  ].filter(Boolean)
   return (
     <header className="app-topbar" aria-label={t('topbar.label')}>
       <div className="app-topbar-leading">
@@ -108,8 +101,8 @@ export default function AppStatusBar({
         />
       </div>
       <div className="app-topbar-trailing">
-        {summary.length > 0 && (
-          <span className="app-topbar-summary" role="status" aria-live="polite">{summary.join(' · ')}</span>
+        {attentionCount > 0 && (
+          <span className="app-topbar-summary" role="status" aria-live="polite">{t('topbar.attention', { n: attentionCount })}</span>
         )}
         {attentionMenu}
         <button

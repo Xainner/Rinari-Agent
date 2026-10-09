@@ -34,6 +34,8 @@ const CONTENT_TYPES: Record<string, string> = {
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
+  // Tonos de aviso empaquetados (`public/sounds`).
+  '.mp3': 'audio/mpeg',
   '.map': 'application/json; charset=utf-8',
 }
 

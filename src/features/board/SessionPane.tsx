@@ -5,7 +5,7 @@ import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
 import QueueBar from '../../components/chat/QueueBar'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
-import { useBoardStore, type BoardPane } from '../../stores/board'
+import { isDraftPane, useBoardStore, type BoardPane } from '../../stores/board'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
 import CollapsedPaneStrip from './CollapsedPaneStrip'
@@ -18,6 +18,7 @@ import type { PaneMentionTarget } from '../../components/composer/paneMention'
 import { FOCUS_COMPOSER_EVENT } from '../../components/composer/focusComposer'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
+import DraftPane from './DraftPane'
 
 export interface SessionPaneProps {
   pane: BoardPane
@@ -42,7 +43,15 @@ export interface SessionPaneProps {
  * usa la vista Normal). No monta el Engine ni escucha eventos ajenos: todo
  * llega por selectores de su `sessionId`.
  */
-function SessionPane({
+function SessionPane(props: SessionPaneProps) {
+  // Un borrador no tiene sesión: ninguno de los hooks de sesión debe correr.
+  if (isDraftPane(props.pane)) {
+    return <DraftPane pane={props.pane} focused={props.focused} onFocus={props.onFocus} onRemove={props.onRemove} onOpenProviders={props.onOpenProviders} />
+  }
+  return <LiveSessionPane {...props} />
+}
+
+function LiveSessionPane({
   pane,
   focused,
   sharedRoot,
@@ -74,7 +83,7 @@ function SessionPane({
   const [forwardOpen, setForwardOpen] = useState(false)
   const forwardTargets = useMemo<PeerForwardTarget[]>(
     () => panes
-      .filter((item) => item.sessionId !== pane.sessionId)
+      .filter((item) => item.sessionId !== pane.sessionId && !isDraftPane(item))
       .map((item) => ({ sessionId: item.sessionId, label: peerLabelFor(item.sessionId) ?? item.sessionId })),
     [panes, pane.sessionId, peerLabelFor],
   )

@@ -49,7 +49,7 @@ import {
 } from '../ui/dropdown-menu'
 import { Switch } from '../ui/switch'
 import ApplicationMenu from './ApplicationMenu'
-import { isProjectExpanded, readProjectExpansion, writeProjectExpansion, type ProjectExpansion } from './projectExpansion'
+import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
 
 export interface AppSidebarProps {
   collapsed: boolean
@@ -169,17 +169,15 @@ export function AppSidebar({
   const [showArchivedProjects, setShowArchivedProjects] = useState(false)
   const [showArchivedSessions, setShowArchivedSessions] = useState(false)
   const [showAllPinned, setShowAllPinned] = useState(false)
-  const [query, setQuery] = useState('')
+  const query = useProjectExpansionStore((state) => state.query)
+  const setQuery = useProjectExpansionStore((state) => state.setQuery)
   const [sessionMenu, setSessionMenu] = useState<string | null>(null)
   const [projectMenu, setProjectMenu] = useState<string | null>(null)
-  const [projectChoices, setProjectChoices] = useState<ProjectExpansion>(readProjectExpansion)
+  const projectChoices = useProjectExpansionStore((state) => state.choices)
+  const toggle = useProjectExpansionStore((state) => state.toggle)
   const activeProjectId = sessions.find((session) => session.id === activeId)?.project_id ?? null
   const projectOpen = (id: string) => Boolean(query) || isProjectExpanded(projectChoices, id, activeProjectId)
-  const toggleProject = (id: string) => setProjectChoices((current) => {
-    const next = { ...current, [id]: !isProjectExpanded(current, id, activeProjectId) }
-    writeProjectExpansion(next)
-    return next
-  })
+  const toggleProject = (id: string) => toggle(id, activeProjectId)
   const [deleteTarget, setDeleteTarget] = useState<SessionSummary | null>(null)
   const [renameTarget, setRenameTarget] = useState<SessionSummary | null>(null)
   const [renameTitle, setRenameTitle] = useState('')
@@ -344,8 +342,8 @@ export function AppSidebar({
                 <MoreHorizontal size={14} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <div className="px-2.5 py-1.5 font-mono text-[10px] break-all text-[var(--text-subtle)]">{session.id}</div>
+            <DropdownMenuContent align="end" className="w-max max-w-[calc(100vw-16px)]">
+              <div title={session.id} className="truncate px-2.5 py-1.5 font-mono text-[10px] text-[var(--text-subtle)]">{session.id}</div>
               <DropdownMenuItem onSelect={() => {
                 void copyText(session.id).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
               }}><Copy size={13} /> {t('sidebar.copySessionId')}</DropdownMenuItem>
@@ -434,7 +432,7 @@ export function AppSidebar({
   }
 
   return (
-    <div className="concept-sidebar flex h-full w-full flex-col gap-4 overflow-hidden px-3 pt-3 pb-0">
+    <div className="concept-sidebar flex h-full w-full min-w-0 flex-col gap-4 overflow-hidden px-3 pt-3 pb-0">
       <div className="shrink-0 space-y-1">
       <div className="flex items-center gap-1">
         <button
@@ -471,7 +469,7 @@ export function AppSidebar({
           className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
         />
       </div>
-      <div className={cn('sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
+      <div className={cn('sidebar-scroll min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
 
         {model.pinned.length > 0 && (
           <section aria-label={t('sidebar.pinned')}>
@@ -541,12 +539,6 @@ export function AppSidebar({
                   )}
                 </button>
                 {onNewProjectChat && <button type="button" aria-label={t('sidebar.newSessionIn', { name: project.name || projectDisplayName(project.root) })} title={t('sidebar.newSessionInProject')} onClick={() => {
-                  setQuery('')
-                  setProjectChoices(current => {
-                    const next = { ...current, [project.id]: true }
-                    writeProjectExpansion(next)
-                    return next
-                  })
                   onNewProjectChat(project.id)
                 }} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 hover:bg-[var(--bg-hover)]"><Plus size={14} /></button>}
                 <DropdownMenu open={projectMenu === project.id} onOpenChange={open => setProjectMenu(open ? project.id : null)}>

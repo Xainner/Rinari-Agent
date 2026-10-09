@@ -6,8 +6,9 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, clipboard, dialog, shell } from 'electron'
+import { app, protocol, BrowserWindow, Menu, clipboard, crashReporter, dialog, shell } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
+import { release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
@@ -15,6 +16,7 @@ import { BrowserRegistry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
 import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
+import { bundleFileName, createDiagnostics, logsDirFor } from './diagnostics'
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
 import { registerIpc, type HostServices } from './ipc/register'
@@ -27,8 +29,10 @@ import { HandoffQueue, openRequestFromData, parseOpenRequest } from './native/ha
 import { runRequestedUpdate, updateRequestFromData, wantsUpdate } from './updates/cliRequest'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
+import { createMediaRegistry, mediaToken, serveMedia } from './native/mediaFiles'
 import { createContextMenu, createDialogs, createOpener } from './native/services'
 import { createTrayController } from './native/tray'
+import { createIndicators, indicatorsDir } from './native/indicators'
 import { hostLanguageFromLocale, hostText, type HostText } from './native/hostText'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
@@ -37,8 +41,38 @@ import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
 const isDev = Boolean(DEV_SERVER)
 const UPDATE_E2E_ENABLED = process.env.RINARI_BUILD_UPDATE_E2E === '1'
+
+// Los accesos directos abrían la app con la carpeta de instalación como
+// directorio de trabajo, y el Engine y todo lo que lanza (MCP, git, node…) la
+// heredaban: un hijo vivo bloqueaba la carpeta y la actualización fallaba con
+// «os error 32». La app instalada trabaja desde la carpeta del usuario.
+if (app.isPackaged) {
+  try {
+    process.chdir(app.getPath('home'))
+  } catch (error) {
+    console.warn('[rinari] no se pudo cambiar el directorio de trabajo:', error)
+  }
+}
 const updateE2EProfile = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_PROFILE : undefined
 if (updateE2EProfile) app.setPath('userData', updateE2EProfile)
+
+// Registros persistentes y volcados de fallo, solo en este equipo: «Exportar
+// diagnóstico» los empaqueta si la persona lo pide. Nada se sube.
+crashReporter.start({ uploadToServer: false })
+const diagnostics = createDiagnostics({
+  logsDir: logsDirFor(app.getPath('userData')),
+  crashDir: app.getPath('crashDumps'),
+  appVersion: app.getVersion(),
+  versions: { electron: process.versions.electron, chrome: process.versions.chrome, node: process.versions.node },
+  os: { platform: process.platform, release: osRelease(), arch: process.arch },
+  engine: {
+    status: () => engine.status(),
+    diagnostics: () => engine.request('engine.diagnostics', {}),
+  },
+  extraLogFiles: [join(logsDirFor(app.getPath('userData')), 'updater.log')],
+})
+diagnostics.captureConsole()
+diagnostics.watchProcess()
 
 /** Raíz del renderer construido: en los recursos si está empaquetado. */
 function rendererRoot(): string {
@@ -98,9 +132,16 @@ function installApplicationMenu(): void {
 
 const tray = createTrayController({
   onOpen: showMainWindow,
+  onAction: (id) => send(PUSH.menuAction, id),
   // «Salir» del icono entra por la misma autoridad que el menú y la X.
   onQuit: () => void quitCoordinator.requestQuit('tray'),
   text: currentHostText,
+})
+
+const indicators = createIndicators({
+  getWindow: () => mainWindow,
+  setTray: (image, tooltip) => tray.setIndicator(image, tooltip),
+  dir: () => indicatorsDir(app.isPackaged, process.resourcesPath, __dirname),
 })
 /**
  * Origen del renderer de confianza: el esquema propio en producción y el del
@@ -159,6 +200,7 @@ const engine = new EngineSupervisor({
     send(PUSH.engineEvent, event)
   },
   onStatus: (status: EngineStatus) => {
+    diagnostics.engineStatus(status)
     send(PUSH.engineStatus, status)
     // Dejar de estar listo revoca el binding. Sin esto, reiniciar el Engine
     // sin cerrar la ventana dejaba `registered` en `true` para siempre y la
@@ -181,7 +223,7 @@ const engine = new EngineSupervisor({
       void browserHost.register()
     }
   },
-  onStderr: (line) => console.error(`[rinari-engine] ${line}`),
+  onStderr: (line) => diagnostics.engineStderr(line),
   resourceDir: process.resourcesPath,
   packaged: app.isPackaged,
 })
@@ -193,9 +235,53 @@ const notifications = createNotifications({
   },
 })
 
-/** Sirve el renderer construido desde el esquema propio. */
-function registerAppScheme(root: string): void {
+/** Rutas que el Engine aprobó para verse dentro de la app, tras un token. */
+const media = createMediaRegistry({ origin: APP_ORIGIN })
+
+/** Lo que el Engine sabe de un archivo autorizado, sin leer su contenido. */
+interface ResolvedFile {
+  path: string
+  name: string
+  size: number
+  kind: 'image' | 'video' | 'audio' | 'pdf' | 'text' | 'binary'
+  mime: string
+}
+
+/**
+ * Pide al Engine la ruta autorizada (raíz, procedencia del turno, rutas
+ * privadas) sin leer el archivo como texto: sirve igual para un PNG de 1 MB o
+ * un video de 30 MB. Nunca se usa la ruta que diga el renderer.
+ */
+async function resolveWorkspaceFile(request: { session_id: string; path: string; turn_id?: string }): Promise<ResolvedFile> {
+  // Un artefacto lo resuelve el Artifact Store del Engine; React nunca
+  // deduce dónde están sus bytes.
+  const call = request.path.startsWith('artifact://')
+    ? translateCommand('artifact_resolve', { uri: request.path })
+    : translateCommand('workspace_file_resolve', {
+      session_id: request.session_id,
+      path: request.path,
+      turn_id: request.turn_id,
+    })
+  const resolved = (await engine.request(call.method, call.params)) as Partial<ResolvedFile> | null
+  if (!resolved || typeof resolved.path !== 'string' || !resolved.path) {
+    throw new EngineCommandError('ENGINE_ERROR', 'Engine returned no file path')
+  }
+  return resolved as ResolvedFile
+}
+
+/**
+ * Sirve el renderer construido desde el esquema propio y, en cualquier modo,
+ * los medios aprobados (`/__media/<token>`). En desarrollo la UI viene de
+ * Vite (`root` nulo) y el esquema solo entrega medios.
+ */
+function registerAppScheme(root: string | null): void {
   protocol.handle(APP_SCHEME, async (request) => {
+    const token = mediaToken(request.url)
+    if (token) {
+      const grant = media.lookup(token)
+      return grant ? serveMedia(request, grant) : new Response('Not found', { status: 404 })
+    }
+    if (!root) return new Response('Not found', { status: 404 })
     const resolved = resolveAppUrl(request.url, root)
     if (!resolved.ok) return new Response('Not found', { status: 404 })
     try {
@@ -420,9 +506,14 @@ function buildServices(): HostServices {
       // El renderer llama por nombre de comando; el Engine habla por método
       // del protocolo y con otras claves. Sin traducir, ninguna llamada de
       // dominio llegaría a su destino.
-      request: (name, params) => {
-        const call = translateCommand(name, params ?? {})
-        return engine.request(call.method, call.params)
+      request: async (name, params) => {
+        try {
+          const call = translateCommand(name, params ?? {})
+          return await engine.request(call.method, call.params)
+        } catch (error) {
+          diagnostics.commandFailed(name, error instanceof EngineCommandError ? error.code : 'HOST_ERROR')
+          throw error
+        }
       },
     },
     window: {
@@ -448,20 +539,51 @@ function buildServices(): HostServices {
        * ruta que devuelve. Nunca `shell.openPath(rutaDelRenderer)`.
        */
       async openExternal(request) {
-        const call = translateCommand('workspace_file_read', {
-          session_id: request.session_id,
-          path: request.path,
-          turn_id: request.turn_id,
-        })
-        const preview = (await engine.request(call.method, call.params)) as { path?: unknown }
-        const approved = typeof preview?.path === 'string' ? preview.path : null
-        if (!approved) throw new EngineCommandError('ENGINE_ERROR', 'Engine returned no file path')
-        const failure = await shell.openPath(approved)
+        const { path } = await resolveWorkspaceFile(request)
+        const failure = await shell.openPath(path)
         if (failure) throw new EngineCommandError('HOST_ERROR', failure)
+      },
+      /** Muestra el archivo seleccionado en el Explorador (Finder, gestor de archivos). */
+      async revealInFolder(request) {
+        const { path } = await resolveWorkspaceFile(request)
+        shell.showItemInFolder(path)
+      },
+      /**
+       * URL de la app para ver una imagen, un video o un audio aprobados; para
+       * cualquier otro tipo devuelve sus datos sin URL.
+       */
+      async media(request) {
+        const file = await resolveWorkspaceFile(request)
+        const playable = file.kind === 'image' || file.kind === 'video' || file.kind === 'audio'
+        return {
+          path: file.path,
+          name: file.name,
+          size: file.size,
+          kind: file.kind,
+          mime: file.mime,
+          url: playable ? media.grant({ path: file.path, mime: file.mime }) : null,
+        }
       },
     },
     clipboard: {
       writeText: (text) => clipboard.writeText(text),
+    },
+    diagnostics: {
+      preview: () => diagnostics.preview(),
+      /** La persona elige dónde guardarlo; después se muestra en su carpeta. */
+      async export() {
+        const window = getWindow()
+        const options = {
+          title: currentHostText().diagnosticsSaveTitle,
+          defaultPath: join(app.getPath('downloads'), bundleFileName()),
+          filters: [{ name: 'ZIP', extensions: ['zip'] }],
+        }
+        const choice = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+        if (choice.canceled || !choice.filePath) return { saved: false }
+        await writeFile(choice.filePath, await diagnostics.bundle())
+        shell.showItemInFolder(choice.filePath)
+        return { saved: true }
+      },
     },
     app: {
       background: () => requireBackground().settings(),
@@ -472,6 +594,9 @@ function buildServices(): HostServices {
           installApplicationMenu()
           tray.refresh()
         }
+      },
+      setIndicators: (state) => {
+        indicators.apply(state)
       },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
@@ -608,6 +733,9 @@ function openWindow(): void {
 
   registry.trust(mainWindow.webContents.id)
   handoff.open((request: OpenRequest) => send(PUSH.openRequest, request))
+  // Ventana nueva: el overlay vive en su botón de la barra; se repone lo último.
+  mainWindow.once('ready-to-show', () => indicators.reapply())
+  mainWindow.on('show', () => indicators.reapply())
 
   // El browser nativo cuelga de esta ventana: sus vistas son hijas de su
   // contenido, así que nace y muere con ella (§6.2, [E8]).
@@ -939,7 +1067,7 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
       void runUpdateE2E(updateE2EResult)
       return
     }
-    if (!isDev) registerAppScheme(rendererRoot())
+    registerAppScheme(isDev ? null : rendererRoot())
     background = createBackground({
       settingsPath: join(app.getPath('userData'), 'desktop-settings.json'),
       // En desarrollo se registraría el electron.exe de la worktree.

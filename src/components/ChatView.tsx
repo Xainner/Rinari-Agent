@@ -1,3 +1,4 @@
+import { ActivityImageProvider } from '../features/activity/ImageActivity'
 import type { SendOptions } from '../features/engine/useEngineSession'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
@@ -7,9 +8,11 @@ import type { TurnTimeline } from '../features/activity/types'
 import { buildChatStream } from '../features/activity/buildChatStream'
 import { selectLatestTurn } from '../features/engine/sessionSelectors'
 import TurnTimelineView from '../features/activity/TurnTimelineView'
+import { ActivityLayoutContext, type ActivityLayout } from '../features/activity/activityLayout'
 import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
+import { ChatFileDropZone } from './composer/ChatFileDropZone'
 import type { PaneMentionTarget } from './composer/paneMention'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
@@ -95,6 +98,8 @@ interface ChatViewProps {
   /** Paneles a los que se puede escribir con `@Panel mensaje` (solo Boards). */
   mentionTargets?: readonly PaneMentionTarget[]
   onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
+  /** Clave del borrador del composer cuando aún no hay sesión (conversación nueva). */
+  composerDraftKey?: string
 }
 
 function ChatView({
@@ -142,6 +147,7 @@ function ChatView({
   onReviewChanges,
   mentionTargets,
   onSendToTarget,
+  composerDraftKey,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -180,7 +186,7 @@ function ChatView({
   const streamRef = useRef(stream)
   streamRef.current = stream
 
-  function snapshotAnchor(): ScrollAnchor {
+  const snapshotAnchor = useCallback((): ScrollAnchor => {
     const el = scrollRef.current
     const virt = virtRef.current
     if (!el || el.scrollHeight - el.scrollTop - el.clientHeight < 80) return { follow: true }
@@ -189,22 +195,62 @@ function ChatView({
     const row = streamRef.current[index]
     if (!row) return { follow: true }
     return { follow: false, rowId: row.id, offset: Math.max(0, virt.scrollOffset - virt.getItemOffset(index)) }
-  }
+  }, [])
 
-  function handleScroll() {
+  // Tras un salto pedido (enviar o guiar) y mientras llega esa respuesta, solo
+  // un gesto de la persona apaga «seguir el final». Los `scroll` que provoca
+  // el virtualizador al medir y recolocar filas no cuentan: antes uno de ellos
+  // podía caer antes del salto y dejar el panel a medio camino. Termina con
+  // el gesto o cuando la respuesta acaba y el panel está abajo.
+  const jumpRef = useRef(false)
+  const streamingRef = useRef(isStreaming)
+  streamingRef.current = isStreaming
+  const userScrolls = () => { jumpRef.current = false }
+  useEffect(() => {
+    if (!isStreaming) jumpRef.current = false
+  }, [isStreaming])
+
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
     const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (jumpRef.current && !bottom) return
+    if (jumpRef.current && !streamingRef.current) jumpRef.current = false
     setAtBottom(bottom)
     followRef.current = bottom
     anchorRef.current = snapshotAnchor()
-  }
+  }, [snapshotAnchor])
+
+  const activityLayout = useMemo<ActivityLayout>(() => ({
+    begin(anchor, manual = true) {
+      const scroll = scrollRef.current
+      if (!scroll || (!manual && followRef.current)) return () => {}
+      const viewport = scroll.getBoundingClientRect()
+      const top = anchor.getBoundingClientRect().top
+      // Updates above/below the viewport must not pull the reader to this turn.
+      if (!manual && (anchor.getBoundingClientRect().bottom < viewport.top || top > viewport.bottom)) return () => {}
+      followRef.current = false
+      jumpRef.current = false
+      setAtBottom(false)
+      const offset = Math.max(viewport.top, Math.min(top, viewport.bottom - 40))
+      return () => {
+        const restore = () => {
+          if (!anchor.isConnected || scrollRef.current !== scroll) return
+          scroll.scrollTop += anchor.getBoundingClientRect().top - offset
+          handleScroll()
+        }
+        restore()
+        requestAnimationFrame(restore)
+      }
+    },
+  }), [sessionId, handleScroll])
 
   // Al montar o cambiar de sesión: sin ancla guardada (o con «seguir el
   // final») el scroll va al fondo antes de pintar, sin destello; con ancla de
   // lectura se restaura cuando las filas existan. Al salir, se guarda la
   // última ancla conocida de la sesión que se deja.
   useLayoutEffect(() => {
+    jumpRef.current = false
     const saved = readScrollAnchor(sessionId)
     if (!saved || saved.follow) {
       followRef.current = true
@@ -248,13 +294,30 @@ function ChatView({
   // marcarlo leído (eso solo ocurre cuando su bloque queda visible). Si la
   // fila aún no existe (historial cargando), la petición espera a que llegue.
   const pendingRevealRef = useRef<string | null>(null)
+  // Cuenta las navegaciones explícitas: un envío que termina después de una
+  // de ellas no se lleva al lector a otro sitio.
+  const navigationRef = useRef(0)
   const revealTurn = useCallback((turnId: string): boolean => {
     const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.message.turnId === turnId)
     if (index < 0) return false
+    navigationRef.current += 1
+    jumpRef.current = false
     followRef.current = false
     setAtBottom(false)
     restoreRef.current = null
     virtRef.current?.scrollToIndex(index, { align: 'start' })
+    const request = navigationRef.current
+    let frames = 0
+    const revealResult = () => {
+      if (request !== navigationRef.current || !contentRef.current) return
+      const scroll = scrollRef.current
+      const result = [...(contentRef.current?.querySelectorAll<HTMLElement>('[data-testid="turn-result"]') ?? [])].find(el => el.dataset.turnId === turnId)
+      if (!scroll) return
+      if (!result) { if (++frames < 60) requestAnimationFrame(revealResult); return }
+      scroll.scrollTop += result.getBoundingClientRect().top - scroll.getBoundingClientRect().top
+      anchorRef.current = snapshotAnchor()
+    }
+    requestAnimationFrame(() => { revealResult(); requestAnimationFrame(revealResult) })
     return true
   }, [])
   useEffect(() => {
@@ -279,42 +342,27 @@ function ChatView({
 
   useEffect(() => {
     const content = contentRef.current
-    if (!content || !autoFollow) return
+    const scroller = scrollRef.current
+    if (!content || !scroller) return
     let frame = 0
-    const observer = new ResizeObserver(() => {
-      if (!followRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      const viewportChanged = entries.some(entry => entry.target === scroller)
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => {
-        const scroller = scrollRef.current
-        if (scroller && followRef.current) scroller.scrollTop = scroller.scrollHeight
+        if (restoreRef.current) return
+        if (autoFollow && followRef.current) {
+          scroller.scrollTop = scroller.scrollHeight
+          if (viewportChanged && streamRef.current.length > 0) virtRef.current?.scrollToIndex(streamRef.current.length - 1, { align: 'end' })
+        }
+        // Folding activity can remove all overflow without firing `scroll`.
+        // Measure even while reading above or when auto-follow is disabled.
+        handleScroll()
       })
     })
     observer.observe(content)
-    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [autoFollow, presentation, sessionId])
-
-  // El dock de procesos vive en la zona inferior y su inspector expande
-  // esa zona, encogiendo el transcript. Si el usuario ya estaba abajo,
-  // acompañar el fondo para que el último texto no quede tapado; si
-  // estaba leyendo arriba, conservar su posición sin saltos.
-  useEffect(() => {
-    const scroller = scrollRef.current
-    if (!scroller || !autoFollow) return
-    let frame = 0
-    const observer = new ResizeObserver(() => {
-      if (!followRef.current) return
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const el = scrollRef.current
-        if (el && followRef.current) {
-          el.scrollTop = el.scrollHeight
-          if (stream.length > 0) virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
-        }
-      })
-    })
     observer.observe(scroller)
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [autoFollow, sessionId, presentation, stream.length])
+  }, [autoFollow, presentation, sessionId, handleScroll])
 
   useEffect(() => {
     // Autoscroll inteligente: solo sigue si el usuario ya estaba abajo
@@ -324,19 +372,56 @@ function ChatView({
     }
   }, [stream, isStreaming, atBottom, autoFollow])
 
+  // Enviar (o guiar) es una intención nueva: aunque se estuviera leyendo
+  // arriba, se va al final en cuanto el Engine acepta el mensaje. Con
+  // «seguir el final» desactivado es un salto único: los efectos de
+  // seguimiento siguen condicionados a la preferencia. Un envío fallido, el
+  // cambio de sesión durante la espera o una navegación explícita posterior
+  // no mueven nada.
+  const sessionRef = useRef(sessionId)
+  sessionRef.current = sessionId
+  const goToEnd = useCallback(() => {
+    jumpRef.current = true
+    followRef.current = true
+    setAtBottom(true)
+    anchorRef.current = { follow: true }
+    restoreRef.current = null
+    pendingRevealRef.current = null
+    requestAnimationFrame(() => {
+      const last = streamRef.current.length - 1
+      if (last >= 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
+    })
+  }, [])
+  const afterOwnMessage = useCallback(async (accepted: Promise<boolean>): Promise<boolean> => {
+    const origin = sessionRef.current
+    const navigation = navigationRef.current
+    const ok = await accepted
+    if (ok && sessionRef.current === origin && navigationRef.current === navigation) goToEnd()
+    return ok
+  }, [goToEnd])
+  const send = useCallback(
+    (text: string, attachments?: AttachmentRef[], options?: SendOptions) => afterOwnMessage(onSend(text, attachments, options)),
+    [afterOwnMessage, onSend],
+  )
+  const steer = useMemo(
+    () => onSteer && ((text: string) => afterOwnMessage(onSteer(text))),
+    [afterOwnMessage, onSteer],
+  )
+
   const composer = (
     <Composer
       placement={presentation === 'empty' ? 'centered' : 'bottom'}
-      onSend={onSend}
+      onSend={send}
       onUiCommand={onUiCommand}
       onPrepareAttachments={onPrepareAttachments}
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
       sessionId={sessionId}
+      draftKey={sessionId ? undefined : composerDraftKey}
       primary={composerPrimary}
       acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}
       onStop={onStop}
-      onSteer={onSteer}
+      onSteer={steer}
       onQueue={onQueue}
       models={models}
       providers={providers}
@@ -361,15 +446,17 @@ function ChatView({
   )
 
   return (
+    <ActivityImageProvider key={sessionId}><ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={userScrolls} onKeyDown={userScrolls}>
             {historyNote?.hasMore && (
               <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">
                 {t('history.hasMore', { n: historyNote.total })}
               </p>
             )}
             <div ref={contentRef}>
+            <ActivityLayoutContext.Provider value={activityLayout}>
             <Virtualizer ref={virtRef} scrollRef={scrollRef} data={stream} bufferSize={800}>
               {(row, index) => (
                 <div
@@ -391,6 +478,7 @@ function ChatView({
                 </div>
               )}
             </Virtualizer>
+            </ActivityLayoutContext.Provider>
             </div>
           </div>
           <ScrollToBottom
@@ -433,6 +521,7 @@ function ChatView({
         </>
       )}
     </HomeWelcome>
+    </ChatFileDropZone></ActivityImageProvider>
   )
 }
 

@@ -8,12 +8,14 @@ import type { ReasoningEffort } from '../../lib/reasoning'
 import { useCatalog } from './useCatalog'
 import { useEngineConnection } from './useEngineConnection'
 import { useProjects } from '../projects/useProjects'
+import { useProjectPromotionReveal } from '../projects/useProjectPromotionReveal'
 import { useProjectRootWatch } from '../projects/useProjectRootWatch'
 import { useSessionList } from './useSessionList'
 import { useTurnRuntime } from './useTurnRuntime'
 import { selectSessionModel } from './sessionSelectors'
-import { useComposerStore } from '../../stores/composer'
 import { useSessionUiStore } from '../../stores/sessionUi'
+import { sessionForDraft, useConversationDraftStore, type ConversationDraft } from '../../stores/conversationDraft'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 export interface SendOptions {
   reasoningEffort?: ReasoningEffort
@@ -53,6 +55,7 @@ export function useEngineSession() {
     engineGeneration,
   })
   const projects = useProjects({ engineReady: connection.ready })
+  useProjectPromotionReveal(sessions.sessionsById, engineGeneration, projects.refreshProjects)
   const catalog = useCatalog()
   const attachmentJobsRef = useRef(new Map<string, string>())
   /** Admisión de envío por sesión: dos clics antes del siguiente render no crean dos turnos. */
@@ -129,6 +132,9 @@ export function useEngineSession() {
           return false
         }
       }
+      // Un modelo recién elegido aún puede estar guardándose: el turno debe
+      // salir con él, no con el anterior.
+      await modelChangeChain.current.get(sessionId)
       // Re-check after the await: another caller may have started a turn.
       if (runtime.store.getState().busySessions.has(sessionId)) return false
       const optimisticId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -158,14 +164,26 @@ export function useEngineSession() {
     }
   }, [runtime, t])
 
-  /** Envía a la sesión Normal: crea sesión si no hay activa. */
+  /** Envía a la sesión Normal; sin sesión, el borrador se convierte en una al enviar. */
   async function send(text: string, attachments: AttachmentRef[] = [], options: SendOptions = {}): Promise<boolean> {
     let sessionId = sessions.activeSession
     if (sessionId === '') {
       if (text.trim() === '' && attachments.length === 0) return false
-      const created = await sessions.createSession()
+      const drafts = useConversationDraftStore.getState()
+      const draft = drafts.normal ?? drafts.openNormal(null)
+      const created = await materializeDraft(draft, { activate: false })
       if (!created) return false
       sessionId = created
+      const ok = await sendTo(sessionId, text, attachments, options)
+      if (ok) {
+        // La conversación existe y tiene su primer mensaje: Normal pasa a ella.
+        useConversationDraftStore.getState().consumeNormal(draft.key)
+        sessions.setActiveSession(sessionId)
+      } else if (useConversationDraftStore.getState().normal?.key === draft.key) {
+        // Sigue el borrador; el reintento usa la sesión ya creada.
+        useConversationDraftStore.getState().updateNormal({ sessionId })
+      }
+      return ok
     }
     return sendTo(sessionId, text, attachments, options)
   }
@@ -182,21 +200,13 @@ export function useEngineSession() {
     }
   }, [])
 
+  /**
+   * Prepara adjuntos de la sesión Normal. En un borrador no hay sesión todavía:
+   * los archivos esperan tal cual y se preparan al enviar, cuando se crea.
+   */
   async function prepareAttachments(attachments: AttachmentRef[]): Promise<AttachmentRef[]> {
-    if (attachments.length === 0) return attachments
-    let sessionId = sessions.activeSession
-    if (!sessionId) {
-      const draftSessionKey = useComposerStore.getState().sessionKey
-      const created = await sessions.createSession()
-      if (!created) return attachments
-      sessionId = created
-      // Attachments can be selected from the start screen before a session
-      // exists. Move that draft into the newly created session immediately;
-      // otherwise the Composer's session effect could replace it during the
-      // asynchronous preparation job.
-      useComposerStore.getState().moveDraft(draftSessionKey, created)
-    }
-    return prepareAttachmentsFor(sessionId, attachments)
+    if (attachments.length === 0 || !sessions.activeSession) return attachments
+    return prepareAttachmentsFor(sessions.activeSession, attachments)
   }
 
   const cancelAttachmentPreparationFor = useCallback(async (_sessionId: string, attachments: AttachmentRef[]): Promise<void> => {
@@ -259,6 +269,39 @@ export function useEngineSession() {
   async function useModel(model: ModelSummary): Promise<void> {
     await useModelFor(sessions.activeSession, model, { setGlobalDefault: true })
   }
+  /**
+   * Abre una conversación nueva en Normal **sin crearla**: un borrador del
+   * proyecto (o general) con su composer. La sesión nace con el primer envío.
+   */
+  const openDraft = useCallback((projectId?: string | null) => {
+    useConversationDraftStore.getState().openNormal(projectId ?? null)
+    sessions.setActiveSession('')
+    if (projectId) useProjectExpansionStore.getState().reveal(projectId)
+  }, [sessions])
+
+  /**
+   * Crea la sesión de un borrador (una vez, aunque lleguen dos envíos) con su
+   * proyecto, modo, permisos y modelo, y le pasa la preferencia de
+   * razonamiento elegida antes de existir.
+   */
+  const materializeDraft = useCallback(async (draft: ConversationDraft, options: { activate: boolean }): Promise<string | null> => {
+    const id = await sessionForDraft(draft, async (current) => {
+      const created = await sessions.createSession(current.projectId ?? undefined, {
+        activate: false,
+        mode: current.mode,
+        permissionProfile: current.permissionProfile,
+      })
+      if (!created) return null
+      const ui = useSessionUiStore.getState()
+      ui.setReasoningFor(created, ui.reasoningFor(current.key))
+      if (current.model) await useModelFor(created, current.model, { setGlobalDefault: false })
+      return created
+    })
+    if (id && options.activate) sessions.setActiveSession(id)
+    return id
+  }, [sessions, useModelFor])
+
+
 
   // -- plan --------------------------------------------------------------------
 
@@ -354,9 +397,16 @@ export function useEngineSession() {
     useModelFor,
     selectSession: sessions.selectSession,
     deferTrustWarning: sessions.deferTrustWarning,
-    setMode: sessions.setMode,
+    // Un borrador guarda modo y permisos hasta que exista su sesión.
+    setMode: (mode: string) => sessions.activeSession === ''
+      ? Promise.resolve(useConversationDraftStore.getState().updateNormal({ mode }))
+      : sessions.setMode(mode),
     setModeFor: sessions.setModeFor,
-    setPermission: sessions.setPermission,
+    setPermission: (profile: string) => sessions.activeSession === ''
+      ? Promise.resolve(useConversationDraftStore.getState().updateNormal({ permissionProfile: profile as ConversationDraft['permissionProfile'] }))
+      : sessions.setPermission(profile),
+    openDraft,
+    materializeDraft,
     setPermissionFor: sessions.setPermissionFor,
     searchFiles: sessions.searchFiles,
     searchFilesFor: sessions.searchFilesFor,

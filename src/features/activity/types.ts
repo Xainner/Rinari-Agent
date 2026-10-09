@@ -26,6 +26,31 @@ export interface ModelTimelineItem extends TimelineItemBase {
   outputKind?: 'progress' | 'final'
   model?: string
   durationMs?: number
+  /** `model.changed`: este es el primer texto de otro modelo que el anterior que escribió. */
+  modelChange?: ModelChange
+  /** `model.retrying`: la llamada falló de forma transitoria y se repite. */
+  retry?: ModelRetry
+}
+
+export interface ModelRetry {
+  attempt: number
+  maxAttempts: number
+  /** SERVER_ERROR, RATE_LIMIT, TIMEOUT, STREAM_INTERRUPTED, NETWORK… */
+  reason: string
+}
+
+/** Un modelo tal como se llamaba cuando el Engine registró el cambio. */
+export interface ModelLabel {
+  modelId: string
+  alias?: string
+  providerModelId?: string
+  providerAlias?: string
+}
+
+export interface ModelChange {
+  /** Sin nombre si el modelo anterior ya no existe y nunca se registró. */
+  previous: ModelLabel
+  next: ModelLabel
 }
 
 export interface ToolTimelineItem extends TimelineItemBase {
@@ -110,6 +135,8 @@ export interface ContextTimelineItem extends TimelineItemBase {
   sessionId?: string
   error?: string
   reason?: string
+  /** Why a manual compaction changed nothing (`empty_history`, `only_latest_exchange`, `summary_not_smaller`). */
+  skipReason?: string
   contextDetails?: Record<string, unknown>
     type: 'context'
     status: 'running' | 'completed' | 'skipped' | 'failed' | 'cancelled'
@@ -125,7 +152,7 @@ export interface VerificationTimelineItem extends TimelineItemBase {
 
 export interface SystemTimelineItem extends TimelineItemBase {
   type: 'system'
-  kind: 'turn_preparing' | 'governor' | 'terminal'
+  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped'
   status?: string
   label?: string
 }
@@ -149,6 +176,8 @@ export interface VisionTimelineItem extends TimelineItemBase {
   question: string
   analysis: string
   error?: string
+  /** `without_images`: el modelo no ve imágenes y el turno siguió sin ellas. */
+  fallback?: string
   images: import('../../types/protocol.generated').ViewedImage[]
   cached: boolean
 }
@@ -193,6 +222,9 @@ export interface TurnTimeline {
   stopReason?: TurnStopReason
   errorDetails?: Record<string, unknown>
   error?: string
+  /** Código del error terminal (`PROVIDER_MODEL_FAILURE`…) y si se puede reintentar. */
+  errorCode?: string
+  errorRetryable?: boolean
   /** Procedencia del turno (peer / reenvío); `undefined` = petición del usuario. */
   origin?: MessageOrigin | null
 }

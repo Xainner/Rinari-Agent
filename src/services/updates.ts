@@ -7,6 +7,11 @@ export function checkForUpdates(): Promise<UpdateAvailable | null> {
   return platform().updates.check()
 }
 
+/** Estado actual del actualizador (lo que no se vio pasar por `onUpdateState`). */
+export function updateSnapshot(): Promise<UpdateState> {
+  return platform().updates.snapshot()
+}
+
 export function downloadUpdate(): Promise<UpdateState> {
   return platform().updates.download()
 }

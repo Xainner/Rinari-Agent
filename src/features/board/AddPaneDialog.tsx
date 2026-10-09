@@ -17,15 +17,21 @@ import {
 } from '../../components/ui/alert-dialog'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
-import { useBoardStore } from '../../stores/board'
+import { isDraftPane, useBoardStore } from '../../stores/board'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const SEARCH_THRESHOLD = 8
 
 export interface AddPaneDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Se llama con la sesión ya creada o elegida; el llamador añade el panel. */
+  /** Se llama con una sesión existente elegida; el llamador añade el panel. */
   onAdded: (sessionId: string) => void
+  /**
+   * Conversación nueva (general o de un proyecto): el llamador añade un panel
+   * borrador; la sesión se crea con su primer mensaje.
+   */
+  onAddDraft: (projectId: string | null) => void
 }
 
 type PendingProject = { project: ProjectSummary; sharedWith: string[] }
@@ -36,7 +42,7 @@ type PendingProject = { project: ProjectSummary; sharedWith: string[] }
  * {activate:false})` —nunca `project.open`, que reutiliza la sesión activa del
  * root— y avisa antes de repetir una raíz canónica ya presente en el board.
  */
-export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDialogProps) {
+export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft }: AddPaneDialogProps) {
   const { t } = useI18n()
   const commands = useEngineCommands()
   const data = useEngineData()
@@ -63,8 +69,8 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDi
   }, [boardSessionIds, data.sessions, query])
 
   /** Sesiones del board que ya trabajan sobre la misma raíz canónica. */
-  const sharedWith = (project: ProjectSummary): string[] =>
-    panes
+  const sharedWith = (project: ProjectSummary): string[] => [
+    ...panes
       .map((pane) => data.sessionsById[pane.sessionId])
       .filter((session): session is SessionSummary => Boolean(session))
       .filter((session) => {
@@ -72,7 +78,10 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDi
         const root = session.project_root
         return root !== null && (root === project.root || root === project.canonical_root)
       })
-      .map((session) => session.title || session.id)
+      .map((session) => session.title || session.id),
+    // Un borrador del mismo proyecto también ocupa esa raíz.
+    ...panes.filter((pane) => isDraftPane(pane) && pane.draft.projectId === project.id).map(() => t('sidebar.newChat')),
+  ]
 
   const finish = (sessionId: string) => {
     onAdded(sessionId)
@@ -80,24 +89,19 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDi
     setQuery('')
   }
 
-  async function addGeneralChat() {
-    setBusy(true)
-    try {
-      const id = await commands.createSession(undefined, { activate: false })
-      if (id) finish(id)
-    } finally {
-      setBusy(false)
-    }
+  const finishDraft = (projectId: string | null) => {
+    onAddDraft(projectId)
+    onOpenChange(false)
+    setQuery('')
   }
 
-  async function createForProject(project: ProjectSummary) {
-    setBusy(true)
-    try {
-      const id = await commands.createSession(project.id, { activate: false })
-      if (id) finish(id)
-    } finally {
-      setBusy(false)
-    }
+  function addGeneralChat() {
+    finishDraft(null)
+  }
+
+  function createForProject(project: ProjectSummary) {
+    useProjectExpansionStore.getState().reveal(project.id)
+    finishDraft(project.id)
   }
 
   function chooseProject(project: ProjectSummary) {
@@ -116,6 +120,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded }: AddPaneDi
     try {
       // project.add registra o deduplica el proyecto sin crear sesiones.
       const added = await engineApi.projectAdd(picked)
+      if (added.created) useProjectExpansionStore.getState().reveal(added.project.id)
       await commands.refreshProjects()
       setBusy(false)
       chooseProject(added.project)

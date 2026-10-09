@@ -15,7 +15,6 @@ import {
 import { commandMessage, engineApi, type TurnChangedFile, type TurnUndoPreview } from '../../services/engine'
 import type { TimelineItem } from './types'
 import { changeSetPresentation, hasPartialCoverage } from './changeSetPresentation'
-import { CoverageWarning } from './CoverageWarning'
 
 /** Changeset confirmado de un turno: revisión de archivos y undo con vista previa. */
 export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem, { type: 'changeset' }>; turnActive: boolean }) {
@@ -26,7 +25,6 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
   const [working, setWorking] = useState(false)
   const presentation = changeSetPresentation(item)
   if (presentation === 'hidden') return null
-  if (presentation === 'coverage-warning') return <CoverageWarning warnings={item.warnings} />
 
   async function review() {
     try {

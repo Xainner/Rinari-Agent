@@ -7,10 +7,12 @@
  * convierte un fallo de integración en un test verde.
  */
 
+import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
   DesktopBridge,
+  WorkspaceMedia,
   DesktopCommand,
   EngineBackedCommand,
   EngineStatus,
@@ -26,9 +28,11 @@ import type {
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
+  UpdateState,
   MigrationStatus,
   FlowScopeRequest,
   BackgroundSettings,
+  DiagnosticsPreview,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -55,16 +59,27 @@ export interface TestBridge extends DesktopBridge {
   initialHandoff: OpenRequest
   /** Archivos que se pidió abrir con la aplicación del sistema. */
   readonly openedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
+  /** «Abrir en el Explorador»: distinto de abrir, para que un test no los confunda. */
+  readonly revealedFiles: Array<{ session_id: string; path: string; turn_id?: string }>
+  /** Tipo que devuelve `files.media` por ruta (por defecto `text`). */
+  readonly mediaKinds: Record<string, WorkspaceMedia['kind']>
   /** Textos que el host de prueba confirmó en el portapapeles. */
   readonly copiedTexts: string[]
+  /** Paquete de diagnóstico que devolvería el host y exportaciones pedidas. */
+  diagnosticsState: { preview: DiagnosticsPreview; exports: number; saved: boolean }
   /** Ajustes de segundo plano del host de prueba. */
   background: BackgroundSettings
   /** Último idioma que el renderer comunicó al host (`null` si ninguno). */
   hostLanguage: 'es' | 'en' | null
+  /** Lo que el renderer mandó a la barra de tareas y la bandeja, en orden. */
+  indicators: AttentionIndicators[]
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   readonly openedUrls: string[]
   update: UpdateAvailable | null
+  /** Lo que devuelve `updates.snapshot`; `emitUpdateState` lo cambia y avisa. */
+  updateState: UpdateState
+  emitUpdateState(state: UpdateState): void
   desktop: boolean
   migrationStatus: MigrationStatus
   /** Contexto del browser que devolverá el puente. `null` = sin soporte. */
@@ -105,6 +120,7 @@ export function createTestBridge(): TestBridge {
   const menuListeners = new Set<(action: string) => void>()
   const openListeners = new Set<(request: OpenRequest) => void>()
   const notificationListeners = new Set<(target: NotificationTarget) => void>()
+  const updateListeners = new Set<(state: UpdateState) => void>()
   const browserListeners = new Set<(view: NativeBrowserContext) => void>()
 
 /** Un alcance sin etapas: lo honesto cuando el test no dijo otra cosa. */
@@ -154,15 +170,24 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     },
     initialHandoff: { project: null, session: null },
     openedFiles: [],
+    revealedFiles: [],
+    mediaKinds: {},
     copiedTexts: [],
+    diagnosticsState: {
+      preview: { files: [{ name: 'summary.json', bytes: null }, { name: 'logs/app.log', bytes: 2048 }], totalBytes: 2048 },
+      exports: 0,
+      saved: true,
+    },
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     hostLanguage: null,
+    indicators: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
     openedUrls: [],
     nextFileSelection: null,
     update: null,
+    updateState: { phase: 'idle', current_version: '0.2.0', available_version: null, progress: null, message: null, unsigned: true },
     desktop: true,
     migrationStatus: { state: 'not_started', pending: false },
 
@@ -213,11 +238,36 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async openExternal(input) {
         bridge.openedFiles.push(input)
       },
+      async revealInFolder(input) {
+        bridge.revealedFiles.push(input)
+      },
+      async media(input) {
+        const kind = bridge.mediaKinds[input.path] ?? 'text'
+        const name = input.path.split(/[\/]/).pop() ?? input.path
+        return {
+          path: input.path,
+          name,
+          size: 1,
+          kind,
+          mime: kind === 'image' ? 'image/png' : kind === 'video' ? 'video/mp4' : kind === 'audio' ? 'audio/mpeg' : 'application/octet-stream',
+          url: kind === 'image' || kind === 'video' || kind === 'audio' ? `app://rinari/__media/test-${name}` : null,
+        }
+      },
     },
 
     clipboard: {
       async writeText(text) {
         bridge.copiedTexts.push(text)
+      },
+    },
+
+    diagnostics: {
+      async preview() {
+        return bridge.diagnosticsState.preview
+      },
+      async export() {
+        bridge.diagnosticsState.exports += 1
+        return { saved: bridge.diagnosticsState.saved }
       },
     },
 
@@ -234,6 +284,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       },
       async setLanguage(language) {
         bridge.hostLanguage = language
+      },
+      async setIndicators(state) {
+        bridge.indicators.push(state)
       },
     },
 
@@ -358,8 +411,14 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
           unsigned: bridge.update?.unsigned ?? true,
         }
       },
+      async snapshot() {
+        return bridge.updateState
+      },
       async apply() {},
-      async onState() { return () => {} },
+      async onState(callback) {
+        updateListeners.add(callback)
+        return () => updateListeners.delete(callback)
+      },
     },
 
     migration: {
@@ -372,6 +431,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
 
     emitEngineEvent(event) {
       for (const listener of [...engineListeners]) listener(event)
+    },
+    emitUpdateState(state) {
+      bridge.updateState = state
+      for (const listener of [...updateListeners]) listener(state)
     },
     emitMenuAction(action) {
       for (const listener of [...menuListeners]) listener(action)
@@ -400,8 +463,11 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       }
       bridge.initialHandoff = { project: null, session: null }
       bridge.openedFiles.length = 0
+      bridge.revealedFiles.length = 0
+      for (const key of Object.keys(bridge.mediaKinds)) delete bridge.mediaKinds[key]
       bridge.copiedTexts.length = 0
       bridge.hostLanguage = null
+      bridge.indicators = []
       bridge.menus.length = 0
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }

@@ -143,6 +143,7 @@ Replace the checkout path with your own. The host also supports configured insta
 <summary><strong>Validation and Windows packaging</strong></summary>
 
 ```bash
+npm ci --prefix installer/setup # Dependencies for the setup UI component tests
 npm test
 npm run protocol:check
 npm run parity:check

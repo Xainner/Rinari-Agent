@@ -1,3 +1,4 @@
+import { readingCoverage } from '../components/AttachmentReading'
 import type {
   ProviderPreset as ProtocolProviderPreset,
   ProviderUsageSnapshot,
@@ -47,6 +48,10 @@ export interface EngineStatus {
 export interface CommandError {
   code: string;
   message: string;
+  /** Si reintentar sirve, según el Engine. */
+  retryable?: boolean;
+  /** Datos del error (proveedor que falló, estado HTTP…), si el Engine los dio. */
+  details?: Record<string, unknown>;
 }
 
 export interface EngineEventMsg {
@@ -73,6 +78,8 @@ export interface PreparedAttachmentResult {
   kind?: string
   derived_uri?: string
   ocr?: boolean
+  keep_image?: boolean
+  coverage?: Record<string, unknown>
   truncated?: boolean
   warning?: string
   images?: Array<{ uri: string; sha256?: string }>
@@ -103,6 +110,8 @@ export interface HistoryMessage {
     derived_uri?: string;
     images?: Array<{ uri: string; sha256?: string }>;
     ocr?: boolean;
+    keep_image?: boolean;
+    coverage?: Record<string, unknown>;
     truncated?: boolean;
     warning?: string;
   }> | null;
@@ -352,6 +361,16 @@ export interface ProjectStatus {
 }
 
 /** Estado de la confianza de un proyecto, tal como lo decide el Engine. */
+/** El cambio de rama detrás de un aviso `[git-branch]`: desde la rama del último
+ * trabajo en ese checkout (`last_work`) o la de la primera vez que se vio (`first_seen`). */
+export interface BranchChange {
+  from: string
+  to: string
+  since?: string | null
+  reference: 'last_work' | 'first_seen'
+  session_id?: string | null
+}
+
 export type TrustState = 'trusted' | 'not-trusted' | 'revalidation-required' | 'not-found'
 
 export interface ProjectIntelligence {
@@ -731,7 +750,7 @@ export const engineApi = {
       project_id: options?.project_id ?? null,
     }),
   openSession: (reference: string) =>
-    platform().command<{ session: SessionSummary; created: boolean; warnings: string[]; trust_state?: TrustState | null }>(
+    platform().command<{ session: SessionSummary; created: boolean; warnings: string[]; trust_state?: TrustState | null; branch_change?: BranchChange | null }>(
       "session_open",
       { reference },
     ),
@@ -1393,6 +1412,7 @@ function attachmentInputs(attachments: Array<AttachmentRef | AttachmentInput>): 
       uri: item.uri ?? null,
       sha256: item.sha256 ?? null,
       ocr: item.ocr ?? false,
+      ...((item as AttachmentRef).keepImage ?? (item as AttachmentInput).keep_image ? { keep_image: true } : {}),
       derived_uri: (item as AttachmentRef).derivedUri ?? (item as AttachmentInput).derived_uri ?? null,
       ...(pageRange ? { page_range: pageRange } : {}),
       ...(visualPages && visualPages.length > 0 ? { visual_pages: visualPages } : {}),
@@ -1424,6 +1444,8 @@ function mapPreparedAttachment(item: PreparedAttachmentResult, attachments: Atta
     derivedUri: item.derived_uri || attachments.derivedUri,
     images: item.images || attachments.images,
     ocr: item.ocr ?? attachments.ocr,
+    keepImage: item.ocr ? (item.keep_image ?? attachments.keepImage) : undefined,
+    coverage: readingCoverage(item.coverage) ?? (item.kind === 'pdf' ? undefined : attachments.coverage),
     truncated: item.truncated ?? attachments.truncated,
     warning: item.warning || attachments.warning,
     previewUrl: attachments.previewUrl,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ChevronDown } from 'lucide-react'
 import {
@@ -28,9 +28,11 @@ import {
 } from '../../components/ui/alert-dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
 import { providerCreateSettings } from './presets'
+import { registerProviderModels } from './registerModels'
 import ProviderDetails from './ProviderDetails'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ModelCatalog from './ModelCatalog'
+import { useUIStore, type ProviderTab } from '../../stores/ui'
 
 /** Ajustes > Proveedores: tarjetas con estado, probar, usar, editar y eliminar. */
 export default function ProvidersView({
@@ -54,6 +56,32 @@ export default function ProvidersView({
   const [testing, setTesting] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ProviderSummary | null>(null)
+  // «Revisar uso y límites» desde un error: abre esa tarjeta en esa pestaña.
+  const focus = useUIStore((s) => s.providerFocus)
+  const clearFocus = useUIStore((s) => s.clearProviderFocus)
+  const [opened, setOpened] = useState<{ alias: string; tab: ProviderTab; at: number } | null>(null)
+  const [missing, setMissing] = useState<string | null>(null)
+  useEffect(() => {
+    if (!focus) return
+    const target = (focus.providerId ? providers.find((p) => p.id === focus.providerId) : undefined)
+      ?? (focus.alias ? providers.find((p) => p.alias === focus.alias) : undefined)
+    if (!target) {
+      // La lista aún no llegó: se espera. Si llegó y no está, se dice; nunca
+      // se abre otro proveedor en su lugar.
+      if (providers.length > 0 || !(focus.providerId || focus.alias)) {
+        setMissing(focus.alias ?? focus.providerId ?? '')
+        clearFocus()
+      }
+      return
+    }
+    setMissing(null)
+    setExpanded(target.alias)
+    setOpened({ alias: target.alias, tab: focus.tab, at: Date.now() })
+    clearFocus()
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-anchor=${JSON.stringify(`provider:${target.id}`)}]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    })
+  }, [focus, providers, clearFocus])
   const [switchTo, setSwitchTo] = useState('')
 
   function openAdd() {
@@ -105,6 +133,7 @@ export default function ProvidersView({
         })
         toast.success(t('wizard.saved'))
         setExpanded(alias)
+        void registerProviderModels(alias).then(onChanged)
       } else if (dialog?.mode === 'edit') {
         const patch: {
           alias?: string
@@ -131,6 +160,10 @@ export default function ProvidersView({
           return
         }
         await engineApi.providerUpdate(dialog.provider.alias, patch)
+        // Credencial o endpoint nuevos pueden traer otro catálogo.
+        if (patch.secret || patch.secret_env || patch.endpoint !== undefined) {
+          void registerProviderModels(patch.alias ?? dialog.provider.alias).then(onChanged)
+        }
       }
       setDialog(null)
       onChanged()
@@ -197,6 +230,12 @@ export default function ProvidersView({
         </button>
       </div>
 
+      {missing !== null && (
+        <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          {missing ? t('providers.focusMissing', { name: missing }) : t('providers.focusUnknown')}
+        </p>
+      )}
+
       {providers.length === 0 && (
         <Section title={t('providers.list')}>
           <p className="text-sm text-[var(--text-subtle)]">{t('wizard.welcome')}</p>
@@ -209,6 +248,7 @@ export default function ProvidersView({
         return (
           <Section
             key={provider.id}
+            anchor={`provider:${provider.id}`}
             title={
               // The whole title opens the card: only the small «details» button did.
               <button
@@ -217,7 +257,7 @@ export default function ProvidersView({
                 onClick={() => setExpanded(isOpen ? null : provider.alias)}
                 className="flex w-full items-center gap-2.5 text-left"
               >
-                <ProviderLogo alias={provider.alias} endpoint={provider.endpoint} size={22} />
+                <ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={22} />
                 <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
                 <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -292,7 +332,12 @@ export default function ProvidersView({
               </button>
             </div>
             {isOpen && (engineCapabilities?.provider_catalog_v1
-              ? <ProviderDetails key={`${provider.id}:${provider.updated_at}`} provider={provider} onChanged={onChanged} />
+              ? <ProviderDetails
+                  key={`${provider.id}:${provider.updated_at}:${opened?.alias === provider.alias ? opened.at : 0}`}
+                  provider={provider}
+                  onChanged={onChanged}
+                  initialTab={opened?.alias === provider.alias ? opened.tab : undefined}
+                />
               : <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />)}
           </Section>
         )

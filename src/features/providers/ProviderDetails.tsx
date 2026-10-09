@@ -5,15 +5,17 @@ import ModelCatalog from './ModelCatalog'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ProviderAuthPanel from './ProviderAuthPanel'
 import ExternalRuntimePanel from './ExternalRuntimePanel'
+import { registerProviderModels } from './registerModels'
+import type { ProviderTab } from '../../stores/ui'
 
-export default function ProviderDetails({ provider, onChanged }: { provider: ProviderSummary; onChanged: () => void }) {
+export default function ProviderDetails({ provider, onChanged, initialTab }: { provider: ProviderSummary; onChanged: () => void; initialTab?: ProviderTab }) {
   const { t } = useI18n()
   const tabId = useId()
-  const [tab, setTab] = useState<'connection' | 'models' | 'usage' | 'diagnostics'>(
+  const [tab, setTab] = useState<ProviderTab>(initialTab ?? (
     provider.auth_method === 'external-cli' || (provider.auth_method === 'oauth' && !provider.has_credential)
       ? 'connection'
-      : 'usage',
-  )
+      : 'usage'
+  ))
   const [diagnostics, setDiagnostics] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -40,7 +42,8 @@ export default function ProviderDetails({ provider, onChanged }: { provider: Pro
           <p className="text-xs text-[var(--text-muted)]">{t('providers.claudeDisconnect')}</p>
         </div>
         : provider.auth_method === 'oauth'
-        ? <ProviderAuthPanel providerAlias={provider.alias} onConnected={onChanged} />
+        ? <ProviderAuthPanel providerAlias={provider.alias} onConnected={() => void registerProviderModels(provider.alias).then(onChanged)} />
+
         : <p className="text-sm text-[var(--text-muted)]">{provider.has_credential ? t('providers.credentialOk') : provider.auth_method === 'none' ? t('providers.authNone') : t('providers.noCredential')}</p>)}
       {tab === 'models' && <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />}
       {tab === 'usage' && <ProviderUsagePanel providerAlias={provider.alias} />}

@@ -4,7 +4,7 @@
 // se restaura tras hidratar las filas. Leer arriba nunca termina abajo.
 import { installMockPlatform } from '../test/mockPlatform'
 installMockPlatform()
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 vi.mock('../services/desktop', () => ({
@@ -39,14 +39,23 @@ import { requestTurnReveal, takeQueuedTurnReveal } from '../features/board/board
 import SingleSessionView from '../features/engine/SingleSessionView'
 import { engineEventAction } from '../features/activity/turnTimelineReducer'
 import { resetPendingQuestionsForTests } from '../features/questions/usePendingQuestions'
+import { useUIStore } from '../stores/ui'
 
 const NOW = 1_700_000_000_000
 const event = (name: string, payload: Record<string, unknown>) => engineEventAction({ type: 'event', event: name, payload }, NOW)!
 
 class ResizeObserverStub {
-  observe() {}
+  static instances: ResizeObserverStub[] = []
+  targets: Element[] = []
+  constructor(readonly callback: ResizeObserverCallback) { ResizeObserverStub.instances.push(this) }
+  observe(target: Element) { this.targets.push(target) }
   unobserve() {}
-  disconnect() {}
+  disconnect() { this.targets = [] }
+  static resize(target: Element) {
+    for (const observer of this.instances) if (observer.targets.includes(target)) {
+      observer.callback([{ target } as ResizeObserverEntry], observer as unknown as ResizeObserver)
+    }
+  }
 }
 
 beforeEach(() => {
@@ -54,6 +63,8 @@ beforeEach(() => {
   Element.prototype.scrollTo = vi.fn() as unknown as Element['scrollTo']
   scrollToIndex.mockClear()
   handle.scrollOffset = 0
+  ResizeObserverStub.instances = []
+  useUIStore.setState({ autoFollow: true })
   resetScrollAnchorsForTests()
   window.localStorage.clear()
   resetPendingQuestionsForTests()
@@ -61,6 +72,31 @@ beforeEach(() => {
   useComposerStore.setState({ sessionKey: 'draft', text: '', attachments: [], draftsBySession: {} })
 })
 afterEach(cleanup)
+
+it.each([true, false])('remeasures a folded transcript without a scroll event (auto-follow=%s)', async autoFollow => {
+  useUIStore.setState({ autoFollow })
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(0)
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+  scrollToIndex.mockClear()
+  const el = scroller()
+  // Content shrinks, but still overflows: do not pull a reader down.
+  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: 800 })
+  await act(async () => {
+    ResizeObserverStub.resize(el.firstElementChild!)
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  })
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+  expect(scrollToIndex).not.toHaveBeenCalled()
+  // The remaining content fits. Browsers need not emit `scroll` at top=0.
+  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: 300 })
+  await act(async () => {
+    ResizeObserverStub.resize(el.firstElementChild!)
+    await new Promise(resolve => requestAnimationFrame(resolve))
+  })
+  expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
+})
 
 function engineWithTurns(count: number) {
   const engine = engineFixture({ sessions: [sessionFixture('ses_a', 'Backend API', 'proj_a')], activeSession: 'ses_a' })
@@ -147,4 +183,68 @@ it('FLOW-10: a queued reveal for another session is ignored and left for that se
   render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
   expect(scrollToIndex).not.toHaveBeenCalledWith(1, { align: 'start' })
   expect(takeQueuedTurnReveal('ses_other')).toBe('t1')
+})
+
+function sendFromComposer(text: string) {
+  const box = screen.getByRole('textbox', { name: /mensaje|message/i })
+  fireEvent.change(box, { target: { value: text } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+}
+
+it('sending while reading history jumps to the end once the Engine accepts the message', async () => {
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  scrollToIndex.mockClear()
+  sendFromComposer('otra pregunta')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
+  expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
+})
+
+it('after the jump only a gesture of the person stops following the end, not a scroll the list makes itself', async () => {
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  scrollToIndex.mockClear()
+  sendFromComposer('otra pregunta')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
+  // The virtualizer re-measures rows while the reply arrives: a scroll event
+  // that is not at the end must not switch following off.
+  scrollTo(430)
+  expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
+  // The person scrolls up with the wheel: now it stops.
+  fireEvent.wheel(scroller())
+  scrollTo(200)
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+})
+
+it('a refused send leaves the reader where they were', async () => {
+  const engine = engineWithTurns(10)
+  ;(engine.send as ReturnType<typeof vi.fn>).mockResolvedValue(false)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  scrollToIndex.mockClear()
+  sendFromComposer('no llega')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  expect(scrollToIndex).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
+})
+
+it('an explicit turn reveal during the send wins over the jump', async () => {
+  const engine = engineWithTurns(10)
+  let accept!: (ok: boolean) => void
+  ;(engine.send as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise<boolean>((resolve) => { accept = resolve }))
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  scrollTo(430)
+  sendFromComposer('mientras tanto')
+  await vi.waitFor(() => expect(engine.send).toHaveBeenCalled())
+  requestTurnReveal({ sessionId: 'ses_a', turnId: 't2' })
+  scrollToIndex.mockClear()
+  accept(true)
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  expect(scrollToIndex).not.toHaveBeenCalledWith(9, expect.anything())
 })

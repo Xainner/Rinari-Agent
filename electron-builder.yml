@@ -22,6 +22,11 @@ extraResources:
   # Icono propio de la bandeja: el del ejecutable a 16 px no se reconoce.
   - from: build/tray.ico
     to: tray.ico
+  # Insignias de la barra de tareas y marcas de la bandeja (indicators.ts).
+  - from: build/indicators
+    to: indicators
+    filter:
+      - "*.png"
 afterPack: build/afterPack.cjs
 artifactName: Rinari-Agent-Payload-${version}-${arch}.${ext}
 forceCodeSigning: false

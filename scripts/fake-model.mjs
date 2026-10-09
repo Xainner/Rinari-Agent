@@ -14,8 +14,12 @@
 import { createServer } from 'node:http'
 
 /**
- * Un guion es una lista de turnos del modelo. Cada entrada es o bien
- * `{ tool, args }` —pide una herramienta— o `{ text }` —cierra el turno—.
+ * Un guion es una lista de turnos del modelo. Cada entrada es `{ tool, args, say? }`
+ * —pide una herramienta—, `{ text }` —cierra el turno— o `{ httpError }` —el
+ * proveedor rechaza la petición con ese estado y cuerpo—.
+ * La petición de herramienta lleva una frase para el usuario (`say`), como un
+ * modelo bien portado: el Engine no ejecuta un primer lote mudo y pide antes
+ * la apertura. `say: ''` guioniza ese lote mudo.
  */
 export function scriptedModel(initial = []) {
   let script = [...initial]
@@ -31,7 +35,7 @@ export function scriptedModel(initial = []) {
     }
     return {
       role: 'assistant',
-      content: null,
+      content: entry.say ?? 'Voy a ello.',
       tool_calls: [
         {
           id: `call_${step}`,
@@ -69,6 +73,7 @@ export function scriptedModel(initial = []) {
             index: 0,
             delta: {
               role: 'assistant',
+              ...(message.content ? { content: message.content } : {}),
               tool_calls: message.tool_calls.map((call, index) => ({ index, ...call })),
             },
             finish_reason: null,
@@ -145,6 +150,16 @@ export function scriptedModel(initial = []) {
       } catch {
         wantsStream = false
       }
+      // `{ httpError: { status, body, headers } }`: the provider refuses the
+      // request (quota, rate limit…) so the error path is the real one.
+      const failing = script[step]?.httpError
+      if (failing) {
+        served.push(script[step])
+        step += 1
+        response.writeHead(failing.status ?? 500, { 'Content-Type': 'application/json', ...(failing.headers ?? {}) })
+        response.end(JSON.stringify(failing.body ?? { error: { message: 'fake failure' } }))
+        return
+      }
       const message = nextMessage()
       if (wantsStream) {
         response.writeHead(200, {
@@ -178,5 +193,65 @@ export async function startFakeModel(script = []) {
     baseUrl: `${origin}/v1`,
     served: model.served,
     close: () => new Promise((resolve) => server.close(resolve)),
+  }
+}
+
+/**
+ * Varios guiones en un mismo endpoint. `route(body)` elige el carril de cada
+ * petición (p. ej. la del título de la conversación, la del coordinador o la
+ * de un subagente), así un turno con peticiones concurrentes sigue siendo
+ * determinista. Los carriles de `held` esperan a `/__release?lane=<carril>`
+ * para responder, una petición por llamada; `/__pending?lane=<carril>` cuenta
+ * las retenidas.
+ */
+export async function startRoutedModel(lanes, route, { held = [] } = {}) {
+  const { Readable } = await import('node:stream')
+  const models = Object.fromEntries(Object.entries(lanes).map(([lane, script]) => [lane, scriptedModel(script)]))
+  const waiting = Object.fromEntries(held.map((lane) => [lane, []]))
+  const server = createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+    const lane = url.searchParams.get('lane') ?? ''
+    if (url.pathname === '/__pending') {
+      response.end(JSON.stringify(waiting[lane]?.length ?? 0))
+      return
+    }
+    if (url.pathname === '/__resume') {
+      const queued = waiting[lane] ?? []
+      delete waiting[lane]
+      for (const answer of queued) answer()
+      response.end(JSON.stringify({ resumed: queued.length }))
+      return
+    }
+    if (url.pathname === '/__release') {
+      const next = waiting[lane]?.shift()
+      if (next) next()
+      response.end(JSON.stringify(Boolean(next)))
+      return
+    }
+    if (!url.pathname.endsWith('/chat/completions')) {
+      models[Object.keys(models)[0]].handler(request, response)
+      return
+    }
+    let body = ''
+    request.on('data', (chunk) => (body += chunk))
+    request.on('end', () => {
+      let parsed = {}
+      try { parsed = JSON.parse(body || '{}') } catch { parsed = {} }
+      const chosen = route(parsed)
+      const replay = Object.assign(Readable.from([body]), { url: request.url, method: request.method, headers: request.headers })
+      const answer = () => models[chosen].handler(replay, response)
+      if (waiting[chosen]) waiting[chosen].push(answer)
+      else answer()
+    })
+  })
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const origin = `http://127.0.0.1:${server.address().port}`
+  return {
+    origin,
+    baseUrl: `${origin}/v1`,
+    close: () => new Promise((resolve) => { server.closeAllConnections(); server.close(resolve) }),
   }
 }

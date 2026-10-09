@@ -18,6 +18,7 @@
  * Se empaqueta a CommonJS: con `sandbox: true` el preload no admite ESM.
  */
 
+import type { AttentionIndicators } from '../shared/indicators'
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 
 import {
@@ -32,10 +33,13 @@ import {
   type BrowserSlotLayoutRequest,
   type BrowserSlotLease,
   type ContextMenuRequest,
+  type DiagnosticsExportResult,
+  type DiagnosticsPreview,
   type EngineStatus,
   type NotificationSupport,
   type NotificationTarget,
   type OpenExternalFileRequest,
+  type WorkspaceMedia,
   type OpenFilesRequest,
   type OpenRequest,
   type SystemNotificationRequest,
@@ -48,24 +52,27 @@ import type { FlowResult } from '../../src/types/protocol.generated'
 import type { MigrationStage, MigrationStatus } from '../shared/migration'
 import type { EngineEvent as EngineEventMessage } from '../shared/protocol'
 
-class BridgeError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message)
-    this.name = 'BridgeError'
-  }
+/**
+ * Un fallo del host como objeto plano. `contextBridge` copia un `Error` solo
+ * con su mensaje (se perdían `code`, `retryable` y `details`); un objeto
+ * plano llega entero, y `src/platform/electron.ts` lo vuelve a convertir en
+ * un `Error` con esos campos.
+ */
+function bridgeError(code: string, message: string, extra: { retryable?: boolean; details?: Record<string, unknown> } = {}) {
+  return { name: 'BridgeError', rinariBridgeError: true, code, message, ...extra }
 }
 
 /** Desenvuelve el resultado del main; un fallo conserva su código. */
 async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
   const result = (await ipcRenderer.invoke(channel, ...args)) as BridgeResult<T>
   if (!result || typeof result !== 'object' || !('ok' in result)) {
-    throw new BridgeError('BRIDGE_MALFORMED', `malformed reply from ${channel}`)
+    throw bridgeError('BRIDGE_MALFORMED', `malformed reply from ${channel}`)
   }
   if (result.ok) return result.value
-  throw new BridgeError(result.error.code, result.error.message)
+  throw bridgeError(result.error.code, result.error.message, {
+    ...(result.error.retryable !== undefined ? { retryable: result.error.retryable } : {}),
+    ...(result.error.details ? { details: result.error.details } : {}),
+  })
 }
 
 /** Suscripción que entrega solo la carga y cuya baja es idempotente. */
@@ -128,16 +135,24 @@ const api = {
   files: {
     /** El Engine valida raíz y procedencia; el host solo abre lo que aprobó. */
     openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
+    revealInFolder: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesRevealInFolder, request),
+    media: (request: OpenExternalFileRequest) => call<WorkspaceMedia>(CHANNEL.filesMedia, request),
   },
 
   clipboard: {
     writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
   },
 
+  diagnostics: {
+    preview: () => call<DiagnosticsPreview>(CHANNEL.diagnosticsPreview),
+    export: () => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExport),
+  },
+
   app: {
     background: () => call<BackgroundSettings>(CHANNEL.appBackgroundGet),
     setBackground: (patch: BackgroundPatch) => call<BackgroundSettings>(CHANNEL.appBackgroundSet, patch),
     setLanguage: (language: 'es' | 'en') => call<void>(CHANNEL.appLanguageSet, language),
+    setIndicators: (state: AttentionIndicators) => call<void>(CHANNEL.appIndicatorsSet, state),
   },
 
   contextMenu: {
@@ -182,6 +197,7 @@ const api = {
   updates: {
     check: () => call<UpdateAvailable | null>(CHANNEL.updatesCheck),
     download: () => call<UpdateState>(CHANNEL.updatesDownload),
+    snapshot: () => call<UpdateState>(CHANNEL.updatesSnapshot),
     apply: () => call<void>(CHANNEL.updatesApply),
     onState: (callback: (state: UpdateState) => void) =>
       subscribe<UpdateState>(PUSH.updateState, callback),

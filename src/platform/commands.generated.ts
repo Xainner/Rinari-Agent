@@ -8,6 +8,7 @@ export type DesktopCommand =
   | "approval_resolve"
   | "artifact_list"
   | "artifact_read"
+  | "artifact_resolve"
   | "attachment_prepare"
   | "attachment_prepare_cancel"
   | "attachment_prepare_get"
@@ -28,6 +29,16 @@ export type DesktopCommand =
   | "context_settings_get"
   | "context_settings_set"
   | "context_status"
+  | "documents_capabilities_get"
+  | "documents_import"
+  | "documents_inspect"
+  | "documents_job_cancel"
+  | "documents_job_get"
+  | "documents_job_start"
+  | "documents_preview_get"
+  | "documents_range_get"
+  | "documents_report_get"
+  | "documents_revisions_list"
   | "engine_restart"
   | "engine_shutdown"
   | "engine_start"
@@ -171,6 +182,7 @@ export type DesktopCommand =
   | "vision_settings_set"
   | "workspace_file_open"
   | "workspace_file_read"
+  | "workspace_file_resolve"
   | "workspace_file_search"
   | "workspace_file_unwatch"
   | "workspace_file_watch"
@@ -188,6 +200,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "approval_resolve",
   "artifact_list",
   "artifact_read",
+  "artifact_resolve",
   "attachment_prepare",
   "attachment_prepare_cancel",
   "attachment_prepare_get",
@@ -208,6 +221,16 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "context_settings_get",
   "context_settings_set",
   "context_status",
+  "documents_capabilities_get",
+  "documents_import",
+  "documents_inspect",
+  "documents_job_cancel",
+  "documents_job_get",
+  "documents_job_start",
+  "documents_preview_get",
+  "documents_range_get",
+  "documents_report_get",
+  "documents_revisions_list",
   "engine_restart",
   "engine_shutdown",
   "engine_start",
@@ -351,6 +374,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "vision_settings_set",
   "workspace_file_open",
   "workspace_file_read",
+  "workspace_file_resolve",
   "workspace_file_search",
   "workspace_file_unwatch",
   "workspace_file_watch",
@@ -388,6 +412,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "approval_resolve",
   "artifact_list",
   "artifact_read",
+  "artifact_resolve",
   "attachment_prepare",
   "attachment_prepare_cancel",
   "attachment_prepare_get",
@@ -408,6 +433,16 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "context_settings_get",
   "context_settings_set",
   "context_status",
+  "documents_capabilities_get",
+  "documents_import",
+  "documents_inspect",
+  "documents_job_cancel",
+  "documents_job_get",
+  "documents_job_start",
+  "documents_preview_get",
+  "documents_range_get",
+  "documents_report_get",
+  "documents_revisions_list",
   "mcp_create",
   "mcp_get",
   "mcp_list",
@@ -545,6 +580,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "vision_settings_get",
   "vision_settings_set",
   "workspace_file_read",
+  "workspace_file_resolve",
   "workspace_file_search",
   "workspace_file_unwatch",
   "workspace_file_watch",

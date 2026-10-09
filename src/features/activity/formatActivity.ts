@@ -75,6 +75,26 @@ function details(item: ToolTimelineItem): Record<string, unknown> {
   }
 }
 
+/** Lo que el agente principal le escribió a un subagente con `agent.message`. */
+export function agentInstruction(item: ToolTimelineItem): { agentId: string; text: string } | null {
+  if (item.tool !== 'agent.message') return null
+  const args = details(item)
+  const text = typeof args.text === 'string' ? args.text.trim() : ''
+  return text ? { agentId: typeof args.agent_id === 'string' ? args.agent_id : '', text } : null
+}
+
+/** `wait.for`: qué esperó (un puerto, una URL, un texto en un proceso o un archivo). */
+function waitLabel(args: Record<string, unknown>, status: ToolTimelineItem['status'], es: boolean): string {
+  const what = args.port !== undefined
+    ? (es ? `el puerto ${String(args.port)}` : `port ${String(args.port)}`)
+    : typeof args.url === 'string' ? (host(args.url) || args.url)
+      : args.output !== undefined ? (es ? 'un texto en la salida de un proceso' : 'text in a process output')
+        : typeof args.file === 'string' ? basename(args.file)
+          : (es ? 'una condición' : 'a condition')
+  if (status === 'requested' || status === 'running') return es ? `Esperando ${what}…` : `Waiting for ${what}…`
+  return es ? `Esperó ${what}` : `Waited for ${what}`
+}
+
 function basename(value: unknown): string {
   const text = typeof value === 'string' ? value : ''
   return text.split(/[\\/]/).filter(Boolean).at(-1) ?? text
@@ -128,8 +148,11 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
   const args = details(item)
   if (item.tool.startsWith('agent.')) {
     const label = AGENT[item.tool.slice('agent.'.length)]
+    const agentId = typeof args.agent_id === 'string' ? args.agent_id : ''
+    if (label && item.tool === 'agent.message' && agentId) return `${pick(label)} ${agentId}`
     return label ? pick(label) : item.tool
   }
+  if (item.tool === 'wait.for') return waitLabel(args, item.status, es)
   const target = basename(args.path ?? args.file ?? args.cwd)
   const query = String(args.query ?? args.pattern ?? '').trim()
   const site = host(args.url)
@@ -138,8 +161,12 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
     case 'image':
       if (item.status === 'failed' || item.status === 'cancelled') return pick(['No pudo ver la imagen', 'Could not view image'])
       return item.status === 'completed' ? pick(['Cargó una imagen', 'Loaded an image']) : pick(['Cargando una imagen…', 'Loading an image…'])
-    case 'read':
-      return es ? `Leyó ${target || 'un archivo'}` : `Read ${target || 'a file'}`
+    case 'read': {
+      // Releído sin cambios: el Engine no lo reenvió al modelo.
+      const unchanged = (item.presentation?.data as { unchanged?: unknown } | undefined)?.unchanged === true
+      const label = es ? `Leyó ${target || 'un archivo'}` : `Read ${target || 'a file'}`
+      return unchanged ? `${label} ${es ? '(sin cambios)' : '(unchanged)'}` : label
+    }
     case 'search':
       if (query) return es ? `Buscó “${query}”` : `Searched for “${query}”`
       return pick(['Buscó en el proyecto', 'Searched the project'])

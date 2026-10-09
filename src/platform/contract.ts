@@ -18,8 +18,9 @@
  *    reescribir los consumidores otra vez.
  */
 
+import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -35,7 +36,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, FlowScopeRequest } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
@@ -103,6 +104,8 @@ export interface SystemNotification {
   body: string
   /** Qué abrir al pulsarla. Es una referencia, no una acción. */
   target?: NotificationTarget
+  /** Sin sonido del sistema: la app reproduce su propio tono. */
+  silent?: boolean
 }
 
 export interface OpenFilesOptions {
@@ -143,11 +146,28 @@ export interface DesktopBridge {
      * no se abre lo que diga el renderer sin pasar por ahí.
      */
     openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    /** Muestra el archivo en su carpeta, seleccionado. Misma autorización del Engine. */
+    revealInFolder(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    /**
+     * Qué es el archivo (tipo, tamaño) sin leerlo como texto y, si es imagen,
+     * video o audio, una URL de la app que lo sirve por tramos.
+     */
+    media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
   }
 
   clipboard: {
     /** Escribe texto mediante el host nativo; nunca pide permisos web. */
     writeText(text: string): Promise<void>
+  }
+
+  /**
+   * «Exportar diagnóstico»: registros del host, volcados de fallo y un resumen
+   * del Engine (tamaños y estado, nunca contenido) en un ZIP que la persona
+   * guarda donde quiera. Nada se envía desde aquí.
+   */
+  diagnostics: {
+    preview(): Promise<DiagnosticsPreview>
+    export(): Promise<DiagnosticsExportResult>
   }
 
   app: {
@@ -156,6 +176,8 @@ export interface DesktopBridge {
     setBackgroundSettings(patch: BackgroundPatch): Promise<BackgroundSettings>
     /** Idioma de la interfaz para el menú nativo, la bandeja y los diálogos del host. */
     setLanguage(language: Language): Promise<void>
+    /** Número de chats pendientes en la barra de tareas y marca en la bandeja. */
+    setIndicators(state: AttentionIndicators): Promise<void>
   }
 
   events: {
@@ -264,6 +286,12 @@ export interface DesktopBridge {
     check(): Promise<UpdateAvailable | null>
     /** Descarga y valida el SHA-512; no interrumpe el trabajo activo. */
     download(): Promise<UpdateState>
+    /**
+     * Estado actual del actualizador. `onState` solo trae lo que pasa desde
+     * que uno se suscribe: un renderer recargado o montado tarde lo recupera
+     * con esto (versión ofrecida, descarga en curso o terminada).
+     */
+    snapshot(): Promise<UpdateState>
     /** Pide confirmación, cierra el Engine y aplica lo ya descargado. */
     apply(): Promise<void>
     onState(callback: (state: UpdateState) => void): Promise<Unsubscribe>
@@ -349,3 +377,5 @@ export interface NativeBrowserSlotLayout {
   /** Regiones DOM temporales que una vista nativa no puede tapar. */
   occlusions?: Array<{ x: number; y: number; width: number; height: number }>
 }
+
+export type { AttentionCategory, AttentionIndicators } from '../../electron/shared/indicators'

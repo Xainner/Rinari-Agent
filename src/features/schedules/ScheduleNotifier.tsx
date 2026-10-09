@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent, type ScheduledRunStatus, type ScheduledTask, type ScheduledTaskInput } from '../../services/engine'
 import { onNotificationActivated, sendSystemNotification } from '../../services/notifications'
+import { requestSound } from '../../services/notificationSounds'
 import { useNotificationCenter, type CenterNotification } from '../../stores/notificationCenter'
 import { useUIStore } from '../../stores/ui'
 import { RUN_STATUS_KEYS, SCHEDULES_CHANGED_EVENT, SKIP_REASON_KEYS, describeSchedule, formatWhen, useScheduleForm } from './scheduleModel'
@@ -98,6 +99,7 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
       if (event.event === 'schedule.run.needs_you') {
         const wanted = String(payload.reason ?? payload.capability ?? '')
         toast.warning(tr('schedules.needsYouToast', { name }), { description: wanted, duration: 30_000, action: openAction })
+        requestSound('attention')
         notify(tr('schedules.needsYouToast', { name }), wanted, sessionId)
         record({ id: `run:${payload.run_id}`, title: tr('schedules.needsYouToast', { name }), body: wanted, tone: 'warning', target: runTarget })
         return
@@ -108,6 +110,8 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
       if (payload.kind === 'reminder') {
         const text = String(payload.summary ?? '')
         toast(tr('schedules.reminderToast', { name }), { description: text, duration: 30_000 })
+        // Recordar es su razón de ser: suena aunque la app esté a la vista.
+        requestSound('reminder')
         notify(name, text)
         record({ id: `run:${payload.run_id}`, title: tr('schedules.reminderToast', { name }), body: text, tone: 'info', target: { kind: 'schedules' } })
         return

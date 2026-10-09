@@ -6,6 +6,7 @@ import { inputClass, Row, Section } from './parts'
 import { Switch } from '../ui/switch'
 import { notificationSupport } from '../../services/notifications'
 import BackgroundSettings from './BackgroundSettings'
+import SoundSettings from './SoundSettings'
 
 /** Settings > General (§19): idioma + comportamiento. Guardado inmediato. */
 export default function GeneralSettings({
@@ -152,6 +153,8 @@ export default function GeneralSettings({
           control={<Switch checked={notifications.systemDetails} disabled={!systemSupported} onCheckedChange={(value) => setNotifications({ systemDetails: value })} aria-label={t('settings.general.board.systemDetails')} />}
         />
       </Section>
+
+      <SoundSettings />
     </div>
   )
 }

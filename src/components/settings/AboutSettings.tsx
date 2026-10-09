@@ -1,19 +1,49 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowUpRight, Check, Code2, Copy, Cpu, Download, GitBranch, Layers, LoaderCircle, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Bug, Check, Copy, Download, FileArchive, LoaderCircle, Lightbulb, RefreshCw, ScrollText } from 'lucide-react'
 import { copyText } from '../../lib/clipboard'
 import { useI18n } from '../../i18n'
+import { platform, type UpdateState } from '../../platform'
 import { engineApi, type EngineStatus } from '../../services/engine'
-import { checkForUpdates, downloadUpdate } from '../../services/updates'
-import './about.css'
+import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, updateSnapshot } from '../../services/updates'
+import { APP_REPOSITORY, SOUL_VERSION, bugReportUrl, diagnostics, issueUrl } from '../../services/support'
+import { useConfirm } from '../ui/useConfirm'
+import { Row, Section } from './parts'
 import engineManifest from '../../../engine-manifest.json'
 
-/** Settings > Acerca de: identidad y versiones visibles (Code/engine/protocolo). */
+const ENGINE_REPOSITORY = `https://github.com/${engineManifest.engine_repository}`
+
+/**
+ * Settings > Acerca de: versión, actualizaciones, ayuda y enlaces.
+ *
+ * Con las piezas del resto de Ajustes (`Section`, `Row`) en vez de la portada
+ * propia que tenía, y con el estado real del actualizador: la versión venía de
+ * una constante y se quedó en 0.2.0 tras publicar la 0.2.1.
+ */
 export default function AboutSettings({ version }: { version: string }) {
   const { t } = useI18n()
+  const { ask: confirm, dialog } = useConfirm()
   const [status, setStatus] = useState<EngineStatus | null>(null)
-  const [checking, setChecking] = useState(false)
+  const [update, setUpdate] = useState<UpdateState | null>(null)
+  const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    void engineApi.status().then((result) => { if (alive) setStatus(result) }).catch(() => {})
+    let stop: (() => void) | undefined
+    void onUpdateState((state) => { if (alive) setUpdate(state) })
+      .then((unsubscribe) => { if (alive) stop = unsubscribe; else unsubscribe() })
+      .catch(() => {})
+    // Al llegar desde la campana, la versión ofrecida y su fase ya están en el
+    // host: se recuperan en vez de mostrar solo «Buscar actualizaciones».
+    void updateSnapshot().then((state) => { if (alive) setUpdate((current) => current ?? state) }).catch(() => {})
+    return () => {
+      alive = false
+      stop?.()
+    }
+  }, [])
 
   useEffect(() => {
     if (!copied) return
@@ -21,120 +51,216 @@ export default function AboutSettings({ version }: { version: string }) {
     return () => window.clearTimeout(timer)
   }, [copied])
 
+  const fail = (err: unknown) =>
+    toast.error(t('update.failed', { detail: err instanceof Error ? err.message : String(err) }))
+
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true)
+    try {
+      await action()
+    } catch (err) {
+      fail(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onCheck() {
+    await run(async () => {
+      const found = await checkForUpdates()
+      if (!found) toast.success(t('update.none'))
+    })
+  }
+
+  async function onApply() {
+    const ok = await confirm({
+      title: t('update.applyTitle'),
+      body: t('update.applyDetail'),
+      confirmLabel: t('update.restartAction'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (ok) await run(applyUpdate)
+  }
+
+  const open = (url: string) => void platform().opener.openUrl(url).catch(fail)
+
+  /** Lo que lleva el paquete se ve antes de guardarlo; nada se envía desde aquí. */
+  async function onExportDiagnostics() {
+    setExporting(true)
+    try {
+      const preview = await platform().diagnostics.preview()
+      const ok = await confirm({
+        title: t('settings.about.exportTitle'),
+        body: (
+          <span className="block space-y-3">
+            <span className="block">{t('settings.about.exportBody')}</span>
+            <span className="block max-h-48 overflow-auto rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-xs">
+              {preview.files.map((file) => (
+                <span key={file.name} className="flex justify-between gap-4">
+                  <span className="min-w-0 truncate">{file.name}</span>
+                  {file.bytes !== null && <span className="shrink-0 tabular-nums">{formatBytes(file.bytes)}</span>}
+                </span>
+              ))}
+            </span>
+          </span>
+        ),
+        confirmLabel: t('settings.about.exportConfirm'),
+        cancelLabel: t('common.cancel'),
+      })
+      if (!ok) return
+      const result = await platform().diagnostics.export()
+      if (result.saved) toast.success(t('settings.about.exportSaved'))
+    } catch (err) {
+      fail(err)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   async function onCopyDiagnostics() {
-    const ok = await copyText([
-      `Rinari Agent: ${version}`,
-      `Rinari Engine: ${status?.engine_version ?? 'unknown'}`,
-      `Engine Protocol: ${status?.protocol_version ?? 'unknown'}`,
-      `Engine state: ${status?.state ?? 'unknown'}`,
-      `Engine pin: ${engineManifest.engine_git_sha}`,
-      'Bundled Soul: rinari-default 3.0',
-    ].join('\n'))
+    const ok = await copyText(diagnostics(version, status))
     setCopied(ok)
     if (!ok) toast.error(t('settings.about.copyFailed'))
   }
 
-  useEffect(() => {
-    let alive = true
-    void engineApi
-      .status()
-      .then((result) => {
-        if (alive) setStatus(result)
-      })
-      .catch(() => {})
-    return () => {
-      alive = false
-    }
-  }, [])
+  const phase = update?.phase ?? 'idle'
+  const updateLine =
+    phase === 'checking' ? t('update.checking')
+    : phase === 'available' ? t('update.available', { v: update?.available_version ?? '' })
+    : phase === 'downloading' ? t('update.downloading', { percent: Math.round(update?.progress?.percent ?? 0) })
+    : phase === 'downloaded' || phase === 'applying' ? t('update.ready', { v: update?.available_version ?? '' })
+    : phase === 'error' ? t('update.failed', { detail: update?.message ?? t('update.unknownError') })
+    : t('settings.about.updatesHint')
+  const updateButton =
+    phase === 'available'
+      ? { label: t('update.download'), icon: Download, action: () => void run(downloadUpdate) }
+      : phase === 'downloaded'
+        ? { label: t('update.install'), icon: RefreshCw, action: () => void onApply() }
+        : { label: t('update.check'), icon: RefreshCw, action: () => void onCheck() }
+  const working = busy || phase === 'checking' || phase === 'downloading' || phase === 'applying'
+  const UpdateIcon = updateButton.icon
 
-  async function onCheckUpdates() {
-    setChecking(true)
-    try {
-      const found = await checkForUpdates()
-      if (!found) {
-        toast.success(t('update.none'))
-        return
-      }
-      toast(t('update.available', { v: found.version }), {
-        action: {
-          label: t('update.download'),
-          onClick: () => {
-            void downloadUpdate().catch((err: unknown) =>
-              toast.error(
-                t('update.failed', {
-                  detail: err instanceof Error ? err.message : String(err),
-                }),
-              ),
-            )
-          },
-        },
-      })
-    } catch (err: unknown) {
-      toast.error(
-        t('update.failed', {
-          detail: err instanceof Error ? err.message : String(err),
-        }),
-      )
-    } finally {
-      setChecking(false)
-    }
-  }
+  const engineSha = engineManifest.engine_git_sha
 
   return (
-    <div className="about-page">
-      <section className="about-hero" aria-labelledby="about-title">
-        <img className="about-character" src="/rinari-about-hero-v2.png" alt="Rinari" width={1672} height={941} />
-        <div className="about-hero-content">
-          <span className="about-eyebrow"><Sparkles size={13} aria-hidden="true" /> {t('settings.about.eyebrow')}</span>
-          <h2 id="about-title">Rinari<span>Agent<span className="about-title-dot">.</span></span></h2>
-          <p>{t('settings.about.tagline')}</p>
-          <span className="about-version">v{version}</span>
+    <div className="space-y-6">
+      {dialog}
+      <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+        <img src="/logo.png" alt="" width={56} height={56} className="size-14 rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-xl font-bold text-[var(--text)]">
+            Rinari Agent <span className="ml-1 font-mono text-sm font-medium text-[var(--text-muted)]">v{version}</span>
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-muted)]" role="status" aria-live="polite">{updateLine}</p>
         </div>
-      </section>
-
-      <div className="about-intro">
-        <h3>{t('settings.about.heading')}</h3>
-        <p>{t('settings.about.description')}</p>
-      </div>
-
-      <section className="about-panel" aria-labelledby="about-system-title">
-        <div className="about-panel-heading">
-          <h3 id="about-system-title">{t('settings.about.system')}</h3>
-          <button className="about-copy" type="button" onClick={() => void onCopyDiagnostics()} aria-live="polite">
-            {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-            {t(copied ? 'settings.about.copied' : 'settings.about.copy')}
-          </button>
-        </div>
-        <dl className="about-version-grid">
-          {[
-            { icon: Layers, label: 'Rinari Agent', value: version, hint: t('settings.about.desktop') },
-            { icon: Cpu, label: 'Rinari Engine', value: status?.engine_version ?? '—', hint: t('settings.about.runtime') },
-            { icon: GitBranch, label: 'Engine Protocol', value: status?.protocol_version ?? '—', hint: t('settings.about.protocol') },
-            { icon: Sparkles, label: t('settings.about.soul'), value: '3.0', hint: 'rinari-default' },
-          ].map(({ icon: Icon, label, value, hint }) => (
-            <div className="about-version-item" key={label}>
-              <dt><Icon size={16} aria-hidden="true" />{label}</dt>
-              <dd>{value}<span>{hint}</span></dd>
-            </div>
-          ))}
-        </dl>
-        <div className="about-build"><span>{t('settings.about.build')}</span><code title={engineManifest.engine_git_sha}>{engineManifest.engine_git_sha.slice(0, 7)}</code></div>
-      </section>
-
-      <section className="about-update" aria-labelledby="about-update-title">
-        <div><h3 id="about-update-title">{t('settings.about.updates')}</h3><p>{t('settings.about.updatesHint')}</p></div>
-        <button className="about-update-button" type="button" disabled={checking} onClick={() => void onCheckUpdates()}>
-          {checking ? <LoaderCircle className="motion-safe:animate-spin" size={15} aria-hidden="true" /> : <Download size={15} aria-hidden="true" />}
-          {checking ? t('update.checking') : t('update.check')}
+        <button
+          type="button"
+          disabled={working}
+          onClick={updateButton.action}
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+        >
+          {working
+            ? <LoaderCircle size={15} aria-hidden="true" className="motion-safe:animate-spin" />
+            : <UpdateIcon size={15} aria-hidden="true" />}
+          {updateButton.label}
         </button>
       </section>
 
-      <a className="about-repository" href="https://github.com/Xainner/Rinari-Agent" target="_blank" rel="noreferrer">
-        <span className="about-repository-icon"><Code2 size={20} aria-hidden="true" /></span>
-        <span><strong>{t('settings.about.repo')}</strong><span>Xainner / Rinari-Agent</span></span>
-        <ArrowUpRight size={18} aria-hidden="true" />
-      </a>
-      <footer className="about-footer"><span>Rinari Agent</span><span>{t('settings.about.credit')}</span></footer>
+      <Section title={t('settings.about.versions')}>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {[
+            { label: 'Rinari Agent', value: version, hint: t('settings.about.desktop') },
+            {
+              label: 'Rinari Engine',
+              value: status?.engine_version ?? '—',
+              hint: t('settings.about.engineCommit', { sha: engineSha.slice(0, 7) }),
+            },
+            { label: 'Engine Protocol', value: status?.protocol_version ?? '—', hint: t('settings.about.protocol') },
+            { label: t('settings.about.soul'), value: SOUL_VERSION, hint: 'rinari-default' },
+          ].map(({ label, value, hint }) => (
+            <div key={label} className="rounded-xl border border-[var(--border)] px-4 py-3">
+              <dt className="text-xs text-[var(--text-subtle)]">{label}</dt>
+              <dd className="mt-1 font-mono text-base text-[var(--text)]">{value}</dd>
+              <dd className="mt-0.5 text-xs text-[var(--text-muted)]">{hint}</dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
+
+      <Section title={t('settings.about.help')} desc={t('settings.about.helpDesc')}>
+        <Row
+          title={t('settings.about.reportBug')}
+          desc={t('settings.about.reportBugDesc')}
+          control={<LinkButton icon={Bug} label={t('settings.about.reportBugAction')} onClick={() => open(bugReportUrl(version, status, t('settings.about.issueTemplate')))} />}
+        />
+        <Row
+          title={t('settings.about.export')}
+          desc={t('settings.about.exportDesc')}
+          control={<LinkButton icon={exporting ? LoaderCircle : FileArchive} label={t('settings.about.exportAction')} onClick={() => void onExportDiagnostics()} />}
+        />
+        <Row
+          title={t('settings.about.suggest')}
+          desc={t('settings.about.suggestDesc')}
+          control={<LinkButton icon={Lightbulb} label={t('settings.about.suggestAction')} onClick={() => open(issueUrl('idea', `\n\n---\nRinari Agent ${version}`))} />}
+        />
+        <Row
+          title={t('settings.about.releaseNotes')}
+          desc={t('settings.about.releaseNotesDesc', { v: version })}
+          control={<LinkButton icon={ScrollText} label={t('settings.about.open')} onClick={() => open(`${APP_REPOSITORY}/releases/tag/v${version}`)} />}
+        />
+        <Row
+          title={t('settings.about.copy')}
+          desc={t('settings.about.copyDesc')}
+          control={
+            <LinkButton
+              icon={copied ? Check : Copy}
+              label={t(copied ? 'settings.about.copied' : 'settings.about.copyAction')}
+              onClick={() => void onCopyDiagnostics()}
+            />
+          }
+        />
+      </Section>
+
+      <Section title={t('settings.about.project')}>
+        <Row
+          title={t('settings.about.appRepo')}
+          desc="Xainner / Rinari-Agent"
+          control={<LinkButton icon={ArrowUpRight} label="GitHub" onClick={() => open(APP_REPOSITORY)} />}
+        />
+        <Row
+          title={t('settings.about.engineRepo')}
+          desc={`${engineManifest.engine_repository.replace('/', ' / ')} · ${engineSha.slice(0, 7)}`}
+          control={<LinkButton icon={ArrowUpRight} label="GitHub" onClick={() => open(`${ENGINE_REPOSITORY}/commit/${engineSha}`)} />}
+        />
+        <p className="text-xs text-[var(--text-subtle)]">{t('settings.about.credit')}</p>
+      </Section>
     </div>
   )
+}
+
+function LinkButton({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Bug
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+    >
+      <Icon size={14} aria-hidden="true" />
+      {label}
+    </button>
+  )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

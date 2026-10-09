@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Box } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -18,6 +17,7 @@ import {
 } from '../../components/ui/dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
 import ModelCatalog from './ModelCatalog'
+import { registerProviderModels } from './registerModels'
 import { providerCreateSettings, useProviderPresets } from './presets'
 import ProviderAuthPanel from './ProviderAuthPanel'
 import ExternalRuntimePanel from './ExternalRuntimePanel'
@@ -101,6 +101,8 @@ export default function ProviderWizard({
   const [health, setHealth] = useState<ProviderHealth | null>(null)
   const [error, setError] = useState('')
   const [working, setWorking] = useState(false)
+  /** Modelo que eliges en el paso de modelos; se aplica al continuar. */
+  const [chosenModel, setChosenModel] = useState<string | null>(null)
 
   function reset() {
     clearWizardDraft()
@@ -112,6 +114,7 @@ export default function ProviderWizard({
     setHealth(null)
     setError('')
     setWorking(false)
+    setChosenModel(null)
   }
 
   useEffect(() => {
@@ -256,6 +259,8 @@ export default function ProviderWizard({
         setHealth(result)
         if (result.connected) {
           toast.success(t('providers.healthOk', { n: result.models_discovered }))
+          await registerProviderModels(persisted)
+          if (cancelled) return
           setStep('models')
         }
       } catch (err) {
@@ -280,6 +285,7 @@ export default function ProviderWizard({
       setHealth(result)
       if (result.connected) {
         toast.success(t('providers.healthOk', { n: result.models_discovered }))
+        await registerProviderModels(createdAlias)
         setStep('models')
       }
     } catch (err) {
@@ -302,13 +308,13 @@ export default function ProviderWizard({
 
   async function finish() {
     if (!createdAlias) return
+    // El orden del endpoint no decide el modelo en uso: lo eliges tú.
+    if (!chosenModel) {
+      toast.error(t('wizard.chooseModel'))
+      return
+    }
     try {
-      const listed = await engineApi.modelList(createdAlias)
-      const active = listed.models.find((m) => m.active)
-      if (!active) {
-        toast.error(t('providers.savedHint'))
-        return
-      }
+      await engineApi.modelUse(chosenModel, createdAlias)
       setStep('done')
     } catch (err) {
       toast.error(commandMessage(err))
@@ -353,11 +359,7 @@ export default function ProviderWizard({
                   className="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2.5 text-left transition-all hover:border-[var(--accent)]/50 active:scale-[0.99]"
                 >
                   <span className="flex size-7 shrink-0 items-center justify-center">
-                    {preset.brand ? (
-                      <ProviderLogo brand={providerBrand(preset.brand)} size={26} />
-                    ) : (
-                      <Box size={18} aria-hidden="true" className="text-[var(--text-subtle)]" />
-                    )}
+                    <ProviderLogo brand={providerBrand(preset.brand)} size={26} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-[var(--text)]">
@@ -461,7 +463,8 @@ export default function ProviderWizard({
 
         {step === 'models' && createdAlias && (
           <div className="space-y-4">
-            <ModelCatalog providerAlias={createdAlias} onChanged={() => {}} />
+            <p className="text-sm text-[var(--text-muted)]">{t('wizard.chooseModel')}</p>
+            <ModelCatalog providerAlias={createdAlias} onChanged={() => {}} choice={{ chosen: chosenModel, onChoose: setChosenModel }} />
             <div className="flex justify-between">
               <button
                 type="button"

@@ -59,6 +59,13 @@
       "callers": []
     },
     {
+      "command": "artifact_resolve",
+      "kind": "engine",
+      "method": "artifact.resolve",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "attachment_prepare",
       "kind": "engine",
       "method": "attachment.prepare",
@@ -236,6 +243,90 @@
       "manual": false,
       "callers": [
         "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "documents_capabilities_get",
+      "kind": "engine",
+      "method": "documents.capabilities.get",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_import",
+      "kind": "engine",
+      "method": "documents.import",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_inspect",
+      "kind": "engine",
+      "method": "documents.inspect",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_job_cancel",
+      "kind": "engine",
+      "method": "documents.job.cancel",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_job_get",
+      "kind": "engine",
+      "method": "documents.job.get",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_job_start",
+      "kind": "engine",
+      "method": "documents.job.start",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
+      ]
+    },
+    {
+      "command": "documents_preview_get",
+      "kind": "engine",
+      "method": "documents.preview.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "documents_range_get",
+      "kind": "engine",
+      "method": "documents.range.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "documents_report_get",
+      "kind": "engine",
+      "method": "documents.report.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "documents_revisions_list",
+      "kind": "engine",
+      "method": "documents.revisions.list",
+      "manual": false,
+      "callers": [
+        "src/features/documents/documentsApi.ts"
       ]
     },
     {
@@ -1420,6 +1511,13 @@
       ]
     },
     {
+      "command": "workspace_file_resolve",
+      "kind": "engine",
+      "method": "workspace.file.resolve",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "workspace_file_search",
       "kind": "engine",
       "method": "workspace.file.search",
@@ -1500,10 +1598,10 @@
     }
   ],
   "summary": {
-    "commands": 178,
-    "engine_backed": 172,
+    "commands": 190,
+    "engine_backed": 184,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 56
+    "without_callers": 61
   }
 }

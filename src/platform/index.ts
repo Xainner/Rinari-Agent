@@ -29,6 +29,7 @@ export type {
   UpdateState,
   MigrationState,
   MigrationStatus,
+  WorkspaceMedia,
 } from './contract'
 export { DESKTOP_COMMANDS, ENGINE_BACKED_COMMANDS, HOST_ONLY_COMMANDS } from './contract'
 

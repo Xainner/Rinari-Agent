@@ -98,8 +98,8 @@ function assertCanonical(container: HTMLElement) {
   // Metadata row once, without repeating the body.
   const meta = within(container).getAllByTestId('turn-meta')
   expect(meta).toHaveLength(1)
-  expect(meta[0]!.textContent).toContain('Turno finalizado')
-  expect(meta[0]!.textContent).toContain('15s')
+  expect(container.textContent).toContain('Ha trabajado durante 15s')
+  expect(meta[0]!.textContent).not.toContain('15s')
   expect(meta[0]!.textContent).toContain('Ejecutado por gpt-fake')
   expect(meta[0]!.textContent).not.toContain('zanahoria')
 }
@@ -167,7 +167,7 @@ function terminal(status: TurnTimeline['status'], extra: Partial<TurnTimeline> =
 
 it('UX-05: failed, stopped and cancelled keep distinct labels and the previous content', () => {
   const failed = terminal('failed', { error: 'boom', errorDetails: { history_preserved: true, code: 'E1' } })
-  expect(failed.getByTestId('turn-meta').textContent).toContain('El turno falló')
+  expect(failed.container.textContent).toContain('El turno falló')
   expect(failed.getByRole('alert').textContent).toContain('boom')
   expect(failed.getByText('Trabajo parcial conservado')).toBeTruthy()
   expect(failed.getByText('Diagnóstico de la interrupción')).toBeTruthy()
@@ -175,15 +175,15 @@ it('UX-05: failed, stopped and cancelled keep distinct labels and the previous c
   failed.unmount()
 
   const stopped = terminal('stopped', { stopReason: { code: 'user', message: 'Detenido por el usuario' } })
-  expect(stopped.getByTestId('turn-meta').textContent).toContain('Turno detenido')
-  expect(stopped.getByTestId('turn-meta').textContent).toContain('Detenido por el usuario')
+  expect(stopped.container.textContent).toContain('Turno detenido')
+  expect(stopped.container.textContent).toContain('Detenido por el usuario')
   expect(stopped.getByText('Trabajo parcial conservado')).toBeTruthy()
   expect(stopped.queryByRole('alert')).toBeNull()
   stopped.unmount()
 
   const cancelled = terminal('cancelled')
-  expect(cancelled.getByTestId('turn-meta').textContent).toContain('Turno cancelado')
-  expect(cancelled.getByTestId('turn-meta').textContent).not.toContain('Turno finalizado')
+  expect(cancelled.container.textContent).toContain('Turno cancelado')
+  expect(cancelled.container.textContent).not.toContain('Turno finalizado')
 })
 
 it('UX-05: "Preparar reintento" fills the draft of that session and never sends', async () => {
@@ -220,12 +220,12 @@ it('the metadata row stays out of ordinary short turns and appears for unread on
   expect(meta.textContent).toContain('Nuevo')
 })
 
-it.each([false,true])('M06: empty changesets keep the same coverage presentation in Normal and Boards (partial=%s)', partial => {
+it.each([false,true])('M06: empty changesets show nothing in Normal and Boards (partial=%s)', partial => {
   const engine=engineFixture({sessions,activeSession:'ses_a'})
   completeTurn(engine,'ses_a','coverage','Respuesta final')
   engine.runtime.getState().dispatch(event('turn.changes.completed',{session_id:'ses_a',turn_id:'coverage',id:'c',activity_seq:5,files:[],warnings:[],attribution_complete:!partial,additions:0,deletions:0,undoable:false}))
   const verify=(container:HTMLElement)=>{
-    expect(within(container).queryAllByTestId('coverage-warning')).toHaveLength(partial?1:0)
+    expect(container.textContent).not.toMatch(/cobertura/i)
     expect(container.textContent).not.toMatch(/0 archivo|\+0|-0/)
     expect(within(container).queryByRole('button',{name:'Revisar cambios'})).toBeNull()
     expect(within(container).queryByRole('button',{name:'Deshacer'})).toBeNull()
@@ -252,4 +252,18 @@ it('M04: Normal and Boards use one terminal token indicator even after a short t
  useBoardStore.getState().addPane('ses_a')
  render(<BoardHarness engine={engine}><BoardView/></BoardHarness>)
  verify(screen.getByRole('region',{name:'Backend API'}))
+})
+
+it('a credits or access failure offers to switch the model for that session', async () => {
+  const { useUIStore } = await import('../../stores/ui')
+  const view = terminal('failed', {
+    error: 'no credits',
+    errorDetails: { provider_error_code: 'QUOTA_EXHAUSTED', provider_alias: 'cloud', model: 'big-model' },
+  })
+  await userEvent.click(view.getByTestId('failure-switch-model'))
+  expect(useUIStore.getState().modelPickerRequest).toMatchObject({ sessionId: 'ses_a' })
+  view.unmount()
+
+  const upstream = terminal('failed', { error: '500', errorDetails: { provider_error_code: 'SERVER_ERROR' } })
+  expect(upstream.queryByTestId('failure-switch-model')).toBeNull()
 })

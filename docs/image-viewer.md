@@ -34,3 +34,9 @@ La capacidad `local_image_view_v1` identifica los motores compatibles.
 
 La CLI muestra la ruta, dimensiones y referencia de artefacto en texto. El visor
 ampliable pertenece a Rinari Agent.
+
+La vista previa de adjuntos del chat y del composer se abre en un diálogo
+montado sobre la ventana, fuera de los contenedores de la conversación. Mientras
+está abierta, bloquea el desplazamiento del fondo y mantiene el foco dentro del
+visor. Los adjuntos de texto largos conservan su scroll interno. Escape, el
+botón de cierre y el fondo cierran la vista y devuelven el foco al botón de origen.

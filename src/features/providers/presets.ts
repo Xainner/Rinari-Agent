@@ -1,7 +1,7 @@
 import type { I18nKey } from '../../i18n'
 import { useEffect, useState } from 'react'
 import { engineApi } from '../../services/engine'
-import type { ProviderBrandId } from '../../lib/providerBrand'
+import { brandForProduct, type ProviderBrandId } from '../../lib/providerBrand'
 
 export type ProviderAuth = 'api-key' | 'none' | 'oauth' | 'external-cli'
 
@@ -118,6 +118,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   },
   {
     id: 'ollama',
+    brand: 'ollama',
     nameKey: 'providers.presetOllama',
     descKey: 'providers.presetOllamaDesc',
     provider_type: 'custom',
@@ -126,6 +127,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   },
   {
     id: 'lmstudio',
+    brand: 'lmstudio',
     nameKey: 'providers.presetLMStudio',
     descKey: 'providers.presetLMStudioDesc',
     provider_type: 'custom',
@@ -165,7 +167,7 @@ export function useProviderPresets() {
         id: p.id, name: p.name, nameKey: 'providers.presetCustom', descKey: 'providers.presetCustomDesc',
         provider_type: p.provider_type as ProviderPreset['provider_type'], endpoint: p.endpoint,
         auth: p.auth_methods[0] as ProviderAuth, authMethods: p.auth_methods as ProviderAuth[],
-        experimental: p.experimental, brand: PROVIDER_PRESETS.find(local => local.id === p.id)?.brand,
+        experimental: p.experimental, brand: brandForProduct(p.id)?.id,
         runtime: p.runtime, requiresBinary: p.requires_external_binary,
       })))
     }).catch(() => { /* Old engines retain their existing API-key wizard. */ })

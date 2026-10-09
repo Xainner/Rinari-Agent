@@ -3,6 +3,11 @@ import { toast } from 'sonner'
 import { commandMessage, engineApi, onEngineEvent, type ArtifactSummary } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { artifactImageUrl, isArtifactImage } from '../files/artifactImage'
+import { MediaPlayer } from '../files/MediaPlayer'
+import { platform, type WorkspaceMedia } from '../../platform'
+import { useFileWorkspace } from '../files/FileWorkspace'
+import { DocumentView } from '../documents/DocumentView'
+import { documentKind } from '../documents/documentsApi'
 
 /** Whether an Engine event may have added artifacts to the session. */
 export function producedArtifacts(event: string, payload: Record<string, unknown> | undefined): boolean {
@@ -13,6 +18,15 @@ export function producedArtifacts(event: string, payload: Record<string, unknown
   return typeof payload?.observation === 'string' && payload.observation.includes('artifact://')
 }
 
+/** Si el Engine sabe decir qué es un artefacto sin leerlo (`artifact.resolve`). */
+async function canResolveArtifacts(): Promise<boolean> {
+  try {
+    return (await platform().engine.status()).capabilities?.artifact_resolve_v1 === true
+  } catch {
+    return false
+  }
+}
+
 /** Galería de artefactos de la sesión: lista por URI + preview acotado. */
 export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
   const { t } = useI18n()
@@ -20,12 +34,16 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [text, setText] = useState<string | null>(null)
   const [image, setImage] = useState<string | null>(null)
+  const [media, setMedia] = useState<WorkspaceMedia | null>(null)
   const [truncated, setTruncated] = useState(false)
+  const [document, setDocument] = useState<string | null>(null)
+  const files = useFileWorkspace()
 
   const reload = useCallback(async () => {
     try {
       const result = await engineApi.artifactList(sessionId)
-      setArtifacts(result.artifacts)
+      // Las capturas de un render son derivadas: se ven en el documento, no aquí.
+      setArtifacts(result.artifacts.filter((artifact) => artifact.namespace !== 'previews'))
     } catch (err) {
       toast.error(commandMessage(err))
     }
@@ -58,21 +76,52 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
       setSelected(null)
       setText(null)
       setImage(null)
+      setMedia(null)
+      setDocument(null)
       return
     }
     try {
+      // Office y PDF: su render, no sus bytes como texto. En el visor de
+      // archivos si existe; si no, aquí mismo.
+      if (documentKind(artifact.name) && (await platform().engine.status()).capabilities?.document_preview_v1) {
+        if (files) {
+          files.open(uri)
+          return
+        }
+        setSelected(uri)
+        setImage(null)
+        setMedia(null)
+        setText(null)
+        setDocument(uri)
+        return
+      }
+      setDocument(null)
       // An image is shown as one; reading its bytes as text would print noise.
       if (isArtifactImage(uri, artifact.content_type)) {
         const url = await artifactImageUrl(uri)
         setSelected(uri)
         setImage(url)
+        setMedia(null)
         setText(null)
         setTruncated(false)
         return
       }
+      // Audio y video se reproducen (el Engine dice qué es por sus bytes);
+      // leerlos como texto mostraba caracteres ilegibles.
+      if (await canResolveArtifacts()) {
+        const described = await platform().files.media({ session_id: sessionId, path: uri })
+        if (described.kind === 'audio' || described.kind === 'video') {
+          setSelected(uri)
+          setImage(null)
+          setText(null)
+          setMedia(described)
+          return
+        }
+      }
       const result = await engineApi.artifactRead(uri)
       setSelected(uri)
       setImage(null)
+      setMedia(null)
       setText(result.text)
       setTruncated(result.truncated)
     } catch (err) {
@@ -100,9 +149,22 @@ export default function ArtifactsPanel({ sessionId }: { sessionId: string }) {
               {artifact.byte_count} B
             </span>
           </button>
+          {selected === artifact.uri && document !== null && (
+            <div className="h-96 border-t border-[var(--border)]">
+              <DocumentView source={{ sessionId, ref: artifact.uri }} name={artifact.name} />
+            </div>
+          )}
           {selected === artifact.uri && image !== null && (
             <div className="border-t border-[var(--border)] px-3 py-2">
               <img src={image} alt={artifact.name} className="artifact-image" />
+            </div>
+          )}
+          {selected === artifact.uri && media !== null && (
+            <div className="border-t border-[var(--border)] px-3 py-2">
+              <MediaPlayer
+                media={media}
+                onOpenExternal={() => void platform().files.openExternal({ session_id: sessionId, path: artifact.uri }).catch((err) => toast.error(commandMessage(err)))}
+              />
             </div>
           )}
           {selected === artifact.uri && text !== null && (

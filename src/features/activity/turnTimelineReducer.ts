@@ -3,6 +3,8 @@ import { mergeTokenUsage, newestUsage, legacyTokenUsage } from './tokenUsage'
 import type { EngineEventMsg, MessageOrigin, TimelineTurn, TurnChangedFile } from '../../services/engine'
 import type {
   ApprovalTimelineItem,
+  ModelChange,
+  ModelLabel,
   TimelineItem,
   TimelineStatus,
   ToolTimelineItem,
@@ -11,12 +13,18 @@ import type {
   TurnTimelineState,
 } from './types'
 
+// Releen la lista de sesiones. Todo final de turno cuenta (también fallido o
+// cancelado), y `session.renamed` trae el título automático en cuanto el
+// Engine lo guarda, a mitad de turno o en uno posterior.
 export const TRIGGERS_SESSION_REFRESH = new Set([
   'turn.started',
   'turn.completed',
   'turn.stopped',
+  'turn.failed',
+  'turn.cancelled',
   'session.mode.changed',
   'session.model.changed',
+  'session.renamed',
 ])
 
 export type TimelineAction =
@@ -84,12 +92,41 @@ function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('question.')) return `question:${payload.request_id}`
   if (event.startsWith('agent.') && payload.agent_id) return `agent:${payload.agent_id}`
   if (payload.tool_call_id) return `tool:${payload.tool_call_id}`
+  if (event === 'model.changed') return `model:${payload.after_model_call_id}`
   if (event.startsWith('model.')) return `model:${payload.model_call_id || 'legacy'}`
   if (payload.approval_id) return `approval:${payload.approval_id}`
   if (payload.agent_id) return `agent:${payload.agent_id}`
   if (event.startsWith('verification.')) return 'verification:completion-gate'
   if (event === 'governor.compact') return `context:${payload.compaction_id ?? payload.activity_seq ?? 0}`
   return `system:${payload.activity_seq ?? event}`
+}
+
+function modelLabel(value: unknown): ModelLabel | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Record<string, unknown>
+  const modelId = text(raw.model_id)
+  if (!modelId) return undefined
+  return {
+    modelId,
+    alias: text(raw.alias) || undefined,
+    providerModelId: text(raw.provider_model_id) || undefined,
+    providerAlias: text(raw.provider_alias) || undefined,
+  }
+}
+
+function modelChange(payload: Record<string, unknown>): ModelChange | undefined {
+  const previous = modelLabel(payload.previous)
+  const next = modelLabel(payload.next)
+  return previous && next ? { previous, next } : undefined
+}
+
+function errorCode(value: unknown): string | undefined {
+  return value && typeof value === 'object' ? text((value as Record<string, unknown>).code) || undefined : undefined
+}
+
+function errorRetryable(value: unknown): boolean | undefined {
+  const raw = value && typeof value === 'object' ? (value as Record<string, unknown>).retryable : undefined
+  return typeof raw === 'boolean' ? raw : undefined
 }
 
 function errorMessage(value: unknown): string | undefined {
@@ -148,8 +185,28 @@ function mergeEventItem(
   const id = itemId(event, payload)
   const activitySeq = number(payload.activity_seq) ?? current?.activitySeq ?? Number.MAX_SAFE_INTEGER
   const occurredAt = parseTime(payload.occurred_at, current?.occurredAt ?? now)
+  if (event === 'model.changed') {
+    // Se ancla al bloque de texto que lo confirma; sin él no hay nada que anunciar.
+    const change = modelChange(payload)
+    return current?.type === 'model' && change ? { ...current, modelChange: change } : null
+  }
   if (event.startsWith('model.')) {
     const prior = current?.type === 'model' ? current : undefined
+    if (event === 'model.retrying') {
+      // El reintento vuelve a escribir su respuesta desde el principio.
+      return {
+        ...(prior ?? { id, type: 'model' as const, modelCallId: text(payload.model_call_id) }),
+        activitySeq,
+        occurredAt,
+        status: 'thinking',
+        content: '',
+        retry: {
+          attempt: number(payload.attempt) ?? 2,
+          maxAttempts: number(payload.max_attempts) ?? 3,
+          reason: text(payload.reason),
+        },
+      }
+    }
     const delta = event === 'model.content.delta' ? text(payload.delta) : ''
     return {
       id,
@@ -175,6 +232,8 @@ function mergeEventItem(
           : prior?.outputKind,
       model: text(payload.model) || prior?.model,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
+      modelChange: prior?.modelChange,
+      retry: event === 'model.completed' || event === 'model.content.completed' ? undefined : prior?.retry,
     }
   }
   if (event === 'steer.applied') {
@@ -198,6 +257,7 @@ function mergeEventItem(
       providerName: text(payload.provider_name) || prior?.providerName || '', modelName: text(payload.model_name) || prior?.modelName || '',
       question: text(payload.question) || prior?.question || '', analysis: text(payload.analysis) || prior?.analysis || '',
       error: errorMessage(payload.error), cached: payload.cached === true,
+      fallback: text(payload.fallback) || prior?.fallback,
       images: Array.isArray(payload.images) ? payload.images.flatMap(image => {
         const parsed = presentation({ kind: 'image', image })?.image
         return parsed ? [parsed] : []
@@ -353,7 +413,8 @@ function mergeEventItem(
       sessionId: text(payload.session_id) || undefined,
       error: text(payload.error) || undefined,
       reason: text(payload.reason) || undefined,
-      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source, checks: payload.checks, duration: payload.duration_ms, dropped: payload.dropped_messages },
+      skipReason: text(payload.skip_reason) || undefined,
+      contextDetails: { window: payload.window_tokens, source: payload.window_source, used: payload.used_tokens, after: payload.after_tokens, accounting: payload.usage_source, checks: payload.checks, duration: payload.duration_ms, dropped: payload.dropped_messages, messages: payload.history_messages, history: payload.history_tokens },
       activitySeq,
       occurredAt,
       status:
@@ -372,6 +433,10 @@ function mergeEventItem(
       detail: errorMessage(payload.error),
     }
   }
+  if (event === 'provider.reasoning.dropped') {
+    // El modelo no admite el esfuerzo elegido: el turno siguió sin él.
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'reasoning_dropped', label: text(payload.effort) }
+  }
   if (event === 'turn.preparing' || event.startsWith('governor.')) {
     return {
       id,
@@ -379,7 +444,7 @@ function mergeEventItem(
       activitySeq,
       occurredAt,
       kind: event === 'turn.preparing' ? 'turn_preparing' : 'governor',
-      status: text(payload.status) || text(payload.action),
+      status: text(payload.status) || text(payload.action) || (event.startsWith('governor.') ? event.slice('governor.'.length) : undefined),
       label: text(payload.reason) || text(payload.stage),
     }
   }
@@ -425,6 +490,8 @@ function normalizePersistedTurn(turn: TimelineTurn): TurnTimeline {
     userMessage: turn.user_message,
     origin: originOf(turn.origin),
     error: errorMessage(turn.terminal?.error),
+    errorCode: errorCode(turn.terminal?.error),
+    errorRetryable: errorRetryable(turn.terminal?.error),
     errorDetails: turn.terminal?.error && typeof turn.terminal.error === 'object'
       ? (turn.terminal.error as { details?: Record<string, unknown> }).details : undefined,
     items: [],
@@ -485,6 +552,8 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
           completedAt: incomingTerminal ? incoming.completedAt : current.completedAt,
           error: incomingTerminal ? incoming.error : current.error,
           errorDetails: incomingTerminal ? incoming.errorDetails : current.errorDetails,
+          errorCode: incomingTerminal ? incoming.errorCode : current.errorCode,
+          errorRetryable: incomingTerminal ? incoming.errorRetryable : current.errorRetryable,
           stopReason: incomingTerminal ? incoming.stopReason : current.stopReason,
           items: incoming.items,
           usage: (newestUsage(current.usage, incoming.usage)?.revision ?? 0) > 0
@@ -647,11 +716,17 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
         status: terminal,
         completedAt: parseTime(payload.occurred_at, action.now),
         error: event === 'turn.failed' ? errorMessage(payload.error) : timeline.error,
+        errorCode: event === 'turn.failed' ? errorCode(payload.error) : timeline.errorCode,
+        errorRetryable: event === 'turn.failed' ? errorRetryable(payload.error) : timeline.errorRetryable,
         errorDetails: event === 'turn.failed' && payload.error && typeof payload.error === 'object' ? (payload.error as { details?: Record<string, unknown> }).details : timeline.errorDetails,
         stopReason: event === 'turn.stopped'
           ? {
               code: text(payload.reason) || 'stopped',
               message: text((payload.details as Record<string, unknown> | undefined)?.content),
+              loop: text(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.loop) || undefined,
+              budget: text(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.budget) || undefined,
+              limit: number(((payload.details as Record<string, unknown> | undefined)?.stop as Record<string, unknown> | undefined)?.limit),
+              recoverable: payload.recoverable === true || undefined,
             } satisfies TurnStopReason
           : timeline.stopReason,
       }
@@ -706,6 +781,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('governor.') ||
     event.event.startsWith('agent.') ||
     event.event.startsWith('verification.') ||
-    event.event.startsWith('steer.')
+    event.event.startsWith('steer.') ||
+    event.event === 'provider.reasoning.dropped'
   return relevant ? { type: 'engine/event', event, now } : null
 }

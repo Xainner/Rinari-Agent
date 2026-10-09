@@ -15,6 +15,8 @@ export type NotificationTarget =
   | { kind: 'schedules' }
   | { kind: 'skills'; skill?: string }
   | { kind: 'providers' }
+  /** Ajustes > Acerca de, con la versión ofrecida y su acción. */
+  | { kind: 'update' }
 
 export interface CenterNotification {
   id: string

@@ -87,6 +87,11 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => startFakeModel([{ text: 'DIAGNÓSTICO' }]),
   },
+  'claude-subscription-toggle': {
+    title: 'Claude Subscription opt-in: interruptor en Ajustes > Proveedores, apagado por defecto',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'SIN USO' }]),
+  },
   'provider-logos': {
     title: 'Logos oficiales: catálogo, configuración, modelos, Normal, Boards y Flujos',
     phases: ['exercise'],

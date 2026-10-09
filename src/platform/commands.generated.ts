@@ -106,6 +106,8 @@ export type DesktopCommand =
   | "provider_list"
   | "provider_remove"
   | "provider_runtime_probe"
+  | "provider_settings_get"
+  | "provider_settings_set"
   | "provider_test"
   | "provider_update"
   | "provider_usage_get"
@@ -307,6 +309,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "provider_list",
   "provider_remove",
   "provider_runtime_probe",
+  "provider_settings_get",
+  "provider_settings_set",
   "provider_test",
   "provider_update",
   "provider_usage_get",
@@ -523,6 +527,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "provider_list",
   "provider_remove",
   "provider_runtime_probe",
+  "provider_settings_get",
+  "provider_settings_set",
   "provider_test",
   "provider_update",
   "provider_usage_get",

@@ -14,6 +14,7 @@ vi.mock('../../services/engine', () => ({
     providerDiagnostics: vi.fn(async () => ({})),
     modelList: vi.fn(async () => []),
     modelRefresh: vi.fn(),
+    providerSettingsGet: vi.fn(async () => ({ external_runtimes: false })),
   },
   commandMessage: String,
 }))

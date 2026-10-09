@@ -41,6 +41,8 @@ export const es = {
   "providers.reasoningCapability": "Razonamiento configurable",
   "providers.presetClaudeSubscription": "Claude Subscription",
   "providers.presetClaudeSubscriptionDesc": "Usa tu plan de Claude a través del CLI oficial de Claude Code.",
+  "providers.experimentalClaude": "Claude Subscription (experimental)",
+  "providers.experimentalClaudeHint": "Usa tu plan de Claude a través del CLI oficial de Claude Code. Está apagado por defecto: al activarlo aparece al añadir un proveedor, y al apagarlo los proveedores guardados dejan de usarse.",
   "providers.claudeChecking": "Comprobando Claude Code…",
   "providers.claudeCheckAgain": "Comprobar de nuevo",
   "providers.claudeVersion": "Claude Code",

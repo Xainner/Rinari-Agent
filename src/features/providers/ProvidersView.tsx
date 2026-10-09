@@ -32,6 +32,7 @@ import { registerProviderModels } from './registerModels'
 import ProviderDetails from './ProviderDetails'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ModelCatalog from './ModelCatalog'
+import ExperimentalProvidersSetting from './ExperimentalProvidersSetting'
 import { useUIStore, type ProviderTab } from '../../stores/ui'
 
 /** Ajustes > Proveedores: tarjetas con estado, probar, usar, editar y eliminar. */
@@ -349,6 +350,8 @@ export default function ProvidersView({
           </Section>
         )
       })}
+
+      <ExperimentalProvidersSetting />
 
       <Dialog open={dialog !== null} onOpenChange={(open) => !open && setDialog(null)}>
         <DialogContent>

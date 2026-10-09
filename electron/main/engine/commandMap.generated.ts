@@ -115,6 +115,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "provider_list": {"method":"provider.list","params":[]},
   "provider_remove": {"method":"provider.remove","params":[{"key":"ref","from":"reference","optional":false},{"key":"switch_to","from":"switch_to","optional":false},{"key":"keep_credentials","from":"keep_credentials","optional":false,"fallback":false}]},
   "provider_runtime_probe": {"method":"provider.runtime.probe","params":[{"key":"runtime","from":"runtime","optional":false}]},
+  "provider_settings_get": {"method":"provider.settings.get","params":[]},
+  "provider_settings_set": {"method":"provider.settings.set","params":[{"key":"external_runtimes","from":"external_runtimes","optional":false}]},
   "provider_test": {"method":"provider.test","params":[{"key":"ref","from":"reference","optional":false}]},
   "provider_update": {"method":"provider.update","params":[{"key":"ref","from":"reference","optional":false},{"key":"alias","from":null,"optional":true},{"key":"endpoint","from":null,"optional":true},{"key":"account_hint","from":null,"optional":true},{"key":"secret","from":null,"optional":true},{"key":"secret_env","from":null,"optional":true},{"key":"settings","from":null,"optional":true}],"manual":true},
   "provider_usage_get": {"method":"provider.usage.get","params":[{"key":"ref","from":"ref","optional":false},{"key":"refresh","from":"refresh","optional":true}]},

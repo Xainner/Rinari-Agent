@@ -885,6 +885,24 @@
       ]
     },
     {
+      "command": "provider_settings_get",
+      "kind": "engine",
+      "method": "provider.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_settings_set",
+      "kind": "engine",
+      "method": "provider.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "provider_test",
       "kind": "engine",
       "method": "provider.test",
@@ -1677,8 +1695,8 @@
     }
   ],
   "summary": {
-    "commands": 199,
-    "engine_backed": 193,
+    "commands": 201,
+    "engine_backed": 195,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 62

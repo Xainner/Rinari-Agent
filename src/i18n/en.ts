@@ -43,6 +43,8 @@ export const en: Record<I18nKey, string> = {
   "providers.reasoningCapability": "Configurable reasoning",
   "providers.presetClaudeSubscription": "Claude Subscription",
   "providers.presetClaudeSubscriptionDesc": "Use your Claude plan through the official Claude Code CLI.",
+  "providers.experimentalClaude": "Claude Subscription (experimental)",
+  "providers.experimentalClaudeHint": "Use your Claude plan through the official Claude Code CLI. Off by default: turning it on adds it to the providers you can add, and turning it off stops saved ones.",
   "providers.claudeChecking": "Checking Claude Code…",
   "providers.claudeCheckAgain": "Check again",
   "providers.claudeVersion": "Claude Code",

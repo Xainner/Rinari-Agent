@@ -159,7 +159,9 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
 
 /** Legacy fallback for engines that predate catalog negotiation. */
 export function useProviderPresets() {
-  const [presets, setPresets] = useState(PROVIDER_PRESETS)
+  // Sin catálogo del Engine no hay forma de saber si el dueño activó un
+  // runtime externo: el respaldo local nunca lo ofrece.
+  const [presets, setPresets] = useState(() => PROVIDER_PRESETS.filter(p => p.auth !== 'external-cli'))
   useEffect(() => {
     let active = true
     void engineApi.providerCatalog().then(({ presets: remote }) => {

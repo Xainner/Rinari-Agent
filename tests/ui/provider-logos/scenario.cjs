@@ -37,9 +37,17 @@ async function sheet(theme) {
   await evaluate(`document.querySelector('#logo-review').remove()`)
 }
 scenario(async () => {
-  const catalog = (await command('provider_catalog_get')).presets.filter(p=>p.enabled)
+  // Claude Subscription is opt-in (Settings > Providers): listed, not offered,
+  // until the switch is on; turning it on offers it with the Anthropic logo.
+  const optIn = ['claude-subscription']
+  const offered = async () => (await command('provider_catalog_get')).presets.filter(p=>p.enabled)
+  assert.equal((await command('provider_settings_get')).external_runtimes,false)
+  await command('provider_settings_set',{external_runtimes:true})
+  assert.deepEqual((await offered()).map(p=>p.id).sort(),Object.keys(expected).sort(),'every product, opt-in included')
+  await command('provider_settings_set',{external_runtimes:false})
+  const catalog = await offered()
   catalogSize = catalog.length
-  assert.deepEqual(catalog.map(p=>p.id).sort(),Object.keys(expected).sort(),'coverage of the real pinned catalog')
+  assert.deepEqual(catalog.map(p=>p.id).sort(),Object.keys(expected).filter(id=>!optIn.includes(id)).sort(),'coverage of the real pinned catalog')
   ui.win.webContents.reload() // Observe onboarding before the shared ready helper dismisses it.
   await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===${catalog.length}`)
   const wizard = await healthy('document.querySelector("[role=dialog]")')

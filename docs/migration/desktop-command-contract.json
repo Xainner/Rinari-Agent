@@ -4860,6 +4860,40 @@
       "host_effects": []
     },
     {
+      "command": "provider_settings_get",
+      "module": "providers",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "provider_settings_set",
+      "module": "providers",
+      "args": [
+        {
+          "name": "external_runtimes",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "provider.settings.set",
+      "engine_params": [
+        {
+          "key": "external_runtimes",
+          "from": "external_runtimes",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "provider_auth_start",
       "module": "providers",
       "args": [

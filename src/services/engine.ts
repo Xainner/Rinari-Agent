@@ -1290,6 +1290,10 @@ export const engineApi = {
   /** Sin ruta a propósito: tomarla dejaría a la UI hacer que el Engine ejecute cualquier programa. */
   providerRuntimeProbe: (runtime: string) =>
     platform().command<{ runtime: ExternalRuntimeStatus }>('provider_runtime_probe', { runtime }),
+  /** Proveedores por CLI externo (Claude Subscription): apagados hasta que el dueño los active. */
+  providerSettingsGet: () => platform().command<{ external_runtimes: boolean }>('provider_settings_get'),
+  providerSettingsSet: (input: { external_runtimes: boolean }) =>
+    platform().command<{ external_runtimes: boolean }>('provider_settings_set', input),
   providerAuthStart: (ref: string, method: 'browser' | 'device') => platform().command<ProviderAuthSnapshot>('provider_auth_start', { ref, method }),
   providerAuthGet: (ref: string, operation_id?: string) => platform().command<ProviderAuthSnapshot>('provider_auth_get', { ref, operation_id }),
   providerAuthCancel: (ref: string) => platform().command<ProviderAuthSnapshot>('provider_auth_cancel', { ref }),

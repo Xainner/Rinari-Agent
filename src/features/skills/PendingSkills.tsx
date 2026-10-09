@@ -60,6 +60,15 @@ export default function PendingSkills({ proposals, onChanged }: { proposals: Ski
               </span>
             </div>
             <p className="text-xs text-[var(--text-subtle)]">{proposal.description}</p>
+            {(proposal.replaces?.length ?? 0) > 0 && (
+              <p className="text-xs text-[var(--text-muted)]">{t('skills.card.replaces', { names: proposal.replaces!.join(', ') })}</p>
+            )}
+            {proposal.similar_to?.map((similar) => (
+              <p key={similar.name} className="text-xs text-[var(--text-muted)]">
+                {t('skills.card.similar', { name: similar.name })}
+                {similar.reason && <> — {t('skills.card.reason', { reason: similar.reason })}</>}
+              </p>
+            ))}
             <ReviewFindings review={proposal.review} compact />
             {open === proposal.name && (
               proposal.current_skill_md !== null

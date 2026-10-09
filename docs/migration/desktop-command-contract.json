@@ -3565,6 +3565,40 @@
       "host_effects": []
     },
     {
+      "command": "skill_duplicates_list",
+      "module": "skills",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.duplicates.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "skill_duplicates_dismiss",
+      "module": "skills",
+      "args": [
+        {
+          "name": "skills",
+          "type": "Vec<String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "skill.duplicates.dismiss",
+      "engine_params": [
+        {
+          "key": "skills",
+          "from": "skills",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "skill_settings_get",
       "module": "skills",
       "args": [],

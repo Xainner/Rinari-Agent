@@ -163,6 +163,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "session_restore": {"method":"session.restore","params":[{"key":"ref","from":"reference","optional":false}]},
   "session_timeline": {"method":"session.timeline","params":[{"key":"ref","from":"reference","optional":false},{"key":"before_turn_index","from":null,"optional":true},{"key":"limit","from":"limit","optional":true}],"manual":true},
   "skill_disable": {"method":"skill.disable","params":[{"key":"name","from":"name","optional":false}]},
+  "skill_duplicates_dismiss": {"method":"skill.duplicates.dismiss","params":[{"key":"skills","from":"skills","optional":false}]},
+  "skill_duplicates_list": {"method":"skill.duplicates.list","params":[]},
   "skill_enable": {"method":"skill.enable","params":[{"key":"name","from":"name","optional":false}]},
   "skill_get": {"method":"skill.get","params":[{"key":"name","from":"name","optional":false},{"key":"project_root","from":"project_root","optional":true}]},
   "skill_import_scan": {"method":"skill.import.scan","params":[]},

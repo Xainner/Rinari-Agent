@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill'
   activitySeq: number
   occurredAt: number
 }
@@ -213,8 +213,39 @@ export interface MemoryTimelineItem extends TimelineItemBase {
   status: 'pending' | 'approved' | 'denied' | 'remembered'
 }
 
+/** Otra skill instalada que se parece a la propuesta, con el motivo del modelo. */
+export interface SkillSimilar {
+  name: string
+  score?: number
+  shared: string[]
+  reason?: string
+}
+
+/**
+ * Skill propuesta o guardada en este turno (`skill.proposed`), con su
+ * resolución (`skill.proposal.resolved`). Se muestra fuera de la actividad.
+ */
+export interface SkillTimelineItem extends TimelineItemBase {
+  type: 'skill'
+  name: string
+  /** `pending`: espera al dueño. `active`: ya guardada (pidió /learn o /lesson, o mejora una aprendida). */
+  status: 'pending' | 'active' | 'approved' | 'rejected' | 'undone'
+  version?: string
+  previousVersion?: string
+  update: boolean
+  description: string
+  similarTo: SkillSimilar[]
+  replaces: string[]
+  review?: string
+  pendingReason?: string
+  /** Lo que una fusión apagó (al aprobar) o volvió a encender (al deshacer). */
+  turnedOff?: string[]
+  turnedOn?: string[]
+}
+
 export type TimelineItem =
   | MemoryTimelineItem
+  | SkillTimelineItem
   | SteerTimelineItem
   | VisionTimelineItem
   | QuestionTimelineItem

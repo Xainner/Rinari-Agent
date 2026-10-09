@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **207**
-- Respaldados por Engine: **201**
+- Comandos: **209**
+- Respaldados por Engine: **203**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -166,13 +166,15 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `session_restore` | engine | `session.restore` | `src/services/engine.ts` |
 | `session_timeline` | engine | `session.timeline` | **ninguno** |
 | `skill_disable` | engine | `skill.disable` | **ninguno** |
+| `skill_duplicates_dismiss` | engine | `skill.duplicates.dismiss` | `src/services/engine.ts` |
+| `skill_duplicates_list` | engine | `skill.duplicates.list` | `src/services/engine.ts` |
 | `skill_enable` | engine | `skill.enable` | **ninguno** |
 | `skill_get` | engine | `skill.get` | `src/services/engine.ts` |
 | `skill_import_scan` | engine | `skill.import.scan` | `src/services/engine.ts` |
 | `skill_job_get` | engine | `skill.job.get` | **ninguno** |
 | `skill_job_start` | engine | `skill.job.start` | **ninguno** |
 | `skill_list` | engine | `skill.list` | `src/services/engine.ts` |
-| `skill_pending_approve` | engine | `skill.pending.approve` | `src/services/engine.ts` |
+| `skill_pending_approve` | engine | `skill.pending.approve` | **ninguno** |
 | `skill_pending_list` | engine | `skill.pending.list` | `src/services/engine.ts` |
 | `skill_pending_reject` | engine | `skill.pending.reject` | `src/services/engine.ts` |
 | `skill_read` | engine | `skill.read` | `src/services/engine.ts` |

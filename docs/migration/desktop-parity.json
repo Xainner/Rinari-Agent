@@ -1275,6 +1275,24 @@
       "callers": []
     },
     {
+      "command": "skill_duplicates_dismiss",
+      "kind": "engine",
+      "method": "skill.duplicates.dismiss",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "skill_duplicates_list",
+      "kind": "engine",
+      "method": "skill.duplicates.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "skill_enable",
       "kind": "engine",
       "method": "skill.enable",
@@ -1327,9 +1345,7 @@
       "kind": "engine",
       "method": "skill.pending.approve",
       "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
+      "callers": []
     },
     {
       "command": "skill_pending_list",
@@ -1743,10 +1759,10 @@
     }
   ],
   "summary": {
-    "commands": 207,
-    "engine_backed": 201,
+    "commands": 209,
+    "engine_backed": 203,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 65
+    "without_callers": 66
   }
 }

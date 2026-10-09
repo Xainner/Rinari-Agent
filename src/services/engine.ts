@@ -615,6 +615,17 @@ export interface SkillProposal {
   skill_md: string
   /** Versión instalada que reemplazaría; null si es nueva. */
   current_skill_md: string | null
+  /** Skills instaladas parecidas, con el motivo que dio Rinari para crear otra. */
+  similar_to?: Array<{ name: string; score?: number; shared: string[]; reason?: string }>
+  /** Fusión: las skills que esta reemplaza (se apagan al aprobar). */
+  replaces?: string[]
+}
+
+/** Dos skills del dueño que parecen hacer lo mismo (`skill.duplicates.list`). */
+export interface SkillDuplicatePair {
+  skills: [string, string]
+  score: number
+  shared: string[]
 }
 
 /**
@@ -630,6 +641,11 @@ export interface SkillLearned {
   session_id: string
   /** Versión reemplazada en una actualización; ausente en Engines previos. */
   previous_version?: string | null
+  /** Fusión o parecida a otra: presentes desde el gestor de skills. */
+  replaces?: string[]
+  similar_to?: Array<{ name: string; reason?: string }>
+  /** El chat ya muestra la tarjeta de esta propuesta: sin aviso flotante. */
+  card?: boolean
 }
 
 export type SkillJobAction = 'inspect' | 'install' | 'update'
@@ -996,12 +1012,17 @@ export const engineApi = {
   skillImportScan: () => platform().command<{ candidates: SkillCandidate[] }>('skill_import_scan'),
   skillPendingList: () => platform().command<{ pending: SkillProposal[] }>('skill_pending_list'),
   skillPendingApprove: (name: string) =>
-    platform().command<{ skill: SkillDetail }>('skill_pending_approve', { name }),
+    platform().command<{ skill: SkillDetail; turned_off?: string[] }>('skill_pending_approve', { name }),
   skillPendingReject: (name: string) =>
     platform().command<{ rejected: boolean }>('skill_pending_reject', { name }),
   /** Deshacer una skill aprendida: su versión anterior, o fuera si era nueva. */
   skillRevert: (name: string) =>
-    platform().command<{ name: string; restored: string | null; removed: boolean }>('skill_revert', { name }),
+    platform().command<{ name: string; restored: string | null; removed: boolean; turned_on?: string[] }>('skill_revert', { name }),
+  /** Pares de skills del dueño que parecen la misma tarea. */
+  skillDuplicatesList: () => platform().command<{ pairs: SkillDuplicatePair[] }>('skill_duplicates_list'),
+  /** «No son duplicados»: el par deja de aparecer. */
+  skillDuplicatesDismiss: (skills: [string, string]) =>
+    platform().command<{ pairs: SkillDuplicatePair[] }>('skill_duplicates_dismiss', { skills }),
   /** Dictado local (whisper.cpp en el Engine). */
   speechStatus: () => platform().command<SpeechStatus>('speech_status'),
   speechSettingsSet: (input: { model?: string; language?: string; vocabulary?: string }) =>

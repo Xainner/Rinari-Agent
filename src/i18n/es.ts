@@ -2631,6 +2631,15 @@ export const es = {
   'mcp.hint.secret_missing': 'Escribe el token o la variable que falta y guarda de nuevo.',
   'mcp.hint.server_disabled': 'El servidor está desactivado. Actívalo para usarlo.',
   'mcp.hint.project_not_trusted': 'Es un servidor del proyecto y el proyecto no es de confianza todavía.',
+  'soul.intensity.title': 'Cuánto personaje',
+  'soul.intensity.desc': 'Cuánto se nota la personalidad de Rinari en sus respuestas. No cambia lo que puede hacer ni cómo informa resultados.',
+  'soul.intensity.minimal': 'Mínimo',
+  'soul.intensity.balanced': 'Equilibrado',
+  'soul.intensity.full': 'Personaje completo',
+  'soul.intensity.minimalHint': 'Directa y sobria; la voz apenas asoma.',
+  'soul.intensity.balancedHint': 'Su voz al empezar o cerrar cuando el momento lo permite.',
+  'soul.intensity.fullHint': 'Rinari en todo su esplendor, sin perder claridad en lo técnico.',
+  'rbundles.explain': 'Un perfil guarda una forma de trabajar: personalidad, modo y modelos por agente. Aplicarlo cambia la conversación abierta; también puedes hacerlo desde la cabecera de la barra lateral.',
 } as const
 
 export type I18nKey = keyof typeof es

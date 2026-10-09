@@ -7,6 +7,7 @@ import {
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
+import { art } from '../rinari/art'
 import { inputClass, labelClass } from '../../components/settings/parts'
 import {
   Dialog,
@@ -115,14 +116,16 @@ export default function ProfilesView({
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary"
         >
           {t('rbundles.create')}
         </button>
       </div>
 
+      <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">{t('rbundles.explain')}</p>
       {profiles.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-elevated)] p-6 text-center">
+        <div className="mcp-empty rounded-[var(--r-lg)] border border-dashed border-[var(--line-2)]">
+          <img src={art.chibi('typing')} alt="" draggable={false} />
           <p className="text-sm text-[var(--text)]">{t('rbundles.empty')}</p>
           <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('rbundles.emptyHint')}</p>
         </div>

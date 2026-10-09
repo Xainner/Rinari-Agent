@@ -51,7 +51,7 @@ export default function McpView({ onChanged }: { onChanged: () => void }) {
 
   useEffect(() => {
     void reload()
-    void engineApi.status().then((status) => setRemoteSupported(status.capabilities?.mcp_remote_v1 === true)).catch(() => {})
+    void Promise.resolve().then(() => engineApi.status()).then((status) => setRemoteSupported(status.capabilities?.mcp_remote_v1 === true)).catch(() => {})
   }, [reload])
 
   async function toggle(server: McpServer) {

@@ -2613,4 +2613,13 @@ export const en: Record<I18nKey, string> = {
   'mcp.hint.secret_missing': 'Enter the missing token or variable and save again.',
   'mcp.hint.server_disabled': 'The server is disabled. Enable it to use it.',
   'mcp.hint.project_not_trusted': 'It\'s a project server and the project isn\'t trusted yet.',
+  'soul.intensity.title': 'How much character',
+  'soul.intensity.desc': 'How much of Rinari\'s personality shows in her answers. It never changes what she can do or how she reports results.',
+  'soul.intensity.minimal': 'Minimal',
+  'soul.intensity.balanced': 'Balanced',
+  'soul.intensity.full': 'Full character',
+  'soul.intensity.minimalHint': 'Direct and restrained; the voice barely shows.',
+  'soul.intensity.balancedHint': 'Her voice at the start or end when the moment allows.',
+  'soul.intensity.fullHint': 'Rinari in full, without losing clarity on technical work.',
+  'rbundles.explain': 'A profile saves a way of working: personality, mode and models per agent. Applying it changes the open conversation; you can also do it from the sidebar header.',
 }

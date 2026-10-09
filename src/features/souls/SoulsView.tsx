@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import CharacterIntensity from './CharacterIntensity'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -151,12 +152,13 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary"
         >
           {t('soul.create')}
         </button>
       </div>
       <p className="text-sm text-[var(--text-subtle)]">{t('soul.voiceOnly')}</p>
+      <CharacterIntensity />
 
       {souls.map((soul) => {
         const active = soul.id === activeId

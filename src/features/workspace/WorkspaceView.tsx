@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
+import { motion } from 'framer-motion'
+import { instant, spring, useCalmMotion } from '../../lib/motion'
 import type { SessionSummary } from '../../services/engine'
 import ChangesPanel from './ChangesPanel'
 import TasksPanel from './TasksPanel'
@@ -50,6 +52,7 @@ export default function WorkspaceView({
   onTabChange,
   sharedRoot = false,
 }: WorkspaceViewProps) {
+  const calm = useCalmMotion()
   const { t } = useI18n()
   const [localTab, setLocalTab] = useState<WorkspaceTab>('changes')
   const tab = controlledTab ?? localTab
@@ -100,7 +103,18 @@ export default function WorkspaceView({
           <div
             role="tablist"
             aria-label={t('nav.workspace')}
-            className={`mb-2 flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-1 ${embedded ? 'workspace-tabs-compact overflow-x-auto' : 'mb-3'}`}
+            className={`seg-tabs mb-2 ${embedded ? 'workspace-tabs-compact overflow-x-auto' : 'mb-3'}`}
+            onKeyDown={(event) => {
+              // Flechas, Inicio y Fin recorren las pestañas (patrón WAI-ARIA tabs).
+              const index = TABS.indexOf(tab)
+              const next = event.key === 'ArrowRight' ? (index + 1) % TABS.length
+                : event.key === 'ArrowLeft' ? (index - 1 + TABS.length) % TABS.length
+                  : event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : -1
+              if (next < 0) return
+              event.preventDefault()
+              setTab(TABS[next])
+              ;(event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[next])?.focus()
+            }}
           >
             {TABS.map((id) => (
               <button
@@ -108,14 +122,12 @@ export default function WorkspaceView({
                 type="button"
                 role="tab"
                 aria-selected={tab === id}
+                tabIndex={tab === id ? 0 : -1}
                 onClick={() => setTab(id)}
-                className={`${embedded ? 'shrink-0 px-2.5' : 'flex-1 px-2'} rounded-lg py-1.5 text-xs font-semibold transition-all ${
-                  tab === id
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`}
+                className={`seg-tab ${embedded ? 'shrink-0' : 'flex-1'}`}
               >
-                {t(`workspace.tab.${id}`)}
+                {tab === id && <motion.span layoutId={`workspace-tab-${embedded ? 'dock' : 'page'}`} className="seg-tab-pill" transition={calm ? instant : spring} aria-hidden="true" />}
+                <span className="relative">{t(`workspace.tab.${id}`)}</span>
               </button>
             ))}
           </div>

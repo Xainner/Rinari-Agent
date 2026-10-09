@@ -5852,6 +5852,281 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "memory_settings_get",
+      "module": "memory",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_settings_set",
+      "module": "memory",
+      "args": [
+        {
+          "name": "learned_facts",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.settings.set",
+      "engine_params": [
+        {
+          "key": "learned_facts",
+          "from": "learned_facts",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_list",
+      "module": "memory",
+      "args": [
+        {
+          "name": "kind",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.list",
+      "engine_params": [
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_search",
+      "module": "memory",
+      "args": [
+        {
+          "name": "query",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.search",
+      "engine_params": [
+        {
+          "key": "query",
+          "from": "query",
+          "optional": false
+        },
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_get",
+      "module": "memory",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.get",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_update",
+      "module": "memory",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "expected_revision",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": true
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.update",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "expected_revision",
+          "from": "expected_revision",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": true
+        },
+        {
+          "key": "topic",
+          "from": "topic",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_forget",
+      "module": "memory",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "expected_revision",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.forget",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "expected_revision",
+          "from": "expected_revision",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_candidates_list",
+      "module": "memory",
+      "args": [
+        {
+          "name": "status",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.candidates.list",
+      "engine_params": [
+        {
+          "key": "status",
+          "from": "status",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_candidate_resolve",
+      "module": "memory",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "decision",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": true
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.candidate.resolve",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "decision",
+          "from": "decision",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": true
+        },
+        {
+          "key": "topic",
+          "from": "topic",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

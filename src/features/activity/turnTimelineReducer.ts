@@ -86,6 +86,8 @@ function defaultTimeline(turnId: string, sessionId: string, now: number): TurnTi
 }
 
 function itemId(event: string, payload: Record<string, unknown>): string {
+  if (event.startsWith('memory.candidate.')) return `memory:candidate:${payload.candidate_id}`
+  if (event === 'memory.remembered') return `memory:remembered:${payload.memory_id}`
   if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
   if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
@@ -176,6 +178,47 @@ function presentation(value: unknown): ToolPresentation | undefined {
   }
 }
 
+function mergeMemoryItem(
+  current: TimelineItem | undefined,
+  event: string,
+  payload: Record<string, unknown>,
+  id: string,
+  activitySeq: number,
+  occurredAt: number,
+): TimelineItem | null {
+  const prior = current?.type === 'memory' ? current : undefined
+  if (event === 'memory.candidate.resolved') {
+    // Solo actualiza una propuesta que este turno mostró; no inventa la tarjeta.
+    if (!prior) return null
+    const status = text(payload.status)
+    return {
+      ...prior,
+      status: status === 'approved' || status === 'accepted' ? 'approved' : status === 'denied' ? 'denied' : prior.status,
+      memoryId: text(payload.memory_id) || prior.memoryId,
+    }
+  }
+  if (event !== 'memory.candidate.created' && event !== 'memory.remembered') return null
+  const candidate = event === 'memory.candidate.created'
+  if (candidate ? !text(payload.candidate_id) : !text(payload.memory_id)) return null
+  return {
+    id,
+    type: 'memory',
+    activitySeq: prior?.activitySeq ?? activitySeq,
+    occurredAt: prior?.occurredAt ?? occurredAt,
+    memoryEvent: candidate ? 'candidate' : 'remembered',
+    candidateId: candidate ? text(payload.candidate_id) : undefined,
+    memoryId: text(payload.memory_id) || prior?.memoryId,
+    topic: text(payload.topic) || prior?.topic || '',
+    text: text(payload.text) || prior?.text || '',
+    kind: text(payload.kind) || prior?.kind,
+    scope: text(payload.scope) || prior?.scope,
+    reason: text(payload.reason) || prior?.reason,
+    sensitive: payload.sensitive === true || prior?.sensitive === true,
+    // Un `created` repetido (snapshot, recarga) no deshace una resolución ya vista.
+    status: candidate ? prior?.status ?? 'pending' : 'remembered',
+  }
+}
+
 function mergeEventItem(
   current: TimelineItem | undefined,
   event: string,
@@ -236,6 +279,7 @@ function mergeEventItem(
       retry: event === 'model.completed' || event === 'model.content.completed' ? undefined : prior?.retry,
     }
   }
+  if (event.startsWith('memory.')) return mergeMemoryItem(current, event, payload, id, activitySeq, occurredAt)
   if (event === 'steer.applied') {
     return {
       id,
@@ -689,6 +733,9 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
   const turnId = text(payload.turn_id)
   const sessionId = text(payload.session_id)
   if (!turnId || !sessionId) return state
+  // Una resolución de memoria puede citar un turno que esta ventana no cargó:
+  // no debe crear un turno fantasma «en curso».
+  if (event.startsWith('memory.') && !state.timelines[turnId] && event !== 'memory.candidate.created' && event !== 'memory.remembered') return state
   let timeline = state.timelines[turnId] ?? defaultTimeline(turnId, sessionId, action.now)
   if (event === 'turn.started') {
     timeline = {
@@ -782,6 +829,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('agent.') ||
     event.event.startsWith('verification.') ||
     event.event.startsWith('steer.') ||
+    event.event.startsWith('memory.') ||
     event.event === 'provider.reasoning.dropped'
   return relevant ? { type: 'engine/event', event, now } : null
 }

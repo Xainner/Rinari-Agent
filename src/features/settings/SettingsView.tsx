@@ -20,6 +20,7 @@ import TerminalView from '../ecosystem/TerminalView'
 import ProfilesView from '../ecosystem/ProfilesView'
 import AdvancedSettings from '../../components/settings/AdvancedSettings'
 import ShortcutsSettings from '../../components/settings/ShortcutsSettings'
+import MemorySettings from '../memory/MemorySettings'
 
 /** Vista de ajustes: shell + sección activa. Terminal llega en Fase 10. */
 export default function SettingsView({
@@ -55,6 +56,7 @@ export default function SettingsView({
       )}
       {section === 'vision' && <VisionSettings models={models} providers={providers} />}
       {section === 'context' && <ContextSettings models={models} providers={providers} />}
+      {section === 'memory' && <MemorySettings />}
       {section === 'models' && (
         <ModelsView
           providers={providers}
@@ -83,7 +85,7 @@ export default function SettingsView({
       {section === 'terminal' && <TerminalView />}
       {section === 'advanced' && <AdvancedSettings models={models} providers={providers} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
-      {!['context', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
+      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
         <SoonSettings />
       )}
     </SettingsShell>

@@ -8,6 +8,8 @@ const logos = '[data-provider-brand]'
 let catalogSize = 0 // Set from the live catalog before any sheet is drawn.
 async function healthy(scope = 'document') {
   await wait(`[...${scope}.querySelectorAll('${logos} img')].every(i=>i.complete && i.naturalWidth>0)`)
+  // Measure after the entrance animations: a box caught mid-transition can be off by a sub-pixel.
+  await evaluate(`Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))`)
   const rows = await evaluate(`[...${scope}.querySelectorAll('${logos}')].map(e=>{const r=e.getBoundingClientRect();return {brand:e.dataset.providerBrand,w:r.width,h:r.height,visible:[...e.querySelectorAll('img,svg')].filter(i=>getComputedStyle(i).display!=='none').length,neutral:!!e.querySelector('[data-provider-fallback]'),sources:[...e.querySelectorAll('img')].map(i=>i.getAttribute('src'))}})`)
   assert(rows.length > 0)
   for (const r of rows) {

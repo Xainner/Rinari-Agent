@@ -5979,6 +5979,60 @@
       "host_effects": []
     },
     {
+      "command": "memory_export",
+      "module": "memory",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.export",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_import",
+      "module": "memory",
+      "args": [
+        {
+          "name": "bundle",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "digest",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "dry_run",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.import",
+      "engine_params": [
+        {
+          "key": "bundle",
+          "from": "bundle",
+          "optional": false
+        },
+        {
+          "key": "digest",
+          "from": "digest",
+          "optional": false
+        },
+        {
+          "key": "dry_run",
+          "from": "dry_run",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "memory_list",
       "module": "memory",
       "args": [

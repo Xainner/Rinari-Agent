@@ -25,7 +25,11 @@ import type {
   NativeBrowserPreview,
   NotificationTarget,
   OpenFilesOptions,
+  OpenJsonRequest,
+  OpenJsonResult,
   OpenRequest,
+  SaveJsonRequest,
+  SaveJsonResult,
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
@@ -84,7 +88,11 @@ interface DesktopHostApi {
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
     onContextChanged(callback: (view: NativeBrowserContext) => void): Unsubscribe
   }
-  dialog: { openFiles(options?: OpenFilesOptions): Promise<string[] | null> }
+  dialog: {
+    openFiles(options?: OpenFilesOptions): Promise<string[] | null>
+    saveJson(request: SaveJsonRequest): Promise<SaveJsonResult>
+    openJson(request?: OpenJsonRequest): Promise<OpenJsonResult | null>
+  }
   opener: { openUrl(url: string): Promise<void> }
   contextMenu: { show(items: ContextMenuItem[], position: { x: number; y: number }): Promise<void> }
   notifications: {
@@ -306,6 +314,8 @@ export const electronBridge: DesktopBridge = {
 
   dialog: {
     openFiles: (options: OpenFilesOptions = {}) => required().dialog.openFiles(options),
+    saveJson: (request: SaveJsonRequest) => required().dialog.saveJson(request),
+    openJson: (request: OpenJsonRequest = {}) => required().dialog.openJson(request),
   },
 
   opener: {

@@ -9,10 +9,14 @@
 import { BrowserWindow, Menu, dialog, shell, type MenuItemConstructorOptions } from 'electron'
 
 import type { ContextMenuRequest, OpenFilesRequest } from '../../shared/contracts'
+import { createJsonFiles } from './jsonFiles'
 
 /** Diálogos nativos: selección explícita del usuario, no permisos persistentes. */
 export function createDialogs(getWindow: () => BrowserWindow | null) {
+  const json = createJsonFiles(getWindow)
   return {
+    saveJson: json.save,
+    openJson: json.open,
     async openFiles(options: OpenFilesRequest): Promise<string[] | null> {
       const window = getWindow()
       const properties: Array<'openFile' | 'openDirectory' | 'multiSelections'> = options.directory

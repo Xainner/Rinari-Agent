@@ -41,7 +41,11 @@ import {
   type OpenExternalFileRequest,
   type WorkspaceMedia,
   type OpenFilesRequest,
+  type OpenJsonRequest,
+  type OpenJsonResult,
   type OpenRequest,
+  type SaveJsonRequest,
+  type SaveJsonResult,
   type SystemNotificationRequest,
   type UpdateAvailable,
   type UpdateState,
@@ -126,6 +130,8 @@ const api = {
 
   dialog: {
     openFiles: (options?: OpenFilesRequest) => call<string[] | null>(CHANNEL.dialogOpenFiles, options ?? {}),
+    saveJson: (request: SaveJsonRequest) => call<SaveJsonResult>(CHANNEL.dialogSaveJson, request),
+    openJson: (request?: OpenJsonRequest) => call<OpenJsonResult | null>(CHANNEL.dialogOpenJson, request ?? {}),
   },
 
   opener: {

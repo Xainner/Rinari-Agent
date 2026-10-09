@@ -8,6 +8,7 @@ import { useConfirm } from '../../components/ui/useConfirm'
 import { inputClass, Section } from '../../components/settings/parts'
 import { memoryApi } from '../../services/memory'
 import { MemoryCandidateCard } from './MemoryCandidateCard'
+import { MemoryPortability } from './MemoryPortability'
 import {
   effectiveCandidateStatus,
   forgetMemory,
@@ -27,7 +28,8 @@ const MODES: Array<{ value: LearnedFactsMode; title: 'memory.learning.ask' | 'me
 /**
  * Ajustes → Memoria: qué hace Rinari con lo que aprende sola, las propuestas
  * que esperan tu decisión y todo lo que recuerda, para buscarlo, corregirlo u
- * olvidarlo. Nada se decide aquí: cada acción va al Engine y se relee.
+ * olvidarlo, y exportarlo o importarlo en un archivo. Nada se decide aquí:
+ * cada acción va al Engine y se relee.
  */
 export default function MemorySettings() {
   const { t } = useI18n()
@@ -53,6 +55,7 @@ export default function MemorySettings() {
 
       <LearningMode />
       <RecordsSection />
+      <MemoryPortability />
     </div>
   )
 }

@@ -110,6 +110,11 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'memory-portability': {
+    title: 'Memoria portátil: importar con resumen y confirmación, exportar con digest, reimportar y archivo cambiado',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'SIN USO' }]),
+  },
   'diagnostics-export': {
     title: 'Acerca de: exportar diagnóstico con registros, volcados y resumen del Engine, sin contenido',
     phases: ['exercise'],

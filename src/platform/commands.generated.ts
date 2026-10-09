@@ -52,8 +52,10 @@ export type DesktopCommand =
   | "mcp_test"
   | "memory_candidate_resolve"
   | "memory_candidates_list"
+  | "memory_export"
   | "memory_forget"
   | "memory_get"
+  | "memory_import"
   | "memory_list"
   | "memory_search"
   | "memory_settings_get"
@@ -263,8 +265,10 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "mcp_test",
   "memory_candidate_resolve",
   "memory_candidates_list",
+  "memory_export",
   "memory_forget",
   "memory_get",
+  "memory_import",
   "memory_list",
   "memory_search",
   "memory_settings_get",
@@ -489,8 +493,10 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "mcp_test",
   "memory_candidate_resolve",
   "memory_candidates_list",
+  "memory_export",
   "memory_forget",
   "memory_get",
+  "memory_import",
   "memory_list",
   "memory_search",
   "memory_settings_get",

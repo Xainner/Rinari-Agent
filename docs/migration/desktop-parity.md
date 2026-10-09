@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **201**
-- Respaldados por Engine: **195**
+- Comandos: **207**
+- Respaldados por Engine: **201**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -188,6 +188,12 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `soul_list` | engine | `soul.list` | `src/services/engine.ts` |
 | `soul_remove` | engine | `soul.remove` | `src/services/engine.ts` |
 | `soul_update` | engine | `soul.update` | `src/services/engine.ts` |
+| `speech_model_cancel` | engine | `speech.model.cancel` | `src/services/engine.ts` |
+| `speech_model_download` | engine | `speech.model.download` | **ninguno** |
+| `speech_model_remove` | engine | `speech.model.remove` | **ninguno** |
+| `speech_settings_set` | engine | `speech.settings.set` | `src/services/engine.ts` |
+| `speech_status` | engine | `speech.status` | `src/services/engine.ts` |
+| `speech_transcribe` | engine | `speech.transcribe` | **ninguno** |
 | `task_get` | engine | `task.get` | `src/services/engine.ts` |
 | `task_tree` | engine | `task.tree` | **ninguno** |
 | `tool_list` | engine | `tool.list` | `src/services/engine.ts` |

@@ -1465,6 +1465,54 @@
       ]
     },
     {
+      "command": "speech_model_cancel",
+      "kind": "engine",
+      "method": "speech.model.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "speech_model_download",
+      "kind": "engine",
+      "method": "speech.model.download",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "speech_model_remove",
+      "kind": "engine",
+      "method": "speech.model.remove",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "speech_settings_set",
+      "kind": "engine",
+      "method": "speech.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "speech_status",
+      "kind": "engine",
+      "method": "speech.status",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "speech_transcribe",
+      "kind": "engine",
+      "method": "speech.transcribe",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "task_get",
       "kind": "engine",
       "method": "task.get",
@@ -1695,10 +1743,10 @@
     }
   ],
   "summary": {
-    "commands": 201,
-    "engine_backed": 195,
+    "commands": 207,
+    "engine_backed": 201,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 62
+    "without_callers": 65
   }
 }

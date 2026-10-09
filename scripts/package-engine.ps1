@@ -98,6 +98,10 @@ Write-Host "--> OCR portable con binarios e idiomas verificados"
 & (Join-Path $OutDir "python.exe") (Join-Path $PSScriptRoot "package-ocr.py") (Join-Path $OutDir "ocr")
 if ($LASTEXITCODE -ne 0) { throw "No se pudo empaquetar OCR" }
 
+Write-Host "--> Dictado local: whisper.cpp verificado (el modelo se descarga en el primer uso)"
+& (Join-Path $OutDir "python.exe") (Join-Path $PSScriptRoot "package-speech.py") (Join-Path $OutDir "speech")
+if ($LASTEXITCODE -ne 0) { throw "No se pudo empaquetar el dictado" }
+
 Write-Host "--> humo: contrato del motor en un home temporal"
 & (Join-Path $OutDir "python.exe") (Join-Path $PSScriptRoot "check-engine-tools.py") (Join-Path $OutDir "python.exe")
 if ($LASTEXITCODE -ne 0) { throw "El motor empaquetado no cumple el contrato de herramientas" }

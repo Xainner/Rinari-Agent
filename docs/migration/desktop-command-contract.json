@@ -3565,6 +3565,162 @@
       "host_effects": []
     },
     {
+      "command": "speech_status",
+      "module": "speech",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "speech.status",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "speech_settings_set",
+      "module": "speech",
+      "args": [
+        {
+          "name": "model",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "language",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "vocabulary",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "speech.settings.set",
+      "engine_params": [
+        {
+          "key": "model",
+          "from": "model",
+          "optional": true
+        },
+        {
+          "key": "language",
+          "from": "language",
+          "optional": true
+        },
+        {
+          "key": "vocabulary",
+          "from": "vocabulary",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "speech_model_download",
+      "module": "speech",
+      "args": [
+        {
+          "name": "model",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "speech.model.download",
+      "engine_params": [
+        {
+          "key": "model",
+          "from": "model",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "speech_model_cancel",
+      "module": "speech",
+      "args": [
+        {
+          "name": "model",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "speech.model.cancel",
+      "engine_params": [
+        {
+          "key": "model",
+          "from": "model",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "speech_model_remove",
+      "module": "speech",
+      "args": [
+        {
+          "name": "model",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "speech.model.remove",
+      "engine_params": [
+        {
+          "key": "model",
+          "from": "model",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "speech_transcribe",
+      "module": "speech",
+      "args": [
+        {
+          "name": "audio",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "language",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "speech.transcribe",
+      "engine_params": [
+        {
+          "key": "audio",
+          "from": "audio",
+          "optional": false
+        },
+        {
+          "key": "language",
+          "from": "language",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "skill_settings_get",
       "module": "skills",
       "args": [],

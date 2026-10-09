@@ -18,6 +18,7 @@ import {
   Sparkles,
   SquareTerminal,
   Wrench,
+  Mic,
 } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useUIStore, type SettingsSection } from '../../stores/ui'
@@ -29,6 +30,7 @@ const NAV: Array<{ id: SettingsSection; icon: typeof Info }> = [
   { id: 'providers', icon: Plug },
   { id: 'models', icon: Cpu },
   { id: 'vision', icon: Sparkles },
+  { id: 'dictation', icon: Mic },
   { id: 'context', icon: Layers },
   { id: 'memory', icon: Brain },
   { id: 'agents', icon: Bot },

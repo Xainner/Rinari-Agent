@@ -534,7 +534,7 @@ export const en: Record<I18nKey, string> = {
   'chat.editPlaceholder': 'Edit your message…',
 
   'composer.placeholder': 'Type a message…',
-  'composer.placeholderStreaming': 'Generating response…',
+  'composer.placeholderStreaming': 'Rinari is working… you can keep typing',
   'composer.message': 'Message',
   'composer.dropFiles': 'Drop files here',
   'composer.attach': 'Attach images or videos',

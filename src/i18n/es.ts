@@ -539,7 +539,7 @@ export const es = {
 
   /* Composer */
   'composer.placeholder': 'Escribe un mensaje…',
-  'composer.placeholderStreaming': 'Generando respuesta…',
+  'composer.placeholderStreaming': 'Rinari está trabajando… puedes ir escribiendo',
   'composer.message': 'Mensaje',
   'composer.dropFiles': 'Suelta los archivos aquí',
   'composer.attach': 'Adjuntar imágenes o videos',

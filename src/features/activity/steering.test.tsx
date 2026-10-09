@@ -99,6 +99,6 @@ describe('composer while Rinari works', () => {
   it('without steering support it only offers Stop', () => {
     renderComposer({})
     expect(screen.queryByRole('button', { name: 'Enviar ahora, sin detenerla' })).toBeNull()
-    expect(screen.getByRole('textbox', { name: /mensaje/i }).getAttribute('placeholder')).toBe('Generando respuesta…')
+    expect(screen.getByRole('textbox', { name: /mensaje/i }).getAttribute('placeholder')).toBe('Rinari está trabajando… puedes ir escribiendo')
   })
 })

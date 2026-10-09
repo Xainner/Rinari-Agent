@@ -1494,3 +1494,15 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .notify-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px 18px; text-align: center; font-size: 12.5px; color: var(--text-muted); }
 .notify-empty img { width: 96px; height: 96px; object-fit: contain; }
 .app-topbar-attention-badge { background: var(--warning); box-shadow: 0 0 0 2px var(--bg-subtle); animation: rinari-pop-in var(--dur-base) var(--ease-spring); }
+
+/* -- Ajustes ---------------------------------------------------------------- */
+.settings-nav { display: flex; flex-direction: column; gap: 14px; }
+.settings-nav-group { display: flex; flex-direction: column; gap: 1px; }
+.settings-nav-heading { padding: 0 10px 4px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); }
+.settings-nav-item { position: relative; display: flex; min-height: 34px; width: 100%; align-items: center; gap: 10px; border-radius: var(--r-sm); padding: 0 10px; font-size: 13px; font-weight: 500; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.settings-nav-item:hover { background: var(--bg-hover); color: var(--text); }
+.settings-nav-item.is-active { color: #fff; background: linear-gradient(90deg, rgb(147 88 255 / 0.2), rgb(147 88 255 / 0.06)); }
+.settings-nav-item.is-active::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: linear-gradient(var(--violet-300), var(--violet-500)); }
+.settings-nav-item.is-active svg { color: var(--violet-300); }
+.settings-page { animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.settings-card { border-radius: var(--r-lg); border: 1px solid var(--line-1); background: linear-gradient(180deg, rgb(26 19 44 / 0.7), rgb(16 12 27 / 0.75)); padding: 20px; box-shadow: var(--inset-hi); }

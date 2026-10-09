@@ -910,10 +910,10 @@ export const es = {
   'sidebar.approvals': 'Aprobaciones',
   'settings.nav.providers': 'Proveedores',
   'settings.nav.agents': 'Agentes',
-  'settings.nav.soul': 'Rinari / Soul',
+  'settings.nav.soul': 'Personalidad',
   'settings.nav.mcp': 'MCP',
   'settings.nav.plugins': 'Plugins',
-  'settings.nav.tools': 'Herramientas',
+  'settings.nav.tools': 'Permisos',
   'settings.nav.terminal': 'Terminal',
   'settings.nav.advanced': 'Avanzado',
   'settings.soon.title': 'Próximamente',
@@ -2535,6 +2535,10 @@ export const es = {
   'startup.failedTitle': 'Rinari no pudo arrancar',
   'startup.copyDetails': 'Copiar detalles',
   'notifications.clearAll': 'Limpiar',
+  'settings.group.rinari': 'Rinari',
+  'settings.group.models': 'Modelos e IA',
+  'settings.group.tools': 'Herramientas',
+  'settings.group.app': 'Aplicación',
 } as const
 
 export type I18nKey = keyof typeof es

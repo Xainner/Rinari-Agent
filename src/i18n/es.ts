@@ -2486,6 +2486,17 @@ export const es = {
   'effort.faster': 'Más rápido',
   'effort.smarter': 'Más inteligente',
   'approval.riskLabel': 'Riesgo:',
+  'context.open': 'Contexto y límites',
+  'context.label': 'contexto',
+  'context.ofTokens': 'de {total} tokens',
+  'context.autoOff': 'La compactación automática está apagada.',
+  'context.autoAt': 'Se compacta sola al llegar al {n} %.',
+  'context.lastCompacted': 'Última compactación: {date}',
+  'context.providerLimits': 'Límites de {provider}',
+  'context.reportedByProvider': 'informados por el proveedor',
+  'context.usedPercent': '{n} % usado',
+  'context.resets': 'se reinicia {date}',
+  'context.details': 'Ver uso detallado',
 } as const
 
 export type I18nKey = keyof typeof es

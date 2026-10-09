@@ -914,7 +914,7 @@ export default function Composer({
             })}
           </div>
           <div className="composer-model-controls">
-          <ContextRing sessionId={sessionId} modelId={activeModel?.id ?? null} />
+          <ContextRing sessionId={sessionId} modelId={activeModel?.id ?? null} providerAlias={activeModel?.provider ?? models.find(model => model.alias === activeAlias)?.provider ?? null} />
           <ModelPicker
             models={models}
             providers={providers}

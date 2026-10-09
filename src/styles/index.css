@@ -1418,3 +1418,43 @@ button.agent-entry:hover { border-color: var(--line-3); background: rgb(20 15 34
 .seg-tab:hover { color: var(--text); }
 .seg-tab[aria-selected='true'] { color: #fff; }
 .seg-tab-pill { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, rgb(147 88 255 / 0.85), rgb(124 58 237 / 0.85)); box-shadow: 0 4px 14px -6px rgb(147 88 255 / 0.9); }
+
+/* -- Boards: columnas con cabecera viva y foco luminoso ---------------------- */
+.board-toolbar { min-height: 44px; padding: 6px 14px; border-bottom: 1px solid var(--line-1); background: rgb(10 8 18 / 0.6); }
+.session-pane { background: linear-gradient(180deg, rgb(14 11 24 / 0.9), var(--bg-app) 30%); border-right-color: var(--line-1); transition: background-color var(--dur-base), box-shadow var(--dur-base); }
+.session-pane.is-focused { background: linear-gradient(180deg, rgb(147 88 255 / 0.08), var(--bg-app) 35%); box-shadow: inset 0 0 0 1px rgb(196 181 253 / 0.32), inset 0 1px 0 rgb(196 181 253 / 0.45); }
+.pane-header { gap: 8px; }
+.pane-header-face { margin-left: 2px; }
+.pane-header-status { border-color: var(--line-2); padding: 2px 8px; font-size: 10.5px; }
+.pane-header-status[data-kind='working'] { color: var(--violet-200); border-color: rgb(167 139 250 / 0.4); }
+.pane-header-new, .result-card-new, .turn-meta-new { background: rgb(91 224 165 / 0.14); color: var(--success); }
+
+/* Board vacío: la maqueta entra por los lados y Rinari sube al centro. */
+@keyframes board-side-left { from { opacity: 0; transform: rotateY(24deg) translateX(-30px); } to { opacity: 1; transform: rotateY(24deg); } }
+@keyframes board-side-right { from { opacity: 0; transform: rotateY(-24deg) translateX(30px); } to { opacity: 1; transform: rotateY(-24deg); } }
+@keyframes board-rinari-in { from { opacity: 0; transform: translateX(-50%) translateY(24px); } to { opacity: 1; transform: translateX(-50%); } }
+.board-hero-side.is-left { animation: board-side-left 0.8s 0.15s var(--ease-out) both; }
+.board-hero-side.is-right { animation: board-side-right 0.8s 0.25s var(--ease-out) both; }
+.board-hero-rinari { animation: board-rinari-in 0.9s var(--ease-out) both; }
+.board-hero-msg img { border-radius: 50%; object-fit: cover; }
+.board-empty h1, .board-empty p, .board-empty-actions { animation: rinari-rise var(--dur-slow) 0.35s var(--ease-out) both; }
+.board-empty-primary { background: var(--grad-brand); box-shadow: 0 0 0 1px rgb(196 181 253 / 0.3), 0 14px 36px -14px rgb(147 88 255 / 0.95); }
+
+/* -- Flujos: etapas conectadas, progreso y resultado ------------------------- */
+.flow-header { border-bottom-color: var(--line-1); background: linear-gradient(180deg, rgb(147 88 255 / 0.06), transparent); }
+.flow-summary-title h1 { font-family: var(--font-display); font-size: 22px; font-weight: 750; }
+.flow-summary-progress-track { height: 8px; background: rgb(167 139 250 / 0.14); }
+.flow-summary-progress-fill[data-known] { background: linear-gradient(90deg, var(--violet-600), var(--violet-400), var(--magenta-400)); box-shadow: 0 0 12px rgb(147 88 255 / 0.6); }
+.flow-connector { width: 48px; padding-top: 0; align-self: center; opacity: 1; }
+.flow-link { position: relative; display: block; width: 100%; height: 2px; overflow: hidden; border-radius: 2px; background: var(--line-2); }
+.flow-connector[data-from='done'] .flow-link { background: linear-gradient(90deg, var(--success), rgb(91 224 165 / 0.6)); }
+.flow-connector[data-from='done'][data-to='active'] .flow-link { background: linear-gradient(90deg, var(--success), var(--violet-500)); }
+.flow-connector[data-to='active'] .flow-link::after { content: ''; position: absolute; top: -2px; left: -16px; width: 16px; height: 6px; border-radius: 6px; background: var(--violet-100); box-shadow: 0 0 10px var(--magenta-400); animation: flow-travel 1.4s linear infinite; }
+.flow-connector[data-from='failed'] .flow-link, .flow-connector[data-from='stopped'] .flow-link { background: repeating-linear-gradient(90deg, var(--danger) 0 4px, transparent 4px 8px); opacity: 0.7; }
+@keyframes flow-travel { from { left: -16px; } to { left: 100%; } }
+.flow-stage { border-color: var(--line-1); background: linear-gradient(150deg, rgb(26 19 44 / 0.85), rgb(16 12 27 / 0.9)); box-shadow: var(--sh-1), var(--inset-hi); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.flow-stage:hover { border-color: var(--line-3); transform: translateY(-2px); }
+.flow-stage.is-active { border-color: rgb(196 181 253 / 0.5); box-shadow: 0 0 0 4px rgb(147 88 255 / 0.1), var(--sh-1); }
+.flow-stage.is-done { border-color: rgb(91 224 165 / 0.28); }
+.flow-stage-slot:nth-child(4n+1) .flow-stage { animation-delay: 0.05s; }
+.flow-stage-slot:nth-child(4n+3) .flow-stage { animation-delay: 0.12s; }

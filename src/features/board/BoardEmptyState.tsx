@@ -1,5 +1,6 @@
 import { Columns3, FolderGit2, Globe, Heart, LayoutGrid, MessageSquarePlus, Paperclip, Plus, Sparkle } from 'lucide-react'
 import { useI18n } from '../../i18n'
+import { art } from '../rinari/art'
 
 interface BoardEmptyStateProps {
   onAddPane?: () => void
@@ -52,7 +53,7 @@ export default function BoardEmptyState({ onAddPane, onAddCurrent }: BoardEmptyS
               <span className="board-hero-badge">{t('board.hero.done')}</span>
             </div>
             <div className="board-hero-msg is-rinari">
-              <img src="/brand/icon-no-bg.png" alt="" />
+              <img src={art.expression('idle')} alt="" />
               <span>{t('board.hero.greeting')}</span>
             </div>
             <div className="board-hero-msg is-rinari-text"><span>{t('board.hero.reply')} <Sparkle size={10} /></span></div>

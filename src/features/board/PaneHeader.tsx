@@ -29,6 +29,21 @@ import { cn } from '../../lib/utils'
 import type { PaneSession } from './usePaneSession'
 import type { PaneStatusKind } from '../engine/sessionSelectors'
 import type { I18nKey } from '../../i18n/es'
+import { RinariAvatar, type RinariState } from '../rinari/RinariAvatar'
+
+/** Expresión de Rinari en la cabecera del panel, según su estado real. */
+const STATUS_FACE: Record<PaneStatusKind, RinariState> = {
+  working: 'working',
+  needs_you: 'waiting',
+  done: 'done',
+  failed: 'error',
+  idle: 'idle',
+  cancelling: 'thinking',
+  cancelled: 'idle',
+  stopped: 'idle',
+  loading: 'thinking',
+  unavailable: 'offline',
+}
 
 export const STATUS_LABEL_KEY = {
   working: 'board.status.working',
@@ -119,6 +134,7 @@ function PaneHeader({
 
   return (
     <header className={cn('pane-header', focused && 'is-focused')} data-testid="pane-header">
+      <RinariAvatar state={STATUS_FACE[status.kind]} size={26} className="pane-header-face" />
       <div className="pane-header-identity">
         <span className="pane-header-title" title={title}>{title}</span>
         {projectName && (

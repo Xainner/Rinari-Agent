@@ -507,8 +507,8 @@ export const es = {
   'reasoning.thinking': 'Pensando…',
   'reasoning.title': 'Razonamiento',
   'reasoning.time': '{s} s',
-  'startup.loading': 'Conectando con Rinari',
-  'startup.failed': 'No se pudo iniciar el motor de Rinari.',
+  'startup.loading': 'Despertando a Rinari',
+  'startup.failed': 'El núcleo de Rinari no respondió. Reintentar suele bastar; si no, copia los detalles y repórtalo.',
   'startup.retry': 'Reintentar',
   'startup.details': 'Detalles técnicos',
   'startup.sessionsDegraded': 'Sesiones no disponibles ({detail}).',
@@ -2528,6 +2528,12 @@ export const es = {
   'workspace.diffMode': 'Vista del diff',
   'workspace.diffUnified': 'Unificado',
   'workspace.diffSplit': 'Lado a lado',
+  'startup.loadingHint': 'Preparo tu espacio de trabajo. Suele tardar unos segundos.',
+  'startup.step.app': 'Abrí la aplicación',
+  'startup.step.core': 'Arrancando el núcleo de Rinari',
+  'startup.step.connect': 'Conectando con tus conversaciones y proveedores',
+  'startup.failedTitle': 'Rinari no pudo arrancar',
+  'startup.copyDetails': 'Copiar detalles',
 } as const
 
 export type I18nKey = keyof typeof es

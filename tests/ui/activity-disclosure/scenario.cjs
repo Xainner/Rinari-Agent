@@ -66,7 +66,8 @@ scenario(async () => {
   const a = '[data-pane-id="pane_0"]'
   const b = '[data-pane-id="pane_1"]'
   await wait(`Boolean(${q(a + ' [data-operation-group] details[open]')})`)
-  assert(await evaluate(`${q(a)}.innerText.includes('PROGRESO 24')`), 'progress remains visible in Boards')
+  // Boards se monta de nuevo al cambiar de vista; en una máquina lenta el texto llega un poco después.
+  await wait(`${q(a)}.innerText.includes('PROGRESO 24')`)
   await clickText('Colapsar todo')
   assert.equal(await evaluate(`Boolean(${q(a + ' [data-operation-group] details')})`), false)
   await clickText('Expandir todo')

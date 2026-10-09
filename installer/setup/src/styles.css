@@ -51,9 +51,9 @@ button { color: inherit; }
 /* Arte: cielo de nebulosa y Rinari de medio cuerpo, siempre con el mismo encuadre. */
 .art { position: relative; overflow: hidden; background: var(--ink-0); isolation: isolate; }
 .art-sky { position: absolute; inset: 0; background: radial-gradient(60% 50% at 50% 72%, rgb(147 88 255 / 0.45), transparent 70%), url('/assets/studio-master.png') center / cover no-repeat; animation: drift 24s ease-in-out infinite alternate; z-index: 0; }
-.art::before { content: ''; position: absolute; inset: 0; z-index: 3; background: linear-gradient(90deg, transparent 70%, var(--ink-1)), linear-gradient(0deg, rgb(6 5 11 / 0.85), transparent 30%); pointer-events: none; }
+.art::before { content: ''; position: absolute; inset: 0; z-index: 3; background: linear-gradient(90deg, transparent 84%, var(--ink-1)), linear-gradient(0deg, rgb(6 5 11 / 0.85), transparent 30%); pointer-events: none; }
 .art::after { content: ''; position: absolute; left: 50%; bottom: 3%; z-index: 1; width: 70%; height: 16%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, rgb(147 88 255 / 0.55), transparent 70%); filter: blur(8px); }
-.art > img { position: absolute; z-index: 2; left: 50%; bottom: 0; height: 94%; max-width: 104%; transform: translateX(-50%); object-fit: contain; object-position: bottom center; filter: drop-shadow(0 0 30px rgb(147 88 255 / 0.45)); animation: art-in .9s var(--ease-out) both; }
+.art > img { position: absolute; z-index: 2; left: 47%; bottom: 0; height: 90%; max-width: 104%; transform: translateX(-50%); object-fit: contain; object-position: bottom center; filter: drop-shadow(0 0 30px rgb(147 88 255 / 0.45)); animation: art-in .9s var(--ease-out) both; }
 .art > img.floating { animation: art-in .9s var(--ease-out) both, float 6s ease-in-out .9s infinite; }
 .art-steps { position: absolute; z-index: 4; left: 22px; top: 20px; display: flex; gap: 8px; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: .04em; color: rgb(246 242 255 / 0.5); }
 .art-steps i { display: block; width: 22px; height: 1px; background: var(--line-3); }

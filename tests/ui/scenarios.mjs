@@ -266,4 +266,28 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['sub'] }),
   },
+  'ui-tour': {
+    title: 'Recorrido visual: capturas de las superficies principales para revisar el diseño',
+    phases: ['exercise'],
+    fixtures: (data) => {
+      writeFileSync(join(data, 'notas.md'), '# Notas\n\nArchivo de ejemplo para el recorrido.\n')
+      writeFileSync(join(data, 'datos.json'), JSON.stringify({ ok: true, items: [1, 2, 3] }, null, 2))
+    },
+    model: () => startRoutedModel({
+      title: [{ text: 'Recorrido visual' }],
+      main: [
+        { tool: 'fs.list', args: { path: '.' }, say: 'Voy a mirar la carpeta primero.' },
+        { tool: 'fs.glob', args: { pattern: '*.md' }, say: 'Busco las notas.' },
+        { tool: 'agent.spawn', args: { agent: 'explore', objective: 'OBJETIVO-SUB: revisa la carpeta' }, say: 'Le pido a un explorador que revise el resto.' },
+        { tool: 'agent.wait', args: { agent_id: 'agt_001', timeout_s: 300 }, say: '' },
+        { text: '## Resumen\n\nRevisé la carpeta. Hay **dos archivos**:\n\n| Archivo | Tipo |\n|---|---|\n| notas.md | Markdown |\n| datos.json | JSON |\n\n```ts\nexport function suma(a: number, b: number) {\n  return a + b\n}\n```\n\n- Todo está en orden.\n- No cambié nada.\n\nFIN DEL RECORRIDO' },
+        { tool: 'fs.glob', args: { pattern: '*.json' }, say: 'Sigo revisando.' },
+        { text: 'TRABAJO TERMINADO' },
+      ],
+      sub: [
+        ...['*', '*.json', '**/*'].map((pattern, i) => ({ tool: 'fs.glob', args: { pattern }, say: `Paso ${i + 1} del explorador.` })),
+        { text: 'El explorador no encontró nada más.' },
+      ],
+    }, laneOf, { held: ['main', 'sub'] }),
+  },
 }

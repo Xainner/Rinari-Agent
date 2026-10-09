@@ -5892,6 +5892,11 @@
       "module": "memory",
       "args": [
         {
+          "name": "scope",
+          "type": "String",
+          "optional": true
+        },
+        {
           "name": "kind",
           "type": "String",
           "optional": true
@@ -5901,6 +5906,11 @@
       "manual": false,
       "engine_method": "memory.list",
       "engine_params": [
+        {
+          "key": "scope",
+          "from": "scope",
+          "optional": true
+        },
         {
           "key": "kind",
           "from": "kind",
@@ -5914,6 +5924,11 @@
       "command": "memory_search",
       "module": "memory",
       "args": [
+        {
+          "name": "scope",
+          "type": "String",
+          "optional": true
+        },
         {
           "name": "query",
           "type": "String",
@@ -5929,6 +5944,11 @@
       "manual": false,
       "engine_method": "memory.search",
       "engine_params": [
+        {
+          "key": "scope",
+          "from": "scope",
+          "optional": true
+        },
         {
           "key": "query",
           "from": "query",

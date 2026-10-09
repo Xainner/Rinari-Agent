@@ -2339,6 +2339,8 @@ export const en: Record<I18nKey, string> = {
   'memory.candidate.edit': 'Edit',
   'memory.candidate.dismiss': 'Dismiss',
   'memory.candidate.saveApprove': 'Save and approve',
+  'memory.reason.notOwner': "It learned this in a turn you didn't start: review it before approving.",
+  'memory.reason.external': 'It learned this after reading content from outside this machine: review it before approving.',
   'memory.candidate.reason': 'Why: {reason}',
   'memory.candidate.sensitive': 'This may be sensitive: it is saved only if you approve it.',
   'memory.candidate.approved': 'Approved: Rinari will remember it.',

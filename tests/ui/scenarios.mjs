@@ -53,6 +53,19 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'memory-proposal': {
+    title: 'Memoria visible: propuesta en el chat, Ajustes > Memoria y modo automático con Deshacer',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Memoria del entorno' })),
+      main: [
+        { tool: 'memory.propose', args: { text: 'El servidor de pruebas escucha en 127.0.0.1:8080', topic: 'Servidor de pruebas', kind: 'environment' }, say: 'Lo anoto.' },
+        { text: 'LISTO UNO' },
+        { tool: 'memory.propose', args: { text: 'La app de ejemplo se arranca con npm run dev', topic: 'Arranque de la app', kind: 'workflow' }, say: 'Lo anoto.' },
+        { text: 'LISTO DOS' },
+      ],
+    }, laneOf),
+  },
   'activity-text-shimmer': {
     title: 'Brillo del texto de actividad: ejecución, grupos, finalización y movimiento reducido',
     phases: ['exercise'],

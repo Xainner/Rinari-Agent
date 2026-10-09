@@ -19,8 +19,9 @@ export const memoryApi = {
   settingsGet: () => platform().command<MemorySettings>('memory_settings_get'),
   settingsSet: (learned_facts: LearnedFactsMode) =>
     platform().command<MemorySettings>('memory_settings_set', { learned_facts }),
-  list: () => platform().command<MemoryListResult>('memory_list'),
-  search: (query: string) => platform().command<MemoryListResult>('memory_search', { query }),
+  // `all`: también los hechos aprendidos de un proyecto, no solo los personales.
+  list: () => platform().command<MemoryListResult>('memory_list', { scope: 'all' }),
+  search: (query: string) => platform().command<MemoryListResult>('memory_search', { query, scope: 'all' }),
   get: (id: string) => platform().command<{ record: MemoryRecord }>('memory_get', { id }),
   update: (id: string, expected_revision: number, fields: { text?: string; topic?: string }) =>
     platform().command<{ record: MemoryRecord }>('memory_update', { id, expected_revision, ...fields }),
@@ -28,7 +29,7 @@ export const memoryApi = {
     platform().command<{ id: string; forgotten: boolean }>('memory_forget', { id, expected_revision }),
   candidates: (status: 'pending' | 'resolved' | 'all' = 'all') =>
     platform().command<MemoryCandidatesResult>('memory_candidates_list', { status }),
-  /** El Engine anterior envolvía la respuesta en `{candidate}`; el contrato nuevo la devuelve sola. */
+  /** El Engine responde `{candidate}`; se acepta también la fila sola. */
   resolveCandidate: async (id: string, decision: CandidateDecision, edits: CandidateEdits = {}) => {
     const result = await platform().command<MemoryCandidate | { candidate: MemoryCandidate }>(
       'memory_candidate_resolve',

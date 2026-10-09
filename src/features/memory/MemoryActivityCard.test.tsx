@@ -13,7 +13,7 @@ import { resetMemoryStoreForTests } from './memoryStore'
 
 const candidateItem: MemoryTimelineItem = {
   id: 'memory:candidate:c1', type: 'memory', memoryEvent: 'candidate', activitySeq: 2, occurredAt: 1_100,
-  candidateId: 'c1', topic: 'Editor', text: 'Usa VS Code', kind: 'environment', reason: 'Lo dijiste al configurar el proyecto',
+  candidateId: 'c1', topic: 'Editor', text: 'Usa VS Code', kind: 'environment', reason: 'learned after reading content from outside this machine',
   sensitive: false, status: 'pending',
 }
 const rememberedItem: MemoryTimelineItem = {
@@ -43,7 +43,8 @@ describe('propuesta de memoria en el chat', () => {
     const card = screen.getByTestId('memory-candidate')
     expect(within(card).getByText('Rinari quiere recordar')).toBeTruthy()
     expect(within(card).getByText('Entorno')).toBeTruthy()
-    expect(within(card).getByText('Por qué: Lo dijiste al configurar el proyecto')).toBeTruthy()
+    // The Engine's English reason is said in the app language.
+    expect(within(card).getByText('Lo aprendió después de leer contenido de fuera de este equipo: revísalo antes de aprobar.')).toBeTruthy()
     await userEvent.click(within(card).getByRole('button', { name: 'Aprobar' }))
     await waitFor(() => expect(callsTo('memory_candidate_resolve')).toEqual([{ id: 'c1', decision: 'allow_once' }]))
     expect((await screen.findByRole('status')).textContent).toBe('Aprobado: Rinari lo recordará.')

@@ -2357,6 +2357,8 @@ export const es = {
   'memory.candidate.dismiss': 'Descartar',
   'memory.candidate.saveApprove': 'Guardar y aprobar',
   'memory.candidate.reason': 'Por qué: {reason}',
+  'memory.reason.notOwner': 'Lo aprendió en un turno que no iniciaste tú: revísalo antes de aprobar.',
+  'memory.reason.external': 'Lo aprendió después de leer contenido de fuera de este equipo: revísalo antes de aprobar.',
   'memory.candidate.sensitive': 'Puede ser información sensible: solo se guarda si la apruebas.',
   'memory.candidate.approved': 'Aprobado: Rinari lo recordará.',
   'memory.candidate.denied': 'Descartado: no se guardó.',

@@ -5,7 +5,7 @@ import { useI18n } from '../../i18n'
 import { inputClass } from '../../lib/ui'
 import { Button } from '../../components/ui/button'
 import { resolveCandidate } from './memoryStore'
-import { kindLabel, memoryErrorMessage } from './memoryCopy'
+import { candidateReason, kindLabel, memoryErrorMessage } from './memoryCopy'
 import type { CandidateDecision, CandidateStatus } from './types'
 
 export interface CandidateView {
@@ -91,7 +91,7 @@ export function MemoryCandidateCard({ candidate, status, variant = 'chat' }: {
         <p className="mt-1.5 whitespace-pre-wrap text-[var(--text)] [overflow-wrap:anywhere]">{text.trim() || candidate.text}</p>
       )}
 
-      {candidate.reason && !editing && <p className="mt-1 text-[12px] text-[var(--text-subtle)]">{t('memory.candidate.reason', { reason: candidate.reason })}</p>}
+      {candidateReason(candidate.reason, t) && !editing && <p className="mt-1 text-[12px] text-[var(--text-subtle)]">{candidateReason(candidate.reason, t)}</p>}
       {candidate.sensitive && pending && (
         <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-[var(--warning)]">
           <ShieldAlert size={13} aria-hidden="true" />{t('memory.candidate.sensitive')}

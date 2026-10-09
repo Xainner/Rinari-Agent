@@ -20,3 +20,15 @@ export function memoryErrorMessage(error: unknown, t: Translate): string {
   }
   return String(error)
 }
+
+/**
+ * Por qué la propuesta espera aprobación, en el idioma de la app. El Engine
+ * manda una frase en inglés: se traduce lo que aporta algo y se omite lo
+ * obvio (toda propuesta espera aprobación; lo sensible ya tiene su aviso).
+ */
+export function candidateReason(reason: string | null | undefined, t: Translate): string | null {
+  const text = (reason ?? '').toLowerCase()
+  if (text.includes('did not start')) return t('memory.reason.notOwner')
+  if (text.includes('outside this machine') || text.includes('external')) return t('memory.reason.external')
+  return null
+}

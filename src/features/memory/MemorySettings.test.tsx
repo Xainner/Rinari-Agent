@@ -121,7 +121,7 @@ it('busca en el Engine y explica una búsqueda sin resultados', async () => {
   await screen.findByText('Responde en español')
   await userEvent.type(screen.getByLabelText('Buscar en la memoria'), 'gatos')
   expect(await screen.findByText('Nada coincide con la búsqueda.')).toBeTruthy()
-  expect(callsTo('memory_search').at(-1)).toEqual({ query: 'gatos' })
+  expect(callsTo('memory_search').at(-1)).toEqual({ query: 'gatos', scope: 'all' })
 })
 
 it('sin recuerdos ni propuestas muestra el estado vacío', async () => {

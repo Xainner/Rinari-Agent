@@ -54,6 +54,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [document-sheet](document-sheet/README.md) | Un XLSX del workspace se ve como cuadrícula, con fórmulas pendientes honestas |
 | [document-preview](document-preview/README.md) | Un PPTX del workspace se ve renderizado, con su contenido, su verificación y sus revisiones |
 | [file-media](file-media/README.md) | Video, imagen grande, PDF y audio del workspace; tonos de aviso |
+| [memory-proposal](memory-proposal/scenario.cjs) | Memoria visible: la propuesta llega como tarjeta al chat, se aprueba, aparece en Ajustes > Memoria; en modo automático se guarda sola y «Deshacer» la olvida |
 | [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |
 | [provider-limit](provider-limit/README.md) | Cuota agotada: la razón real y «Revisar uso y límites» del proveedor que falló |

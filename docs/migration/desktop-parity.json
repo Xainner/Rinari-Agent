@@ -417,6 +417,85 @@
       ]
     },
     {
+      "command": "memory_candidate_resolve",
+      "kind": "engine",
+      "method": "memory.candidate.resolve",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_candidates_list",
+      "kind": "engine",
+      "method": "memory.candidates.list",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_forget",
+      "kind": "engine",
+      "method": "memory.forget",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "memory_get",
+      "kind": "engine",
+      "method": "memory.get",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_list",
+      "kind": "engine",
+      "method": "memory.list",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_search",
+      "kind": "engine",
+      "method": "memory.search",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_settings_get",
+      "kind": "engine",
+      "method": "memory.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_settings_set",
+      "kind": "engine",
+      "method": "memory.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_update",
+      "kind": "engine",
+      "method": "memory.update",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
       "command": "model_add",
       "kind": "engine",
       "method": "model.add",
@@ -1598,10 +1677,10 @@
     }
   ],
   "summary": {
-    "commands": 190,
-    "engine_backed": 184,
+    "commands": 199,
+    "engine_backed": 193,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 61
+    "without_callers": 62
   }
 }

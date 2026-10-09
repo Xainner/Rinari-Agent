@@ -50,6 +50,15 @@ export type DesktopCommand =
   | "mcp_remove"
   | "mcp_set_enabled"
   | "mcp_test"
+  | "memory_candidate_resolve"
+  | "memory_candidates_list"
+  | "memory_forget"
+  | "memory_get"
+  | "memory_list"
+  | "memory_search"
+  | "memory_settings_get"
+  | "memory_settings_set"
+  | "memory_update"
   | "model_add"
   | "model_alias"
   | "model_discover"
@@ -242,6 +251,15 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "memory_candidate_resolve",
+  "memory_candidates_list",
+  "memory_forget",
+  "memory_get",
+  "memory_list",
+  "memory_search",
+  "memory_settings_get",
+  "memory_settings_set",
+  "memory_update",
   "model_add",
   "model_alias",
   "model_discover",
@@ -449,6 +467,15 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "memory_candidate_resolve",
+  "memory_candidates_list",
+  "memory_forget",
+  "memory_get",
+  "memory_list",
+  "memory_search",
+  "memory_settings_get",
+  "memory_settings_set",
+  "memory_update",
   "model_add",
   "model_alias",
   "model_discover",

@@ -21,6 +21,8 @@ describe('a loop stop', () => {
     expect(stopText({ code: 'loop', message: 'Stopped: persistent loop detected (repeated-rewrites: a.css)', loop: 'repeated-rewrites' }, t))
       .toBe('Detenido: deshacía y rehacía el mismo cambio en un archivo.')
     expect(stopText({ code: 'loop', message: 'x', loop: 'new-kind' }, t)).toBe('Detenido: se repetía sin avanzar.')
+    expect(stopText({ code: 'stagnation', message: 'Stopped by the automatic governor', loop: 'stagnation' }, t))
+      .toBe('Detenido: dejó de avanzar después de varios intentos de recuperarse.')
   })
 
   it('other stops keep the Engine text, or the fallback', () => {

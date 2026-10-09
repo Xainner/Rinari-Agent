@@ -2263,6 +2263,7 @@ export const en: Record<I18nKey, string> = {
   'turn.loop.same-error': 'Stopped: it kept hitting the same error.',
   'turn.loop.repeated-denied-approval': 'Stopped: it kept asking for a permission already denied.',
   'turn.loop.duplicated-subagent-work': 'Stopped: it kept repeating work a subagent already did.',
+  'turn.loop.stagnation': 'Stopped: it made no progress after several attempts to recover.',
   'turn.loop.other': 'Stopped: it kept repeating itself without progress.',
   'turn.budget.model-calls': 'Paused at the safety limit of {n} model calls in one turn.',
   'turn.budget.tool-calls': 'Paused at the safety limit of {n} actions in one turn.',

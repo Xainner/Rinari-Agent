@@ -127,7 +127,7 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
 export default memo(TurnMeta)
 
 const BUDGET_KINDS = ['model-calls', 'tool-calls', 'wall-time']
-const LOOP_KINDS = ['same-tool-args', 'two-action-oscillation', 'repeated-rewrites', 'same-error', 'repeated-denied-approval', 'duplicated-subagent-work']
+const LOOP_KINDS = ['same-tool-args', 'two-action-oscillation', 'repeated-rewrites', 'same-error', 'repeated-denied-approval', 'duplicated-subagent-work', 'stagnation']
 
 /** Un corte por bucle se dice en el idioma de la app; el texto técnico del Engine queda en el título. */
 export function stopText(reason: TurnStopReason, t: (key: I18nKey, vars?: Record<string, string | number>) => string): string {

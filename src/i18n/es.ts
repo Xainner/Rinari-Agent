@@ -2280,6 +2280,7 @@ export const es = {
   'turn.loop.same-error': 'Detenido: repetía el mismo error.',
   'turn.loop.repeated-denied-approval': 'Detenido: volvía a pedir un permiso ya denegado.',
   'turn.loop.duplicated-subagent-work': 'Detenido: repetía trabajo que ya hizo un subagente.',
+  'turn.loop.stagnation': 'Detenido: dejó de avanzar después de varios intentos de recuperarse.',
   'turn.loop.other': 'Detenido: se repetía sin avanzar.',
   'turn.budget.model-calls': 'Se pausó al llegar al límite de seguridad de {n} llamadas al modelo en un turno.',
   'turn.budget.tool-calls': 'Se pausó al llegar al límite de seguridad de {n} acciones en un turno.',

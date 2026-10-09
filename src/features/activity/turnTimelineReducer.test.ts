@@ -67,6 +67,15 @@ describe('narrative activity timeline', () => {
     expect(state.timelines.t1.stopReason).toMatchObject({ code: 'emergency_limit', budget: 'model-calls', limit: 500, recoverable: true })
   })
 
+  it('a model that cannot see images leaves a notice instead of a silent drop', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 's1' }))
+    state = turnTimelineReducer(state, event('vision.failed', {
+      turn_id: 't1', session_id: 's1', vision_id: 'v1', activity_seq: 1, route: 'conversation', fallback: 'without_images',
+      error: "This model can't see images; continued without them.",
+    }))
+    expect(state.timelines.t1.items[0]).toMatchObject({ type: 'vision', fallback: 'without_images', status: 'failed' })
+  })
+
   it('keeps separate tool calls ordered and settles the turn', () => {
     let state = createInitialTimelineState()
     state = turnTimelineReducer(state, event('turn.started', { turn_id: 't1', session_id: 's1' }))

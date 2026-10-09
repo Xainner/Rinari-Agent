@@ -93,6 +93,9 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   const peerNavigation = usePeerNavigation()
   const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
+  if (item.type === 'vision' && item.fallback === 'without_images') {
+    return <p data-testid="vision-without-images" className="flex items-center gap-2 py-1 text-[12px] text-amber-300"><TriangleAlert size={12} aria-hidden="true" />{t('vision.withoutImages')}</p>
+  }
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
     <summary className="cursor-pointer"><ActivityText active={active && visualPending(item)}>{!active && visualPending(item) ? t('activity.interrupted') : item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</ActivityText></summary>

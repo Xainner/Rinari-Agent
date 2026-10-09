@@ -42,3 +42,10 @@ describe('a safety-limit stop', () => {
       .toBe('Se pausó al llegar a un límite de seguridad del turno.')
   })
 })
+
+describe('a turn closed because the Engine exited', () => {
+  it('is its own cause, said in the app language', () => {
+    expect(turnFailure({ reason: 'engine_exited', recoverable: true, reconciled: true })).toMatchObject({ kind: 'engine' })
+    expect(translate('es', 'failure.engine')).toContain('Rinari se cerró mientras este turno trabajaba')
+  })
+})

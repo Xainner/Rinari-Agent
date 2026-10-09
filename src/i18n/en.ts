@@ -996,6 +996,8 @@ export const en: Record<I18nKey, string> = {
   'failure.context': 'The request exceeds the context {model} accepts.',
   'failure.request': '{provider} refused the request: it is not compatible with {model} or its endpoint.',
   'failure.upstream': 'The {provider} service failed or did not answer in time.',
+  'failure.engine': 'Rinari closed while this turn was working. What it did so far is kept; you can ask it to continue.',
+  'vision.withoutImages': "This model can't see images; it continued without them. Use a vision model to have them seen.",
   'failure.stream': 'The {provider} response ended without confirming completion.',
   'failure.retryAfter': 'It asks to wait {seconds} s.',
   'failure.action.usage': 'Check usage and limits',

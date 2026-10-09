@@ -55,7 +55,7 @@ describe('save', () => {
     const result = await files.save({ suggestedName: 'rinari-memory.json', contents: '{}', title: 'Exportar' })
     expect(result).toEqual({ saved: true, name: 'memoria.json' })
     expect(written).toEqual([['/backup/memoria.json', '{}']])
-    const [, options] = io.showSaveDialog.mock.calls[0] as unknown as [unknown, { defaultPath: string; filters: unknown }]
+    const [, options] = vi.mocked(io.showSaveDialog).mock.calls[0] as unknown as [unknown, { defaultPath: string; filters: unknown }]
     expect(options.defaultPath).toMatch(/Documents[\\/]rinari-memory\.json$/)
     expect(options.filters).toEqual([{ name: 'JSON', extensions: ['json'] }])
   })

@@ -43,7 +43,6 @@ export default function ProviderDetails({ provider, onChanged, initialTab }: { p
         </div>
         : provider.auth_method === 'oauth'
         ? <ProviderAuthPanel providerAlias={provider.alias} onConnected={() => void registerProviderModels(provider.alias).then(onChanged)} />
-
         : <p className="text-sm text-[var(--text-muted)]">{provider.has_credential ? t('providers.credentialOk') : provider.auth_method === 'none' ? t('providers.authNone') : t('providers.noCredential')}</p>)}
       {tab === 'models' && <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />}
       {tab === 'usage' && <ProviderUsagePanel providerAlias={provider.alias} />}

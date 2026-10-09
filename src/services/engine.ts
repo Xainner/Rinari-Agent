@@ -267,6 +267,11 @@ export interface ExternalRuntimeStatus {
   install_command?: string;
   /** Comando de inicio de sesión listo para pegar en esta máquina. */
   login_command?: string;
+  /**
+   * Credencial que una llamada eligió en vez de la suscripción. Mientras
+   * exista, el Engine rechaza cada turno; «Comprobar de nuevo» la levanta.
+   */
+  blocked_source?: string | null;
   auth?: {
     logged_in: boolean;
     auth_method: string | null;

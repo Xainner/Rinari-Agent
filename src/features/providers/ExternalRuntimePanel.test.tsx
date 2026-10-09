@@ -25,6 +25,9 @@ const connected = {
   version: '2.1.286 (Claude Code)',
   supported: true,
   state: 'connected',
+  // The Engine builds both for this machine; the UI never guesses one.
+  login_command: 'claude auth login --claudeai',
+  install_command: 'irm https://claude.ai/install.ps1 | iex',
   auth: {
     logged_in: true,
     auth_method: 'claude.ai',
@@ -77,7 +80,7 @@ it('CLAUDE-UI-03: a missing CLI shows the install command, not a credential fiel
     discovered_via: null,
     sanitized_env: [],
     state: 'missing_cli',
-    hint: 'Run: irm https://claude.ai/install.ps1 | iex',
+    install_command: 'irm https://claude.ai/install.ps1 | iex',
   })
   expect((await screen.findByRole('status')).textContent).toContain('not installed')
   expect(screen.getByText(/install\.ps1/)).toBeTruthy()
@@ -215,10 +218,26 @@ it('CLAUDE-UI-15: not installed, the guide gives the install command to copy, no
   await waitFor(() => expect(bridge.copiedTexts).toEqual(['irm https://claude.ai/install.ps1 | iex']))
 })
 
-it('CLAUDE-UI-16: an older Engine without the command still gets a working one', async () => {
-  mount({ ...connected, state: 'logged_out', auth: { ...connected.auth, logged_in: false } })
+it('CLAUDE-UI-16: without a command from the Engine, the guide shows none rather than a guess', async () => {
+  // A guessed `claude ...` fails on a machine where the CLI is not on PATH,
+  // which is exactly the case the Engine's full-path command exists for.
+  const { login_command: _login, install_command: _install, ...older } = connected
+  mount({ ...older, state: 'logged_out', auth: { ...connected.auth, logged_in: false } })
   const guide = await screen.findByTestId('claude-connect-guide')
-  expect(within(guide).getByText('claude auth login --claudeai')).toBeTruthy()
+  expect(within(guide).queryByText(/claude auth login/)).toBeNull()
+})
+
+it('CLAUDE-UI-18: checking again on a saved provider runs the probe, which lifts a billing block', async () => {
+  // The Engine blocks the provider after a run picked a non-subscription
+  // credential; only provider.runtime.probe lifts it. Diagnostics alone would
+  // show "Connected" while every turn kept being refused.
+  const bridge = mount(connected, 'claude-sub')
+  await screen.findByRole('status')
+  fireEvent.click(screen.getByRole('button', { name: /check again/i }))
+  await waitFor(() => {
+    expect(bridge.calls.filter((call) => call.name === 'provider_runtime_probe')).toHaveLength(1)
+    expect(bridge.calls.filter((call) => call.name === 'provider_diagnostics_get')).toHaveLength(2)
+  })
 })
 
 it('CLAUDE-UI-17: once connected, there is no guide', async () => {

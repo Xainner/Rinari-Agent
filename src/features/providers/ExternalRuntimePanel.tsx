@@ -31,28 +31,41 @@ export default function ExternalRuntimePanel({
   // función nueva en cada render relanzaría `claude` en bucle.
   const onStateChangeRef = useRef(onStateChange)
   onStateChangeRef.current = onStateChange
+  // Solo cuenta la última consulta: un sondeo lento no pisa uno posterior.
+  const latest = useRef(0)
 
-  const check = useCallback(async () => {
+  /**
+   * `manual` es el usuario pidiendo comprobar de nuevo. Eso siempre pasa por
+   * el sondeo, que es lo que levanta el bloqueo que el Engine pone cuando una
+   * llamada eligió una credencial que no es la suscripción; los diagnostics
+   * solo lo leen. La carga inicial no lo levanta.
+   */
+  const check = useCallback(async (manual: boolean) => {
+    const id = ++latest.current
     setBusy(true)
     setError('')
     try {
-      const next = providerRef
-        ? ((await engineApi.providerDiagnostics(providerRef)) as { runtime?: ExternalRuntimeStatus })
-            .runtime ?? null
-        : (await engineApi.providerRuntimeProbe(runtime)).runtime
+      let next: ExternalRuntimeStatus | null = null
+      if (manual || !providerRef) next = (await engineApi.providerRuntimeProbe(runtime)).runtime
+      if (providerRef) {
+        next = ((await engineApi.providerDiagnostics(providerRef)) as { runtime?: ExternalRuntimeStatus })
+          .runtime ?? null
+      }
+      if (id !== latest.current) return
       setStatus(next)
       onStateChangeRef.current?.(next)
     } catch (err) {
+      if (id !== latest.current) return
       setError(commandMessage(err))
       setStatus(null)
       onStateChangeRef.current?.(null)
     } finally {
-      setBusy(false)
+      if (id === latest.current) setBusy(false)
     }
   }, [providerRef, runtime])
 
   useEffect(() => {
-    void check()
+    void check(false)
   }, [check])
 
   const state = status?.state
@@ -147,9 +160,9 @@ export default function ExternalRuntimePanel({
         </>
       )}
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} className={button} onClick={() => void check()}>
+        <button type="button" disabled={busy} aria-busy={busy} className={button} onClick={() => void check(true)}>
           <span className="flex items-center gap-2">
-            <RefreshCw size={14} className={busy ? 'motion-safe:animate-spin' : undefined} />
+            <RefreshCw size={14} aria-hidden="true" className={busy ? 'motion-safe:animate-spin' : undefined} />
             {t('providers.claudeCheckAgain')}
           </span>
         </button>
@@ -157,9 +170,6 @@ export default function ExternalRuntimePanel({
     </div>
   )
 }
-
-/** Sin comando del Engine (versiones anteriores), el que sirve con `claude` en el PATH. */
-const FALLBACK_LOGIN = 'claude auth login --claudeai'
 
 /**
  * Pasos para conectar la cuenta según el estado. Los comandos los arma el
@@ -170,8 +180,8 @@ const FALLBACK_LOGIN = 'claude auth login --claudeai'
  */
 function ConnectGuide({ status }: { status: ExternalRuntimeStatus }) {
   const { t } = useI18n()
-  const login = status.login_command || FALLBACK_LOGIN
-  const powershell = login.startsWith('& ')
+  const login = status.login_command
+  const powershell = Boolean(login?.startsWith('& '))
   const step = 'pl-1'
 
   return (
@@ -185,9 +195,7 @@ function ConnectGuide({ status }: { status: ExternalRuntimeStatus }) {
         <ol className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-muted)]">
           <li className={step}>
             {t('providers.claudeGuide.install1')}
-            {(status.install_command || status.hint) && (
-              <CommandBox command={status.install_command || (status.hint ?? '').replace(/^Run:\s*/, '')} />
-            )}
+            {status.install_command && <CommandBox command={status.install_command} />}
           </li>
           <li className={step}>{t('providers.claudeGuide.install2')}</li>
           <li className={step}>{t('providers.claudeGuide.install3')}</li>
@@ -198,7 +206,7 @@ function ConnectGuide({ status }: { status: ExternalRuntimeStatus }) {
           <li className={step}>{t('providers.claudeGuide.login1')}</li>
           <li className={step}>
             {t('providers.claudeGuide.login2')}
-            <CommandBox command={login} />
+            {login && <CommandBox command={login} />}
           </li>
           <li className={step}>{t('providers.claudeGuide.login3')}</li>
           <li className={step}>{t('providers.claudeGuide.login4')}</li>
@@ -210,7 +218,7 @@ function ConnectGuide({ status }: { status: ExternalRuntimeStatus }) {
           <ol className="list-decimal space-y-2 pl-5 text-sm text-[var(--text-muted)]">
             <li className={step}>
               {t('providers.claudeGuide.wrong1')}
-              <CommandBox command={login} />
+              {login && <CommandBox command={login} />}
             </li>
             <li className={step}>{t('providers.claudeGuide.wrong2')}</li>
           </ol>
@@ -229,24 +237,29 @@ function ConnectGuide({ status }: { status: ExternalRuntimeStatus }) {
 
 function CommandBox({ command }: { command: string }) {
   const { t } = useI18n()
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'idle' | 'copied' | 'failed'>('idle')
   return (
     <div className="mt-1.5 flex items-start gap-2">
-      <pre className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-[var(--bg-subtle)] p-2.5 text-xs text-[var(--text)] select-all">
+      {/* Enfocable: el comando puede ser más ancho que la tarjeta y se desplaza con teclado. */}
+      <pre tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-[var(--bg-subtle)] p-2.5 text-xs text-[var(--text)] select-all">
         {command}
       </pre>
       <button
         type="button"
         className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-2 text-xs hover:bg-[var(--bg-hover)]"
         onClick={async () => {
-          if (await copyText(command)) {
-            setCopied(true)
-            window.setTimeout(() => setCopied(false), 2000)
-          }
+          setCopied((await copyText(command)) ? 'copied' : 'failed')
+          window.setTimeout(() => setCopied('idle'), 2000)
         }}
       >
         <Copy size={13} aria-hidden="true" />
-        {copied ? t('providers.claudeGuide.copied') : t('providers.claudeGuide.copy')}
+        <span aria-live="polite">
+          {copied === 'copied'
+            ? t('providers.claudeGuide.copied')
+            : copied === 'failed'
+              ? t('providers.claudeGuide.copyFailed')
+              : t('providers.claudeGuide.copy')}
+        </span>
       </button>
     </div>
   )

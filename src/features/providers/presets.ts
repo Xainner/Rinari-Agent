@@ -141,6 +141,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     provider_type: 'custom',
     endpoint: 'process://claude',
     auth: 'external-cli',
+    authMethods: ['external-cli'],
     brand: 'anthropic',
     experimental: true,
     runtime: 'claude-cli',

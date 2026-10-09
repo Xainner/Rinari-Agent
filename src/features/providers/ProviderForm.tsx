@@ -110,7 +110,7 @@ export default function ProviderForm({
         />
       </div>
 
-      {(form.preset.id === 'custom' || isEdit) && (
+      {(form.preset.id === 'custom' || isEdit) && form.auth !== 'external-cli' && (
         <div>
           <label className={labelClass} htmlFor="provider-endpoint">
             {t('providers.endpoint')}

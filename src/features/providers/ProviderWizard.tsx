@@ -427,6 +427,12 @@ export default function ProviderWizard({
               <ExternalRuntimePanel
                 runtime={form.preset.runtime ?? 'claude-cli'}
                 providerRef={createdAlias ?? undefined}
+                // Tras instalar o iniciar sesión y comprobar de nuevo, la
+                // prueba del provider se repite sola en vez de dejar el error
+                // anterior junto a un «Conectado».
+                onStateChange={(next) => {
+                  if (next?.state === 'connected' && health && !health.connected && !working) void retryTest()
+                }}
               />
             )}
             <p className="text-sm text-[var(--text-muted)]">

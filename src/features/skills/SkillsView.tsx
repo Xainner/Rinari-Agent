@@ -10,6 +10,7 @@ import SkillDetailDialog from './SkillDetailDialog'
 import InstallSkillDialog from './InstallSkillDialog'
 import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands'
 import PendingSkills from './PendingSkills'
+import SkillDuplicates from './SkillDuplicates'
 import { useUIStore } from '../../stores/ui'
 
 /**
@@ -121,6 +122,8 @@ export default function SkillsView() {
       )}
 
       <PendingSkills proposals={pending} onChanged={() => void reload()} />
+
+      <SkillDuplicates />
 
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label={t('skills.filter')} className="flex flex-wrap gap-1">

@@ -44,6 +44,10 @@ export default function SkillLearnedNotifier() {
         tone: active ? 'success' : 'warning',
         target: active ? { kind: 'skills', skill: learned.name } : { kind: 'skills' },
       })
+      // The conversation shows a card with the same actions (SkillProposalCard);
+      // a toast on top of it was the same news twice. Engines without the card
+      // (no `skill_manager_v1`) still get the toast.
+      if (learned.card) return
       if (!active) {
         toast(title, {
           description: body,

@@ -8,7 +8,7 @@
 //   (`127.0.0.1:9`) y los turnos que lance fallan a propósito.
 // - `fixtures(data)`: archivos que el escenario necesita en su carpeta.
 import { createServer } from 'node:http'
-import { writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 
@@ -53,6 +53,34 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  dictation: {
+    title: 'Dictado: micrófono del composer con whisper.cpp local (real con RINARI_E2E_WHISPER_DIR)',
+    phases: ['exercise'],
+    // The model goes where the Engine looks: <RINARI_HOME>/models/speech.
+    fixtures: (data) => {
+      const dir = process.env.RINARI_E2E_WHISPER_DIR
+      if (!dir || !existsSync(join(dir, 'ggml-small-q5_1.bin'))) return
+      mkdirSync(join(data, 'engine', 'models', 'speech'), { recursive: true })
+      copyFileSync(join(dir, 'ggml-small-q5_1.bin'), join(data, 'engine', 'models', 'speech', 'ggml-small-q5_1.bin'))
+    },
+    model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'DICTADO RECIBIDO' }))),
+  },
+  'skill-manager': {
+    title: 'Gestor de skills: lección desde el turno, freno de duplicados con motivo y fusión preparada',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Notas de versión' })),
+      main: [
+        { tool: 'fs.list', args: { path: '.' }, say: 'Miro la carpeta.' },
+        { text: 'LISTO UNO' },
+        { tool: 'skills.propose', args: { name: 'release-notes', skill_md: "---\nname: release-notes\ndescription: Write the release notes from the changelog: group by feature, fix and breaking change, link each PR.\nversion: 1.0.0\nrisk: low\nrequired_tools:\n  - fs.read\n---\n\n# Procedure\n1. Read CHANGELOG.md since the last tag.\n2. Group entries by feature, fix and breaking change.\n3. Link each PR number.\n\n## Lecciones\n- Breaking changes go first.\n" }, say: 'Guardo la lección.' },
+        { text: 'LECCION GUARDADA' },
+        { tool: 'skills.propose', args: { name: 'release-notes-draft', skill_md: "---\nname: release-notes-draft\ndescription: Draft the release notes from the changelog: group by feature, fix and breaking change with PR links.\nversion: 1.0.0\nrisk: low\nrequired_tools:\n  - fs.read\n---\n\n# Procedure\n1. Read CHANGELOG.md since the last tag.\n2. Group by feature, fix and breaking change.\n3. Add the PR links.\n" }, say: 'Propongo la skill.' },
+        { tool: 'skills.propose', args: { name: 'release-notes-draft', skill_md: "---\nname: release-notes-draft\ndescription: Draft the release notes from the changelog: group by feature, fix and breaking change with PR links.\nversion: 1.0.0\nrisk: low\nrequired_tools:\n  - fs.read\n---\n\n# Procedure\n1. Read CHANGELOG.md since the last tag.\n2. Group by feature, fix and breaking change.\n3. Add the PR links.\n", distinct_from: { 'release-notes': 'only drafts for review, never publishes the final notes' } }, say: 'Es otra tarea.' },
+        { text: 'LISTO TRES' },
+      ],
+    }, laneOf),
+  },
   'memory-proposal': {
     title: 'Memoria visible: propuesta en el chat, Ajustes > Memoria y modo automático con Deshacer',
     phases: ['exercise'],

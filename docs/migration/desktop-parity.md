@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **203**
-- Respaldados por Engine: **197**
+- Comandos: **211**
+- Respaldados por Engine: **205**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -168,13 +168,15 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `session_restore` | engine | `session.restore` | `src/services/engine.ts` |
 | `session_timeline` | engine | `session.timeline` | **ninguno** |
 | `skill_disable` | engine | `skill.disable` | **ninguno** |
+| `skill_duplicates_dismiss` | engine | `skill.duplicates.dismiss` | `src/services/engine.ts` |
+| `skill_duplicates_list` | engine | `skill.duplicates.list` | `src/services/engine.ts` |
 | `skill_enable` | engine | `skill.enable` | **ninguno** |
 | `skill_get` | engine | `skill.get` | `src/services/engine.ts` |
 | `skill_import_scan` | engine | `skill.import.scan` | `src/services/engine.ts` |
 | `skill_job_get` | engine | `skill.job.get` | **ninguno** |
 | `skill_job_start` | engine | `skill.job.start` | **ninguno** |
 | `skill_list` | engine | `skill.list` | `src/services/engine.ts` |
-| `skill_pending_approve` | engine | `skill.pending.approve` | `src/services/engine.ts` |
+| `skill_pending_approve` | engine | `skill.pending.approve` | **ninguno** |
 | `skill_pending_list` | engine | `skill.pending.list` | `src/services/engine.ts` |
 | `skill_pending_reject` | engine | `skill.pending.reject` | `src/services/engine.ts` |
 | `skill_read` | engine | `skill.read` | `src/services/engine.ts` |
@@ -190,6 +192,12 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `soul_list` | engine | `soul.list` | `src/services/engine.ts` |
 | `soul_remove` | engine | `soul.remove` | `src/services/engine.ts` |
 | `soul_update` | engine | `soul.update` | `src/services/engine.ts` |
+| `speech_model_cancel` | engine | `speech.model.cancel` | `src/services/engine.ts` |
+| `speech_model_download` | engine | `speech.model.download` | **ninguno** |
+| `speech_model_remove` | engine | `speech.model.remove` | **ninguno** |
+| `speech_settings_set` | engine | `speech.settings.set` | `src/services/engine.ts` |
+| `speech_status` | engine | `speech.status` | `src/services/engine.ts` |
+| `speech_transcribe` | engine | `speech.transcribe` | **ninguno** |
 | `task_get` | engine | `task.get` | `src/services/engine.ts` |
 | `task_tree` | engine | `task.tree` | **ninguno** |
 | `tool_list` | engine | `tool.list` | `src/services/engine.ts` |

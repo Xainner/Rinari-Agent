@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent } from 'react'
+import DictationButton from '../../features/dictation/DictationButton'
+import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { ArrowUp, Brain, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
@@ -214,6 +216,8 @@ export default function Composer({
     return () => observer.disconnect()
   }, [placePill])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // The latest send, for dictation's optional «send when done» (it runs after an await).
+  const handleSendRef = useRef<() => Promise<void>>(async () => {})
   const preparationGenerationRef = useRef(new Map<string, number>())
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachmentOpen, setAttachmentOpen] = useState(false)
@@ -398,6 +402,29 @@ export default function Composer({
     }
   }
 
+  /**
+   * What was dictated goes where the cursor is, with a space on each side
+   * when it touches other words. It is never sent unless the owner turned
+   * on «send when done» in Settings › Dictation.
+   */
+  function insertDictation(spoken: string) {
+    const box = textareaRef.current
+    const current = useComposerStore.getState().getDraft(draftKey).text
+    const start = box && document.activeElement === box ? box.selectionStart : current.length
+    const end = box && document.activeElement === box ? box.selectionEnd : current.length
+    const before = current.slice(0, start)
+    const after = current.slice(end)
+    const lead = before && !/\s$/.test(before) ? ' ' : ''
+    const trail = after && !/^\s/.test(after) ? ' ' : ''
+    setTextFor(draftKey, before + lead + spoken + trail + after)
+    const caret = (before + lead + spoken).length
+    requestAnimationFrame(() => {
+      box?.focus()
+      box?.setSelectionRange(caret, caret)
+    })
+    if (useDictationPrefs.getState().sendOnFinish) void handleSendRef.current()
+  }
+
   async function handleSend() {
     // Capture identity and content before any await: focus or view changes
     // during the request must not redirect the outcome to another draft.
@@ -462,6 +489,8 @@ export default function Composer({
       setIsSubmitting(false)
     }
   }
+
+  handleSendRef.current = handleSend
 
   async function runLocalSlash(plan: Exclude<SlashPlan, { kind: 'send' }>): Promise<boolean> {
     if (plan.kind === 'mode') {
@@ -799,6 +828,7 @@ export default function Composer({
         />
         <div className="composer-toolbar">
           <div className="composer-tools">
+          <DictationButton textareaRef={textareaRef} disabled={isSubmitting} onText={insertDictation} />
           <Popover open={attachmentOpen} onOpenChange={setAttachmentOpen}>
             <PopoverTrigger asChild>
               <button type="button" disabled={isStreaming} aria-label={t('attach.attachFiles')} title={t('attach.addToMessage')} className="flex size-8 cursor-pointer items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:opacity-40">

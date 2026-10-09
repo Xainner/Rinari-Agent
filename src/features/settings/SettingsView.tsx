@@ -21,6 +21,7 @@ import ProfilesView from '../ecosystem/ProfilesView'
 import AdvancedSettings from '../../components/settings/AdvancedSettings'
 import ShortcutsSettings from '../../components/settings/ShortcutsSettings'
 import MemorySettings from '../memory/MemorySettings'
+import DictationSettings from '../dictation/DictationSettings'
 
 /** Vista de ajustes: shell + sección activa. Terminal llega en Fase 10. */
 export default function SettingsView({
@@ -57,6 +58,7 @@ export default function SettingsView({
       {section === 'vision' && <VisionSettings models={models} providers={providers} />}
       {section === 'context' && <ContextSettings models={models} providers={providers} />}
       {section === 'memory' && <MemorySettings />}
+      {section === 'dictation' && <DictationSettings />}
       {section === 'models' && (
         <ModelsView
           providers={providers}

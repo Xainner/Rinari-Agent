@@ -1,4 +1,4 @@
-import { CheckCheck, FileDiff, Play, RotateCcw } from 'lucide-react'
+import { CheckCheck, FileDiff, GraduationCap, Play, RotateCcw } from 'lucide-react'
 import { memo, useMemo, useState } from 'react'
 import { useI18n, type I18nKey } from '../../i18n'
 import type { ChatMessage, TurnStopReason } from '../../types'
@@ -54,6 +54,7 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
   const { retry, dialog } = usePrepareRetry(sessionId, timeline, messages)
   const commands = useOptionalEngineCommands()
   const [continuing, setContinuing] = useState(false)
+  const [saving, setSaving] = useState(false)
   if (!outcome) return null
   // Un límite de seguridad o un bucle cortado no es un fallo: el trabajo sigue
   // donde quedó con un mensaje nuevo, sin volver a escribir la petición.
@@ -68,6 +69,23 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
     }
   }
 
+  // A turn that did work can leave a lesson: Rinari writes 1-3 rules into the
+  // skill that does that job (or memory). The turn's own request goes as the
+  // focus, so a lesson from an older turn is about that turn.
+  // Not on a turn that was itself a slash command (/lesson, /learn, /merge-skills).
+  const fromCommand = (timeline.userMessage || '').trimStart().startsWith('/')
+  const canSaveLesson = actions > 0 && outcome !== 'cancelled' && !fromCommand && Boolean(sessionId && commands)
+  const saveLesson = async () => {
+    if (!sessionId || !commands || saving) return
+    setSaving(true)
+    try {
+      const focus = (timeline.userMessage || '').replace(/\s+/g, ' ').trim().slice(0, 160)
+      await commands.sendTo(sessionId, '/lesson', [], { command: { name: 'lesson', text: focus } })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const unread = receipt?.state === 'unread'
   const { latest: changeset } = presentedChangeSets(timeline)
   const filesChanged = changeset?.files.length ?? null
@@ -78,7 +96,7 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
   const models = useOptionalEngineData()?.models
   const executor = executorId ? models?.find((model) => model.id === executorId)?.alias ?? executorId : null
   const retryable = outcome === 'failed' || outcome === 'stopped' || outcome === 'cancelled'
-  if (!emphasis && !unread && filesChanged === null && !retryable && !timeline.usage) return null
+  if (!emphasis && !unread && filesChanged === null && !retryable && !timeline.usage && !canSaveLesson) return null
 
   const hasPrefix = !durationInHeader || duration !== null
   return (
@@ -111,6 +129,11 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
         {canContinue && (
           <button type="button" className="turn-meta-action" data-testid="turn-continue" disabled={continuing} onClick={() => void continueWork()}>
             <Play size={11} aria-hidden="true" /> {t('turn.continue')}
+          </button>
+        )}
+        {canSaveLesson && (
+          <button type="button" className="turn-meta-action" data-testid="turn-lesson" disabled={saving} title={t('turn.lessonHint')} onClick={() => void saveLesson()}>
+            <GraduationCap size={11} aria-hidden="true" /> {t('turn.lesson')}
           </button>
         )}
         {retryable && sessionId && (

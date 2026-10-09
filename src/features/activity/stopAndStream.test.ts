@@ -49,3 +49,20 @@ describe('a turn closed because the Engine exited', () => {
     expect(translate('es', 'failure.engine')).toContain('Rinari se cerró mientras este turno trabajaba')
   })
 })
+
+describe('notices about the model', () => {
+  it('reach the activity: reasoning ignored and no image support', async () => {
+    const { projectActivity } = await import('./activityPresentation')
+    const timeline = {
+      turnId: 't1', sessionId: 's1', status: 'completed' as const, startedAt: 1, completedAt: 2, userMessage: 'hola',
+      items: [
+        { id: 'system:1', type: 'system' as const, activitySeq: 1, occurredAt: 1, kind: 'reasoning_dropped' as const, label: 'high' },
+        { id: 'vision:v1:1', type: 'vision' as const, activitySeq: 2, occurredAt: 1, status: 'failed' as const, route: 'conversation', fallback: 'without_images', modelId: '', providerName: '', modelName: '', question: '', analysis: '', images: [], cached: false },
+      ],
+    }
+    const projection = projectActivity(timeline)
+    // Outside the collapsible activity: visible after the turn ends.
+    expect(projection.notices.map((item) => item.id)).toEqual(['system:1', 'vision:v1:1'])
+    expect(projection.segments.flatMap((segment) => segment.items)).toEqual([])
+  })
+})

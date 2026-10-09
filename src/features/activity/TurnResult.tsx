@@ -80,9 +80,13 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
  * y límites, la conexión o los modelos del proveedor **que falló** (no del
  * seleccionado ahora). El mensaje del proveedor sigue debajo, tal cual.
  */
+/** Causas que no se arreglan reintentando con el mismo modelo: se ofrece otro. */
+const SWITCHABLE = new Set(['quota', 'rate', 'limit', 'auth', 'access', 'model'])
+
 function FailureCause({ timeline }: { timeline: TurnTimeline }) {
   const { t, lang } = useI18n()
   const openProvider = useUIStore((s) => s.openProvider)
+  const requestModelPicker = useUIStore((s) => s.requestModelPicker)
   const cause = turnFailure(timeline.errorDetails)
   const raw = timeline.error || (lang === 'es' ? 'El turno falló' : 'Turn failed')
   if (!cause) {
@@ -107,6 +111,16 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
       <p className="pl-[22px] text-xs break-words text-[var(--text-muted)]">{raw}</p>
       {(tab || cause.kind === 'context') && (
         <div className="flex flex-wrap items-center gap-2 pl-[22px]">
+          {SWITCHABLE.has(cause.kind) && timeline.sessionId && (
+            <button
+              type="button"
+              data-testid="failure-switch-model"
+              onClick={() => requestModelPicker(timeline.sessionId)}
+              className="rounded-lg border border-[var(--accent)]/40 px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+            >
+              {t('failure.action.switchModel')}
+            </button>
+          )}
           {tab && (
             <button
               type="button"

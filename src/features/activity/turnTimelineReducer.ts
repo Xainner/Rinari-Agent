@@ -433,6 +433,10 @@ function mergeEventItem(
       detail: errorMessage(payload.error),
     }
   }
+  if (event === 'provider.reasoning.dropped') {
+    // El modelo no admite el esfuerzo elegido: el turno siguió sin él.
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'reasoning_dropped', label: text(payload.effort) }
+  }
   if (event === 'turn.preparing' || event.startsWith('governor.')) {
     return {
       id,
@@ -777,6 +781,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('governor.') ||
     event.event.startsWith('agent.') ||
     event.event.startsWith('verification.') ||
-    event.event.startsWith('steer.')
+    event.event.startsWith('steer.') ||
+    event.event === 'provider.reasoning.dropped'
   return relevant ? { type: 'engine/event', event, now } : null
 }

@@ -76,6 +76,12 @@ describe('narrative activity timeline', () => {
     expect(state.timelines.t1.items[0]).toMatchObject({ type: 'vision', fallback: 'without_images', status: 'failed' })
   })
 
+  it('says so when the model ignored the chosen reasoning level', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 's1' }))
+    state = turnTimelineReducer(state, event('provider.reasoning.dropped', { turn_id: 't1', session_id: 's1', activity_seq: 1, model: 'm', effort: 'high', reason: 'no' }))
+    expect(state.timelines.t1.items[0]).toMatchObject({ type: 'system', kind: 'reasoning_dropped', label: 'high' })
+  })
+
   it('keeps separate tool calls ordered and settles the turn', () => {
     let state = createInitialTimelineState()
     state = turnTimelineReducer(state, event('turn.started', { turn_id: 't1', session_id: 's1' }))

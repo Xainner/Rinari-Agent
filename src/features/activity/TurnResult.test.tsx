@@ -253,3 +253,17 @@ it('M04: Normal and Boards use one terminal token indicator even after a short t
  render(<BoardHarness engine={engine}><BoardView/></BoardHarness>)
  verify(screen.getByRole('region',{name:'Backend API'}))
 })
+
+it('a credits or access failure offers to switch the model for that session', async () => {
+  const { useUIStore } = await import('../../stores/ui')
+  const view = terminal('failed', {
+    error: 'no credits',
+    errorDetails: { provider_error_code: 'QUOTA_EXHAUSTED', provider_alias: 'cloud', model: 'big-model' },
+  })
+  await userEvent.click(view.getByTestId('failure-switch-model'))
+  expect(useUIStore.getState().modelPickerRequest).toMatchObject({ sessionId: 'ses_a' })
+  view.unmount()
+
+  const upstream = terminal('failed', { error: '500', errorDetails: { provider_error_code: 'SERVER_ERROR' } })
+  expect(upstream.queryByTestId('failure-switch-model')).toBeNull()
+})

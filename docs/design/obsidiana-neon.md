@@ -64,6 +64,9 @@ No crees una segunda familia de botones, badges o puntos de estado.
 - Los **bucles** (brillo, órbita, borde que fluye) significan «sigue trabajando» y se apagan al terminar.
 - Celebrar solo lo que acaba de pasar: el check de una operación se dibuja si se vio pasar de «en curso» a «completada»; al volver a montarse aparece quieto.
 - Con «Reducir animaciones» (sistema o ajuste) queda el cambio de estado, sin desplazamiento ni bucles. En framer-motion usa `useCalmMotion()` y `instant`/`spring` de `src/lib/motion.ts`.
+- **Sin rebote en lo que cambia de tamaño.** Un indicador que sigue a un elemento (la píldora de unas pestañas, un subrayado) se mide sobre él y solo se desliza cuando cambia la selección; si cambia el ancho del contenedor se recoloca sin animar. Un `spring` de framer-motion con `layoutId` sobre etiquetas que aparecen o se ocultan por tamaño rebota de un lado a otro: ahí usa una transición sin sobrepaso.
+- **Animar cambios, no montajes.** Plegar, desplegar o cerrar un panel se anima cuando el usuario lo cambia, no cada vez que la vista se monta. Para animar una salida sin retener el contenido real (y su navegador nativo), deja un fantasma vacío del mismo tamaño que se pliega.
+- **El foco lo dibuja el anillo global.** No añadas `outline` propio en `:focus-visible` de botones: hay un anillo neutro común y una prueba lo vigila.
 - **Nada de `transform` ni `filter` en contenedores que tengan dentro el navegador nativo** durante su vida: mueven el rectángulo de la `WebContentsView`. Las vistas entran solo con opacidad; el panel lateral puede deslizarse porque `useNativeBrowser` vuelve a medir en `animationend`/`transitionend`.
 
 ## 6. Arte de Rinari
@@ -88,4 +91,6 @@ Codex).
 5. ¿Funciona con teclado, foco visible, etiquetas accesibles y sin depender solo del color?
 6. ¿Lenguaje llano? En la interfaz no se dice «Engine» ni «motor»: se dice Rinari, «esta versión de Rinari» o el núcleo cuando hace falta.
 7. ¿Conserva los ganchos de las pruebas nativas (`tests/ui`)? Clases, `data-*` y `aria-label` que usan los escenarios no se renombran sin actualizar el escenario.
-8. ¿Se ve bien en el recorrido visual? `npm run ui:e2e -- ui-tour` deja capturas de todas las superficies en `release/evidence/ui/ui-tour/`.
+8. Si añade movimiento, ¿las pruebas que miden geometría esperan a que acabe? Antes de medir, espera las animaciones finitas (`document.getAnimations()` sin las infinitas, como en `tests/ui/boards-fit`). Para comprobar que algo no rebota o sí se anima, muestrea cuadro a cuadro con `requestAnimationFrame` (como `dock-pill-resize` y `boards-fold` en `ui-tour`) en lugar de fiarte de una captura.
+9. ¿Rinari aparece una sola vez por contexto? En Boards su cara vive en la cabecera del panel y sigue el turno en curso; dentro del chat del panel no se repite.
+10. ¿Se ve bien en el recorrido visual? `npm run ui:e2e -- ui-tour` deja capturas de todas las superficies en `release/evidence/ui/ui-tour/`.

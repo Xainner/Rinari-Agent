@@ -34,7 +34,6 @@ export function RinariAvatar({ state = 'idle', size = 28, decorative = true, cla
 }) {
   const { t } = useI18n()
   const label = t(rinariStateLabel(state))
-  const busy = state === 'thinking' || state === 'streaming'
   return (
     <span
       className={cn('rinari-avatar', className)}
@@ -46,7 +45,7 @@ export function RinariAvatar({ state = 'idle', size = 28, decorative = true, cla
     >
       <span className="rinari-avatar-face"><img key={EXPRESSION[state]} src={art.expression(EXPRESSION[state])} alt="" draggable={false} /></span>
       {state === 'working' && <span className="rinari-avatar-orbit" />}
-      {busy && size >= 26 && <span className="rinari-avatar-dots"><i /><i /><i /></span>}
+      {state === 'done' && size >= 24 && <span className="rinari-avatar-badge" data-tone="done"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.6 6.3 5 8.6l4.4-5" /></svg></span>}
     </span>
   )
 }

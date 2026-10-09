@@ -999,17 +999,24 @@ select { color-scheme: inherit; }
 select option,
 select optgroup { background-color: var(--bg-elevated); color: var(--text); }
 select option:disabled { color: var(--text-subtle); }
-.pane-dock-tabs { display: flex; align-items: stretch; gap: 1px; min-height: 42px; padding: 0 6px; border-bottom: 1px solid var(--line-1); background: rgb(10 8 18 / 0.6); }
+.pane-dock-tabs { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 8px; border-bottom: 1px solid var(--line-1); background: rgb(10 8 18 / 0.6); }
+.pane-dock-seg { display: flex; min-width: 0; gap: 2px; padding: 3px; border-radius: 999px; border: 1px solid var(--line-1); background: rgb(6 5 11 / 0.7); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03); }
+.pane-dock-ghost { flex: 0 0 auto; min-height: 0; border-left: 1px solid var(--line-1); background: linear-gradient(180deg, #0e0b18, #09070f); animation: dock-fold 0.32s var(--ease-out) forwards; overflow: hidden; }
+.pane-dock-ghost[data-layout='drawer'] { position: absolute; inset: 0 0 0 auto; z-index: 20; animation-name: dock-slide-out; }
+@keyframes dock-fold { from { opacity: 1; } to { width: 0; opacity: 0; } }
+@keyframes dock-slide-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(32px); } }
 /* Cuatro superficies no caben con nombre en un dock estrecho: las inactivas
  * quedan solo con su icono (el nombre sigue en aria-label y en el tooltip). */
 .session-dock { container-type: inline-size; }
 @container (max-width: 440px) { .pane-dock-tab:not(.is-active) .pane-dock-tab-label { display: none; } }
-.pane-dock-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 12.5px; font-weight: 600; color: var(--text-subtle); transition: color var(--dur-fast); }
+.pane-dock-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--text-subtle); white-space: nowrap; transition: color var(--dur-fast); }
 .pane-dock-tab:hover { color: var(--text); }
-.pane-dock-tab.is-active { color: var(--text); }
-.pane-dock-tab.is-active svg { color: var(--violet-300); }
-.pane-dock-underline { position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--violet-500), var(--magenta-400)); box-shadow: 0 0 10px rgb(232 121 249 / 0.6); animation: dock-underline-in var(--dur-base) var(--ease-out); }
-@keyframes dock-underline-in { from { transform: scaleX(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
+.pane-dock-tab.is-active { color: #fff; }
+.pane-dock-tab.is-active svg { color: #fff; }
+.pane-dock-tab:focus-visible { outline: 2px solid var(--violet-300); outline-offset: 1px; }
+.pane-dock-pill { position: absolute; inset: 0; border-radius: 999px; background: linear-gradient(135deg, var(--violet-500), var(--violet-600)); box-shadow: 0 6px 18px -8px rgb(147 88 255 / 0.9), var(--inset-hi); }
+.pane-dock-pill { z-index: 0; }
+.pane-dock-tab > :not(.pane-dock-pill) { position: relative; z-index: 1; }
 .pane-dock-count { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: rgb(147 88 255 / 0.2); color: var(--violet-200); font-family: var(--font-mono); font-size: 10px; }
 .pane-dock-count.is-live { background: rgb(130 244 239 / 0.14); color: var(--cyan-300); }
 .pane-dock-body { animation: rinari-view-in var(--dur-base) var(--ease-out); }
@@ -1184,11 +1191,19 @@ select option:disabled { color: var(--text-subtle); }
 .rinari-avatar[data-state='error'] .rinari-avatar-face { border-color: var(--danger); box-shadow: 0 0 0 3px rgb(255 122 147 / 0.16); }
 .rinari-avatar[data-state='done'] .rinari-avatar-face { border-color: rgb(91 224 165 / 0.7); }
 .rinari-avatar[data-state='offline'] .rinari-avatar-face > img { filter: grayscale(0.6) brightness(0.8); }
-.rinari-avatar-orbit { position: absolute; inset: -3px; border-radius: 50%; background: conic-gradient(from 0deg, var(--violet-500), var(--magenta-400), var(--cyan-300), var(--violet-500)); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); animation: rinari-orbit 2.8s linear infinite; z-index: -1; }
-.rinari-avatar-dots { position: absolute; right: -5px; bottom: -3px; display: flex; gap: 2px; padding: 3px 4px; border-radius: 999px; background: var(--ink-3); border: 1px solid var(--line-3); }
-.rinari-avatar-dots i { width: 3px; height: 3px; border-radius: 50%; background: var(--violet-200); animation: rinari-bounce-dot 1.2s infinite; }
-.rinari-avatar-dots i:nth-child(2) { animation-delay: 0.15s; }
-.rinari-avatar-dots i:nth-child(3) { animation-delay: 0.3s; }
+.rinari-avatar-orbit { position: absolute; inset: -4px; filter: drop-shadow(0 0 6px rgb(147 88 255 / 0.6)); border-radius: 50%; background: conic-gradient(from 0deg, var(--violet-500), var(--magenta-400), var(--cyan-300), var(--violet-500)); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); animation: rinari-orbit 2.8s linear infinite; z-index: -1; }
+.rinari-avatar[data-state='done'] .rinari-avatar-face { box-shadow: 0 0 0 3px rgb(91 224 165 / 0.14); animation: rinari-done-glow 1.4s var(--ease-out) 1 both; }
+@keyframes rinari-done-glow { 0% { box-shadow: 0 0 0 0 rgb(91 224 165 / 0.55); } 60% { box-shadow: 0 0 0 7px rgb(91 224 165 / 0); } 100% { box-shadow: 0 0 0 3px rgb(91 224 165 / 0.14); } }
+.rinari-avatar-badge { position: absolute; right: -3px; bottom: -3px; display: grid; width: 42%; height: 42%; min-width: 12px; min-height: 12px; place-items: center; border-radius: 50%; background: var(--success); border: 2px solid var(--bg-subtle); animation: rinari-check-pop 0.45s 0.15s var(--ease-spring) both; }
+.rinari-avatar-badge svg { width: 72%; height: 72%; fill: none; stroke: #062a1b; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rinari-avatar-badge path { stroke-dasharray: 24; animation: rinari-draw 0.5s 0.3s var(--ease-out) both; }
+/* El texto que llega: cada bloque nuevo entra con un fundido corto y un cursor
+ * marca dónde sigue escribiendo Rinari mientras el turno está vivo. */
+.turn-rail[data-live='true'] .md-body > * { animation: stream-in 0.36s var(--ease-out) both; }
+@keyframes stream-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.turn-rail[data-live='true'] > :last-child .md-body > p:last-child::after,
+.turn-rail[data-live='true'] > :last-child .md-body > :is(ul, ol):last-child > li:last-child::after { content: ''; display: inline-block; width: 0.5em; height: 1.05em; margin-left: 3px; vertical-align: -0.16em; border-radius: 2px; background: linear-gradient(180deg, var(--violet-300), var(--magenta-400)); box-shadow: 0 0 10px rgb(196 181 253 / 0.6); animation: stream-caret 1s ease-in-out infinite; }
+@keyframes stream-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
 /* -- Conversación: turno de Rinari con riel y nodos -------------------------- */
 .turn-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -1293,9 +1308,6 @@ select option:disabled { color: var(--text-subtle); }
 .effort-thumb > i:nth-child(4) { --dx: -20px; --dy: 14px; animation-delay: 0.9s; }
 @keyframes effort-aura { 0%, 100% { box-shadow: 0 0 0 4px rgb(232 121 249 / 0.35), 0 0 16px rgb(232 121 249 / 0.6); } 50% { box-shadow: 0 0 0 8px rgb(232 121 249 / 0.12), 0 0 32px rgb(232 121 249 / 0.9); } }
 @keyframes effort-spark { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); } }
-.effort-level { border-radius: var(--r-sm); border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.5); padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: all var(--dur-fast); }
-.effort-level:hover { color: var(--text); border-color: var(--line-3); }
-.effort-level.is-on { color: #fff; border-color: rgb(196 181 253 / 0.55); background: rgb(147 88 255 / 0.22); }
 
 /* -- Dictado: barras con el nivel real del micrófono -------------------------- */
 .dictation-bars { display: inline-flex; height: 18px; align-items: center; gap: 2px; }

@@ -14,8 +14,7 @@ const description = (level: ReasoningEffort): I18nKey =>
 /**
  * Esfuerzo de razonamiento como deslizador de «más rápido» a «más
  * inteligente». Solo muestra los niveles que el modelo declara; «Predeterminado»
- * siempre está. Arrastrar o usar las flechas cambia el nivel sin cerrar; elegir
- * un nivel por su nombre lo aplica y cierra.
+ * siempre está. Se elige arrastrando, con un clic en la barra o con las flechas.
  */
 export default function EffortPicker({ value, capabilities, disabled, onChange }: {
   value: ReasoningEffort
@@ -92,14 +91,7 @@ export default function EffortPicker({ value, capabilities, disabled, onChange }
             {value === 'ultra' && <><i /><i /><i /><i /></>}
           </span>
         </div>
-        <p className="min-h-[2.6em] text-[12px] leading-snug text-[var(--accent-2)]">{t(description(value))}</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {levels.map((level) => (
-            <button key={level} type="button" aria-pressed={level === value} onClick={() => { setOpen(false); onChange(level) }} className={cn('effort-level', level === value && 'is-on')}>
-              {t(`thinking.${level}` as I18nKey)}
-            </button>
-          ))}
-        </div>
+        <p className="min-h-[2.6em] text-[12px] leading-snug text-[var(--accent-2)]" aria-live="polite">{t(description(value))}</p>
         <p className="mt-3 text-[11px] leading-snug text-[var(--text-subtle)]">{t('thinking.compatibility')}</p>
       </PopoverContent>
     </Popover>

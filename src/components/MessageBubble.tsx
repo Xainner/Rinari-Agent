@@ -117,7 +117,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.pending) {
     return (
       <div role="status" aria-live="polite" className="rinari-working min-h-10">
-        <RinariAvatar state="thinking" size={34} />
+        <RinariAvatar state="thinking" size={38} />
         <div className="flex flex-col">
           <span className="activity-text-shimmer">{t('reasoning.thinking')}</span>
           <span className="mt-1 text-[10.5px] leading-none tabular-nums text-[var(--text-subtle)]">

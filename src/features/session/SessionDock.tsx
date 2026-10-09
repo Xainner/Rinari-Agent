@@ -15,6 +15,8 @@ import { useAgentRunningCount } from '../terminal/agentTab'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
+import { motion } from 'framer-motion'
+import { instant, spring, useCalmMotion } from '../../lib/motion'
 
 export interface SessionDockProps {
   sessionId: string
@@ -62,6 +64,7 @@ export default function SessionDock({
   busy = false,
 }: SessionDockProps) {
   const { t } = useI18n()
+  const calm = useCalmMotion()
   const overlayDepth = useOverlayStore(selectOverlayDepth)
   const files = useFileWorkspace()
   const openFiles = files?.tabs.length ?? 0
@@ -96,7 +99,8 @@ export default function SessionDock({
         if (event.key === 'Escape' && layout === 'drawer') onClose()
       }}
     >
-      <div className="pane-dock-tabs" role="tablist" aria-label={t('dock.label')}>
+      <div className="pane-dock-tabs">
+        <div className="pane-dock-seg" role="tablist" aria-label={t('dock.label')}>
         {surfaces.map((item) => {
           const Icon = icons[item]
           return (
@@ -111,8 +115,8 @@ export default function SessionDock({
               onClick={() => onSurfaceChange(item)}
               className={cn('pane-dock-tab', surface === item && 'is-active')}
             >
-              <Icon size={13} aria-hidden="true" /><span className="pane-dock-tab-label">{labels[item]}</span>
-              {surface === item && <span className="pane-dock-underline" aria-hidden="true" />}
+              <Icon size={14} aria-hidden="true" className="relative" /><span className="pane-dock-tab-label relative">{labels[item]}</span>
+              {surface === item && <motion.span layoutId={`dock-pill-${sessionId}`} className="pane-dock-pill" transition={calm ? instant : spring} aria-hidden="true" />}
               {item === 'agents' && runtime && <AgentsRunning store={runtime} sessionId={sessionId} />}
               {item === 'files' && openFiles > 0 && <span className="pane-dock-count">{openFiles}</span>}
               {item === 'terminal' && agentRunning > 0 && (
@@ -124,6 +128,7 @@ export default function SessionDock({
             </button>
           )
         })}
+        </div>
         <span className="flex-1" />
         <button type="button" aria-label={t('dock.close')} title={t('dock.close')} onClick={onClose} className="pane-header-icon">
           <X size={14} />

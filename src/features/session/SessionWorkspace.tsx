@@ -88,6 +88,20 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   useEffect(() => {
     setLiveWidth(layout.widthPx)
   }, [layout.widthPx])
+
+  // Al cerrarse, un fantasma sin contenido con el ancho que tenía se pliega:
+  // la salida se ve sin retener el panel real ni su navegador nativo.
+  const [leaving, setLeaving] = useState<{ width: number; layout: 'docked' | 'drawer' } | null>(null)
+  const shown = useRef({ visible: layout.visible, width: liveWidth, layout: dockLayout })
+  useEffect(() => {
+    const previous = shown.current
+    shown.current = { visible: layout.visible, width: liveWidth, layout: dockLayout }
+    if (layout.visible) { setLeaving(null); return }
+    if (!previous.visible) return
+    setLeaving({ width: previous.width, layout: previous.layout })
+    const timer = window.setTimeout(() => setLeaving(null), 360)
+    return () => window.clearTimeout(timer)
+  }, [layout.visible, liveWidth, dockLayout])
   const { handleProps } = useDragResize({
     value: liveWidth,
     min: DOCK_MIN_WIDTH,
@@ -184,6 +198,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? dockLayout : 'hidden'}>
         <div className="session-workspace-chat">{children}</div>
+        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.layout} style={{ width: leaving.width }} aria-hidden="true" />}
         {layout.visible && (
           <>
             {dockLayout === 'docked' && <ResizeHandle {...handleProps} label={t('board.resize.workspace')} />}

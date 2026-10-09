@@ -617,7 +617,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       {active && showHeader && <div data-live-activity className="turn-head text-[13px] text-[var(--text-muted)]">
-        <RinariAvatar state={rinariStateForTurn(state.kind)} size={30} />
+        <RinariAvatar state={rinariStateForTurn(state.kind)} size={38} />
         <div className="min-w-0 flex-1">
           <div className="turn-head-name">{t('rinari.name')}</div>
           <ActivityHeader timeline={timeline} now={now} />
@@ -633,7 +633,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
           {segment.steer && <SteerBubble item={segment.steer} />}
           {active ? content : (content || !previous) && <ActivityDisclosure
             stateKey={childInspectionKey(stateKey, 'summary')}
-            header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <span className="turn-head"><RinariAvatar state={rinariStateForTurn(timeline.status)} size={20} /><ActivityHeader timeline={timeline} now={now} /></span>}
+            header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <span className="turn-head"><RinariAvatar state={rinariStateForTurn(timeline.status)} size={30} /><ActivityHeader timeline={timeline} now={now} /></span>}
             inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
           >{content}</ActivityDisclosure>}
         </div></InspectionScope.Provider>

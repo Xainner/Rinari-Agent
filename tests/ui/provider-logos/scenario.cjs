@@ -3,8 +3,9 @@ const assert = require('node:assert/strict')
 process.env.NO_PROXY = process.env.no_proxy = new URL(process.env.RINARI_UI_MODEL).host
 delete process.env.RINARI_LOGOS_TEST_UNSET
 const { ui, delay, evaluate, wait, command, reload, seedBoard, panesFor, click, clickText, input, key, menuShortcut, size, screenshot, report, scenario } = require('../harness.cjs')
-const expected = { openai:'openai', anthropic:'anthropic', openrouter:'openrouter', deepseek:'deepseek', groq:'groq', together:'together', mistral:'mistral', xai:'xai', 'opencode-zen':'opencode', 'opencode-go':'opencode', ollama:'ollama', lmstudio:'lmstudio', custom:'custom', gemini:'gemini', deepinfra:'deepinfra', fireworks:'fireworks', zai:'zai', 'zai-coding':'zai', moonshot:'moonshot', 'kimi-coding':'kimi', minimax:'minimax', 'minimax-coding':'minimax', chatgpt:'openai', 'github-copilot':'github-copilot' }
+const expected = { openai:'openai', anthropic:'anthropic', openrouter:'openrouter', deepseek:'deepseek', groq:'groq', together:'together', mistral:'mistral', xai:'xai', 'opencode-zen':'opencode', 'opencode-go':'opencode', ollama:'ollama', lmstudio:'lmstudio', custom:'custom', gemini:'gemini', deepinfra:'deepinfra', fireworks:'fireworks', zai:'zai', 'zai-coding':'zai', moonshot:'moonshot', 'kimi-coding':'kimi', minimax:'minimax', 'minimax-coding':'minimax', chatgpt:'openai', 'github-copilot':'github-copilot', 'claude-subscription':'anthropic' }
 const logos = '[data-provider-brand]'
+let catalogSize = 0 // Set from the live catalog before any sheet is drawn.
 async function healthy(scope = 'document') {
   await wait(`[...${scope}.querySelectorAll('${logos} img')].every(i=>i.complete && i.naturalWidth>0)`)
   const rows = await evaluate(`[...${scope}.querySelectorAll('${logos}')].map(e=>{const r=e.getBoundingClientRect();return {brand:e.dataset.providerBrand,w:r.width,h:r.height,visible:[...e.querySelectorAll('img,svg')].filter(i=>getComputedStyle(i).display!=='none').length,neutral:!!e.querySelector('[data-provider-fallback]'),sources:[...e.querySelectorAll('img')].map(i=>i.getAttribute('src'))}})`)
@@ -30,16 +31,25 @@ async function sheet(theme) {
       const label=document.createElement('span');label.textContent=button.innerText.split('\\n')[0];label.style.cssText='font:12px sans-serif';row.append(label);grid.append(row);
     }document.body.append(grid);
   })()`)
-  assert.equal(await evaluate(`document.querySelector('#logo-review').children.length`),24)
+  assert.equal(await evaluate(`document.querySelector('#logo-review').children.length`),catalogSize)
   await healthy('document.querySelector("#logo-review")')
   await screenshot(`logos-${theme}-26-14-12`)
   await evaluate(`document.querySelector('#logo-review').remove()`)
 }
 scenario(async () => {
-  const catalog = (await command('provider_catalog_get')).presets.filter(p=>p.enabled)
-  assert.deepEqual(catalog.map(p=>p.id).sort(),Object.keys(expected).sort(),'coverage of the real pinned catalog')
+  // Claude Subscription is opt-in (Settings > Providers): listed, not offered,
+  // until the switch is on; turning it on offers it with the Anthropic logo.
+  const optIn = ['claude-subscription']
+  const offered = async () => (await command('provider_catalog_get')).presets.filter(p=>p.enabled)
+  assert.equal((await command('provider_settings_get')).external_runtimes,false)
+  await command('provider_settings_set',{external_runtimes:true})
+  assert.deepEqual((await offered()).map(p=>p.id).sort(),Object.keys(expected).sort(),'every product, opt-in included')
+  await command('provider_settings_set',{external_runtimes:false})
+  const catalog = await offered()
+  catalogSize = catalog.length
+  assert.deepEqual(catalog.map(p=>p.id).sort(),Object.keys(expected).filter(id=>!optIn.includes(id)).sort(),'coverage of the real pinned catalog')
   ui.win.webContents.reload() // Observe onboarding before the shared ready helper dismisses it.
-  await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===24`)
+  await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===${catalog.length}`)
   const wizard = await healthy('document.querySelector("[role=dialog]")')
   assert.deepEqual(wizard.map(r=>r.brand),catalog.map(p=>expected[p.id]))
   await screenshot('wizard-dark')
@@ -51,7 +61,7 @@ scenario(async () => {
   assert.equal(await evaluate(`document.querySelector('[role="dialog"] [data-provider-brand="groq"]').getBoundingClientRect().width`),26)
   await key('Escape')
   ui.win.webContents.reload()
-  await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===24`)
+  await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===${catalog.length}`)
   await size(900,800); ui.win.webContents.setZoomFactor(1.25); await delay(300)
   await healthy('document.querySelector("[role=dialog]")')
   await screenshot('wizard-narrow-125')
@@ -62,7 +72,10 @@ scenario(async () => {
   await key('Escape'); ui.win.webContents.setZoomFactor(1); await size(1400,900)
   // Real catalog identities require the catalog endpoints/types. The dead proxy blocks them; only Custom uses the scripted server.
   const modelIds = {}
-  for (const p of catalog) {
+  // An external runtime is only saved once its CLI proves a subscription;
+  // CI has no signed-in `claude`, so its card is the one not created here.
+  const saved = catalog.filter(p=>!p.auth_methods.includes('external-cli'))
+  for (const p of saved) {
     const alias = p.id==='ollama' ? 'Mi servidor local' : `Cuenta ${p.id}`
     await command('provider_create',{alias,provider_type:p.provider_type,auth_method:p.auth_methods[0]==='oauth'?'oauth':p.local||p.id==='custom'?'none':'api-key',secret_env:!p.local&&p.id!=='custom'&&p.auth_methods[0]!=='oauth'?'RINARI_LOGOS_TEST_UNSET':undefined,endpoint:p.endpoint || (p.id==='custom'?ui.model:undefined),settings:{product_id:p.id}})
     modelIds[p.id] = (await command('model_add',{provider:alias,provider_model_id:'fake-vertical',alias:`Modelo ${p.id}`,capabilities:{supports_tools:true,supports_streaming:true}})).model.id
@@ -73,7 +86,7 @@ scenario(async () => {
   await command('session_model_set',{reference:ids[0],model:modelIds.ollama,provider:'Mi servidor local'})
   await command('session_model_set',{reference:ids[1],model:modelIds.lmstudio,provider:'Cuenta lmstudio'})
   await reload(); await settings()
-  await wait(`document.querySelectorAll('[data-anchor^="provider:"] ${logos}').length===24`)
+  await wait(`document.querySelectorAll('[data-anchor^="provider:"] ${logos}').length===${saved.length}`)
   const cards = await healthy()
   assert.equal(cards.filter(r=>r.brand==='custom').length,1)
   await screenshot('provider-cards')
@@ -84,7 +97,7 @@ scenario(async () => {
   await click('[data-logo-chat]')
   await wait(`Boolean(document.querySelector('.composer-surface [data-provider-brand="ollama"]'))`)
   await click('.composer-surface button[title="Elegir modelo"]')
-  await wait(`document.querySelectorAll('[data-radix-popper-content-wrapper] ${logos}').length>=24`)
+  await wait(`document.querySelectorAll('[data-radix-popper-content-wrapper] ${logos}').length>=${saved.length}`)
   await healthy(); await screenshot('model-picker')
   await key('Escape')
   await input('.composer-surface textarea','Prueba de identidad sin conexión')
@@ -107,7 +120,7 @@ scenario(async () => {
   await click('.view-switcher button[aria-label^="Flujos"]')
   await wait(`Boolean(document.querySelector('.flow-stage [data-provider-brand="ollama"]'))`)
   await healthy(); await screenshot('flows')
-  report({ engine: require('../../../engine-manifest.json').engine_git_sha, catalog:catalog.map(p=>p.id), passed:['24 real catalog products','all images loaded offline','dark/light at 26/14/12px','900px window at 125%','failed image fallback','wizard and custom alias form','provider cards and models','composer and picker','real local turn','Boards and collapsed strip','Flows'] })
+  report({ engine: require('../../../engine-manifest.json').engine_git_sha, catalog:catalog.map(p=>p.id), passed:[`${catalog.length} real catalog products`,'all images loaded offline','dark/light at 26/14/12px','900px window at 125%','failed image fallback','wizard and custom alias form','provider cards and models','composer and picker','real local turn','Boards and collapsed strip','Flows'] })
   await command('model_use',{reference:modelIds.custom,provider:'Cuenta custom'})
   await settings()
 }, {width:1400,height:900})

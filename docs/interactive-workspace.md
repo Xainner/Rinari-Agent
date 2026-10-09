@@ -402,3 +402,45 @@ cadena vacía rechazada, claves ajenas rechazadas, cotas), y en el Engine
 `tests/unit/test_engine_flow.py`. Evidencia real en
 `docs/evidence/flows-2026-09-22/` (la de `flows-2026-09-18/` es anterior a la
 revisión M02 y queda como registro histórico).
+
+# Proveedores servidos por un CLI externo (`provider_external_cli_v1`)
+
+- Una tercera clase de proveedor, junto a API key y OAuth: no tiene endpoint
+  HTTP ni credencial, y llega al vendedor por un proceso hijo del CLI oficial
+  que el usuario instala. Hoy solo **Claude Subscription**
+  (`claude_subscription_v1`), a través de Claude Code.
+- El renderer **no** ejecuta el binario, no lee `~/.claude` y no decide si la
+  fuente de autenticación sirve: `ExternalRuntimePanel` pinta lo que derivó el
+  Engine y no ofrece ningún camino para seguir desde un estado que no sea
+  `connected`. Cambiar de fuente cambiaría la factura, así que no hay atajo.
+- Dos orígenes para el mismo estado: el alta, que todavía no tiene provider,
+  usa `provider.runtime.probe`; un provider guardado usa
+  `provider.diagnostics.get`. El Engine construye ambos con el mismo código,
+  de modo que no pueden discrepar.
+- La tarjeta nombra la versión del CLI, su ruta, el plan y las variables de
+  facturación e identidad que el Engine retira del hijo (unas pocas más un
+  contador: el barrido puede retirar decenas y la tarjeta no es un volcado del
+  entorno). Cuando está conectado muestra el aviso de que el uso se descuenta
+  de los límites de la cuenta de Claude Code.
+- Mientras el CLI no esté en una suscripción, la tarjeta muestra una **guía
+  paso a paso** según el estado: instalar (sin CLI), iniciar sesión (sin
+  sesión) o volver a iniciarla con la suscripción (fuente que factura por
+  API). Los comandos vienen del Engine (`install_command`, `login_command`)
+  armados para esa máquina: con la ruta completa si el CLI no está en el
+  PATH y con el `&` que PowerShell exige delante de una ruta entre comillas,
+  las dos cosas que hicieron fallar el primer inicio de sesión a mano. Cada
+  comando tiene botón de copiar. La guía no ejecuta nada.
+- Un provider así abre en la pestaña de conexión, porque su estado puede
+  cambiar fuera de Rinari entre dos sesiones, y dice en claro que quitarlo de
+  Rinari no cierra la sesión de Claude Code y que todavía no ejecuta
+  herramientas.
+- El alta no pide credencial y envía las tres señales que el Engine exige
+  (endpoint `process://claude`, `auth_method: external-cli`, `transport:
+  claude-cli`). Un Engine sin la capability no ofrece el producto.
+
+Validación: `src/features/providers/ExternalRuntimePanel.test.tsx`
+(CLAUDE-UI-01…09), `presets.test.ts`, y en el Engine
+`tests/unit/test_claude_cli_runtime.py` y
+`tests/unit/test_claude_subscription_provider.py`. La evidencia real (smoke
+en Electron y validación contra el CLI 2.1.286) está en Rinari-Agent#65.
+

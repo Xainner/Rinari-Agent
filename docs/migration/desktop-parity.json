@@ -876,6 +876,33 @@
       "callers": []
     },
     {
+      "command": "provider_runtime_probe",
+      "kind": "engine",
+      "method": "provider.runtime.probe",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_settings_get",
+      "kind": "engine",
+      "method": "provider.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "provider_settings_set",
+      "kind": "engine",
+      "method": "provider.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "provider_test",
       "kind": "engine",
       "method": "provider.test",
@@ -1668,8 +1695,8 @@
     }
   ],
   "summary": {
-    "commands": 198,
-    "engine_backed": 192,
+    "commands": 201,
+    "engine_backed": 195,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 62

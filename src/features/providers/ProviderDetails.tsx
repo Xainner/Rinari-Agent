@@ -4,13 +4,18 @@ import { useI18n } from '../../i18n'
 import ModelCatalog from './ModelCatalog'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ProviderAuthPanel from './ProviderAuthPanel'
+import ExternalRuntimePanel from './ExternalRuntimePanel'
 import { registerProviderModels } from './registerModels'
 import type { ProviderTab } from '../../stores/ui'
 
 export default function ProviderDetails({ provider, onChanged, initialTab }: { provider: ProviderSummary; onChanged: () => void; initialTab?: ProviderTab }) {
   const { t } = useI18n()
   const tabId = useId()
-  const [tab, setTab] = useState<ProviderTab>(initialTab ?? (provider.auth_method === 'oauth' && !provider.has_credential ? 'connection' : 'usage'))
+  const [tab, setTab] = useState<ProviderTab>(initialTab ?? (
+    provider.auth_method === 'external-cli' || (provider.auth_method === 'oauth' && !provider.has_credential)
+      ? 'connection'
+      : 'usage'
+  ))
   const [diagnostics, setDiagnostics] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -30,7 +35,13 @@ export default function ProviderDetails({ provider, onChanged, initialTab }: { p
       }} className={`rounded-lg px-3 py-2 text-xs font-semibold ${tab === value ? 'bg-[var(--bg-hover)] text-[var(--accent)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'}`}>{t(`providers.tab.${value}`)}</button>)}
     </div>
     <div id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`}>
-      {tab === 'connection' && (provider.auth_method === 'oauth'
+      {tab === 'connection' && (provider.auth_method === 'external-cli'
+        ? <div className="space-y-3">
+          <ExternalRuntimePanel runtime="claude-cli" providerRef={provider.alias} />
+          <p className="text-xs text-[var(--text-muted)]">{t('providers.claudeNoTools')}</p>
+          <p className="text-xs text-[var(--text-muted)]">{t('providers.claudeDisconnect')}</p>
+        </div>
+        : provider.auth_method === 'oauth'
         ? <ProviderAuthPanel providerAlias={provider.alias} onConnected={() => void registerProviderModels(provider.alias).then(onChanged)} />
         : <p className="text-sm text-[var(--text-muted)]">{provider.has_credential ? t('providers.credentialOk') : provider.auth_method === 'none' ? t('providers.authNone') : t('providers.noCredential')}</p>)}
       {tab === 'models' && <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />}

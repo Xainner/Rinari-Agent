@@ -110,6 +110,51 @@ documentado; lo demás no se presenta como terminado.
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
   método, tipos y tamaño antes de tocar el Engine (`security.test.ts`).
 
+### Claude Subscription, fases A-C (2026-10-01)
+
+- **Provider de runtime externo** — `DONE`. `external-cli` como clase de auth,
+  sin credencial y sin cliente HTTP; el producto se concede solo cuando
+  endpoint, auth y transporte coinciden.
+- **Guard de facturación** — `DONE`. Se verifica la fuente de auth al crear y
+  antes de cada petición, y el hijo pierde todo `ANTHROPIC_*`, `CLAUDE_*` y
+  `CLAUDECODE`. Lo desconocido bloquea, nunca conecta.
+- **Herramientas** — `OPEN` declarado (fase D). El provider anuncia
+  `tool_calls: false` y el loop deja de ofrecerlas; una sesión que necesite el
+  filesystem todavía no puede usarlo. El bridge MCP va en un PR aparte.
+- **Modelos** — `OPEN`. El modo print del CLI no lista los modelos de la
+  cuenta, así que son los alias documentados con disponibilidad `unknown`.
+- **Concurrencia por cuenta** — `OPEN`. Sin semáforo todavía (plan §47/§48).
+- **Smoke real contra Anthropic** — `DONE` (2026-10-01). Con la suscripción
+  Pro del dueño: `authMethod: claude.ai`, la tarjeta pasó sola a conectado y
+  un turno lo respondió Claude Opus 5.5. La evidencia está en Rinari-Agent#65:
+  `docs/evidence/` cae bajo la regla `evidence/` del `.gitignore`.
+- **Esfuerzo de razonamiento** — `DONE` (2026-10-02). El Engine publica por
+  modelo los cinco niveles que acepta `--effort` y el selector habilita
+  exactamente esos; `none`, `minimal` y `ultra` quedan deshabilitados. Un
+  turno real con «Alto» completa.
+- **`ultracode`** — no se ofrece, a propósito. El CLI lo acepta sin aviso,
+  pero es un modo que lanza workflows y agentes propios con el esfuerzo sin
+  cambiar: convertiría a Claude Code en un segundo agente dentro de Rinari
+  (plan §3.1 y §13). El tope es «Máximo».
+- **Thinking** — los bloques viajan como items, pero nada los muestra: Rinari
+  no expone el razonamiento privado del modelo (AGENTS.md). Lo que el usuario
+  controla y ve es el nivel de esfuerzo.
+- **Modelos de la cuenta** — `DONE` (2026-10-02). El Engine pide al CLI su
+  selector en vivo con `initialize`, sin inferencia: nombre real, modelo
+  resuelto y niveles de esfuerzo **por modelo** (Haiku 4.5 no admite
+  ninguno; los 4.6 no llegan a `xhigh`). Fable se sigue ofreciendo: con
+  créditos funciona y sin ellos falla con un error claro.
+- **Modelo real en la UI** — `DONE`. El selector y el catálogo muestran el
+  nombre real («Opus 5.5») y, debajo, el modelo concreto
+  (`claude-opus-5-5`). Si el usuario eligió un alias propio, se respeta.
+  Sigue `OPEN` que el encabezado del grupo use el alias técnico del
+  proveedor: cambiarlo afecta a todos los proveedores.
+- **Verificar `apiKeySource` por turno** — `DONE`. Cualquier credencial que
+  no sea la suscripción corta el turno antes de que el modelo responda.
+- **`onStateChange` de `ExternalRuntimePanel`** — `DONE`. El callback va por
+  ref y ya no puede relanzar el sondeo.
+- **Visión, continuations, cuota remota** — fuera de alcance de esta entrega.
+
 ### Vista Flujos (2026-09-18, plan 06)
 
 - **Derivación del flujo en el Engine** — `DONE`. `flow.get`

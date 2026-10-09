@@ -72,6 +72,7 @@ export const PROVIDER_PRODUCT_BRANDS: Readonly<Record<string, ProviderBrandId | 
   custom: null, gemini: 'gemini', deepinfra: 'deepinfra', fireworks: 'fireworks',
   zai: 'zai', 'zai-coding': 'zai', moonshot: 'moonshot', 'kimi-coding': 'kimi',
   minimax: 'minimax', 'minimax-coding': 'minimax', chatgpt: 'openai', 'github-copilot': 'github-copilot',
+  'claude-subscription': 'anthropic',
 }
 
 export function brandForProduct(productId: string | null | undefined): ProviderBrand | null {

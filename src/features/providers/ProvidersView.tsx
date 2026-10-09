@@ -27,10 +27,12 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
+import { providerCreateSettings } from './presets'
 import { registerProviderModels } from './registerModels'
 import ProviderDetails from './ProviderDetails'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ModelCatalog from './ModelCatalog'
+import ExperimentalProvidersSetting from './ExperimentalProvidersSetting'
 import { useUIStore, type ProviderTab } from '../../stores/ui'
 
 /** Ajustes > Proveedores: tarjetas con estado, probar, usar, editar y eliminar. */
@@ -95,7 +97,9 @@ export default function ProvidersView({
       ...initialForm(),
       alias: provider.alias,
       endpoint: provider.endpoint ?? '',
-      auth: provider.auth_method === 'oauth' ? 'oauth' : provider.auth_method === 'none' ? 'none' : 'api-key',
+      auth: provider.auth_method === 'oauth' || provider.auth_method === 'none' || provider.auth_method === 'external-cli'
+        ? provider.auth_method
+        : 'api-key',
       credentialSource: 'literal',
       secret: '',
       secret_env: '',
@@ -122,7 +126,7 @@ export default function ProvidersView({
           alias,
           provider_type: form.preset.provider_type,
           auth_method: form.auth,
-          settings: { product_id: form.preset.id },
+          settings: providerCreateSettings(form.preset),
           endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
           account_hint: form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
           // Solo viaja el campo de la fuente activa; el incompatible queda vacío.
@@ -143,13 +147,18 @@ export default function ProvidersView({
         } = {}
         if (alias !== dialog.provider.alias) patch.alias = alias
         const endpoint = form.endpoint.trim()
-        if (endpoint !== (dialog.provider.endpoint ?? '')) patch.endpoint = endpoint
+        // Un runtime externo no tiene endpoint editable ni credencial: su
+        // identidad (process://claude) es la que el Engine valida.
+        const external = form.auth === 'external-cli'
+        if (!external && endpoint !== (dialog.provider.endpoint ?? '')) patch.endpoint = endpoint
         if (form.account_hint !== (dialog.provider.account_hint ?? '')) {
           patch.account_hint = form.account_hint
         }
         // Solo el campo de la fuente activa puede rotar la credencial;
         // el incompatible nunca se envía.
-        if (form.credentialSource === 'env' && form.secret_env !== '') {
+        if (form.auth !== 'api-key') {
+          // Sin credencial que rotar.
+        } else if (form.credentialSource === 'env' && form.secret_env !== '') {
           patch.secret_env = form.secret_env
         } else if (form.credentialSource === 'literal' && form.secret !== '') {
           patch.secret = form.secret
@@ -341,6 +350,8 @@ export default function ProvidersView({
           </Section>
         )
       })}
+
+      <ExperimentalProvidersSetting />
 
       <Dialog open={dialog !== null} onOpenChange={(open) => !open && setDialog(null)}>
         <DialogContent>

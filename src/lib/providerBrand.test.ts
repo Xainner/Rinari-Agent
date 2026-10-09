@@ -58,7 +58,7 @@ it.each([
 })
 
 it('cubre el catálogo fijado sin depender de presets antiguos y empaqueta todos los recursos', () => {
-  const products = 'openai anthropic openrouter deepseek groq together mistral xai opencode-zen opencode-go ollama lmstudio custom gemini deepinfra fireworks zai zai-coding moonshot kimi-coding minimax minimax-coding chatgpt github-copilot'.split(' ')
+  const products = 'openai anthropic openrouter deepseek groq together mistral xai opencode-zen opencode-go ollama lmstudio custom gemini deepinfra fireworks zai zai-coding moonshot kimi-coding minimax minimax-coding chatgpt github-copilot claude-subscription'.split(' ')
   expect(Object.keys(PROVIDER_PRODUCT_BRANDS).sort()).toEqual(products.sort())
   for (const id of products) expect(brandForProduct(id)?.id ?? null, id).toBe(PROVIDER_PRODUCT_BRANDS[id])
   expect(brandForProduct('custom')).toBeNull()

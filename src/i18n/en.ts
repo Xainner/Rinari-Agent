@@ -1128,7 +1128,7 @@ export const en: Record<I18nKey, string> = {
   'agents.budget': 'max {n} tools',
 
   /* Soul (Phase 8) */
-  'soul.title': 'Rinari / Soul',
+  'soul.title': 'Personality',
   'soul.voiceOnly': 'Soul is voice only: it never changes permissions, approvals or verification.',
   'soul.active': 'active',
   'soul.activate': 'Activate',

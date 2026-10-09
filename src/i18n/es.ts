@@ -1146,7 +1146,7 @@ export const es = {
   'agents.budget': 'máx {n} tools',
 
   /* Soul (Fase 8) */
-  'soul.title': 'Rinari / Soul',
+  'soul.title': 'Personalidad',
   'soul.voiceOnly': 'La Soul es solo voz: no cambia permisos, aprobaciones ni verificación.',
   'soul.active': 'activa',
   'soul.activate': 'Activar',

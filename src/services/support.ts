@@ -2,7 +2,7 @@ import type { EngineStatus } from './engine'
 import engineManifest from '../../engine-manifest.json'
 
 export const APP_REPOSITORY = 'https://github.com/Xainner/Rinari-Agent'
-export const SOUL_VERSION = '3.0'
+export const SOUL_VERSION = '4.0'
 
 /** Versiones y sistema para reproducir un problema; nunca rutas ni datos del usuario. */
 export function diagnostics(version: string, status: EngineStatus | null): string {

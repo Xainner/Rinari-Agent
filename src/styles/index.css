@@ -386,11 +386,12 @@ html[data-theme='light'] body::after {
  * ------------------------------------------------------------------------- */
 @keyframes rinari-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rinari-fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes rinari-pop-in { from { opacity: 0; transform: translateY(4px) scale(0.97); } to { opacity: 1; transform: none; } }
-@keyframes rinari-pop-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(2px) scale(0.98); } }
+@keyframes rinari-pop-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes rinari-pop-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(3px); } }
 /* Tailwind 4 centra con la propiedad `translate`; estas animan `transform`, que se compone con ella. */
-@keyframes rinari-dialog-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
-@keyframes rinari-dialog-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+/* Sin escala: un diálogo medido mientras entra (pruebas, geometría nativa) da medidas enteras. */
+@keyframes rinari-dialog-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes rinari-dialog-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px); } }
 @keyframes rinari-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes rinari-slide-left { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes rinari-orbit { to { transform: rotate(360deg); } }
@@ -1261,7 +1262,7 @@ select option:disabled { color: var(--text-subtle); }
 .btn-icon.btn-sm { width: 28px; }
 
 /* Mensaje del usuario: violeta profundo; el recién enviado sube desde el composer. */
-@keyframes rinari-send { from { opacity: 0; transform: translateY(48px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes rinari-send { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
 .user-bubble { border-radius: 18px 18px 6px 18px; background: linear-gradient(135deg, rgb(124 58 237 / 0.4), rgb(91 33 182 / 0.34)); border: 1px solid rgb(196 181 253 / 0.2); box-shadow: var(--inset-hi); }
 .user-bubble.is-fresh { animation: rinari-send 0.5s var(--ease-out) both; }
 

@@ -439,6 +439,7 @@ export const en: Record<I18nKey, string> = {
   'activity.live.context': 'Compacting context…',
   'activity.live.verification': 'Verifying…',
   'activity.live.vision': 'Analyzing images · {n} of {total}',
+  'activity.live.wait': 'Waiting for it to be ready…',
   'activity.live.agents': 'Waiting for subagent results…',
   'activity.live.tool': 'Running {tool}',
   'activity.live.image': 'Reading an image…',

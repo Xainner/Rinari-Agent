@@ -443,6 +443,7 @@ export const es = {
   'activity.live.verification': 'Verificando…',
   'activity.live.vision': 'Analizando imágenes · {n} de {total}',
   'activity.live.agents': 'Esperando resultados de subagentes…',
+  'activity.live.wait': 'Esperando a que esté listo…',
   'activity.live.tool': 'Ejecutando {tool}',
   'activity.live.image': 'Leyendo una imagen…',
   'activity.live.read': 'Leyendo un archivo…',

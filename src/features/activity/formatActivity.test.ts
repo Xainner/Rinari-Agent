@@ -43,3 +43,11 @@ it('las instrucciones a un subagente dicen a cuál y qué se le pidió', () => {
   expect(agentInstruction(tool('agent.message', { agent_id: 'agt_012' }))).toBeNull()
   expect(agentInstruction(tool('agent.status', { agent_id: 'agt_012', text: 'x' }))).toBeNull()
 })
+
+it('las esperas dicen qué esperaron y una relectura sin cambios se distingue', () => {
+  expect(formatTool(tool('wait.for', { port: 5173 }), 'es')).toBe('Esperó el puerto 5173')
+  expect(formatTool(tool('wait.for', { url: 'http://localhost:3000/health' }, 'running'), 'es')).toBe('Esperando localhost:3000…')
+  expect(formatTool(tool('wait.for', { output: 'ready', handle: 'proc_001' }), 'en')).toBe('Waited for text in a process output')
+  const unchanged = { ...tool('fs.read', { path: 'src/app.ts' }), presentation: { kind: 'tool', data: { unchanged: true } } } as ToolTimelineItem
+  expect(formatTool(unchanged, 'es')).toBe('Leyó app.ts (sin cambios)')
+})

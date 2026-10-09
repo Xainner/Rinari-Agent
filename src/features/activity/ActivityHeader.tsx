@@ -19,6 +19,7 @@ export function ActivityHeader({ timeline, now, previous = false }: { timeline: 
     if (item.type === 'tool') {
       const category = toolCategory(item.tool)
       label = item.tool === 'agent.wait' ? t('activity.live.agents')
+        : item.tool === 'wait.for' ? t('activity.live.wait')
         : category === 'other' ? t('activity.live.tool', { tool: item.tool })
           : t(`activity.live.${category}` as I18nKey)
     } else if (item.type === 'vision') {

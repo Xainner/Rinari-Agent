@@ -1,114 +1,52 @@
 import { Check } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { ACCENTS, ACCENT_SWATCH } from '../../lib/appearance'
 import { useUIStore } from '../../stores/ui'
-import type { Theme } from '../../lib/theme'
 import { Row, Section } from './parts'
 import { Switch } from '../ui/switch'
+import { RinariAvatar } from '../../features/rinari/RinariAvatar'
 
-const THEMES: Theme[] = ['system', 'light', 'dark']
+const THEMES = [
+  { id: 'obsidian', ready: true, swatch: 'linear-gradient(135deg, #06050b, #20182f 55%, #3b1680)' },
+  { id: 'light', ready: false, swatch: 'linear-gradient(135deg, #f6f2ff, #ddd0ff)' },
+  { id: 'system', ready: false, swatch: 'linear-gradient(90deg, #06050b 50%, #f6f2ff 50%)' },
+] as const
 
-/** Settings > Apariencia (§20): tema, acento, densidad (fase 2), motion. Inmediato. */
+/**
+ * Ajustes > Apariencia. Solo ofrece lo que funciona: el tema Obsidiana y las
+ * animaciones. El tema claro y los acentos se enseñan como «en preparación»,
+ * sin poder elegirse, hasta que todas las pantallas los soporten.
+ */
 export default function AppearanceSettings() {
   const { t } = useI18n()
-  const theme: Theme = 'dark'
-  const setTheme = useUIStore((s) => s.setTheme)
-  const accent = 'nebula'
-  const setAccent = useUIStore((s) => s.setAccent)
   const reduceMotion = useUIStore((s) => s.reduceMotion)
   const setReduceMotion = useUIStore((s) => s.setReduceMotion)
 
-  const themeLabel = (th: Theme) =>
-    th === 'system'
-      ? t('settings.appearance.system')
-      : th === 'light'
-        ? t('settings.appearance.light')
-        : t('settings.appearance.dark')
-
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[var(--text-muted)]">{t('home.fixedTheme')}</p>
-      <Section title={t('settings.appearance.theme')}>
-        <div
-          role="group"
-          aria-label={t('settings.appearance.theme')}
-          className="inline-flex rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-1"
-        >
-          {THEMES.map((th) => (
-            <button
-              disabled
-              key={th}
-              type="button"
-              onClick={() => setTheme(th)}
-              aria-pressed={theme === th}
-              className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-all ${
-                theme === th
-                  ? 'bg-[var(--accent)] text-white shadow'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-              }`}
+      <Section title={t('settings.appearance.theme')} desc={t('settings.appearance.themeDesc')}>
+        <div role="radiogroup" aria-label={t('settings.appearance.theme')} className="grid grid-cols-3 gap-3">
+          {THEMES.map((theme) => (
+            <div
+              key={theme.id}
+              role="radio"
+              aria-checked={theme.id === 'obsidian'}
+              aria-disabled={!theme.ready || undefined}
+              className="theme-card"
+              data-ready={theme.ready || undefined}
+              data-active={theme.id === 'obsidian' || undefined}
             >
-              {themeLabel(th)}
-            </button>
+              <span className="theme-card-swatch" style={{ background: theme.swatch }} aria-hidden="true" />
+              <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text)]">
+                {t(`settings.appearance.theme.${theme.id}`)}
+                {theme.id === 'obsidian' && <Check size={13} aria-hidden="true" className="text-[var(--violet-300)]" />}
+              </span>
+              <span className="text-[11.5px] text-[var(--text-subtle)]">{theme.ready ? t('settings.appearance.inUse') : t('settings.appearance.preparing')}</span>
+            </div>
           ))}
         </div>
       </Section>
 
-      <Section title={t('settings.appearance.accent')} desc={t('settings.appearance.accentDesc')}>
-        <div
-          role="group"
-          aria-label={t('settings.appearance.accent')}
-          className="flex flex-wrap gap-2"
-        >
-          {ACCENTS.map((a) => {
-            const active = accent === a
-            return (
-              <button
-                disabled
-                key={a}
-                type="button"
-                onClick={() => setAccent(a)}
-                aria-pressed={active}
-                title={a === 'nebula' ? 'Nebula' : a[0].toUpperCase() + a.slice(1)}
-                className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
-                  active
-                    ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]'
-                    : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="size-4 rounded-full"
-                  style={{ background: ACCENT_SWATCH[a] }}
-                />
-                {a === 'nebula' ? 'Nebula' : a[0].toUpperCase() + a.slice(1)}
-                {active && <Check size={14} aria-hidden="true" />}
-              </button>
-            )
-          })}
-        </div>
-      </Section>
-
-      <Section title={t('settings.appearance.density')}>
-        <div className="flex items-center gap-2">
-          <div
-            role="group"
-            aria-label={t('settings.appearance.density')}
-            className="inline-flex rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-1 opacity-60"
-          >
-            <span className="rounded-lg bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white">
-              {t('settings.appearance.comfortable')}
-            </span>
-            <span className="cursor-not-allowed px-4 py-1.5 text-sm font-semibold text-[var(--text-muted)]">
-              {t('settings.appearance.compact')}
-            </span>
-          </div>
-          <span className="rounded-lg bg-[var(--bg-hover)] px-2 py-0.5 text-xs text-[var(--text-subtle)]">
-            {t('settings.appearance.soon')}
-          </span>
-        </div>
-      </Section>
-
-      <Section title={t('settings.appearance.motion')}>
+      <Section title={t('settings.appearance.motion')} desc={t('settings.appearance.motionDesc')}>
         <Row
           title={t('settings.appearance.reduceMotion')}
           desc={t('settings.appearance.reduceMotionDesc')}
@@ -120,6 +58,10 @@ export default function AppearanceSettings() {
             />
           }
         />
+        <div className="motion-preview" data-calm={reduceMotion || undefined}>
+          <RinariAvatar state="working" size={40} />
+          <span className="text-[12.5px] text-[var(--text-muted)]">{reduceMotion ? t('settings.appearance.previewCalm') : t('settings.appearance.previewFull')}</span>
+        </div>
       </Section>
     </div>
   )

@@ -10,6 +10,7 @@ import { APP_REPOSITORY, SOUL_VERSION, bugReportUrl, diagnostics, issueUrl } fro
 import { useConfirm } from '../ui/useConfirm'
 import { Row, Section } from './parts'
 import engineManifest from '../../../engine-manifest.json'
+import { art } from '../../features/rinari/art'
 
 const ENGINE_REPOSITORY = `https://github.com/${engineManifest.engine_repository}`
 
@@ -145,47 +146,37 @@ export default function AboutSettings({ version }: { version: string }) {
   return (
     <div className="space-y-6">
       {dialog}
-      <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-        <img src="/logo.png" alt="" width={56} height={56} className="size-14 rounded-xl" />
+      <section className="about-hero">
+        <img src={art.chibi(phase === 'available' || phase === 'downloaded' ? 'trophy' : 'wave')} alt="" className="about-hero-art" draggable={false} />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl font-bold text-[var(--text)]">
+          <h2 className="font-display text-[28px] font-bold tracking-[-0.02em] text-[var(--text)]">
             Rinari Agent <span className="ml-1 font-mono text-sm font-medium text-[var(--text-muted)]">v{version}</span>
           </h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]" role="status" aria-live="polite">{updateLine}</p>
-        </div>
+          <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
           disabled={working}
           onClick={updateButton.action}
-          className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {working
             ? <LoaderCircle size={15} aria-hidden="true" className="motion-safe:animate-spin" />
             : <UpdateIcon size={15} aria-hidden="true" />}
           {updateButton.label}
         </button>
+        <button type="button" className="btn btn-ghost" onClick={() => open(`${APP_REPOSITORY}/releases/tag/v${version}`)}>
+          <ScrollText size={15} aria-hidden="true" /> {t('settings.about.whatsNew')}
+        </button>
+          </div>
+        </div>
       </section>
 
-      <Section title={t('settings.about.versions')}>
-        <dl className="grid gap-3 sm:grid-cols-2">
-          {[
-            { label: 'Rinari Agent', value: version, hint: t('settings.about.desktop') },
-            {
-              label: 'Rinari Engine',
-              value: status?.engine_version ?? '—',
-              hint: t('settings.about.engineCommit', { sha: engineSha.slice(0, 7) }),
-            },
-            { label: 'Engine Protocol', value: status?.protocol_version ?? '—', hint: t('settings.about.protocol') },
-            { label: t('settings.about.soul'), value: SOUL_VERSION, hint: 'rinari-default' },
-          ].map(({ label, value, hint }) => (
-            <div key={label} className="rounded-xl border border-[var(--border)] px-4 py-3">
-              <dt className="text-xs text-[var(--text-subtle)]">{label}</dt>
-              <dd className="mt-1 font-mono text-base text-[var(--text)]">{value}</dd>
-              <dd className="mt-0.5 text-xs text-[var(--text-muted)]">{hint}</dd>
-            </div>
-          ))}
-        </dl>
-      </Section>
+      <dl className="about-facts">
+        <div><dt>{t('settings.about.state')}</dt><dd>{status?.state === 'ready' ? t('settings.about.stateReady') : status?.state ? t('settings.about.stateNotReady') : '—'}</dd></div>
+        <div><dt>{t('settings.about.soul')}</dt><dd>Rinari · {SOUL_VERSION}</dd></div>
+        <div><dt>{t('settings.about.core')}</dt><dd>{status?.engine_version ?? '—'}</dd></div>
+      </dl>
 
       <Section title={t('settings.about.help')} desc={t('settings.about.helpDesc')}>
         <Row
@@ -221,6 +212,24 @@ export default function AboutSettings({ version }: { version: string }) {
         />
       </Section>
 
+      <details className="settings-card about-tech">
+        <summary className="cursor-pointer font-display text-[15px] font-bold text-[var(--text)]">{t('settings.about.technical')}</summary>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[
+            { label: 'Rinari Agent', value: version, hint: t('settings.about.desktop') },
+            { label: t('settings.about.core'), value: status?.engine_version ?? '—', hint: t('settings.about.engineCommit', { sha: engineSha.slice(0, 7) }) },
+            { label: t('settings.about.protocolLabel'), value: status?.protocol_version ?? '—', hint: t('settings.about.protocol') },
+            { label: t('settings.about.soul'), value: SOUL_VERSION, hint: 'rinari-default' },
+          ].map(({ label, value, hint }) => (
+            <div key={label} className="rounded-[var(--r-md)] border border-[var(--line-1)] px-4 py-3">
+              <dt className="text-xs text-[var(--text-subtle)]">{label}</dt>
+              <dd className="mt-1 font-mono text-base text-[var(--text)]">{value}</dd>
+              <dd className="mt-0.5 text-xs text-[var(--text-muted)]">{hint}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+
       <Section title={t('settings.about.project')}>
         <Row
           title={t('settings.about.appRepo')}
@@ -251,7 +260,7 @@ function LinkButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+      className="btn btn-ghost btn-sm"
     >
       <Icon size={14} aria-hidden="true" />
       {label}

@@ -1785,7 +1785,8 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     for (let attempt = 0; attempt < 100; attempt += 1) {
       toastUi = await deps.renderer.evaluate<ToastUi>(`(() => {
         const toast = document.querySelector('[data-testid="browser-vertical-toast"]')
-        const button = toast?.querySelector('button')
+        // La acción del toast, no su botón de cerrar (que Sonner pinta antes).
+        const button = toast?.querySelector('button[data-button]:not([data-cancel])') ?? toast?.querySelector('button:not([data-close-button])')
         const box = toast?.getBoundingClientRect()
         const action = button?.getBoundingClientRect()
         let occlusions = []
@@ -1836,7 +1837,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         )
       } else {
         await deps.renderer.evaluate(
-          `document.querySelector('[data-testid="browser-vertical-toast"] button')?.click()`,
+          `document.querySelector('[data-testid="browser-vertical-toast"] button[data-button]:not([data-cancel])')?.click()`,
         )
       }
     }

@@ -56,11 +56,16 @@
 > overlays de `src/components/ui`, `RinariAvatar`) en vez de estilos sueltos;
 > movimiento con propósito (entra/sale, los bucles solo mientras algo trabaja,
 > «Reducir animaciones» siempre respetado, sin `transform` sobre el navegador
-> nativo); Rinari aparece con la expresión del estado real y nunca sustituye
+> nativo, sin rebote en lo que cambia de tamaño, se animan los cambios del
+> usuario y no los montajes, y el foco lo dibuja el anillo global); Rinari aparece con la expresión del estado real y nunca sustituye
 > al texto; el arte se genera y revisa con el proceso de `art-v2` descrito en
 > la guía; lenguaje llano (en la interfaz no se dice «Engine» ni «motor»); y
 > ninguna opción que no funciona se ofrece como si funcionara. Cada cambio
-> visual se revisa con `npm run ui:e2e -- ui-tour`.
+> visual se revisa con `npm run ui:e2e -- ui-tour`; las pruebas que miden
+> geometría esperan a que acaben las animaciones, y un cambio que toque el
+> navegador nativo, los toasts o los overlays corre también `npm run
+> browser:vertical` (su paso TOAST-REAL pulsa la acción del toast sobre la
+> vista nativa).
 
 > **Status:** Implementation blueprint / source of truth for Rinari Agent v1
 > **Date:** 2026-09-08  

@@ -1533,7 +1533,9 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 [data-sonner-toaster] .rinari-toast[data-type='success'] [data-icon] { color: var(--success); }
 [data-sonner-toaster] .rinari-toast[data-type='error'] [data-icon] { color: var(--danger); }
 [data-sonner-toaster] .rinari-toast [data-description] { color: var(--text-muted) !important; }
-[data-sonner-toaster] .rinari-toast [data-close-button] { background: var(--ink-4) !important; border-color: var(--line-2) !important; color: var(--text-muted) !important; }
+[data-sonner-toaster] .rinari-toast { padding-right: 38px !important; }
+/* La «x» va dentro del toast: medio fuera, sobre el navegador nativo, su esquina quedaría tapada. */
+[data-sonner-toaster] .rinari-toast [data-close-button] { left: auto !important; right: 10px !important; top: 10px !important; transform: none !important; background: var(--ink-4) !important; border-color: var(--line-2) !important; color: var(--text-muted) !important; }
 [data-sonner-toaster] .rinari-toast [data-button] { background: var(--grad-brand) !important; color: #fff !important; border-radius: var(--r-xs) !important; }
 .notify-item { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
 .notify-item[data-unread] { background: rgb(147 88 255 / 0.06); }

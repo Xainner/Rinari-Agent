@@ -53,6 +53,22 @@ async function heldModel(script) {
 }
 
 export const scenarios = {
+  'skill-manager': {
+    title: 'Gestor de skills: lección desde el turno, freno de duplicados con motivo y fusión preparada',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Notas de versión' })),
+      main: [
+        { tool: 'fs.list', args: { path: '.' }, say: 'Miro la carpeta.' },
+        { text: 'LISTO UNO' },
+        { tool: 'skills.propose', args: { name: 'release-notes', skill_md: "---\nname: release-notes\ndescription: Write the release notes from the changelog: group by feature, fix and breaking change, link each PR.\nversion: 1.0.0\nrisk: low\nrequired_tools:\n  - fs.read\n---\n\n# Procedure\n1. Read CHANGELOG.md since the last tag.\n2. Group entries by feature, fix and breaking change.\n3. Link each PR number.\n\n## Lecciones\n- Breaking changes go first.\n" }, say: 'Guardo la lección.' },
+        { text: 'LECCION GUARDADA' },
+        { tool: 'skills.propose', args: { name: 'release-notes-draft', skill_md: "---\nname: release-notes-draft\ndescription: Draft the release notes from the changelog: group by feature, fix and breaking change with PR links.\nversion: 1.0.0\nrisk: low\nrequired_tools:\n  - fs.read\n---\n\n# Procedure\n1. Read CHANGELOG.md since the last tag.\n2. Group by feature, fix and breaking change.\n3. Add the PR links.\n" }, say: 'Propongo la skill.' },
+        { tool: 'skills.propose', args: { name: 'release-notes-draft', skill_md: "---\nname: release-notes-draft\ndescription: Draft the release notes from the changelog: group by feature, fix and breaking change with PR links.\nversion: 1.0.0\nrisk: low\nrequired_tools:\n  - fs.read\n---\n\n# Procedure\n1. Read CHANGELOG.md since the last tag.\n2. Group by feature, fix and breaking change.\n3. Add the PR links.\n", distinct_from: { 'release-notes': 'only drafts for review, never publishes the final notes' } }, say: 'Es otra tarea.' },
+        { text: 'LISTO TRES' },
+      ],
+    }, laneOf),
+  },
   'memory-proposal': {
     title: 'Memoria visible: propuesta en el chat, Ajustes > Memoria y modo automático con Deshacer',
     phases: ['exercise'],

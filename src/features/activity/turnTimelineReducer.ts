@@ -5,6 +5,7 @@ import type {
   ApprovalTimelineItem,
   ModelChange,
   ModelLabel,
+  SkillSimilar,
   TimelineItem,
   TimelineStatus,
   ToolTimelineItem,
@@ -88,6 +89,7 @@ function defaultTimeline(turnId: string, sessionId: string, now: number): TurnTi
 function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('memory.candidate.')) return `memory:candidate:${payload.candidate_id}`
   if (event === 'memory.remembered') return `memory:remembered:${payload.memory_id}`
+  if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return `skill:${payload.name}`
   if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
   if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
@@ -219,6 +221,62 @@ function mergeMemoryItem(
   }
 }
 
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
+}
+
+function similarList(value: unknown): SkillSimilar[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const raw = entry as Record<string, unknown>
+    const name = text(raw.name)
+    return name ? [{ name, score: number(raw.score), shared: strings(raw.shared), reason: text(raw.reason) || undefined }] : []
+  })
+}
+
+function mergeSkillItem(
+  current: TimelineItem | undefined,
+  event: string,
+  payload: Record<string, unknown>,
+  id: string,
+  activitySeq: number,
+  occurredAt: number,
+): TimelineItem | null {
+  const prior = current?.type === 'skill' ? current : undefined
+  if (event === 'skill.proposal.resolved') {
+    // Solo actualiza una tarjeta que este turno mostró.
+    if (!prior) return null
+    const status = text(payload.status)
+    return {
+      ...prior,
+      status: status === 'approved' || status === 'rejected' || status === 'undone' ? status : prior.status,
+      turnedOff: strings(payload.turned_off).length ? strings(payload.turned_off) : prior.turnedOff,
+      turnedOn: strings(payload.turned_on).length ? strings(payload.turned_on) : prior.turnedOn,
+    }
+  }
+  const name = text(payload.name)
+  if (!name) return null
+  const status = text(payload.status) === 'active' ? 'active' : 'pending'
+  return {
+    id,
+    type: 'skill',
+    activitySeq: prior?.activitySeq ?? activitySeq,
+    occurredAt: prior?.occurredAt ?? occurredAt,
+    name,
+    // Un `skill.proposed` repetido (recarga) no deshace una resolución ya vista.
+    status: prior && prior.status !== 'pending' && prior.status !== 'active' ? prior.status : status,
+    version: text(payload.version) || prior?.version,
+    previousVersion: text(payload.previous_version) || prior?.previousVersion,
+    update: payload.update === true,
+    description: text(payload.description) || prior?.description || '',
+    similarTo: similarList(payload.similar_to),
+    replaces: strings(payload.replaces),
+    review: text(payload.review) || undefined,
+    pendingReason: text(payload.pending_reason) || undefined,
+  }
+}
+
 function mergeEventItem(
   current: TimelineItem | undefined,
   event: string,
@@ -280,6 +338,7 @@ function mergeEventItem(
     }
   }
   if (event.startsWith('memory.')) return mergeMemoryItem(current, event, payload, id, activitySeq, occurredAt)
+  if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return mergeSkillItem(current, event, payload, id, activitySeq, occurredAt)
   if (event === 'steer.applied') {
     return {
       id,
@@ -736,6 +795,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
   // Una resolución de memoria puede citar un turno que esta ventana no cargó:
   // no debe crear un turno fantasma «en curso».
   if (event.startsWith('memory.') && !state.timelines[turnId] && event !== 'memory.candidate.created' && event !== 'memory.remembered') return state
+  if (event === 'skill.proposal.resolved' && !state.timelines[turnId]) return state
   let timeline = state.timelines[turnId] ?? defaultTimeline(turnId, sessionId, action.now)
   if (event === 'turn.started') {
     timeline = {
@@ -830,6 +890,8 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('verification.') ||
     event.event.startsWith('steer.') ||
     event.event.startsWith('memory.') ||
+    event.event === 'skill.proposed' ||
+    event.event === 'skill.proposal.resolved' ||
     event.event === 'provider.reasoning.dropped'
   return relevant ? { type: 'engine/event', event, now } : null
 }

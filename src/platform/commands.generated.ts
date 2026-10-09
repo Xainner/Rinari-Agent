@@ -154,6 +154,8 @@ export type DesktopCommand =
   | "session_restore"
   | "session_timeline"
   | "skill_disable"
+  | "skill_duplicates_dismiss"
+  | "skill_duplicates_list"
   | "skill_enable"
   | "skill_get"
   | "skill_import_scan"
@@ -357,6 +359,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_restore",
   "session_timeline",
   "skill_disable",
+  "skill_duplicates_dismiss",
+  "skill_duplicates_list",
   "skill_enable",
   "skill_get",
   "skill_import_scan",
@@ -575,6 +579,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_restore",
   "session_timeline",
   "skill_disable",
+  "skill_duplicates_dismiss",
+  "skill_duplicates_list",
   "skill_enable",
   "skill_get",
   "skill_import_scan",

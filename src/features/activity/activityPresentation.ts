@@ -1,4 +1,4 @@
-import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem } from './types'
+import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem } from './types'
 
 export const turnIsActive = (status: TurnTimeline['status']) => ['running', 'approval', 'cancelling'].includes(status)
 export const pendingApproval = (item: TimelineItem): item is ApprovalTimelineItem => item.type === 'approval' && ['pending', 'resolving'].includes(item.status)
@@ -46,6 +46,7 @@ export function projectActivity(timeline: TurnTimeline) {
   const notices: TimelineItem[] = []
   // Propuestas y recuerdos: tarjetas propias, también desde un subagente.
   const memories: MemoryTimelineItem[] = []
+  const skills: SkillTimelineItem[] = []
   const segments: ActivitySegment[] = [{ id: 'initial', items: [], publicTexts: [] }]
   const actions = new Set<string>()
   const incidents = new Set<string>()
@@ -65,6 +66,10 @@ export function projectActivity(timeline: TurnTimeline) {
     }
     if (item.type === 'memory') {
       if (!memories.some((memory) => memory.id === item.id)) memories.push(item)
+      return null
+    }
+    if (item.type === 'skill') {
+      if (!skills.some((skill) => skill.id === item.id)) skills.push(item)
       return null
     }
     if (item.type === 'question' && item.request.status === 'pending') return ownerActive ? null : { ...item, request: { ...item.request, status: 'expired' } }
@@ -104,7 +109,7 @@ export function projectActivity(timeline: TurnTimeline) {
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }
-  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, final, provisional, actions: actions.size, incidents: incidents.size }
+  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, final, provisional, actions: actions.size, incidents: incidents.size }
 }
 
 /** Active identities win over the last row or output timestamp. Token/stdout updates cannot rotate the header. */

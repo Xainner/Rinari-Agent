@@ -20,6 +20,9 @@ export const CHANNEL = {
   windowRequestClose: 'rinari:window.requestClose',
   windowClampToWorkArea: 'rinari:window.clampToWorkArea',
   dialogOpenFiles: 'rinari:dialog.openFiles',
+  /** Guardar / abrir un `.json` que elige la persona (exportar e importar la memoria). */
+  dialogSaveJson: 'rinari:dialog.saveJson',
+  dialogOpenJson: 'rinari:dialog.openJson',
   openerOpenUrl: 'rinari:opener.openUrl',
   filesOpenExternal: 'rinari:files.openExternal',
   filesRevealInFolder: 'rinari:files.revealInFolder',
@@ -248,6 +251,33 @@ export interface OpenFilesRequest {
   multiple?: boolean
   directory?: boolean
   title?: string
+}
+
+/** Tamaño máximo de un `.json` que se guarda o se abre con `dialog.*Json`. */
+export const JSON_FILE_MAX_BYTES = 8 * 1024 * 1024
+
+/** Guardar un JSON que prepara el renderer donde lo elija la persona. */
+export interface SaveJsonRequest {
+  /** Solo un nombre de archivo `.json`, nunca una ruta. */
+  suggestedName: string
+  contents: string
+  title?: string
+}
+
+export interface SaveJsonResult {
+  saved: boolean
+  /** Nombre del archivo guardado, sin carpeta. */
+  name?: string
+}
+
+export interface OpenJsonRequest {
+  title?: string
+}
+
+/** El `.json` que eligió la persona: su nombre y su texto, nunca la ruta. */
+export interface OpenJsonResult {
+  name: string
+  contents: string
 }
 
 // -- browser nativo (documento 03 §6.1) --------------------------------------

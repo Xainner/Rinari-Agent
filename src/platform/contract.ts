@@ -20,7 +20,7 @@
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -36,7 +36,8 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, WorkspaceMedia } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+export { JSON_FILE_MAX_BYTES } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
 
@@ -259,6 +260,17 @@ export interface DesktopBridge {
   dialog: {
     /** Selección explícita del usuario. Devuelve `null` si cancela. */
     openFiles(options?: OpenFilesOptions): Promise<string[] | null>
+    /**
+     * Guarda un JSON que prepara el renderer donde lo elija la persona.
+     * `saved: false` si cancela. El renderer no nombra rutas, solo sugiere
+     * un nombre de archivo `.json`.
+     */
+    saveJson(request: SaveJsonRequest): Promise<SaveJsonResult>
+    /**
+     * La persona elige un `.json`; main comprueba extensión, tamaño
+     * (`JSON_FILE_MAX_BYTES`) y que sea JSON. `null` si cancela.
+     */
+    openJson(request?: OpenJsonRequest): Promise<OpenJsonResult | null>
   }
 
   opener: {

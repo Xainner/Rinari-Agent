@@ -34,6 +34,29 @@ export interface MemoryRecord {
   revision: number
 }
 
+/**
+ * `memory.export`: lo que se guarda en el archivo. El renderer no mira dentro
+ * de `bundle`; lo devuelve tal cual al importar y el Engine valida el digest.
+ */
+export interface MemoryExport {
+  bundle: Record<string, unknown>
+  digest: string
+  count: number
+}
+
+/** `memory.import`: qué se importó (o se importaría, con `dry_run`). */
+export interface MemoryImportSummary {
+  dry_run: boolean
+  total: number
+  imported: number
+  skipped_duplicates: number
+  skipped_suppressed: number
+  skipped_conflicts: number
+  rejected: number
+  sensitive: number
+  suppressions_added: number
+}
+
 export interface MemoryListResult {
   scope: 'user' | string
   records: MemoryRecord[]

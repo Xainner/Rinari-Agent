@@ -29,6 +29,10 @@ import {
   type OpenExternalFileRequest,
   type WorkspaceMedia,
   type OpenFilesRequest,
+  type OpenJsonRequest,
+  type OpenJsonResult,
+  type SaveJsonRequest,
+  type SaveJsonResult,
   type SystemNotificationRequest,
   type FlowScopeRequest,
 } from '../../shared/contracts'
@@ -45,6 +49,7 @@ import {
 import type { SenderRegistry } from './validateSender'
 import { assertBackgroundPatch } from '../native/background'
 import { assertIndicators, type AttentionIndicators } from '../native/indicators'
+import { assertOpenJson, assertSaveJson } from '../native/jsonFiles'
 import {
   MIGRATION_ALLOWED_KEYS,
   MIGRATION_MAX_ENTRIES,
@@ -89,7 +94,11 @@ export interface HostServices {
     requestClose(): void
     clampToWorkArea(): Promise<void>
   }
-  dialog: { openFiles(options: OpenFilesRequest): Promise<string[] | null> }
+  dialog: {
+    openFiles(options: OpenFilesRequest): Promise<string[] | null>
+    saveJson(request: SaveJsonRequest): Promise<SaveJsonResult>
+    openJson(request: OpenJsonRequest): Promise<OpenJsonResult | null>
+  }
   opener: { openUrl(url: string): Promise<void> }
   files: {
     openExternal(request: OpenExternalFileRequest): Promise<void>
@@ -387,6 +396,16 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.dialogOpenFiles,
       guarded(registry, (_event, options) => services.dialog.openFiles(assertOpenFiles(options))),
+    ],
+    // El renderer entrega texto y un nombre, nunca una ruta: se escribe o se
+    // lee solo lo que la persona eligió en el diálogo (jsonFiles.ts).
+    [
+      CHANNEL.dialogSaveJson,
+      guarded(registry, (_event, request) => services.dialog.saveJson(assertSaveJson(request))),
+    ],
+    [
+      CHANNEL.dialogOpenJson,
+      guarded(registry, (_event, request) => services.dialog.openJson(assertOpenJson(request))),
     ],
     [
       CHANNEL.openerOpenUrl,

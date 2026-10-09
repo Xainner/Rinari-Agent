@@ -453,6 +453,15 @@
       ]
     },
     {
+      "command": "memory_export",
+      "kind": "engine",
+      "method": "memory.export",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
       "command": "memory_forget",
       "kind": "engine",
       "method": "memory.forget",
@@ -463,6 +472,15 @@
       "command": "memory_get",
       "kind": "engine",
       "method": "memory.get",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_import",
+      "kind": "engine",
+      "method": "memory.import",
       "manual": false,
       "callers": [
         "src/services/memory.ts"
@@ -1791,8 +1809,8 @@
     }
   ],
   "summary": {
-    "commands": 213,
-    "engine_backed": 207,
+    "commands": 215,
+    "engine_backed": 209,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 68

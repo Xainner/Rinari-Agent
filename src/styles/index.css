@@ -1541,3 +1541,9 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .mcp-choice.is-on svg { color: var(--violet-300); }
 .mcp-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; text-align: center; font-size: 13px; color: var(--text-muted); }
 .mcp-empty img { width: 130px; height: 130px; object-fit: contain; animation: rinari-rise var(--dur-slow) var(--ease-out) both, home-float 7s ease-in-out 0.6s infinite; }
+
+/* -- Preguntas de Rinari --------------------------------------------------------- */
+.question-card { border-radius: var(--r-lg); border: 1px solid rgb(196 181 253 / 0.35); background: linear-gradient(180deg, rgb(43 32 64 / 0.7), rgb(23 17 38 / 0.85)); box-shadow: 0 0 0 4px rgb(147 88 255 / 0.06), 0 24px 60px -30px rgb(147 88 255 / 0.5); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.question-option { border-radius: var(--r-md); border: 1px solid transparent; transition: background-color var(--dur-fast), border-color var(--dur-fast); }
+.question-option:hover { background: var(--bg-hover); }
+.question-option.is-on { background: rgb(147 88 255 / 0.14); border-color: rgb(196 181 253 / 0.55); }

@@ -78,7 +78,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
     <CircleHelp size={16} /> {t('questions.waiting')} · {t('questions.restore')}
   </button>
   const syntheticMetadata = question.options?.find(option => isOther(option.label))
-  return <section aria-label={t('questions.region')} className="mb-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm">
+  return <section aria-label={t('questions.region')} className="question-card mb-3 p-4 text-sm">
     <div className="mb-3 flex items-start justify-between gap-3">
       <h3 ref={heading} tabIndex={-1} aria-label={`${position}: ${question.title}`} className="font-semibold">{question.title}</h3>
       <button disabled={sending} aria-label={t('questions.minimize')} onClick={() => setMinimized(true)}><X size={16} /></button>
@@ -89,13 +89,13 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
         return <button key={optionIndex} role="radio" aria-checked={checked} disabled={sending}
           onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault() }}
           onClick={event => choose({ kind: 'option', optionIndex, value: option.label }, event.detail)}
-          className={`flex w-full gap-3 rounded-xl p-3 text-left hover:bg-[var(--bg-hover)] ${checked ? 'bg-[var(--bg-hover)] ring-1 ring-[var(--accent)]' : ''}`}>
+          className={`question-option flex w-full gap-3 p-3 text-left${checked ? ' is-on' : ''}`}>
           <span><strong>{option.label}{option.recommended ? ` (${t('questions.recommended')})` : ''}</strong>
             {option.description && <span className="mt-1 block text-xs text-[var(--text-muted)]">{option.description}</span>}</span>
         </button>
       })}
       <button role="radio" aria-checked={Boolean(other)} disabled={sending} onClick={event => choose({ kind: 'other' }, event.detail)}
-        className={`w-full rounded-xl p-3 text-left hover:bg-[var(--bg-hover)] ${other ? 'ring-1 ring-[var(--accent)]' : ''}`}>
+        className={`question-option w-full p-3 text-left${other ? ' is-on' : ''}`}>
         <strong>{t('questions.other')}{syntheticMetadata?.recommended ? ` (${t('questions.recommended')})` : ''}</strong>
         {syntheticMetadata?.description && <span className="mt-1 block text-xs text-[var(--text-muted)]">{syntheticMetadata.description}</span>}
       </button>
@@ -103,14 +103,14 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
     {other && <textarea ref={input} aria-label={t('questions.custom')} placeholder={t('questions.placeholder')}
       value={drafts.customText[question.id] ?? ''} disabled={sending} maxLength={8000}
       onChange={event => setDrafts(current => ({ ...current, customText: { ...current.customText, [question.id]: event.target.value } }))}
-      className="mt-3 w-full resize-none rounded-xl border border-[var(--border)] bg-transparent p-3 outline-none focus:ring-1 focus:ring-[var(--accent)]" />}
-    {other && !last && <button disabled={sending || !valid} onClick={() => go(index + 1)} className="mt-2 rounded-lg border border-[var(--border)] px-3 py-2 disabled:opacity-40">{t('questions.continue')}</button>}
+      className="field-input mt-3 resize-none" />}
+    {other && !last && <button disabled={sending || !valid} onClick={() => go(index + 1)} className="btn btn-secondary btn-sm mt-2">{t('questions.continue')}</button>}
     <div className="mt-2 flex items-center gap-2">
       <button aria-label={t('questions.previous')} disabled={sending || index === 0} onClick={() => go(index - 1)}><ChevronLeft size={16} /></button>
       <span className="text-xs">{position}</span>
       <button aria-label={t('questions.next')} disabled={sending || last || !valid} onClick={() => go(index + 1)}><ChevronRight size={16} /></button>
       <span className="flex-1" />
-      <button disabled={sending} onClick={() => void submit(true)} className="px-3 py-1.5">{t('questions.skip')}</button>
+      <button disabled={sending} onClick={() => void submit(true)} className="btn btn-quiet btn-sm">{t('questions.skip')}</button>
       <button disabled={sending || !answers} onClick={() => void submit(false)} className="btn btn-primary btn-sm">
         {t(sending ? 'questions.sending' : request.questions.length === 1 ? 'questions.send' : 'questions.sendMany')}
       </button>

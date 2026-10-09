@@ -11,7 +11,6 @@ import {
   FolderGit2,
   FolderOpen,
   MessageSquare,
-  LoaderCircle,
   MoreHorizontal,
   Plus,
   GitFork,
@@ -45,10 +44,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
 } from '../ui/dropdown-menu'
 import { Switch } from '../ui/switch'
-import ApplicationMenu from './ApplicationMenu'
+import ApplicationMenu, { SidebarFooter } from './ApplicationMenu'
+import SidebarIdentity from './SidebarIdentity'
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
 
 export interface AppSidebarProps {
@@ -276,10 +277,7 @@ export function AppSidebar({
     return (
       <li key={session.id} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
-          className={cn(
-            'flex w-full items-center gap-1 rounded-xl pr-1 pl-2.5 transition-colors',
-            active ? 'bg-[var(--bg-active)]' : 'hover:bg-[var(--bg-hover)]/60',
-          )}
+          className={cn('sidebar-row', active && 'is-active')}
         >
           <button
             type="button"
@@ -291,14 +289,11 @@ export function AppSidebar({
               <span
                 aria-hidden="true"
                 data-testid="session-rail"
-                className={cn(
-                  'absolute top-2 bottom-2 left-0 w-0.5 origin-center rounded-full bg-[var(--accent)] transition-all duration-200',
-                  active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0',
-                )}
+                className={cn('sidebar-row-rail', active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0')}
               />
             )}
             {working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
-              <LoaderCircle size={14} aria-hidden="true" className="shrink-0 text-[var(--accent)] motion-safe:animate-spin" />
+              <span aria-hidden="true" className="sidebar-spin" />
             </span> : <MessageSquare
               size={14}
               aria-hidden="true"
@@ -306,7 +301,7 @@ export function AppSidebar({
             />}
             <span
               className={cn(
-                'block min-w-0 flex-1 truncate text-sm',
+                'block min-w-0 flex-1 truncate text-[13px]',
                 active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]',
               )}
             >
@@ -323,7 +318,7 @@ export function AppSidebar({
                 aria-label={t('sidebar.sessionInterrupted')}
                 title={t('sidebar.sessionInterrupted')}
                 data-testid="session-interrupted-dot"
-                className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]"
               />
             )}
             {signal && signalLabel && (
@@ -351,6 +346,7 @@ export function AppSidebar({
                 const reference = `${t('sidebar.refSession')}: ${session.id}\n${t('sidebar.refTitle')}: ${sessionLabel(session, t('sidebar.newChat'))}${session.project_id ? `\n${t('sidebar.refProject')}: ${session.project_id}` : ''}${session.project_root ? `\nWorkspace: ${session.project_root}` : ''}`
                 void copyText(reference).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionReferenceCopied' : 'sidebar.sessionReferenceCopyFailed')))
               }}><Copy size={13} /> {t('sidebar.copySessionReference')}</DropdownMenuItem>
+              <DropdownMenuSeparator />
               {opts?.closed ? (
                 <DropdownMenuItem onSelect={() => onRestoreSession(session.id)}>
                   <ArchiveRestore size={13} /> {t('sidebar.restore')}
@@ -379,6 +375,7 @@ export function AppSidebar({
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
                     <GitFork size={13} /> {t('sidebar.fork')}
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => onArchiveSession(session.id)}>
                     <Archive size={13} /> {t('sidebar.archive')}
                   </DropdownMenuItem>
@@ -387,12 +384,13 @@ export function AppSidebar({
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={() => {
                   setCascade(false)
                   setDeleteTarget(session)
                 }}
-                className="text-red-500 focus:text-red-500"
+                className="menu-danger"
               >
                 <Trash2 size={13} /> {t('sidebar.delete')}
               </DropdownMenuItem>
@@ -432,16 +430,17 @@ export function AppSidebar({
   }
 
   return (
-    <div className="concept-sidebar flex h-full w-full min-w-0 flex-col gap-4 overflow-hidden px-3 pt-3 pb-0">
+    <div className="concept-sidebar flex h-full w-full min-w-0 flex-col gap-3 overflow-hidden px-3 pt-3 pb-0">
+      <SidebarIdentity busy={busySessionIds?.size ?? 0} waiting={approvals.length} activeSessionId={activeId || null} />
       <div className="shrink-0 space-y-1">
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={onNewChat}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[var(--bg-active)] px-3 py-3 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-active)]"
+          className="sidebar-new"
         >
           <Plus size={15} aria-hidden="true" />
-          <span className="truncate">{t('sidebar.newChat')}</span><kbd className="ml-auto whitespace-nowrap text-[11px] font-normal text-[var(--text-subtle)]">{newChatShortcut.replaceAll('+', ' + ')}</kbd>
+          <span className="truncate">{t('sidebar.newChat')}</span><kbd className="sidebar-kbd ml-auto">{newChatShortcut.replaceAll('+', ' ')}</kbd>
         </button>
 
       </div>
@@ -451,7 +450,7 @@ export function AppSidebar({
         <button
           type="button"
           onClick={onOpenSchedules}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
+          className="sidebar-link"
         >
           <CalendarClock size={15} aria-hidden="true" />
           <span className="truncate">{t('sidebar.schedules')}</span>
@@ -459,7 +458,7 @@ export function AppSidebar({
       )}
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5 transition-colors focus-within:border-[var(--border-strong)]">
+      <div className="sidebar-search">
         <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
         <input
           aria-label={t('sidebar.searchWorkspace')}
@@ -473,7 +472,7 @@ export function AppSidebar({
 
         {model.pinned.length > 0 && (
           <section aria-label={t('sidebar.pinned')}>
-            <p className="mb-1 pl-2 text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
+            <p className="sidebar-heading mb-1 pl-2">
               {t('sidebar.pinned')}
             </p>
             <ul className="space-y-0.5">
@@ -495,7 +494,7 @@ export function AppSidebar({
 
         <section aria-label={t('sidebar.projects')}>
           <div className="mb-1 flex items-center justify-between pl-2">
-            <p className="text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
+            <p className="sidebar-heading">
               {t('sidebar.projects')}
             </p>
             <button
@@ -520,9 +519,9 @@ export function AppSidebar({
                   aria-expanded={projectOpen(project.id)}
                   onClick={() => toggleProject(project.id)}
                   title={project.root}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-[var(--bg-hover)]/60"
+                  className="sidebar-project"
                 >
-                  <FolderGit2 size={14} aria-hidden="true" className="shrink-0 text-[var(--accent)]" />
+                  <FolderGit2 size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--text)]">
                     {project.name || projectDisplayName(project.root)}
                   </span>
@@ -534,7 +533,7 @@ export function AppSidebar({
                   )}
                   {items.some(item => busySessionIds?.has(item.id)) && (
                     <span role="status" aria-label={t('sidebar.projectWorking')} title={t('sidebar.projectWorking')}>
-                      <LoaderCircle size={13} aria-hidden="true" className="text-[var(--accent)] motion-safe:animate-spin" />
+                      <span aria-hidden="true" className="sidebar-spin" />
                     </span>
                   )}
                 </button>
@@ -561,7 +560,7 @@ export function AppSidebar({
                 </DropdownMenu>
                 </div>
                 {items.length > 0 && projectOpen(project.id) && (
-                  <ul className="mt-0.5 ml-3.5 space-y-0.5 border-l border-[var(--border)] pl-1">
+                  <ul className="sidebar-tree mt-0.5 ml-3.5 space-y-0.5 pl-1">
                     {items.map((session) => row(session))}
                   </ul>
                 )}
@@ -599,7 +598,7 @@ export function AppSidebar({
 
         <section aria-label={t('sidebar.chats')} ref={chatsSectionRef} className="relative">
           <div className="mb-1 flex items-center justify-between px-2">
-            <p className="text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
+            <p className="sidebar-heading">
               {t('sidebar.chats')}
             </p>
             <button
@@ -625,7 +624,7 @@ export function AppSidebar({
               aria-hidden="true"
               data-testid="sessions-traveler"
               ref={travelerRef}
-              className="absolute top-0 left-0 w-0.5 rounded-full bg-[var(--accent)] opacity-0"
+              className="sidebar-traveler absolute top-0 left-0 w-[3px] rounded-full opacity-0"
               style={{ transition: 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), height 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease' }}
             />
         </section>
@@ -678,7 +677,7 @@ export function AppSidebar({
 
         {approvals.length > 0 && (
           <div className="mt-3">
-            <p className="mb-1 px-2 text-[11px] font-semibold tracking-widest text-[var(--text-subtle)] uppercase">
+            <p className="sidebar-heading mb-1 px-2">
               {t('sidebar.approvals')} · {approvals.length}
             </p>
             <p className="px-2 text-[11px] leading-relaxed text-[var(--text-subtle)]">
@@ -688,7 +687,7 @@ export function AppSidebar({
         )}
       </div>
 
-      <ApplicationMenu />
+      <SidebarFooter />
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
@@ -706,7 +705,7 @@ export function AppSidebar({
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="btn-danger"
             >
               {t('sidebar.deleteConfirm')}
             </AlertDialogAction>
@@ -725,7 +724,7 @@ export function AppSidebar({
             aria-label={t('sidebar.rename')}
             value={renameTitle}
             onChange={(event) => setRenameTitle(event.target.value)}
-            className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+            className="field-input"
           />
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>

@@ -44,7 +44,7 @@ export function RinariAvatar({ state = 'idle', size = 28, decorative = true, cla
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative ? true : undefined}
     >
-      <img key={EXPRESSION[state]} src={art.expression(EXPRESSION[state])} alt="" draggable={false} />
+      <span className="rinari-avatar-face"><img key={EXPRESSION[state]} src={art.expression(EXPRESSION[state])} alt="" draggable={false} /></span>
       {state === 'working' && <span className="rinari-avatar-orbit" />}
       {busy && size >= 26 && <span className="rinari-avatar-dots"><i /><i /><i /></span>}
     </span>

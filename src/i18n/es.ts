@@ -2091,9 +2091,9 @@ export const es = {
   'app.sidebar': 'Barra lateral',
   'app.checkUpdates': 'Buscar actualizaciones',
   'app.about': 'Acerca de Rinari Agent',
-  'app.settings': 'Configuración',
+  'app.settings': 'Ajustes',
   'app.appearance': 'Apariencia',
-  'app.engineStatus': 'Estado del motor',
+  'app.engineStatus': 'Diagnóstico y registros',
   'app.menuLabel': 'Menú de Rinari Agent',
   'app.openFile': 'Abrir archivo',
   'app.openLink': 'Abrir enlace',
@@ -2497,6 +2497,14 @@ export const es = {
   'context.usedPercent': '{n} % usado',
   'context.resets': 'se reinicia {date}',
   'context.details': 'Ver uso detallado',
+  'sidebar.identityMenu': 'Rinari y perfiles',
+  'sidebar.identityIdle': 'Lista para trabajar',
+  'sidebar.identityBusy': 'Trabajando · {n} en curso',
+  'sidebar.identityWaiting': 'Espera tu decisión · {n}',
+  'sidebar.applyProfile': 'Aplicar un perfil a esta conversación',
+  'sidebar.noProfiles': 'Aún no tienes perfiles.',
+  'sidebar.manageProfiles': 'Gestionar perfiles',
+  'sidebar.profileApplied': 'Perfil «{name}» aplicado',
 } as const
 
 export type I18nKey = keyof typeof es

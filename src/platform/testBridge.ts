@@ -24,7 +24,9 @@ import type {
   NotificationSupport,
   NotificationTarget,
   OpenFilesOptions,
+  OpenJsonResult,
   OpenRequest,
+  SaveJsonRequest,
   SystemNotification,
   Unsubscribe,
   UpdateAvailable,
@@ -75,6 +77,14 @@ export interface TestBridge extends DesktopBridge {
   indicators: AttentionIndicators[]
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
+  /** JSON guardados con `dialog.saveJson`, en orden. */
+  readonly savedJsonFiles: SaveJsonRequest[]
+  /** `false`: la persona cancela el próximo diálogo de guardar. */
+  nextJsonSave: boolean
+  /** Lo que devuelve el próximo `dialog.openJson`. `null` = canceló. */
+  nextJsonFile: OpenJsonResult | null
+  /** Si no es `null`, el próximo `dialog.openJson` falla con este error del host. */
+  nextJsonError: { code: string; message: string } | null
   readonly openedUrls: string[]
   update: UpdateAvailable | null
   /** Lo que devuelve `updates.snapshot`; `emitUpdateState` lo cambia y avisa. */
@@ -186,6 +196,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     notificationSupport: { canSend: true, canActivateTarget: true },
     openedUrls: [],
     nextFileSelection: null,
+    savedJsonFiles: [],
+    nextJsonSave: true,
+    nextJsonFile: null,
+    nextJsonError: null,
     update: null,
     updateState: { phase: 'idle', current_version: '0.2.0', available_version: null, progress: null, message: null, unsigned: true },
     desktop: true,
@@ -368,6 +382,16 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async openFiles(_options: OpenFilesOptions = {}) {
         return bridge.nextFileSelection
       },
+      async saveJson(request) {
+        if (!bridge.nextJsonSave) return { saved: false }
+        bridge.savedJsonFiles.push(request)
+        return { saved: true, name: request.suggestedName }
+      },
+      async openJson() {
+        const error = bridge.nextJsonError
+        if (error) throw Object.assign(new Error(error.message), error)
+        return bridge.nextJsonFile
+      },
     },
 
     opener: {
@@ -474,6 +498,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       notificationListeners.clear()
       bridge.openedUrls.length = 0
       bridge.nextFileSelection = null
+      bridge.savedJsonFiles.length = 0
+      bridge.nextJsonSave = true
+      bridge.nextJsonFile = null
+      bridge.nextJsonError = null
       bridge.update = null
       bridge.browserContext = null
       bridge.browserPreview = null

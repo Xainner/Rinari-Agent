@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **201**
-- Respaldados por Engine: **195**
+- Comandos: **203**
+- Respaldados por Engine: **197**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -64,8 +64,10 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `mcp_test` | engine | `mcp.test` | `src/services/engine.ts` |
 | `memory_candidate_resolve` | engine | `memory.candidate.resolve` | `src/services/memory.ts` |
 | `memory_candidates_list` | engine | `memory.candidates.list` | `src/services/memory.ts` |
+| `memory_export` | engine | `memory.export` | `src/services/memory.ts` |
 | `memory_forget` | engine | `memory.forget` | **ninguno** |
 | `memory_get` | engine | `memory.get` | `src/services/memory.ts` |
+| `memory_import` | engine | `memory.import` | `src/services/memory.ts` |
 | `memory_list` | engine | `memory.list` | `src/services/memory.ts` |
 | `memory_search` | engine | `memory.search` | `src/services/memory.ts` |
 | `memory_settings_get` | engine | `memory.settings.get` | `src/services/memory.ts` |

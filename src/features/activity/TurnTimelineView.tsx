@@ -51,6 +51,8 @@ import { ActivityTransition } from './ActivityTransition'
 import { ActivityHeader } from './ActivityHeader'
 import { activityKey, useActivityDisclosure } from '../../stores/activityDisclosure'
 import { RinariAvatar } from '../rinari/RinariAvatar'
+import { useAgentFocusStore } from '../../stores/agentFocus'
+import { useSessionDockStore } from '../../stores/sessionDock'
 import { rinariStateForTurn } from '../rinari/turnState'
 
 interface Props {
@@ -65,6 +67,8 @@ interface Props {
 }
 
 const ActivityActive = createContext(true)
+/** Sesión del turno: «Ver en el panel» abre los Agentes de esa sesión. */
+const TurnSessionContext = createContext<string | null>(null)
 
 const ICONS: Record<ToolCategory, typeof FileText> = {
   image: ImageIcon,
@@ -342,6 +346,7 @@ type AgentItem = Extract<TimelineItem, { type: 'agent' }>
 function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveApproval: (id: string, decision: string) => void }) {
   const { lang, t } = useI18n()
   const active = useContext(ActivityActive)
+  const agentSession = useContext(TurnSessionContext)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const followingRef = useRef<boolean | null>(null)
@@ -419,7 +424,11 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
         <span className="font-semibold">{item.agent}</span>
         {item.objective && <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--text-muted)]" title={item.objective}>{item.objective}</span>}
         <ActivityText active={active && item.status === 'running'} className="act-meta text-[12px]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</ActivityText>
-        {item.agentId && <button type="button" className="btn btn-ghost btn-xs" onClick={event => { event.preventDefault(); event.stopPropagation(); window.dispatchEvent(new CustomEvent('rinari:show-agent', { detail: { agentId: item.agentId } })) }}>{t('activity.agentInPanel')}</button>}
+        {item.agentId && agentSession && <button type="button" className="btn btn-ghost btn-xs" onClick={event => {
+          event.preventDefault(); event.stopPropagation()
+          useAgentFocusStore.getState().focus(agentSession, item.agentId)
+          useSessionDockStore.getState().reveal(agentSession, 'agents')
+        }}>{t('activity.agentInPanel')}</button>}
         <span className="sr-only">{lang === 'es' ? 'Ver actividad' : 'View activity'}</span><ChevronDown size={13} className="text-[var(--text-subtle)] transition-transform group-open/agent:rotate-180" />
       </summary>
       <div ref={scrollRef} onScroll={trackScroll} data-testid="agent-activity" data-inspection-scroll className="mx-3 mb-3 mt-1 max-h-[32rem] overflow-auto">
@@ -571,7 +580,9 @@ export default function TurnTimelineView(props: Props) {
   const runSession = timeline.origin?.kind === 'schedule' ? timeline.sessionId : null
   return (
     <ScheduledRunContext.Provider value={runSession}>
-      <TurnTimelineBody {...props} />
+      <TurnSessionContext.Provider value={timeline.sessionId}>
+        <TurnTimelineBody {...props} />
+      </TurnSessionContext.Provider>
     </ScheduledRunContext.Provider>
   )
 }

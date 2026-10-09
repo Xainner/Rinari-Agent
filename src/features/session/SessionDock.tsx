@@ -1,4 +1,4 @@
-import { FileText, Globe, LayoutPanelLeft, SquareTerminal, X } from 'lucide-react'
+import { Bot, FileText, Globe, LayoutPanelLeft, SquareTerminal, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useI18n } from '../../i18n'
 import type { SessionSummary } from '../../services/engine'
@@ -7,6 +7,10 @@ import { FileViewer, useFileWorkspace } from '../files/FileWorkspace'
 import BrowserSurface from '../browser/BrowserSurface'
 import WorkspaceView from '../workspace/WorkspaceView'
 import TerminalPanel from '../terminal/TerminalPanel'
+import AgentsPanel, { sessionAgents } from '../agents/AgentsPanel'
+import { useOptionalRuntimeStore } from '../engine/EngineContext'
+import type { RuntimeStore } from '../engine/runtimeStore'
+import { useSessionTimelines } from '../engine/sessionSelectors'
 import { useAgentRunningCount } from '../terminal/agentTab'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
@@ -31,7 +35,7 @@ export interface SessionDockProps {
   busy?: boolean
 }
 
-const SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace', 'terminal']
+const SURFACES: readonly DockSurface[] = ['agents', 'files', 'browser', 'workspace', 'terminal']
 
 /**
  * Dock de una sesión con cuatro superficies: **Archivos** (tablist y
@@ -73,8 +77,9 @@ export default function SessionDock({
     return () => previous?.focus?.()
   }, [layout])
 
-  const labels: Record<DockSurface, string> = { files: t('dock.files'), browser: t('dock.browser'), workspace: t('nav.workspace'), terminal: t('dock.terminal') }
-  const icons = { files: FileText, browser: Globe, workspace: LayoutPanelLeft, terminal: SquareTerminal } as const
+  const labels: Record<DockSurface, string> = { agents: t('dock.agents'), files: t('dock.files'), browser: t('dock.browser'), workspace: t('nav.workspace'), terminal: t('dock.terminal') }
+  const icons = { agents: Bot, files: FileText, browser: Globe, workspace: LayoutPanelLeft, terminal: SquareTerminal } as const
+  const runtime = useOptionalRuntimeStore()
   const surfaces = terminalEnabled ? SURFACES : SURFACES.filter((item) => item !== 'terminal')
 
   return (
@@ -107,6 +112,8 @@ export default function SessionDock({
               className={cn('pane-dock-tab', surface === item && 'is-active')}
             >
               <Icon size={13} aria-hidden="true" /><span className="pane-dock-tab-label">{labels[item]}</span>
+              {surface === item && <span className="pane-dock-underline" aria-hidden="true" />}
+              {item === 'agents' && runtime && <AgentsRunning store={runtime} sessionId={sessionId} />}
               {item === 'files' && openFiles > 0 && <span className="pane-dock-count">{openFiles}</span>}
               {item === 'terminal' && agentRunning > 0 && (
                 <span className="pane-dock-count" title={t('terminal.agentRunning', { n: agentRunning })}>{agentRunning}</span>
@@ -123,7 +130,9 @@ export default function SessionDock({
         </button>
       </div>
       <div id={`dock-${sessionId}-${surface}`} className="pane-dock-body" role="tabpanel" aria-label={labels[surface]}>
-        {surface === 'terminal' && terminalEnabled ? (
+        {surface === 'agents' ? (
+          <AgentsPanel sessionId={sessionId} />
+        ) : surface === 'terminal' && terminalEnabled ? (
           <TerminalPanel sessionId={sessionId} />
         ) : surface === 'workspace' || surface === 'terminal' ? (
           <WorkspaceView session={session} embedded tab={workspaceTab} onTabChange={onWorkspaceTabChange} sharedRoot={sharedRoot} />
@@ -148,4 +157,13 @@ export default function SessionDock({
       </div>
     </aside>
   )
+}
+
+/** Subagentes trabajando en la sesión, en la pestaña «Agentes». */
+function AgentsRunning({ store, sessionId }: { store: RuntimeStore; sessionId: string }) {
+  const { t } = useI18n()
+  const timelines = useSessionTimelines(store, sessionId)
+  const running = sessionAgents(timelines).filter((entry) => entry.live).length
+  if (running === 0) return null
+  return <span className="pane-dock-count is-live" title={t('agents.countRunning', { n: running })}>{running}</span>
 }

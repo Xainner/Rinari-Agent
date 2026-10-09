@@ -298,6 +298,11 @@ export default function Composer({
     }
   }, [menuOpen])
   const [modelSignal, setModelSignal] = useState(0)
+  // «Cambiar modelo» desde un error del turno abre el selector de esta sesión.
+  const pickerRequest = useUIStore((s) => s.modelPickerRequest)
+  useEffect(() => {
+    if (pickerRequest && sessionId && pickerRequest.sessionId === sessionId) setModelSignal((value) => value + 1)
+  }, [pickerRequest, sessionId])
   const [visionRoute, setVisionRoute] = useState<{ key: string; available: boolean; reason: string; destination: string }>()
   const [visionRevision, setVisionRevision] = useState(0)
   useEffect(() => { const refresh = () => setVisionRevision(n => n + 1); window.addEventListener('rinari-vision-changed', refresh); return () => window.removeEventListener('rinari-vision-changed', refresh) }, [])

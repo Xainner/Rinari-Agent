@@ -212,6 +212,9 @@ interface UIState {
   providerFocus: ProviderFocus | null
   openProvider: (focus: ProviderFocus) => void
   clearProviderFocus: () => void
+  /** Abre el selector de modelo del compositor de esa sesión (p. ej. tras un error de créditos); en memoria. */
+  modelPickerRequest: { sessionId: string; seq: number } | null
+  requestModelPicker: (sessionId: string) => void
   /** Vuelve a la última vista de trabajo (Normal, Boards o Flujos). */
   goBackToWork: () => void
   goChat: () => void
@@ -326,6 +329,9 @@ export const useUIStore = create<UIState>((set) => ({
   openProvider: (focus) =>
     set({ view: 'settings', sidebarOpen: false, settingsSection: 'providers', projectRoot: null, providerFocus: focus }),
   clearProviderFocus: () => set({ providerFocus: null }),
+  modelPickerRequest: null,
+  requestModelPicker: (sessionId) =>
+    set((s) => ({ modelPickerRequest: { sessionId, seq: (s.modelPickerRequest?.seq ?? 0) + 1 } })),
   goBackToWork: () => set((s) => ({ view: s.lastWorkspaceView, sidebarOpen: false, projectRoot: null })),
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   setLang: (lang) => {

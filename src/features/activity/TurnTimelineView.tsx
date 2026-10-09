@@ -165,6 +165,9 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'agent') return <AgentCard item={item} onResolveApproval={onResolveApproval} />
   if (item.type === 'changeset') return null
   if (item.type === 'question') return <InspectionDetails inspectionId="question" className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></InspectionDetails>
+  if (item.type === 'system' && item.kind === 'reasoning_dropped') {
+    return <p data-testid="reasoning-dropped" className="py-1 text-[12px] text-[var(--text-subtle)]">{t('activity.reasoningDropped', { effort: item.label ?? '' })}</p>
+  }
   if (item.type === 'system') return null
   const labels = !active && 'status' in item && item.status === 'running' ? t('activity.interrupted') : item.type === 'context'
       ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
@@ -584,6 +587,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
         {agent && <p className="text-xs text-[var(--text-muted)]">{agent}</p>}
         <ActivityRow item={item} onResolveApproval={onResolveApproval} />
       </div>)}
+      {projection.notices.map(item => item.type !== 'model' && <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />

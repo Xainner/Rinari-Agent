@@ -42,6 +42,8 @@ export function projectActivity(timeline: TurnTimeline) {
   const provisional = candidate && (!final || candidate.activitySeq > final.activitySeq) ? candidate : undefined
   const approvals = new Map<string, { item: ApprovalTimelineItem; agent?: string }>()
   const recoveries: TimelineItem[] = []
+  // Avisos sobre el modelo que deben verse aunque la actividad esté plegada.
+  const notices: TimelineItem[] = []
   const segments: ActivitySegment[] = [{ id: 'initial', items: [], publicTexts: [] }]
   const actions = new Set<string>()
   const incidents = new Set<string>()
@@ -60,6 +62,11 @@ export function projectActivity(timeline: TurnTimeline) {
       return null
     }
     if (item.type === 'question' && item.request.status === 'pending') return ownerActive ? null : { ...item, request: { ...item.request, status: 'expired' } }
+    // El modelo ignoró el razonamiento elegido o no ve imágenes: aviso siempre visible.
+    if ((item.type === 'system' && item.kind === 'reasoning_dropped') || (item.type === 'vision' && item.fallback === 'without_images')) {
+      if (!notices.some((notice) => notice.type === item.type)) notices.push(item)
+      return null
+    }
     if (item.type === 'changeset' || item.type === 'system' || (item.type === 'model' && !item.content)) return null
     if (item.type === 'vision' && item.route === 'conversation') return null
     if (['tool', 'context', 'verification', 'vision'].includes(item.type)) {
@@ -91,7 +98,7 @@ export function projectActivity(timeline: TurnTimeline) {
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }
-  return { segments, approvals: [...approvals.values()], recoveries, final, provisional, actions: actions.size, incidents: incidents.size }
+  return { segments, approvals: [...approvals.values()], recoveries, notices, final, provisional, actions: actions.size, incidents: incidents.size }
 }
 
 /** Active identities win over the last row or output timestamp. Token/stdout updates cannot rotate the header. */

@@ -598,7 +598,7 @@ function App() {
         banner={degradedText !== null && degradedText !== dismissedBanner && (
           <div
             role="alert"
-            className="flex items-center gap-3 border-b border-amber-400/30 bg-amber-400/10 px-4 py-1.5 text-xs text-[var(--text)]"
+            className="app-banner"
           >
             <span className="min-w-0 flex-1 truncate">
               {degradedText}
@@ -609,7 +609,7 @@ function App() {
                 void session.refreshSessions()
                 void session.refreshCatalog()
               }}
-              className="shrink-0 rounded-full border border-[var(--border)] px-3 py-0.5 transition-colors hover:border-[var(--accent)]/50"
+              className="btn btn-ghost btn-xs"
             >
               {translate(lang, 'startup.retry')}
             </button>
@@ -738,6 +738,9 @@ function App() {
           />
         }
       >
+        {/* Cada vista entra con un fundido corto (solo opacidad: un transform
+            movería el rectángulo del navegador nativo durante la entrada). */}
+        <div key={view} className="view-stage">
         {view === 'chat' && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />}
         {view === 'board' && (
           <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
@@ -810,6 +813,7 @@ function App() {
             onCatalogChanged={() => void session.refreshCatalog()}
           />
         )}
+        </div>
       </AppShell>
 
       <ProviderWizard

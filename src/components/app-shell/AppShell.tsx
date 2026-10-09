@@ -27,7 +27,7 @@ export default function AppShell({ sidebar, topbar, children, banner }: AppShell
       <div className="flex min-h-0 flex-1">
         <aside
           className={cn(
-            'hidden shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-sidebar)] lg:flex',
+            'app-sidebar hidden shrink-0 flex-col border-r border-[var(--line-1)] bg-[var(--bg-sidebar)] lg:flex',
             collapsed ? 'w-[72px]' : 'w-[278px]',
           )}
           aria-label="Rinari Agent"
@@ -37,7 +37,7 @@ export default function AppShell({ sidebar, topbar, children, banner }: AppShell
 
         <Drawer.Root open={mobileOpen} onOpenChange={setMobileOpen} direction="left">
           <Drawer.Portal>
-            <Drawer.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" />
+            <Drawer.Overlay className="r-overlay fixed inset-0 z-40 lg:hidden" />
             <Drawer.Content
               aria-label="Rinari Agent"
               className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--border)] bg-[var(--bg-sidebar)] outline-none lg:hidden"

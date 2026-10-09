@@ -193,7 +193,7 @@ un sidebar con conversaciones agrupadas por fecha local. Los temas y acentos pre
 se conservan en las preferencias, pero sus selectores están deshabilitados durante
 esta etapa del rediseño. La preferencia de movimiento reducido sigue disponible.
 
-La sesión vacía muestra la ilustración de `public/brand/home.png` y un composer
+La sesión vacía muestra la ilustración de `public/brand/home.webp` y un composer
 compartido con las conversaciones activas: adjuntos y permisos a la izquierda,
 PLAN / BUILD / REVIEW en el centro, y modelo, razonamiento y envío a la derecha.
 Los recursos originales proceden del concept proporcionado para Rinari Agent.

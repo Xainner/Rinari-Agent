@@ -592,9 +592,13 @@ input[type='password']::-ms-clear {
 .is-conversation .conversation-visual-slot > .home-hero { position: absolute; inset: 0 0 auto; pointer-events: none; }
 .home-hero { width: 100%; }
 .home-art { width: 100%; height: clamp(160px, calc(100dvh - 480px), 520px); flex-shrink: 0; position: relative; overflow: hidden; }
-.home-art img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(to bottom, black 65%, transparent 100%); }
+.home-art::before { content: ''; position: absolute; left: 50%; bottom: 4%; width: min(60%, 640px); aspect-ratio: 2 / 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse at center, rgb(147 88 255 / 0.28), transparent 70%); filter: blur(10px); pointer-events: none; }
+.home-art img { position: relative; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(to bottom, black 65%, transparent 100%); animation: home-art-in 0.9s var(--ease-out) both, home-float 9s ease-in-out 1s infinite; }
+@keyframes home-art-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes home-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .home-greeting { position: relative; margin-top: -18px; text-align: center; z-index: 1; }
-.home-greeting h1 { font-family: var(--font-sans); font-size: clamp(23px, 2.2vw, 30px); font-weight: 700; letter-spacing: -.035em; }
+.home-greeting { animation: rinari-rise var(--dur-slow) 0.15s var(--ease-out) both; }
+.home-greeting h1 { font-family: var(--font-display); font-size: clamp(26px, 2.6vw, 36px); font-weight: 750; letter-spacing: -0.03em; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .home-greeting p { margin-top: 4px; color: var(--text-muted); font-size: 14px; }
 .conversation-composer-slot {
   position: relative;
@@ -614,10 +618,12 @@ input[type='password']::-ms-clear {
 }
 .home-suggestions { width: min(calc(100% - 32px), 1080px); margin: 24px auto 0; }
 .home-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.home-card { display: flex; align-items: center; gap: 10px; padding: 13px; min-height: 76px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: linear-gradient(120deg, #171222, #111019); text-align: left; transition: border-color .15s, background .15s; }
-.home-card:hover:not(:disabled) { border-color: var(--accent); background: var(--bg-hover); }
+.home-card { display: flex; align-items: center; gap: 12px; padding: 13px 14px; min-height: 76px; border: 1px solid var(--line-1); border-radius: var(--radius-surface); background: linear-gradient(135deg, rgb(26 19 44 / 0.75), rgb(16 12 27 / 0.75)); text-align: left; box-shadow: var(--inset-hi); transition: border-color var(--dur-fast), background-color var(--dur-fast), transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.home-card:hover:not(:disabled) { border-color: rgb(196 181 253 / 0.4); transform: translateY(-2px); box-shadow: var(--inset-hi), 0 14px 30px -18px rgb(147 88 255 / 0.7); }
 .home-card:disabled { opacity: .45; cursor: default; }
-.home-card-icon { width: 43px; height: 43px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #281740; color: var(--accent-2); }
+.home-card-icon { width: 42px; height: 42px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, rgb(147 88 255 / 0.28), rgb(147 88 255 / 0.1)); border: 1px solid var(--line-2); color: var(--violet-200); transition: transform var(--dur-base) var(--ease-spring); }
+.home-card:hover:not(:disabled) .home-card-icon { transform: scale(1.06) rotate(-3deg); }
+.home-unavailable { margin: 18px auto 0; font-size: 12.5px; color: var(--warning); text-align: center; }
 .home-card strong { display: block; font-size: 13px; font-weight: 600; line-height: 1.4; }
 .home-card small { display: block; margin-top: 5px; color: var(--text-muted); font-size: 11px; line-height: 1.4; }
 .home-more { display: flex; align-items: center; gap: 6px; margin: 10px 0 0 auto; color: var(--text-subtle); font-size: 11px; padding: 4px; }
@@ -742,7 +748,7 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 }
 
 /* -- App status bar (Normal / Boards) ------------------------------------- */
-.app-topbar { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+.app-topbar { display: flex; align-items: center; gap: 12px; height: 48px; flex-shrink: 0; padding: 0 12px; border-bottom: 1px solid var(--line-1); background: var(--bg-subtle); }
 /* Con `titleBarStyle: 'hidden'` no hay otra zona para arrastrar la ventana:
    lo es el fondo de la barra, no sus controles. A la derecha se reserva la
    franja de los controles nativos (env() la da Electron cuando van
@@ -795,10 +801,10 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .turn-meta-new { padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--success, #3fbf7f) 20%, transparent); color: var(--success, #3fbf7f); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .turn-meta-action { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 0 7px; border: 1px solid var(--border); border-radius: var(--radius-control); font-size: 10px; font-weight: 600; color: var(--text-muted); }
 .turn-meta-action:hover { background: var(--bg-hover); color: var(--text); }
-.view-switcher { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-elevated); }
+.view-switcher { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 999px; background: rgb(10 8 18 / 0.7); box-shadow: var(--inset-hi); }
 .view-switcher-button { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 14px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; color: var(--text-muted); transition: background-color 120ms, color 120ms; }
-.view-switcher-button:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
-.view-switcher-button.is-active { color: #fff; background: linear-gradient(180deg, #b466ff, #8425ef); box-shadow: 0 0 14px #982eff33; }
+.view-switcher-button:hover:not(:disabled):not(.is-active) { color: var(--text); background: var(--bg-hover); }
+.view-switcher-button.is-active { color: #fff; }
 .view-switcher-button:disabled { opacity: 0.5; cursor: default; }
 .view-switcher-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--warning); color: #1a1207; font-size: 10px; font-weight: 700; }
 @media (max-width: 900px) {
@@ -1311,3 +1317,10 @@ select option:disabled { color: var(--text-subtle); }
 .field-input { width: 100%; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--bg-inset); padding: 9px 12px; font-size: 13px; color: var(--text); outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .field-input:focus { border-color: var(--violet-400); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.22); }
 .field-input::placeholder { color: var(--text-subtle); }
+
+/* -- Shell: vistas, selector y barra superior --------------------------------- */
+@keyframes rinari-view-in { from { opacity: 0; } to { opacity: 1; } }
+.view-stage { height: 100%; animation: rinari-view-in 0.3s var(--ease-out) both; }
+.app-sidebar { transition: width var(--dur-base) var(--ease-out); }
+.app-banner { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgb(246 197 109 / 0.3); background: linear-gradient(90deg, rgb(246 197 109 / 0.12), rgb(246 197 109 / 0.04)); padding: 6px 16px; font-size: 12px; color: var(--text); }
+.view-switcher-pill { position: absolute; inset: 0; border-radius: 999px; background: linear-gradient(135deg, var(--violet-500), var(--violet-600)); box-shadow: 0 6px 18px -6px rgb(147 88 255 / 0.85), var(--inset-hi); }

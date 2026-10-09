@@ -2488,4 +2488,5 @@ export const en: Record<I18nKey, string> = {
   'sidebar.noProfiles': 'You have no profiles yet.',
   'sidebar.manageProfiles': 'Manage profiles',
   'sidebar.profileApplied': 'Profile “{name}” applied',
+  'home.unavailable': 'Rinari is not available right now',
 }

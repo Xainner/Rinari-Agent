@@ -2505,6 +2505,7 @@ export const es = {
   'sidebar.noProfiles': 'Aún no tienes perfiles.',
   'sidebar.manageProfiles': 'Gestionar perfiles',
   'sidebar.profileApplied': 'Perfil «{name}» aplicado',
+  'home.unavailable': 'Rinari no está disponible ahora mismo',
 } as const
 
 export type I18nKey = keyof typeof es

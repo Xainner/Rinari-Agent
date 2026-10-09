@@ -70,7 +70,7 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.18 }}
           >
-            <div className="home-art" aria-hidden="true"><img src="/brand/home.png" alt="" draggable={false} /></div>
+            <div className="home-art" aria-hidden="true"><img src="/brand/home.webp" alt="" draggable={false} /></div>
             <div className="home-greeting"><h1>{t('home.title')}</h1><p>{t('home.subtitle')}</p></div>
           </motion.div>
         )}
@@ -87,10 +87,10 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
             className="home-suggestions"
             aria-label={t('home.suggestions')}
           >
-            <div className="home-card-grid">{suggestionPage(selection.items, selection.offset).map((item) => {
+            <div className="home-card-grid" key={selection.offset}>{suggestionPage(selection.items, selection.offset).map((item, index) => {
               const Icon = icons[item.icon]
               return (
-                <button key={item.id} className="home-card" disabled={hasDraft} onClick={() => {
+                <button key={item.id} className="home-card" style={{ animationDelay: `${80 + index * 60}ms` }} disabled={hasDraft} onClick={() => {
                   const store = useComposerStore.getState()
                   if (store.getDraft(draftKey).text.trim()) return
                   store.setTextFor(draftKey, t(item.prompt))
@@ -109,15 +109,11 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
         )}
       </div>
 
+      {/* Sin el Engine no se puede escribir: se dice, en vez de un «listo» permanente. */}
       {!conversationActive && !pane && (
         <footer className="home-footer">
+          {!engineReady && <p className="home-unavailable" role="status">{t('home.unavailable')}</p>}
           <p>“Better tools for brighter minds.”</p>
-          <span className="home-footer-rule" />
-          <div className="home-status" role="status">
-            <span className={engineReady ? 'engine-dot ready' : 'engine-dot'} />
-            {t(engineReady ? 'home.ready' : 'home.unavailable')}
-            <span className="home-motto">Code · Create · Explore · Together</span>
-          </div>
         </footer>
       )}
     </div>

@@ -1,7 +1,7 @@
 {
   "schema": "rinari.desktop-command-inventory.v1",
   "origin": {
-    "note": "Inventario vigente de comandos de Electron. Las 130 filas iniciales salieron de la captura de Tauri 0.1.3 hecha para la paridad de la migraci\u00f3n; esa foto se conserva en introduced_in.",
+    "note": "Inventario vigente de comandos de Electron. Las 130 filas iniciales salieron de la captura de Tauri 0.1.3 hecha para la paridad de la migración; esa foto se conserva en introduced_in.",
     "captured_from": "Tauri 0.1.3",
     "captured_commit": "06fadb40334289c12f63a6cb202c546cdcce7d70",
     "introduced_in": "45552c9d85529315f078962ce17f5c659170fe21"
@@ -2986,6 +2986,40 @@
       "host_effects": []
     },
     {
+      "command": "soul_settings_get",
+      "module": "souls",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "soul.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "soul_settings_set",
+      "module": "souls",
+      "args": [
+        {
+          "name": "character_intensity",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "soul.settings.set",
+      "engine_params": [
+        {
+          "key": "character_intensity",
+          "from": "character_intensity",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "mcp_list",
       "module": "ecosystem",
       "args": [],
@@ -3029,9 +3063,39 @@
           "optional": false
         },
         {
+          "name": "transport",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
           "name": "command",
-          "type": "Vec<String>",
-          "optional": false
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "url",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "env",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "auth",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "headers",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "timeout_s",
+          "type": "Option<u32>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -3044,9 +3108,225 @@
           "optional": false
         },
         {
+          "key": "transport",
+          "from": "transport",
+          "optional": true
+        },
+        {
           "key": "command",
           "from": "command",
+          "optional": true
+        },
+        {
+          "key": "url",
+          "from": "url",
+          "optional": true
+        },
+        {
+          "key": "env",
+          "from": "env",
+          "optional": true
+        },
+        {
+          "key": "auth",
+          "from": "auth",
+          "optional": true
+        },
+        {
+          "key": "headers",
+          "from": "headers",
+          "optional": true
+        },
+        {
+          "key": "timeout_s",
+          "from": "timeout_s",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_update",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
           "optional": false
+        },
+        {
+          "name": "transport",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "command",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "url",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "env",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "auth",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "headers",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "timeout_s",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.update",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "transport",
+          "from": "transport",
+          "optional": true
+        },
+        {
+          "key": "command",
+          "from": "command",
+          "optional": true
+        },
+        {
+          "key": "url",
+          "from": "url",
+          "optional": true
+        },
+        {
+          "key": "env",
+          "from": "env",
+          "optional": true
+        },
+        {
+          "key": "auth",
+          "from": "auth",
+          "optional": true
+        },
+        {
+          "key": "headers",
+          "from": "headers",
+          "optional": true
+        },
+        {
+          "key": "timeout_s",
+          "from": "timeout_s",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_probe",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "transport",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "command",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "url",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "env",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "auth",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "headers",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "timeout_s",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.probe",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "transport",
+          "from": "transport",
+          "optional": true
+        },
+        {
+          "key": "command",
+          "from": "command",
+          "optional": true
+        },
+        {
+          "key": "url",
+          "from": "url",
+          "optional": true
+        },
+        {
+          "key": "env",
+          "from": "env",
+          "optional": true
+        },
+        {
+          "key": "auth",
+          "from": "auth",
+          "optional": true
+        },
+        {
+          "key": "headers",
+          "from": "headers",
+          "optional": true
+        },
+        {
+          "key": "timeout_s",
+          "from": "timeout_s",
+          "optional": true
         }
       ],
       "passthrough": null,

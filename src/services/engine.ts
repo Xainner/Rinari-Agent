@@ -656,23 +656,61 @@ export interface SkillJobError {
   details: Record<string, unknown>
 }
 
+/** Un secreto ya guardado: nunca llega su valor, solo si existe y de dónde sale. */
+export interface McpSecretView {
+  configured: boolean;
+  source: 'stored' | 'env' | null;
+  env_var?: string;
+}
+
 export interface McpServer {
   name: string;
   transport: string;
   command: string;
+  argv?: string[];
+  url?: string;
   scope: string;
   enabled: boolean;
   connected: boolean;
   updated_at: string | null;
+  timeout_s?: number | null;
+  auth?: { kind: 'none' | 'bearer' | 'headers'; token?: McpSecretView };
+  headers?: Array<{ name: string; secret: boolean; configured?: boolean; value?: string; source?: string | null; env_var?: string }>;
+  env?: Array<{ name: string; configured: boolean; source: string | null; env_var?: string }>;
+  warnings?: string[];
 }
 
 export interface McpTest {
   ok: boolean;
-  server?: string;
+  server?: string | null;
+  transport?: string | null;
+  latency_ms?: number | null;
+  server_info?: { name?: string; version?: string };
   tools?: number;
   names?: string[];
+  resources?: number | null;
+  prompts?: number | null;
+  code?: string;
   error?: string;
   message?: string;
+  http_status?: number | null;
+  hint?: string | null;
+  retryable?: boolean;
+}
+
+/**
+ * Configuración de un servidor MCP (`mcp_remote_v1`). Un secreto es un texto
+ * literal, `env://NOMBRE` o `{ env: NOMBRE }`; `null` en `env`/`headers` lo
+ * borra. Sin `token` en `auth: { kind: 'bearer' }` se conserva el guardado.
+ */
+export interface McpConfig {
+  transport?: 'stdio' | 'http';
+  command?: string[];
+  url?: string;
+  env?: Record<string, string | null>;
+  auth?: { kind: 'none' | 'bearer' | 'headers'; token?: string };
+  headers?: Record<string, string | { value: string; secret?: boolean } | null>;
+  timeout_s?: number;
 }
 
 export interface PluginInfo {
@@ -987,12 +1025,22 @@ export const engineApi = {
   soulRemove: (id: string) => platform().command<{ removed: { id: string } }>("soul_remove", { id }),
   soulActivate: (id: string) => platform().command<{ soul: SoulSummary }>("soul_activate", { id }),
   mcpList: () => platform().command<{ servers: McpServer[] }>("mcp_list"),
-  mcpCreate: (name: string, command: string[]) =>
-    platform().command<{ server: McpServer }>("mcp_create", { name, command }),
+  mcpCreate: (name: string, config: McpConfig) =>
+    platform().command<{ server: McpServer }>("mcp_create", { name, ...config }),
+  /** Edita un servidor guardado; los secretos que no se envían se conservan. */
+  mcpUpdate: (name: string, config: McpConfig) =>
+    platform().command<{ server: McpServer }>("mcp_update", { name, ...config }),
+  /** Prueba una configuración sin guardarla; con `name`, sobre la guardada. */
+  mcpProbe: (config: McpConfig & { name?: string }) =>
+    platform().command<{ test: McpTest }>("mcp_probe", { ...config }),
   mcpRemove: (name: string) => platform().command<{ removed: { name: string } }>("mcp_remove", { name }),
   mcpSetEnabled: (name: string, enabled: boolean) =>
     platform().command<{ server: McpServer }>("mcp_set_enabled", { name, enabled }),
   mcpTest: (name: string) => platform().command<{ test: McpTest }>("mcp_test", { name }),
+  soulSettingsGet: () =>
+    platform().command<{ settings: { character_intensity: 'minimal' | 'balanced' | 'full'; options: string[]; default: string } }>("soul_settings_get"),
+  soulSettingsSet: (character_intensity: 'minimal' | 'balanced' | 'full') =>
+    platform().command<{ settings: { character_intensity: 'minimal' | 'balanced' | 'full'; options: string[]; default: string } }>("soul_settings_set", { character_intensity }),
   pluginList: () => platform().command<{ plugins: PluginInfo[] }>("plugin_list"),
   pluginSetEnabled: (name: string, enabled: boolean) =>
     platform().command<{ plugin: PluginInfo }>("plugin_set_enabled", { name, enabled }),

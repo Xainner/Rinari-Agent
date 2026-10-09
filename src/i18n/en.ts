@@ -2622,4 +2622,8 @@ export const en: Record<I18nKey, string> = {
   'soul.intensity.balancedHint': 'Her voice at the start or end when the moment allows.',
   'soul.intensity.fullHint': 'Rinari in full, without losing clarity on technical work.',
   'rbundles.explain': 'A profile saves a way of working: personality, mode and models per agent. Applying it changes the open conversation; you can also do it from the sidebar header.',
+  'composer.slash.skills': 'Skills',
+  'composer.slash.hintMove': 'move',
+  'composer.slash.hintComplete': 'complete',
+  'composer.slash.hintPick': 'choose',
 }

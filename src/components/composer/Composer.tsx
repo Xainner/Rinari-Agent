@@ -26,6 +26,7 @@ import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
 import { useSlashCommands } from './useSlashCommands'
+import { SlashMenu, groupSlashCommands } from './SlashMenu'
 import type { SlashCommand } from '../../services/engine'
 import type { SendOptions } from '../../features/engine/useEngineSession'
 import type { I18nKey } from '../../i18n'
@@ -262,7 +263,8 @@ export default function Composer({
   }, [wantsCommands, loadCommands])
   const slashCommands = engineCommands.filter((command) => command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand))
   const slashQ = slashQuery(text)
-  const slashMatches = slashQ !== null ? matchSlashCommands(slashQ, slashCommands) : []
+  // Sin tope: con solo «/» también deben verse las skills (van tras los comandos).
+  const slashMatches = slashQ !== null ? groupSlashCommands(matchSlashCommands(slashQ, slashCommands, Number.POSITIVE_INFINITY)) : []
   const [slashHighlight, setSlashHighlight] = useState(0)
   // Las sugerencias (/, @) se abren encima del compositor, fuera de su caja.
   // Su contenedor hace scroll cuando el compositor crece, y eso las
@@ -515,9 +517,21 @@ export default function Composer({
     }
   }
 
+  // Al completar un comando el cursor va al final: si se queda tras la «/»,
+  // lo que se escriba enseguida cae en medio del nombre.
+  const caretToEnd = useRef(false)
+  useLayoutEffect(() => {
+    if (!caretToEnd.current) return
+    caretToEnd.current = false
+    const box = textareaRef.current
+    if (!box) return
+    box.focus()
+    box.setSelectionRange(box.value.length, box.value.length)
+  }, [text])
+
   function completeSlash(command: SlashCommand) {
+    caretToEnd.current = true
     setText(`/${command.name} `)
-    requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
   function pickSlash(command: SlashCommand) {
@@ -732,31 +746,10 @@ export default function Composer({
             ref={menuRef}
             data-testid="composer-suggestions"
             style={{ position: 'fixed', left: menuBox.left, width: menuBox.width, bottom: menuBox.bottom }}
-            className="r-pop z-50 max-h-64 overflow-auto rounded-[var(--r-lg)] p-1.5" data-state="open"
+            className="r-pop composer-suggestions z-50 max-h-80 overflow-auto rounded-[var(--r-lg)] p-1.5" data-state="open"
           >
             {slashMatches.length > 0 && (
-              <div role="listbox" aria-label={t('composer.slash.heading')} data-testid="slash-command-list">
-                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.slash.heading')}</p>
-                {slashMatches.map((command, index) => {
-                  const key = SLASH_DESCRIPTION_KEYS[command.name]
-                  return (
-                    <button
-                      key={command.name}
-                      type="button"
-                      role="option"
-                      aria-selected={index === slashHighlight}
-                      onMouseEnter={() => setSlashHighlight(index)}
-                      onClick={() => pickSlash(command)}
-                      className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${index === slashHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
-                    >
-                      <span className="shrink-0 font-mono text-[var(--text)]">/{command.name}</span>
-                      {command.args && <span className="shrink-0 font-mono text-[var(--text-subtle)]">{command.args}</span>}
-                      <span className="min-w-0 flex-1 truncate text-[var(--text-subtle)]">{command.source === 'builtin' && key ? t(key) : command.description}</span>
-                      {command.source === 'skill' && <span className="shrink-0 rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">{t('composer.slash.skill')}</span>}
-                    </button>
-                  )
-                })}
-              </div>
+              <SlashMenu commands={slashMatches} highlight={slashHighlight} onHighlight={setSlashHighlight} onPick={pickSlash} descriptions={SLASH_DESCRIPTION_KEYS} />
             )}
             {paneMatches.length > 0 && (
               <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">

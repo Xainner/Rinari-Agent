@@ -2640,6 +2640,10 @@ export const es = {
   'soul.intensity.balancedHint': 'Su voz al empezar o cerrar cuando el momento lo permite.',
   'soul.intensity.fullHint': 'Rinari en todo su esplendor, sin perder claridad en lo técnico.',
   'rbundles.explain': 'Un perfil guarda una forma de trabajar: personalidad, modo y modelos por agente. Aplicarlo cambia la conversación abierta; también puedes hacerlo desde la cabecera de la barra lateral.',
+  'composer.slash.skills': 'Skills',
+  'composer.slash.hintMove': 'moverse',
+  'composer.slash.hintComplete': 'completar',
+  'composer.slash.hintPick': 'elegir',
 } as const
 
 export type I18nKey = keyof typeof es

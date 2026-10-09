@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import {
   ArrowLeftRight,
   CheckCheck,
@@ -30,6 +30,9 @@ import type { PaneSession } from './usePaneSession'
 import type { PaneStatusKind } from '../engine/sessionSelectors'
 import type { I18nKey } from '../../i18n/es'
 import { RinariAvatar, type RinariState } from '../rinari/RinariAvatar'
+import { rinariStateForTurn } from '../rinari/turnState'
+import { activityState, turnIsActive } from '../activity/activityPresentation'
+import type { TurnTimeline } from '../activity/types'
 
 /** Expresión de Rinari en la cabecera del panel, según su estado real. */
 const STATUS_FACE: Record<PaneStatusKind, RinariState> = {
@@ -43,6 +46,22 @@ const STATUS_FACE: Record<PaneStatusKind, RinariState> = {
   stopped: 'idle',
   loading: 'thinking',
   unavailable: 'offline',
+}
+
+/**
+ * Cara de Rinari en la cabecera del panel. Mientras trabaja sigue el turno en
+ * curso (pensando, usando herramientas, escribiendo, esperando una decisión),
+ * igual que la conversación normal; en Boards es el único lugar donde aparece.
+ */
+export function paneFace(kind: PaneStatusKind, timelines: Record<string, TurnTimeline>): RinariState {
+  if (kind !== 'working') return STATUS_FACE[kind]
+  let live: TurnTimeline | null = null
+  for (const turn of Object.values(timelines)) {
+    if (turnIsActive(turn.status) && (!live || turn.startedAt >= live.startedAt)) live = turn
+  }
+  if (!live) return STATUS_FACE.working
+  const face = rinariStateForTurn(activityState(live).kind)
+  return face === 'idle' ? STATUS_FACE.working : face
 }
 
 export const STATUS_LABEL_KEY = {
@@ -118,6 +137,7 @@ function PaneHeader({
   // sin trampa, y cede el foco al Composer en lugar de al botón.
   const configureOnClose = useRef(false)
   const statusLabel = t(STATUS_LABEL_KEY[status.kind])
+  const face = useMemo(() => paneFace(status.kind, session.timelines), [status.kind, session.timelines])
   const title = record?.title || t('sidebar.newChat')
   const projectName = project?.name ?? projectRoot
   const git = gitStatus?.status.available ? gitStatus.status : null
@@ -134,7 +154,7 @@ function PaneHeader({
 
   return (
     <header className={cn('pane-header', focused && 'is-focused')} data-testid="pane-header">
-      <RinariAvatar state={STATUS_FACE[status.kind]} size={26} className="pane-header-face" />
+      <RinariAvatar state={face} size={28} className="pane-header-face" />
       <div className="pane-header-identity">
         <span className="pane-header-title" title={title}>{title}</span>
         {projectName && (

@@ -1,4 +1,5 @@
 import { Check, Copy, RotateCcw } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { useI18n, type I18nKey } from '../i18n'
 import { useWindowBounds } from '../hooks/useWindowBounds'
 import { copyText } from '../lib/clipboard'
@@ -32,12 +33,14 @@ export default function StartupSplash({
 }) {
   useWindowBounds()
   const { t } = useI18n()
+  const root = useStartupParallax()
   const technical = [state ? `state: ${state}` : null, detail ? `detail: ${detail}` : null].filter(Boolean).join('\n') || '—'
   return (
-    <div className="startup">
-      <div className="startup-sky" aria-hidden="true" style={{ backgroundImage: `url(${art.sky()})` }} />
+    <div ref={root} className="startup">
+      <div className="startup-layer is-sky" aria-hidden="true"><div className="startup-sky" style={{ backgroundImage: `url(${art.sky()})` }} /></div>
       <div className="startup-glow" aria-hidden="true" />
-      <div className="startup-stars" aria-hidden="true" />
+      <div className="startup-layer is-far" aria-hidden="true"><div className="startup-stars is-far" /></div>
+      <div className="startup-layer is-near" aria-hidden="true"><div className="startup-stars" /></div>
       <main className="startup-stage">
         <div className="startup-halo" data-failed={failed || undefined} aria-hidden="true">
           <img src={art.chibi(failed ? 'oops' : 'wave')} alt="" draggable={false} />
@@ -78,4 +81,32 @@ export default function StartupSplash({
       </main>
     </div>
   )
+}
+
+/**
+ * Profundidad del fondo: las capas se desplazan distinto según el puntero (el
+ * cielo poco, las estrellas cercanas más). Con movimiento reducido no se mueve.
+ */
+function useStartupParallax() {
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const element = root.current
+    if (!element) return
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduced'
+    if (reduced) return
+    let frame = 0
+    const move = (event: PointerEvent) => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        element.style.setProperty('--px', ((event.clientX / window.innerWidth) * 2 - 1).toFixed(3))
+        element.style.setProperty('--py', ((event.clientY / window.innerHeight) * 2 - 1).toFixed(3))
+      })
+    }
+    window.addEventListener('pointermove', move)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('pointermove', move)
+    }
+  }, [])
+  return root
 }

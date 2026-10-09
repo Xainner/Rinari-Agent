@@ -1,5 +1,5 @@
 import { Bot, FileText, Globe, LayoutPanelLeft, SquareTerminal, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { SessionSummary } from '../../services/engine'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
@@ -15,8 +15,7 @@ import { useAgentRunningCount } from '../terminal/agentTab'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
-import { motion } from 'framer-motion'
-import { instant, spring, useCalmMotion } from '../../lib/motion'
+import { useCalmMotion } from '../../lib/motion'
 
 export interface SessionDockProps {
   sessionId: string
@@ -65,6 +64,28 @@ export default function SessionDock({
 }: SessionDockProps) {
   const { t } = useI18n()
   const calm = useCalmMotion()
+  // La píldora se mide sobre la pestaña activa. Solo se desliza al cambiar de
+  // pestaña; si el panel cambia de ancho (y las etiquetas se ocultan o vuelven)
+  // se recoloca sin animar, para que no rebote de un lado a otro.
+  const seg = useRef<HTMLDivElement>(null)
+  const [pill, setPill] = useState<{ left: number; width: number; glide: boolean } | null>(null)
+  const shownSurface = useRef(surface)
+  useLayoutEffect(() => {
+    const element = seg.current
+    if (!element) return
+    const place = (glide: boolean) => {
+      const tab = element.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      if (!tab) return
+      setPill((current) => ({ left: tab.offsetLeft, width: tab.offsetWidth, glide: glide || Boolean(current?.glide) }))
+    }
+    const changed = shownSurface.current !== surface
+    shownSurface.current = surface
+    place(changed && !calm)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => place(false))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [surface, calm])
   const overlayDepth = useOverlayStore(selectOverlayDepth)
   const files = useFileWorkspace()
   const openFiles = files?.tabs.length ?? 0
@@ -100,7 +121,8 @@ export default function SessionDock({
       }}
     >
       <div className="pane-dock-tabs">
-        <div className="pane-dock-seg" role="tablist" aria-label={t('dock.label')}>
+        <div ref={seg} className="pane-dock-seg" role="tablist" aria-label={t('dock.label')}>
+        {pill && <span className="pane-dock-pill" data-glide={pill.glide || undefined} style={{ width: pill.width, transform: `translateX(${pill.left}px)` }} onTransitionEnd={() => setPill((current) => current && { ...current, glide: false })} aria-hidden="true" />}
         {surfaces.map((item) => {
           const Icon = icons[item]
           return (
@@ -116,7 +138,6 @@ export default function SessionDock({
               className={cn('pane-dock-tab', surface === item && 'is-active')}
             >
               <Icon size={14} aria-hidden="true" className="relative" /><span className="pane-dock-tab-label relative">{labels[item]}</span>
-              {surface === item && <motion.span layoutId={`dock-pill-${sessionId}`} className="pane-dock-pill" transition={calm ? instant : spring} aria-hidden="true" />}
               {item === 'agents' && runtime && <AgentsRunning store={runtime} sessionId={sessionId} />}
               {item === 'files' && openFiles > 0 && <span className="pane-dock-count">{openFiles}</span>}
               {item === 'terminal' && agentRunning > 0 && (

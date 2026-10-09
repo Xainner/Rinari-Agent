@@ -6,6 +6,8 @@ const assert = require('node:assert/strict')
 const { ui, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay } = require('../harness.cjs')
 
 async function geometry() {
+  // Mide con el board quieto: plegar, desplegar y la barra lateral se animan.
+  await evaluate(`Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})))`)
   return evaluate(`(() => {
     const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x, right:r.right, width:r.width, height:r.height } }
     const row = document.querySelector('.board-pane-row')

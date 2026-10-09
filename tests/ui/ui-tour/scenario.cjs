@@ -100,6 +100,13 @@ scenario(async () => {
       await delay(400)
     }
   })
+  await step('slash-menu', async () => {
+    await input('.composer-surface textarea', '/')
+    await wait(`Boolean(document.querySelector('[data-testid="slash-command-list"]'))`)
+    await delay(500)
+    await screenshot('07b-slash-menu')
+    await input('.composer-surface textarea', '')
+  })
   await step('sidebar-context', () => rightClick(`[...document.querySelectorAll('aside button')].find(b=>b.textContent.includes('Recorrido visual'))`, '08-sidebar-context-menu'))
   await step('message-context', () => rightClick(`[...document.querySelectorAll('[data-testid="turn-result"], .markdown')].pop()`, '08b-message-context-menu'))
   await popoversIn('aside', '09-sidebar')
@@ -122,11 +129,37 @@ scenario(async () => {
         }
       })
     }
+    // La píldora de las pestañas no debe rebotar al cambiar el ancho: se
+    // muestrea cuadro a cuadro y se registra cuánto se separa de la pestaña activa.
+    await step('dock-pill-resize', async () => {
+      const drift = []
+      for (const [w, h] of [[1100, 900], [1500, 900], [1250, 900]]) {
+        await size(w, h)
+        drift.push(await evaluate(`new Promise(done => { let worst = 0, n = 0; const tick = () => { const pill = document.querySelector('.pane-dock-pill'); const tab = document.querySelector('.pane-dock-tabs [role="tab"][aria-selected="true"]'); if (pill && tab) worst = Math.max(worst, Math.abs(pill.getBoundingClientRect().left - tab.getBoundingClientRect().left)); if (++n < 30) requestAnimationFrame(tick); else done(Math.round(worst)) }; requestAnimationFrame(tick) })`))
+      }
+      steps.push({ name: 'dock-pill-drift-px', ok: drift.every((d) => d <= 1), detail: drift })
+      await size(1500, 900)
+    })
   })
   await step('boards', async () => {
     await click('.view-switcher button[aria-label^="Boards"]')
     await delay(1300)
     await screenshot('11-boards')
+    await step('boards-fold', async () => {
+      await clickText('Añadir conversación actual')
+      await wait('Boolean(document.querySelector(".session-pane"))')
+      await delay(900)
+      await screenshot('11a-boards-pane')
+      // Anchos cuadro a cuadro: plegar y desplegar deben verse como un cambio continuo.
+      const sample = (selector) => `new Promise(done => { const out = []; const t0 = performance.now(); const tick = () => { const el = document.querySelector(${JSON.stringify('X')}.replace('X', ${JSON.stringify(selector)})); out.push(Math.round(el?.getBoundingClientRect().width ?? -1)); if (performance.now() - t0 < 450) requestAnimationFrame(tick); else done(out.filter((_, i) => i % 3 === 0)) }; requestAnimationFrame(tick) })`
+      await evaluate(`document.querySelector('button[aria-label="Colapsar panel"]').click()`)
+      const folding = await evaluate(sample('.board-pane-row > [data-collapsed]'))
+      await screenshot('11c-boards-folded')
+      await evaluate(`document.querySelector('.pane-strip-expand')?.click()`)
+      const unfolding = await evaluate(sample('.board-pane-row > .session-pane'))
+      steps.push({ name: 'boards-fold-widths', ok: folding.length > 3 && unfolding.length > 3, detail: { folding, unfolding } })
+      await delay(300)
+    })
   })
   await step('flows', async () => {
     await evaluate(`[...document.querySelectorAll('.view-switcher button')].find(b=>/Flujo/i.test(b.getAttribute('aria-label')||b.textContent))?.click()`)

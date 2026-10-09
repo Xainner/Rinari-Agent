@@ -162,7 +162,7 @@ function OpenButtons({ onOpenExternally, onReveal }: { onOpenExternally?: () => 
   const { t } = useI18n()
   return <>
     {onOpenExternally && (
-      <button type="button" onClick={onOpenExternally} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white">
+      <button type="button" onClick={onOpenExternally} className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
         <ExternalLink size={13} />{t('files.openExternally')}
       </button>
     )}

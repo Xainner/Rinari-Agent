@@ -132,7 +132,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
           <h1 className="font-display text-xl font-bold text-[var(--text)]">{t('schedules.title')}</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">{t('schedules.subtitle')}</p>
         </div>
-        <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white">
+        <button type="button" onClick={openNew} className="btn btn-primary inline-flex items-center gap-1.5">
           <Plus size={15} aria-hidden="true" />
           {t('schedules.new')}
         </button>

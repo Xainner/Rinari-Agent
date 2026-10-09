@@ -276,7 +276,7 @@ export default function SkillDetailDialog({
                 />
                 {editError && <p className="text-xs text-red-400">{editError}</p>}
                 <div className="flex gap-2">
-                  <button type="button" disabled={busy !== null} onClick={() => void save()} className="rounded-lg bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white disabled:opacity-40">
+                  <button type="button" disabled={busy !== null} onClick={() => void save()} className="btn btn-primary btn-sm">
                     {t('skills.save')}
                   </button>
                   <button type="button" onClick={() => setEditing(false)} className={buttonClass}>{t('providers.cancel')}</button>

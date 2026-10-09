@@ -24,7 +24,7 @@ export default function ModelsView({
           <button
             type="button"
             onClick={onAddProvider}
-            className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+            className="btn btn-primary btn-sm"
           >
             {t('providers.add')}
           </button>

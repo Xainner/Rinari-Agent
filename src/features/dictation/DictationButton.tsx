@@ -200,7 +200,7 @@ export default function DictationButton({
                 {share !== undefined ? `${Math.round(share * 100)}%` : t('dictation.starting')}
               </div>
             ) : (
-              <button type="button" onClick={() => void download()} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-semibold text-white">
+              <button type="button" onClick={() => void download()} className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
                 <Download size={12} aria-hidden="true" /> {t('dictation.downloadSize', { size: model ? formatSize(model.size) : '' })}
               </button>
             )}

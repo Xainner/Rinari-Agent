@@ -136,7 +136,7 @@ export default function VerificationPanel({
             type="button"
             onClick={() => void buildPlan()}
             disabled={planning}
-            className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+            className="btn btn-primary btn-sm"
           >
             {planning ? t('workspace.planning') : t('workspace.buildPlan')}
           </button>

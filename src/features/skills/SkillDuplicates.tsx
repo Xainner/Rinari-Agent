@@ -89,7 +89,7 @@ export default function SkillDuplicates() {
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white"
+                className="btn btn-primary btn-sm"
                 onClick={() => merge(pair)}
               >
                 {t('skills.duplicates.merge')}

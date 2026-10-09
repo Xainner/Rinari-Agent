@@ -105,7 +105,7 @@ export default function SkillsView() {
         <button
           type="button"
           onClick={() => setInstalling(true)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary btn-sm inline-flex shrink-0 items-center gap-1.5"
         >
           <Plus size={14} aria-hidden="true" /> {t('skills.install')}
         </button>

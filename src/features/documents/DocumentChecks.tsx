@@ -106,7 +106,7 @@ export function DocumentChecks({ sessionId, revisionId }: { sessionId: string; r
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-sm text-[var(--text-muted)]">{t('documents.noReport')}</p>
         <button type="button" disabled={busy} onClick={() => void load(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white disabled:opacity-60">
+          className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
           {busy ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />}{t('documents.validate')}
         </button>
       </div>

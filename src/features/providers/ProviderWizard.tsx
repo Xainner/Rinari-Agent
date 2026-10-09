@@ -412,7 +412,7 @@ export default function ProviderWizard({
                   setHealth(null)
                   setStep('testing')
                 }}
-                className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 {t('wizard.next')}
               </button>
@@ -482,7 +482,7 @@ export default function ProviderWizard({
               <button
                 type="button"
                 onClick={() => void finish()}
-                className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 {t('wizard.next')}
               </button>
@@ -497,7 +497,7 @@ export default function ProviderWizard({
               <button
                 type="button"
                 onClick={() => close(true)}
-                className="rounded-xl bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 {t('wizard.finish')}
               </button>

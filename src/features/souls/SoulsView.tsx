@@ -178,7 +178,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
                 <button
                   type="button"
                   onClick={() => void activate(soul.id)}
-                  className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white transition-all hover:brightness-110"
+                  className="btn btn-primary btn-sm"
                 >
                   {t('soul.activate')}
                 </button>
@@ -292,7 +292,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
               type="button"
               onClick={() => void save()}
               disabled={saving}
-              className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              className="btn btn-primary btn-sm"
             >
               {t('providers.save')}
             </button>

@@ -232,7 +232,7 @@ export default function ProvidersView({
         <button
           type="button"
           onClick={openAdd}
-          className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary btn-sm"
         >
           {t('providers.add')}
         </button>
@@ -378,7 +378,7 @@ export default function ProvidersView({
               type="button"
               onClick={() => void save()}
               disabled={saving}
-              className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              className="btn btn-primary btn-sm"
             >
               {t('providers.save')}
             </button>

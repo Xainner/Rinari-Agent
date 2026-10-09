@@ -111,7 +111,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
       <button aria-label={t('questions.next')} disabled={sending || last || !valid} onClick={() => go(index + 1)}><ChevronRight size={16} /></button>
       <span className="flex-1" />
       <button disabled={sending} onClick={() => void submit(true)} className="px-3 py-1.5">{t('questions.skip')}</button>
-      <button disabled={sending || !answers} onClick={() => void submit(false)} className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-white disabled:opacity-40">
+      <button disabled={sending || !answers} onClick={() => void submit(false)} className="btn btn-primary btn-sm">
         {t(sending ? 'questions.sending' : request.questions.length === 1 ? 'questions.send' : 'questions.sendMany')}
       </button>
     </div>

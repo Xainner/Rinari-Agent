@@ -187,7 +187,7 @@ export default function ModelCatalog({
             type="button"
             onClick={() => void saveModel(item)}
             disabled={busy !== null || item.capabilities?.route_supported === false}
-            className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+            className="btn btn-primary btn-sm"
           >
             {t('providers.save')}
           </button>

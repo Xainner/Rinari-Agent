@@ -86,7 +86,7 @@ export default function ContextSettings({ models, providers }: { models: ModelSu
     </Section>}
 
     {draft && <div className="flex flex-wrap items-center gap-3">
-      <button type="button" disabled={busy || !dirty || !valid} onClick={() => void save()} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm text-white disabled:opacity-50">{busy ? t('context.saving') : t('context.save')}</button>
+      <button type="button" disabled={busy || !dirty || !valid} onClick={() => void save()} className="btn btn-primary">{busy ? t('context.saving') : t('context.save')}</button>
       {dirty && <button type="button" disabled={busy} onClick={() => { if (config) { setDraft(toDraft(config)); setSaved(false) } }} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--bg-hover)]">{t('context.discard')}</button>}
       {dirty && <span className="text-xs text-[var(--text-subtle)]">{t('context.pending')}</span>}
       {saved && !dirty && <span role="status" className="text-sm text-[var(--text-muted)]">{t('context.saved')}</span>}

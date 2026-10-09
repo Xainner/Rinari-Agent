@@ -139,7 +139,7 @@ export default function ExecutionSettings({ models, providers }: { models: Model
 
         {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
         <div className="flex justify-end">
-          <button type="button" disabled={busy || !dirty} onClick={() => void save()} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="button" disabled={busy || !dirty} onClick={() => void save()} className="btn btn-primary">
             {t('execution.save')}
           </button>
         </div>

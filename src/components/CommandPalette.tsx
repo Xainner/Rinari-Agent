@@ -93,17 +93,17 @@ export default function CommandPalette({
       : sessions.filter((s) => (s.title ?? s.id).toLowerCase().includes(q)).slice(0, 12)
 
   const itemClass =
-    'flex min-h-10 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 text-sm text-[var(--text)] select-none aria-selected:bg-[var(--bg-hover)] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]'
+    'flex min-h-10 cursor-pointer items-center gap-2.5 rounded-[var(--r-sm)] px-2.5 text-[13.5px] text-[var(--text)] select-none transition-colors aria-selected:bg-[var(--bg-hover)] aria-selected:[&_svg]:text-[var(--violet-300)] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]'
 
   return (
     <Command.Dialog
       open={open}
       onOpenChange={handleOpenChange}
       label={t('cmd.placeholder')}
-      className="fixed top-1/2 left-1/2 z-[100] max-h-[70vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-[0_8px_30px_rgba(0,0,0,0.24)] outline-none"
-      overlayClassName="fixed inset-0 z-[99] bg-black/60 backdrop-blur-sm"
+      className="r-dialog fixed top-[18%] left-1/2 z-[100] max-h-[70vh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-[var(--r-xl)] outline-none"
+      overlayClassName="r-overlay fixed inset-0 z-[99]"
     >
-      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 transition-colors focus-within:border-[var(--accent-2)]/60 focus-within:ring-1 focus-within:ring-inset focus-within:ring-[var(--accent-2)]/25">
+      <div className="flex items-center gap-2 border-b border-[var(--line-1)] px-4">
         {page !== 'root' && (
           <button
             type="button"
@@ -118,7 +118,7 @@ export default function CommandPalette({
           value={query}
           onValueChange={setQuery}
           placeholder={t('cmd.placeholder')}
-          className="command-search-input h-12 w-full border-0 bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] focus:outline-none focus-visible:outline-none"
+          className="command-search-input h-14 w-full text-[15px] border-0 bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] focus:outline-none focus-visible:outline-none"
         />
       </div>
       <Command.List className="max-h-[50vh] overflow-y-auto p-1.5">

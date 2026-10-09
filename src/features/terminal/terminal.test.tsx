@@ -161,7 +161,7 @@ it('closing a tab terminates its PTY; closing the last one does not reopen it', 
 it('says so when the Engine has no terminal backend', async () => {
   vi.mocked(engineApi.ptyShells).mockResolvedValue({ supported: false, shells: [] })
   panel()
-  await screen.findByText('El Engine no encontró un backend de terminal en este equipo.')
+  await screen.findByText('Rinari no encontró una terminal que usar en este equipo.')
   expect(engineApi.ptyStart).not.toHaveBeenCalled()
 })
 

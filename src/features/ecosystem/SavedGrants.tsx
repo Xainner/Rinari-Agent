@@ -1,4 +1,4 @@
-import { FolderGit2, MessageSquare, X } from 'lucide-react'
+import { Folder, MessageSquare, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { commandMessage, engineApi, type PermissionGrant } from '../../services/engine'
@@ -64,7 +64,7 @@ export default function SavedGrants() {
       )}
       {[...groups.entries()].map(([scope, rows]) => {
         const chats = rows[0].scope_kind === 'chats'
-        const Icon = chats ? MessageSquare : FolderGit2
+        const Icon = chats ? MessageSquare : Folder
         return (
           <div key={scope} className="space-y-1">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text)]" title={chats ? undefined : scope}>

@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import { cn } from '../../lib/utils'
 import { buttonVariants } from './button'
+import type { VariantProps } from 'class-variance-authority'
 import { useBlockingOverlay } from '../../stores/overlay'
 
 const AlertDialog = AlertDialogPrimitive.Root
@@ -81,9 +82,10 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  variant,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
-  return <AlertDialogPrimitive.Action className={cn(buttonVariants(), className)} {...props} />
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> & Pick<VariantProps<typeof buttonVariants>, 'variant'>) {
+  return <AlertDialogPrimitive.Action className={cn(buttonVariants({ variant }), className)} {...props} />
 }
 
 function AlertDialogCancel({

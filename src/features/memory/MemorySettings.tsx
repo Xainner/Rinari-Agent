@@ -1,11 +1,12 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { LoaderCircle, Pencil, Search, Trash2 } from 'lucide-react'
+import { LoaderCircle, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { Button } from '../../components/ui/button'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { inputClass, Section } from '../../components/settings/parts'
+import { SearchField } from '../../components/ui/SearchField'
 import { memoryApi } from '../../services/memory'
 import { MemoryCandidateCard } from './MemoryCandidateCard'
 import { MemoryPortability } from './MemoryPortability'
@@ -161,18 +162,13 @@ function RecordsSection() {
   return (
     <Section title={t('memory.records.title')}>
       {dialog}
-      <div className="relative">
-        <label htmlFor={searchId} className="sr-only">{t('memory.search')}</label>
-        <Search size={15} aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--text-subtle)]" />
-        <input
-          id={searchId}
-          type="search"
-          className={`${inputClass} pl-9`}
-          placeholder={t('memory.search.placeholder')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
+      <SearchField
+        id={searchId}
+        label={t('memory.search')}
+        placeholder={t('memory.search.placeholder')}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
       <div role="radiogroup" aria-label={t('memory.filter')} className="flex flex-wrap gap-1.5">
         {['all', ...kinds].map((value) => (
           <button

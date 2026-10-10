@@ -1145,6 +1145,20 @@
       ]
     },
     {
+      "command": "session_checklist_clear",
+      "kind": "engine",
+      "method": "session.checklist.clear",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_checklist_get",
+      "kind": "engine",
+      "method": "session.checklist.get",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "session_close",
       "kind": "engine",
       "method": "session.close",
@@ -1809,10 +1823,10 @@
     }
   ],
   "summary": {
-    "commands": 215,
-    "engine_backed": 209,
+    "commands": 217,
+    "engine_backed": 211,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 68
+    "without_callers": 70
   }
 }

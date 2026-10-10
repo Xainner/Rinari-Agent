@@ -1032,10 +1032,12 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 /* -- HomeWelcome variant=pane (empty pane inside a board) ----------------- */
 .conversation-shell.variant-pane.is-empty { padding-top: 16px; container-type: inline-size; }
 .variant-pane .home-art { display: flex; justify-content: center; height: clamp(96px, 22cqw, 180px); }
-/* En un panel la imagen queda más chica que su caja y su fondo oscuro se veía
- * como un rectángulo sobre el fondo del panel: la caja se ajusta a la imagen y
- * esta se difumina por todos los bordes. */
-.variant-pane .home-art img { width: auto; max-width: 100%; -webkit-mask-image: radial-gradient(closest-side, black 58%, transparent 100%); mask-image: radial-gradient(closest-side, black 58%, transparent 100%); }
+/* En un panel la caja de la imagen es baja: el brillo de detrás (una elipse
+ * 2:1) quedaba más alto que la caja y se recortaba en recto arriba, como un
+ * rectángulo sin difuminar. Aquí cabe dentro de la caja; la imagen además se
+ * funde por los bordes. */
+.variant-pane .home-art::before { top: 18%; bottom: 0; left: 22%; right: 22%; width: auto; aspect-ratio: auto; transform: none; filter: blur(14px); }
+.variant-pane .home-art img { width: auto; max-width: 100%; -webkit-mask-image: radial-gradient(closest-side, black 72%, transparent 100%); mask-image: radial-gradient(closest-side, black 72%, transparent 100%); }
 .variant-pane .home-greeting { margin-top: -6px; }
 .variant-pane .home-greeting h1 { font-size: clamp(17px, 4cqw, 22px); }
 .variant-pane .home-greeting p { font-size: 12px; }

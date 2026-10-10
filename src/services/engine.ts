@@ -17,6 +17,7 @@ import type {
   PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
+import type { Checklist } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -890,6 +891,12 @@ export const engineApi = {
     }),
   getSessionPermission: (reference: string) =>
     platform().command<{ session: SessionSummary }>("session_permission_get", { reference }),
+  /** The live checklist of a conversation; null when there is none to show. */
+  sessionChecklist: (sessionId: string) =>
+    platform().command<{ checklist: Checklist | null }>('session_checklist_get', { sessionId }),
+  /** The user dismisses a finished or interrupted list. */
+  clearSessionChecklist: (sessionId: string) =>
+    platform().command<{ checklist: Checklist | null }>('session_checklist_clear', { sessionId }),
   turnChanges: (turnId: string) =>
     platform().command<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
   reviewTurnChanges: (turnId: string, path?: string) =>

@@ -24,6 +24,7 @@ import { REVEAL_TURN_EVENT, takeQueuedTurnReveal } from '../features/board/board
 import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../features/engine/scrollAnchors'
 import ScrollToBottom from './chat/ScrollToBottom'
 import type { HistoryPhase } from '../features/engine/useSessionList'
+import { ChecklistDock } from '../features/checklist/ChecklistDock'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
 
@@ -516,6 +517,7 @@ function ChatView({
       )}
       {(presentation === 'empty' || presentation === 'conversation') && (
         <>
+          {sessionId !== '' && <ChecklistDock key={`checklist:${sessionId}`} sessionId={sessionId} />}
           <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
           {queue}
           {composer}

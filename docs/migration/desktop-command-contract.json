@@ -1125,6 +1125,52 @@
       "host_effects": []
     },
     {
+      "command": "session_checklist_get",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.checklist.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_checklist_clear",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.checklist.clear",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "session_permission_set",
       "module": "sessions",
       "args": [

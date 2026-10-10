@@ -15,10 +15,13 @@ export type DesktopCommand =
   | "attachment_prepare_start"
   | "attachment_preview"
   | "browser_view_get"
+  | "bundle_activate"
+  | "bundle_active"
   | "bundle_apply"
   | "bundle_create"
   | "bundle_list"
   | "bundle_remove"
+  | "bundle_update"
   | "checkpoint_list"
   | "checkpoint_restore"
   | "checkpoint_show"
@@ -93,6 +96,7 @@ export type DesktopCommand =
   | "project_intelligence"
   | "project_list"
   | "project_list_recent"
+  | "project_move_profile"
   | "project_open"
   | "project_remove"
   | "project_status"
@@ -152,6 +156,7 @@ export type DesktopCommand =
   | "session_mode_set"
   | "session_model_set"
   | "session_move"
+  | "session_move_profile"
   | "session_open"
   | "session_permission_get"
   | "session_permission_set"
@@ -234,10 +239,13 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "attachment_prepare_start",
   "attachment_preview",
   "browser_view_get",
+  "bundle_activate",
+  "bundle_active",
   "bundle_apply",
   "bundle_create",
   "bundle_list",
   "bundle_remove",
+  "bundle_update",
   "checkpoint_list",
   "checkpoint_restore",
   "checkpoint_show",
@@ -312,6 +320,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "project_intelligence",
   "project_list",
   "project_list_recent",
+  "project_move_profile",
   "project_open",
   "project_remove",
   "project_status",
@@ -371,6 +380,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_mode_set",
   "session_model_set",
   "session_move",
+  "session_move_profile",
   "session_open",
   "session_permission_get",
   "session_permission_set",
@@ -473,10 +483,13 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "attachment_prepare_start",
   "attachment_preview",
   "browser_view_get",
+  "bundle_activate",
+  "bundle_active",
   "bundle_apply",
   "bundle_create",
   "bundle_list",
   "bundle_remove",
+  "bundle_update",
   "checkpoint_list",
   "checkpoint_restore",
   "checkpoint_show",
@@ -546,6 +559,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "project_intelligence",
   "project_list",
   "project_list_recent",
+  "project_move_profile",
   "project_open",
   "project_remove",
   "project_status",
@@ -605,6 +619,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_mode_set",
   "session_model_set",
   "session_move",
+  "session_move_profile",
   "session_open",
   "session_permission_get",
   "session_permission_set",

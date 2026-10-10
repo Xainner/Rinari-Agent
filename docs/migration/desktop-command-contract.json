@@ -4106,6 +4106,11 @@
           "name": "id",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "reassign_to",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -4116,6 +4121,11 @@
           "key": "id",
           "from": "id",
           "optional": false
+        },
+        {
+          "key": "reassign_to",
+          "from": "reassign_to",
+          "optional": true
         }
       ],
       "passthrough": null,
@@ -4148,6 +4158,189 @@
         {
           "key": "session_ref",
           "from": "session_ref",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "bundle_update",
+      "module": "workflow",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "soul_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "mode",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "agents",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "profile_bundle.update",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": true
+        },
+        {
+          "key": "soul_id",
+          "from": "soul_id",
+          "optional": true
+        },
+        {
+          "key": "mode",
+          "from": "mode",
+          "optional": true
+        },
+        {
+          "key": "agents",
+          "from": "agents",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "bundle_active",
+      "module": "workflow",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "profile_bundle.active",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "bundle_activate",
+      "module": "workflow",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "profile_bundle.activate",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_move_profile",
+      "module": "projects",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.move_profile",
+      "engine_params": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_move_profile",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "project_policy",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.move_profile",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": false
+        },
+        {
+          "key": "project_policy",
+          "from": "project_policy",
           "optional": true
         }
       ],

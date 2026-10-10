@@ -120,6 +120,20 @@
       ]
     },
     {
+      "command": "bundle_activate",
+      "kind": "engine",
+      "method": "profile_bundle.activate",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "bundle_active",
+      "kind": "engine",
+      "method": "profile_bundle.active",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "bundle_apply",
       "kind": "engine",
       "method": "profile_bundle.apply",
@@ -142,14 +156,19 @@
       "kind": "engine",
       "method": "profile_bundle.list",
       "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
+      "callers": []
     },
     {
       "command": "bundle_remove",
       "kind": "engine",
       "method": "profile_bundle.remove",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "bundle_update",
+      "kind": "engine",
+      "method": "profile_bundle.update",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -780,6 +799,13 @@
       ]
     },
     {
+      "command": "project_move_profile",
+      "kind": "engine",
+      "method": "project.move_profile",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_open",
       "kind": "engine",
       "method": "project.open",
@@ -1261,6 +1287,13 @@
       "callers": [
         "src/services/desktop.ts"
       ]
+    },
+    {
+      "command": "session_move_profile",
+      "kind": "engine",
+      "method": "session.move_profile",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "session_open",
@@ -1827,10 +1860,10 @@
     }
   ],
   "summary": {
-    "commands": 217,
-    "engine_backed": 211,
+    "commands": 222,
+    "engine_backed": 216,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 68
+    "without_callers": 74
   }
 }

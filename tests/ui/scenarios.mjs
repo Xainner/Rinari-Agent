@@ -287,6 +287,10 @@ export const scenarios = {
     title: 'Acceso completo: diálogo que explica, cancelar no cambia nada, confirmar lo activa, bajar no pregunta',
     phases: ['exercise'],
   },
+  'profiles-switch': {
+    title: 'Perfiles como espacios de trabajo: lo existente en Predeterminado, cambiar, perfil vacío, mover y reiniciar',
+    phases: ['exercise'],
+  },
   'session-title': {
     title: 'Barra lateral: título que resume el primer mensaje',
     phases: ['exercise'],

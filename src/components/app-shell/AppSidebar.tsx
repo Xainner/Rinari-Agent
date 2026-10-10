@@ -10,6 +10,7 @@ import {
   Cpu,
   Folder,
   FolderOpen,
+  Layers,
   MessageSquare,
   MoreHorizontal,
   Plus,
@@ -50,6 +51,10 @@ import {
 import { Switch } from '../ui/switch'
 import ApplicationMenu, { SidebarFooter } from './ApplicationMenu'
 import SidebarIdentity from './SidebarIdentity'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ease, useCalmMotion } from '../../lib/motion'
+import { art } from '../../features/rinari/art'
+import { inProfile, useProfileStore } from '../../features/profiles/profileStore'
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
 import { ProjectBranch } from '../../features/projects/ProjectBranch'
 import { TitleSwap } from '../TitleSwap'
@@ -66,6 +71,10 @@ export interface AppSidebarProps {
   onNewChat: () => void
   onNewProjectChat?: (projectId: string) => void
   onMoveSession?: (id: string, projectId: string | null) => void
+  /** Move a conversation to another Rinari profile (the app asks when it is in a project). */
+  onMoveSessionProfile?: (session: SessionSummary, profileId: string) => void
+  /** Move a project, with all its conversations, to another Rinari profile. */
+  onMoveProjectProfile?: (project: ProjectSummary, profileId: string) => void
   /** Abrir carpeta con el diálogo nativo (registra proyecto en el engine). */
   onOpenFolder: () => void
   sessions: SessionSummary[]
@@ -136,6 +145,8 @@ export function AppSidebar({
   onNewChat,
   onNewProjectChat,
   onMoveSession,
+  onMoveSessionProfile,
+  onMoveProjectProfile,
   onOpenFolder,
   sessions,
   closedSessions,
@@ -186,7 +197,23 @@ export function AppSidebar({
   const [renameTitle, setRenameTitle] = useState('')
   const [cascade, setCascade] = useState(false)
 
-  const model = useMemo(() => buildWorkspaceModel(sessions, projects, query), [sessions, projects, query])
+  // Solo el trabajo del perfil activo; cambiar de perfil cambia la lista entera.
+  const activeProfileId = useProfileStore((state) => state.activeId)
+  // The list remounts (and animates) only on a real switch: the profile that
+  // loads at startup keeps the list it already had, so nothing flickers and an
+  // open row menu stays open.
+  const firstProfileId = useRef<string | null>(null)
+  if (firstProfileId.current === null && activeProfileId) firstProfileId.current = activeProfileId
+  const profileListKey = !activeProfileId || activeProfileId === firstProfileId.current ? 'first' : activeProfileId
+  const profileList = useProfileStore((state) => state.profiles)
+  const activeProfile = profileList.find((profile) => profile.id === activeProfileId) ?? null
+  const otherProfiles = profileList.filter((profile) => profile.id !== activeProfileId)
+  const calm = useCalmMotion()
+  const visibleSessions = useMemo(() => sessions.filter((session) => inProfile(session, activeProfileId)), [sessions, activeProfileId])
+  const visibleProjects = useMemo(() => projects.filter((project) => inProfile(project, activeProfileId)), [projects, activeProfileId])
+  const model = useMemo(() => buildWorkspaceModel(visibleSessions, visibleProjects, query), [visibleSessions, visibleProjects, query])
+  const profileEmpty = Boolean(activeProfile) && !query && model.pinned.length === 0 && model.sections.length === 0 && model.chats.length === 0
+  const profileLabel = (profile: { name: string; builtin?: boolean }) => (profile.builtin && profile.name === 'Default' ? t('profiles.defaultName') : profile.name)
   // Transición al cambiar de conversación activa: solo entre chats
   // sueltos dentro de la vista de chat. La barrita de la fila es un
   // elemento persistente que funde opacidad y escala; el resaltado ya
@@ -366,7 +393,10 @@ export function AppSidebar({
                   </DropdownMenuItem>
                   {onMoveSession && <DropdownMenuSub><DropdownMenuSubTrigger><Folder size={13} /> {t('sidebar.moveToProject')}</DropdownMenuSubTrigger><DropdownMenuSubContent>
                     <DropdownMenuItem disabled={session.kind === 'CHAT'} onSelect={() => onMoveSession(session.id, null)}>{t('sidebar.generalSpace')}</DropdownMenuItem>
-                    {projects.filter(project => !project.archived).map(project => <DropdownMenuItem key={project.id} disabled={project.id === session.project_id} onSelect={() => onMoveSession(session.id, project.id)}>{project.name || projectDisplayName(project.root)}</DropdownMenuItem>)}
+                    {visibleProjects.filter(project => !project.archived).map(project => <DropdownMenuItem key={project.id} disabled={project.id === session.project_id} onSelect={() => onMoveSession(session.id, project.id)}>{project.name || projectDisplayName(project.root)}</DropdownMenuItem>)}
+                  </DropdownMenuSubContent></DropdownMenuSub>}
+                  {onMoveSessionProfile && otherProfiles.length > 0 && <DropdownMenuSub><DropdownMenuSubTrigger><Layers size={13} /> {t('profiles.moveTo')}</DropdownMenuSubTrigger><DropdownMenuSubContent>
+                    {otherProfiles.map(profile => <DropdownMenuItem key={profile.id} onSelect={() => onMoveSessionProfile(session, profile.id)}>{profileLabel(profile)}</DropdownMenuItem>)}
                   </DropdownMenuSubContent></DropdownMenuSub>}
                   {onOpenInBoard && <DropdownMenuItem onSelect={() => onOpenInBoard(session.id)}>
                     <Columns3 size={13} /> {t('sidebar.openInBoard')}
@@ -471,6 +501,26 @@ export function AppSidebar({
         />
       </div>
       <div className={cn('sidebar-scroll min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={profileListKey}
+          data-profile={activeProfileId ?? undefined}
+          className="space-y-4"
+          initial={calm ? false : { opacity: 0, x: 14 }}
+          animate={{ opacity: 1, x: 0, transition: calm ? { duration: 0 } : { duration: 0.22, ease: ease.out } }}
+          exit={calm ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, x: -14, transition: { duration: 0.12, ease: ease.inOut } }}
+        >
+        {profileEmpty && activeProfile && (
+          <div className="profile-empty" data-testid="profile-empty">
+            <img src={art.chibi('wave')} alt="" draggable={false} className="profile-empty-art" />
+            <p className="profile-empty-title">{t('profiles.empty.title', { name: profileLabel(activeProfile) })}</p>
+            <p className="profile-empty-body">{t('profiles.empty.body')}</p>
+            <div className="profile-empty-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={onNewChat}><Plus size={13} aria-hidden="true" /> {t('sidebar.newChat')}</button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenFolder}><FolderOpen size={13} aria-hidden="true" /> {t('profiles.empty.project')}</button>
+            </div>
+          </div>
+        )}
 
         {model.pinned.length > 0 && (
           <section aria-label={t('sidebar.pinned')}>
@@ -509,7 +559,7 @@ export function AppSidebar({
               <FolderOpen size={13} />
             </button>
           </div>
-          {model.sections.length === 0 && (
+          {model.sections.length === 0 && !profileEmpty && (
             <p className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.noProjects')}</p>
           )}
           <ul className="space-y-1.5">
@@ -556,6 +606,9 @@ export function AppSidebar({
                     <DropdownMenuItem onSelect={() => onOpenProject(project.root)}>
                       <Pencil size={13} /> {t('project.edit')}
                     </DropdownMenuItem>
+                    {onMoveProjectProfile && otherProfiles.length > 0 && <DropdownMenuSub><DropdownMenuSubTrigger><Layers size={13} /> {t('profiles.moveTo')}</DropdownMenuSubTrigger><DropdownMenuSubContent>
+                      {otherProfiles.map(profile => <DropdownMenuItem key={profile.id} onSelect={() => onMoveProjectProfile(project, profile.id)}>{profileLabel(profile)}</DropdownMenuItem>)}
+                    </DropdownMenuSubContent></DropdownMenuSub>}
                     <DropdownMenuItem onSelect={() => onArchiveProject(project.id)}>
                       <Archive size={13} /> {t('project.archive')}
                     </DropdownMenuItem>
@@ -619,7 +672,7 @@ export function AppSidebar({
               <details open><summary className="cursor-pointer px-1 pb-2 text-[11px] text-[var(--text-subtle)]">{t(`home.${group.key}`)}</summary>
               <ul className="space-y-0.5">{group.sessions.map(session => row(session, { travel: true }))}</ul></details>
             </li>)}
-            {model.chats.length === 0 && (
+            {model.chats.length === 0 && !profileEmpty && (
               <li className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.emptyChats')}</li>
             )}
             </ul>
@@ -631,6 +684,8 @@ export function AppSidebar({
               style={{ transition: 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), height 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease' }}
             />
         </section>
+        </motion.div>
+        </AnimatePresence>
 
         {archivedSessionResults.length > 0 && (
           <section aria-label={t('sidebar.archivedSessions')}>

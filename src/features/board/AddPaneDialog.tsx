@@ -19,6 +19,7 @@ import { projectDisplayName } from '../projects/workspaceModel'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isDraftPane, useBoardStore } from '../../stores/board'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { inProfile, useProfileStore } from '../profiles/profileStore'
 
 const SEARCH_THRESHOLD = 8
 
@@ -52,21 +53,23 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
   const [pendingProject, setPendingProject] = useState<PendingProject | null>(null)
 
   const boardSessionIds = useMemo(() => new Set(panes.map((pane) => pane.sessionId)), [panes])
+  const activeProfileId = useProfileStore((state) => state.activeId)
   const projects = useMemo(() => {
-    const active = data.projects.filter((project) => !project.archived)
+    const active = data.projects.filter((project) => !project.archived && inProfile(project, activeProfileId))
     const sorted = [...active].sort((a, b) => (b.last_opened_at ?? '').localeCompare(a.last_opened_at ?? ''))
     const needle = query.trim().toLocaleLowerCase()
     if (!needle) return sorted
     return sorted.filter((project) => [project.name, project.root].some((value) => value?.toLocaleLowerCase().includes(needle)))
-  }, [data.projects, query])
+  }, [data.projects, query, activeProfileId])
   const existingSessions = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     return data.sessions.filter((session) =>
       session.state === 'active' &&
+      inProfile(session, activeProfileId) &&
       !boardSessionIds.has(session.id) &&
       (!needle || (session.title ?? '').toLocaleLowerCase().includes(needle)),
     )
-  }, [boardSessionIds, data.sessions, query])
+  }, [boardSessionIds, data.sessions, query, activeProfileId])
 
   /** Sesiones del board que ya trabajan sobre la misma raíz canónica. */
   const sharedWith = (project: ProjectSummary): string[] => [

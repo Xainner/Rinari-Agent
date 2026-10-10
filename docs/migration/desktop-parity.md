@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **217**
-- Respaldados por Engine: **211**
+- Comandos: **222**
+- Respaldados por Engine: **216**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -27,10 +27,13 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `attachment_prepare_start` | engine | `attachment.prepare.start` | `src/services/engine.ts` |
 | `attachment_preview` | engine | `attachment.preview` | `src/services/engine.ts` |
 | `browser_view_get` | engine | `browser.view.get` | `src/features/browser/useBrowserFrame.ts` |
+| `bundle_activate` | engine | `profile_bundle.activate` | **ninguno** |
+| `bundle_active` | engine | `profile_bundle.active` | **ninguno** |
 | `bundle_apply` | engine | `profile_bundle.apply` | `src/services/engine.ts` |
 | `bundle_create` | engine | `profile_bundle.create` | `src/services/engine.ts` |
-| `bundle_list` | engine | `profile_bundle.list` | `src/services/engine.ts` |
-| `bundle_remove` | engine | `profile_bundle.remove` | `src/services/engine.ts` |
+| `bundle_list` | engine | `profile_bundle.list` | **ninguno** |
+| `bundle_remove` | engine | `profile_bundle.remove` | **ninguno** |
+| `bundle_update` | engine | `profile_bundle.update` | `src/services/engine.ts` |
 | `checkpoint_list` | engine | `checkpoint.list` | `src/services/engine.ts` |
 | `checkpoint_restore` | engine | `checkpoint.restore` | `src/services/engine.ts` |
 | `checkpoint_show` | engine | `checkpoint.show` | `src/services/engine.ts` |
@@ -105,6 +108,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `project_intelligence` | engine | `project.intelligence` | `src/services/engine.ts` |
 | `project_list` | engine | `project.list` | `src/services/engine.ts` |
 | `project_list_recent` | engine | `project.list_recent` | `src/services/engine.ts` |
+| `project_move_profile` | engine | `project.move_profile` | **ninguno** |
 | `project_open` | engine | `project.open` | **ninguno** |
 | `project_remove` | engine | `project.remove` | **ninguno** |
 | `project_status` | engine | `project.status` | `src/services/engine.ts` |
@@ -164,6 +168,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `session_mode_set` | engine | `session.mode.set` | `src/services/engine.ts` |
 | `session_model_set` | engine | `session.model.set` | **ninguno** |
 | `session_move` | engine | `session.move` | `src/services/desktop.ts` |
+| `session_move_profile` | engine | `session.move_profile` | **ninguno** |
 | `session_open` | engine | `session.open` | **ninguno** |
 | `session_permission_get` | engine | `session.permission.get` | `src/services/engine.ts` |
 | `session_permission_set` | engine | `session.permission.set` | `src/services/engine.ts` |

@@ -20,6 +20,7 @@ import type { Theme } from '../lib/theme'
 import { useI18n } from '../i18n'
 import { useBlockingOverlay } from '../stores/overlay'
 import type { SettingsSection } from '../stores/ui'
+import { inProfile, useProfileStore } from '../features/profiles/profileStore'
 
 interface CommandPaletteProps {
   open: boolean
@@ -87,10 +88,12 @@ export default function CommandPalette({
   useBlockingOverlay(open)
 
   const q = query.trim().toLowerCase()
+  const activeProfileId = useProfileStore((state) => state.activeId)
+  const profileSessions = sessions.filter((session) => inProfile(session, activeProfileId))
   const filtered =
     q.length === 0
-      ? sessions.slice(0, 6)
-      : sessions.filter((s) => (s.title ?? s.id).toLowerCase().includes(q)).slice(0, 12)
+      ? profileSessions.slice(0, 6)
+      : profileSessions.filter((s) => (s.title ?? s.id).toLowerCase().includes(q)).slice(0, 12)
 
   const itemClass =
     'flex min-h-10 cursor-pointer items-center gap-2.5 rounded-[var(--r-sm)] px-2.5 text-[13.5px] text-[var(--text)] select-none transition-colors aria-selected:bg-[var(--bg-hover)] aria-selected:[&_svg]:text-[var(--violet-300)] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-[var(--text-muted)]'

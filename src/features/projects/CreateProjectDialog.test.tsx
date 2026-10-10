@@ -92,3 +92,18 @@ it('creates with name, description, folders, trust and profile', async () => {
   expect(useProjectExpansionStore.getState().choices.p9).toBe(true)
   expect(useProjectExpansionStore.getState().query).toBe('')
 })
+
+it('a caller can create without a first conversation and take over what happens next', async () => {
+  const appDefault = mount()
+  const fromBoards = vi.fn()
+  act(() => useCreateProjectStore.getState().openWith(['/a/api'], { openSession: false, onCreated: fromBoards }))
+  await screen.findAllByTestId('create-project-row')
+  await waitFor(() => expect((screen.getByTestId('create-project-submit') as HTMLButtonElement).disabled).toBe(false))
+  await userEvent.click(screen.getByTestId('create-project-submit'))
+  await waitFor(() => expect(fromBoards).toHaveBeenCalled())
+  expect(fromBoards.mock.calls[0][0]).toMatchObject({ id: 'p9' })
+  expect(appDefault).not.toHaveBeenCalled()
+  const create = vi.mocked(invoke).mock.calls.find(([name]) => name === 'project_create')!
+  expect(create[1]).toMatchObject({ open: false })
+  expect(useCreateProjectStore.getState().options).toEqual({})
+})

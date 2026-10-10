@@ -895,13 +895,13 @@ export const engineApi = {
   projectFoldersValidate: (paths: string[], projectId?: string) =>
     platform().command<{ folders: ProjectFolderCheck[] }>('project_folders_validate', { paths, project_id: projectId ?? null }),
   /** A project with name, description and working folders (first = primary), each with its trust. */
-  projectCreate: (input: { name: string; description?: string; folders: { path: string; trust: boolean }[]; rinariProfileId?: string | null }) =>
+  projectCreate: (input: { name: string; description?: string; folders: { path: string; trust: boolean }[]; rinariProfileId?: string | null; open?: boolean }) =>
     platform().command<{ project: ProjectSummary; session: SessionSummary | null; trust: { path: string; state: string }[] }>('project_create', {
       name: input.name,
       description: input.description ?? null,
       folders: input.folders,
       rinari_profile_id: input.rinariProfileId ?? null,
-      open: true,
+      open: input.open ?? true,
     }),
   projectFolderAdd: (projectId: string, path: string, trust = false) =>
     platform().command<{ project: ProjectSummary }>('project_folder_add', { project_id: projectId, path, trust }),

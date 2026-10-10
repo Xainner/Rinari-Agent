@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Folder, FolderOpen, MessageSquare, MessageSquarePlus, Search } from 'lucide-react'
 import { platform } from '../../platform'
-import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
-import { commandMessage, engineApi, type ProjectSummary, type SessionSummary } from '../../services/engine'
+import { engineApi, type ProjectSummary, type SessionSummary } from '../../services/engine'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import {
   AlertDialog,
@@ -20,6 +19,7 @@ import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isDraftPane, useBoardStore } from '../../stores/board'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import { inProfile, useProfileStore } from '../profiles/profileStore'
+import { useCreateProjectStore } from '../projects/createProjectStore'
 
 const SEARCH_THRESHOLD = 8
 
@@ -39,9 +39,10 @@ type PendingProject = { project: ProjectSummary; sharedWith: string[] }
 
 /**
  * Alta de un panel: chat general, proyecto registrado, carpeta nueva o sesión
- * existente. Siempre crea la sesión con `createSession(project.id,
- * {activate:false})` —nunca `project.open`, que reutiliza la sesión activa del
- * root— y avisa antes de repetir una raíz canónica ya presente en el board.
+ * existente. Un proyecto entra como borrador (la sesión nace con su primer
+ * mensaje; nunca `project.open`, que reutiliza la sesión activa del root) y se
+ * avisa antes de repetir una raíz canónica ya presente en el board. Una
+ * carpeta nueva abre la ventana «Nuevo proyecto».
  */
 export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft }: AddPaneDialogProps) {
   const { t } = useI18n()
@@ -49,18 +50,20 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
   const data = useEngineData()
   const panes = useBoardStore((state) => state.panes)
   const [query, setQuery] = useState('')
-  const [busy, setBusy] = useState(false)
   const [pendingProject, setPendingProject] = useState<PendingProject | null>(null)
 
   const boardSessionIds = useMemo(() => new Set(panes.map((pane) => pane.sessionId)), [panes])
   const activeProfileId = useProfileStore((state) => state.activeId)
+  const visibleProjects = useMemo(
+    () => data.projects.filter((project) => !project.archived && inProfile(project, activeProfileId)),
+    [data.projects, activeProfileId],
+  )
   const projects = useMemo(() => {
-    const active = data.projects.filter((project) => !project.archived && inProfile(project, activeProfileId))
-    const sorted = [...active].sort((a, b) => (b.last_opened_at ?? '').localeCompare(a.last_opened_at ?? ''))
+    const sorted = [...visibleProjects].sort((a, b) => (b.last_opened_at ?? '').localeCompare(a.last_opened_at ?? ''))
     const needle = query.trim().toLocaleLowerCase()
     if (!needle) return sorted
     return sorted.filter((project) => [project.name, project.root].some((value) => value?.toLocaleLowerCase().includes(needle)))
-  }, [data.projects, query, activeProfileId])
+  }, [visibleProjects, query])
   const existingSessions = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
     return data.sessions.filter((session) =>
@@ -119,25 +122,38 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
   async function chooseFolder() {
     const picked = (await platform().dialog.openFiles({ directory: true }))?.[0] ?? null
     if (typeof picked !== 'string') return
-    setBusy(true)
-    try {
-      // project.add registra o deduplica el proyecto sin crear sesiones.
-      const added = await engineApi.projectAdd(picked)
-      if (added.created) useProjectExpansionStore.getState().reveal(added.project.id)
-      await commands.refreshProjects()
-      setBusy(false)
-      chooseProject(added.project)
-    } catch (error) {
-      setBusy(false)
-      toast.error(commandMessage(error))
+    // Una carpeta de un proyecto ya visible abre ese proyecto, como elegirlo en la
+    // lista. Lo decide el Engine: compara rutas canónicas (nombres cortos de
+    // Windows, enlaces, mayúsculas), cosa que el renderer no puede hacer.
+    const owner = await engineApi.projectFoldersValidate([picked])
+      .then((result) => result.folders[0]?.error)
+      .catch(() => null)
+    const existing = owner?.code === 'IN_PROJECT'
+      ? visibleProjects.find((project) => project.id === owner.project_id)
+      : undefined
+    if (existing) {
+      chooseProject(existing)
+      return
     }
+    // Una carpeta nueva pasa por la ventana «Nuevo proyecto» (nombre, carpetas,
+    // confianza, perfil). Al crearlo, el panel es un borrador: la conversación
+    // nace con su primer mensaje, como en el resto de Boards.
+    onOpenChange(false)
+    setQuery('')
+    useCreateProjectStore.getState().openWith([picked], {
+      openSession: false,
+      onCreated: (project) => {
+        void commands.refreshProjects()
+        onAddDraft(project.id)
+      },
+    })
   }
 
   const showSearch = data.projects.length + existingSessions.length > SEARCH_THRESHOLD
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next) }}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg p-0">
           <DialogHeader className="px-5 pt-5">
             <DialogTitle>{t('board.addPane.title')}</DialogTitle>
@@ -157,7 +173,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
           )}
           <div className="max-h-[60vh] overflow-y-auto px-3 pb-4 pt-2">
             <section aria-label={t('board.addPane.generalChat')} className="mb-2">
-              <button type="button" disabled={busy} onClick={() => void addGeneralChat()} className="add-pane-row">
+              <button type="button" onClick={() => void addGeneralChat()} className="add-pane-row">
                 <MessageSquarePlus size={16} aria-hidden="true" className="text-[var(--accent-2)]" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm text-[var(--text)]">{t('board.addPane.generalChat')}</span>
@@ -167,7 +183,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
             </section>
             <section aria-label={t('board.addPane.projects')}>
               <h3 className="add-pane-heading">{t('board.addPane.projects')}</h3>
-              <button type="button" disabled={busy} onClick={() => void chooseFolder()} className="add-pane-row">
+              <button type="button" onClick={() => void chooseFolder()} className="add-pane-row">
                 <FolderOpen size={16} aria-hidden="true" className="text-[var(--text-muted)]" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm text-[var(--text)]">{t('board.addPane.openFolder')}</span>
@@ -175,7 +191,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
                 </span>
               </button>
               {projects.map((project) => (
-                <button key={project.id} type="button" disabled={busy} onClick={() => chooseProject(project)} className="add-pane-row">
+                <button key={project.id} type="button" onClick={() => chooseProject(project)} className="add-pane-row">
                   <Folder size={16} aria-hidden="true" className="text-[var(--text-muted)]" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-[var(--text)]">{project.name || projectDisplayName(project.root)}</span>
@@ -189,7 +205,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
               <section aria-label={t('board.addPane.existing')} className="mt-2">
                 <h3 className="add-pane-heading">{t('board.addPane.existing')}</h3>
                 {existingSessions.map((session) => (
-                  <button key={session.id} type="button" disabled={busy} onClick={() => finish(session.id)} className="add-pane-row">
+                  <button key={session.id} type="button" onClick={() => finish(session.id)} className="add-pane-row">
                     <MessageSquare size={16} aria-hidden="true" className="text-[var(--text-muted)]" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-[var(--text)]">{session.title || t('sidebar.newChat')}</span>

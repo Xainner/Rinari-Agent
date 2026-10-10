@@ -199,6 +199,12 @@ export function AppSidebar({
 
   // Solo el trabajo del perfil activo; cambiar de perfil cambia la lista entera.
   const activeProfileId = useProfileStore((state) => state.activeId)
+  // The list remounts (and animates) only on a real switch: the profile that
+  // loads at startup keeps the list it already had, so nothing flickers and an
+  // open row menu stays open.
+  const firstProfileId = useRef<string | null>(null)
+  if (firstProfileId.current === null && activeProfileId) firstProfileId.current = activeProfileId
+  const profileListKey = !activeProfileId || activeProfileId === firstProfileId.current ? 'first' : activeProfileId
   const profileList = useProfileStore((state) => state.profiles)
   const activeProfile = profileList.find((profile) => profile.id === activeProfileId) ?? null
   const otherProfiles = profileList.filter((profile) => profile.id !== activeProfileId)
@@ -497,7 +503,7 @@ export function AppSidebar({
       <div className={cn('sidebar-scroll min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
         <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={activeProfileId ?? 'all'}
+          key={profileListKey}
           data-profile={activeProfileId ?? undefined}
           className="space-y-4"
           initial={calm ? false : { opacity: 0, x: 14 }}

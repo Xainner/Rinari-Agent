@@ -23,7 +23,8 @@ async function switchTo(name) {
 
 async function rowMenu(title) {
   await evaluate(`(() => {
-    const row = [...document.querySelectorAll('aside li')].find(li => li.innerText.includes(${JSON.stringify(title)}))
+    // The innermost row: day groups («Hoy») are list items too.
+    const row = [...document.querySelectorAll('aside li')].filter(li => li.innerText.includes(${JSON.stringify(title)})).pop()
     row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 40 }))
   })()`)
 }

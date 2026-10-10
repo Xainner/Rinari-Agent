@@ -25,6 +25,11 @@ const SAMPLER = `(() => {
 })()`
 
 scenario(async () => {
+  // The CI runner reports system animations off (prefers-reduced-motion), which
+  // rightly turns the swap into an instant change. Emulate motion on so the
+  // scenario measures the same thing on every machine.
+  ui.win.webContents.debugger.attach('1.3')
+  await ui.win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
   await useLocalModel()
   await reload()
   await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Nueva conversación') && b.textContent.includes('Ctrl')).click()`)

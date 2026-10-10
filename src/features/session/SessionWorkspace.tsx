@@ -91,12 +91,23 @@ export default function SessionWorkspace({ sessionId, record, children, density,
 
   // Al cerrarse, un fantasma sin contenido con el ancho que tenía se pliega:
   // la salida se ve sin retener el panel real ni su navegador nativo.
+  // Al abrirse (por el usuario, no al montar la vista) el panel crece desde 0
+  // y el chat se encoge con él: la misma animación que el cierre, al revés.
   const [leaving, setLeaving] = useState<{ width: number; layout: 'docked' | 'drawer' } | null>(null)
+  const [entering, setEntering] = useState(false)
   const shown = useRef({ visible: layout.visible, width: liveWidth, layout: dockLayout })
   useEffect(() => {
     const previous = shown.current
     shown.current = { visible: layout.visible, width: liveWidth, layout: dockLayout }
-    if (layout.visible) { setLeaving(null); return }
+    if (layout.visible) {
+      setLeaving(null)
+      if (previous.visible) return
+      setEntering(true)
+      // Termina aunque la animación no avance (ventana sin pintar): el panel queda a su ancho.
+      const timer = window.setTimeout(() => setEntering(false), 420)
+      return () => window.clearTimeout(timer)
+    }
+    setEntering(false)
     if (!previous.visible) return
     setLeaving({ width: previous.width, layout: previous.layout })
     const timer = window.setTimeout(() => setLeaving(null), 360)
@@ -212,6 +223,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
               sharedRoot={sharedRoot}
               layout={dockLayout}
               width={liveWidth}
+              entering={entering}
               onClose={() => setVisible(sessionId, false)}
               browser={{ frame: browser.frame, error: browser.error, targetId, onTargetChange: setTargetId }}
               terminalEnabled={terminalEnabled}

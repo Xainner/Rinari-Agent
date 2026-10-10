@@ -28,6 +28,8 @@ export interface SessionDockProps {
   /** `docked`: columna al lado del chat. `drawer`: superpuesto dentro de la sesión. */
   layout: 'docked' | 'drawer'
   width: number
+  /** Recién abierto por el usuario: crece desde 0 (o se desliza si es un drawer). */
+  entering?: boolean
   onClose: () => void
   browser: { frame: BrowserFrame | null; error: string; targetId: string; onTargetChange: (targetId: string) => void }
   /** El Engine anuncia `desktop_terminal_v1`: sin ella no hay pestaña Terminal. */
@@ -61,6 +63,7 @@ export default function SessionDock({
   browser,
   terminalEnabled = false,
   busy = false,
+  entering = false,
 }: SessionDockProps) {
   const { t } = useI18n()
   const calm = useCalmMotion()
@@ -115,6 +118,7 @@ export default function SessionDock({
       data-layout={layout}
       data-surface={surface}
       className={cn('pane-dock session-dock', layout === 'drawer' && 'pane-dock-drawer')}
+      data-entering={entering || undefined}
       style={layout === 'docked' ? { width } : undefined}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && layout === 'drawer') onClose()

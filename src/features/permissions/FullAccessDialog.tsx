@@ -1,4 +1,4 @@
-import { FolderOpen, Globe, ShieldAlert, SquareTerminal } from 'lucide-react'
+import { FolderOpen, Globe, ShieldAlert, ShieldCheck, SquareTerminal, TriangleAlert } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { useI18n, type I18nKey } from '../../i18n'
 import {
@@ -42,19 +42,23 @@ export function FullAccessDialog({ open, onCancel, onConfirm }: FullAccessDialog
           </div>
           <AlertDialogDescription>{t('perm.full.intro')}</AlertDialogDescription>
         </AlertDialogHeader>
+        <p className="full-access-heading" aria-hidden="true">{t('perm.full.groupsLabel')}</p>
         <ul className="full-access-groups" aria-label={t('perm.full.groupsLabel')}>
           {GROUPS.map(({ icon: Icon, title, body }, index) => (
             <li key={title} className="full-access-group" style={{ '--i': index } as CSSProperties}>
               <span className="full-access-group-icon" aria-hidden="true"><Icon size={16} /></span>
               <span className="min-w-0">
-                <span className="block text-[13px] font-semibold text-[var(--text)]">{t(title)}</span>
-                <span className="block text-xs leading-relaxed text-[var(--text-muted)]">{t(body)}</span>
+                <span className="full-access-group-title">{t(title)}</span>
+                <span className="full-access-group-body">{t(body)}</span>
               </span>
             </li>
           ))}
         </ul>
-        <p className="full-access-still">{t('perm.full.stillAsks')}</p>
-        <p className="text-xs leading-relaxed text-[var(--text-subtle)]">{t('perm.full.risk')}</p>
+        <div className="full-access-still">
+          <span className="full-access-still-icon" aria-hidden="true"><ShieldCheck size={15} /></span>
+          <p>{t('perm.full.stillAsks')}</p>
+        </div>
+        <p className="full-access-risk"><TriangleAlert size={13} aria-hidden="true" /><span>{t('perm.full.risk')}</span></p>
         <AlertDialogFooter>
           <AlertDialogCancel>{t('perm.full.cancel')}</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={onConfirm}>

@@ -165,12 +165,22 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
 
         <section className="create-project-folders" aria-label={t('createProject.folders')}>
           <div className="create-project-folders-head">
-            <span className="field-label">{t('createProject.folders')}</span>
+            <span className="create-project-folders-title">{t('createProject.folders')}{rows.length > 0 && <span className="create-project-count">{rows.length}</span>}</span>
+            {rows.length > 1 && (
+              <button type="button" className="create-project-trust-all" onClick={() => setRows((current) => current.map((row) => ({ ...row, trust: true })))}>
+                <ShieldCheck size={13} aria-hidden="true" /> {t('createProject.trustAll')}
+              </button>
+            )}
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => void addFolders()} data-testid="create-project-add">
               <FolderPlus size={13} aria-hidden="true" /> {t('createProject.addFolder')}
             </button>
           </div>
-          {rows.length === 0 && <p className="create-project-empty">{t('createProject.noFolders')}</p>}
+          {rows.length === 0 && (
+            <button type="button" className="create-project-empty" onClick={() => void addFolders()}>
+              <FolderPlus size={18} aria-hidden="true" />
+              <span>{t('createProject.noFolders')}</span>
+            </button>
+          )}
           <ul className="create-project-rows">
             {rows.map((row, index) => {
               const check = checks[index]
@@ -188,16 +198,16 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
                       {index === 0 && <span className="create-project-primary">{t('createProject.primary')}</span>}
                       {branch && <span className="project-branch">{branch}</span>}
                     </span>
-                    <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]" title={row.path}>{row.path}</span>
+                    <span className="create-project-path" title={row.path}>{shortPath(row.path)}</span>
                     {error && (
                       <span className="create-project-error" role="alert">
                         {t(ERROR_KEYS[error.code] ?? 'createProject.error.notFound', { project: error.project_name ?? '' })}
                       </span>
                     )}
                   </span>
-                  <label className="create-project-trust">
-                    <input type="checkbox" checked={row.trust} onChange={(event) => setRows((current) => current.map((item, i) => (i === index ? { ...item, trust: event.target.checked } : item)))} />
-                    {t('createProject.trust')}
+                  <label className="create-project-trust" data-on={row.trust || undefined}>
+                    <input type="checkbox" className="create-project-switch" checked={row.trust} onChange={(event) => setRows((current) => current.map((item, i) => (i === index ? { ...item, trust: event.target.checked } : item)))} />
+                    <span>{t('createProject.trust')}</span>
                   </label>
                   {index > 0 && (
                     <button type="button" className="create-project-icon" onClick={() => makePrimary(index)} aria-label={t('createProject.makePrimary')} title={t('createProject.makePrimary')}>
@@ -211,17 +221,12 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
               )
             })}
           </ul>
-          {rows.length > 1 && (
-            <button type="button" className="create-project-trust-all" onClick={() => setRows((current) => current.map((row) => ({ ...row, trust: true })))}>
-              <ShieldCheck size={13} aria-hidden="true" /> {t('createProject.trustAll')}
-            </button>
-          )}
           <p className="create-project-trust-note">
             <ShieldCheck size={13} aria-hidden="true" /> {t('createProject.trustExplain')}
           </p>
         </section>
 
-        <p className="create-project-summary" aria-live="polite" data-testid="create-project-summary">{summary}</p>
+        <p className="create-project-summary" aria-live="polite" data-testid="create-project-summary"><FolderPlus size={14} aria-hidden="true" /><span>{summary}</span></p>
         <DialogFooter>
           <button type="button" className="btn btn-secondary" disabled={creating} onClick={close}>{t('common.cancel')}</button>
           <button type="button" className="btn btn-primary" disabled={!canCreate} onClick={() => void create()} data-testid="create-project-submit">
@@ -231,4 +236,12 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
       </DialogContent>
     </Dialog>
   )
+}
+
+/** La ruta sin el principio cuando es larga: lo que distingue una carpeta es su final. */
+function shortPath(path: string): string {
+  const separator = path.includes('\\') ? '\\' : '/'
+  const parts = path.split(/[\\/]/).filter(Boolean)
+  if (parts.length <= 3) return path
+  return `…${separator}${parts.slice(-3).join(separator)}`
 }

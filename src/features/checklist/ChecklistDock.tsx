@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { ChevronUp, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -39,6 +39,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
 
   const checklist = entry?.checklist ?? null
   const seen = useSeenStatuses(checklist)
+  const finishedLive = useFinishedLive(checklist?.state ?? null)
   if (!checklist) return null
 
   const { counts, state } = checklist
@@ -63,7 +64,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
 
   return (
     <section
-      className={cn('checklist-dock', entry?.live && 'is-live')}
+      className={cn('checklist-dock', entry?.live && 'is-live', finishedLive && 'just-finished')}
       data-state={state}
       data-testid="checklist-dock"
       aria-label={t('checklist.label')}
@@ -76,7 +77,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
           aria-controls={bodyId}
           onClick={() => setExpanded(sessionId, !expanded)}
         >
-          <ProgressRing done={counts.completed} total={counts.total} working={working} />
+          <ProgressRing done={counts.completed} total={counts.total} working={working} finished={state === 'completed'} />
           <span className="checklist-count" aria-label={t('checklist.progress', { done: counts.completed, total: counts.total })}>
             {counts.completed}/{counts.total}
           </span>
@@ -110,7 +111,7 @@ function ChecklistRow({ item, working, arrived, justDone }: { item: ChecklistIte
       <StatusMark status={item.status} working={working} />
       <span className="checklist-item-text">
         <span className="sr-only">{t(`checklist.status.${item.status}`)}: </span>
-        {item.content}
+        <span className="checklist-item-label">{item.content}</span>
         {item.status === 'blocked' && item.blocked_reason && <span className="checklist-item-reason">{item.blocked_reason}</span>}
       </span>
     </li>
@@ -130,16 +131,37 @@ function StatusMark({ status, working }: { status: ChecklistItem['status']; work
   )
 }
 
-function ProgressRing({ done, total, working }: { done: number; total: number; working: boolean }) {
+function ProgressRing({ done, total, working, finished }: { done: number; total: number; working: boolean; finished: boolean }) {
   const ratio = total > 0 ? done / total : 0
+  const gradient = useId()
   return (
-    <span className="checklist-ring" data-working={working || undefined} aria-hidden="true">
-      <svg viewBox="0 0 20 20" width="20" height="20">
-        <circle className="checklist-ring-track" cx="10" cy="10" r="8" />
-        <circle className="checklist-ring-fill" cx="10" cy="10" r="8" pathLength="100" style={{ strokeDashoffset: 100 - ratio * 100 }} />
+    <span className="checklist-ring" data-working={working || undefined} data-finished={finished || undefined} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        <defs>
+          <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="var(--violet-300)" />
+            <stop offset="100%" stopColor="var(--magenta-400)" />
+          </linearGradient>
+        </defs>
+        <circle className="checklist-ring-track" cx="12" cy="12" r="9.5" />
+        <circle className="checklist-ring-fill" cx="12" cy="12" r="9.5" pathLength="100" stroke={finished ? undefined : `url(#${gradient})`} style={{ strokeDashoffset: 100 - ratio * 100 }} />
+        {working && <circle className="checklist-ring-spark" cx="12" cy="12" r="9.5" pathLength="100" />}
+        {finished && <path className="checklist-ring-check" d="M8.2 12.3 10.9 14.9 15.9 9.4" pathLength="1" />}
       </svg>
     </span>
   )
+}
+
+/** True only when the list became completed while it was on screen: that is the moment to celebrate, once. */
+function useFinishedLive(state: Checklist['state'] | null): boolean {
+  const previous = useRef(state)
+  const [finished, setFinished] = useState(false)
+  useEffect(() => {
+    if (previous.current && previous.current !== 'completed' && state === 'completed') setFinished(true)
+    else if (state !== 'completed') setFinished(false)
+    previous.current = state
+  }, [state])
+  return finished
 }
 
 /**

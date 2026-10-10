@@ -46,7 +46,7 @@ export function TitleSwap({ sessionId, text, className, title, as: Tag = 'span',
   }, [outgoing])
 
   return (
-    <Tag className={cn('title-swap', className)} title={title ?? text} {...rest}>
+    <Tag className={cn('title-swap', className)} title={title ?? text} data-swapping={outgoing ? '' : undefined} {...rest}>
       <span key={outgoing?.key ?? 'still'} className={cn('title-swap-text', outgoing && 'is-in')} data-title-swap={outgoing ? 'in' : undefined}>
         {text}
       </span>

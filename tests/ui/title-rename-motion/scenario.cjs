@@ -32,9 +32,9 @@ scenario(async () => {
   await delay(300)
   await input('.composer-surface textarea', first)
   await click('.composer-surface button[aria-label="Enviar mensaje"]')
-  // The row shows first with the provisional title; the model's title is held.
+  // The row shows first with the provisional title («Nueva conversación»); the model's title is held.
   await until(async () => (await pending('title')) > 0, 'the title request reaches the model')
-  await wait(`document.querySelector('aside')?.innerText.includes('Recitame un poema')`)
+  await wait(`Boolean(document.querySelector('aside button[aria-current="page"] .title-swap-text'))`)
   await evaluate(SAMPLER)
   await release('title')
   await wait(`document.querySelector('aside')?.innerText.includes(${JSON.stringify(TITLE)})`)

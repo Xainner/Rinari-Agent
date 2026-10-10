@@ -1457,6 +1457,11 @@ button.agent-entry:hover { border-color: var(--line-3); background: rgb(20 15 34
 
 /* -- Boards: columnas con cabecera viva y foco luminoso ---------------------- */
 .board-toolbar { min-height: 44px; padding: 6px 14px; border-bottom: 1px solid var(--line-1); background: rgb(10 8 18 / 0.6); }
+/* Los contadores aparecen y desaparecen solos (trabajando, sin leer): no
+   deciden si la barra salta a dos líneas, o todo el board se movería bajo el
+   puntero en mitad de un clic. Ocupan lo que sobre y se desplazan si no caben. */
+.board-toolbar-counts { flex: 1 1 0; min-width: 120px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent); }
+.board-toolbar-counts::-webkit-scrollbar { display: none; }
 .session-pane { background: linear-gradient(180deg, rgb(14 11 24 / 0.9), var(--bg-app) 30%); border-right-color: var(--line-1); transition: background-color var(--dur-base), box-shadow var(--dur-base); }
 .session-pane.is-focused { background: linear-gradient(180deg, rgb(147 88 255 / 0.08), var(--bg-app) 35%); box-shadow: inset 0 0 0 1px rgb(196 181 253 / 0.32), inset 0 1px 0 rgb(196 181 253 / 0.45); }
 .pane-header { gap: 8px; }

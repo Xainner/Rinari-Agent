@@ -20,6 +20,7 @@ function setup(extra:Partial<typeof base>={}) {
   const el=screen.getByRole('textbox') as HTMLTextAreaElement
   el.style.minHeight='52px'
   Object.defineProperty(el,'scrollHeight',{configurable:true,get:()=>el.value.length>100?500:52})
+  Object.defineProperty(el,'clientWidth',{configurable:true,get:()=>600})
   el.getBoundingClientRect=()=>({height:parseFloat(el.style.height)||52,width:600} as DOMRect)
   const cancel=vi.fn()
   el.animate=vi.fn(()=>({cancel} as unknown as Animation))
@@ -89,4 +90,35 @@ it('applies reduced motion immediately and remeasures a different session withou
   view.rerender(<I18nProvider lang="es"><Composer {...base} sessionId="other"/></I18nProvider>)
   expect(el.style.height).toBe('240px')
   expect(el.animate).not.toHaveBeenCalled()
+})
+
+it('sizes a composer mounted in a 48 px unfolding pane from its real width, up to the CSS maximum',()=>{
+  // Desplegar un panel de Boards monta el composer sin ancho de contenido: ahí
+  // el placeholder parte cada letra en su línea y scrollHeight sale enorme.
+  // Si la ventana no pinta, el ResizeObserver tarda o no llega nunca.
+  const observers:{callback:ResizeObserverCallback}[]=[]
+  vi.stubGlobal('ResizeObserver',class{constructor(public callback:ResizeObserverCallback){observers.push(this)}observe(){}unobserve(){}disconnect(){}})
+  const sheet=document.head.appendChild(document.createElement('style'))
+  sheet.textContent='textarea{min-height:52px;max-height:160px}'
+  let width=0
+  const proto=HTMLTextAreaElement.prototype as unknown as Record<string,unknown>
+  Object.defineProperty(proto,'clientWidth',{configurable:true,get:()=>width})
+  Object.defineProperty(proto,'scrollHeight',{configurable:true,get(this:HTMLTextAreaElement){return width<100?900:this.value.length>100?500:52}})
+  proto.getBoundingClientRect=function(this:HTMLTextAreaElement){return {height:parseFloat(this.style.height)||52,width} as DOMRect}
+  try {
+    render(<I18nProvider lang="es"><Composer {...base}/></I18nProvider>)
+    const el=screen.getByRole('textbox') as HTMLTextAreaElement
+    expect(el.style.height).toBe('52px')
+    width=470
+    act(()=>{for(const o of observers)o.callback([],o as unknown as ResizeObserver)})
+    expect(el.style.height).toBe('52px')
+    fireEvent.change(el,{target:{value:long}})
+    expect(el.style.height).toBe('160px')
+  } finally {
+    delete proto.clientWidth
+    delete proto.scrollHeight
+    delete proto.getBoundingClientRect
+    sheet.remove()
+    vi.unstubAllGlobals()
+  }
 })

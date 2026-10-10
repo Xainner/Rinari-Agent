@@ -125,6 +125,37 @@ scenario(async () => {
   assert.equal((await geometry()).panes.length, 3)
   checkFit(await geometry(), false)
   await screenshot('fit-reveals-collapsed')
+  // Desplegar monta cada composer en un panel de 48 px. Si la ventana no pinta
+  // (pasa en el runner), el ResizeObserver no avisa de que el panel creció: el
+  // composer debe quedar igual a su altura real, no a la de 0 px de ancho. Sin
+  // depender de la fuente: mínimo y tope se leen del CSS del propio textarea.
+  const composers = `[...document.querySelectorAll('.session-pane .composer-surface textarea')].map(t => { const s = getComputedStyle(t)
+    return { height: t.getBoundingClientRect().height, min: parseFloat(s.minHeight), max: parseFloat(s.maxHeight), width: t.clientWidth } })`
+  await evaluate(`(() => { const RO = window.ResizeObserver; window.__ResizeObserver = RO
+    window.ResizeObserver = class extends RO { observe(target, options) { if (target.tagName !== 'TEXTAREA') super.observe(target, options) } } })()`)
+  await domClick(collapseAll)
+  await domClick(fit)
+  assert.equal((await geometry()).panes.length, 3)
+  const unfolded = await evaluate(composers)
+  assert.equal(unfolded.length, 3)
+  for (const c of unfolded) {
+    assert(c.width > 200, 'the composer reached its pane width')
+    assert(Math.abs(c.height - c.min) <= 1, `an unfolded composer with a short draft keeps its own height (${c.height}px, min ${c.min}px)`)
+  }
+  // Un borrador largo crece hasta el tope de Boards y después hace scroll.
+  await evaluate(`(() => { const el = [...document.querySelectorAll('.session-pane .composer-surface textarea')].at(-1)
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, 'línea\\n'.repeat(40))
+    el.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  const tall = (await evaluate(composers)).at(-1)
+  assert(tall.max <= 160, `Boards caps the composer (${tall.max}px)`)
+  assert(Math.abs(tall.height - tall.max) <= 1, `a long draft grows to the Boards cap (${tall.height}px)`)
+  await evaluate(`(() => { const el = [...document.querySelectorAll('.session-pane .composer-surface textarea')].at(-1)
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, '')
+    el.dispatchEvent(new Event('input', { bubbles: true })); window.ResizeObserver = window.__ResizeObserver })()`)
+  // Se vuelven a montar con el ResizeObserver real para el resto del recorrido.
+  await domClick(collapseAll)
+  await domClick(fit)
+  assert.equal((await geometry()).panes.length, 3)
   await size(1200, 850)
   checkFit(await geometry(), true)
   await size(1500, 850)
@@ -155,7 +186,9 @@ scenario(async () => {
   await wait('document.querySelectorAll(".session-pane").length === 3')
   await delay(400)
   checkFit(await geometry(), false)
-  assert.equal(await evaluate('document.querySelector("textarea").value'), 'Borrador de prueba')
+  // Tras recargar, cada panel dice «Preparando sesión…» hasta que el Engine
+  // responde; el composer (con su borrador) se monta después.
+  await wait('document.querySelector(".session-pane textarea")?.value === "Borrador de prueba"')
   const beforeTurn = (await geometry()).panes.map((p) => p.width)
   await domClick('.session-pane button[aria-label="Enviar mensaje"]')
   await wait('document.querySelector(".session-pane").dataset.status === "failed"')
@@ -192,7 +225,8 @@ scenario(async () => {
   await domClick('button[aria-label="Colapsar barra"]')
   await delay(300)
   checkFit(await geometry(), false)
-  assert((await geometry()).panes[0].width > 1600)
+  const wide = await geometry()
+  assert(wide.panes[0].width > 1600, 'a single fitted pane exceeds the manual maximum: ' + JSON.stringify(wide))
   await domClick('button[aria-label="Expandir barra"]')
   // Un layout de una versión futura no se reescribe.
   await seedBoard({ version: 99, boardId: 'future', panes: [] }, { open: false })
@@ -203,7 +237,7 @@ scenario(async () => {
   await load(3)
   report({ realEngine: true, provider: 'dead loopback port; failed turn expected, no external model calls',
     checks: ['equal widths: 1/2/3/6 panes', 'manual width restoration', 'composer identity and draft',
-      'collapse, expand, focus mode', 'fit reveals collapsed panes from manual, fit and focus modes', 'resize, sidebar, 125% zoom', 'side panel drawer preference',
+      'collapse, expand, focus mode', 'unfolded composers keep their height without ResizeObserver; Boards cap', 'fit reveals collapsed panes from manual, fit and focus modes', 'resize, sidebar, 125% zoom', 'side panel drawer preference',
       'fresh profile defaults to fit', 'saved manual preference respected', 'reload persistence', 'real failed turn does not redistribute', 'compact accessible toolbar',
       'add and remove through UI', 'all collapsed overflow', 'schema 3 migration',
       'single pane above 1600px', 'future schema write protection'], cases: passed })

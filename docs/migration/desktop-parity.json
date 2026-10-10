@@ -799,21 +799,27 @@
       "kind": "engine",
       "method": "project.folder.add",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "project_folder_remove",
       "kind": "engine",
       "method": "project.folder.remove",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "project_folders_validate",
       "kind": "engine",
       "method": "project.folders.validate",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "project_get",
@@ -1917,6 +1923,6 @@
     "engine_backed": 223,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 79
+    "without_callers": 76
   }
 }

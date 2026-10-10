@@ -108,9 +108,9 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `project_create` | engine | `project.create` | **ninguno** |
 | `project_delete` | engine | `project.delete` | **ninguno** |
 | `project_diff` | engine | `project.diff` | **ninguno** |
-| `project_folder_add` | engine | `project.folder.add` | **ninguno** |
-| `project_folder_remove` | engine | `project.folder.remove` | **ninguno** |
-| `project_folders_validate` | engine | `project.folders.validate` | **ninguno** |
+| `project_folder_add` | engine | `project.folder.add` | `src/services/engine.ts` |
+| `project_folder_remove` | engine | `project.folder.remove` | `src/services/engine.ts` |
+| `project_folders_validate` | engine | `project.folders.validate` | `src/services/engine.ts` |
 | `project_get` | engine | `project.get` | `src/services/engine.ts` |
 | `project_intelligence` | engine | `project.intelligence` | `src/services/engine.ts` |
 | `project_list` | engine | `project.list` | `src/services/engine.ts` |

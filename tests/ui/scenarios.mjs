@@ -304,6 +304,10 @@ export const scenarios = {
     title: 'Perfiles como espacios de trabajo: lo existente en Predeterminado, cambiar, perfil vacío, mover y reiniciar',
     phases: ['exercise'],
   },
+  'project-create': {
+    title: 'Nuevo proyecto: ventana con nombre, carpetas validadas, confianza, perfil y resumen; crea y abre',
+    phases: ['exercise'],
+  },
   'session-title': {
     title: 'Barra lateral: título que resume el primer mensaje',
     phases: ['exercise'],

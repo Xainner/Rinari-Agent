@@ -1171,6 +1171,105 @@
       "host_effects": []
     },
     {
+      "command": "followup_list",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "project_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "status",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "followup.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        },
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": true
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        },
+        {
+          "key": "status",
+          "from": "status",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "followup_dismiss",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "suggestion_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "followup.dismiss",
+      "engine_params": [
+        {
+          "key": "suggestion_id",
+          "from": "suggestion_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "followup_accept",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "suggestion_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "followup.accept",
+      "engine_params": [
+        {
+          "key": "suggestion_id",
+          "from": "suggestion_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "session_permission_set",
       "module": "sessions",
       "args": [

@@ -377,6 +377,27 @@
       "callers": []
     },
     {
+      "command": "followup_accept",
+      "kind": "engine",
+      "method": "followup.accept",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "followup_dismiss",
+      "kind": "engine",
+      "method": "followup.dismiss",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "followup_list",
+      "kind": "engine",
+      "method": "followup.list",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "initial_open_request",
       "kind": "host",
       "method": null,
@@ -1860,10 +1881,10 @@
     }
   ],
   "summary": {
-    "commands": 222,
-    "engine_backed": 216,
+    "commands": 225,
+    "engine_backed": 219,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 74
+    "without_callers": 77
   }
 }

@@ -46,6 +46,9 @@ export type DesktopCommand =
   | "engine_shutdown"
   | "engine_start"
   | "engine_status"
+  | "followup_accept"
+  | "followup_dismiss"
+  | "followup_list"
   | "initial_open_request"
   | "mcp_create"
   | "mcp_get"
@@ -270,6 +273,9 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "engine_shutdown",
   "engine_start",
   "engine_status",
+  "followup_accept",
+  "followup_dismiss",
+  "followup_list",
   "initial_open_request",
   "mcp_create",
   "mcp_get",
@@ -510,6 +516,9 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "documents_range_get",
   "documents_report_get",
   "documents_revisions_list",
+  "followup_accept",
+  "followup_dismiss",
+  "followup_list",
   "mcp_create",
   "mcp_get",
   "mcp_list",

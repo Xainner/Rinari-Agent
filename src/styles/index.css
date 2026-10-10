@@ -115,6 +115,14 @@
   --status-run: var(--violet-400);
   --access-workspace: #5be0a5;
   --access-full: #ff9a6b;
+  /* Nota de Rinari: papel cálido sobre la tinta, cinta violeta. */
+  --note-paper: #f3e3b3;
+  --note-paper-2: #ead699;
+  --note-ink: #2b2112;
+  --note-ink-muted: #5d4a2a;
+  --note-tape: rgb(167 139 250 / 0.55);
+  --note-ink-strong: #120d06;
+  --note-caution: #8a3b12;
 
   /* Vidrio sobre la nebulosa. */
   --glass-0: rgb(14 10 24 / 0.55);
@@ -655,6 +663,39 @@ input[type='password']::-ms-clear {
 /* Lista de tareas en vivo sobre el composer. Una línea plegada (anillo,
    cuenta y el paso en curso); desplegada, la lista. Se anima lo que se ve
    cambiar: un paso que llega, uno que se completa, el anillo que avanza. */
+/* La nota que Rinari deja pegada en la esquina de la conversación. */
+.sticky-note-anchor { position: absolute; right: 22px; bottom: 16px; z-index: 11; width: 236px; pointer-events: none; }
+.sticky-note-anchor > * { pointer-events: auto; }
+.sticky-note-anchor.is-chip { width: auto; }
+.sticky-note-anchor.is-compact { right: 12px; bottom: 10px; }
+.sticky-note { position: relative; display: grid; gap: 6px; padding: 18px 14px 12px; border-radius: 4px 4px 10px 4px; color: var(--note-ink); background: linear-gradient(170deg, var(--note-paper), var(--note-paper-2)); box-shadow: 0 14px 28px -12px rgb(0 0 0 / 0.65), 0 2px 0 rgb(0 0 0 / 0.08), inset 0 -18px 24px -22px rgb(120 80 20 / 0.35); transform: rotate(-2deg); transform-origin: 50% 0; }
+.sticky-note.is-arriving { animation: sticky-note-in var(--dur-slow) var(--ease-out) both; }
+.sticky-note.is-leaving-dismiss { animation: sticky-note-peel 240ms var(--ease-in-out) forwards; }
+.sticky-note.is-leaving-accept { animation: sticky-note-fly 420ms var(--ease-in-out) forwards; }
+@keyframes sticky-note-in { from { opacity: 0; transform: translateY(-26px) rotate(-9deg) scale(0.96); } 70% { opacity: 1; } to { opacity: 1; transform: rotate(-2deg); } }
+@keyframes sticky-note-peel { to { opacity: 0; transform: translate(36px, 14px) rotate(9deg); } }
+@keyframes sticky-note-fly { 30% { transform: translateY(-10px) rotate(-4deg) scale(1.02); } to { opacity: 0; transform: translate(-46vw, -6vh) rotate(-14deg) scale(0.35); } }
+.sticky-note-stack { position: absolute; inset: 4px -5px -5px 5px; z-index: -1; border-radius: inherit; background: var(--note-paper-2); opacity: 0.75; transform: rotate(4deg); box-shadow: 0 10px 20px -12px rgb(0 0 0 / 0.6); }
+.sticky-note-tape { position: absolute; top: -9px; left: 50%; width: 64px; height: 18px; translate: -50% 0; rotate: 3deg; background: var(--note-tape); border-radius: 2px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.18); mix-blend-mode: normal; }
+.sticky-note-head { display: flex; align-items: center; gap: 7px; }
+.sticky-note-chibi { width: 26px; height: 26px; object-fit: contain; margin: -6px 0 -4px -4px; }
+.sticky-note-from { min-width: 0; flex: 1 1 auto; font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--note-ink-muted); }
+.sticky-note-more { flex-shrink: 0; border-radius: 999px; padding: 0 6px; font-size: 10.5px; font-weight: 700; color: var(--note-paper); background: var(--note-ink-muted); }
+.sticky-note-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--note-ink); }
+.sticky-note-prompt { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; line-height: 1.45; color: var(--note-ink); white-space: pre-wrap; }
+.sticky-note-prompt.is-expanded { display: block; max-height: 180px; overflow-y: auto; }
+.sticky-note-expand { justify-self: start; font-size: 11px; font-weight: 600; color: var(--note-ink-muted); text-decoration: underline; text-underline-offset: 2px; }
+.sticky-note-why { font-size: 11px; font-style: italic; line-height: 1.4; color: var(--note-ink-muted); }
+.sticky-note-caution { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; color: var(--note-caution); }
+.sticky-note-actions { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.sticky-note-accept { display: inline-flex; min-width: 0; flex: 1 1 auto; align-items: center; justify-content: center; gap: 5px; min-height: 28px; border-radius: 7px; padding: 0 10px; font-size: 11.5px; font-weight: 700; color: var(--note-paper); background: var(--note-ink); transition: transform var(--dur-fast), background-color var(--dur-fast); }
+.sticky-note-accept:hover:not(:disabled) { background: var(--note-ink-strong); transform: translateY(-1px); }
+.sticky-note-dismiss { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 7px; color: var(--note-ink-muted); transition: background-color var(--dur-fast); }
+.sticky-note-dismiss:hover:not(:disabled) { background: rgb(0 0 0 / 0.08); color: var(--note-ink); }
+.sticky-note-accept:disabled, .sticky-note-dismiss:disabled { opacity: 0.6; }
+.sticky-note-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; border-radius: 999px; padding: 0 12px; font-size: 12px; font-weight: 700; color: var(--note-ink); background: linear-gradient(170deg, var(--note-paper), var(--note-paper-2)); box-shadow: 0 8px 18px -10px rgb(0 0 0 / 0.7); transform: rotate(-2deg); }
+.sticky-note-chip.is-arriving { animation: sticky-note-in var(--dur-slow) var(--ease-out) both; }
+.sticky-note-pop { position: absolute; right: 0; bottom: calc(100% + 12px); width: 236px; }
 .checklist-dock { container-type: inline-size; flex-shrink: 0; margin-bottom: 8px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: linear-gradient(180deg, rgb(147 88 255 / 0.05), transparent 70%), var(--bg-subtle); box-shadow: var(--inset-hi); }
 .checklist-dock.is-live { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
 .checklist-dock[data-state='interrupted'] { border-color: color-mix(in srgb, var(--warning) 38%, transparent); }

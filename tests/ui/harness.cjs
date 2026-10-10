@@ -22,6 +22,9 @@ const data = process.env.RINARI_UI_DATA
 const output = process.env.RINARI_UI_OUTPUT
 if (!name || !data || !output) throw new Error('Arranca las pruebas con `npm run ui:e2e -- <escenario>`.')
 app.setPath('userData', join(data, 'profile'))
+// `RINARI_UI_REDUCED_MOTION=1` reproduce un runner con las animaciones del
+// sistema apagadas (prefers-reduced-motion), como el de la CI.
+if (process.env.RINARI_UI_REDUCED_MOTION === '1') app.commandLine.appendSwitch('force-prefers-reduced-motion')
 require('../../dist-electron/main.cjs')
 
 /** Proveedor local sin credenciales que nunca contesta: el turno falla. */

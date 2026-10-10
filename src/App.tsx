@@ -57,6 +57,8 @@ import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
 import { useProfileWorkspace } from './features/profiles/useProfileWorkspace'
 import { useProfileMoves } from './features/profiles/useProfileMoves'
+import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
+import { useCreateProjectStore } from './features/projects/createProjectStore'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const FlowView = lazy(() => import('./features/flow/FlowView'))
@@ -509,7 +511,7 @@ function App() {
         }
         case 'toggle-focus-mode': goBoard(); toggleFocusMode(); break
         case 'mark-all-board-results-read': markAllBoardResultsRead(); break
-        case 'open-folder': void platform().dialog.openFiles({ directory: true }).then(picked => { const path = picked?.[0]; if (path) void handleOpenProjectPath(path).then(ok => ok && goChat()) }); break
+        case 'open-folder': useCreateProjectStore.getState().openWith(); break
         case 'close-session': {
           // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.
           if (resolveContextualAction('close', { view }) === 'remove-pane') { boardActionsRef.current.removePane(); break }
@@ -593,6 +595,14 @@ function App() {
       <EngineProvider session={session}>
       {confirmDialog}
       {profileMoves.dialog}
+      <CreateProjectDialog
+        onCreated={(_project, created) => {
+          void session.refreshProjects()
+          void session.refreshSessions().then(() => {
+            if (created) void session.selectSession(created.id).then(() => goChat())
+          })
+        }}
+      />
       <BoardActivityController />
       <SoundCoordinator activeSession={session.activeSession} />
       <UpdateNotifier lang={lang} />
@@ -651,12 +661,7 @@ function App() {
             onMoveSessionProfile={profileMoves.moveSession}
             onMoveProjectProfile={profileMoves.moveProject}
             onNewChat={() => dispatchAction('new-chat')}
-            onOpenFolder={() =>
-              void platform().dialog.openFiles({ directory: true }).then((selection) => {
-                const picked = selection?.[0] ?? null
-                if (typeof picked === 'string') void handleOpenProjectPath(picked).then((ok) => ok && goChat())
-              })
-            }
+            onOpenFolder={() => useCreateProjectStore.getState().openWith()}
             sessions={session.sessions}
             closedSessions={session.closedSessions}
             archivedSessions={session.archivedSessions}

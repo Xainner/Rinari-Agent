@@ -17,7 +17,7 @@ import type {
   PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist, FollowupSuggestion } from '../types/protocol.generated'
+import type { Checklist, FollowupSuggestion, ProjectFolderCheck } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -891,6 +891,22 @@ export const engineApi = {
     }),
   getSessionPermission: (reference: string) =>
     platform().command<{ session: SessionSummary }>("session_permission_get", { reference }),
+  /** Checks folders for a project without changing anything. */
+  projectFoldersValidate: (paths: string[], projectId?: string) =>
+    platform().command<{ folders: ProjectFolderCheck[] }>('project_folders_validate', { paths, project_id: projectId ?? null }),
+  /** A project with name, description and working folders (first = primary), each with its trust. */
+  projectCreate: (input: { name: string; description?: string; folders: { path: string; trust: boolean }[]; rinariProfileId?: string | null }) =>
+    platform().command<{ project: ProjectSummary; session: SessionSummary | null; trust: { path: string; state: string }[] }>('project_create', {
+      name: input.name,
+      description: input.description ?? null,
+      folders: input.folders,
+      rinari_profile_id: input.rinariProfileId ?? null,
+      open: true,
+    }),
+  projectFolderAdd: (projectId: string, path: string, trust = false) =>
+    platform().command<{ project: ProjectSummary }>('project_folder_add', { project_id: projectId, path, trust }),
+  projectFolderRemove: (projectId: string, path: string) =>
+    platform().command<{ project: ProjectSummary }>('project_folder_remove', { project_id: projectId, path }),
   /** Notes Rinari left (pending by default). */
   followupList: (filter: { sessionId?: string; projectId?: string; profile?: string; status?: string } = {}) =>
     platform().command<{ suggestions: FollowupSuggestion[] }>('followup_list', {

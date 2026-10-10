@@ -388,14 +388,18 @@
       "kind": "engine",
       "method": "followup.dismiss",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "followup_list",
       "kind": "engine",
       "method": "followup.list",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "initial_open_request",
@@ -770,6 +774,13 @@
       ]
     },
     {
+      "command": "project_create",
+      "kind": "engine",
+      "method": "project.create",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_delete",
       "kind": "engine",
       "method": "project.delete",
@@ -780,6 +791,27 @@
       "command": "project_diff",
       "kind": "engine",
       "method": "project.diff",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "project_folder_add",
+      "kind": "engine",
+      "method": "project.folder.add",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "project_folder_remove",
+      "kind": "engine",
+      "method": "project.folder.remove",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "project_folders_validate",
+      "kind": "engine",
+      "method": "project.folders.validate",
       "manual": false,
       "callers": []
     },
@@ -1881,10 +1913,10 @@
     }
   ],
   "summary": {
-    "commands": 225,
-    "engine_backed": 219,
+    "commands": 229,
+    "engine_backed": 223,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 77
+    "without_callers": 79
   }
 }

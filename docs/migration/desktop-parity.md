@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **225**
-- Respaldados por Engine: **219**
+- Comandos: **229**
+- Respaldados por Engine: **223**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -59,8 +59,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `engine_start` | host | — | **ninguno** |
 | `engine_status` | host | — | **ninguno** |
 | `followup_accept` | engine | `followup.accept` | **ninguno** |
-| `followup_dismiss` | engine | `followup.dismiss` | **ninguno** |
-| `followup_list` | engine | `followup.list` | **ninguno** |
+| `followup_dismiss` | engine | `followup.dismiss` | `src/services/engine.ts` |
+| `followup_list` | engine | `followup.list` | `src/services/engine.ts` |
 | `initial_open_request` | host | — | **ninguno** |
 | `mcp_create` | engine | `mcp.create` | `src/services/engine.ts` |
 | `mcp_get` | engine | `mcp.get` | **ninguno** |
@@ -105,8 +105,12 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `policy_get` | engine | `policy.get` | **ninguno** |
 | `project_add` | engine | `project.add` | **ninguno** |
 | `project_changes` | engine | `project.changes` | `src/services/engine.ts` |
+| `project_create` | engine | `project.create` | **ninguno** |
 | `project_delete` | engine | `project.delete` | **ninguno** |
 | `project_diff` | engine | `project.diff` | **ninguno** |
+| `project_folder_add` | engine | `project.folder.add` | **ninguno** |
+| `project_folder_remove` | engine | `project.folder.remove` | **ninguno** |
+| `project_folders_validate` | engine | `project.folders.validate` | **ninguno** |
 | `project_get` | engine | `project.get` | `src/services/engine.ts` |
 | `project_intelligence` | engine | `project.intelligence` | `src/services/engine.ts` |
 | `project_list` | engine | `project.list` | `src/services/engine.ts` |

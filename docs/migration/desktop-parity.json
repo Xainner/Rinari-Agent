@@ -120,6 +120,20 @@
       ]
     },
     {
+      "command": "bundle_activate",
+      "kind": "engine",
+      "method": "profile_bundle.activate",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "bundle_active",
+      "kind": "engine",
+      "method": "profile_bundle.active",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "bundle_apply",
       "kind": "engine",
       "method": "profile_bundle.apply",
@@ -154,6 +168,13 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "bundle_update",
+      "kind": "engine",
+      "method": "profile_bundle.update",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "checkpoint_list",
@@ -780,6 +801,13 @@
       ]
     },
     {
+      "command": "project_move_profile",
+      "kind": "engine",
+      "method": "project.move_profile",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_open",
       "kind": "engine",
       "method": "project.open",
@@ -1243,6 +1271,13 @@
       "callers": [
         "src/services/desktop.ts"
       ]
+    },
+    {
+      "command": "session_move_profile",
+      "kind": "engine",
+      "method": "session.move_profile",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "session_open",
@@ -1809,10 +1844,10 @@
     }
   ],
   "summary": {
-    "commands": 215,
-    "engine_backed": 209,
+    "commands": 220,
+    "engine_backed": 214,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 68
+    "without_callers": 73
   }
 }

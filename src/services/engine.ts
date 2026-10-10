@@ -766,7 +766,15 @@ export interface ProfileBundle {
   soul_id: string | null;
   mode: string | null;
   agents: Record<string, { model?: string; fallback?: string }>;
+  /** The built-in default profile: always exists, never removed. */
+  builtin?: boolean;
+  /** Present on `bundle_list` with `rinari_profiles_v1`. */
+  active?: boolean;
+  counts?: { projects: number; sessions: number };
 }
+
+/** How a conversation inside a project changes profile. */
+export type ProjectPolicy = 'leave_project' | 'move_project'
 
 export interface ProjectChanges {
   available: boolean;
@@ -1257,7 +1265,33 @@ export const engineApi = {
       source_session_id: input.source_session_id ?? null,
       quoted_source: input.quoted_source ?? null,
     }),
-  bundleList: () => platform().command<{ profiles: ProfileBundle[] }>("bundle_list"),
+  bundleList: () => platform().command<{ profiles: ProfileBundle[]; active_id?: string }>("bundle_list"),
+  bundleActive: () => platform().command<{ active_id: string; profile: ProfileBundle }>('bundle_active'),
+  /** Switch the workspace: new work goes there and the lists show its work. */
+  bundleActivate: (id: string) =>
+    platform().command<{ active_id: string; previous_id: string; profile: ProfileBundle }>('bundle_activate', { id }),
+  bundleUpdate: (id: string, changes: Partial<Pick<ProfileBundle, 'name' | 'description' | 'soul_id' | 'mode' | 'agents'>>) =>
+    platform().command<{ profile: ProfileBundle }>('bundle_update', {
+      id,
+      name: changes.name ?? null,
+      description: changes.description ?? null,
+      soul_id: 'soul_id' in changes ? changes.soul_id ?? null : null,
+      mode: 'mode' in changes ? changes.mode ?? null : null,
+      agents: changes.agents ?? null,
+    }),
+  /** Moves the project and every conversation in it. */
+  projectMoveProfile: (projectId: string, rinariProfileId: string) =>
+    platform().command<{ project: ProjectSummary; session_ids: string[] }>('project_move_profile', {
+      project_id: projectId,
+      rinari_profile_id: rinariProfileId,
+    }),
+  /** A loose conversation; one inside a project needs `projectPolicy`. */
+  sessionMoveProfile: (sessionId: string, rinariProfileId: string, projectPolicy?: ProjectPolicy) =>
+    platform().command<{ session?: SessionSummary; project?: ProjectSummary; session_ids?: string[] }>('session_move_profile', {
+      session_id: sessionId,
+      rinari_profile_id: rinariProfileId,
+      project_policy: projectPolicy ?? null,
+    }),
   bundleCreate: (input: {
     id: string;
     name: string;
@@ -1274,7 +1308,8 @@ export const engineApi = {
       mode: input.mode ?? null,
       agents: input.agents ?? null,
     }),
-  bundleRemove: (id: string) => platform().command<{ removed: { id: string } }>("bundle_remove", { id }),
+  bundleRemove: (id: string, reassignTo?: string) =>
+    platform().command<{ removed: { id: string }; active_id?: string }>("bundle_remove", { id, reassign_to: reassignTo ?? null }),
   bundleApply: (id: string, session_ref?: string) =>
     platform().command<{ applied: Record<string, unknown> }>("bundle_apply", {
       id,

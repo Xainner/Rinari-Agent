@@ -25,6 +25,7 @@ import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../featur
 import ScrollToBottom from './chat/ScrollToBottom'
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
+import { StickyNote } from '../features/followups/StickyNote'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
 
@@ -494,6 +495,7 @@ function ChatView({
               }
             }}
           />
+          {sessionId !== '' && <StickyNote key={`note:${sessionId}`} sessionId={sessionId} compact={homeVariant === 'pane'} />}
         </div>
     ) : presentation === 'loading' ? (
         <div key={sessionId + ':loading'} aria-busy="true" data-testid="chat-loading" className="flex min-h-full flex-col">

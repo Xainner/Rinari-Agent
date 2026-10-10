@@ -17,7 +17,7 @@ import type {
   PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist } from '../types/protocol.generated'
+import type { Checklist, FollowupSuggestion } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -891,6 +891,19 @@ export const engineApi = {
     }),
   getSessionPermission: (reference: string) =>
     platform().command<{ session: SessionSummary }>("session_permission_get", { reference }),
+  /** Notes Rinari left (pending by default). */
+  followupList: (filter: { sessionId?: string; projectId?: string; profile?: string; status?: string } = {}) =>
+    platform().command<{ suggestions: FollowupSuggestion[] }>('followup_list', {
+      session_id: filter.sessionId ?? null,
+      project_id: filter.projectId ?? null,
+      rinari_profile_id: filter.profile ?? null,
+      status: filter.status ?? null,
+    }),
+  followupDismiss: (suggestionId: string) =>
+    platform().command<{ suggestion: FollowupSuggestion }>('followup_dismiss', { suggestion_id: suggestionId }),
+  /** Opens a new conversation (same project and profile) that starts the task. */
+  followupAccept: (suggestionId: string) =>
+    platform().command<{ suggestion: FollowupSuggestion; session: SessionSummary; turn: { turn_id: string } | null; already_accepted: boolean }>('followup_accept', { suggestion_id: suggestionId }),
   /** The live checklist of a conversation; null when there is none to show. */
   sessionChecklist: (sessionId: string) =>
     platform().command<{ checklist: Checklist | null }>('session_checklist_get', { sessionId }),

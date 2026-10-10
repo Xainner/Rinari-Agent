@@ -81,6 +81,19 @@ export const scenarios = {
       ],
     }, laneOf),
   },
+  'followup-note': {
+    title: 'Nota de Rinari: aparece sin empezar nada, aceptar abre otra conversación que la ejecuta, descartar la quita',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Parser' })),
+      main: [
+        { tool: 'followup.suggest', args: { title: 'Añadir pruebas al parser', prompt: 'Escribe pruebas para el parser en tests/ y comprueba que pasan.' }, say: 'Te dejo una nota.' },
+        { tool: 'followup.suggest', args: { title: 'Revisar la documentación', prompt: 'Actualiza docs/parser.md con el comportamiento nuevo del parser.' }, say: 'Y otra.' },
+        { text: 'PARSER ARREGLADO' },
+        { text: 'TAREA HECHA' },
+      ],
+    }, laneOf),
+  },
   'skill-manager': {
     title: 'Gestor de skills: lección desde el turno, freno de duplicados con motivo y fusión preparada',
     phases: ['exercise'],

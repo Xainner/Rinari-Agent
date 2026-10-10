@@ -33,6 +33,7 @@ import { RinariAvatar, type RinariState } from '../rinari/RinariAvatar'
 import { rinariStateForTurn } from '../rinari/turnState'
 import { activityState, turnIsActive } from '../activity/activityPresentation'
 import type { TurnTimeline } from '../activity/types'
+import { TitleSwap } from '../../components/TitleSwap'
 
 /** Expresión de Rinari en la cabecera del panel, según su estado real. */
 const STATUS_FACE: Record<PaneStatusKind, RinariState> = {
@@ -156,7 +157,7 @@ function PaneHeader({
     <header className={cn('pane-header', focused && 'is-focused')} data-testid="pane-header">
       <RinariAvatar state={face} size={28} className="pane-header-face" />
       <div className="pane-header-identity">
-        <span className="pane-header-title" title={title}>{title}</span>
+        <TitleSwap className="pane-header-title" sessionId={record?.id ?? null} text={title} />
         {projectName && (
           <span
             className="pane-header-project"

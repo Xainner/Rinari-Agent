@@ -9,6 +9,7 @@ import { useUIStore } from '../../stores/ui'
 import { createRuntimeStore, type RuntimeStore } from './runtimeStore'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { applyChecklistEvent } from '../checklist/checklistStore'
+import { markRenamedFromEvent } from '../../stores/titleMotion'
 
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
 export const SESSION_REFRESH_DEBOUNCE_MS = 150
@@ -55,6 +56,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       if (action) store.getState().dispatch(action)
       if (event.event === 'steer.returned') returnUnread(event.payload)
       if (event.event === 'checklist.updated') applyChecklistEvent(event.payload)
+      if (event.event === 'session.renamed') markRenamedFromEvent(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()
     }).then((stop) => {
       if (disposed) stop()

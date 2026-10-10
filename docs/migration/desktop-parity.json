@@ -1149,14 +1149,18 @@
       "kind": "engine",
       "method": "session.checklist.clear",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "session_checklist_get",
       "kind": "engine",
       "method": "session.checklist.get",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "session_close",
@@ -1827,6 +1831,6 @@
     "engine_backed": 211,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 70
+    "without_callers": 68
   }
 }

@@ -8,7 +8,7 @@ import {
   Columns3,
   Copy,
   Cpu,
-  FolderGit2,
+  Folder,
   FolderOpen,
   MessageSquare,
   MoreHorizontal,
@@ -51,6 +51,8 @@ import { Switch } from '../ui/switch'
 import ApplicationMenu, { SidebarFooter } from './ApplicationMenu'
 import SidebarIdentity from './SidebarIdentity'
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
+import { ProjectBranch } from '../../features/projects/ProjectBranch'
+import { TitleSwap } from '../TitleSwap'
 
 export interface AppSidebarProps {
   collapsed: boolean
@@ -299,14 +301,14 @@ export function AppSidebar({
               aria-hidden="true"
               className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-subtle)]')}
             />}
-            <span
+            <TitleSwap
+              sessionId={session.id}
+              text={sessionLabel(session, t('sidebar.newChat'))}
               className={cn(
-                'block min-w-0 flex-1 truncate text-[13px]',
+                'block min-w-0 flex-1 text-[13px]',
                 active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]',
               )}
-            >
-              {sessionLabel(session, t('sidebar.newChat'))}
-            </span>
+            />
             {opts?.projectName && (
               <span title={opts.projectName} className="max-w-[40%] shrink-0 truncate text-[11px] text-[var(--text-subtle)]">
                 {opts.projectName}
@@ -362,7 +364,7 @@ export function AppSidebar({
                   }}>
                     <Pencil size={13} /> {t('sidebar.rename')}
                   </DropdownMenuItem>
-                  {onMoveSession && <DropdownMenuSub><DropdownMenuSubTrigger><FolderGit2 size={13} /> {t('sidebar.moveToProject')}</DropdownMenuSubTrigger><DropdownMenuSubContent>
+                  {onMoveSession && <DropdownMenuSub><DropdownMenuSubTrigger><Folder size={13} /> {t('sidebar.moveToProject')}</DropdownMenuSubTrigger><DropdownMenuSubContent>
                     <DropdownMenuItem disabled={session.kind === 'CHAT'} onSelect={() => onMoveSession(session.id, null)}>{t('sidebar.generalSpace')}</DropdownMenuItem>
                     {projects.filter(project => !project.archived).map(project => <DropdownMenuItem key={project.id} disabled={project.id === session.project_id} onSelect={() => onMoveSession(session.id, project.id)}>{project.name || projectDisplayName(project.root)}</DropdownMenuItem>)}
                   </DropdownMenuSubContent></DropdownMenuSub>}
@@ -417,7 +419,7 @@ export function AppSidebar({
         )}
         {onOpenProjectHome && (
           <RailButton label={t('sidebar.projects')} onClick={onOpenProjectHome}>
-            <FolderGit2 size={17} />
+            <Folder size={17} />
           </RailButton>
         )}
         <RailButton label={t('nav.engine')} onClick={onOpenEngine}>
@@ -521,9 +523,10 @@ export function AppSidebar({
                   title={project.root}
                   className="sidebar-project"
                 >
-                  <FolderGit2 size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--text)]">
-                    {project.name || projectDisplayName(project.root)}
+                  <Folder size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
+                  <span className="sidebar-project-label">
+                    <span className="sidebar-project-name">{project.name || projectDisplayName(project.root)}</span>
+                    <ProjectBranch head={project.git_head} />
                   </span>
                   {project.pinned && <Pin size={11} className="text-[var(--text-subtle)]" />}
                   {items.length > 0 && (
@@ -579,7 +582,7 @@ export function AppSidebar({
               <ul className="mt-1 space-y-0.5">
                 {archivedProjectResults.map((project) => (
                   <li key={project.id} className="flex items-center gap-1 rounded-lg px-2 py-1.5">
-                    <FolderGit2 size={13} className="text-[var(--text-subtle)]" />
+                    <Folder size={13} className="text-[var(--text-subtle)]" />
                     <span className="min-w-0 flex-1 truncate text-xs text-[var(--text-muted)]">{project.name}</span>
                     <button type="button" onClick={() => onUpdateProject(project.id, { archived: false })} className="rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)]" aria-label={t('project.restore')} title={t('project.restore')}>
                       <ArchiveRestore size={13} />

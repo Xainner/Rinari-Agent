@@ -150,8 +150,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `schedule_runs` | engine | `schedule.runs` | **ninguno** |
 | `schedule_update` | engine | `schedule.update` | `src/services/engine.ts` |
 | `session_archive` | engine | `session.archive` | `src/services/engine.ts` |
-| `session_checklist_clear` | engine | `session.checklist.clear` | **ninguno** |
-| `session_checklist_get` | engine | `session.checklist.get` | **ninguno** |
+| `session_checklist_clear` | engine | `session.checklist.clear` | `src/services/engine.ts` |
+| `session_checklist_get` | engine | `session.checklist.get` | `src/services/engine.ts` |
 | `session_close` | engine | `session.close` | `src/services/engine.ts` |
 | `session_create` | engine | `session.create` | **ninguno** |
 | `session_delete` | engine | `session.delete` | `src/services/engine.ts` |

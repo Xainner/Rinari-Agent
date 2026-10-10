@@ -64,6 +64,11 @@ interface Props {
   planActions?: ReactNode
   /** Abre la superficie de cambios de la sesión (fila de metadatos del turno). */
   onReviewChanges?: () => void
+  /**
+   * Dónde se pinta. En un panel de Boards la cara y el estado de Rinari viven
+   * en la cabecera del panel: aquí no se repite «Pensando…».
+   */
+  surface?: 'chat' | 'pane'
 }
 
 const ActivityActive = createContext(true)
@@ -602,7 +607,7 @@ function SteerBubble({ item }: { item: SteerTimelineItem }) {
   )
 }
 
-function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges }: Props) {
+function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges, surface = 'chat' }: Props) {
   const { t } = useI18n()
   const home = useUIStore(s => s.flowHomeId)
   const technical = useUIStore(s => s.showTechnicalActivityNames)
@@ -611,7 +616,11 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const working = ['preparing', 'recovering', 'retrying', 'action', 'thinking', 'responding'].includes(state.kind)
     || state.kind === 'waiting' && state.parallel > 0
   const active = turnIsActive(timeline.status)
-  const showHeader = !active || timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling'
+  // En un panel, «pensando» (sin acciones ni texto aún) ya lo dice la cabecera
+  // del panel con la cara de Rinari: la fila viva aparece cuando hay algo que
+  // contar (una acción, la respuesta, un reintento, la cancelación).
+  const paneThinking = surface === 'pane' && state.kind === 'thinking' && timeline.status !== 'cancelling'
+  const showHeader = !paneThinking && (!active || timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling')
   const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
   return (
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>

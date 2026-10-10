@@ -8,8 +8,10 @@ const arrow = 'button[aria-label="Ir al final"]'
 const metrics = []
 
 async function readAbove(prefix) {
-  await evaluate(`(() => {const el=${q(prefix + ' ' + scroller)};el.scrollTop=Math.max(0,el.scrollHeight-el.clientHeight-450);el.dispatchEvent(new Event('scroll'))})()`)
-  await wait(`Boolean(${q(prefix + ' ' + arrow)})`)
+  // Un panel recién montado aún mide filas y vuelve a pegarse al final: se
+  // repite el desplazamiento hasta que la flecha aparece.
+  await wait(`(() => {if (${q(prefix + ' ' + arrow)}) return true
+    const el=${q(prefix + ' ' + scroller)};el.scrollTop=Math.max(0,el.scrollHeight-el.clientHeight-450);el.dispatchEvent(new Event('scroll'));return false})()`)
 }
 async function verify(prefix, name) {
   await readAbove(prefix)

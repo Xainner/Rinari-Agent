@@ -209,7 +209,7 @@ export default function ScheduleForm() {
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={close} className="rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)]">{t('common.cancel')}</button>
-          <button type="button" disabled={saving} onClick={() => void save()} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+          <button type="button" disabled={saving} onClick={() => void save()} className="btn btn-primary">
             {open.taskId ? t('schedules.form.save') : t('schedules.form.create')}
           </button>
         </div>

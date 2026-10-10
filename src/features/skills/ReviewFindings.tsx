@@ -11,7 +11,7 @@ export default function ReviewFindings({ review, compact = false }: { review: Sk
   if (review.findings.length === 0) {
     return (
       <p className="flex items-center gap-1.5 text-xs text-[var(--text-subtle)]">
-        <ShieldCheck size={13} aria-hidden="true" className="text-emerald-400" />
+        <ShieldCheck size={13} aria-hidden="true" className="text-[var(--success)]" />
         {t('skills.review.clean')}
       </p>
     )
@@ -26,7 +26,7 @@ export default function ReviewFindings({ review, compact = false }: { review: Sk
         danger ? 'border-red-500/40 bg-red-500/5' : 'border-amber-500/40 bg-amber-500/5',
       )}
     >
-      <p className={cn('flex items-center gap-1.5 font-semibold', danger ? 'text-red-400' : 'text-amber-400')}>
+      <p className={cn('flex items-center gap-1.5 font-semibold', danger ? 'text-[var(--danger)]' : 'text-[var(--warning)]')}>
         <ShieldAlert size={13} aria-hidden="true" />
         {t(danger ? 'skills.review.danger' : 'skills.review.warning', { n: review.findings.length })}
       </p>

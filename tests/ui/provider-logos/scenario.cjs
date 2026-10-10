@@ -2,12 +2,14 @@ const assert = require('node:assert/strict')
 // Only the scripted server bypasses the dead proxy, including for local presets.
 process.env.NO_PROXY = process.env.no_proxy = new URL(process.env.RINARI_UI_MODEL).host
 delete process.env.RINARI_LOGOS_TEST_UNSET
-const { ui, delay, evaluate, wait, command, reload, seedBoard, panesFor, click, clickText, input, key, menuShortcut, size, screenshot, report, scenario } = require('../harness.cjs')
+const { ui, delay, evaluate, wait, command, reload, seedBoard, panesFor, click, clickText, input, key, menuShortcut, size, screenshot, report, scenario, settleAnimations } = require('../harness.cjs')
 const expected = { openai:'openai', anthropic:'anthropic', openrouter:'openrouter', deepseek:'deepseek', groq:'groq', together:'together', mistral:'mistral', xai:'xai', 'opencode-zen':'opencode', 'opencode-go':'opencode', ollama:'ollama', lmstudio:'lmstudio', custom:'custom', gemini:'gemini', deepinfra:'deepinfra', fireworks:'fireworks', zai:'zai', 'zai-coding':'zai', moonshot:'moonshot', 'kimi-coding':'kimi', minimax:'minimax', 'minimax-coding':'minimax', chatgpt:'openai', 'github-copilot':'github-copilot', 'claude-subscription':'anthropic' }
 const logos = '[data-provider-brand]'
 let catalogSize = 0 // Set from the live catalog before any sheet is drawn.
 async function healthy(scope = 'document') {
   await wait(`[...${scope}.querySelectorAll('${logos} img')].every(i=>i.complete && i.naturalWidth>0)`)
+  // Measure after the entrance animations: a box caught mid-transition can be off by a sub-pixel.
+  await settleAnimations()
   const rows = await evaluate(`[...${scope}.querySelectorAll('${logos}')].map(e=>{const r=e.getBoundingClientRect();return {brand:e.dataset.providerBrand,w:r.width,h:r.height,visible:[...e.querySelectorAll('img,svg')].filter(i=>getComputedStyle(i).display!=='none').length,neutral:!!e.querySelector('[data-provider-fallback]'),sources:[...e.querySelectorAll('img')].map(i=>i.getAttribute('src'))}})`)
   assert(rows.length > 0)
   for (const r of rows) {

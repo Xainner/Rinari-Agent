@@ -390,6 +390,15 @@
       ]
     },
     {
+      "command": "mcp_probe",
+      "kind": "engine",
+      "method": "mcp.probe",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "mcp_remove",
       "kind": "engine",
       "method": "mcp.remove",
@@ -411,6 +420,15 @@
       "command": "mcp_test",
       "kind": "engine",
       "method": "mcp.test",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_update",
+      "kind": "engine",
+      "method": "mcp.update",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -1490,6 +1508,20 @@
       ]
     },
     {
+      "command": "soul_settings_get",
+      "kind": "engine",
+      "method": "soul.settings.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "soul_settings_set",
+      "kind": "engine",
+      "method": "soul.settings.set",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "soul_update",
       "kind": "engine",
       "method": "soul.update",
@@ -1777,10 +1809,10 @@
     }
   ],
   "summary": {
-    "commands": 211,
-    "engine_backed": 205,
+    "commands": 215,
+    "engine_backed": 209,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 66
+    "without_callers": 68
   }
 }

@@ -3,7 +3,7 @@ import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Brain, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Paperclip, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
@@ -16,8 +16,9 @@ import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { REASONING_LEVELS, supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
+import { supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import EffortPicker from './EffortPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
 import { useChatFileReceiver } from './ChatFileDropZone'
@@ -25,6 +26,7 @@ import { FOCUS_COMPOSER_EVENT } from './focusComposer'
 import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
 import { useSlashCommands } from './useSlashCommands'
+import { SlashMenu, groupSlashCommands } from './SlashMenu'
 import type { SlashCommand } from '../../services/engine'
 import type { SendOptions } from '../../features/engine/useEngineSession'
 import type { I18nKey } from '../../i18n'
@@ -222,7 +224,6 @@ export default function Composer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [permissionOpen, setPermissionOpen] = useState(false)
-  const [reasoningOpen, setReasoningOpen] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
@@ -262,7 +263,8 @@ export default function Composer({
   }, [wantsCommands, loadCommands])
   const slashCommands = engineCommands.filter((command) => command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand))
   const slashQ = slashQuery(text)
-  const slashMatches = slashQ !== null ? matchSlashCommands(slashQ, slashCommands) : []
+  // Sin tope: con solo «/» también deben verse las skills (van tras los comandos).
+  const slashMatches = slashQ !== null ? groupSlashCommands(matchSlashCommands(slashQ, slashCommands, Number.POSITIVE_INFINITY)) : []
   const [slashHighlight, setSlashHighlight] = useState(0)
   // Las sugerencias (/, @) se abren encima del compositor, fuera de su caja.
   // Su contenedor hace scroll cuando el compositor crece, y eso las
@@ -515,9 +517,21 @@ export default function Composer({
     }
   }
 
+  // Al completar un comando el cursor va al final: si se queda tras la «/»,
+  // lo que se escriba enseguida cae en medio del nombre.
+  const caretToEnd = useRef(false)
+  useLayoutEffect(() => {
+    if (!caretToEnd.current) return
+    caretToEnd.current = false
+    const box = textareaRef.current
+    if (!box) return
+    box.focus()
+    box.setSelectionRange(box.value.length, box.value.length)
+  }, [text])
+
   function completeSlash(command: SlashCommand) {
+    caretToEnd.current = true
     setText(`/${command.name} `)
-    requestAnimationFrame(() => textareaRef.current?.focus())
   }
 
   function pickSlash(command: SlashCommand) {
@@ -679,7 +693,7 @@ export default function Composer({
 
   return (
     <div ref={rootRef} className="composer-root relative">
-      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} className="composer-surface rounded-[22px] border border-[var(--border)] bg-[var(--bg-elevated)] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] transition-colors focus-within:border-[var(--accent-2)]/50">
+      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} data-working={isStreaming || undefined} className="composer-surface rounded-[22px] border p-2.5 transition-colors">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
@@ -689,17 +703,17 @@ export default function Composer({
                   <span className="truncate">{file.name}</span>
                 </button>
                 <ReadingBadges attachment={file} />
-                {file.warning && <span title={file.warning} className="text-amber-300">⚠</span>}
+                {file.warning && <span title={file.warning} className="text-[var(--warning)]">⚠</span>}
                 {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfPages')}<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfVisualPages')}<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">{t('attach.pdfPrepareAgain')}</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={t('attach.cancelPrepare', { name: file.name })} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
-                {file.status === 'error' && <><span title={file.error} className="text-red-400">{file.error || 'Error'}</span><button type="button" aria-label={t('attach.retry', { name: file.name })} onClick={() => void prepareOne(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><RefreshCw size={11} /></button></>}
+                {file.status === 'error' && <><span title={file.error} className="text-[var(--danger)]">{file.error || 'Error'}</span><button type="button" aria-label={t('attach.retry', { name: file.name })} onClick={() => void prepareOne(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><RefreshCw size={11} /></button></>}
                 <button type="button" aria-label={t('attach.remove', { name: file.name })} onClick={() => removeAttachmentFor(draftKey, file.id)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><X size={11} /></button>
               </span>
             ))}
           </div>
         )}
-        {attachmentNotice && <div className="mb-2 rounded-lg border border-red-400/30 bg-red-400/5 px-2.5 py-2 text-[11px] text-red-300">{attachmentNotice}</div>}
-        {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-amber-400/30 p-2 text-xs">{visionRoute?.reason}</div>}
+        {attachmentNotice && <div className="mb-2 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-2 text-[11px] text-[var(--danger)]">{attachmentNotice}</div>}
+        {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-[var(--warning)]/30 p-2 text-xs">{visionRoute?.reason}</div>}
         {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">{t('attach.visionRoute', { destination: visionRoute.destination })}</p>}
         {imageAttachments.length > 0 && onPrepareAttachments && (
           <div role="radiogroup" aria-label={t('attach.read.label')} className="mb-2 flex flex-wrap items-center gap-1 px-1 text-[11px]">
@@ -732,31 +746,10 @@ export default function Composer({
             ref={menuRef}
             data-testid="composer-suggestions"
             style={{ position: 'fixed', left: menuBox.left, width: menuBox.width, bottom: menuBox.bottom }}
-            className="z-50 max-h-64 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5 shadow-xl"
+            className="r-pop composer-suggestions z-50 max-h-80 overflow-auto rounded-[var(--r-lg)] p-1.5" data-state="open"
           >
             {slashMatches.length > 0 && (
-              <div role="listbox" aria-label={t('composer.slash.heading')} data-testid="slash-command-list">
-                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.slash.heading')}</p>
-                {slashMatches.map((command, index) => {
-                  const key = SLASH_DESCRIPTION_KEYS[command.name]
-                  return (
-                    <button
-                      key={command.name}
-                      type="button"
-                      role="option"
-                      aria-selected={index === slashHighlight}
-                      onMouseEnter={() => setSlashHighlight(index)}
-                      onClick={() => pickSlash(command)}
-                      className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${index === slashHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
-                    >
-                      <span className="shrink-0 font-mono text-[var(--text)]">/{command.name}</span>
-                      {command.args && <span className="shrink-0 font-mono text-[var(--text-subtle)]">{command.args}</span>}
-                      <span className="min-w-0 flex-1 truncate text-[var(--text-subtle)]">{command.source === 'builtin' && key ? t(key) : command.description}</span>
-                      {command.source === 'skill' && <span className="shrink-0 rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">{t('composer.slash.skill')}</span>}
-                    </button>
-                  )
-                })}
-              </div>
+              <SlashMenu commands={slashMatches} highlight={slashHighlight} onHighlight={setSlashHighlight} onPick={pickSlash} descriptions={SLASH_DESCRIPTION_KEYS} />
             )}
             {paneMatches.length > 0 && (
               <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">
@@ -831,8 +824,8 @@ export default function Composer({
           <DictationButton textareaRef={textareaRef} disabled={isSubmitting} onText={insertDictation} />
           <Popover open={attachmentOpen} onOpenChange={setAttachmentOpen}>
             <PopoverTrigger asChild>
-              <button type="button" disabled={isStreaming} aria-label={t('attach.attachFiles')} title={t('attach.addToMessage')} className="flex size-8 cursor-pointer items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)] disabled:opacity-40">
-                <Paperclip size={15} />
+              <button type="button" disabled={isStreaming} aria-label={t('attach.attachFiles')} title={t('attach.addToMessage')} className="composer-chip composer-chip-icon">
+                <Plus size={16} />
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-60 p-1.5">
@@ -849,9 +842,9 @@ export default function Composer({
           </Popover>
           <Popover open={permissionOpen} onOpenChange={setPermissionOpen}>
             <PopoverTrigger asChild>
-              <button type="button" disabled={isStreaming} title={t('perm.title')} style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-current/25 bg-[var(--bg-subtle)] p-2 text-xs transition-colors hover:border-current disabled:opacity-40">
-                <Shield size={13} />
-                <span className="sr-only">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : 'Workspace'}</span>
+              <button type="button" disabled={isStreaming} title={t('perm.title')} className="composer-chip">
+                <Shield size={13} style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} />
+                <span className="composer-chip-label">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : 'Workspace'}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1.5">
@@ -873,13 +866,13 @@ export default function Composer({
             ref={modesGroupRef}
             role="group"
             aria-label={t('mode.change')}
-            className="composer-modes relative inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] p-0.5"
+            className="composer-modes relative inline-flex items-center rounded-full border p-0.5"
           >
             <span
               aria-hidden="true"
               data-testid="mode-pill"
               ref={pillRef}
-              className="composer-mode-pill absolute top-0.5 bottom-0.5 left-0 rounded-full bg-[var(--accent)]"
+              className="composer-mode-pill absolute top-0.5 bottom-0.5 left-0 rounded-full"
               style={{
                 transition:
                   pillArmed
@@ -914,7 +907,7 @@ export default function Composer({
             })}
           </div>
           <div className="composer-model-controls">
-          <ContextRing sessionId={sessionId} modelId={activeModel?.id ?? null} />
+          <ContextRing sessionId={sessionId} modelId={activeModel?.id ?? null} providerAlias={activeModel?.provider ?? models.find(model => model.alias === activeAlias)?.provider ?? null} />
           <ModelPicker
             models={models}
             providers={providers}
@@ -927,49 +920,12 @@ export default function Composer({
             disabled={isStreaming}
             openSignal={modelSignal}
           />
-          <Popover open={reasoningOpen} onOpenChange={setReasoningOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                disabled={isStreaming}
-                title={t('composer.thinkingMenu')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--text)] disabled:opacity-40"
-              >
-                <Brain size={13} aria-hidden="true" />
-                <span>{t(`thinking.${reasoningEffort}` as 'thinking.high')}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="max-h-[min(70vh,32rem)] w-72 overflow-y-auto p-1.5"
-            >
-              <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">
-                {t('composer.thinkingMenu')}
-              </p>
-              {REASONING_LEVELS.map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  disabled={!supportsEffort(activeModel?.capabilities ?? models.find(model => model.alias === activeAlias)?.capabilities, level)}
-                  onClick={() => { setReasoningOpen(false); onReasoningChange(level) }}
-                  className="flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-[var(--text)]">
-                      {t(`thinking.${level}` as 'thinking.high')}
-                    </span>
-                    <span className="block text-[11px] leading-snug text-[var(--text-subtle)]">
-                      {t(`thinking.desc${level === 'off' ? 'Off' : level[0].toUpperCase() + level.slice(1)}` as 'thinking.descHigh')}
-                    </span>
-                  </span>
-                  {reasoningEffort === level && (
-                    <Check size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--accent-2)]" />
-                  )}
-                </button>
-              ))}
-              <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{t('thinking.compatibility')}</p>
-            </PopoverContent>
-          </Popover>
+          <EffortPicker
+            value={reasoningEffort}
+            capabilities={activeModel?.capabilities ?? models.find(model => model.alias === activeAlias)?.capabilities}
+            disabled={isStreaming}
+            onChange={onReasoningChange}
+          />
 
           {canSteer && text.trim() ? (
             <button
@@ -978,7 +934,7 @@ export default function Composer({
               disabled={isSubmitting}
               aria-label={t('composer.steer')}
               title={t('composer.steer')}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-30"
+              className="composer-send"
             >
               <ArrowUp size={17} aria-hidden="true" />
             </button>
@@ -988,9 +944,9 @@ export default function Composer({
               onClick={onStop}
               aria-label={t('composer.stop')}
               title={t('composer.stop')}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg-app)] transition-transform hover:scale-105 active:scale-95"
+              className="composer-send is-stop"
             >
-              <Square size={14} aria-hidden="true" fill="currentColor" />
+              <Square size={13} aria-hidden="true" fill="currentColor" />
             </button>
           ) : (
             <button
@@ -999,7 +955,7 @@ export default function Composer({
               disabled={!canSend || isSubmitting || visionUnavailable || attachments.some((item) => item.status === 'preparing' || item.status === 'error')}
               aria-label={t('composer.send')}
               title={t('composer.send')}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-all hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:hover:brightness-100"
+              className="composer-send"
             >
               <ArrowUp size={17} aria-hidden="true" />
             </button>

@@ -27,8 +27,8 @@ import {
 } from './scheduleModel'
 
 const TONE_CLASS: Record<ReturnType<typeof runTone>, string> = {
-  ok: 'border-emerald-500/40 text-emerald-400',
-  warn: 'border-amber-500/40 text-amber-400',
+  ok: 'border-emerald-500/40 text-[var(--success)]',
+  warn: 'border-amber-500/40 text-[var(--warning)]',
   bad: 'border-[var(--danger)]/50 text-[var(--danger)]',
   live: 'border-[var(--accent)]/50 text-[var(--accent)]',
   muted: 'border-[var(--border)] text-[var(--text-subtle)]',
@@ -132,7 +132,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
           <h1 className="font-display text-xl font-bold text-[var(--text)]">{t('schedules.title')}</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">{t('schedules.subtitle')}</p>
         </div>
-        <button type="button" onClick={openNew} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white">
+        <button type="button" onClick={openNew} className="btn btn-primary inline-flex items-center gap-1.5">
           <Plus size={15} aria-hidden="true" />
           {t('schedules.new')}
         </button>

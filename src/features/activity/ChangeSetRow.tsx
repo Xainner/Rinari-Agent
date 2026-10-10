@@ -81,18 +81,18 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
       <div className="flex flex-wrap items-center gap-2">
         <GitBranch size={14} className="text-[var(--accent-2)]" />
         <span className="font-medium text-[var(--text)]">{files.length} {lang === 'es' ? 'archivo(s) de este turno' : 'file(s) from this turn'}</span>
-        <span className="font-mono text-[11px] text-emerald-400">+{item.additions}</span>
-        <span className="font-mono text-[11px] text-red-400">-{item.deletions}</span>
+        <span className="font-mono text-[11px] text-[var(--success)]">+{item.additions}</span>
+        <span className="font-mono text-[11px] text-[var(--danger)]">-{item.deletions}</span>
         {status && <span className="text-[var(--text-subtle)]">· {status}</span>}
       </div>
       {hasPartialCoverage(item) && (
-        <div className="mt-2 flex gap-2 text-amber-400"><ShieldAlert size={13} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{t('changes.coverage.withFiles')}</span></div>
+        <div className="mt-2 flex gap-2 text-[var(--warning)]"><ShieldAlert size={13} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{t('changes.coverage.withFiles')}</span></div>
       )}
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => void review()} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)]">{lang === 'es' ? 'Revisar' : 'Review'}</button>
         <button type="button" disabled={working || turnActive || item.status !== 'active' || files.length === 0} onClick={() => void prepareUndo()} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-40"><RotateCcw size={12} />{lang === 'es' ? 'Deshacer' : 'Undo'}</button>
       </div>
-      {reviewing && <div className="mt-3 space-y-2">{files.map((file) => <details key={file.absolute_path} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2"><summary className="cursor-pointer text-[var(--text-muted)]"><span className="mr-2 uppercase text-[10px] text-[var(--text-subtle)]">{file.kind}</span>{file.path}{file.sensitive && <span className="ml-2 text-amber-300">{lang === 'es' ? 'sensible' : 'sensitive'}</span>}</summary>{file.diff != null && <pre className="mt-2 max-h-64 overflow-auto whitespace-pre font-mono text-[11px] text-[var(--text-subtle)]">{file.diff}</pre>}{file.diff == null && <p className="mt-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Contenido no disponible para revisión.' : 'Content unavailable for review.'}</p>}</details>)}</div>}
+      {reviewing && <div className="mt-3 space-y-2">{files.map((file) => <details key={file.absolute_path} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2"><summary className="cursor-pointer text-[var(--text-muted)]"><span className="mr-2 uppercase text-[10px] text-[var(--text-subtle)]">{file.kind}</span>{file.path}{file.sensitive && <span className="ml-2 text-[var(--warning)]">{lang === 'es' ? 'sensible' : 'sensitive'}</span>}</summary>{file.diff != null && <pre className="mt-2 max-h-64 overflow-auto whitespace-pre font-mono text-[11px] text-[var(--text-subtle)]">{file.diff}</pre>}{file.diff == null && <p className="mt-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Contenido no disponible para revisión.' : 'Content unavailable for review.'}</p>}</details>)}</div>}
       <AlertDialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -101,7 +101,7 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
               ? (lang === 'es' ? `${preview.conflicts.length} ruta(s) cambiaron después del turno. El undo total está bloqueado.` : `${preview.conflicts.length} path(s) changed after the turn. Full undo is blocked.`)
               : (lang === 'es' ? 'Se restaurarán únicamente los archivos atribuidos con seguridad a este turno.' : 'Only files safely attributed to this turn will be restored.')}</AlertDialogDescription>
           </AlertDialogHeader>
-          {preview && preview.conflicts.length > 0 && <ul className="max-h-40 overflow-auto text-xs text-amber-300">{preview.conflicts.map((conflict) => <li key={conflict.absolute_path}>{conflict.path} · {conflict.reason}</li>)}</ul>}
+          {preview && preview.conflicts.length > 0 && <ul className="max-h-40 overflow-auto text-xs text-[var(--warning)]">{preview.conflicts.map((conflict) => <li key={conflict.absolute_path}>{conflict.path} · {conflict.reason}</li>)}</ul>}
           <AlertDialogFooter>
             <AlertDialogCancel>{lang === 'es' ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction disabled={working || (preview?.operations.length ?? 0) === 0} onClick={() => void undo(Boolean(preview?.conflicts.length))}>{preview?.conflicts.length ? (lang === 'es' ? 'Deshacer solo los seguros' : 'Undo safe files only') : (lang === 'es' ? 'Deshacer' : 'Undo')}</AlertDialogAction>

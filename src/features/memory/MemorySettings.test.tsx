@@ -145,6 +145,6 @@ it('informa un fallo de carga y permite reintentar', async () => {
 it('un Engine sin memory.settings deja el ajuste desactivado y lo explica', async () => {
   bridge.mockCommand('memory_settings_get', () => { throw { code: 'METHOD_NOT_FOUND', message: 'unknown method' } })
   view()
-  expect(await screen.findByText('Este Engine todavía no permite cambiar este ajuste.')).toBeTruthy()
+  expect(await screen.findByText('Esta versión de Rinari todavía no permite cambiar este ajuste.')).toBeTruthy()
   expect((screen.getByRole('radio', { name: /Automático/ }) as HTMLButtonElement).disabled).toBe(true)
 })

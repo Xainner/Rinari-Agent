@@ -471,7 +471,7 @@ function ChatView({
                       now={now}
                       onResolveApproval={onResolveApproval}
                       onReviewChanges={onReviewChanges ? () => onReviewChanges(row.timeline) : undefined}
-                      planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3 text-sm"><span className="flex-1">{t('plan.implementQuestion')}</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="rounded-lg px-3 py-2 hover:bg-[var(--bg-hover)]">{t('plan.notNow')}</button><button type="button" disabled={planStarting} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white disabled:opacity-50" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? t('plan.starting') : t('plan.implement')}</button></div> : undefined}
+                      planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3 text-sm"><span className="flex-1">{t('plan.implementQuestion')}</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="rounded-lg px-3 py-2 hover:bg-[var(--bg-hover)]">{t('plan.notNow')}</button><button type="button" disabled={planStarting} className="btn btn-primary" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? t('plan.starting') : t('plan.implement')}</button></div> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}
                   </FileTurnContext.Provider>
@@ -505,7 +505,7 @@ function ChatView({
     ) : presentation === 'error' ? (
         <div role="alert" data-testid="chat-history-error" className="m-auto flex max-w-md flex-col items-center gap-3 px-6 text-center">
           <p className="text-sm text-[var(--text-muted)]">{t('history.loadFailed')}</p>
-          <button type="button" onClick={onRetryHistory} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm text-white">
+          <button type="button" onClick={onRetryHistory} className="btn btn-primary">
             {t('history.retry')}
           </button>
         </div>

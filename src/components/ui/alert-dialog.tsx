@@ -28,10 +28,10 @@ function AlertDialogContent({
   return (
     <AlertDialogPrimitive.Portal>
       <BlockNativeViews />
-      <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-[luma-fade-in_.15s_ease-out]" />
+      <AlertDialogPrimitive.Overlay className="r-overlay fixed inset-0 z-50" />
       <AlertDialogPrimitive.Content
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.24)] outline-none data-[state=open]:animate-[luma-zoom-in_.16s_ease-out]',
+          'fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--r-xl)] p-6 outline-none r-dialog',
           className,
         )}
         {...props}

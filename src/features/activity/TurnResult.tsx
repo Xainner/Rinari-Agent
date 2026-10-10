@@ -46,10 +46,10 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
   if (!final && changeSets.length === 0 && !failed) return null
   return (
     <div ref={ref} data-testid="turn-result" data-turn-id={timeline.turnId} data-status={timeline.status} className="space-y-3">
-      {provisional && terminal && <p className="text-xs text-amber-300">{t('activity.partialText')}</p>}
+      {provisional && terminal && <p className="text-xs text-[var(--warning)]">{t('activity.partialText')}</p>}
       {final?.type === 'model' && (timeline.mode === 'plan' && !provisional
         ? (
-          <section aria-label={lang === 'es' ? 'Plan propuesto' : 'Proposed plan'} className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+          <section aria-label={lang === 'es' ? 'Plan propuesto' : 'Proposed plan'} className="space-y-3 settings-card p-4">
             <div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />{lang === 'es' ? 'Plan propuesto' : 'Proposed plan'}</div>
             <Markdown>{final.content}</Markdown>
             {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
@@ -91,7 +91,7 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
   const raw = timeline.error || (lang === 'es' ? 'El turno falló' : 'Turn failed')
   if (!cause) {
     return (
-      <div role="alert" className="flex items-center gap-2 py-1 text-[13px] text-red-400">
+      <div role="alert" className="flex items-center gap-2 py-1 text-[13px] text-[var(--danger)]">
         <CircleAlert size={13} />{raw}
       </div>
     )
@@ -101,7 +101,7 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
   const model = cause.model ?? t('failure.thisModel')
   return (
     <div role="alert" data-failure={cause.kind} className="space-y-1.5 rounded-xl border border-red-500/25 bg-red-500/5 px-3 py-2.5">
-      <div className="flex items-start gap-2 text-[13px] text-red-300">
+      <div className="flex items-start gap-2 text-[13px] text-[var(--danger)]">
         <CircleAlert size={14} className="mt-0.5 shrink-0" />
         <span>
           {t(`failure.${cause.kind}` as I18nKey, { provider, model })}

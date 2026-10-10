@@ -99,7 +99,7 @@ export function SkillProposalCard({ item }: { item: SkillTimelineItem }) {
         </ul>
       )}
       {item.review === 'danger' && status === 'pending' && (
-        <p className="text-xs text-red-400">{t('skills.card.danger')}</p>
+        <p className="text-xs text-[var(--danger)]">{t('skills.card.danger')}</p>
       )}
       {outcome && (
         <p role="status" className="text-xs text-[var(--text-muted)]">

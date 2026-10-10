@@ -51,10 +51,10 @@ export default function PendingSkills({ proposals, onChanged }: { proposals: Ski
                 <button type="button" onClick={() => setOpen(open === proposal.name ? null : proposal.name)} className={buttonClass}>
                   {t(open === proposal.name ? 'skills.pendingHide' : 'skills.pendingShow')}
                 </button>
-                <button type="button" disabled={busy !== null} onClick={() => void decide(proposal, false)} className={`${buttonClass} text-red-400`}>
+                <button type="button" disabled={busy !== null} onClick={() => void decide(proposal, false)} className={`${buttonClass} text-[var(--danger)]`}>
                   {t('skills.pendingReject')}
                 </button>
-                <button type="button" disabled={busy !== null} onClick={() => void decide(proposal, true)} className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-40">
+                <button type="button" disabled={busy !== null} onClick={() => void decide(proposal, true)} className="btn btn-primary btn-sm">
                   {t('skills.pendingApprove')}
                 </button>
               </span>

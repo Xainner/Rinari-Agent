@@ -12,7 +12,7 @@ function elements(root: HTMLElement, selector: string) {
     return [JSON.stringify([owner.dataset.activityItem ?? 'root', peers.indexOf(element)]), element] as const
   })
 }
-function InspectionBody({ stateKey, children, id }: { stateKey: string; children: ReactNode; id: string }) {
+function InspectionBody({ stateKey, children, id, className = 'space-y-1.5' }: { stateKey: string; children: ReactNode; id: string; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const root = ref.current!
@@ -31,7 +31,7 @@ function InspectionBody({ stateKey, children, id }: { stateKey: string; children
       useActivityDisclosure.getState().remember(stateKey, snapshot)
     }
   }, [stateKey])
-  return <div ref={ref} id={id} className="space-y-1 border-l border-[var(--border)] pl-3" data-activity-body data-inspection-root={stateKey}>{children}</div>
+  return <div ref={ref} id={id} className={className} data-activity-body data-inspection-root={stateKey}>{children}</div>
 }
 
 export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, header, children, inspectLabel, operations = false, defaultOpen = false }: {
@@ -55,13 +55,13 @@ export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, h
   return <section data-activity-disclosure={operations ? "operations" : "turn"} className="min-w-0 space-y-2">
     <div className="flex min-w-0 items-center gap-2">
       <button ref={anchor} type="button" aria-label={t(operations ? open ? 'activity.hideOperations' : 'activity.showOperations' : open ? 'activity.hide' : 'activity.show')} aria-expanded={open} aria-controls={id}
-        onClick={() => toggle()} className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg py-1 text-left text-[13px] text-[var(--text-muted)] hover:text-[var(--text)] focus-visible:outline focus-visible:outline-[var(--accent)]">
-        <ChevronRight size={14} aria-hidden="true" className={open ? 'shrink-0 rotate-90' : 'shrink-0'} />
+        onClick={() => toggle()} className={`disclosure-button ${operations ? 'is-operations' : 'is-turn'}`}>
+        <ChevronRight size={14} aria-hidden="true" className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
         <span className="min-w-0 flex-1">{header}</span>
       </button>
-      {inspectLabel && <button type="button" className="shrink-0 text-xs text-amber-300" onClick={() => { toggle(true); anchor.current?.focus() }}>{inspectLabel}</button>}
+      {inspectLabel && <button type="button" className="shrink-0 text-xs text-[var(--warning)]" onClick={() => { toggle(true); anchor.current?.focus() }}>{inspectLabel}</button>}
     </div>
-    {open && <InspectionBody stateKey={stateKey} id={id}>{children}</InspectionBody>}
+    {open && <InspectionBody stateKey={stateKey} id={id} className={operations ? 'space-y-1.5 pl-1 pt-0.5' : 'space-y-2 pt-1'}>{children}</InspectionBody>}
   </section>
 })
 

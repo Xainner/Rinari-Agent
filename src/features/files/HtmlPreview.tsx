@@ -236,7 +236,7 @@ export default function HtmlPreview({
                       onClick={() =>
                         setSettings({ runDev: true, url: '', attempt: 0 })
                       }
-                      className="rounded-lg bg-[var(--accent)] px-3 py-2 text-white"
+                      className="btn btn-primary"
                     >
                       {t('preview.startDevServer')}
                     </button>

@@ -147,6 +147,11 @@ export function useEngineData(): EngineData {
   return value
 }
 
+/** El runtime si hay un EngineProvider encima; `null` en pruebas aisladas. */
+export function useOptionalRuntimeStore(): RuntimeStore | null {
+  return useContext(EngineCommandsContext)?.runtime ?? null
+}
+
 export function useRuntimeStore(): RuntimeStore {
   return useEngineCommands().runtime
 }

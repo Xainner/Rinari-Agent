@@ -56,7 +56,7 @@ export function ReadingBadges({ attachment }: { attachment: Pick<AttachmentRef, 
       <span
         title={coverageDetail(coverage, t)}
         aria-label={`${t('attach.coverage.pages', { read: coverage.prepared_pages, total: coverage.total_pages })}. ${coverageDetail(coverage, t)}`}
-        className={cn('rounded px-1 text-[10px]', partial ? 'bg-amber-400/10 text-amber-300' : 'bg-[var(--bg-hover)] text-[var(--text-subtle)]')}
+        className={cn('rounded px-1 text-[10px]', partial ? 'bg-amber-400/10 text-[var(--warning)]' : 'bg-[var(--bg-hover)] text-[var(--text-subtle)]')}
       >
         {t('attach.coverage.pages', { read: coverage.prepared_pages, total: coverage.total_pages })}
       </span>

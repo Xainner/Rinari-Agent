@@ -18,8 +18,8 @@ export function Section({
   anchor?: string
 }) {
   return (
-    <section data-anchor={anchor} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-      <h2 className="font-display text-lg font-bold text-[var(--text)]">{title}</h2>
+    <section data-anchor={anchor} className="settings-card">
+      <h2 className="font-display text-[16px] font-bold text-[var(--text)]">{title}</h2>
       {desc && <p className="mt-1 mb-4 text-sm text-[var(--text-muted)]">{desc}</p>}
       {!desc && <div className="mb-4" />}
       <div className="space-y-4">{children}</div>

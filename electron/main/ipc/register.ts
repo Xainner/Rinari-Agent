@@ -159,6 +159,7 @@ export interface HostServices {
       automatic?: boolean,
     ): Promise<unknown>
     navigate(sessionId: string, url: string): Promise<unknown>
+    history(sessionId: string, action: BrowserHistoryAction): Promise<unknown>
     preview(sessionId: string): Promise<unknown>
     diagnostics(): { layoutSlots: number }
   }
@@ -341,6 +342,16 @@ function assertSlotLayout(value: unknown): BrowserSlotLayoutRequest {
     overlay_depth: depth,
     occlusions: parsedOcclusions,
   }
+}
+
+export type BrowserHistoryAction = 'back' | 'forward' | 'reload' | 'stop'
+
+/** Solo estas cuatro: la toolbar no navega a ningún sitio que no haya visitado. */
+function assertHistoryAction(value: unknown): BrowserHistoryAction {
+  if (value !== 'back' && value !== 'forward' && value !== 'reload' && value !== 'stop') {
+    throw new ValidationError('action must be "back", "forward", "reload" or "stop"')
+  }
+  return value
 }
 
 function assertControlOwner(value: unknown): 'agent' | 'user' {
@@ -547,6 +558,12 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
           // navegar lo sigue decidiendo la policy de red del Engine.
           assertOpenableUrl(url),
         ),
+      ),
+    ],
+    [
+      CHANNEL.browserHistory,
+      guarded(registry, (_event, sessionId, action) =>
+        services.browser.history(assertString(sessionId, 'session_id', 128), assertHistoryAction(action)),
       ),
     ],
     [

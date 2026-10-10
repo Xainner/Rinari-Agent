@@ -192,16 +192,16 @@ export default function SkillDetailDialog({
             </div>
 
             {detail.error && (
-              <p className="rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-xs text-red-400">
+              <p className="rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-xs text-[var(--danger)]">
                 {detail.error.code}: {detail.error.message}
               </p>
             )}
             {detail.issues.length > 0 && (
-              <ul className="space-y-1 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-400">
+              <ul className="space-y-1 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-[var(--warning)]">
                 {detail.issues.map((issue) => <li key={issue.code}>{issue.message}</li>)}
               </ul>
             )}
-            {detail.modified && <p className="text-xs text-amber-400">{t('skills.attention.modified')}</p>}
+            {detail.modified && <p className="text-xs text-[var(--warning)]">{t('skills.attention.modified')}</p>}
 
             {detail.previous && (
               <section
@@ -274,9 +274,9 @@ export default function SkillDetailDialog({
                   spellCheck={false}
                   className="h-72 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 font-mono text-xs text-[var(--text)] outline-none focus:border-[var(--border-strong)]"
                 />
-                {editError && <p className="text-xs text-red-400">{editError}</p>}
+                {editError && <p className="text-xs text-[var(--danger)]">{editError}</p>}
                 <div className="flex gap-2">
-                  <button type="button" disabled={busy !== null} onClick={() => void save()} className="rounded-lg bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white disabled:opacity-40">
+                  <button type="button" disabled={busy !== null} onClick={() => void save()} className="btn btn-primary btn-sm">
                     {t('skills.save')}
                   </button>
                   <button type="button" onClick={() => setEditing(false)} className={buttonClass}>{t('providers.cancel')}</button>
@@ -302,7 +302,7 @@ export default function SkillDetailDialog({
                 </button>
               )}
               {detail.editable && (
-                <button type="button" onClick={() => setPending({ kind: 'remove' })} className={`${buttonClass} text-red-400`}>
+                <button type="button" onClick={() => setPending({ kind: 'remove' })} className={`${buttonClass} text-[var(--danger)]`}>
                   {t('skills.remove')}
                 </button>
               )}

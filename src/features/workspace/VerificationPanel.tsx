@@ -14,8 +14,8 @@ function str(value: unknown): string {
  * skipped`; comparing with `'pass'` painted every success red.
  */
 export function resultTone(result: string): string {
-  if (result === 'passed') return 'text-emerald-400'
-  if (result === 'failed' || result === 'error') return 'text-red-400'
+  if (result === 'passed') return 'text-[var(--success)]'
+  if (result === 'failed' || result === 'error') return 'text-[var(--danger)]'
   return 'text-[var(--text-muted)]'
 }
 
@@ -136,7 +136,7 @@ export default function VerificationPanel({
             type="button"
             onClick={() => void buildPlan()}
             disabled={planning}
-            className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+            className="btn btn-primary btn-sm"
           >
             {planning ? t('workspace.planning') : t('workspace.buildPlan')}
           </button>

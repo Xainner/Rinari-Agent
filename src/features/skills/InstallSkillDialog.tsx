@@ -119,7 +119,7 @@ export default function InstallSkillDialog({
             onClick={() => void install(candidate, from, name)}
             className={cn(
               'shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold disabled:opacity-40',
-              danger ? 'border border-red-500/60 text-red-400 hover:bg-red-500/10' : 'bg-[var(--accent)] text-white hover:brightness-110',
+              danger ? 'border border-red-500/60 text-[var(--danger)] hover:bg-red-500/10' : 'bg-[var(--accent)] text-white hover:brightness-110',
             )}
           >
             {installing === candidate.path
@@ -194,7 +194,7 @@ export default function InstallSkillDialog({
             )}
           </div>
         )}
-        {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+        {error && <p role="alert" className="text-xs text-[var(--danger)]">{error}</p>}
       </DialogContent>
     </Dialog>
   )

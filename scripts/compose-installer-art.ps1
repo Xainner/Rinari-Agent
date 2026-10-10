@@ -48,7 +48,8 @@ $characters = @(
   'rinari-ready.png',
   'rinari-maintenance.png',
   'rinari-uninstall.png',
-  'rinari-goodbye.png'
+  'rinari-goodbye.png',
+  'rinari-error.png'
 )
 $manifest = [ordered]@{}
 foreach ($name in $characters) {

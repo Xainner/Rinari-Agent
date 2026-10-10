@@ -148,3 +148,18 @@ it('toolbar: counts by session, collapse finished, focus mode and expand all', a
   await user.click(within(toolbar).getByRole('button', { name: 'Marcar todos los resultados como leídos' }))
   expect(within(toolbar).queryByTestId('count-unread')).toBeNull()
 })
+
+it('anima plegar y desplegar solo cuando cambian, no al montar', async () => {
+  const engine = engineFixture({ sessions, activeSession: 'ses_a', historyInfo: Object.fromEntries(sessions.map(row => [row.id, { total: 0, hasMore: false }])) })
+  useBoardStore.getState().addPane('ses_a')
+  const { container } = render(<BoardHarness engine={engine}><BoardView /></BoardHarness>)
+  const pane = await waitFor(() => { const el = container.querySelector('.session-pane'); expect(el).toBeTruthy(); return el! })
+  expect(pane.getAttribute('data-motion')).toBeNull()
+  await userEvent.setup().click(within(pane as HTMLElement).getByRole('button', { name: 'Colapsar panel' }))
+  const strip = await waitFor(() => { const el = container.querySelector('[data-collapsed]'); expect(el).toBeTruthy(); return el! as HTMLElement })
+  expect(strip.getAttribute('data-motion')).toBe('collapse')
+  expect(strip.style.getPropertyValue('--fold-from')).toMatch(/px$/)
+  await userEvent.setup().click(within(strip).getAllByRole('button')[0])
+  const again = await waitFor(() => { const el = container.querySelector('.session-pane'); expect(el).toBeTruthy(); return el! })
+  expect(again.getAttribute('data-motion')).toBe('expand')
+})

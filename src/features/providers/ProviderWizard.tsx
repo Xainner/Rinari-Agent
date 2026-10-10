@@ -412,7 +412,7 @@ export default function ProviderWizard({
                   setHealth(null)
                   setStep('testing')
                 }}
-                className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 {t('wizard.next')}
               </button>
@@ -438,7 +438,7 @@ export default function ProviderWizard({
             <p className="text-sm text-[var(--text-muted)]">
               {working ? t('providers.testing') : (health ? t('providers.healthFail', { detail: health.detail }) : '')}
             </p>
-            {error !== '' && <p className="text-sm text-red-400">{error}</p>}
+            {error !== '' && <p className="text-sm text-[var(--danger)]">{error}</p>}
             {health && !health.connected && !working && (
               <div className="flex flex-wrap gap-2">
                 <button
@@ -458,7 +458,7 @@ export default function ProviderWizard({
                 <button
                   type="button"
                   onClick={() => void deleteAndBack()}
-                  className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm text-red-400 transition-colors hover:bg-[var(--bg-hover)]"
+                  className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
                 >
                   {t('providers.delete')}
                 </button>
@@ -482,7 +482,7 @@ export default function ProviderWizard({
               <button
                 type="button"
                 onClick={() => void finish()}
-                className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 {t('wizard.next')}
               </button>
@@ -497,7 +497,7 @@ export default function ProviderWizard({
               <button
                 type="button"
                 onClick={() => close(true)}
-                className="rounded-xl bg-[var(--accent)] px-4 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+                className="btn btn-primary btn-sm"
               >
                 {t('wizard.finish')}
               </button>

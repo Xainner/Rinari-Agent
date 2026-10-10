@@ -146,7 +146,7 @@ export default function PeerForwardDialog({
               <button
                 type="submit"
                 disabled={!canSend}
-                className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm text-white disabled:opacity-50"
+                className="btn btn-primary"
               >
                 {t('board.peers.sendAction')}
               </button>

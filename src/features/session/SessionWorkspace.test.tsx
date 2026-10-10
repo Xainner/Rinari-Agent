@@ -72,7 +72,7 @@ function workspace(sessionId: string, options: { focused?: boolean; density?: 'n
   )
 }
 
-it('mounts one dock with three surfaces per session; a file link reveals Files in that dock only', async () => {
+it('mounts one dock with its surfaces per session; a file link reveals Files in that dock only', async () => {
   render(<I18nProvider lang="es">{workspace('ses_a')}{workspace('ses_b', { focused: false })}</I18nProvider>)
   expect(screen.queryByTestId('session-dock')).toBeNull()
   const user = userEvent.setup()
@@ -81,7 +81,7 @@ it('mounts one dock with three surfaces per session; a file link reveals Files i
   expect(dock.dataset.sessionId).toBe('ses_a')
   expect(dock.dataset.surface).toBe('files')
   const surfaces = within(dock).getByRole('tablist', { name: 'Panel lateral de la sesión' })
-  expect(within(surfaces).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Archivos1', 'Navegador', 'Workspace'])
+  expect(within(surfaces).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agentes', 'Archivos1', 'Navegador', 'Workspace'])
   expect(await within(dock).findByRole('heading', { name: 'Planning document' })).toBeTruthy()
   expect(screen.getAllByTestId('session-dock')).toHaveLength(1)
   // El chat sigue montado al lado: el dock ocupa espacio real, no lo cubre.
@@ -278,10 +278,10 @@ it('la pestaña Terminal aparece solo si el Engine anuncia la terminal', () => {
   // Sin capacidad, una superficie guardada «terminal» cae en Workspace.
   let dock = screen.getByTestId('session-dock')
   expect(dock.dataset.surface).toBe('workspace')
-  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Archivos', 'Navegador', 'Workspace'])
+  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agentes', 'Archivos', 'Navegador', 'Workspace'])
   rerender(view(true))
   dock = screen.getByTestId('session-dock')
   expect(dock.dataset.surface).toBe('terminal')
-  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Archivos', 'Navegador', 'Workspace', 'Terminal'])
+  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agentes', 'Archivos', 'Navegador', 'Workspace', 'Terminal'])
   expect(screen.getByTestId('terminal-ses_t')).toBeTruthy()
 })

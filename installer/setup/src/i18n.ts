@@ -2,9 +2,11 @@ export type Locale = 'es' | 'en'
 
 const messages = {
   es: {
+    steps: 'Pasos de la instalación', step_configure: 'Configurar', step_progress: 'Instalar', step_ready: 'Listo',
+    preparing: 'Preparando la instalación…',
     installer: 'Instalador', configureEyebrow: 'CONFIGURA RINARI AGENT',
     configureTitle: 'Personaliza tu instalación', configureBody: 'Elige cómo quieres instalar Rinari Agent en este equipo.',
-    required: 'Obligatorio', agent: 'Rinari Agent + Engine', agentBody: 'Aplicación de escritorio y motor autocontenido.',
+    required: 'Obligatorio', agent: 'Rinari Agent', agentBody: 'La aplicación de escritorio con todo lo que Rinari necesita para trabajar.',
     start: 'Acceso en el menú Inicio', desktop: 'Acceso en el escritorio', cli: 'Agregar Rinari CLI al PATH',
     cliBody: 'Desactivado de forma predeterminada. Permite ejecutar rinari desde una terminal.',
     user: 'Solo para mí', machine: 'Todos los usuarios', uac: 'Requiere permiso de administrador.',
@@ -49,9 +51,11 @@ const messages = {
     step_removing_files: 'Quitando los archivos del programa', step_removed: 'Rinari Agent se quitó; tus datos se conservan',
   },
   en: {
+    steps: 'Installation steps', step_configure: 'Set up', step_progress: 'Install', step_ready: 'Done',
+    preparing: 'Preparing the installation…',
     installer: 'Installer', configureEyebrow: 'CONFIGURE RINARI AGENT',
     configureTitle: 'Customize your installation', configureBody: 'Choose how Rinari Agent should be installed on this computer.',
-    required: 'Required', agent: 'Rinari Agent + Engine', agentBody: 'Desktop application and self-contained engine.',
+    required: 'Required', agent: 'Rinari Agent', agentBody: 'The desktop app with everything Rinari needs to work.',
     start: 'Start menu shortcut', desktop: 'Desktop shortcut', cli: 'Add Rinari CLI to PATH',
     cliBody: 'Off by default. Lets you run rinari from a terminal.', user: 'Only for me', machine: 'All users',
     uac: 'Requires administrator permission.', folder: 'Installation folder', browse: 'Browse', install: 'Install Rinari Agent',

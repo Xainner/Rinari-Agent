@@ -17,13 +17,11 @@
  * Fondo de la barra superior. **Tiene que seguir a `--bg-subtle`** del tema
  * oscuro en `src/styles/index.css`; si uno cambia, cambia el otro.
  *
- * Es `#14111f` y no `#15151b`: la hoja de estilos declara `--bg-subtle` dos
- * veces sobre `:root`, y gana la segunda —el bloque «Rinari concept
- * foundation»— por orden de cascada. Medido sobre la ventana en ejecución, no
- * leído del primer bloque. La prueba de al lado toma la última declaración por
- * esa misma razón.
+ * Es el `--bg-subtle` del único bloque `:root` de tokens («Obsidiana neón»).
+ * La prueba de al lado lee la última declaración sobre `:root`, que es la que
+ * gana la cascada.
  */
-export const CHROME_BACKGROUND = '#14111f'
+export const CHROME_BACKGROUND = '#0a0812'
 
 /** Color de los glifos de los controles nativos. Contraste AA sobre el fondo. */
 export const CHROME_SYMBOL = '#e6e6ea'

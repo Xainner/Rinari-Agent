@@ -66,10 +66,17 @@ scenario(async () => {
   const a = '[data-pane-id="pane_0"]'
   const b = '[data-pane-id="pane_1"]'
   await wait(`Boolean(${q(a + ' [data-operation-group] details[open]')})`)
-  assert(await evaluate(`${q(a)}.innerText.includes('PROGRESO 24')`), 'progress remains visible in Boards')
+  // Boards se monta de nuevo al cambiar de vista; en una máquina lenta el texto llega un poco después.
+  await wait(`${q(a)}.innerText.includes('PROGRESO 24')`)
   await clickText('Colapsar todo')
   assert.equal(await evaluate(`Boolean(${q(a + ' [data-operation-group] details')})`), false)
   await clickText('Expandir todo')
+  // En el runner la ventana a veces no pinta y la animación de desplegar no
+  // avanza: se congela aquí a propósito y el panel debe llegar igual a su ancho.
+  // Solo las del plegado de paneles: `<html>` también lleva data-motion con
+  // movimiento reducido, y congelar todo dejaba la app entera en su fotograma 0.
+  await evaluate(`for(const an of document.getAnimations())if(/^pane-(unfold|unfold-fit|fold|content-in)$/.test(an.animationName))an.pause()`)
+  await wait(`!document.querySelector('${a}[data-motion]') && ${q(a)}.getBoundingClientRect().width > 300`)
   await wait(`Boolean(${q(a + ' [data-operation-group] details[open]')})`)
   await release()
   await wait(`${q(a)}.innerText.includes('RESULTADO COMPLETO')`)
@@ -142,11 +149,15 @@ scenario(async () => {
   // A reload reconstructs the real persisted timeline, but UI disclosure is session-memory only.
   await reload()
   await click('.view-switcher button[aria-label^="Boards"]')
-  await wait(`Boolean(${q(a + ' ' + show)})`)
   // History rows arrive and are measured separately; a slower machine paints the result later.
+  await wait(`Boolean(${q(a + ' ' + scroller)})`)
   await wait(`${q(a)}.innerText.includes('RESULTADO COMPLETO')`)
   assert.equal(await evaluate(`${q(a)}.querySelectorAll(${JSON.stringify(body)}).length`), 0)
+  // The pane reopens at the end and the list mounts only nearby rows: the
+  // turn's activity control sits above the long answer, so scroll up first.
   await evaluate(`for(const el of document.querySelectorAll(${JSON.stringify(scroller)})){el.scrollTop=0;el.dispatchEvent(new Event('scroll'))}`)
+  await wait(`Boolean(${q(a + ' ' + show)})`)
+  assert.equal(await evaluate(`${q(a)}.querySelectorAll(${JSON.stringify(body)}).length`), 0)
   await screenshot('history-restored')
   // Keep manual test turns slow enough to inspect their live presentation.
   if (ui.keep) setInterval(() => { void fetch(new URL('/__release?lane=main', ui.model)).catch(() => {}) }, 4000)

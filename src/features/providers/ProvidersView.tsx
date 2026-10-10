@@ -232,7 +232,7 @@ export default function ProvidersView({
         <button
           type="button"
           onClick={openAdd}
-          className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary btn-sm"
         >
           {t('providers.add')}
         </button>
@@ -289,7 +289,7 @@ export default function ProvidersView({
               </span>
             </div>
             {h && (
-              <p className={h.connected ? 'text-xs text-emerald-400' : 'text-xs text-red-400'}>
+              <p className={h.connected ? 'text-xs text-[var(--success)]' : 'text-xs text-[var(--danger)]'}>
                 {h.connected
                   ? t('providers.healthOk', { n: h.models_discovered })
                   : t('providers.healthFail', { detail: h.detail })}
@@ -334,7 +334,7 @@ export default function ProvidersView({
                   setDeleting(provider)
                   setSwitchTo(providers.find((p) => p.alias !== provider.alias)?.alias ?? '')
                 }}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-red-400 transition-colors hover:bg-[var(--bg-hover)]"
+                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
               >
                 {t('providers.delete')}
               </button>
@@ -378,7 +378,7 @@ export default function ProvidersView({
               type="button"
               onClick={() => void save()}
               disabled={saving}
-              className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              className="btn btn-primary btn-sm"
             >
               {t('providers.save')}
             </button>

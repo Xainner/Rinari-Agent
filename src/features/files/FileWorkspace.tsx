@@ -157,7 +157,7 @@ export function InlineMedia({ href }: { href: string }) {
         <Icon size={12} aria-hidden="true" />
         <Play size={10} aria-hidden="true" />
       </button>
-      {state.error && <span role="alert" className="ml-1.5 text-xs text-red-400">{state.error}</span>}
+      {state.error && <span role="alert" className="ml-1.5 text-xs text-[var(--danger)]">{state.error}</span>}
     </span>
   )
 }
@@ -739,7 +739,7 @@ function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedi
       <p className="text-xs text-[var(--text-muted)]">{formatBytes(media.size, lang)} · {media.mime}</p>
       <p className="text-xs text-[var(--text-muted)]">{reason}</p>
       <div className="flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={onOpenExternally} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white">
+        <button type="button" onClick={onOpenExternally} className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
           <ExternalLink size={13} />{t('files.openExternally')}
         </button>
         {onReveal && (

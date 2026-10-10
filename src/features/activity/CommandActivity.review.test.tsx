@@ -45,7 +45,8 @@ it('does not interpret HTML from process output', () => {
   const { container } = show({ kind: 'command', command: 'echo', status: 'success', stdout: text })
   expect(container.querySelector('pre')?.parentElement).toBeTruthy()
   expect(container.textContent).toContain(text)
-  expect(container.querySelector('img')).toBeNull()
+  // The avatar of the live header is an <img>; the process output must not add one.
+  expect(container.querySelector('img[src="x"]')).toBeNull()
 })
 
 it('renders structured results for tools without a model observation string', () => {

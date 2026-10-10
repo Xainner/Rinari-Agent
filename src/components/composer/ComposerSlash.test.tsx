@@ -107,9 +107,34 @@ describe('comandos / en el compositor', () => {
       expect.stringContaining('/research'),
     ])
     expect(within(list).getByText('Investiga en la web')).toBeTruthy()
-    expect(within(list).getByText('skill')).toBeTruthy()
+    expect(within(list).getByRole('group', { name: 'Skills' })).toBeTruthy()
     await user.keyboard('{Enter}')
     expect((box as HTMLTextAreaElement).value).toBe('/review ')
+  })
+
+  it('con solo «/» lista todos los comandos y después las skills', async () => {
+    const { box } = renderComposer()
+    await userEvent.setup().type(box, '/')
+    const list = screen.getByRole('listbox', { name: 'Comandos' })
+    expect(within(list).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      expect.stringContaining('/plan'),
+      expect.stringContaining('/review'),
+      expect.stringContaining('/new'),
+      expect.stringContaining('/research'),
+    ])
+  })
+
+  it('al elegir con el ratón deja el cursor al final para seguir escribiendo', async () => {
+    const { box } = renderComposer()
+    const user = userEvent.setup()
+    await user.type(box, '/res')
+    await user.click(within(screen.getByRole('listbox', { name: 'Comandos' })).getByRole('option', { name: /research/ }))
+    const area = box as HTMLTextAreaElement
+    expect(area.value).toBe('/research ')
+    expect(document.activeElement).toBe(area)
+    expect(area.selectionStart).toBe(area.value.length)
+    await user.keyboard('fuentes')
+    expect(area.value).toBe('/research fuentes')
   })
 
   it('envía el comando con el turno para que el Engine lo expanda', async () => {

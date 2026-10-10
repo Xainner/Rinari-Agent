@@ -1,5 +1,5 @@
-import { FileText, Globe, LayoutPanelLeft, SquareTerminal, X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { Bot, FileText, Globe, LayoutPanelLeft, SquareTerminal, X } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { SessionSummary } from '../../services/engine'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
@@ -7,10 +7,15 @@ import { FileViewer, useFileWorkspace } from '../files/FileWorkspace'
 import BrowserSurface from '../browser/BrowserSurface'
 import WorkspaceView from '../workspace/WorkspaceView'
 import TerminalPanel from '../terminal/TerminalPanel'
+import AgentsPanel, { sessionAgents } from '../agents/AgentsPanel'
+import { useOptionalRuntimeStore } from '../engine/EngineContext'
+import type { RuntimeStore } from '../engine/runtimeStore'
+import { useSessionTimelines } from '../engine/sessionSelectors'
 import { useAgentRunningCount } from '../terminal/agentTab'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
+import { useCalmMotion } from '../../lib/motion'
 
 export interface SessionDockProps {
   sessionId: string
@@ -31,7 +36,7 @@ export interface SessionDockProps {
   busy?: boolean
 }
 
-const SURFACES: readonly DockSurface[] = ['files', 'browser', 'workspace', 'terminal']
+const SURFACES: readonly DockSurface[] = ['agents', 'files', 'browser', 'workspace', 'terminal']
 
 /**
  * Dock de una sesión con cuatro superficies: **Archivos** (tablist y
@@ -58,6 +63,29 @@ export default function SessionDock({
   busy = false,
 }: SessionDockProps) {
   const { t } = useI18n()
+  const calm = useCalmMotion()
+  // La píldora se mide sobre la pestaña activa. Solo se desliza al cambiar de
+  // pestaña; si el panel cambia de ancho (y las etiquetas se ocultan o vuelven)
+  // se recoloca sin animar, para que no rebote de un lado a otro.
+  const seg = useRef<HTMLDivElement>(null)
+  const [pill, setPill] = useState<{ left: number; width: number; glide: boolean } | null>(null)
+  const shownSurface = useRef(surface)
+  useLayoutEffect(() => {
+    const element = seg.current
+    if (!element) return
+    const place = (glide: boolean) => {
+      const tab = element.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      if (!tab) return
+      setPill((current) => ({ left: tab.offsetLeft, width: tab.offsetWidth, glide: glide || Boolean(current?.glide) }))
+    }
+    const changed = shownSurface.current !== surface
+    shownSurface.current = surface
+    place(changed && !calm)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => place(false))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [surface, calm])
   const overlayDepth = useOverlayStore(selectOverlayDepth)
   const files = useFileWorkspace()
   const openFiles = files?.tabs.length ?? 0
@@ -73,8 +101,9 @@ export default function SessionDock({
     return () => previous?.focus?.()
   }, [layout])
 
-  const labels: Record<DockSurface, string> = { files: t('dock.files'), browser: t('dock.browser'), workspace: t('nav.workspace'), terminal: t('dock.terminal') }
-  const icons = { files: FileText, browser: Globe, workspace: LayoutPanelLeft, terminal: SquareTerminal } as const
+  const labels: Record<DockSurface, string> = { agents: t('dock.agents'), files: t('dock.files'), browser: t('dock.browser'), workspace: t('nav.workspace'), terminal: t('dock.terminal') }
+  const icons = { agents: Bot, files: FileText, browser: Globe, workspace: LayoutPanelLeft, terminal: SquareTerminal } as const
+  const runtime = useOptionalRuntimeStore()
   const surfaces = terminalEnabled ? SURFACES : SURFACES.filter((item) => item !== 'terminal')
 
   return (
@@ -91,7 +120,9 @@ export default function SessionDock({
         if (event.key === 'Escape' && layout === 'drawer') onClose()
       }}
     >
-      <div className="pane-dock-tabs" role="tablist" aria-label={t('dock.label')}>
+      <div className="pane-dock-tabs">
+        <div ref={seg} className="pane-dock-seg" role="tablist" aria-label={t('dock.label')}>
+        {pill && <span className="pane-dock-pill" data-glide={pill.glide || undefined} style={{ width: pill.width, transform: `translateX(${pill.left}px)` }} onTransitionEnd={() => setPill((current) => current && { ...current, glide: false })} aria-hidden="true" />}
         {surfaces.map((item) => {
           const Icon = icons[item]
           return (
@@ -106,7 +137,8 @@ export default function SessionDock({
               onClick={() => onSurfaceChange(item)}
               className={cn('pane-dock-tab', surface === item && 'is-active')}
             >
-              <Icon size={13} aria-hidden="true" /><span className="pane-dock-tab-label">{labels[item]}</span>
+              <Icon size={14} aria-hidden="true" className="relative" /><span className="pane-dock-tab-label relative">{labels[item]}</span>
+              {item === 'agents' && runtime && <AgentsRunning store={runtime} sessionId={sessionId} />}
               {item === 'files' && openFiles > 0 && <span className="pane-dock-count">{openFiles}</span>}
               {item === 'terminal' && agentRunning > 0 && (
                 <span className="pane-dock-count" title={t('terminal.agentRunning', { n: agentRunning })}>{agentRunning}</span>
@@ -117,13 +149,16 @@ export default function SessionDock({
             </button>
           )
         })}
+        </div>
         <span className="flex-1" />
         <button type="button" aria-label={t('dock.close')} title={t('dock.close')} onClick={onClose} className="pane-header-icon">
           <X size={14} />
         </button>
       </div>
       <div id={`dock-${sessionId}-${surface}`} className="pane-dock-body" role="tabpanel" aria-label={labels[surface]}>
-        {surface === 'terminal' && terminalEnabled ? (
+        {surface === 'agents' ? (
+          <AgentsPanel sessionId={sessionId} />
+        ) : surface === 'terminal' && terminalEnabled ? (
           <TerminalPanel sessionId={sessionId} />
         ) : surface === 'workspace' || surface === 'terminal' ? (
           <WorkspaceView session={session} embedded tab={workspaceTab} onTabChange={onWorkspaceTabChange} sharedRoot={sharedRoot} />
@@ -148,4 +183,13 @@ export default function SessionDock({
       </div>
     </aside>
   )
+}
+
+/** Subagentes trabajando en la sesión, en la pestaña «Agentes». */
+function AgentsRunning({ store, sessionId }: { store: RuntimeStore; sessionId: string }) {
+  const { t } = useI18n()
+  const timelines = useSessionTimelines(store, sessionId)
+  const running = sessionAgents(timelines).filter((entry) => entry.live).length
+  if (running === 0) return null
+  return <span className="pane-dock-count is-live" title={t('agents.countRunning', { n: running })}>{running}</span>
 }

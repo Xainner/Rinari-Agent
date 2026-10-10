@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { AlertTriangle, Archive, ArrowRight, FolderGit2, GitBranch, MessageSquare, RefreshCw, Workflow } from 'lucide-react'
+import { AlertTriangle, Archive, FolderGit2, GitBranch, MessageSquare, RefreshCw, Workflow } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { FlowStage } from '../../services/engine'
 import { useBoardStore } from '../../stores/board'
@@ -255,8 +255,10 @@ export default function FlowView() {
                 return (
                   <Fragment key={stage.id}>
                     {index > 0 && (
-                      <div className="flow-connector" aria-hidden="true">
-                        <ArrowRight size={16} />
+                      // La línea entre etapas dice cómo quedó la anterior: hecha, en
+                      // curso (con una luz que viaja) o detenida.
+                      <div className="flow-connector" aria-hidden="true" data-from={group.stages[index - 1].status} data-to={stage.status}>
+                        <span className="flow-link" />
                       </div>
                     )}
                     <div role="listitem" className="flow-stage-slot">

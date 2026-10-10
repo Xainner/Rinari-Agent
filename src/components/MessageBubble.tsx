@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Brain, Check, Copy, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
@@ -8,6 +8,7 @@ import { engineApi } from '../services/engine'
 import { AttachmentPreview } from './AttachmentPreview'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from './AttachmentReading'
 import Markdown from './Markdown'
+import { RinariAvatar } from '../features/rinari/RinariAvatar'
 
 function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
   const { t } = useI18n()
@@ -89,6 +90,9 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
   }
 
   if (message.role === 'user') {
+    // Solo el mensaje recién enviado entra con la transición de envío; el
+    // historial (scroll, recarga) aparece en su sitio.
+    const fresh = typeof message.createdAt === 'number' && Date.now() - message.createdAt < 1500
     const quoted = message.origin?.kind === 'user' ? message.origin.quoted_source : null
     const command = message.origin?.kind === 'user' && typeof message.origin.command === 'string' ? message.origin.command : null
     const text = command ? withoutCommand(message.content, command) : message.content
@@ -98,7 +102,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
         <div className="flex w-full min-w-0 justify-end">
-        <div data-testid="user-message-bubble" className="w-fit min-w-0 max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]">
+        <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             {message.attachments.map((attachment) => <HistoricalAttachment key={attachment.id} attachment={attachment} />)}
           </div>}
@@ -112,22 +116,11 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
 
   if (message.pending) {
     return (
-      <div role="status" aria-live="polite" className="flex min-h-10 items-start gap-2 text-sm text-[var(--text-muted)]">
-        <Brain size={16} aria-hidden="true" className="mt-0.5 animate-pulse text-[var(--accent-2)]" />
+      <div role="status" aria-live="polite" className="rinari-working min-h-10">
+        <RinariAvatar state="thinking" size={38} />
         <div className="flex flex-col">
-          <span className="flex items-center gap-2">
-            <span>{t('reasoning.thinking')}</span>
-            <span className="flex items-center gap-1" aria-hidden="true">
-              {[0, 1, 2].map((dot) => (
-                <span
-                  key={dot}
-                  className="size-1 animate-bounce rounded-full bg-[var(--accent-2)]"
-                  style={{ animationDelay: `${dot * 140}ms` }}
-                />
-              ))}
-            </span>
-          </span>
-          <span className="mt-0.5 text-[10px] leading-none tabular-nums text-[var(--text-subtle)]">
+          <span className="activity-text-shimmer">{t('reasoning.thinking')}</span>
+          <span className="mt-1 text-[10.5px] leading-none tabular-nums text-[var(--text-subtle)]">
             {t('reasoning.time', { s: elapsed })}
           </span>
         </div>

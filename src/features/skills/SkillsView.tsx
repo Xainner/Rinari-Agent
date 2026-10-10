@@ -105,14 +105,14 @@ export default function SkillsView() {
         <button
           type="button"
           onClick={() => setInstalling(true)}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary btn-sm inline-flex shrink-0 items-center gap-1.5"
         >
           <Plus size={14} aria-hidden="true" /> {t('skills.install')}
         </button>
       </div>
 
       {autoLearn !== null && (
-        <label className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
+        <label className="flex items-center justify-between gap-4 settings-card px-4 py-3">
           <span className="min-w-0">
             <span className="block text-sm font-medium text-[var(--text)]">{t('skills.autoLearn')}</span>
             <span className="mt-0.5 block text-xs text-[var(--text-subtle)]">{t('skills.autoLearnDesc')}</span>
@@ -157,7 +157,7 @@ export default function SkillsView() {
         </label>
       </div>
 
-      <ul className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)]">
+      <ul className="divide-y divide-[var(--border)] settings-card">
         {visible.map((entry) => {
           const reason = attentionReason(entry)
           return (
@@ -181,13 +181,13 @@ export default function SkillsView() {
                     </span>
                   )}
                   {entry.status === 'pending' && (
-                    <span className="rounded-md border border-amber-500/40 px-1.5 text-[10px] text-amber-400">
+                    <span className="rounded-md border border-amber-500/40 px-1.5 text-[10px] text-[var(--warning)]">
                       {t('skills.pending')}
                     </span>
                   )}
                   {reason && (
                     <span role="img" aria-label={t(`skills.attention.${reason}`)} title={t(`skills.attention.${reason}`)}>
-                      <AlertTriangle size={12} aria-hidden="true" className="text-amber-400" />
+                      <AlertTriangle size={12} aria-hidden="true" className="text-[var(--warning)]" />
                     </span>
                   )}
                 </span>

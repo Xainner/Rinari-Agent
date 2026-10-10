@@ -119,7 +119,7 @@ export function DocumentView({ source, name, onOpenExternally, onReveal, headerA
       {risks.length > 0 && (
         <div className="flex flex-wrap gap-1.5 border-b border-[var(--border)] px-3 py-1.5" aria-label={t('documents.risks')}>
           {risks.map((risk) => (
-            <span key={risk.code} title={risk.detail} className="inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-300">
+            <span key={risk.code} title={risk.detail} className="inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] text-[var(--warning)]">
               <AlertTriangle size={10} aria-hidden="true" />{RISK_KEYS[risk.code] ? t(RISK_KEYS[risk.code]) : risk.code}
             </span>
           ))}
@@ -130,7 +130,7 @@ export function DocumentView({ source, name, onOpenExternally, onReveal, headerA
           <Centered><LoaderCircle size={16} className="animate-spin" /> {t('documents.loading')}</Centered>
         ) : document.error ? (
           <div role="alert" className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
-            <AlertTriangle size={22} className="text-red-400" />
+            <AlertTriangle size={22} className="text-[var(--danger)]" />
             <p className="text-sm break-words text-[var(--text)]">{document.error}</p>
             <OpenButtons onOpenExternally={onOpenExternally} onReveal={onReveal} />
           </div>
@@ -162,7 +162,7 @@ function OpenButtons({ onOpenExternally, onReveal }: { onOpenExternally?: () => 
   const { t } = useI18n()
   return <>
     {onOpenExternally && (
-      <button type="button" onClick={onOpenExternally} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white">
+      <button type="button" onClick={onOpenExternally} className="btn btn-primary btn-sm inline-flex items-center gap-1.5">
         <ExternalLink size={13} />{t('files.openExternally')}
       </button>
     )}
@@ -230,7 +230,7 @@ function PreviewPane({ document, kind, name, sessionId, onOpenExternally, onReve
     const unavailable = document.unavailable
     return (
       <div role="status" className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
-        <AlertTriangle size={22} className="text-amber-300" />
+        <AlertTriangle size={22} className="text-[var(--warning)]" />
         <p className="text-sm text-[var(--text)]">
           {unavailable?.code === 'BACKEND_UNAVAILABLE' ? t('documents.noRenderer') : job?.status === 'cancelled' ? t('documents.cancelled') : t('documents.renderFailed')}
         </p>

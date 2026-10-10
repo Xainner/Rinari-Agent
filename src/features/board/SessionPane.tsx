@@ -1,5 +1,5 @@
 import { runUiCommand } from '../engine/slashUi'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
@@ -81,6 +81,31 @@ function LiveSessionPane({
   const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
   const setPeerFlags = useBoardStore((state) => state.setPeerFlags)
   const [forwardOpen, setForwardOpen] = useState(false)
+  // Plegar y desplegar se animan solo cuando cambian aquí, no al montar el board.
+  const [fold, setFold] = useState<{ collapsed: boolean; motion: 'expand' | 'collapse' | null }>({ collapsed: pane.collapsed, motion: null })
+  if (fold.collapsed !== pane.collapsed) setFold({ collapsed: pane.collapsed, motion: pane.collapsed ? 'collapse' : 'expand' })
+  // Ancho real en pantalla (con «Ajustar a la vista» no es el guardado): la
+  // tira se encoge desde él al plegar.
+  const shownWidth = useRef(pane.width)
+  const observed = useRef<ResizeObserver | null>(null)
+  const measure = useCallback((element: HTMLElement | null) => {
+    observed.current?.disconnect()
+    observed.current = null
+    if (!element) return
+    shownWidth.current = element.getBoundingClientRect().width || pane.width
+    if (typeof ResizeObserver === 'undefined') return
+    observed.current = new ResizeObserver(([entry]) => { if (entry) shownWidth.current = entry.target.getBoundingClientRect().width })
+    observed.current.observe(element)
+  }, [pane.width])
+  const endFold = useCallback(() => setFold((current) => current.motion ? { ...current, motion: null } : current), [])
+  // `animationend` no llega si la ventana no pinta (oculta, minimizada, en
+  // segundo plano): sin este tope el panel se quedaría en el primer fotograma,
+  // a 48 px y con overflow oculto. Margen sobre la animación más larga (0,4 s).
+  useEffect(() => {
+    if (!fold.motion) return
+    const timer = window.setTimeout(endFold, 600)
+    return () => window.clearTimeout(timer)
+  }, [fold.motion, endFold])
   const forwardTargets = useMemo<PeerForwardTarget[]>(
     () => panes
       .filter((item) => item.sessionId !== pane.sessionId && !isDraftPane(item))
@@ -165,6 +190,8 @@ function LiveSessionPane({
         onExpand={() => expandPane(pane.paneId, { focus: true })}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
         onRemove={() => onRemove(pane.paneId)}
+        foldFrom={fold.motion === 'collapse' ? shownWidth.current : undefined}
+        onFoldEnd={endFold}
       />
     )
   }
@@ -177,6 +204,9 @@ function LiveSessionPane({
       data-status={session.status.kind}
       data-unread={session.status.unreadResultCount > 0 || undefined}
       className={cn('session-pane', focused && 'is-focused')}
+      ref={measure}
+      data-motion={fold.motion ?? undefined}
+      onAnimationEnd={(event) => { if (event.target === event.currentTarget) endFold() }}
       style={{ width: pane.width }}
       onPointerDownCapture={focus}
       onFocusCapture={focus}

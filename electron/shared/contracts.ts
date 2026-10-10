@@ -73,6 +73,7 @@ export const CHANNEL = {
   browserSelectTarget: 'rinari:browser.selectTarget',
   browserSetControl: 'rinari:browser.setControl',
   browserNavigate: 'rinari:browser.navigate',
+  browserHistory: 'rinari:browser.history',
   browserPreview: 'rinari:browser.preview',
 } as const
 

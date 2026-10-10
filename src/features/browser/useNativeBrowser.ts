@@ -85,6 +85,7 @@ export interface NativeBrowserState {
   takeControl(): Promise<void>
   returnControl(): Promise<void>
   navigate(url: string): Promise<void>
+  history(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>
   /** Se le pasa al slot para que reporte su geometría. */
   slotRef: (element: HTMLElement | null) => void
 }
@@ -239,10 +240,16 @@ export function useNativeBrowser(
     // `capture` para enterarse del scroll de cualquier contenedor, no sólo
     // del documento: el Board que recorta el panel es uno de ellos.
     window.addEventListener('scroll', publish, true)
+    // Una entrada animada (panel que se desliza, vista que aparece) mueve el
+    // slot sin cambiar su tamaño: al terminar se vuelve a medir.
+    window.addEventListener('animationend', publish, true)
+    window.addEventListener('transitionend', publish, true)
     return () => {
       observer?.disconnect()
       window.removeEventListener('resize', publish)
       window.removeEventListener('scroll', publish, true)
+      window.removeEventListener('animationend', publish, true)
+      window.removeEventListener('transitionend', publish, true)
       if (frame.current !== null) cancelAnimationFrame(frame.current)
       frame.current = null
     }
@@ -384,6 +391,7 @@ export function useNativeBrowser(
         applyControlReply(result)
       }),
     navigate: (url) => guard(() => platform().browser.navigate(sessionId, url)),
+    history: (action) => guard(() => platform().browser.history(sessionId, action)),
     slotRef,
   }
 }

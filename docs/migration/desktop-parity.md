@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **211**
-- Respaldados por Engine: **205**
+- Comandos: **215**
+- Respaldados por Engine: **209**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -59,9 +59,11 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `mcp_create` | engine | `mcp.create` | `src/services/engine.ts` |
 | `mcp_get` | engine | `mcp.get` | **ninguno** |
 | `mcp_list` | engine | `mcp.list` | `src/services/engine.ts` |
+| `mcp_probe` | engine | `mcp.probe` | `src/services/engine.ts` |
 | `mcp_remove` | engine | `mcp.remove` | `src/services/engine.ts` |
 | `mcp_set_enabled` | engine | `mcp.enable` | `src/services/engine.ts` |
 | `mcp_test` | engine | `mcp.test` | `src/services/engine.ts` |
+| `mcp_update` | engine | `mcp.update` | `src/services/engine.ts` |
 | `memory_candidate_resolve` | engine | `memory.candidate.resolve` | `src/services/memory.ts` |
 | `memory_candidates_list` | engine | `memory.candidates.list` | `src/services/memory.ts` |
 | `memory_export` | engine | `memory.export` | `src/services/memory.ts` |
@@ -191,6 +193,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `soul_get` | engine | `soul.get` | `src/services/engine.ts` |
 | `soul_list` | engine | `soul.list` | `src/services/engine.ts` |
 | `soul_remove` | engine | `soul.remove` | `src/services/engine.ts` |
+| `soul_settings_get` | engine | `soul.settings.get` | **ninguno** |
+| `soul_settings_set` | engine | `soul.settings.set` | **ninguno** |
 | `soul_update` | engine | `soul.update` | `src/services/engine.ts` |
 | `speech_model_cancel` | engine | `speech.model.cancel` | `src/services/engine.ts` |
 | `speech_model_download` | engine | `speech.model.download` | **ninguno** |

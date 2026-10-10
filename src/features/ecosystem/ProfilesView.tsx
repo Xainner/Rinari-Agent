@@ -7,6 +7,7 @@ import {
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
+import { art } from '../rinari/art'
 import { inputClass, labelClass } from '../../components/settings/parts'
 import {
   Dialog,
@@ -115,14 +116,16 @@ export default function ProfilesView({
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+          className="btn btn-primary"
         >
           {t('rbundles.create')}
         </button>
       </div>
 
+      <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">{t('rbundles.explain')}</p>
       {profiles.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-elevated)] p-6 text-center">
+        <div className="mcp-empty rounded-[var(--r-lg)] border border-dashed border-[var(--line-2)]">
+          <img src={art.chibi('typing')} alt="" draggable={false} />
           <p className="text-sm text-[var(--text)]">{t('rbundles.empty')}</p>
           <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('rbundles.emptyHint')}</p>
         </div>
@@ -142,14 +145,14 @@ export default function ProfilesView({
             <button
               type="button"
               onClick={() => void apply(profile)}
-              className="rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white transition-all hover:brightness-110"
+              className="btn btn-primary btn-sm"
             >
               {t('rbundles.apply')}
             </button>
             <button
               type="button"
               onClick={() => setRemoving(profile)}
-              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-red-400 transition-colors hover:bg-[var(--bg-hover)]"
+              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
             >
               {t('rbundles.delete')}
             </button>
@@ -222,7 +225,7 @@ export default function ProfilesView({
               type="button"
               onClick={() => void save()}
               disabled={saving}
-              className="rounded-xl bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-40"
+              className="btn btn-primary btn-sm"
             >
               {t('providers.save')}
             </button>

@@ -108,7 +108,7 @@ export function SheetGrid({ sessionId, revisionId }: { sessionId: string; revisi
   }, [loadedTo, rows])
   const pending = rows.some((row) => row.cells.some((cell) => cell.formula && (cell.cached === null || cell.cached === undefined)))
 
-  if (error) return <p role="alert" className="p-6 text-center text-sm text-red-400">{error}</p>
+  if (error) return <p role="alert" className="p-6 text-center text-sm text-[var(--danger)]">{error}</p>
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="sheet-grid">
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-3 py-1.5 text-[11px]">
@@ -127,7 +127,7 @@ export function SheetGrid({ sessionId, revisionId }: { sessionId: string; revisi
         </button>
       </div>
       {pending && (
-        <p className="flex items-center gap-1.5 border-b border-[var(--border)] bg-amber-400/5 px-3 py-1 text-[11px] text-amber-300">
+        <p className="flex items-center gap-1.5 border-b border-[var(--border)] bg-amber-400/5 px-3 py-1 text-[11px] text-[var(--warning)]">
           <AlertTriangle size={11} aria-hidden="true" />{t('documents.sheet.pendingNotice')}
         </p>
       )}

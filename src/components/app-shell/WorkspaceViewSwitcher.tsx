@@ -2,6 +2,8 @@ import { Columns3, MessageSquare, Workflow } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { WorkspaceView } from '../../stores/ui'
 import { cn } from '../../lib/utils'
+import { motion } from 'framer-motion'
+import { instant, spring, useCalmMotion } from '../../lib/motion'
 
 interface WorkspaceViewSwitcherProps {
   /** Vista de trabajo seleccionada; `null` cuando la vista actual es auxiliar (Ajustes, Motor…). */
@@ -27,6 +29,7 @@ export default function WorkspaceViewSwitcher({
   disabled = false,
 }: WorkspaceViewSwitcherProps) {
   const { t } = useI18n()
+  const calm = useCalmMotion()
   const options: Array<{ view: WorkspaceView; label: string; icon: typeof MessageSquare }> = [
     { view: 'chat', label: t('nav.normal'), icon: MessageSquare },
     { view: 'board', label: t('nav.boards'), icon: Columns3 },
@@ -48,9 +51,10 @@ export default function WorkspaceViewSwitcher({
             onClick={() => onSelect(view)}
             className={cn('view-switcher-button', active && 'is-active')}
           >
-            <Icon size={14} aria-hidden="true" />
-            <span>{label}</span>
-            {badge > 0 && <span className="view-switcher-badge" aria-hidden="true">{badge > 99 ? '99+' : badge}</span>}
+            {active && <motion.span layoutId="view-switcher-pill" className="view-switcher-pill" transition={calm ? instant : spring} aria-hidden="true" />}
+            <Icon size={14} aria-hidden="true" className="relative" />
+            <span className="relative">{label}</span>
+            {badge > 0 && <span className="view-switcher-badge relative" aria-hidden="true">{badge > 99 ? '99+' : badge}</span>}
           </button>
         )
       })}

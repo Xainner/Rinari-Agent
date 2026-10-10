@@ -90,11 +90,13 @@ export default function BrowserSurface({
         state={useNative ? context?.context_state : frame?.state}
         onSelectTarget={useNative ? (id) => void native.selectTarget(id) : onTargetChange}
         onNavigate={useNative ? (next) => void native.navigate(next) : undefined}
+        onHistory={useNative ? (action) => void native.history(action) : undefined}
+        busy={busy}
         onTakeControl={useNative ? () => void native.takeControl() : undefined}
         onReturnControl={useNative ? () => void native.returnControl() : undefined}
       />
 
-      {problem && <p role="alert" className="px-3 py-2 text-xs text-amber-400">{problem}</p>}
+      {problem && <p role="alert" className="browser-problem">{problem}</p>}
 
       {useNative && context ? (
         <NativeBrowserSlot

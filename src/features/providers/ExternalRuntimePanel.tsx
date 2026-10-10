@@ -81,10 +81,10 @@ export default function ExternalRuntimePanel({
             : AlertTriangle
   const tone =
     state === 'connected'
-      ? 'text-emerald-400'
+      ? 'text-[var(--success)]'
       : state === 'non_subscription_auth'
-        ? 'text-red-400'
-        : 'text-amber-400'
+        ? 'text-[var(--danger)]'
+        : 'text-[var(--warning)]'
   const button =
     'rounded-lg border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--bg-hover)] disabled:opacity-50'
 
@@ -92,7 +92,7 @@ export default function ExternalRuntimePanel({
     <div className="space-y-3" data-testid="external-runtime">
       <p className="text-xs text-[var(--text-muted)]">{t('providers.experimental')}</p>
       {error && (
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" className="text-sm text-[var(--danger)]">
           {error}
         </p>
       )}

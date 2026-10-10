@@ -47,9 +47,11 @@ export type DesktopCommand =
   | "mcp_create"
   | "mcp_get"
   | "mcp_list"
+  | "mcp_probe"
   | "mcp_remove"
   | "mcp_set_enabled"
   | "mcp_test"
+  | "mcp_update"
   | "memory_candidate_resolve"
   | "memory_candidates_list"
   | "memory_export"
@@ -179,6 +181,8 @@ export type DesktopCommand =
   | "soul_get"
   | "soul_list"
   | "soul_remove"
+  | "soul_settings_get"
+  | "soul_settings_set"
   | "soul_update"
   | "speech_model_cancel"
   | "speech_model_download"
@@ -260,9 +264,11 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "mcp_create",
   "mcp_get",
   "mcp_list",
+  "mcp_probe",
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "mcp_update",
   "memory_candidate_resolve",
   "memory_candidates_list",
   "memory_export",
@@ -392,6 +398,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "soul_get",
   "soul_list",
   "soul_remove",
+  "soul_settings_get",
+  "soul_settings_set",
   "soul_update",
   "speech_model_cancel",
   "speech_model_download",
@@ -488,9 +496,11 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "mcp_create",
   "mcp_get",
   "mcp_list",
+  "mcp_probe",
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "mcp_update",
   "memory_candidate_resolve",
   "memory_candidates_list",
   "memory_export",
@@ -620,6 +630,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "soul_get",
   "soul_list",
   "soul_remove",
+  "soul_settings_get",
+  "soul_settings_set",
   "soul_update",
   "speech_model_cancel",
   "speech_model_download",

@@ -263,6 +263,8 @@ const api = {
       call<BrowserControlView>(CHANNEL.browserSetControl, sessionId, owner, expectedRevision, automatic),
     navigate: (sessionId: string, url: string) =>
       call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
+    history: (sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop') =>
+      call<{ url: string }>(CHANNEL.browserHistory, sessionId, action),
     preview: (sessionId: string) =>
       call<BrowserPreviewView | null>(CHANNEL.browserPreview, sessionId),
     /** Cambios de pestañas, control o estado, empujados por main. */

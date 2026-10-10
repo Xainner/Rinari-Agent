@@ -48,7 +48,7 @@ export default function ProviderDetails({ provider, onChanged, initialTab }: { p
       {tab === 'usage' && <ProviderUsagePanel providerAlias={provider.alias} />}
       {tab === 'diagnostics' && <div className="space-y-3">
         <p className="text-xs text-[var(--text-muted)]">{t('providers.discoveryHint')}</p>
-        {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+        {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
         {diagnostics && <dl className="space-y-2 text-xs">
           {(['product_id', 'endpoint', 'auth_method', 'checked_at'] as const).map(key => <div key={key} className="grid grid-cols-[7rem_1fr] gap-2"><dt className="text-[var(--text-muted)]">{key}</dt><dd className="break-all font-mono">{String(diagnostics[key] ?? '—')}</dd></div>)}
           {Array.isArray(diagnostics.models) && diagnostics.models.map((model: { id: string; model: string; transport: string }) => <div key={model.id} className="flex flex-wrap justify-between gap-2"><dt>{model.model}</dt><dd className="font-mono text-[var(--text-muted)]">{model.transport}</dd></div>)}

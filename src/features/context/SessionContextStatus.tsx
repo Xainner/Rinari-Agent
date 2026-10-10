@@ -43,7 +43,7 @@ export default function SessionContextStatus({ sessionId }: { sessionId: string 
   return <div className="space-y-3 text-sm" data-testid="session-context">
     <div className="space-y-1">
       <Line label={t('context.usable')}>{tokens(usable)}</Line>
-      <p className={`text-right text-[11px] ${status.window_estimated ? 'text-amber-400' : 'text-[var(--text-subtle)]'}`}>{t(source.key, source.values)}</p>
+      <p className={`text-right text-[11px] ${status.window_estimated ? 'text-[var(--warning)]' : 'text-[var(--text-subtle)]'}`}>{t(source.key, source.values)}</p>
       <Line label={t('context.lastRequest')}>{request ? `${tokens(request.input_tokens)}${share !== null ? ` · ${share}%` : ''}` : '—'}</Line>
       <p className="text-right text-[11px] text-[var(--text-subtle)]">{request ? t('context.lastRequest.reported') : t('context.noRequest')}</p>
       {status.compaction_enabled === false
@@ -60,14 +60,14 @@ export default function SessionContextStatus({ sessionId }: { sessionId: string 
             : ''}
           {compaction.duration_ms !== undefined && ` · ${t('context.duration', { seconds: formatSeconds(compaction.duration_ms, lang) })}`}
         </Line>
-        {compaction.error && <p className="whitespace-pre-wrap text-xs text-red-400">{compaction.error}</p>}
+        {compaction.error && <p className="whitespace-pre-wrap text-xs text-[var(--danger)]">{compaction.error}</p>}
         {Object.keys(compaction.checks).length > 0 && <div aria-label={t('context.checks')}>
           <ul className="space-y-0.5 text-xs">
             {CHECKS.flatMap((name) => {
               const outcome = compaction.checks[name]
               return outcome ? [<li key={name} className="flex justify-between gap-3">
                 <span className="text-[var(--text-muted)]">{t(`context.check.${name}`)}</span>
-                <span className={outcome === 'failed' ? 'text-red-400' : outcome === 'repaired' ? 'text-amber-400' : 'text-[var(--text)]'}>{t(`context.check.${outcome}`)}</span>
+                <span className={outcome === 'failed' ? 'text-[var(--danger)]' : outcome === 'repaired' ? 'text-[var(--warning)]' : 'text-[var(--text)]'}>{t(`context.check.${outcome}`)}</span>
               </li>] : []
             })}
           </ul>

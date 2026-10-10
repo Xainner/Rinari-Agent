@@ -3,9 +3,11 @@
 // foco, zoom, barra lateral, ventanas estrechas, recarga y migración del
 // schema 3. El proveedor es un puerto muerto: el turno falla a propósito.
 const assert = require('node:assert/strict')
-const { ui, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay } = require('../harness.cjs')
+const { ui, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay, settleAnimations } = require('../harness.cjs')
 
 async function geometry() {
+  // Mide con el board quieto: plegar, desplegar y la barra lateral se animan.
+  await settleAnimations()
   return evaluate(`(() => {
     const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x, right:r.right, width:r.width, height:r.height } }
     const row = document.querySelector('.board-pane-row')
@@ -71,7 +73,19 @@ scenario(async () => {
     await screenshot(`panes-${count}`)
   }
   await load(3)
+  // Un contador que aparece (trabajando, sin leer) no hace saltar la barra a
+  // otra línea: el board entero se movería bajo el puntero en mitad de un
+  // clic. Independiente de la fuente: se mide con un contador muy ancho.
+  const toolbarHeights = await evaluate(`(() => {
+    const bar = document.querySelector('.board-toolbar'), counts = bar.querySelector('.board-toolbar-counts')
+    const before = bar.getBoundingClientRect().height
+    const chip = document.createElement('span'); chip.className = 'board-toolbar-count'; chip.textContent = 'x'.repeat(120)
+    counts.append(chip); const after = bar.getBoundingClientRect().height; chip.remove()
+    return [before, after]
+  })()`)
+  assert.equal(toolbarHeights[1], toolbarHeights[0], 'a new count chip does not wrap the toolbar')
   // El borrador y la identidad del composer sobreviven al cambio de modo.
+  await wait('Boolean(document.querySelector("textarea"))')
   await evaluate(`(() => { const el=document.querySelector('textarea'); window.savedComposer=el;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'Borrador de prueba');
     el.dispatchEvent(new Event('input',{bubbles:true})); })()`)

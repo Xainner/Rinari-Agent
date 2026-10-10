@@ -22,6 +22,9 @@ const data = process.env.RINARI_UI_DATA
 const output = process.env.RINARI_UI_OUTPUT
 if (!name || !data || !output) throw new Error('Arranca las pruebas con `npm run ui:e2e -- <escenario>`.')
 app.setPath('userData', join(data, 'profile'))
+// `RINARI_UI_REDUCED_MOTION=1` reproduce un runner con las animaciones del
+// sistema apagadas (prefers-reduced-motion), como el de la CI.
+if (process.env.RINARI_UI_REDUCED_MOTION === '1') app.commandLine.appendSwitch('force-prefers-reduced-motion')
 require('../../dist-electron/main.cjs')
 
 /** Proveedor local sin credenciales que nunca contesta: el turno falla. */
@@ -41,6 +44,20 @@ const ui = {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const evaluate = (code) => ui.win.webContents.executeJavaScript(code)
+
+/**
+ * Espera a que terminen las animaciones finitas, con tope: si la ventana no
+ * pinta (runner de CI), una animación puede no avanzar nunca y `finished` no
+ * se resolvería. Nada aquí lanza: una animación ya cancelada o sin efecto se
+ * ignora.
+ */
+const settleAnimations = (capMs = 2000) => evaluate(`(() => {
+  const finite = document.getAnimations().filter((a) => {
+    try { return a.effect && a.effect.getTiming().iterations !== Infinity } catch { return false }
+  })
+  const done = Promise.all(finite.map((a) => a.finished.then(() => {}, () => {})))
+  return Promise.race([done, new Promise((resolve) => setTimeout(resolve, ${capMs}))]).then(() => true)
+})()`)
 /** Expresión JS que devuelve el primer elemento del selector. */
 const q = (selector) => `document.querySelector(${JSON.stringify(selector)})`
 
@@ -243,7 +260,7 @@ function scenario(body, { width = 1500, height = 900, timeout = 300_000 } = {}) 
 }
 
 module.exports = {
-  ui, delay, evaluate, q, until, wait, center, clickAt, click, domClick, clickText, key, menuShortcut, wheel, input,
+  ui, delay, evaluate, settleAnimations, q, until, wait, center, clickAt, click, domClick, clickText, key, menuShortcut, wheel, input,
   command, stored, screenshot, ready, reload, size, language, useLocalModel, seedBoard, panesFor,
   report, scenario, DEAD_MODEL,
 }

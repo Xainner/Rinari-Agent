@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type CSSProperties } from 'react'
 import { CheckCheck, ChevronsRight, CircleHelp, LoaderCircle, MessageSquareShare, MoreHorizontal, ShieldAlert, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ProviderLogo from '../../components/ProviderLogo'
@@ -24,6 +24,9 @@ export interface CollapsedPaneStripProps {
   onExpand: () => void
   onOpenSingle: () => void
   onRemove: () => void
+  /** Ancho que tenía el panel si se acaba de plegar: la tira se encoge desde ahí. */
+  foldFrom?: number
+  onFoldEnd?: () => void
   /** El resizer exterior nunca actúa sobre una tira. */
 }
 
@@ -34,7 +37,7 @@ export interface CollapsedPaneStripProps {
  * área principal es un **botón real** de expandir; el menú es un botón
  * hermano: nada se anida ni se propaga al click de expandir.
  */
-function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onOpenSingle, onRemove }: CollapsedPaneStripProps) {
+function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onOpenSingle, onRemove, foldFrom, onFoldEnd }: CollapsedPaneStripProps) {
   const { t } = useI18n()
   const { record, project, projectRoot, activeModel, status, approvals, pendingQuestions } = session
   const title = record?.title || t('sidebar.newChat')
@@ -57,7 +60,9 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onO
       data-unread={status.unreadResultCount > 0 || undefined}
       data-focused={focused || undefined}
       className={cn('pane-strip', focused && 'is-focused', working && 'is-working')}
-      style={{ width: STRIP_WIDTH }}
+      data-motion={foldFrom ? 'collapse' : undefined}
+      onAnimationEnd={(event) => { if (event.target === event.currentTarget) onFoldEnd?.() }}
+      style={foldFrom ? { width: STRIP_WIDTH, '--fold-from': `${foldFrom}px` } as CSSProperties : { width: STRIP_WIDTH }}
     >
       <button
         type="button"

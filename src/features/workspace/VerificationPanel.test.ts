@@ -3,9 +3,9 @@ import { resultTone } from './VerificationPanel'
 
 describe('resultTone', () => {
   it('paints the Engine results by what they mean', () => {
-    expect(resultTone('passed')).toBe('text-emerald-400')
-    expect(resultTone('failed')).toBe('text-red-400')
-    expect(resultTone('error')).toBe('text-red-400')
-    expect(resultTone('skipped')).not.toContain('red')
+    expect(resultTone('passed')).toBe('text-[var(--success)]')
+    expect(resultTone('failed')).toBe('text-[var(--danger)]')
+    expect(resultTone('error')).toBe('text-[var(--danger)]')
+    expect(resultTone('skipped')).not.toContain('danger')
   })
 })

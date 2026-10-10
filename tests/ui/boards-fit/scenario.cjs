@@ -146,6 +146,8 @@ scenario(async () => {
   await evaluate(`(() => { const el = [...document.querySelectorAll('.session-pane .composer-surface textarea')].at(-1)
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, 'línea\\n'.repeat(40))
     el.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  // La altura del textarea tiene transición (0.01 ms con movimiento reducido).
+  await settleAnimations()
   const tall = (await evaluate(composers)).at(-1)
   assert(tall.max <= 160, `Boards caps the composer (${tall.max}px)`)
   assert(Math.abs(tall.height - tall.max) <= 1, `a long draft grows to the Boards cap (${tall.height}px)`)

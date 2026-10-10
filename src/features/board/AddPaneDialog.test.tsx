@@ -24,6 +24,16 @@ afterEach(cleanup)
 const projects = [projectFixture('proj_a', 'Backend API'), projectFixture('proj_b', 'Desktop UI')]
 const sessions = [sessionFixture('ses_a', 'Backend chat', 'proj_a'), sessionFixture('ses_free', 'Libre')]
 
+/** The Engine's answer for a folder that already belongs to `projectId`. */
+function folderOf(projectId: string) {
+  vi.mocked(invoke).mockImplementation(async (command: string) => {
+    if (command === 'project_folders_validate') {
+      return { folders: [{ ok: false, error: { code: 'IN_PROJECT', message: 'taken', project_id: projectId, project_name: 'x' } }] }
+    }
+    return {}
+  })
+}
+
 it('a registered project opens a draft pane; no session is created until its first message', async () => {
   const onAdded = vi.fn()
   const onAddDraft = vi.fn()
@@ -76,26 +86,33 @@ it('a new folder opens the «Nuevo proyecto» window; creating there adds a draf
   expect(engine.openProject).not.toHaveBeenCalled()
 })
 
-it('a folder of a visible project (root or extra folder) adds that project without the window', async () => {
-  const withExtra = [projectFixture('proj_c', 'Tienda', {
-    folders: [
-      { path: '/repo/proj_c', primary: true, position: 0, exists: true },
-      { path: 'C:\\Code\\Web', primary: false, position: 1, exists: true },
-    ],
-  })]
-  vi.mocked(openFolderDialog).mockResolvedValue(['c:\\code\\web\\'])
+it('a folder the Engine says belongs to a visible project adds that project without the window', async () => {
+  // The renderer cannot compare canonical paths (8.3 names, links, case): the Engine decides.
+  vi.mocked(openFolderDialog).mockResolvedValue(['C:\\Users\\RUNNER~1\\web'])
+  folderOf('proj_b')
   const onAddDraft = vi.fn()
-  const engine = engineFixture({ projects: withExtra, sessions })
+  const engine = engineFixture({ projects, sessions })
   render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} onAddDraft={onAddDraft} /></BoardHarness>)
   await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))
-  await vi.waitFor(() => expect(onAddDraft).toHaveBeenCalledWith('proj_c'))
+  await vi.waitFor(() => expect(onAddDraft).toHaveBeenCalledWith('proj_b'))
+  expect(invoke).toHaveBeenCalledWith('project_folders_validate', expect.objectContaining({ paths: ['C:\\Users\\RUNNER~1\\web'] }))
   expect(useCreateProjectStore.getState().open).toBe(false)
+})
+
+it('a folder of a project in another profile still goes to the window, which explains it', async () => {
+  vi.mocked(openFolderDialog).mockResolvedValue(['/elsewhere/web'])
+  folderOf('proj_hidden')
+  const engine = engineFixture({ projects, sessions })
+  render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} onAddDraft={vi.fn()} /></BoardHarness>)
+  await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))
+  await vi.waitFor(() => expect(useCreateProjectStore.getState().paths).toEqual(['/elsewhere/web']))
 })
 
 it('does not reveal an existing folder when duplicate creation is cancelled', async () => {
   useBoardStore.getState().addPane('ses_a')
   useProjectExpansionStore.setState({ choices: { proj_a: false }, query: 'hidden' })
   vi.mocked(openFolderDialog).mockResolvedValue(['/repo/proj_a'])
+  folderOf('proj_a')
   const engine = engineFixture({ projects, sessions })
   render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} onAddDraft={vi.fn()} /></BoardHarness>)
   await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))

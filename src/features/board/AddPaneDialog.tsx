@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Folder, FolderOpen, MessageSquare, MessageSquarePlus, Search } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
-import type { ProjectSummary, SessionSummary } from '../../services/engine'
+import { engineApi, type ProjectSummary, type SessionSummary } from '../../services/engine'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import {
   AlertDialog,
@@ -36,19 +36,6 @@ export interface AddPaneDialogProps {
 }
 
 type PendingProject = { project: ProjectSummary; sharedWith: string[] }
-
-const folderKey = (path: string) => {
-  const clean = path.replace(/\\/g, '/').replace(/\/+$/, '')
-  // Windows paths compare without case, like the file system does.
-  return /^[a-z]:/i.test(clean) ? clean.toLowerCase() : clean
-}
-
-/** Whether `path` is one of the project's folders (its root or an extra one). */
-function ownsFolder(project: ProjectSummary, path: string): boolean {
-  const key = folderKey(path)
-  return [project.root, project.canonical_root, ...(project.folders ?? []).map((folder) => folder.path)]
-    .some((folder) => folder && folderKey(folder) === key)
-}
 
 /**
  * Alta de un panel: chat general, proyecto registrado, carpeta nueva o sesión
@@ -135,8 +122,15 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
   async function chooseFolder() {
     const picked = (await platform().dialog.openFiles({ directory: true }))?.[0] ?? null
     if (typeof picked !== 'string') return
-    // Una carpeta de un proyecto ya visible abre ese proyecto, como elegirlo en la lista.
-    const existing = visibleProjects.find((project) => ownsFolder(project, picked))
+    // Una carpeta de un proyecto ya visible abre ese proyecto, como elegirlo en la
+    // lista. Lo decide el Engine: compara rutas canónicas (nombres cortos de
+    // Windows, enlaces, mayúsculas), cosa que el renderer no puede hacer.
+    const owner = await engineApi.projectFoldersValidate([picked])
+      .then((result) => result.folders[0]?.error)
+      .catch(() => null)
+    const existing = owner?.code === 'IN_PROJECT'
+      ? visibleProjects.find((project) => project.id === owner.project_id)
+      : undefined
     if (existing) {
       chooseProject(existing)
       return

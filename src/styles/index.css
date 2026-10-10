@@ -1291,6 +1291,13 @@ select option:disabled { color: var(--text-subtle); }
 .btn-ghost:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
 .btn-quiet { color: var(--text-muted); background: transparent; }
 .btn-quiet:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
+/* «Acceso completo»: grupos legibles de un vistazo, que entran escalonados al abrir. */
+.full-access-badge { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--r-md); color: var(--access-full); background: color-mix(in srgb, var(--access-full) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--access-full) 34%, transparent); }
+.full-access-groups { display: grid; border-radius: var(--r-lg); border: 1px solid var(--line-1); background: var(--bg-inset); overflow: hidden; }
+.full-access-group { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; animation: rinari-rise var(--dur-slow) var(--ease-out) both; animation-delay: calc(80ms + var(--i, 0) * 60ms); }
+.full-access-group + .full-access-group { border-top: 1px solid var(--line-1); }
+.full-access-group-icon { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: var(--r-sm); color: var(--accent-2); background: var(--bg-elevated); box-shadow: inset 0 0 0 1px var(--line-2); }
+.full-access-still { border-left: 2px solid color-mix(in srgb, var(--access-full) 60%, transparent); padding: 2px 0 2px 10px; font-size: 12px; line-height: 1.55; color: var(--text-muted); }
 .btn-danger { color: #ffd1da; background: rgb(255 122 147 / 0.1); border-color: rgb(255 122 147 / 0.32); }
 .btn-danger:hover:not(:disabled) { background: rgb(255 122 147 / 0.18); color: #fff; }
 .btn-sm { min-height: 28px; padding: 0 10px; font-size: 12px; border-radius: var(--r-xs); }
@@ -1361,6 +1368,29 @@ select option:disabled { color: var(--text-subtle); }
 .sidebar-heading { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; color: var(--text-subtle); text-transform: uppercase; }
 .sidebar-project { display: flex; width: 100%; align-items: center; gap: 8px; border-radius: var(--r-sm); padding: 6px 8px; text-align: left; transition: background-color var(--dur-fast); }
 .sidebar-project:hover { background: var(--bg-hover); }
+/* Título que Rinari renombra: el anterior se eleva y se va, el nuevo sube con
+   una sola pasada de luz violeta. Una línea, mismo tamaño: nada alrededor se mueve. */
+.title-swap { position: relative; display: block; min-width: 0; overflow: hidden; }
+.title-swap-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-swap-text.is-in {
+  background-image: linear-gradient(100deg, currentColor 0 36%, var(--accent-2) 46%, var(--violet-100) 50%, var(--accent-2) 54%, currentColor 64% 100%);
+  background-size: 320% 100%; background-repeat: no-repeat;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: title-swap-in 600ms var(--ease-out) both;
+}
+.title-swap-out { position: absolute; inset: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; animation: title-swap-out 200ms var(--ease-in-out) both; }
+@keyframes title-swap-in { 0% { opacity: 0; transform: translateY(55%); background-position: 100% 0; } 38% { opacity: 1; transform: none; } 100% { opacity: 1; transform: none; background-position: 0% 0; } }
+@keyframes title-swap-out { to { opacity: 0; transform: translateY(-55%); filter: blur(1.5px); } }
+/* La tira plegada escribe en vertical: ahí solo un fundido, sin desplazar ni barrer. */
+.pane-strip-title .title-swap-text.is-in { background-image: none; -webkit-text-fill-color: currentColor; animation: rinari-fade-in 320ms var(--ease-out) both; }
+.pane-strip-title .title-swap-out { animation: rinari-fade-out 160ms var(--ease-in-out) both; }
+/* Nombre primero; la rama al lado, sutil y en mono, y es la que se encoge. */
+.sidebar-project-label { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 7px; }
+.sidebar-project-name { min-width: 3ch; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--text); }
+.project-branch { display: inline-flex; min-width: 0; flex: 0 4 auto; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1; color: var(--text-subtle); }
+.project-branch > svg { flex-shrink: 0; opacity: 0.75; }
+.project-branch-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-branch-op { flex-shrink: 0; color: var(--warning); }
 .sidebar-tree { position: relative; }
 .sidebar-tree::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 1px; background: linear-gradient(var(--line-2), transparent); }
 .sidebar-row { position: relative; display: flex; width: 100%; align-items: center; gap: 4px; border-radius: var(--r-sm); padding: 0 4px 0 10px; transition: background-color var(--dur-fast); }
@@ -1374,6 +1404,15 @@ select option:disabled { color: var(--text-subtle); }
 .menu-danger { color: var(--danger) !important; }
 .menu-danger svg { color: var(--danger) !important; }
 .field-input { width: 100%; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--bg-inset); padding: 9px 12px; font-size: 13px; color: var(--text); outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+/* Búsqueda: el icono va en el flujo, nunca encima del texto (SearchField). */
+.search-field { display: flex; align-items: center; gap: 9px; min-height: 38px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--bg-inset); padding: 0 12px; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.search-field:hover { border-color: var(--line-3); }
+.search-field:focus-within { border-color: var(--violet-400); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.22); }
+.search-field-icon { flex-shrink: 0; color: var(--text-subtle); transition: color var(--dur-fast); }
+.search-field:focus-within .search-field-icon { color: var(--accent-2); }
+.search-field-input { min-width: 0; flex: 1 1 auto; border: 0; background: transparent; padding: 9px 0; font-size: 13px; color: var(--text); outline: none; }
+.search-field-input::placeholder { color: var(--text-subtle); }
+.search-field-input:focus-visible { outline: none; }
 .field-input:focus { border-color: var(--violet-400); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.22); }
 .field-input::placeholder { color: var(--text-subtle); }
 

@@ -30,6 +30,7 @@ import { SlashMenu, groupSlashCommands } from './SlashMenu'
 import type { SlashCommand } from '../../services/engine'
 import type { SendOptions } from '../../features/engine/useEngineSession'
 import type { I18nKey } from '../../i18n'
+import { FullAccessDialog } from '../../features/permissions/FullAccessDialog'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -224,6 +225,8 @@ export default function Composer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [permissionOpen, setPermissionOpen] = useState(false)
+  // «Acceso completo» se confirma en un diálogo antes de pedirlo.
+  const [confirmFullAccess, setConfirmFullAccess] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
@@ -854,13 +857,22 @@ export default function Composer({
                 ['workspace', 'Workspace', t('perm.workspaceHint')],
                 ['full-access', t('perm.fullAccess'), t('perm.fullAccessHint')],
               ] as const).map(([value, label, description]) => (
-                <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? t('perm.fullAccessNeedsUpdate') : undefined} onClick={() => { setPermissionOpen(false); onPermissionChange(value) }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
+                <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? t('perm.fullAccessNeedsUpdate') : undefined} onClick={() => {
+                  setPermissionOpen(false)
+                  if (value === 'full-access' && permissionProfile !== 'full-access') setConfirmFullAccess(true)
+                  else onPermissionChange(value)
+                }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
                   <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? t('perm.readModesHint') : description}</span></span>
                   {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
                 </button>
               ))}
             </PopoverContent>
           </Popover>
+          <FullAccessDialog
+            open={confirmFullAccess}
+            onCancel={() => setConfirmFullAccess(false)}
+            onConfirm={() => { setConfirmFullAccess(false); onPermissionChange('full-access') }}
+          />
           </div>
           <div
             ref={modesGroupRef}

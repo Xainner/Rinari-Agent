@@ -1,6 +1,7 @@
 import { GitBranch } from 'lucide-react'
 import { projectDisplayName } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
+import { TitleSwap } from '../TitleSwap'
 
 export interface HeaderGit {
   branch: string | null
@@ -11,6 +12,8 @@ export interface HeaderGit {
 interface ChatHeaderProps {
   /** null = sin sesión activa. */
   title: string | null
+  /** La conversación del título: un cambio a otra no se anima. */
+  sessionId?: string | null
   kind: string | null
   mode: string | null
   projectRoot: string | null
@@ -27,6 +30,7 @@ interface ChatHeaderProps {
  */
 export default function ChatHeader({
   title,
+  sessionId = null,
   kind,
   mode,
   projectRoot,
@@ -39,12 +43,12 @@ export default function ChatHeader({
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
       {title && (
-        <p
-          title={title}
-          className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text)]"
-        >
-          {title}
-        </p>
+        <TitleSwap
+          as="p"
+          sessionId={sessionId}
+          text={title}
+          className="min-w-0 flex-1 text-sm font-semibold text-[var(--text)]"
+        />
       )}
       {projectName && (
         <button

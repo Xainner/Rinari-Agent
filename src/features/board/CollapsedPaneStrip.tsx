@@ -13,6 +13,7 @@ import type { ProviderSummary } from '../../services/engine'
 import { cn } from '../../lib/utils'
 import { STATUS_LABEL_KEY } from './PaneHeader'
 import type { PaneSession } from './usePaneSession'
+import { TitleSwap } from '../../components/TitleSwap'
 
 export const STRIP_WIDTH = 48
 
@@ -75,7 +76,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onO
         <span className="pane-strip-status" data-kind={status.kind} aria-hidden="true">
           {working ? <LoaderCircle size={12} className="motion-safe:animate-spin" /> : <span className="pane-strip-dot" />}
         </span>
-        <span className="pane-strip-title" aria-hidden="true">{title}</span>
+        <TitleSwap className="pane-strip-title" aria-hidden sessionId={record?.id ?? null} text={title} />
         <span className="pane-strip-model" aria-hidden="true">
           <ProviderLogo productId={providerRecord?.product_id} alias={providerAlias} endpoint={providerRecord?.endpoint} size={14} />
         </span>

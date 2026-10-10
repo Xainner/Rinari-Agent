@@ -156,25 +156,23 @@
       "kind": "engine",
       "method": "profile_bundle.list",
       "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
+      "callers": []
     },
     {
       "command": "bundle_remove",
       "kind": "engine",
       "method": "profile_bundle.remove",
       "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
+      "callers": []
     },
     {
       "command": "bundle_update",
       "kind": "engine",
       "method": "profile_bundle.update",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "checkpoint_list",
@@ -1848,6 +1846,6 @@
     "engine_backed": 214,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 73
+    "without_callers": 74
   }
 }

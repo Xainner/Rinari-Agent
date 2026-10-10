@@ -31,9 +31,9 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `bundle_active` | engine | `profile_bundle.active` | **ninguno** |
 | `bundle_apply` | engine | `profile_bundle.apply` | `src/services/engine.ts` |
 | `bundle_create` | engine | `profile_bundle.create` | `src/services/engine.ts` |
-| `bundle_list` | engine | `profile_bundle.list` | `src/services/engine.ts` |
-| `bundle_remove` | engine | `profile_bundle.remove` | `src/services/engine.ts` |
-| `bundle_update` | engine | `profile_bundle.update` | **ninguno** |
+| `bundle_list` | engine | `profile_bundle.list` | **ninguno** |
+| `bundle_remove` | engine | `profile_bundle.remove` | **ninguno** |
+| `bundle_update` | engine | `profile_bundle.update` | `src/services/engine.ts` |
 | `checkpoint_list` | engine | `checkpoint.list` | `src/services/engine.ts` |
 | `checkpoint_restore` | engine | `checkpoint.restore` | `src/services/engine.ts` |
 | `checkpoint_show` | engine | `checkpoint.show` | `src/services/engine.ts` |

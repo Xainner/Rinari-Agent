@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { FolderOpen, FolderGit2, MessageSquare, MessageSquarePlus, Search } from 'lucide-react'
+import { Folder, FolderOpen, MessageSquare, MessageSquarePlus, Search } from 'lucide-react'
 import { platform } from '../../platform'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -173,7 +173,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
               </button>
               {projects.map((project) => (
                 <button key={project.id} type="button" disabled={busy} onClick={() => chooseProject(project)} className="add-pane-row">
-                  <FolderGit2 size={16} aria-hidden="true" className="text-[var(--text-muted)]" />
+                  <Folder size={16} aria-hidden="true" className="text-[var(--text-muted)]" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-[var(--text)]">{project.name || projectDisplayName(project.root)}</span>
                     <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]">{project.root}</span>

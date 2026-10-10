@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Archive, ArrowLeft, Copy, FolderGit2, MessageSquare, Pin, Plus, ShieldCheck } from 'lucide-react'
+import { Archive, ArrowLeft, Copy, Folder, MessageSquare, Pin, Plus, ShieldCheck } from 'lucide-react'
 import type {
   ProjectIntelligence,
   ProjectStatus,
@@ -9,6 +9,7 @@ import type {
 import { projectDisplayName } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
+import { ProjectBranch } from './ProjectBranch'
 
 export interface ProjectHomeProps {
   root: string
@@ -88,10 +89,13 @@ export default function ProjectHome({
         >
           <ArrowLeft size={15} />
         </button>
-        <FolderGit2 size={16} aria-hidden="true" className="shrink-0 text-[var(--text-subtle)]" />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text)]">
-          {project?.name || projectDisplayName(root)}
-        </h2>
+        <Folder size={16} aria-hidden="true" className="shrink-0 text-[var(--text-subtle)]" />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h2 className="min-w-0 truncate text-sm font-semibold text-[var(--text)]">
+            {project?.name || projectDisplayName(root)}
+          </h2>
+          <ProjectBranch head={project?.git_head} />
+        </div>
         <button
           type="button"
           onClick={onNewSession}

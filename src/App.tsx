@@ -685,6 +685,7 @@ function App() {
               view === 'chat' && activeHasContent ? (
                 <ChatHeader
                   title={activeTitle}
+                  sessionId={activeRecord?.id ?? null}
                   kind={activeRecord?.kind ?? null}
                   mode={activeRecord?.mode ?? null}
                   projectRoot={session.activeProjectRoot}

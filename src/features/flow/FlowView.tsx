@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { AlertTriangle, Archive, FolderGit2, GitBranch, MessageSquare, RefreshCw, Workflow } from 'lucide-react'
+import { AlertTriangle, Archive, Folder, GitBranch, MessageSquare, RefreshCw, Workflow } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { FlowStage } from '../../services/engine'
 import { useBoardStore } from '../../stores/board'
@@ -139,7 +139,7 @@ export default function FlowView() {
         {scope && (
           <div className="flow-summary" aria-live="polite">
             <div className="flow-summary-title">
-              {scope.kind === 'project' ? <FolderGit2 size={15} aria-hidden="true" /> : <MessageSquare size={15} aria-hidden="true" />}
+              {scope.kind === 'project' ? <Folder size={15} aria-hidden="true" /> : <MessageSquare size={15} aria-hidden="true" />}
               <h1>{scopeTitle || t('flow.title')}</h1>
               {flow.data?.scope.root && <span className="flow-summary-root" title={flow.data.scope.root}><GitBranch size={11} aria-hidden="true" />{projectDisplayName(flow.data.scope.root)}</span>}
             </div>

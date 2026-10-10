@@ -466,6 +466,7 @@ function ChatView({
                   <FileTurnContext.Provider value={row.kind === 'timeline' ? row.timeline.turnId : row.message.turnId}>
                   {row.kind === 'timeline' ? (
                     <TurnTimelineView
+                      surface={homeVariant === 'pane' ? 'pane' : 'chat'}
                       timeline={row.timeline}
                       user={row.user}
                       now={now}

@@ -131,9 +131,17 @@ async function exercise() {
     await click('.view-switcher button[aria-label^="Boards"]')
     await click('button[aria-label="Añadir panel"]')
     await addFromFolder()
+    // Una carpeta nueva pasa por la ventana «Nuevo proyecto», ya con la carpeta elegida.
+    await wait(`document.querySelectorAll('[data-testid="create-project-row"]').length === 1 && !document.querySelector('[data-testid="create-project-submit"]').disabled`)
+    assert.equal(await evaluate(`document.querySelector('[data-testid="create-project-row"]').textContent.includes('Proyecto Boards')`), true)
+    await click('[data-testid="create-project-submit"]')
+    await wait(`!document.querySelector('[data-testid="create-project"]')`)
     await wait('document.querySelectorAll("[data-pane-id]").length===2')
     const d = (await command('project_list')).projects.find((p) => p.name === 'Proyecto Boards')
     projects.push(d)
+    // El panel es un borrador: el proyecto no estrena una conversación vacía.
+    const boardSessions = (await command('session_list', {})).sessions.filter((s) => s.project_id === d.id)
+    assert.equal(boardSessions.length, 0)
     await expanded(d, true)
     await collapse(d)
     await click('button[aria-label="Añadir panel"]')
@@ -145,7 +153,7 @@ async function exercise() {
     await delay(300)
     await click('.view-switcher button[aria-label^="Normal"]')
     await expanded(a, false); await expanded(b, false); await expanded(c, true); await expanded(d, false)
-    passed.push('Boards registers and reveals new folder; cancelling duplicate creation preserves collapse')
+    passed.push('Boards creates a new folder through the project window as a draft pane and reveals it; picking it again warns and cancelling preserves collapse')
   } finally {
     dialog.showOpenDialog = originalDialog
   }

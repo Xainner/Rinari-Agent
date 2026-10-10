@@ -114,18 +114,20 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
     setCreating(true)
     try {
       const target = profileId ?? activeId
+      const options = useCreateProjectStore.getState().options
       const result = await engineApi.projectCreate({
         name: name.trim(),
         description: description.trim() || undefined,
         folders: rows.map((row) => ({ path: row.path, trust: row.trust })),
         rinariProfileId: target,
+        open: options.openSession ?? true,
       })
       if (target && target !== activeId) await activate(target)
       // Like every other creation surface: the new project shows in the sidebar, open and unfiltered.
       useProjectExpansionStore.getState().reveal(result.project.id)
       toast.success(t('createProject.created', { name: result.project.name }))
       close()
-      onCreated(result.project, result.session)
+      ;(options.onCreated ?? onCreated)(result.project, result.session)
     } catch (error) {
       toast.error(commandMessage(error))
     } finally {

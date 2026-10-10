@@ -25,6 +25,15 @@ app.setPath('userData', join(data, 'profile'))
 // `RINARI_UI_REDUCED_MOTION=1` reproduce un runner con las animaciones del
 // sistema apagadas (prefers-reduced-motion), como el de la CI.
 if (process.env.RINARI_UI_REDUCED_MOTION === '1') app.commandLine.appendSwitch('force-prefers-reduced-motion')
+// La ventana de prueba sigue pintando aunque Windows la considere tapada u
+// oculta. Si no pinta, no corren ResizeObserver ni requestAnimationFrame: la
+// lista virtualizada del chat no monta las respuestas nuevas y el escenario lee
+// un DOM viejo hasta que una captura fuerza el repintado. A quien usa la app no
+// le afecta (si no ve la ventana, no hace falta pintarla); a las pruebas sí.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
 require('../../dist-electron/main.cjs')
 
 /** Proveedor local sin credenciales que nunca contesta: el turno falla. */

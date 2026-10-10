@@ -20,5 +20,9 @@ Para comprobar movimiento no basta una captura: muestrea cuadro a cuadro con
 `requestAnimationFrame` (como `dock-pill-resize` y `boards-fold` en `ui-tour`),
 y en las pruebas que miden tamaños espera antes a las animaciones finitas.
 
+Antes de subir: los escenarios tocados varias veces, también con la máquina
+cargada y con `RINARI_UI_REDUCED_MOTION=1` (el CI corre con movimiento
+reducido), y la batería completa `npm run ui:e2e -- --all`.
+
 Mientras el CI de un PR está en curso, los cambios nuevos se dejan en commits
 locales y se suben cuando termina, para no reiniciarlo.

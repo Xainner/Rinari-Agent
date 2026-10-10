@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronsUpDown, Plus, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -42,11 +42,14 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
   const detail = waiting > 0 ? t('sidebar.identityWaiting', { n: waiting }) : busy > 0 ? t('sidebar.identityBusy', { n: busy }) : t('sidebar.identityIdle')
   const title = active ? nameOf(active) : t('rinari.name')
 
-  // The header's name changes in place, like a renamed conversation.
+  // The header's name changes in place, like a renamed conversation, and a
+  // light passes over the card: the whole workspace just changed.
   const previous = useRef(activeId)
+  const [switched, setSwitched] = useState(0)
   useEffect(() => {
     if (previous.current && activeId && previous.current !== activeId) {
       useTitleMotionStore.getState().mark('profile-switcher', title, 'generated')
+      setSwitched((value) => value + 1)
     }
     previous.current = activeId
   }, [activeId, title])
@@ -64,6 +67,7 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
     <DropdownMenu onOpenChange={(open) => { if (open) void load() }}>
       <DropdownMenuTrigger asChild>
         <button type="button" className="sidebar-identity" aria-label={t('profiles.switcher', { name: title })} data-testid="profile-switcher">
+          {switched > 0 && <span key={switched} className="sidebar-identity-sweep" aria-hidden="true" />}
           <RinariAvatar state={state} size={34} />
           <span className="min-w-0 flex-1 text-left">
             <TitleSwap sessionId="profile-switcher" text={title} className="font-display text-[14px] font-bold leading-tight text-[var(--text)]" />
@@ -72,7 +76,7 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
           <ChevronsUpDown size={15} aria-hidden="true" className="shrink-0 text-[var(--text-subtle)]" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[17rem]">
+      <DropdownMenuContent align="start" className="profile-menu w-[18rem]">
         <DropdownMenuLabel className="text-[11px] text-[var(--text-subtle)]">{t(rinariStateLabel(state))}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-[11px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('profiles.label')}</DropdownMenuLabel>
@@ -81,12 +85,13 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
           const current = profile.id === activeId
           const counts = profile.counts
           return (
-            <DropdownMenuItem key={profile.id} onSelect={() => void choose(profile)} aria-current={current || undefined} data-profile-id={profile.id}>
-              <span className="profile-menu-mark" data-active={current || undefined} aria-hidden="true">{current && <Check size={12} />}</span>
+            <DropdownMenuItem key={profile.id} onSelect={() => void choose(profile)} aria-current={current || undefined} data-profile-id={profile.id} className="profile-menu-item">
+              <span className="profile-menu-monogram" data-hue={profileHue(profile.id)} aria-hidden="true">{monogram(nameOf(profile))}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{nameOf(profile)}</span>
+                <span className="block truncate font-medium">{nameOf(profile)}</span>
                 {counts && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('profiles.counts', { projects: counts.projects, sessions: counts.sessions })}</span>}
               </span>
+              <span className="profile-menu-mark" data-active={current || undefined} aria-hidden="true">{current && <Check size={12} strokeWidth={3} />}</span>
             </DropdownMenuItem>
           )
         })}
@@ -96,4 +101,19 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+/** Una o dos iniciales para el monograma del perfil. */
+function monogram(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : words[0].slice(0, 2)
+  return letters.toUpperCase()
+}
+
+/** Color estable por perfil (uno de cuatro degradados de la paleta), para reconocerlo de un vistazo. */
+function profileHue(id: string): number {
+  let hash = 0
+  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  return hash % 4
 }

@@ -19,8 +19,23 @@ async function send(message) {
   await wait(`document.querySelector('.composer-surface textarea').value === ''`)
 }
 
+// La zona del composer nunca muestra barra propia: ni con la lista plegada,
+// ni desplegada, ni con un borrador largo que hace crecer el composer.
+const NO_SLOT_SCROLL = `(() => {
+  const slot = document.querySelector('.conversation-composer-slot')
+  const style = getComputedStyle(slot)
+  return { overflow: slot.scrollHeight - slot.clientHeight, scrolls: /auto|scroll/.test(style.overflowY) }
+})()`
+async function assertNoSlotScroll(label) {
+  await settleAnimations()
+  const slot = await evaluate(NO_SLOT_SCROLL)
+  assert(!slot.scrolls && slot.overflow <= 1, `${label}: the composer area does not scroll (${JSON.stringify(slot)})`)
+}
+
 async function openChat(title) {
-  await clickText(title, 'aside button', { includes: true })
+  // Solo filas de conversación: el selector de perfil de arriba dice «Lista para trabajar».
+  await clickText(title, 'aside li button', { includes: true })
+  await wait(`document.querySelector('aside button[aria-current="page"]')?.textContent.includes(${JSON.stringify(title)})`)
   await wait('Boolean(document.querySelector(".composer-surface"))')
 }
 
@@ -47,12 +62,17 @@ scenario(async () => {
   })()`)
   assert(layout.dockBottom <= layout.composerTop + 1, 'dock sits above the composer')
   assert(layout.dockHeight < 60, 'collapsed dock is one line')
+  await assertNoSlotScroll('collapsed dock')
   await screenshot('collapsed-open')
   await click(`${DOCK} .checklist-toggle`)
   await wait(`document.querySelector(${JSON.stringify(DOCK)} + ' .checklist-body')?.hasAttribute('data-open')`)
   await settleAnimations()
   const statuses = await evaluate(`[...document.querySelectorAll(${JSON.stringify(DOCK)} + ' .checklist-item')].map(i => i.dataset.status)`)
   assert.deepEqual(statuses, ['completed', 'in_progress', 'pending'])
+  await assertNoSlotScroll('expanded dock')
+  await input('.composer-surface textarea', Array.from({ length: 40 }, (_, i) => `línea ${i + 1} de un borrador largo`).join(String.fromCharCode(10)))
+  await assertNoSlotScroll('expanded dock and a long draft')
+  await input('.composer-surface textarea', '')
   await screenshot('expanded-open')
 
   // 2. A reload keeps it, still (no entrance replay).

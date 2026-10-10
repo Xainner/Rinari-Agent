@@ -11,7 +11,7 @@ import { useFollowupStore } from './followupStore'
 
 type Leaving = 'dismiss' | 'accept' | null
 
-const LEAVE_MS = { dismiss: 240, accept: 420 } as const
+const LEAVE_MS = { dismiss: 420, accept: 520 } as const
 /** Below this width the note would cover the conversation: it waits as a chip. */
 const ROOM_FOR_NOTE_PX = 1180
 
@@ -101,11 +101,15 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
       aria-label={t('followups.label')}
     >
       {waiting > 0 && <span className="sticky-note-stack" aria-hidden="true" />}
+      <img src={art.chibi('peek')} alt="" draggable={false} className="sticky-note-chibi" />
       <span className="sticky-note-tape" aria-hidden="true" />
+      <span className="sticky-note-curl" aria-hidden="true" />
       <header className="sticky-note-head">
-        <img src={art.chibi('peek')} alt="" draggable={false} className="sticky-note-chibi" />
         <span className="sticky-note-from">{t('followups.from')}</span>
         {waiting > 0 && <span className="sticky-note-more" title={t('followups.more', { n: waiting })}>+{waiting}</span>}
+        <button type="button" className="sticky-note-dismiss" disabled={busy || leaving !== null} onClick={() => void leave('dismiss', note)} aria-label={t('followups.dismiss')} title={t('followups.dismiss')}>
+          <X size={13} aria-hidden="true" />
+        </button>
       </header>
       <h3 className="sticky-note-title">{note.title}</h3>
       <p className={cn('sticky-note-prompt', expanded && 'is-expanded')}>{note.prompt}</p>
@@ -120,10 +124,7 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
       )}
       <div className="sticky-note-actions">
         <button type="button" className="sticky-note-accept" disabled={busy || leaving !== null} onClick={() => void leave('accept', note)}>
-          <ArrowUpRight size={13} aria-hidden="true" /> {t('followups.accept')}
-        </button>
-        <button type="button" className="sticky-note-dismiss" disabled={busy || leaving !== null} onClick={() => void leave('dismiss', note)} aria-label={t('followups.dismiss')} title={t('followups.dismiss')}>
-          <X size={13} aria-hidden="true" />
+          <span>{t('followups.accept')}</span> <ArrowUpRight size={14} aria-hidden="true" />
         </button>
       </div>
     </article>

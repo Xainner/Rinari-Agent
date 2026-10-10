@@ -506,9 +506,9 @@ export function AppSidebar({
           key={profileListKey}
           data-profile={activeProfileId ?? undefined}
           className="space-y-4"
-          initial={calm ? false : { opacity: 0, x: 14 }}
-          animate={{ opacity: 1, x: 0, transition: calm ? { duration: 0 } : { duration: 0.22, ease: ease.out } }}
-          exit={calm ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, x: -14, transition: { duration: 0.12, ease: ease.inOut } }}
+          initial={calm ? false : { opacity: 0, x: 16, filter: 'blur(3px)' }}
+          animate={{ opacity: 1, x: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' }, transition: calm ? { duration: 0 } : { duration: 0.28, ease: ease.out } }}
+          exit={calm ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, x: -16, filter: 'blur(3px)', transition: { duration: 0.14, ease: ease.inOut } }}
         >
         {profileEmpty && activeProfile && (
           <div className="profile-empty" data-testid="profile-empty">

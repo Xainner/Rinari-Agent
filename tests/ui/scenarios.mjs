@@ -259,6 +259,18 @@ export const scenarios = {
     title: 'Barra lateral: ID de sesión en una línea',
     phases: ['exercise'],
   },
+  'title-rename-motion': {
+    title: 'Título renombrado por Rinari: cambia en su sitio sin mover la fila y no se repite al volver',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Poema francés sobre los huskies' }],
+      main: [{ text: 'Les huskies sont de merveilleux chiens…' }],
+    }, laneOf, { held: ['main', 'title'] }),
+  },
+  'full-access-confirm': {
+    title: 'Acceso completo: diálogo que explica, cancelar no cambia nada, confirmar lo activa, bajar no pregunta',
+    phases: ['exercise'],
+  },
   'session-title': {
     title: 'Barra lateral: título que resume el primer mensaje',
     phases: ['exercise'],

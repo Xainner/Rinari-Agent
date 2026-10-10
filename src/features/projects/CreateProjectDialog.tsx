@@ -11,6 +11,7 @@ import { useProfileName } from '../../components/app-shell/SidebarIdentity'
 import { useProfileStore } from '../profiles/profileStore'
 import { branchLabel } from './ProjectBranch'
 import { useCreateProjectStore } from './createProjectStore'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 interface Row {
   path: string
@@ -120,6 +121,8 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
         rinariProfileId: target,
       })
       if (target && target !== activeId) await activate(target)
+      // Like every other creation surface: the new project shows in the sidebar, open and unfiltered.
+      useProjectExpansionStore.getState().reveal(result.project.id)
       toast.success(t('createProject.created', { name: result.project.name }))
       close()
       onCreated(result.project, result.session)

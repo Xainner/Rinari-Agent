@@ -9,6 +9,7 @@ import type { ProfileBundle } from '../../services/engine'
 import { useProfileStore } from '../profiles/profileStore'
 import { CreateProjectDialog } from './CreateProjectDialog'
 import { useCreateProjectStore } from './createProjectStore'
+import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const profiles: ProfileBundle[] = [
   { id: 'default', name: 'Default', description: '', soul_id: null, mode: null, agents: {}, builtin: true },
@@ -88,4 +89,6 @@ it('creates with name, description, folders, trust and profile', async () => {
     rinari_profile_id: 'trabajo',
   })
   expect(useCreateProjectStore.getState().open).toBe(false)
+  expect(useProjectExpansionStore.getState().choices.p9).toBe(true)
+  expect(useProjectExpansionStore.getState().query).toBe('')
 })

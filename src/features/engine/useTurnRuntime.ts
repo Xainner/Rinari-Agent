@@ -9,6 +9,7 @@ import { useUIStore } from '../../stores/ui'
 import { createRuntimeStore, type RuntimeStore } from './runtimeStore'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { markRenamedFromEvent } from '../../stores/titleMotion'
+import { onProfileEvent } from '../profiles/profileStore'
 
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
 export const SESSION_REFRESH_DEBOUNCE_MS = 150
@@ -54,6 +55,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       const action = engineEventAction(event)
       if (action) store.getState().dispatch(action)
       if (event.event === 'steer.returned') returnUnread(event.payload)
+      onProfileEvent(event.event)
       if (event.event === 'session.renamed') markRenamedFromEvent(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()
     }).then((stop) => {

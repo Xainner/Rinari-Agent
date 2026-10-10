@@ -149,13 +149,13 @@ export default function ProfilesView({
             >
               {t('rbundles.apply')}
             </button>
-            <button
+            {!profile.builtin && <button
               type="button"
               onClick={() => setRemoving(profile)}
               className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
             >
               {t('rbundles.delete')}
-            </button>
+            </button>}
           </div>
         </Section>
       ))}

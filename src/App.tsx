@@ -55,6 +55,8 @@ import ProjectHome from './features/projects/ProjectHome'
 import ProviderWizard from './features/providers/ProviderWizard'
 import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
+import { useProfileWorkspace } from './features/profiles/useProfileWorkspace'
+import { useProfileMoves } from './features/profiles/useProfileMoves'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const FlowView = lazy(() => import('./features/flow/FlowView'))
@@ -92,6 +94,15 @@ function App() {
 
   const session = useEngineSession()
   const activeRecord = session.sessionsById[session.activeSession] ?? null
+  // Perfil activo: listas, cambio de perfil y movimientos entre perfiles.
+  useProfileWorkspace({
+    ready: session.ready,
+    activeRecord,
+    refreshSessions: session.refreshSessions,
+    refreshProjects: session.refreshProjects,
+    openDraft: () => { session.openDraft(); goChat() },
+  })
+  const profileMoves = useProfileMoves(session.projects)
   // Booleano estable: decide si hay header sin suscribirse a cada token.
   const activeHasContent = useSessionHasContent(session.runtime, session.activeSession)
   // Sesiones distintas con aprobaciones pendientes (una sesión cuenta una vez).
@@ -581,6 +592,7 @@ function App() {
     <I18nProvider lang={lang}>
       <EngineProvider session={session}>
       {confirmDialog}
+      {profileMoves.dialog}
       <BoardActivityController />
       <SoundCoordinator activeSession={session.activeSession} />
       <UpdateNotifier lang={lang} />
@@ -636,6 +648,8 @@ function App() {
             }
             onNewProjectChat={(id) => { session.openDraft(id); goChat() }}
             onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(String(error)))}
+            onMoveSessionProfile={profileMoves.moveSession}
+            onMoveProjectProfile={profileMoves.moveProject}
             onNewChat={() => dispatchAction('new-chat')}
             onOpenFolder={() =>
               void platform().dialog.openFiles({ directory: true }).then((selection) => {

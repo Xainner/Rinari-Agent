@@ -10,6 +10,7 @@ import { projectDisplayName } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
 import { ProjectBranch } from './ProjectBranch'
+import { ProjectFolders } from './ProjectFolders'
 
 export interface ProjectHomeProps {
   root: string
@@ -144,6 +145,8 @@ export default function ProjectHome({
           <Copy size={13} />
         </button>
       </div>
+
+      {project && <ProjectFolders projectId={project.id} />}
 
       <section aria-label="Git" className="rounded-xl border border-[var(--border)] px-3 py-2.5">
         {statusError !== null && (

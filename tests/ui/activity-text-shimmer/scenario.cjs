@@ -13,6 +13,7 @@ async function send(text) {
   await key('Enter')
 }
 const state = (selector='.activity-text-shimmer') => evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}),s=getComputedStyle(e),r=e.getBoundingClientRect();return {animation:s.animationName,position:s.backgroundPosition,fill:s.webkitTextFillColor,width:r.width,height:r.height,text:e.textContent}})()`)
+const still = async (selector) => { let s; await until(async()=>{s=await state(selector);return s.animation==='none'&&s.fill!=='rgba(0, 0, 0, 0)'},'reduced motion applied to the sheen'); return s }
 async function moving(selector) {
   const before=await state(selector); await delay(350); const after=await state(selector)
   assert.equal(before.animation,'activity-text-sheen')
@@ -75,17 +76,16 @@ scenario(async()=>{
   await size(950,760)
   await screenshot('boards-narrow')
   await emulate([{name:'prefers-reduced-motion',value:'reduce'}])
-  await delay(100) // allow Chromium to apply the media change on a rendered frame
-  let s=await state(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
+  // Chromium applies the media change on a later rendered frame, and a slow runner
+  // may need several: wait for the still, solid text instead of a fixed delay.
+  let s=await still(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
   await screenshot('system-reduced-motion')
   await emulate()
   await evaluate(`document.documentElement.dataset.motion='reduced'`)
-  await delay(100)
-  s=await state(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
+  s=await still(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
   await evaluate(`delete document.documentElement.dataset.motion`)
   await emulate([{name:'forced-colors',value:'active'}])
-  await delay(100)
-  s=await state(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
+  s=await still(group); assert.equal(s.animation,'none'); assert.notEqual(s.fill,'rgba(0, 0, 0, 0)')
   await emulate()
   await size(1400,900)
   await moving(group)

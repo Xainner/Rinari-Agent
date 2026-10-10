@@ -4702,6 +4702,178 @@
       "host_effects": []
     },
     {
+      "command": "project_folders_validate",
+      "module": "projects",
+      "args": [
+        {
+          "name": "paths",
+          "type": "Vec<String>",
+          "optional": false
+        },
+        {
+          "name": "project_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.folders.validate",
+      "engine_params": [
+        {
+          "key": "paths",
+          "from": "paths",
+          "optional": false
+        },
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_create",
+      "module": "projects",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "description",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "folders",
+          "type": "Vec<serde_json::Value>",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "open",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.create",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "description",
+          "from": "description",
+          "optional": true
+        },
+        {
+          "key": "folders",
+          "from": "folders",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        },
+        {
+          "key": "open",
+          "from": "open",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_folder_add",
+      "module": "projects",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "trust",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.folder.add",
+      "engine_params": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "trust",
+          "from": "trust",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_folder_remove",
+      "module": "projects",
+      "args": [
+        {
+          "name": "project_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.folder.remove",
+      "engine_params": [
+        {
+          "key": "project_id",
+          "from": "project_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "project_status",
       "module": "projects",
       "args": [

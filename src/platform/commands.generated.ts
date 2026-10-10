@@ -93,8 +93,12 @@ export type DesktopCommand =
   | "policy_get"
   | "project_add"
   | "project_changes"
+  | "project_create"
   | "project_delete"
   | "project_diff"
+  | "project_folder_add"
+  | "project_folder_remove"
+  | "project_folders_validate"
   | "project_get"
   | "project_intelligence"
   | "project_list"
@@ -320,8 +324,12 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "policy_get",
   "project_add",
   "project_changes",
+  "project_create",
   "project_delete",
   "project_diff",
+  "project_folder_add",
+  "project_folder_remove",
+  "project_folders_validate",
   "project_get",
   "project_intelligence",
   "project_list",
@@ -562,8 +570,12 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "policy_get",
   "project_add",
   "project_changes",
+  "project_create",
   "project_delete",
   "project_diff",
+  "project_folder_add",
+  "project_folder_remove",
+  "project_folders_validate",
   "project_get",
   "project_intelligence",
   "project_list",

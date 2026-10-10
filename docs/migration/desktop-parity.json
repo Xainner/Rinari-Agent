@@ -774,6 +774,13 @@
       ]
     },
     {
+      "command": "project_create",
+      "kind": "engine",
+      "method": "project.create",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_delete",
       "kind": "engine",
       "method": "project.delete",
@@ -786,6 +793,33 @@
       "method": "project.diff",
       "manual": false,
       "callers": []
+    },
+    {
+      "command": "project_folder_add",
+      "kind": "engine",
+      "method": "project.folder.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_folder_remove",
+      "kind": "engine",
+      "method": "project.folder.remove",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "project_folders_validate",
+      "kind": "engine",
+      "method": "project.folders.validate",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "project_get",
@@ -1885,10 +1919,10 @@
     }
   ],
   "summary": {
-    "commands": 225,
-    "engine_backed": 219,
+    "commands": 229,
+    "engine_backed": 223,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 75
+    "without_callers": 76
   }
 }

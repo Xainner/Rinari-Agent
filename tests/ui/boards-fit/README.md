@@ -18,6 +18,10 @@ Qué comprueba:
   identidad y su borrador.
 - Colapsar, expandir y modo foco. Pulsar el botón revela los paneles
   colapsados, venga del modo manual, del ajuste o del modo foco.
+- Al desplegar, cada composer nace en un panel de 48 px: aunque el
+  ResizeObserver no avise (ventana que no pinta, como en el runner), queda en
+  su altura real y no en la de 0 px de ancho. Un borrador largo crece hasta el
+  tope de Boards (`max-height` del textarea, 160 px como mucho).
 - Cambios de tamaño de la ventana, la barra lateral y zoom al 125 %.
 - La preferencia del panel lateral en modo cajón.
 - La persistencia al recargar, y que un turno fallido no redistribuye.

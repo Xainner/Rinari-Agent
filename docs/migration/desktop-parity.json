@@ -388,14 +388,18 @@
       "kind": "engine",
       "method": "followup.dismiss",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "followup_list",
       "kind": "engine",
       "method": "followup.list",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "initial_open_request",
@@ -1885,6 +1889,6 @@
     "engine_backed": 219,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 77
+    "without_callers": 75
   }
 }

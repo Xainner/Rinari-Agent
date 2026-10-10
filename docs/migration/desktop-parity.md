@@ -59,8 +59,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `engine_start` | host | — | **ninguno** |
 | `engine_status` | host | — | **ninguno** |
 | `followup_accept` | engine | `followup.accept` | **ninguno** |
-| `followup_dismiss` | engine | `followup.dismiss` | **ninguno** |
-| `followup_list` | engine | `followup.list` | **ninguno** |
+| `followup_dismiss` | engine | `followup.dismiss` | `src/services/engine.ts` |
+| `followup_list` | engine | `followup.list` | `src/services/engine.ts` |
 | `initial_open_request` | host | — | **ninguno** |
 | `mcp_create` | engine | `mcp.create` | `src/services/engine.ts` |
 | `mcp_get` | engine | `mcp.get` | **ninguno** |

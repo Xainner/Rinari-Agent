@@ -65,6 +65,22 @@ export const scenarios = {
     },
     model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'DICTADO RECIBIDO' }))),
   },
+  'checklist-dock': {
+    title: 'Lista de tareas en vivo: sobre el composer, pendiente, recarga, completa y retirada; nunca en una charla simple',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Informe' })),
+      main: [
+        { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"in_progress"},{"id":"b","content":"Escribir el informe","status":"pending"},{"id":"c","content":"Revisar las cifras","status":"pending"}] }, say: 'Armo la lista.' },
+        { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"completed"},{"id":"b","content":"Escribir el informe","status":"in_progress","active_form":"Escribiendo el informe"},{"id":"c","content":"Revisar las cifras","status":"pending"}] }, say: 'Avanzo.' },
+        { text: 'PRIMERA PARTE' },
+        { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"completed"},{"id":"b","content":"Escribir el informe","status":"completed"},{"id":"c","content":"Revisar las cifras","status":"completed"}] }, say: 'Termino.' },
+        { text: 'TODO LISTO' },
+        { text: 'DE NADA' },
+        { text: 'HOLA DE VUELTA' },
+      ],
+    }, laneOf),
+  },
   'skill-manager': {
     title: 'Gestor de skills: lección desde el turno, freno de duplicados con motivo y fusión preparada',
     phases: ['exercise'],

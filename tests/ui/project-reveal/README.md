@@ -8,7 +8,10 @@ Seleccionar, refrescar o renombrar no deshacen un colapso manual.
 Normal registra la carpeta con `project.add` antes de `project.open`: el
 primer `created` indica un alta y el segundo una sesión recomendada nueva. Un
 alta confirmada queda visible aunque después no se pueda crear la sesión.
-Boards aplica la misma regla sin cambiar la selección de Normal.
+Boards aplica la misma regla sin cambiar la selección de Normal. Su «Abrir
+carpeta» abre la ventana «Nuevo proyecto» con la carpeta elegida y, al crear,
+añade un panel borrador (sin conversación vacía); una carpeta que ya es de un
+proyecto abre ese proyecto y avisa si ya tiene panel.
 
 ```bash
 npm run ui:e2e -- project-reveal [--keep]

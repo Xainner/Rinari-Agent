@@ -8,6 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { useBoardStore, defaultBoard } from '../../stores/board'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { useCreateProjectStore } from '../projects/createProjectStore'
 import AddPaneDialog from './AddPaneDialog'
 import { BoardHarness, engineFixture, projectFixture, sessionFixture } from './testUtils'
 
@@ -15,6 +16,7 @@ beforeEach(() => {
   window.localStorage.clear()
   useProjectExpansionStore.setState({ choices: {}, query: '' })
   useBoardStore.getState().hydrate(defaultBoard())
+  useCreateProjectStore.getState().close()
   vi.mocked(invoke).mockReset()
 })
 afterEach(cleanup)
@@ -50,31 +52,50 @@ it('warns before adding a second pane on a root already present and only creates
   expect(engine.createSession).not.toHaveBeenCalled()
 })
 
-it('registers a picked folder with project.add and never calls project.open', async () => {
+it('a new folder opens the «Nuevo proyecto» window; creating there adds a draft pane', async () => {
   vi.mocked(openFolderDialog).mockResolvedValue(['/repo/new'])
-  vi.mocked(invoke).mockImplementation(async (command: string) => {
-    if (command === 'project_add') return { project: projectFixture('proj_new', 'Nuevo', { root: '/repo/new', canonical_root: '/repo/new' }), created: true }
-    return {}
-  })
+  const onOpenChange = vi.fn()
   const onAddDraft = vi.fn()
   const engine = engineFixture({ projects, sessions, createSession: vi.fn(async () => 'ses_folder') })
-  render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} onAddDraft={onAddDraft} /></BoardHarness>)
-  const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: /Abrir carpeta/ }))
-  await screen.findByRole('button', { name: /Abrir carpeta/ })
-  expect(invoke).toHaveBeenCalledWith('project_add', expect.objectContaining({ path: '/repo/new' }))
+  render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={onOpenChange} onAdded={vi.fn()} onAddDraft={onAddDraft} /></BoardHarness>)
+  await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))
+  await vi.waitFor(() => expect(useCreateProjectStore.getState().open).toBe(true))
+  const state = useCreateProjectStore.getState()
+  expect(state.paths).toEqual(['/repo/new'])
+  // The pane is a draft: the window must not create a first conversation.
+  expect(state.options.openSession).toBe(false)
+  expect(onOpenChange).toHaveBeenCalledWith(false)
+  // Nothing is registered until the window creates the project.
+  expect(invoke).not.toHaveBeenCalledWith('project_add', expect.anything())
+  expect(onAddDraft).not.toHaveBeenCalled()
+
+  state.options.onCreated?.(projectFixture('proj_new', 'Nuevo', { root: '/repo/new', canonical_root: '/repo/new' }), null)
   expect(engine.refreshProjects).toHaveBeenCalled()
   expect(onAddDraft).toHaveBeenCalledWith('proj_new')
   expect(engine.createSession).not.toHaveBeenCalled()
   expect(engine.openProject).not.toHaveBeenCalled()
-  expect(useProjectExpansionStore.getState().choices.proj_new).toBe(true)
+})
+
+it('a folder of a visible project (root or extra folder) adds that project without the window', async () => {
+  const withExtra = [projectFixture('proj_c', 'Tienda', {
+    folders: [
+      { path: '/repo/proj_c', primary: true, position: 0, exists: true },
+      { path: 'C:\\Code\\Web', primary: false, position: 1, exists: true },
+    ],
+  })]
+  vi.mocked(openFolderDialog).mockResolvedValue(['c:\\code\\web\\'])
+  const onAddDraft = vi.fn()
+  const engine = engineFixture({ projects: withExtra, sessions })
+  render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} onAddDraft={onAddDraft} /></BoardHarness>)
+  await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))
+  await vi.waitFor(() => expect(onAddDraft).toHaveBeenCalledWith('proj_c'))
+  expect(useCreateProjectStore.getState().open).toBe(false)
 })
 
 it('does not reveal an existing folder when duplicate creation is cancelled', async () => {
   useBoardStore.getState().addPane('ses_a')
   useProjectExpansionStore.setState({ choices: { proj_a: false }, query: 'hidden' })
   vi.mocked(openFolderDialog).mockResolvedValue(['/repo/proj_a'])
-  vi.mocked(invoke).mockResolvedValue({ project: projects[0], created: false })
   const engine = engineFixture({ projects, sessions })
   render(<BoardHarness engine={engine}><AddPaneDialog open onOpenChange={vi.fn()} onAdded={vi.fn()} onAddDraft={vi.fn()} /></BoardHarness>)
   await userEvent.click(screen.getByRole('button', { name: /Abrir carpeta/ }))

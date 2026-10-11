@@ -1,126 +1,211 @@
 <div align="center">
 
-<img src="docs/assets/rinari-agent-hero-v2.png" alt="Rinari moving through a sculptural glass workspace — Your ideas. In motion." width="100%" />
+<a href="https://rinari.ai"><img src="docs/assets/readme/hero.jpg" alt="Rinari Agent — Your AI engineering companion. New in 0.3 · Obsidian Neon." width="100%" /></a>
 
 # Rinari Agent
 
-**Turn a conversation into work you can inspect.**
+**Your AI engineering companion, on your desktop.**<br>
+She reads your repo, does the work and shows you the evidence, in a workspace you can follow step by step.
 
-A desktop workspace for AI-assisted development, research and project work.
-Bring your models. Keep your context. Follow the execution.
-
+[![Release](https://img.shields.io/github/v/release/Xainner/Rinari-Agent?color=9358ff&label=release)](https://github.com/Xainner/Rinari-Agent/releases/latest)
 [![CI](https://github.com/Xainner/Rinari-Agent/actions/workflows/agent-ci.yml/badge.svg)](https://github.com/Xainner/Rinari-Agent/actions/workflows/agent-ci.yml)
-![Stage](https://img.shields.io/badge/status-early%20development-8B5CF6)
-![Languages](https://img.shields.io/badge/interface-English%20%2F%20Espa%C3%B1ol-8B5CF6)
+[![License: MIT](https://img.shields.io/badge/license-MIT-9358ff)](LICENSE)
+![Windows x64](https://img.shields.io/badge/Windows-x64-241047)
+![English · Español](https://img.shields.io/badge/interface-English%20%C2%B7%20Espa%C3%B1ol-241047)
 
-[Get started](#get-started) · [Explore the workspace](#a-workspace-that-keeps-you-in-the-loop) · [Build from source](#build-from-source) · [Report an issue](https://github.com/Xainner/Rinari-Agent/issues)
+[**Download**](https://github.com/Xainner/Rinari-Agent/releases/latest) · [rinari.ai](https://rinari.ai) · [What's new](#whats-new-in-03) · [Install](#install) · [Build from source](#build-from-source) · [Rinari CLI](https://github.com/Xainner/Rinari-CLI)
 
 </div>
 
-## Your task is more than a prompt
+<br>
 
-Real work involves files, decisions, commands, revisions and a reason to trust the result. Rinari Agent brings those pieces together around the conversation, so you can ask for a change, follow the work and inspect what happened without piecing it together from terminal output.
+<p align="center">
+  <img src="docs/assets/readme/plan-end.webp" alt="Rinari Agent 0.3 in PLAN mode: a written plan ends with “Implement this plan?” and the choice stays with you." width="100%" />
+  <br><sub>Every image below the banner is a real capture of Rinari Agent 0.3.1. The project is a demo café app.</sub>
+</p>
 
-It is the desktop home for [Rinari Engine](https://github.com/Xainner/Rinari-CLI): the same engine behind Rinari CLI, with a visual workspace for projects, tools, agents and results.
+## What's new in 0.3
 
-> **Available in the current source, evolving toward v1.** This README describes the implemented desktop experience, not a promise that every feature is included in an older installer. Check the [release notes](https://github.com/Xainner/Rinari-Agent/releases) for the build you install. Features also depend on a compatible engine and the capabilities of your selected model.
+**Obsidian Neon.** Every screen is redesigned around ink black and the neon violet of Rinari's headphones, with glass surfaces, motion that follows what is actually happening and Rinari's art where it helps. The workspace also learned new tricks:
 
-## A workspace that keeps you in the loop
+<table>
+<tr>
+<td width="50%" valign="top">
 
-### Start with intent. Stay with the project.
+### Several folders. One project.
+An app and its website in one project, each folder with its own branch and trust. The **New project** window gathers name, description, folders, profile and a summary before anything is created.
 
-Open a folder, start a chat or pick up a saved session. Organize projects, pin the ones you use, and resume conversations with their history intact. Choose **PLAN**, **BUILD** or **REVIEW** to express how you want to approach the task; the engine applies the corresponding execution and permission rules.
+</td>
+<td width="50%" valign="top"><img src="docs/assets/readme/new-project.webp" alt="The New project window with two trusted folders" /></td>
+</tr>
+<tr>
+<td colspan="2">
 
-Attach source files, images, PDFs, Word documents or spreadsheets. Use `@` search to bring workspace files into the conversation. Document extraction, OCR and supported vision inputs help turn existing material into useful context—not just another file path in a prompt.
+### A live checklist
+For multi-step work she keeps a checklist above the composer: what is done, what is in progress, what is left. You can steer her mid-turn without stopping the run.
 
-### See the work behind the answer.
+<img src="docs/assets/readme/checklist.webp" alt="The checklist above the composer, one of four steps in progress" />
 
-Follow model messages, tool calls, command output and results in an execution timeline. Inspect elapsed time, errors and cancellation state. When agents are involved, expand their activity to see their objective, commands, permissions and result alongside the parent conversation.
+</td>
+</tr>
+<tr>
+<td colspan="2">
 
-When a decision needs your input, answer an interactive question or respond to an approval request in context. Observable activity is shown as activity—not presented as private model reasoning.
+### She remembers what matters
+When she learns something worth keeping, a card shows up in the chat. You choose whether she asks first or remembers on her own, and review everything in **Settings → Memory**. Export and import included.
 
-### Review what changed, not just what was said.
+<img src="docs/assets/readme/memory.webp" alt="“Rinari wants to remember: Money rounding convention”, approved" />
 
-Inspect project changes and diffs, task state, verification results, artifacts, context and usage from the workspace. Preview checkpoint restoration before confirming it. Where supported by the engine, review and undo changes associated with a turn.
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-Rinari gives you the evidence to review a result. A generated answer is not a substitute for tests, and a successful tool call is not a guarantee that a task is correct.
+### And leaves you notes
+Spotted something outside the task? She pins a note. Showing it does nothing; accepting it opens a new conversation with that task.
 
-### Keep execution within reach.
+</td>
+<td valign="top" align="center"><img src="docs/assets/readme/note.webp" alt="A note from Rinari: escape menu item names in receipt HTML" width="300" /></td>
+</tr>
+<tr>
+<td valign="top">
 
-The browser panel embeds the native Chromium target the engine is actually using. Choose a page, take or return manual control, and keep the same target, storage partition and lifecycle inside the session dock.
+### Profiles become workspaces
+Each profile keeps its own projects and conversations. Switch from the sidebar header; everything you already had lives in **Default**.
 
-The processes panel shows session-owned background commands, logs and status, with controls to stop managed resources. Local HTML previews have their own viewing surface. Follow a development server or inspect its output without losing the conversation.
+</td>
+<td valign="top" align="center"><img src="docs/assets/readme/profiles.webp" alt="The profile menu with three profiles" width="320" /></td>
+</tr>
+<tr>
+<td colspan="2">
 
-### Work several projects side by side.
+### Talk to her, locally
+`Ctrl+Space` and speak. whisper.cpp transcribes on your computer; no audio is sent to any service.
 
-**Boards** puts N sessions in one window, each with its own project, provider and model, chat and workspace. Panes collapse into strips, keep a confirmed status (working, needs you, finished, failed) with unread results, and the agents of a board can message each other — every message from another agent is treated as untrusted data, needs your approval per destination and never grants the receiver new permissions. Toggle with `Ctrl+Shift+B`.
+<img src="docs/assets/readme/dictation.webp" alt="The composer while dictating" />
 
-## Your models. Your working style.
+</td>
+</tr>
+</table>
 
-| Make it yours | What is available today |
+Also in 0.3: **Full access** asks for confirmation and explains what it allows, remote MCP servers with bearer tokens and headers, visible retries and **Continue** after a provider limit, persistent logs with **Export diagnostics**, and a skills manager with **Save as lesson**. The full list is in the [release notes](https://github.com/Xainner/Rinari-Agent/releases).
+
+> [!IMPORTANT]
+> **Updating from 0.2?** The first time 0.3 opens, Rinari's database moves to a new schema. Your conversations, projects and providers are kept, but 0.2.x can't reopen that data afterwards.
+
+## Plan. Build. Review. Your call.
+
+Pick how she approaches the task. The engine applies the permissions that go with each mode.
+
+<table>
+<tr>
+<td width="33%" valign="top"><b>PLAN</b> · plans first, touches nothing.<br><sub>She ends with “Implement this plan?” and waits for you.</sub></td>
+<td width="33%" valign="top"><b>BUILD</b> · does the work and runs the checks.<br><sub>In this capture: 13 tests pass, plus syntax and diff checks.</sub></td>
+<td width="33%" valign="top"><b>REVIEW</b> · reads, verifies, reports.<br><sub>Here an arithmetic check confirms a real rounding defect. No files modified.</sub></td>
+</tr>
+<tr>
+<td colspan="3"><img src="docs/assets/readme/build-end.webp" alt="BUILD mode: a finished turn with the checklist done and the validation summary" /></td>
+</tr>
+</table>
+
+## She shows her work
+
+Tool calls, approvals, evidence and diffs sit next to the conversation: observable activity, not a story about it.
+
+<table>
+<tr>
+<td colspan="2">
+
+**Your changes? She asks first.** Risky actions wait for you with the risk level and the exact path: deny, allow once or allow in this chat.<br>
+<img src="docs/assets/readme/approval.webp" alt="“Your approval before continuing: overwrite your changes that are not in git”, risk medium" />
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**Every claim, with evidence.** Tests, diff checks and syntax checks are recorded in the Verification panel, each with its command and result.<br>
+<img src="docs/assets/readme/evidence.webp" alt="The Verification panel listing the latest evidence" />
+
+</td>
+<td width="50%" valign="top">
+
+**Subagents, in parallel.** Two read-only reviewers at once. She waits, merges and gives you one verdict.<br>
+<img src="docs/assets/readme/subagents.webp" alt="Two reviewer subagents working in parallel" />
+<br><br>
+
+**Full access explains itself.** Before you turn it on, she lists what it allows and what she will still ask about.<br>
+<img src="docs/assets/readme/fullaccess.webp" alt="The “Turn on Full access?” confirmation" width="80%" />
+
+</td>
+</tr>
+</table>
+
+**Boards** puts several conversations in one window, each with its own project, model and chat (`Ctrl+Shift+B`). **Flows** lays a session out as its stages, with turns, time and the agents involved.
+
+<img src="docs/assets/readme/boards.webp" alt="Boards with two conversations side by side" width="100%" />
+
+## Your models. Her personality.
+
+| Setting | What you get |
 | :--- | :--- |
-| **Provider connections** | Setup presets for OpenAI, Anthropic, Ollama, LM Studio and custom compatible endpoints. Test connections and discover models. |
-| **Model selection** | Choose models and supported reasoning effort for conversations; configure agent model assignments. |
-| **Context and tools** | Work with file attachments, workspace search, engine tools, MCP connections and plugins. |
-| **Rinari's voice** | Choose and manage Souls separately from tool permissions and execution policy. |
-| **Desktop comfort** | English and Spanish, appearance settings, keyboard shortcuts, command palette and reduced-motion preferences. |
+| **Providers** | Presets for OpenAI, Anthropic, Ollama, LM Studio and OpenCode Go, plus any OpenAI-compatible endpoint. Test the connection, discover models, pick one per chat and per agent. Claude Subscription is available as an experimental opt-in in **Settings → Providers**. |
+| **Reasoning** | A slider from the fastest level up to **Ultra** on models that support it. Levels depend on the model and provider. |
+| **Personality** | **Minimal**, **Balanced** or **Full character**. It changes how much of her shows in the answers, never what she can do or how she reports results. |
+| **Tools** | File attachments with OCR and vision where supported, `@` workspace search, MCP servers (stdio and remote), skills, plugins and an embedded browser you can take over. |
+| **Comfort** | English and Spanish, keyboard shortcuts, a command palette, sounds and reduced motion. |
 
-You supply the provider connection. Remote providers may charge for usage; local models require a running compatible server and suitable hardware. Tool calling, vision and reasoning options vary by model.
+<table>
+<tr>
+<td width="55%" valign="top"><img src="docs/assets/readme/ultra.webp" alt="The reasoning slider set to Ultra" /></td>
+<td width="45%" valign="top"><img src="docs/assets/readme/intensity-full.webp" alt="Settings → Personality, Full character selected" /><br><br><img src="docs/assets/readme/intensity-min.webp" alt="Settings → Personality, Minimal selected" /></td>
+</tr>
+</table>
 
-## A few ways to put Rinari to work
+You bring the provider connection. Remote providers may charge for usage; local models need a running compatible server and suitable hardware. Tool calling, vision and reasoning levels vary by model.
 
-These are starting prompts, not pre-recorded outcomes. Results depend on your project, model, available tools and permissions.
+## Install
 
-| Start with… | Then use the workspace to… |
-| :--- | :--- |
-| “Map this repository and propose a plan before editing.” | Read the plan, inspect the files consulted and decide how to proceed. |
-| “Implement this change and run the relevant tests.” | Follow commands, answer approvals and review the resulting diff and verification. |
-| “Review these changes for regressions.” | Inspect findings against the actual changed files. |
-| “Use this PDF and these screenshots to explain the requirements.” | Supply document and visual context, subject to extraction and model capabilities. |
-| “Investigate this page and summarize what you find.” | Observe the engine browser and inspect the supporting tool results. |
+1. **Download** `Rinari-Agent-Setup-<version>-x64.exe` from the [latest release](https://github.com/Xainner/Rinari-Agent/releases/latest).
+2. **Run the installer.** Install **only for you** or **for all users** (needs administrator permission), with shortcuts if you want them. Tick **Add Rinari CLI to PATH** to use `rinari` from any terminal (it is off by default).
+3. **Connect a model** in **Settings → Providers**: test the connection and pick a model.
+4. **Open a project**, choose PLAN, BUILD or REVIEW and describe the outcome you want.
 
-## Get started
+The installer isn't code-signed yet, so Windows SmartScreen may ask you to confirm.
 
-1. **Choose a build.** Visit [Releases](https://github.com/Xainner/Rinari-Agent/releases) and read its platform and installation notes. If no suitable build is published, [build from source](#build-from-source).
-2. **Connect a model.** Configure a provider in Settings, test the connection and select a model appropriate for your task.
-3. **Bring your work.** Open a project or create a conversation. Add the files Rinari needs, choose a mode and describe the outcome you want.
-4. **Stay involved.** Follow activity, respond to approvals and review the results before relying on them.
-
-With an updated Rinari CLI and the desktop executable available:
-
-```bash
-rinari desktop .
-```
-
-`rinari code` remains a compatibility alias. Set `RINARI_AGENT_BIN` to the desktop executable if it is not on `PATH`. The separate `rinari agent` command retains its autonomous-task meaning.
-
-Upgrading from Rinari Code? Read the [identity and profile migration notes](docs/identity-migration.md).
-
-## Know the boundaries
-
-- **A desktop agent workspace, not a full IDE replacement.** A full terminal workspace, advanced Soul editing and an enriched Agent Studio remain outside the current offering.
-- **Local desktop does not mean every task stays offline.** Cloud models and external tools can send data to their configured services. Credentials are owned by the engine, not stored in frontend browser storage.
-- **Capabilities are explicit.** Attachments have size and page limits; OCR and vision have distinct requirements. See [attachments, OCR and vision](docs/attachments.md).
-- **Process ownership matters.** The processes panel manages engine-owned session resources, not arbitrary operating-system processes, and does not promise recovery of running processes after an engine crash.
-- **Distribution is still maturing.** The custom Windows x64 installer and Electron update flow are implemented and tested unsigned. Authenticode and other platforms need release-specific validation.
+**Updating.** The app tells you when a new release is out. From a terminal, `rinari update` updates the app and the CLI together (`--check` only reports; `--desktop-only` and `--cli-only` narrow it).
 
 ## One engine. Two ways to work.
 
-The desktop does not duplicate the agent runtime. Rinari Engine owns execution, sessions, model routing, approvals, credentials and persistent operational state. Rinari Agent makes that state visible and provides native desktop integration.
+The desktop doesn't duplicate the agent runtime. [Rinari Engine](https://github.com/Xainner/Rinari-CLI) owns execution, sessions, model routing, approvals, credentials and state; Rinari Agent makes that state visible. Start a task in the terminal and continue the **same session** on the desktop:
+
+```bash
+rinari desktop . --session <id>
+```
+
+<img src="docs/assets/readme/handoff.webp" alt="A session started in the CLI, open in Rinari Agent: the request from the terminal is the first message" width="100%" />
 
 ```mermaid
 flowchart LR
     Desktop["Rinari Agent · Desktop"] --> Engine["Rinari Engine"]
     CLI["Rinari CLI · Terminal"] --> Engine
     Engine --> Work["Models · Tools · Agents"]
-    Engine --> State["Sessions · Context · Artifacts"]
+    Engine --> State["Sessions · Context · Memory"]
 ```
 
-The desktop uses **React 19 + TypeScript + Electron**. A sandboxed preload exposes a narrow platform contract, and a versioned protocol over stdio connects the Electron main process to the Python engine. The compatible revision and required capabilities are pinned in [engine-manifest.json](engine-manifest.json).
+The desktop is **React 19 + TypeScript + Electron**. A sandboxed preload exposes a narrow platform contract, and a versioned NDJSON protocol over stdio connects the Electron main process to the Python engine. The compatible engine revision and required capabilities are pinned in [engine-manifest.json](engine-manifest.json).
+
+## Know the boundaries
+
+- **A workspace for agent work, not a full IDE.** Edit code in your editor; follow, approve and verify the work here.
+- **Local app, not necessarily offline.** Cloud models and external tools send data to the services you configure. Credentials are owned by the engine, never stored in the renderer.
+- **Capabilities are explicit.** Attachments have size and page limits; OCR and vision have their own requirements ([attachments, OCR and vision](docs/attachments.md)).
+- **Evidence is not a guarantee.** Verification shows what was checked. Review diffs and results before relying on them.
+- **Windows x64 first.** Other platforms need release-specific validation.
 
 ## Build from source
 
-You will need Node.js 22.12 or newer, npm 10 and a compatible [Rinari CLI checkout](https://github.com/Xainner/Rinari-CLI). Running the engine from source also requires Python 3.11+ and uv. Rust is needed only when building the separate custom Windows setup bootstrapper.
+You need Node.js 22.12+, npm 10 and a [Rinari CLI](https://github.com/Xainner/Rinari-CLI) checkout at the revision in [engine-manifest.json](engine-manifest.json). Running the engine from source also needs Python 3.11+ and uv.
 
 ```bash
 git clone https://github.com/Xainner/Rinari-Agent.git
@@ -128,7 +213,7 @@ cd Rinari-Agent
 npm ci
 ```
 
-Point the native host at your engine checkout, using the revision in the manifest. PowerShell example:
+Point the native host at your engine checkout (PowerShell):
 
 ```powershell
 $env:RINARI_ENGINE_BIN = "uv"
@@ -137,23 +222,21 @@ $env:RINARI_ENGINE_CWD = "C:\dev\Rinari-CLI"
 npm run desktop:dev
 ```
 
-Replace the checkout path with your own. The host also supports configured installations and packaged engine resources. A Vite-only preview is not a substitute for the native host and engine.
+Local dictation from a source build needs `RINARI_WHISPER_BIN` pointing to a `whisper-cli.exe` (the installer ships one). A Vite-only preview is not a substitute for the native host and engine.
 
 <details>
-<summary><strong>Validation and Windows packaging</strong></summary>
+<summary><strong>Checks and Windows packaging</strong></summary>
 
 ```bash
-npm ci --prefix installer/setup # Dependencies for the setup UI component tests
-npm test
+npx vitest run
+npm run build
+npm run typecheck:electron
 npm run protocol:check
 npm run parity:check
-npm run typecheck:electron
-npm run build
-npm run desktop:build
-npm run desktop:smoke
+npm run ui:e2e -- <scenario>
 ```
 
-Protocol checks require the matching engine schema. When changing the contract, update the engine first, regenerate the desktop types and validate both repositories.
+`npm run ui:e2e -- ui-tour` captures every surface of the app. Protocol checks need the matching engine schema: when the contract changes, update the engine first, regenerate the desktop types and validate both repositories.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/package-engine.ps1 -CliRepo C:\dev\Rinari-CLI -OutDir engine-dist
@@ -161,61 +244,24 @@ npm ci --prefix installer/setup
 npm run package:win
 ```
 
-The packaging script builds the engine bundle and Electron payload; the isolated custom bootstrapper produces the installer. See the [packaging decision](docs/adr/0001-engine-packaging.md) and [release guide](docs/releases.md) for distribution and signing requirements.
+See the [packaging decision](docs/adr/0001-engine-packaging.md) and the [release guide](docs/releases.md).
 
 </details>
 
 ## Go deeper
 
-[Architecture and contributor rules](AGENTS.md) · [Activity timeline](docs/activity-timeline.md) · [Agents and browser](docs/agents-and-browser.md) · [Background processes](docs/background-processes.md) · [Attachments](docs/attachments.md) · [Release guide](docs/releases.md)
+[Architecture and contributor rules](AGENTS.md) · [Obsidian Neon design system](docs/design/obsidiana-neon.md) · [Activity timeline](docs/activity-timeline.md) · [Agents and browser](docs/agents-and-browser.md) · [Background processes](docs/background-processes.md) · [Release guide](docs/releases.md) · [Docs on rinari.ai](https://rinari.ai/docs/)
 
-Found a bug or a workflow that needs attention? [Open an issue](https://github.com/Xainner/Rinari-Agent/issues) with your app and engine versions, reproduction steps and redacted logs. Never include provider keys or private project data.
+Found a bug? [Open an issue](https://github.com/Xainner/Rinari-Agent/issues) with your app and engine versions, the steps to reproduce it and an exported diagnostic (**Settings → About → Export diagnostics**; it doesn't include your conversations). Never include provider keys or private project data.
 
 ---
 
 <div align="center">
 
-<img src="docs/assets/rinari-agent-closing-v2.png" alt="Rinari walking toward a luminous doorway — Build what comes next." width="100%" />
-
 **Bring the idea. Keep sight of the work.**
 
-[Explore releases](https://github.com/Xainner/Rinari-Agent/releases) · [Meet the engine](https://github.com/Xainner/Rinari-CLI) · [Help shape Rinari](https://github.com/Xainner/Rinari-Agent/issues)
+[Download](https://github.com/Xainner/Rinari-Agent/releases/latest) · [rinari.ai](https://rinari.ai) · [Rinari CLI](https://github.com/Xainner/Rinari-CLI) · [MIT License](LICENSE)
 
-<sub>Rinari character illustrations are brand artwork, not application screenshots.</sub>
+<sub>The banner is brand artwork; every other image is a real capture of the app.</sub>
 
 </div>
-
-
-## Inicio y apariencia de Rinari Agent
-
-El shell utiliza una paleta oscura violeta fija, la barra de ventana nativa del sistema y
-un sidebar con conversaciones agrupadas por fecha local. Los temas y acentos previos
-se conservan en las preferencias, pero sus selectores están deshabilitados durante
-esta etapa del rediseño. La preferencia de movimiento reducido sigue disponible.
-
-La sesión vacía muestra la ilustración de `public/brand/home.webp` y un composer
-compartido con las conversaciones activas: adjuntos y permisos a la izquierda,
-PLAN / BUILD / REVIEW en el centro, y modelo, razonamiento y envío a la derecha.
-Los recursos originales proceden del concept proporcionado para Rinari Agent.
-
-Las cuatro sugerencias usan un catálogo local, sin llamadas a modelos. Priorizan
-archivos adjuntos, cambios de Git conocidos y proyecto abierto; «Otras ideas» recorre
-las alternativas aplicables. Elegir una tarjeta prepara un borrador editable sin
-enviarlo ni cambiar el modo o los permisos. Mientras hay texto, las tarjetas quedan
-estables y deshabilitadas para proteger el borrador. La preferencia de ocultarlas
-continúa funcionando.
-
-La ventana nueva solicita 1440 × 900; se conserva la restauración de ventana existente
-y se limita su tamaño y posición al área de trabajo del monitor, considerando el
-marco nativo. No hay una segunda barra de ventana dibujada en React.
-
-El inicio se centra verticalmente en el espacio disponible, con una ilustración
-más grande y un composer de hasta 1080 px. Al enviar el primer mensaje, la misma
-instancia del composer se desplaza suavemente hacia abajo mientras el inicio se
-desvanece. Se respeta el movimiento reducido del sistema y de las preferencias.
-
-Los grupos de proveedores del selector de modelos se pueden contraer y expandir.
-Al buscar, los grupos coincidentes se muestran expandidos; al limpiar la búsqueda,
-recuperan su estado anterior. El icono de aplicación está versionado en
-`build/icon.ico` y lo consumen tanto el payload Electron como el bootstrapper
-de instalación.

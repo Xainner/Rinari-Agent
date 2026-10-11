@@ -377,7 +377,11 @@ export default function Composer({
   }, [acceptsGlobalFocus, sessionId])
 
   useEffect(() => {
-    if (acceptsGlobalFocus) textareaRef.current?.focus()
+    if (!acceptsGlobalFocus) return
+    // Pulsar el botón del panel lateral de un panel de Boards lo enfoca y abre
+    // a la vez el cajón, que toma el foco: el composer no se lo quita.
+    if (document.activeElement?.closest('.pane-dock-drawer')) return
+    textareaRef.current?.focus()
   }, [placement, acceptsGlobalFocus])
 
   const { armSendReset, cancelSendReset } = useComposerHeight(textareaRef, text, draftKey, placement, reducePillMotion)

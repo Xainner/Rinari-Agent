@@ -1,9 +1,10 @@
 # Sesiones hijas y Boards reimaginado
 
-Estado: **propuesta para revisar**, segunda versión (2026-10-11). Incorpora la dirección del dueño:
-- **Se quita la mensajería entre paneles de Boards.** La comunicación entre agentes pasa a una función nueva, «Rinari Bots» (nombre pendiente), que tiene su documento propio: [idea-rinari-bots.md](idea-rinari-bots.md).
+Estado: **propuesta para revisar**, tercera versión (2026-10-12). Incorpora la dirección del dueño:
+- **Se quita la mensajería entre paneles de Boards.** La comunicación entre agentes pasa a una función nueva, **Rinari Agency**, que tiene su documento propio: [idea-rinari-agency.md](idea-rinari-agency.md).
 - **Se rescatan las sesiones madre → hija** en conversaciones normales y proyectos, anidadas, como en Claude Code. Las hijas heredan los permisos de la madre, sin volver a pasar por el ciclo de aprobaciones.
 - **Boards se reimagina para lo que es:** varias sesiones en pantalla, trabajando en paralelo, de la forma más eficiente posible.
+- **Todo lo pendiente de Boards en un solo lugar** (Parte C): lo que estaba en el plan 0.3.2, en Planka y en `docs/debt.md`, más el bug nuevo del «Preparando el turno…». Al final, un mapa del código para quien se suma a Boards o a la Agency.
 
 ---
 
@@ -34,7 +35,7 @@ Las notas, los forks y las tareas programadas lo llenan desde ya.
 | `followup.suggest` (ya existe) | Ve trabajo que vale la pena fuera del pedido | Una nota. **Si el dueño la acepta, nace una hija** (como hoy, pero anidada). |
 | `session.start({title, prompt, isolation?, context?})` **nueva** | **El dueño se lo pidió** («abre una sesión para…», «hazlo aparte») | La hija nace y empieza al instante. |
 | `session.children()` **nueva** | Para saber cómo van sus hijas | Estado y resumen de cada una. |
-| `session.message({child, text})` **nueva** | Seguimiento a **una hija suya** (más contexto, una corrección) | Le llega como guía si está trabajando, o empieza un turno si no. Solo hacia sus propias hijas: nada lateral (eso es de Bots). |
+| `session.message({child, text})` **nueva** | Seguimiento a **una hija suya** (más contexto, una corrección) | Le llega como guía si está trabajando, o empieza un turno si no. Solo hacia sus propias hijas: nada lateral (eso es de la Agency). |
 
 - `context`:
   - `"brief"` (por defecto): la hija recibe solo el encargo autocontenido;
@@ -173,6 +174,63 @@ Paneles por sesión, tiras plegadas, el panel lateral por sesión, ajustar a la 
 
 ---
 
+## Parte C. Lo pendiente de Boards hoy
+
+Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka, `docs/debt.md` y lo visto en pruebas), junto en un solo lugar.
+
+| # | Qué | De dónde | Estado |
+|---|---|---|---|
+| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Causa verificada. En 0.3.2 como #39 |
+| C2 | El composer le quitaba el foco al cajón del panel lateral (el rojo de `boards-side-panel` en `main`) | Plan 0.3.2, «CI» | Hecho en la rama `0.3.2` (0c7f34f, sin subir) |
+| C3 | La flecha de la lista de pasos apunta al revés; revisar que en los paneles (`density="pane"`) también esté anclada abajo | Plan 0.3.2, #22 | Decidido |
+| C4 | Los avisos de turno terminado solo existen para paneles del board. Se extienden a todas las conversaciones reutilizando `useBoardNotifications`, y sus preferencias pasan a Ajustes → Notificaciones | Plan 0.3.2, #33 | Decidido. Toca código de Boards: coordinar |
+| C5 | Pendientes de otros perfiles: agregar paneles filtra por el perfil activo y lo de otros perfiles no se ve | Plan 0.3.2, #34 | Decidido (depende de C4) |
+| C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Decidido (B.4, fase B1) |
+| C7 | Mensajes entre paneles «como subagentes» | Planka, Idea; triage I1 | Resuelto por decisión: la mensajería se quita (B.4) y la comunicación entre agentes pasa a [Rinari Agency](idea-rinari-agency.md) |
+| C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Sin decidir. Encaja con el pulido de movimiento (B5) |
+| C9 | Panel en blanco (0 filas) al pasar de Normal a Boards | Visto 3 veces en uso real; intermitente en el escenario `chat-interaction-fixes` | Abierto, sin causa confirmada. Hipótesis: Virtua con un ancla de scroll restaurada fuera de rango |
+| C10 | Dos paneles escribiendo en la misma carpeta: el Engine no los serializa y el board solo avisa | `docs/debt.md` | Abierto. Lo resuelve B.3.7 (chip y worktree) |
+| C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Abierto. La tira viva (B.3.1) lo necesita |
+| C12 | Los recibos de lectura se indexan por instalación, no por home del Engine | `docs/debt.md` | Abierto |
+| C13 | Regla que se mantiene: que aparezca un contador en la barra de Boards nunca cambia su altura | 52530f7, comprobado en `boards-fit` | Vigente |
+
+### C.1 «Preparando el turno…» parpadea en el panel
+
+**Qué se vio** (Planka, Bug, con captura). En un panel de Boards, al enviar un mensaje aparece un instante el bloque «En proceso desde hace 0 s · Preparando el turno…» y luego desaparece. Que no esté es lo correcto en un panel; lo que sobra es que aparezca.
+
+**Causa (verificada).**
+- En 0.3.0 se quitó el «Pensando» de los paneles: en un panel, la cabecera viva del turno se oculta mientras Rinari solo piensa, porque eso ya lo dice la cara de Rinari en la cabecera del panel (`TurnTimelineView.tsx:619-623`, `paneThinking`).
+- Pero esa regla solo cubre el estado `thinking`. Antes de pensar, el Engine emite `turn.preparing`, y la línea de tiempo pasa por el estado `preparing` (`activityPresentation.ts:129`).
+- En `preparing` la cabecera sí se muestra: ya hay un elemento en la línea de tiempo, así que `showHeader` es verdadero al instante. Cuando llega la primera respuesta del modelo el estado pasa a `thinking` y la cabecera se esconde. De ahí el parpadeo.
+
+**Propuesta.** En un panel, `preparing` se trata igual que `thinking`: la cabecera viva espera a que haya algo que contar (una acción, la respuesta, un reintento, la cancelación). Es un cambio de una línea en `TurnTimelineView.tsx`. El chat normal no cambia.
+
+**Pruebas.**
+- Vitest de `TurnTimelineView` con `surface="pane"`: con solo `turn.preparing` no hay `[data-live-activity]`; con una acción, sí. Con `surface="chat"` sigue igual que hoy.
+- Escenario de Boards (`boards-fit` o uno nuevo): se envía en un panel y se muestrea con `requestAnimationFrame` desde el envío hasta la primera acción. `[data-live-activity]` no aparece en ningún cuadro.
+
+---
+
+## Mapa del código (para quien se suma)
+
+**App (`Rinari-Agent`):**
+- `src/features/board/`:
+  - `BoardView.tsx` (el board), `SessionPane.tsx` y `PaneHeader.tsx` (cada panel), `CollapsedPaneStrip.tsx` (la tira plegada), `BoardToolbar.tsx`, `AddPaneDialog.tsx`, `DraftPane.tsx` (panel nuevo sin sesión aún);
+  - atención y avisos: `BoardAttentionSection.tsx`, `BoardActivityController.tsx`, `useBoardNotifications.ts`, `useResultVisibility.ts`;
+  - la mensajería que se va (B.4): `usePeerGroup.ts`, `usePeerNotifications.ts`, `PeerForwardDialog.tsx`, `PeerNavigationContext.tsx`, `peerLimits.ts`, y en el composer `src/components/composer/paneMention.ts`.
+- Estado: `src/stores/board.ts`, `boardAttention.ts` y `boardStatus.ts`.
+- La línea de tiempo de un panel es la misma del chat, con `surface="pane"` (`src/features/activity/TurnTimelineView.tsx`).
+- Escenarios: `tests/ui/boards-fit`, `boards-remove-all` y `boards-side-panel`; `chat-interaction-fixes` y `activity-disclosure` también pasan por Boards.
+
+**Engine (`RInari-CLI`):** `src/rinari/engine_protocol/peers.py` (`PeerBroker`, el buzón durable de los mensajes entre paneles). Al quitar la mensajería hay que decidir si el buzón se retira o se guarda como transporte de la Agency, que lo cita en su sección 2.
+
+**Antes de tocar:**
+- reglas del proyecto en `AGENTS.md` (el renderer solo habla con el host por `platform()`, el contrato de comandos y cómo se entrega);
+- diseño en `docs/design/obsidiana-neon.md` (tokens, componentes canónicos, movimiento);
+- comprobaciones en `CLAUDE.md`: vitest, build, typecheck, `protocol:check`, `parity:check` y los escenarios de `tests/ui` tocados, varias veces, con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`, más `ui:e2e --all`. Para el movimiento no basta una captura: se muestrea cuadro a cuadro.
+
+---
+
 ## Decisiones para el dueño
 
 | # | Decisión | Recomendado |
@@ -185,4 +243,6 @@ Paneles por sesión, tiras plegadas, el panel lateral por sesión, ajustar a la 
 | B-1 | Paneles que cambian de tamaño solos según su estado | Sí, con un interruptor para apagarlo |
 | B-2 | Varios espacios guardados por perfil, en lugar de un board global | Sí |
 | B-3 | «Comparar» como función estrella de Boards | Sí, en una fase propia |
-| V | Versiones: Parte A1–A2 en 0.3.x o 0.4; Parte B en 0.4; Bots aparte | A1 primero: ya da valor con las notas que existen |
+| V | Versiones: Parte A1–A2 en 0.3.x o 0.4; Parte B en 0.4; la Agency aparte | A1 primero: ya da valor con las notas que existen |
+| C-1 | Los arreglos chicos de Boards ya analizados (C1–C5) van con 0.3.2; las Partes A y B y la Agency, con quien se sume | Sí: son cambios acotados y C4 toca también lo que no es Boards |
+| C-2 | El buzón de los peers (`PeerBroker`): retirarlo con la mensajería o guardarlo como transporte de la Agency | Guardarlo hasta que la Agency tenga su arquitectura (v2 de su documento) |

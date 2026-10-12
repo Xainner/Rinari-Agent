@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Índice: [historia/README.md](../README.md).
+
 # Exportador de transición Tauri 0.1.3
 
 Esta carpeta conserva, solo como referencia de recuperación, el exportador

@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Lo que sigue abierto está en [debt.md](../debt.md). Índice: [historia/README.md](README.md).
+
 # Auditoría de herramientas de Rinari
 
 Fecha: 2026-09-10. Alcance: checkout local de Rinari-CLI y cliente Rinari Agent.
@@ -36,7 +38,7 @@ Las propuestas de ranking, caché, concurrencia y objetivos numéricos que sigue
 | P1 | native/ssh.py: un target_id registrado y una section; configuración SSH aislada con clave fijada. | Resolver el alias solicitado y agrupar secciones preservando la verificación del host y los controles actuales. |
 | P1 | lsp/manager.py: rename devuelve WorkspaceEdit sin aplicarlo. | Es correcto que sea lectura. Aclararlo en nombre/descripción y conectar aplicación posterior a fs; no reclasificarlo erróneamente como escritura ejecutada. |
 
-Referencias de implementación: los módulos se encuentran bajo [src/rinari](../../../Rinari-CLI/src/rinari/). El apéndice da el archivo de cada handler.
+Referencias de implementación: los módulos se encuentran bajo [src/rinari](https://github.com/Xainner/Rinari-CLI/tree/main/src/rinari). El apéndice da el archivo de cada handler.
 
 ## Contrato común propuesto
 

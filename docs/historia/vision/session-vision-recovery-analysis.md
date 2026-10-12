@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Cómo funciona hoy: [vision.md](../../vision.md). Índice: [historia/README.md](../README.md).
+
 # Análisis de recuperación visual
 
 Sesión: `ses_01M2BK1WFW832K1Z71B23VZ87M`.

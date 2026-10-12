@@ -1,8 +1,8 @@
 # Obsidiana neón — sistema de diseño de Rinari Agent
 
 Vigente desde el rediseño de octubre de 2026. Es la referencia para cualquier
-pantalla nueva o cambio visual. Si algo aquí choca con AGENTS.md §49 (accesibilidad)
-o §58 (la interfaz no exagera lo que pasó), mandan esas reglas.
+pantalla nueva o cambio visual. Si algo aquí choca con las reglas de [AGENTS.md](../../AGENTS.md) «Accesibilidad»
+o «La interfaz no exagera», mandan esas reglas.
 
 ## 1. Identidad
 

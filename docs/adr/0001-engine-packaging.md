@@ -2,7 +2,7 @@
 
 - Estado: aceptado (spike verificado 2026-09-08, Windows)
 - Fecha: 2026-09-08
-- Contexto: AGENTS.md §45
+- Contexto: plan maestro v1 §45 ([histórico](../historia/plan-maestro-v1.md))
 
 ## Opciones
 

@@ -1,8 +1,24 @@
 # Deuda explícita — Rinari Agent
 
-Ledger vivo de recortes deliberados. Estados: `OPEN`, `PARTIAL`, `DONE` y
-`WONTFIX`. Los elementos `DONE` tienen evidencia automatizada o un smoke
-documentado; lo demás no se presenta como terminado.
+Ledger vivo de recortes deliberados. Estados: `OPEN`, `PARTIAL`, `DONE`,
+`WONTFIX` y `OBSOLETO` (ya no aplica: describe algo que se retiró, como el
+host Tauri). Los elementos `DONE` tienen evidencia automatizada, un smoke
+documentado o el PR que los cerró; lo demás no se presenta como terminado.
+
+Repasado entrada por entrada contra el código y el `git log` el 2026-10-12.
+
+## Lo que sigue abierto
+
+- Recibos de lectura por instalación en vez de por home del Engine.
+- `mcp_get` en el inventario sin ningún llamador.
+- Concurrencia por cuenta en Claude Subscription.
+- El encabezado del grupo en el selector de modelos usa el alias técnico.
+- Flujos: abrir cada turno dentro del detalle de una etapa.
+- Conflictos de escritura entre paneles del mismo proyecto.
+- Bundle JavaScript grande.
+- Firma Authenticode del instalador.
+- P2: Soul avanzado, Agent Studio enriquecido y grafo visual de tareas.
+- Herramientas: `pty.*` para el modelo en Windows y alias SSH avanzados.
 
 ## Documentos 1–3 — DONE (2026-09-09)
 
@@ -81,12 +97,16 @@ documentado; lo demás no se presenta como terminado.
   conversación y enlazando al turno original. Portarla a Electron sin uso era
   deuda pura; si alguna superficie de pendientes la necesita, se recupera del
   historial y se implementa con ese enlace.
-- **Recibos de lectura por instalación** — `OPEN`. `boardAttention` sigue
-  indexado por `rinari.profile.v1`; podría adoptar el mismo `home_id` que
-  `sessionDock`.
-- **`cargo fmt` bloqueado en la máquina de integración** — `NOT_RUN` local:
-  Control de aplicaciones bloquea `cargo-fmt` (os error 4551); se verificó con
-  `rustfmt --check` directo y CI ejecuta `cargo fmt --check`.
+- **Recibos de lectura por instalación** — `OPEN` (revisado 2026-10-12).
+  `src/stores/boardAttention.ts` sigue indexado por `rinari.profile.v1`
+  (`src/stores/profileKey.ts`, un id local aleatorio): si el Agent apunta a
+  otro home de Engine con la misma instalación, los recibos se comparten.
+  Podría adoptar el mismo `home_id` que `sessionDock`, que ya está disponible
+  en `App.tsx`.
+- **`cargo fmt` bloqueado en la máquina de integración** — `OBSOLETO`. Era el
+  host Tauri de la app, retirado en la entrega H. El único Rust que queda es el
+  bootstrapper de `installer/setup`, y el CI corre su `cargo fmt/clippy/test`
+  cuando cambia (`windows-package`).
 
 ### Interfaz de plataforma (2026-09-17, plan 02, entrega C)
 
@@ -102,9 +122,10 @@ documentado; lo demás no se presenta como terminado.
 - **Tests que montaban el host directamente** — `DONE` (entrega H). Los tests
   heredados usan `createTestBridge()` y prueban el contrato de plataforma sin
   simular módulos `@tauri-apps`.
-- **`mcp_get` sin llamador** — `OPEN`. Registrado en `invoke_handler` y expuesto
-  al WebView, pero ningún archivo de `src/` lo invoca. Decidir si se retira
-  antes de portarlo al host nuevo: es superficie que nadie usa.
+- **`mcp_get` sin llamador** — `OPEN` (revisado 2026-10-12). Está en el
+  inventario (`desktop-command-contract.json`), en la allowlist generada y en
+  `commandMap.generated.ts`, y el Engine registra `mcp.get`, pero nada en
+  `src/` lo llama. Decidir si se retira: es superficie que nadie usa.
 - **Validación en ejecución de la allowlist** — `DONE` (entrega D).
   `electron/shared/validation.ts` usa el mismo inventario generado como
   allowlist en ejecución, y `electron/main/ipc/register.ts` valida emisor,
@@ -118,16 +139,19 @@ documentado; lo demás no se presenta como terminado.
 - **Guard de facturación** — `DONE`. Se verifica la fuente de auth al crear y
   antes de cada petición, y el hijo pierde todo `ANTHROPIC_*`, `CLAUDE_*` y
   `CLAUDECODE`. Lo desconocido bloquea, nunca conecta.
-- **Herramientas** — `OPEN` declarado (fase D). El provider anuncia
-  `tool_calls: false` y el loop deja de ofrecerlas; una sesión que necesite el
-  filesystem todavía no puede usarlo. El bridge MCP va en un PR aparte.
-- **Modelos** — `OPEN`. El modo print del CLI no lista los modelos de la
-  cuenta, así que son los alias documentados con disponibilidad `unknown`.
-- **Concurrencia por cuenta** — `OPEN`. Sin semáforo todavía (plan §47/§48).
+- **Herramientas** — `DONE` (fase D, 0.3.1). Rinari-CLI #71 (2a94168;
+  commit 5afdd44): las herramientas pasan por el MCP de Rinari con sus
+  permisos y su actividad, y el provider anuncia `tool_calls: true`.
+- **Modelos** — `DONE`, sustituido por «Modelos de la cuenta» (más abajo):
+  Rinari-CLI #46, commit 918b936.
+- **Concurrencia por cuenta** — `OPEN` (revisado 2026-10-12). Sin semáforo
+  ni candado por cuenta en `claude_subscription.py` ni `claude_cli.py`; solo
+  hay límites globales (agentes y herramientas). Plan maestro v1 §47/§48.
 - **Smoke real contra Anthropic** — `DONE` (2026-10-01). Con la suscripción
   Pro del dueño: `authMethod: claude.ai`, la tarjeta pasó sola a conectado y
   un turno lo respondió Claude Opus 5.5. La evidencia está en Rinari-Agent#65:
-  `docs/evidence/` cae bajo la regla `evidence/` del `.gitignore`.
+  no se versionó, porque `docs/evidence/` caía bajo la regla `evidence/` del
+  `.gitignore`.
 - **Esfuerzo de razonamiento** — `DONE` (2026-10-02). El Engine publica por
   modelo los cinco niveles que acepta `--effort` y el selector habilita
   exactamente esos; `none`, `minimal` y `ultra` quedan deshabilitados. Un
@@ -135,9 +159,10 @@ documentado; lo demás no se presenta como terminado.
 - **`ultracode`** — no se ofrece, a propósito. El CLI lo acepta sin aviso,
   pero es un modo que lanza workflows y agentes propios con el esfuerzo sin
   cambiar: convertiría a Claude Code en un segundo agente dentro de Rinari
-  (plan §3.1 y §13). El tope es «Máximo».
+  ([plan maestro v1](historia/plan-maestro-v1.md) §3.1 y §13). El tope es «Máximo».
 - **Thinking** — los bloques viajan como items, pero nada los muestra: Rinari
-  no expone el razonamiento privado del modelo (AGENTS.md). Lo que el usuario
+  no expone el razonamiento privado del modelo (`AGENTS.md`, «La interfaz no
+  exagera»). Lo que el usuario
   controla y ve es el nivel de esfuerzo.
 - **Modelos de la cuenta** — `DONE` (2026-10-02). El Engine pide al CLI su
   selector en vivo con `initialize`, sin inferencia: nombre real, modelo
@@ -147,8 +172,9 @@ documentado; lo demás no se presenta como terminado.
 - **Modelo real en la UI** — `DONE`. El selector y el catálogo muestran el
   nombre real («Opus 5.5») y, debajo, el modelo concreto
   (`claude-opus-5-5`). Si el usuario eligió un alias propio, se respeta.
-  Sigue `OPEN` que el encabezado del grupo use el alias técnico del
-  proveedor: cambiarlo afecta a todos los proveedores.
+  Sigue `OPEN` (revisado 2026-10-12) que el encabezado del grupo use el alias
+  técnico del proveedor (`ModelPicker.tsx`): cambiarlo afecta a todos los
+  proveedores.
 - **Verificar `apiKeySource` por turno** — `DONE`. Cualquier credencial que
   no sea la suscripción corta el turno antes de que el modelo responda.
 - **`onStateChange` de `ExternalRuntimePanel`** — `DONE`. El callback va por
@@ -165,9 +191,10 @@ documentado; lo demás no se presenta como terminado.
 - **Revelado del turno tras cambiar de sesión** — `DONE`. La petición se
   encola (`requestTurnReveal`) y `ChatView` la consume al montar la sesión
   (FLOW-10); antes se perdía si el evento llegaba antes del montaje.
-- **Detalle por turno dentro de una etapa** — `OPEN` declarado (fase 2). El
-  drawer muestra la etapa; abrir cada turno en el detalle exigiría
-  `session.timeline` bajo demanda.
+- **Detalle por turno dentro de una etapa** — `OPEN` declarado (fase 2,
+  revisado 2026-10-12). `FlowStageDetail.tsx` muestra la etapa con un solo
+  «Ir al turno»; abrir cada turno en el detalle exigiría `session.timeline`
+  bajo demanda, y `features/flow` no lo pide.
 - **Títulos de etapa generados por IA** — fuera de alcance deliberado. El
   título es el encabezado del plan o el primer mensaje del usuario, sin
   llamadas al modelo.
@@ -188,10 +215,12 @@ documentado; lo demás no se presenta como terminado.
 - **PUSH sin comprobar el destino** — `DONE`. El envío al renderer exige que
   siga en el origen de confianza, no solo que la ventana exista
   (SEC-PUSH-01..03). Es defensa en capas: el IPC entrante ya validaba.
-- **Confirmación de cierre conservadora** — `OPEN` declarado. Se pregunta
-  siempre que el Engine esté en marcha; saber si hay turnos vivos exige una
-  consulta al Engine que no existe todavía. Lo obligatorio —preguntar antes de
-  cerrar— sí se cumple.
+- **Confirmación de cierre conservadora** — `OBSOLETO`. Cerrar la app ya no
+  pide confirmación (commit 2f39f3c, Agent #29): `confirmsQuit` en
+  `QuitCoordinator.ts` solo pregunta al aplicar una actualización con el
+  Engine en marcha, y con la bandeja activa la X oculta la ventana sin cortar
+  los turnos. El Engine ya sabe si hay turnos vivos (`runtime.snapshot.get` →
+  `active_turns`).
 
 ### Correcciones del PR #9 (2026-09-17)
 
@@ -252,9 +281,8 @@ documentado; lo demás no se presenta como terminado.
   SHA-512 y aplica por la autoridad única de lifecycle después de confirmar y
   cerrar el Engine. Tauri 0.1.x conserva su `latest.json` firmado. La identidad
   Authenticode sigue pendiente y la UI identifica el canal como unsigned.
-- **Trabajo activo al cerrar** — `PARTIAL`. Se pregunta siempre que el Engine
-  esté en marcha, que peca de prudente; saber si hay turnos vivos exige
-  preguntárselo al Engine y está pendiente.
+- **Trabajo activo al cerrar** — `OBSOLETO`. Ver «Confirmación de cierre
+  conservadora» arriba.
 - **Menú de aplicación** — `DONE`. Portado de `menu.rs` con sus entradas,
   etiquetas y aceleradores; salir y el zoom los resuelve el host y el resto
   viaja por `PUSH.menuAction`. Normal y Boards siguen sin acelerador nativo a
@@ -274,33 +302,75 @@ documentado; lo demás no se presenta como terminado.
 
 - **Notificaciones del sistema** — `DONE`. Resueltas en Electron; el runtime
   anterior ya no forma parte del producto activo.
-- **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`. El
-  Engine no serializa dos sesiones sobre el mismo root; el board solo avisa.
-- **`busy` en `session.list`** — `OPEN`. La barra superior deriva "trabajando"
-  del runtime; tras un arranque en frío el sidebar no sabe si una sesión no
-  abierta está ocupada hasta que llega un evento.
-- **Perfil de lectura por instalación** — `OPEN`. Los recibos se indexan por
-  `rinari.profile.v1` (id local aleatorio); si el Agent apunta a otro home de
-  Engine con la misma instalación, los recibos se comparten.
-- **Compilación Rust en Windows con Smart App Control** — `OPEN`. `cargo
-  clippy/test` no ejecutan en esa máquina (os error 4551); solo `cargo fmt`.
-  CI cubre clippy y test.
+- **Conflictos de escritura entre paneles del mismo proyecto** — `OPEN`
+  (revisado 2026-10-12). El Engine no serializa dos sesiones sobre el mismo
+  root. Lo mitigan: el `expected_hash` por archivo («el archivo cambió desde
+  que se leyó», `tools/atomic.py`), el deshacer que detecta conflictos
+  (`changes/service.py`) y el aviso de Boards cuando dos paneles comparten
+  carpeta. Se resolvería con worktrees por panel o por sesión hija.
+- **`busy` en `session.list`** — `DONE`, por otro camino. `session.list` sigue
+  sin el campo, pero al quedar listo el Engine la app restaura el snapshot del
+  runtime (`runtime.snapshot.get` → `active_turns`) y marca como ocupadas todas
+  las sesiones con turno vivo, abiertas o no; el sidebar muestra «trabajando»
+  desde ahí.
+- **Perfil de lectura por instalación** — es la misma entrada que «Recibos de
+  lectura por instalación», arriba.
+- **Compilación Rust en Windows con Smart App Control** — `OBSOLETO`. Ver
+  «`cargo fmt` bloqueado» arriba: el Rust de la app se retiró y el del
+  bootstrapper lo cubre el CI.
 
-- **Timeline narrativa (archivo 4)** — `OPEN`. La actividad cronológica
-  persistida, correlación completa de llamadas y presentación narrativa se
-  implementarán en el siguiente ciclo; no se adelantaron dentro de 1–3.
-- **Permisos + TurnChangeSet (archivo 5)** — `OPEN`. Sigue su documento
-  normativo y comienza después del timeline.
-- **Bundle JavaScript grande** — `OPEN`. El chunk principal ronda 916 kB sin
-  comprimir. Aplicar code splitting al incorporar paneles pesados.
-- **Firma de release** — `OPEN`. MSI y NSIS se construyen localmente, pero la
-  firma final requiere `TAURI_SIGNING_PRIVATE_KEY` del pipeline de release.
-- **Fonts remotas** — `OPEN`. Autoalojar WOFF2 permitirá retirar la excepción
-  de Google Fonts del CSP y mejorar el modo offline.
-- **P2 pospuestos** — `OPEN`. Terminal completo, Soul avanzado, Agent Studio
-  enriquecido y grafo visual de tareas quedan fuera del cierre 1–3 acordado.
+- **Timeline narrativa (archivo 4)** — `DONE`. Rinari-CLI bbdc84e y 294f1e3,
+  Agent 3c34cc2 (commits directos a `main` del 2026-09-09, antes de trabajar
+  con PR). Está descrita en [activity-timeline.md](activity-timeline.md).
+- **Permisos + TurnChangeSet (archivo 5)** — `DONE`. TurnChangeSet: Rinari-CLI
+  495e953 (`rinari/changes/`, `turn.changes.*`) y Agent 48c298a. Permisos v3
+  (perfiles por lo irreversible): Rinari-CLI #32 (877c553) y Agent #44
+  (36ae0b0).
+- **Bundle JavaScript grande** — `PARTIAL` (revisado 2026-10-12). Ya se cargan
+  aparte Boards, Flujos, Programaciones, el Markdown matemático, `App` y
+  shiki (`React.lazy` e imports dinámicos). Falta repartir el resto:
+  `vite.config.ts` no tiene `manualChunks`, y el build de 3ae3d25 deja
+  `App-*.js` en unos 1 285 kB e `index-*.js` en unos 483 kB sin comprimir.
+  `vite.config.ts` también conserva restos de Tauri (`TAURI_DEV_HOST`, el
+  puerto 1420 y el ignore de `src-tauri`).
+- **Firma de release con `TAURI_SIGNING_PRIVATE_KEY`** — `OBSOLETO`. Era la
+  firma del updater de la app Tauri 0.1.x, retirada.
+- **Firma Authenticode del instalador** — `OPEN`. Los releases se publican sin
+  firmar: `electron-builder.yml` tiene `forceCodeSigning: false`,
+  `release.yml` exige `rinariUnsigned: true` y Windows muestra «Editor
+  desconocido». Hace falta un certificado (o Azure Trusted Signing), su
+  configuración en el CI y una prueba que valide la firma
+  ([releases.md](releases.md#firma)).
+- **Fonts remotas** — `DONE`. Agent #54 (5e4c86a): las fuentes van en el
+  paquete con `@fontsource-variable` (`src/styles/index.css`) y la CSP solo
+  admite fuentes propias (`electron/main/appScheme.ts`); no queda Google
+  Fonts.
+- **P2 pospuestos** — en parte. El terminal completo está `DONE` (Agent #35,
+  16be184: xterm en la app y ConPTY en el Engine). Siguen `OPEN`: Soul
+  avanzado (hoy solo `SoulsView` y la intensidad del personaje), Agent Studio
+  enriquecido (`AgentsView` solo asigna modelos por agente) y el grafo visual
+  de tareas (no existe).
 
-## Evidencia del cierre
+### Herramientas (de la auditoría de optimización, 2026-09-26)
+
+La auditoría y su estado están archivados en
+[historia/tool-optimization-audit.md](historia/tool-optimization-audit.md) y
+[historia/tool-optimization-status.md](historia/tool-optimization-status.md).
+Sus hallazgos P0 están resueltos en el Engine (el plazo de una herramienta
+nunca supera el del padre, no se reintentan llamadas no idempotentes, y
+`capability.search` ya no cae en `browser.open`). Queda:
+
+- **`pty.*` para el modelo en Windows** — `OPEN`. Las herramientas `pty.*`
+  del modelo solo funcionan en POSIX (`tools/native/ptytools.py` del Engine);
+  ConPTY solo sirve al terminal del usuario.
+- **Alias SSH avanzados** — `OPEN`. `Match`, `Include` y los alias con proxy
+  de `~/.ssh/config` no se soportan (`tools/native/ssh.py` del Engine).
+- Decisiones deliberadas, no deuda: solo las lecturas consecutivas corren en
+  paralelo (las escrituras van en serie), los cursores de consola y red del
+  navegador no se persisten, y `lsp.rename` planifica la edición sin
+  aplicarla.
+
+## Evidencia del cierre de los documentos 1–3 (2026-09-09, histórico)
 
 - Rinari-CLI: 1,111 pruebas completas antes del test largo adicional; 25
   pruebas focalizadas del presupuesto después, Ruff y formato limpios.

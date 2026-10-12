@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Cómo funciona hoy: [context-compaction.md](../context-compaction.md). Índice: [historia/README.md](README.md).
+
 # Contexto y compactación: revisión y plan de ejecución
 
 Fecha: 2026-09-21. Estado: propuesta; implementación pendiente.

@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Índice: [historia/README.md](README.md).
+
 # Proveedores, suscripciones, cuotas y capacidades
 
 Fecha: 2026-09-22. Estado: implementación local con pruebas automatizadas; aceptación de suscripciones reales y release pendientes.

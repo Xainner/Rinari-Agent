@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Lo que sigue abierto está en [debt.md](../debt.md). Índice: [historia/README.md](README.md).
+
 # Optimización de herramientas: entrega local
 
 Fecha: 2026-09-10. Engine y CLI comparten implementación; Code consume el protocolo.
@@ -6,7 +8,7 @@ empaquetado local; no constituyen una versión publicada ni un push.
 
 ## Cobertura verificable
 
-El [inventario generado](tool-contracts-inventory.json) (regenerado el 2026-09-26) contiene las **114 herramientas**,
+El [inventario generado](../tool-contracts-inventory.json) (regenerado el 2026-09-26) contiene las **114 herramientas**,
 sus schemas de entrada/salida, efectos, idempotencia declarada, disponibilidad de
 plataforma y soporte de request_id. La [auditoría original](tool-optimization-audit.md)
 conserva el diagnóstico previo y las propuestas, no el estado de ejecución actual.

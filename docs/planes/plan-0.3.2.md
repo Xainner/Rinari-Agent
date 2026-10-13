@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48 y 50 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49 y 50, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51 y 52, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51 y 52) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -234,6 +234,8 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 48 | Lo que enseñó una sesión larga con un MCP de medios: sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI | Decidido (causas verificadas) |
 | 49 | La cabecera del turno en curso, como tarjeta de estado: qué hace, el paso de la lista y la acción con su tiempo | Agent | Decidido (diseño A) |
 | 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Decidido (con Rinari abierta o en la bandeja) |
+| 51 | Al enviar, la cabecera «Rinari trabajando» aparece antes de que termine de llegar el mensaje | Agent | Decidido (causa verificada) |
+| 52 | El texto en streaming aparece por oraciones de golpe: revelado suave, palabra por palabra | Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1450,6 +1452,45 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 ---
 
+## 51. La cabecera «trabajando» espera a que llegue el mensaje
+
+**Qué se vio** (dueño). Al enviar, la animación de llegada del mensaje todavía no terminó y ya aparece Rinari trabajando debajo.
+
+**Causa (verificada).**
+- El mensaje recién enviado sube desde el composer en **500 ms** (`.user-bubble.is-fresh`, `rinari-send 0.5s`, `src/styles/index.css:1473-1475`).
+- La cabecera viva del turno aparece **en cuanto hay un elemento** en la línea de tiempo (`showHeader` en `TurnTimelineView.tsx:623`: `timeline.items.length > 0` o 300 ms). El Engine emite `turn.preparing` casi al instante, así que la cabecera entra mientras la burbuja todavía está subiendo.
+
+**Propuesta.**
+- La cabecera viva **espera a que termine la llegada del mensaje** (los 500 ms de `rinari-send`, o nada con movimiento reducido) y entra con su propio fundido corto, en secuencia: primero llega tu mensaje, después aparece Rinari.
+- `turn.preparing` deja de contar como «algo que contar» para mostrar la cabecera antes de tiempo, como en Boards (C1 del [plan de Boards](plan-boards.md)).
+- Si el turno ya tiene una acción real antes de los 500 ms (raro), la cabecera igual espera a que termine la llegada.
+
+**Pruebas.** Escenario: al enviar, se muestrea con `requestAnimationFrame`; `[data-live-activity]` no aparece mientras la burbuja `.is-fresh` sigue animando, y entra después con su fundido; con `RINARI_UI_REDUCED_MOTION=1` aparece sin espera.
+
+---
+
+## 52. Texto en streaming: revelado suave, no oraciones de golpe
+
+**Qué se vio** (dueño). El texto de Rinari aparece por oraciones de golpe, aunque se había puesto una animación de streaming.
+
+**Causa (verificada).**
+- La animación que existe (f371392, `src/styles/index.css:1378-1379`) es **por bloque**: cada párrafo o elemento nuevo de la respuesta (`.turn-rail[data-live='true'] .md-body > *`) entra con un fundido de 360 ms (`stream-in`), y hay un cursor que parpadea.
+- **Dentro de un bloque no hay revelado:** el texto crece de golpe con cada `model.content.delta` que llega. Si el proveedor manda trozos grandes (una oración por evento, frecuente en algunos modelos y suscripciones), se ve aparecer la oración entera.
+
+**Propuesta.**
+- **Revelado suave en la app, independiente de cómo llegan los trozos:** lo que llega se guarda en un búfer y se muestra a ritmo constante, unos cuantos caracteres por cuadro, **acelerando si se acumula** (nunca más de ~300 ms de atraso respecto de lo recibido). Así un proveedor que manda oraciones enteras se ve igual de fluido que uno que manda tokens.
+- **Las palabras nuevas entran con un fundido corto** (~150 ms), y el cursor sigue al final del texto.
+- **Al terminar el turno**, lo que quede en el búfer se muestra de inmediato (no se hace esperar al dueño), y la respuesta final se pinta sin animación.
+- El Markdown se vuelve a pintar como mucho una vez por cuadro (`requestAnimationFrame`), para que el revelado no cueste rendimiento en respuestas largas.
+- **Con movimiento reducido,** el texto aparece tal como llega, sin revelado.
+- Vale para el chat, los paneles de Boards y los subagentes del panel lateral.
+
+**Pruebas.**
+- Vitest del revelado: con un trozo grande, el texto visible crece en varios cuadros y no de golpe; con atraso acumulado, acelera; al completar, muestra todo al instante; con movimiento reducido, no hay revelado.
+- Escenario: el modelo falso manda la respuesta en 3 trozos grandes; se muestrea cuadro a cuadro que la longitud visible crece de forma gradual y que el cursor está al final.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -1501,6 +1542,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 48 | Todo genérico para cualquier MCP: el progreso renueva el tiempo de espera, el detector no cuenta esperas con resultado que cambia, las salidas fuera de esquema llegan como texto con aviso, `web.download` por partes hasta 1 GiB, nombres tolerantes solo con una coincidencia y la misma política, título de respaldo, y la nota de la lista solo cuando la amerita. |
 | 49 | Cabecera del turno en curso como tarjeta: qué hace (el paso de la lista o la acción), «Paso n/m» de la lista, la acción con su propio tiempo, y tiempo total y tokens a la derecha. En Boards angosto, una línea. |
 | 50 | Tareas «Comando» sin modelo, con salida y código guardados y opción de pasarle la salida a un agente, más horarios cron. En 0.3.2 solo con Rinari abierta o en la bandeja (iniciar con Windows en la bandeja, activado por defecto). El Programador del sistema y el servidor, después. |
+| 51 | La cabecera viva espera a que termine la llegada del mensaje (500 ms) y entra después; `turn.preparing` no la adelanta. |
+| 52 | Revelado suave del texto en streaming (búfer a ritmo constante que acelera si se acumula, palabras con fundido corto, cursor al final), en chat, Boards y subagentes; nada con movimiento reducido. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

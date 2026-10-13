@@ -225,7 +225,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 38 | Confianza después de `git init`: automática y en el momento (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 40 | Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada | CLI + Agent | Decidido |
 | 41 | La tarjeta de cambios del turno tiene el estilo viejo, y «Revisar» muestra el diff sin colores | Agent | Decidido (causa verificada) |
-| 42 | Elegir el proyecto de una conversación desde el composer, como en Claude Code o Codex | Agent | Propuesto (faltan 3 decisiones) |
+| 42 | Elegir el proyecto de una conversación desde el composer, como en Claude Code o Codex | Agent | Decidido (solo conversaciones nuevas) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1166,29 +1166,20 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 - **Mover una conversación existente ya funciona en el Engine** (`session.move`, `application/session_service.py:458`). Cambia la carpeta de trabajo para lo que siga; los archivos que ya creó se quedan donde estaban. Además reinicia el estado compactado, las skills activas, los anclajes y la rama, y si el proyecto es de otro perfil pasa la conversación a ese perfil. Toma el candado del turno, así que no se puede con un turno en curso.
 - **En la app solo está en el menú de la barra lateral** («Mover a proyecto…», `AppSidebar.tsx`, `App.tsx:660`), no en el composer.
 
-**Propuesta.**
-1. **Un chip de proyecto en el composer** de toda conversación nueva (vista Normal, «+» de un proyecto, panel de Boards):
+**Propuesta** (decisiones del dueño, 2026-10-12).
+1. **Solo para conversaciones nuevas.** Una conversación que ya existe se cambia de proyecto o de perfil como hoy, desde la barra lateral («Mover a proyecto…», «Mover a perfil»). El composer no lo ofrece.
+2. **Un chip de proyecto en el composer** de toda conversación nueva (vista Normal, «+» de un proyecto, panel de Boards):
    - muestra el proyecto con su nombre y su rama, o «Sin proyecto» (chat general);
-   - al abrirlo: «Sin proyecto», **Recientes** (los proyectos del perfil activo por última actividad), un buscador con todos y «Abrir carpeta…» (el flujo que ya existe en «Añadir panel»);
-   - el «+» de un proyecto lo trae ya elegido; «Nueva conversación», en «Sin proyecto» (o en el último usado: decisión 2);
-   - **lo escrito viaja con el cambio:** el texto, los adjuntos, el modo y el modelo del borrador pasan al nuevo destino.
-2. **En una conversación que ya existe,** el mismo chip permite cambiar el proyecto con `session.move`:
-   - antes del primer mensaje es libre;
-   - con historial, pide confirmar y dice qué pasa: «La conversación sigue con su historial. Los archivos que ya creó se quedan en *carpeta anterior*, y lo que siga trabaja en *carpeta nueva*»;
-   - desactivado con un turno en curso (el Engine lo bloquea), con el motivo en el tooltip;
-   - si el proyecto es de otro perfil, se avisa de que la conversación pasa a ese perfil.
+   - al abrirlo: «Sin proyecto», los **proyectos del perfil activo ordenados por uso reciente** (el último en que trabajaste, arriba), un buscador y «Abrir carpeta…» (el flujo que ya existe en «Añadir panel»);
+   - «Nueva conversación» empieza en **«Sin proyecto»**; el «+» de un proyecto lo trae ya elegido;
+   - **lo escrito viaja con el cambio:** el texto, los adjuntos, el modo y el modelo del borrador pasan al nuevo destino;
+   - al primer envío el chip desaparece del composer (la conversación ya existe y se gestiona desde la barra lateral).
 3. **Atajo** para abrir el chip desde el teclado, como el de Codex. Se elige uno que no choque con los atajos de hoy.
-4. **En Boards,** el chip vive en el composer de cada panel, y elegir un proyecto que ya está en otro panel muestra el aviso de carpeta compartida que existe hoy.
+4. **En Boards,** el chip vive en el composer de cada panel nuevo, y elegir un proyecto que ya está en otro panel muestra el aviso de carpeta compartida que existe hoy.
 5. **El worktree** (la casilla de Claude Code) **no entra ahora:** llega con la fase A3 de las [sesiones hijas](plan-sesiones-hijas.md).
 
-**Decisiones pendientes.**
-1. ¿Se puede cambiar el proyecto de una conversación **con historial** desde el chip, con confirmación, o solo antes del primer mensaje (y lo demás sigue en la barra lateral)?
-2. «Nueva conversación» arriba: ¿empieza en «Sin proyecto» o en el **último proyecto usado**?
-3. ¿Los Recientes muestran solo el perfil activo, o también otros perfiles en un grupo aparte?
-
 **Pruebas.**
-- Vitest del chip: la lista (Sin proyecto, Recientes, buscador, Abrir carpeta), el cambio de proyecto en un borrador conserva texto, adjuntos, modo y modelo, y el primer envío crea la sesión en el proyecto elegido.
-- Vitest de una conversación existente: la confirmación con historial llama a `session.move`; desactivado con un turno en curso.
+- Vitest del chip: la lista (Sin proyecto, Recientes, buscador, Abrir carpeta), el cambio de proyecto en un borrador conserva texto, adjuntos, modo y modelo, el primer envío crea la sesión en el proyecto elegido y el chip ya no aparece.
 - Escenario `composer-project`: «Nueva conversación», se elige un proyecto en el chip, se envía y la conversación aparece bajo ese proyecto en la barra lateral; en Boards, lo mismo en un panel nuevo.
 
 ---
@@ -1235,6 +1226,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 38 | `git init` sin remotos dentro de una carpeta de confianza actualiza la huella sola. Los demás cambios de identidad se preguntan al terminar el turno, no al volver a abrir. |
 | 40 | Entra solo la fase A1 de las sesiones hijas (vínculo y barra lateral anidada). A2 (`session.start`, permisos heredados, tarjeta de entrega) y A3 (mensajes a las hijas, worktrees) van en la versión siguiente. |
 | 41 | La tarjeta de cambios pasa al estilo nuevo con lista de archivos. «Revisar» (la tarjeta y la fila de abajo) abre «Cambios del turno» en el panel lateral con los colores del `DiffView`; funciona sin git. |
+| 42 | Chip de proyecto solo en conversaciones nuevas (lo escrito viaja al cambiar). Empieza en «Sin proyecto». Lista: proyectos del perfil activo por uso reciente, buscador y «Abrir carpeta…». Las existentes se mueven desde la barra lateral. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

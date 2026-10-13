@@ -25,7 +25,7 @@ Sale de piezas que Rinari ya tiene:
 - **Perfiles como espacios de trabajo** (Soul, modelo y modo): un agente es un perfil «encarnado».
 - **Tareas programadas:** el reloj, uno de sus disparadores.
 - **El Gateway** (Telegram, Discord, WhatsApp, web): por donde el dueño habla con su equipo desde el teléfono.
-- **El buzón durable de los peers**, con cola, Stop/Reanudar y sin duplicados: el transporte.
+- **El transporte se construye de nuevo.** El buzón de los mensajes entre paneles de Boards (`PeerBroker`) se retira con esa mensajería (decisión del dueño, 2026-10-12), para que la Agency tenga una base propia, pensada para pedidos con contrato y pizarras. De aquel buzón se toman las lecciones: cola durable, Stop/Reanudar, sin duplicados y lo que dice otro agente como dato.
 - **Memoria visible, notas y lista de pasos:** cómo cuentan lo que hacen.
 
 ## 3. Lo que lo haría distinto

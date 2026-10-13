@@ -18,7 +18,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
   - en la app: el grupo de peers, `@Panel` en el composer (`paneMention.ts`), el diálogo de reenvío (`PeerForwardDialog.tsx`), los avisos de mensajes de pares, el «máx. 3 saltos» (`peerLimits.ts`), la opción en Ajustes, y el chip de recibir/enviar y la insignia de mensajes de pares en la cabecera del panel y en la tira;
   - en el Engine, `session.send` hacia paneles;
   - **el historial de mensajes peer que ya existe se sigue viendo** en las conversaciones;
-  - qué hacer con el buzón del Engine (`PeerBroker`) es la decisión C-2.
+  - en el Engine se retira también el buzón de los mensajes entre paneles (`PeerBroker`, `engine_protocol/peers.py`) con sus métodos y su tabla (decisión C-2). Rinari Agency construirá su propia base desde cero.
 - **«Quitar y cerrar sesión»** en el menú del panel (`BoardView.tsx:231-238`, `board.pane.removeAndClose`). En la práctica archivaba la conversación: `session.close` la sacaba del listado y detenía sus vistas previas, el navegador y los procesos. Además, el nombre se confundía con salir de la cuenta. **Queda solo «Quitar del board»**, que saca el panel sin tocar la conversación. Archivar se hace desde la barra lateral, como con cualquier conversación. Se retiran el diálogo de confirmación y las claves `board.pane.removeAndClose*`.
 - Lo demás de Boards se queda como está: paneles por sesión, plegar y desplegar, el panel lateral por sesión, ajustar a la vista, el foco y los avisos de atención.
 
@@ -117,7 +117,7 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 - La línea de tiempo de un panel es la misma del chat, con `surface="pane"` (`src/features/activity/TurnTimelineView.tsx`).
 - Escenarios: `tests/ui/boards-fit`, `boards-remove-all` y `boards-side-panel`; `chat-interaction-fixes` y `activity-disclosure` también pasan por Boards.
 
-**Engine (`RInari-CLI`):** `src/rinari/engine_protocol/peers.py` (`PeerBroker`, el buzón durable de los mensajes entre paneles). Al quitar la mensajería hay que decidir si el buzón se retira o se guarda como transporte de la Agency, que lo cita en su sección 2.
+**Engine (`RInari-CLI`):** `src/rinari/engine_protocol/peers.py` (`PeerBroker`, el buzón durable de los mensajes entre paneles). **Se retira con la mensajería** (C-2): sus métodos del protocolo, sus eventos y su tabla, con una migración que la elimina. Lo que ya se escribió en las conversaciones se sigue viendo.
 
 **Antes de tocar:**
 - reglas del proyecto en `AGENTS.md` (el renderer solo habla con el host por `platform()`, el contrato de comandos y cómo se entrega);
@@ -135,5 +135,5 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 | B-3 | Paneles que cambian de tamaño solos según su estado | Descartado (dueño, 2026-10-12) |
 | B-4 | Comparar | Todavía no (dueño, 2026-10-12) |
 | B-5 | Lo demás de las versiones anteriores (B.5) | Aparcado: se propone pieza por pieza después de usar Boards limpio |
-| C-1 | Los arreglos chicos de Boards ya analizados (C1–C5) van con 0.3.2; B1 y B2, con quien se sume (o en 0.3.2, si el dueño prefiere) | Recomendado: sí; pendiente de confirmar |
-| C-2 | El buzón de los peers (`PeerBroker`): retirarlo con la mensajería o guardarlo como transporte de la Agency | Recomendado: guardarlo hasta que la Agency tenga su arquitectura; pendiente de confirmar |
+| C-1 | Los arreglos chicos de Boards ya analizados (C1–C5) van con 0.3.2. La limpieza (B1) y el panel colapsado (B2) se quedan en este plan, para quien tome Boards, fuera de 0.3.2 | Decidido (dueño, 2026-10-12) |
+| C-2 | El buzón de los peers (`PeerBroker`) se retira con la mensajería, para que Rinari Agency construya bien su propia base | Decidido (dueño, 2026-10-12) |

@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40 y 44 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43 y 44, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38 y 41) y las funciones (23–24, 31–36, 40 y 42–44).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45 y 46 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45 y 46, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44 y 46).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -228,6 +228,8 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 42 | Elegir el proyecto de una conversación desde el composer, como en Claude Code o Codex | Agent | Decidido (solo conversaciones nuevas) |
 | 43 | Flujos pasa a vivir en el panel lateral, en Normal y en Boards | Agent | Decidido |
 | 44 | El panel lateral se puede extender mucho más, y el navegador del agente prueba en tamaños anchos (Planka, Idea) | CLI + Agent | Decidido (causa verificada) |
+| 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
+| 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Propuesto (falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1236,6 +1238,66 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ---
 
+## 45. Cloudflare Turnstile rechaza el navegador de Rinari
+
+**Qué se vio** (Planka, Bug; `ses_01M4SE7BVANNW7JAS2N690H2W0`). El login de un sitio protegido con Cloudflare Turnstile (`ultimowow.com/es/log-in`) falla en el navegador integrado: el widget da el error 600010 («bot behavior detected»), nunca emite el token (`cf-turnstile-response` vacío) y el login rebota.
+
+**Causa.** Turnstile está hecho para detectar navegadores automatizados, y el de Rinari lo es: se anuncia como `rinari-agent/0.3.1 … Electron/44.4.1 Chrome/152` y lo maneja el agente por CDP. Que lo rechace es Turnstile haciendo su trabajo.
+
+**Lo que no se hace.** Disfrazar el navegador (cambiar el user-agent, ocultar CDP u otras huellas) para pasar el control, o que el agente intente resolver captchas. Sería evadir una protección anti-bots: ni se hace ni se ofrece.
+
+**Propuesta.**
+- **Detectarlo y decirlo claro.** Cuando la página muestra un desafío de verificación humana (Turnstile, hCaptcha, reCAPTCHA, la pantalla «Checking your browser»), la herramienta del navegador lo informa con un código propio (`HUMAN_CHECK`) en lugar de que el agente reintente o se quede dando vueltas.
+- **El agente se detiene y pregunta.** Pide al dueño que haga ese paso él mismo, sin intentar resolverlo.
+- **Tarjeta con salida directa:** «Este sitio verifica que seas una persona y no acepta el navegador de Rinari. Ábrelo en tu navegador», con el botón «Abrir en mi navegador» (el «Abrir fuera» que ya existe) y la URL.
+- **En el manual (`rinari-handbook`) y la ayuda del navegador:** los sitios con verificación humana se usan desde el navegador del dueño.
+
+**Pruebas.** CLI: una página de prueba con el iframe de Turnstile da `HUMAN_CHECK`. App: la tarjeta con «Abrir en mi navegador». Escenario: el modelo falso abre esa página y el turno termina en la pregunta al dueño, sin reintentos.
+
+---
+
+## 46. El navegador, como uno de verdad
+
+**Qué se pidió** (Planka, Ideas-2).
+- Una **página de inicio** propia, como la de un navegador de verdad.
+- Que el navegador sea **siempre fluido**: hoy, cuando el agente lo usa, «se pega todo por las capturas».
+- Ver el **cursor del agente**, como en Codex o Claude Code.
+- **Quitar «Preparando el navegador…»** y los botones de control: «el cursor mío toma el control, el agente lo retoma cuando lo ocupa».
+
+**Qué hay hoy (verificado).**
+- **Las capturas pasan por el proceso principal de Electron** (`NativeBrowserHost.ts`, `page.screenshot` y `preview`): `capturePage()`, luego `toPNG()` y a veces `resize()`, que codifican la imagen en el mismo proceso que pinta toda la app. Una captura grande frena la ventana entera mientras se codifica, y el propio código avisa de que en ciertos casos `capturePage` bloquea el proceso principal. **Causa probable** del tirón; se mide antes de tocar.
+- **El control es explícito:** «Tomar control» / «Devolver al agente», con «Rinari controla esta página» / «Tienes el control» (`browser.takeControl`, `browser.returnControl`). El Engine confirma cada transición (`browser.control.set`), y si el dueño toca la página sin tomar el control, el agente recibe `BROWSER_INTERVENED`.
+- Al abrirse, el navegador muestra «Preparando el navegador…» o «Esta sesión todavía no tiene navegador».
+
+**Propuesta.**
+1. **Fluido mientras el agente trabaja:**
+   - medir primero con un perfil de una sesión real (cuánto bloquea cada captura al proceso principal);
+   - sacar la codificación del proceso principal: cuando la vista está en pantalla, capturar con CDP (`Page.captureScreenshot`, que codifica fuera del proceso principal) y dejar `capturePage` solo de respaldo; JPEG o WebP para las vistas previas en lugar de PNG, y no redimensionar en el proceso principal;
+   - no hace falta una librería: es dónde y cómo se codifica la captura.
+2. **Página de inicio de Rinari** (en lugar de «Preparando…» y de la página en blanco):
+   - una página local con el estilo de Rinari: barra de búsqueda o dirección, los sitios abiertos hace poco en esta conversación o proyecto, y los servidores locales en marcha (los `localhost` del registro de procesos) como accesos directos;
+   - aparece al instante; el navegador se prepara detrás sin mostrarlo.
+3. **Cursor del agente visible:**
+   - un cursor con el estilo de Rinari que **viaja** hasta donde el agente hace clic (con una onda al hacer clic) y muestra un indicador al escribir;
+   - se dibuja en una capa transparente encima de la página, **sin tocar el DOM de la página** (no aparece en las capturas del agente ni cambia lo que lee);
+   - con movimiento reducido, el cursor salta sin animación.
+4. **Control sin botones:**
+   - **el dueño toma el control con solo usar el navegador:** mover el ratón dentro, hacer clic o escribir. Desaparecen «Tomar control», «Devolver al agente» y sus avisos;
+   - **el agente lo retoma cuando lo necesita**, pero **solo si el dueño dejó de usarlo hace un rato** (por ejemplo 3 s sin tocarlo). Si el dueño sigue activo, el agente espera y se ve un chip pequeño «Rinari espera a que termines»;
+   - **nunca a mitad de un campo de contraseña** ni con un formulario a medio escribir por el dueño: ahí el agente espera hasta que el dueño suelte;
+   - el Engine sigue confirmando cada cambio de dueño (no hay doble autoridad), y `BROWSER_INTERVENED` deja de ser un error y pasa a ser «el dueño estaba usando el navegador; espera y reintenta».
+
+**Decisión pendiente.**
+1. El tiempo de espera antes de que el agente retome el navegador: **3 segundos** sin que el dueño lo toque (recomendado), o más.
+
+**Pruebas.**
+- Medición antes y después: durante una ráfaga de capturas del agente, la app sigue a 60 cuadros (muestreo con `requestAnimationFrame` en la ventana principal).
+- `browser:vertical` (la prueba `browser-integration` del CI) con la captura por CDP y su respaldo.
+- Escenario `browser-handoff`: el dueño hace clic en la página y el agente espera (chip visible); a los 3 s sin tocarla, el agente retoma; con el foco en un campo de contraseña, el agente no retoma.
+- La página de inicio aparece sin «Preparando…» y lista los `localhost` en marcha; el cursor viaja al punto del clic y no aparece en la captura del agente.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -1281,6 +1343,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 42 | Chip de proyecto solo en conversaciones nuevas (lo escrito viaja al cambiar). Empieza en «Sin proyecto». Lista: proyectos del perfil activo por uso reciente, buscador y «Abrir carpeta…». Las existentes se mueven desde la barra lateral. |
 | 43 | Flujos es una pestaña del panel lateral (Normal y Boards), con versión compacta y selector «Esta conversación · Proyecto». Sale el modo «Flujos» de arriba. |
 | 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.3.2 por riesgo. |
+| 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pide al dueño usar su navegador. No se disfraza el navegador ni se intentan resolver captchas. |
+| 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras unos segundos sin uso, nunca en un campo de contraseña. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

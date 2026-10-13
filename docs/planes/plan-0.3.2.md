@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56 y 57 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 y 58, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54 y 56–58) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57 y 59 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58 y 59, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54 y 56–59) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -242,6 +242,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 | 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir; sin pantalla en blanco) |
+| 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó: Rinari no la cerró antes de responder | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1733,6 +1734,30 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - Vitest: un componente que lanza un error dentro de un ErrorBoundary muestra «Recargar esta vista» y el error queda registrado con la pila de componentes.
 - Vitest del bloque de código: durante el streaming no vuelve a `<pre>` sin colores.
 - Preload: 30 suscriptores usan un solo `ipcRenderer.on`.
+
+---
+
+## 59. La lista de pasos queda abierta aunque el trabajo terminó
+
+**Qué se vio** (dueño, 2026-10-13; `ses_01M4V18RCEH0W5FFQR2MR6H534`, turno `turn_01M4V5MSXGTAS8526V98G4ZG6R`, 17:40–17:44 UTC). El turno terminó bien y la respuesta entregó el MP3 verificado, pero la lista quedó en «Quedan 3 pasos»: «Crear job y esperar» en curso, «Descargar con sha256» y «Entregar MP3» pendientes. Los tres se hicieron.
+
+**Causa (verificada en `session_events`).**
+- Rinari actualizó la lista dos veces (paso 1 en curso, luego paso 1 hecho y paso 2 en curso). Después hizo el trabajo en **solo dos rondas de herramientas** (esperar el job y traer el archivo) y respondió **sin volver a tocar la lista**.
+- Al terminar, `ChecklistService.settle` (`checklist/service.py:188-205`) ve pasos sin terminar en un turno que acabó bien y deja el estado `open`: es honesto con lo que dice la lista, pero la lista estaba atrasada.
+- El recordatorio que ya existe (`checklist/reminder.py`, `REMIND_AFTER_ROUNDS = 4`) **no llegó a saltar**: solo avisa tras 4 rondas de herramientas sin actualizar la lista, y aquí hubo 2. No hay ninguna comprobación **al momento de responder**.
+- En las otras tres listas de esa misma sesión, Rinari sí la cerró antes de responder: es un descuido del modelo, no algo que pase siempre.
+
+**Propuesta.**
+1. **Comprobación al final, una vez por turno:** cuando el modelo va a terminar (responde sin pedir herramientas) y la lista activa de ese turno tiene pasos sin terminar, el Engine le pasa **una nota de harness** antes de cerrar: «Tu lista aún dice: paso 2 en curso, pasos 3 y 4 pendientes. Si ya están hechos, actualízala; si no, di qué falta». Rinari responde con un `checklist.update` (y, si hace falta, una línea más). Cuesta una llamada corta al modelo y **solo cuando la lista quedó atrasada**; si la lista ya está al día, no pasa nada.
+   - Si después de la nota la lista sigue con pendientes, se respeta: el estado `open` es correcto (de verdad faltó algo) y el texto final lo explica.
+   - No se repite en el mismo turno, no corre en turnos cancelados o fallidos, y no cuenta para el detector de bucles.
+   - Va junto con el ajuste del recordatorio del #48 («pedir la lista solo cuando lo amerita»).
+2. **En la app, una salida para el dueño:** en el estado «Quedan n pasos» de una lista de un turno que **ya terminó**, el menú de la lista ofrece «Marcar todo como hecho» además de «Descartar», para no quedarse con una lista vieja abierta.
+
+**Pruebas.**
+- CLI: el modelo falso termina con la lista atrasada → recibe una sola nota, actualiza la lista y el turno cierra `completed`; si no la actualiza, queda `open` sin una segunda nota; con la lista al día, ninguna nota; en un turno cancelado, ninguna nota.
+- App: vitest de «Marcar todo como hecho» en el estado `open`.
+- Escenario `checklist-dock`: un turno que deja la lista atrasada termina con la lista completa tras la nota.
 
 ---
 

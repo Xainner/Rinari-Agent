@@ -230,7 +230,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 44 | El panel lateral se puede extender mucho más, y el navegador del agente prueba en tamaños anchos (Planka, Idea) | CLI + Agent | Decidido (causa verificada) |
 | 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
 | 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Decidido |
-| 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta en curso) |
+| 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta revisada) |
 | 48 | Lo que enseñó una sesión larga con un MCP de medios: sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI | Decidido (causas verificadas) |
 | 49 | La cabecera del turno en curso, como tarjeta de estado: qué hace, el paso de la lista y la acción con su tiempo | Agent | Decidido (diseño A) |
 
@@ -1223,7 +1223,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 1. **Extender el panel lateral, en Normal y en Boards** (en Boards, dentro de su panel, que se abre con el botón como hoy):
    - **sin el tope de 800 px:** se arrastra hasta dejar al chat en un mínimo angosto;
    - **botón «Ampliar»** en la barra del panel lateral (y doble clic en el borde): el panel lateral ocupa toda el área de la conversación, o del panel en Boards, y el chat queda como una columna estrecha con la cara de Rinari y el composer. El mismo botón, o Esc, lo devuelve al ancho de antes;
-   - el ancho se recuerda por pestaña.
+   - el ancho se recuerda por conversación, junto con la pila de vistas (#47).
 2. **El tamaño de la página, separado del tamaño del panel**, en la pestaña Navegador (con cuidado del riesgo, que preocupa al dueño):
    - un selector de tamaño: **Ajustar al panel** (como hoy), **Móvil 390**, **Tablet 768**, **Escritorio 1280** y **Ancho 1920**;
    - **sin reducir la página.** Si la página es más ancha que el panel, se ve a su tamaño real y el panel se **desplaza en horizontal** para recorrerla, con el tamaño a la vista («1280 × 800»). La base ya existe: el navegador nativo distingue dónde estaría la página entera (`logicalBounds`) de lo que se ve (`visibleBounds`) y coloca la página desplazada sin cambiar su viewport (`ViewLayoutCoordinator.ts`). Es lo que ya usa Boards cuando su scroll recorta un panel;
@@ -1334,6 +1334,16 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 4. **En Boards:** los botones de la barra de título actúan sobre el **panel enfocado**, y cada panel conserva su panel lateral con las vistas apiladas (se abre con su botón, como hoy).
 5. **Movimiento:** abrir una vista la desliza desde la barra de título hasta su sitio en la pila; los separadores no rebotan; con movimiento reducido, todo es instantáneo.
 6. **Sin conversación** (pantalla de inicio, conversación nueva todavía sin enviar, Ajustes y demás pantallas sin sesión): **los botones de las vistas no aparecen**, como en la pantalla de inicio de Claude Code (dueño, 2026-10-12). Aparecen, con un fundido suave, cuando hay una conversación; con movimiento reducido, sin animación.
+7. **Decisiones de la maqueta** (dueño, 2026-10-12):
+   - **Ctrl+B** oculta y vuelve a mostrar el panel lateral con la misma disposición, sin cerrar sus vistas;
+   - las vistas de «Más» (Tareas, Verificación, Insight) **cuentan** para el límite de 3;
+   - una vista nueva entra **abajo**; con 3 abiertas, se elige cuál reemplazar y ocupa su sitio;
+   - el ancho y la pila se recuerdan **por conversación** (el #44 se ajusta a esto);
+   - al ampliar, el chat queda como una columna con **la cara, el estado, los últimos mensajes y el composer**;
+   - **indicadores** también en Flujo (ámbar si una etapa te necesita) y en Archivos (un artefacto nuevo);
+   - en una ventana estrecha (el chat no llega a 300 px), el panel pasa a **cajón** encima del chat, con la pila dentro;
+   - en Boards, el botón de un panel sin vistas abre **la última vista usada**, o el Navegador si nunca se abrió ninguna;
+   - el selector de tamaño (390 / 768 / 1280 / 1920) va **en la barra del navegador**, junto a la dirección.
 
 **Maqueta.** Antes de construirlo se hace una maqueta solo del panel lateral (`Documents/Proyectos/rinari-sidepanel-proto`).
 

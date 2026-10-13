@@ -32,9 +32,18 @@ En Acceso completo, enviar a esos destinos **no pregunta**, aunque el turno haya
   - el **presupuesto** (tokens, costo, tiempo), que corta solo;
   - el **registro** de todo lo que hizo, con un resumen al terminar;
   - **deshacer** donde se puede (cambios de archivos del turno, checkpoints);
-  - una **lista de cosas prohibidas** que define el dueño (por ejemplo, «nunca `rm -rf` fuera del proyecto», «nunca publicar en X»).
+  - una **lista de cosas prohibidas** que define el dueño (por ejemplo, «nunca `rm -rf` fuera del proyecto», «nunca publicar en X»);
+  - una **lista catastrófica fija** que ni Autónomo levanta: borrar la raíz o el disco entero, formatear, escribir directo a un disco físico, bombas de procesos.
 - **La confirmación al elegirlo** dice en claro: «Rinari no te va a preguntar nada. Si lee una página o un correo con instrucciones maliciosas, puede seguirlas. Úsalo con tareas y fuentes en las que confíes.»
 - **Siempre visible:** un distintivo «Autónomo» en el composer, en la cabecera de la sesión y en el agente de la Agency.
+
+## Referencia: cómo lo hace Hermes Agent (consultado 2026-10-12)
+
+- Tres modos de aprobación (`approvals.mode`: `manual`, `smart` —un modelo auxiliar decide— y `off`); `off` equivale a `--yolo` / `/yolo`, que se salta **todas** las aprobaciones de comandos peligrosos de la sesión.
+- **Lo único que YOLO no levanta** es una lista dura de comandos catastróficos (`rm -rf /`, bombas de procesos, `mkfs` sobre la raíz, `dd` a discos físicos), sin opción de anularla.
+- **Los secretos no se bloquean al leer:** las protecciones de `~/.ssh/`, `~/.aws/` y su `.env` son solo de escritura, y su propia documentación avisa que la terminal puede leerlos igual. Solo los `.env` de proyecto se niegan a las herramientas de archivos.
+- Mientras YOLO está activo, muestra un aviso rojo permanente.
+- Fuentes: [seguridad de Hermes Agent](https://hermes-agent.nousresearch.com/docs/user-guide/security/), [guía para una máquina de trabajo](https://hermes-agent.nousresearch.com/docs/guides/secure-hermes-on-a-work-machine).
 
 ## Dónde se elige el modo
 
@@ -54,7 +63,7 @@ En Acceso completo, enviar a esos destinos **no pregunta**, aunque el turno haya
 |---|---|---|
 | P-1 | Cuatro modos: Solo lectura, Proyecto, Acceso completo y Autónomo | Sí |
 | P-2 | En Acceso completo, los destinos de confianza (MCP registrados, SSH guardados, remoto git, localhost/LAN) no preguntan aunque se haya leído contenido externo | Sí |
-| P-3 | En Autónomo no se pregunta nada, ni siquiera la lista dura (`force push`, borrar fuera, secretos); queda registrado | A decidir. Recomendado: sí, salvo **leer secretos del sistema**, que por defecto queda **bloqueado** (no preguntado) y el dueño lo puede desbloquear |
+| P-3 | En Autónomo no se pregunta nada, ni la lista dura (`force push`, borrar fuera del proyecto) **ni la lectura de secretos del sistema**; todo queda registrado | **Decidido** (dueño, 2026-10-12). Se mantiene solo una **lista catastrófica fija**, sin opción de levantarla: borrar la raíz del sistema o el disco entero, formatear, escribir directo a discos físicos, bombas de procesos. Es lo que hace Hermes (ver abajo) |
 | P-4 | Autónomo se elige con una confirmación que explica el riesgo, y queda siempre visible | Sí |
 | P-5 | El modo se elige por conversación, con valor por defecto por proyecto, por tarea programada y por agente/equipo en la Agency | Sí |
 

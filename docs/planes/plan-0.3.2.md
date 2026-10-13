@@ -233,7 +233,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta revisada) |
 | 48 | Lo que enseñó una sesión larga con un MCP de medios: sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI | Decidido (causas verificadas) |
 | 49 | La cabecera del turno en curso, como tarjeta de estado: qué hace, el paso de la lista y la acción con su tiempo | Agent | Decidido (diseño A) |
-| 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Propuesto (faltan 2 decisiones) |
+| 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Decidido (con Rinari abierta o en la bandeja) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1433,19 +1433,20 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
    - **qué hacer con el resultado:** nada; avisar solo si falla; o **pasarle la salida a un agente** («si falla, que Rinari lo revise», o «resume este log cada mañana»). Así se combinan script y agente.
 2. **Horarios tipo cron**, además de los de hoy: «cada N minutos», diario, semanal y una expresión cron para lo avanzado, con la próxima ejecución a la vista.
 3. **Que corra aunque Rinari esté cerrado.** Tres niveles, de menos a más:
-   - **Bandeja e inicio con el sistema:** «Iniciar Rinari con Windows, en la bandeja» deja el Engine vivo mientras la PC esté encendida. Cubre la mayoría de los casos.
+   - **Bandeja e inicio con el sistema:** la opción que **ya existe** de iniciar Rinari con Windows en la bandeja deja el Engine vivo mientras la PC esté encendida. Las tareas programadas la usan tal cual. Cubre la mayoría de los casos.
    - **El programador del sistema:** por tarea, «Ejecutar aunque Rinari esté cerrado» la registra en el Programador de tareas de Windows (o `launchd` / `systemd --user`) para correr la CLI sin ventana (`rinari schedule run <id>`). Con la opción «Despertar el equipo», funciona incluso con la PC suspendida.
    - **En el servidor (24/7):** cuando la app pueda conectarse al Engine del Gateway, la tarea se crea allí ([plan-gateway.md](plan-gateway.md)).
 4. **Riesgo a validar:** que la app y una ejecución de la CLI sin ventana no escriban a la vez la misma base de datos sin coordinación. El Engine ya usa candados por sesión y SQLite, pero hay que comprobar el caso de dos procesos.
 5. **Permisos:** la tarea guarda lo que se le aprobó al crearla (como hoy) y sigue el modo elegido ([plan-permisos-v4.md](plan-permisos-v4.md)); un comando programado muestra el comando exacto al crearlo y al editarlo.
 
-**Decisiones pendientes.**
-1. ¿Entra en 0.3.2 todo junto, o el tipo «Comando» y los horarios cron en 0.3.2 y «aunque Rinari esté cerrado» (el programador del sistema) después?
-2. ¿«Iniciar Rinari con Windows, en la bandeja» activado por defecto, o se ofrece al crear la primera tarea programada?
+**Decidido** (dueño, 2026-10-12):
+- **En 0.3.2 entra lo que corre con Rinari abierta o en la bandeja:** el tipo «Comando», pasar la salida a un agente y los horarios cron. El Programador de tareas del sistema y el servidor quedan para después.
+- **Iniciar con Windows en la bandeja, activado por defecto** (la opción ya existe; cambia su valor inicial para instalaciones nuevas).
+- El riesgo de dos procesos sobre la misma base queda para cuando se haga el Programador del sistema.
 
 **Pruebas.**
-- CLI: una tarea «Comando» corre sin el modelo y guarda salida, código y duración; «avisar solo si falla»; «pasar la salida a un agente» arranca un turno con esa salida; una expresión cron calcula la próxima ejecución; `rinari schedule run <id>` sin ventana con la app abierta no corrompe la base.
-- App: crear una tarea «Comando» (con el comando a la vista), el historial con la salida, y la opción del programador del sistema.
+- CLI: una tarea «Comando» corre sin el modelo y guarda salida, código y duración; «avisar solo si falla»; «pasar la salida a un agente» arranca un turno con esa salida; una expresión cron calcula la próxima ejecución.
+- App: crear una tarea «Comando» (con el comando a la vista), el historial con la salida, y el inicio con Windows activado en una instalación nueva.
 
 ---
 
@@ -1499,6 +1500,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 47 | Panel lateral: seis vistas (Navegador, Terminal, Archivos, Cambios, Agentes, Flujo; Workspace se reparte), un botón por vista en la barra de título con indicador, hasta 3 apiladas con «Ampliar». En Boards actúan sobre el panel enfocado. |
 | 48 | Todo genérico para cualquier MCP: el progreso renueva el tiempo de espera, el detector no cuenta esperas con resultado que cambia, las salidas fuera de esquema llegan como texto con aviso, `web.download` por partes hasta 1 GiB, nombres tolerantes solo con una coincidencia y la misma política, título de respaldo, y la nota de la lista solo cuando la amerita. |
 | 49 | Cabecera del turno en curso como tarjeta: qué hace (el paso de la lista o la acción), «Paso n/m» de la lista, la acción con su propio tiempo, y tiempo total y tokens a la derecha. En Boards angosto, una línea. |
+| 50 | Tareas «Comando» sin modelo, con salida y código guardados y opción de pasarle la salida a un agente, más horarios cron. En 0.3.2 solo con Rinari abierta o en la bandeja (iniciar con Windows en la bandeja, activado por defecto). El Programador del sistema y el servidor, después. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

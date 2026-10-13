@@ -229,7 +229,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 43 | Flujos pasa a vivir en el panel lateral, en Normal y en Boards | Agent | Decidido |
 | 44 | El panel lateral se puede extender mucho más, y el navegador del agente prueba en tamaños anchos (Planka, Idea) | CLI + Agent | Decidido (causa verificada) |
 | 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
-| 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Propuesto (falta 1 decisión) |
+| 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1252,7 +1252,17 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 - **Tarjeta con salida directa:** «Este sitio verifica que seas una persona y no acepta el navegador de Rinari. Ábrelo en tu navegador», con el botón «Abrir en mi navegador» (el «Abrir fuera» que ya existe) y la URL.
 - **En el manual (`rinari-handbook`) y la ayuda del navegador:** los sitios con verificación humana se usan desde el navegador del dueño.
 
-**Pruebas.** CLI: una página de prueba con el iframe de Turnstile da `HUMAN_CHECK`. App: la tarjeta con «Abrir en mi navegador». Escenario: el modelo falso abre esa página y el turno termina en la pregunta al dueño, sin reintentos.
+**Además: abrir el sitio en un Chrome o Edge de verdad, manejado por Rinari** (pregunta del dueño: «¿no hay un navegador compatible?»).
+- **Ya existe la base.** El Engine sabe lanzar el Chrome o el Edge instalado (`browser/discovery.py`, `browser/manager.py`) con un perfil propio y aislado. Hoy lo usa la CLI, sin ventana (`--headless`).
+- **Propuesta:** en la tarjeta de verificación humana, un segundo botón, **«Abrir en Chrome/Edge con Rinari»**:
+  - abre ese sitio en una **ventana real** de Chrome o Edge (con ventana, no `headless`), con un **perfil de Rinari** guardado por proyecto, nunca el perfil personal del dueño ni sus contraseñas;
+  - **el dueño pasa la verificación él mismo** en esa ventana, como en cualquier navegador;
+  - el agente sigue trabajando en esa misma ventana, y como el perfil se guarda, la sesión iniciada sirve para la próxima vez;
+  - si el sitio vuelve a pedir la verificación, el agente se detiene y pregunta otra vez; nunca la resuelve él.
+- **Sin garantía.** Un Chrome de verdad con una persona resolviendo el desafío es la mejor opción legítima. Aun así, algunos sitios bloquean cualquier navegador conectado a una herramienta de automatización, y ahí queda «Abrir en mi navegador».
+- **Más adelante, fuera de 0.3.2:** que el agente use el Chrome del dueño con su perfil (como la extensión de Claude para Chrome). Es otro proyecto, con más cuidado de seguridad.
+
+**Pruebas.** CLI: una página de prueba con el iframe de Turnstile da `HUMAN_CHECK`. App: la tarjeta con «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari»; esta abre una ventana real con el perfil de Rinari del proyecto, y el agente sigue ahí. Escenario: el modelo falso abre esa página y el turno termina en la pregunta al dueño, sin reintentos.
 
 ---
 
@@ -1287,8 +1297,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
    - **nunca a mitad de un campo de contraseña** ni con un formulario a medio escribir por el dueño: ahí el agente espera hasta que el dueño suelte;
    - el Engine sigue confirmando cada cambio de dueño (no hay doble autoridad), y `BROWSER_INTERVENED` deja de ser un error y pasa a ser «el dueño estaba usando el navegador; espera y reintenta».
 
-**Decisión pendiente.**
-1. El tiempo de espera antes de que el agente retome el navegador: **3 segundos** sin que el dueño lo toque (recomendado), o más.
+**Decidido** (dueño, 2026-10-12): el agente retoma el navegador tras **3 segundos** sin que el dueño lo toque.
 
 **Pruebas.**
 - Medición antes y después: durante una ráfaga de capturas del agente, la app sigue a 60 cuadros (muestreo con `requestAnimationFrame` en la ventana principal).
@@ -1343,8 +1352,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 42 | Chip de proyecto solo en conversaciones nuevas (lo escrito viaja al cambiar). Empieza en «Sin proyecto». Lista: proyectos del perfil activo por uso reciente, buscador y «Abrir carpeta…». Las existentes se mueven desde la barra lateral. |
 | 43 | Flujos es una pestaña del panel lateral (Normal y Boards), con versión compacta y selector «Esta conversación · Proyecto». Sale el modo «Flujos» de arriba. |
 | 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.3.2 por riesgo. |
-| 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pide al dueño usar su navegador. No se disfraza el navegador ni se intentan resolver captchas. |
-| 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras unos segundos sin uso, nunca en un campo de contraseña. |
+| 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pregunta. La tarjeta ofrece «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari» (ventana real con perfil de Rinari por proyecto, el dueño pasa la verificación y el agente sigue). No se disfraza el navegador ni se intentan resolver captchas. |
+| 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras 3 s sin uso, nunca en un campo de contraseña. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

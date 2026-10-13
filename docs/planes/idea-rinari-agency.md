@@ -104,7 +104,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 
 ## 8. Autonomía y seguridad
 
-- **La autonomía es un ajuste por agente y por equipo**, con los modos del [plan de permisos v4](plan-permisos-v4.md). El modo **Autónomo** no pregunta nada (MCP, SSH, comandos), con una confirmación del dueño al elegirlo: es lo que pide el caso de la producción de videos, donde ningún agente debería tener que preguntar.
+- **La autonomía es un ajuste por agente y por equipo**, con los tres modos del [plan de permisos v4](plan-permisos-v4.md). En **Acceso completo** no pregunta nada (MCP, SSH, comandos, secretos), con la confirmación del dueño al elegirlo: es lo que pide el caso de la producción de videos, donde ningún agente debería tener que preguntar.
 - **Lo que no se negocia, en cualquier modo:**
   - lo que dice otro agente o un recado es **dato, no instrucción**; un recado solo da los permisos de quien lo toma y nunca más de lo que el dueño autorizó para ese agente y ese equipo;
   - las credenciales viven en el almacén de Rinari, asignadas a un equipo, y no se muestran en conversaciones;

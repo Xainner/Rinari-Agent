@@ -15,7 +15,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 
 ### B.1 Limpieza: lo que se va
 - **La mensajería entre paneles**, entera:
-  - en la app: el grupo de peers, `@Panel` en el composer (`paneMention.ts`), el diálogo de reenvío (`PeerForwardDialog.tsx`), los avisos de mensajes de pares, el «máx. 3 saltos» (`peerLimits.ts`), la opción en Ajustes, y el chip de recibir/enviar y la insignia de mensajes de pares en la cabecera del panel y en la tira;
+  - en la app: el grupo de peers, `@Panel` en el composer (`paneMention.ts`), **«Enviar al panel…» con «Usar la última respuesta»** y el diálogo de reenvío (`PeerForwardDialog.tsx`) —también se quitan aunque los mande el dueño (decisión 2026-10-12)—, los avisos de mensajes de pares, el «máx. 3 saltos» (`peerLimits.ts`), la opción en Ajustes, y el chip de recibir/enviar y la insignia de mensajes de pares en la cabecera del panel y en la tira;
   - en el Engine, `session.send` hacia paneles;
   - **el historial de mensajes peer que ya existe se sigue viendo** en las conversaciones;
   - en el Engine se retira también el buzón de los mensajes entre paneles (`PeerBroker`, `engine_protocol/peers.py`) con sus métodos y su tabla (decisión C-2). Rinari Agency construirá su propia base desde cero.
@@ -51,9 +51,26 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 |---|---|---|
 | B1 | Limpieza: la mensajería entre paneles (con el `PeerBroker` del Engine) y «Quitar y cerrar sesión»; y el arreglo del «Preparando el turno…» (C.1) | S–M |
 | B2 | El panel colapsado con su estado en vivo | M |
+| B3 | Atajos de teclado, añadir un panel en un gesto y la barra más limpia (B.4) | S–M |
 
-### B.4 Después, sobre esta base
-Las mejoras se proponen una por una a partir de usar Boards ya limpio, cada una con su porqué. Si alguna necesita verse antes de construirla, se hace una maqueta de esa pieza, no de todo Boards.
+### B.4 Mejoras decididas (dueño, 2026-10-12)
+
+1. **Atajos de teclado.**
+   - **Ctrl+1…9:** ir al panel N (lo enfoca y pone el cursor en su composer).
+   - **Ctrl+J:** ir al siguiente panel que te necesita (aprobación, pregunta o fallo), en orden de llegada. Si no hay ninguno, un aviso corto «Nada te necesita».
+   - Se suman a los de hoy (Ctrl+W, Ctrl+N) y aparecen en la ayuda de atajos.
+2. **Añadir un panel en un gesto.**
+   - **Arrastrar** una conversación desde la barra lateral al board: se suelta entre dos paneles o al final, con una guía que marca dónde caerá.
+   - **«＋ en este proyecto»** en la cabecera de cada panel: abre otro panel del mismo proyecto y deja elegir el modo (PLAN, BUILD o REVIEW). Sirve para el uso de «A planea, B codifica, C revisa» sin pasar por el diálogo.
+   - El diálogo «Añadir panel» de hoy se queda para lo demás.
+3. **Una barra más limpia.**
+   - A la vista: los contadores (trabajando, te necesitan, sin leer), «Ajustar a la vista» y «Añadir panel».
+   - En un menú «⋯»: «Colapsar terminados», «Modo foco», «Marcar todo como leído» y «Quitar todos».
+   - La regla de `boards-fit` sigue: que aparezca un contador nunca cambia la altura de la barra.
+
+**Pruebas.** Vitest de los atajos (Ctrl+1…9, Ctrl+J con y sin pendientes), del soltar desde la barra lateral (posición) y de la barra (qué queda a la vista y qué en el menú). Escenario de Boards: arrastrar una conversación, «＋ en este proyecto» con el modo elegido, y Ctrl+J entre dos paneles que esperan.
+
+Las siguientes mejoras se proponen una por una a partir de usar Boards ya limpio, cada una con su porqué. Si alguna necesita verse antes de construirla, se hace una maqueta de esa pieza, no de todo Boards.
 
 ### B.5 Ideas aparcadas (sin decidir)
 Salieron de las versiones anteriores de este plan y de la maqueta (`Documents/Proyectos/rinari-boards-proto`, con los modos «Hoy» y «Reimaginado»). **No están decididas**, y se quedan aquí para no perderlas:
@@ -61,11 +78,10 @@ Salieron de las versiones anteriores de este plan y de la maqueta (`Documents/Pr
 - espacios guardados (varios boards con nombre por perfil);
 - composiciones rápidas (1 + pila, 2 lado a lado, 2×2, 3×2);
 - las salidas (navegador, terminal, archivos, agentes) y los Flujos como paneles propios, o un selector «Chat · Flujo» dentro del panel;
-- «Enviar a…» para pasar a mano un resultado de un panel a otro;
 - etiqueta de rol por panel y la receta «Planear · Codificar · Revisar»;
 - el chip de carpeta compartida con «Abrir en worktree» (C10);
 - **Comparar** (el mismo encargo a varios modelos), que el dueño dejó para más adelante;
-- paneles que cambian de tamaño solos según su estado: **descartado** por el dueño.
+- **descartados** por el dueño: que los paneles cambien de tamaño solos según su estado; «Enviar a…» entre paneles (se quita con la mensajería); y el resumen «Mientras no estabas» al volver a Boards.
 
 ---
 

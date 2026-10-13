@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45 y 46 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46 y 47, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46 y 47).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46 y 48 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47 y 48, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46 y 47).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -231,6 +231,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
 | 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta en curso) |
+| 48 | Lo que enseñó una sesión larga con el Visual Lab (5 imágenes + 5 videos): sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI (+ Visual Lab) | Propuesto (causas verificadas) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1286,7 +1287,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
    - sacar la codificación del proceso principal: cuando la vista está en pantalla, capturar con CDP (`Page.captureScreenshot`, que codifica fuera del proceso principal) y dejar `capturePage` solo de respaldo; JPEG o WebP para las vistas previas en lugar de PNG, y no redimensionar en el proceso principal;
    - no hace falta una librería: es dónde y cómo se codifica la captura.
 2. **Página de inicio de Rinari** (en lugar de «Preparando…» y de la página en blanco). Una página local, con el estilo Obsidiana, que se ve al abrir el navegador, en una pestaña nueva y cuando el agente no está usando ninguna página:
-   - **arriba, una barra de dirección y búsqueda** (Ctrl+L la enfoca): una dirección abre el sitio; un texto busca con el buscador elegido en Ajustes → Navegador;
+   - **arriba, una barra de dirección y búsqueda** (Ctrl+L la enfoca): una dirección abre el sitio; un texto busca con el buscador elegido en Ajustes → Navegador, **DuckDuckGo por defecto** (dueño, 2026-10-12); la página de inicio se construye sin maqueta previa;
    - **«En marcha»:** las vistas previas de este proyecto que están corriendo (`workspace_preview_*`, por ejemplo `localhost:5173`) y las páginas locales que sirve el Engine (`browser/local_pages.py`, como un informe generado), cada una con un punto vivo y un clic para abrirla. Es lo más útil al programar: la app que estás construyendo, a un clic;
    - **«Recientes en este proyecto»:** los últimos sitios que abrió el agente o el dueño en las conversaciones del proyecto (o del chat, si no hay proyecto), con su icono y título;
    - **«Fijados»:** los sitios que el dueño fija desde la barra del navegador (por proyecto);
@@ -1337,6 +1338,44 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 **Pruebas.**
 - Vitest: abrir y cerrar vistas desde la barra de título, el límite de 3, los separadores, «Ampliar» de una vista, recordar la disposición, y en Boards que los botones actúen sobre el panel enfocado.
 - Escenario `side-panel-stack`: Navegador y Terminal apilados, se arrastra el separador y se amplía el Navegador; el movimiento se muestrea cuadro a cuadro y con `RINARI_UI_REDUCED_MOTION=1`.
+
+---
+
+## 48. Lo que enseñó una sesión larga con el Visual Lab
+
+**De dónde sale** (dueño, 2026-10-12; `ses_01M4SCGKRPRZPM73YEQTYTZBXE`, proyecto YTBKids, `deepseek-v4.1-flash`, Acceso completo). Es la tarea de automatización más completa hasta ahora: 5 imágenes con Qwen Image Turbo y 5 videos de 10 s con MiniMax H3, uno a la vez en una GPU, con el MCP **Rinari Visual Lab**. **Terminó bien:** los 5 clips verificados por fotogramas y audio, la guía del dueño a mitad de turno («calidad más baja para los restantes») aplicada, y en el segundo turno los 10 archivos bajados al proyecto con SHA-256 comprobado. Datos leídos de `state.db` en solo lectura.
+
+**Los números del primer turno:** 33 minutos, **120 llamadas al modelo**, 206 herramientas y **11,2 M tokens** (9,8 M en caché; unos 140 k de contexto por llamada).
+
+**Lo que se vio, con su causa:**
+1. **El sondeo se come los tokens.** 83 de las 206 llamadas fueron para preguntar por los trabajos (`get_job` 37, `wait_for_job` 34, `find_job` 12). Cada `wait_for_job` volvía a los ~25 s porque **el tiempo máximo de una llamada MCP es 30 s por defecto** (`mcp/config.py`, `DEFAULT_TIMEOUT_S`; se puede subir hasta 300 s por servidor). Cada vuelta es una llamada al modelo que reenvía ~140 k de contexto.
+2. **El detector de bucles se activó 8 veces**, 6 de ellas por «la misma llamada repetida 3 veces» mientras el agente esperaba un trabajo de GPU. Ahí esperar es lo correcto: es un falso positivo cuando el resultado cambia (el progreso avanza).
+3. **`prompt_guide` del Visual Lab falló 3 veces** con `VALIDATION_FAILED`: su salida no cumple el `output_schema` que declara (falta `result`). Rinari rechazó la respuesta entera, aunque traía el texto útil.
+4. **Una aprobación con Acceso completo** para `prompt_guide` («llamada MCP externa… después de leer contenido externo»). Las herramientas de solo lectura del Visual Lab no declaran `readOnlyHint`, así que Rinari las trata como capaces de efectos. Rinari ya respeta esa marca (`mcp/adapter.py`).
+5. **`web.download` cortó un MP4 en 2 MiB** (2 097 152 bytes): la descarga se guarda entera en memoria con el tope de las páginas web. El agente lo resolvió con ffmpeg sobre la URL, pero bajar un video al proyecto debería funcionar sin trucos.
+6. **`TOOL_NOT_FOUND` para `mcp_Rinari_Visual_Lab_get_job_preview`:** el modelo escribió el nombre con guiones bajos en vez de puntos (`mcp.Rinari_Visual_Lab.get_job_preview`), y la herramienta existía.
+7. **El título falló dos veces** (`SessionTitleFailed`, `error:ProviderError`): la conversación quedó con el mensaje recortado, «Necesito que hagas lo siguiente: Usando el MCP…».
+8. **No hubo lista de pasos.** La tarea era claramente de varios pasos (5 imágenes, 5 videos, en orden) y `checklist.update` estaba disponible, pero `deepseek-v4.1-flash` no la usó. El recordatorio de hoy (`checklist/reminder.py`) solo actúa cuando ya existe una lista.
+
+**Propuesta para Rinari:**
+- **Esperas largas sin gastar el modelo:**
+  - las notificaciones de progreso de MCP (`notifications/progress`, del estándar) **renuevan el tiempo de espera** de la llamada; así un `wait_for_job` puede esperar minutos en una sola llamada mientras el servidor informe progreso;
+  - el tiempo por servidor (hasta 300 s) se ve y se cambia en Ajustes → MCP;
+  - **el detector de bucles no cuenta como repetición** una llamada con los mismos argumentos si el resultado cambió (otro estado, más progreso): eso es esperar, no dar vueltas.
+- **Salidas MCP que no cumplen su esquema:** si la herramienta trae contenido de texto, se le pasa al modelo con un aviso («la salida no cumple su esquema») en lugar de fallar. Solo falla si no hay nada usable.
+- **Descargas grandes al proyecto:** `web.download` escribe **en disco por partes** (sin guardarlo entero en memoria), con un tope propio para archivos (por ejemplo 500 MiB, configurable), el tamaño y el SHA-256 en el resultado.
+- **Nombres de herramienta tolerantes:** si el modelo escribe `mcp_Servidor_herramienta` y existe `mcp.Servidor.herramienta` sin ambigüedad, se usa esa; si no, el error sugiere el nombre exacto.
+- **Título de respaldo:** si el modelo de títulos falla, se intenta con el modelo de la conversación y, si no, un título corto armado del pedido (las primeras palabras con sentido, sin «Necesito que…»).
+- **Lista de pasos que arranca sola:** en BUILD, si un turno lleva unas 6 rondas de herramientas sin lista y el pedido tiene varios pasos, una nota del harness le recuerda al modelo que la cree (una sola vez por turno).
+
+**Para el Visual Lab (el MCP, fuera de Rinari):**
+- arreglar la salida de `prompt_guide` para que cumpla su `output_schema` (o quitar el esquema);
+- marcar con `readOnlyHint` las herramientas que solo leen (`prompt_guide`, `capabilities`, `get_job`, `find_job`, `list_library`, `get_media`, …);
+- que `wait_for_job` espere más y envíe progreso, aprovechando la renovación de arriba;
+- revisar por qué `review_with_agent` respondió dos veces «El agente no pudo completar la operación».
+
+**Pruebas.**
+- CLI: una llamada MCP con notificaciones de progreso pasa de los 30 s sin `TIMEOUT`; el detector no avisa si el resultado cambia entre llamadas iguales; una salida que no cumple su esquema llega como texto con aviso; `web.download` de 50 MiB se escribe por partes con su SHA-256; `mcp_X_y` se resuelve a `mcp.X.y`; el título de respaldo; la nota de la lista de pasos después de 6 rondas sin lista.
 
 ---
 

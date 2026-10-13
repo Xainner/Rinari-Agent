@@ -25,7 +25,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 ### B.1b La cabecera del panel, más limpia (dueño, 2026-10-12)
 - **Se quita el punto de estado** junto al título: el estado ya lo dicen la cara animada de Rinari y los colores cuando algo salta (el borde ámbar si te necesita, el rojo si falla). En la tira de 48 px el punto también pasa a ser la cara de Rinari, en chico.
 - **No hay «＋» de panel nuevo en la cabecera.**
-- **Menú «⋯» del panel, más corto** (dueño, 2026-10-12): se quitan «Marcar resultados como leídos», «Mostrar u ocultar panel lateral» (ya tiene su botón) y «Plegar panel» (ya tiene su botón). También **«Configurar siguiente mensaje»**, que solo pone el cursor en el composer del panel (`SessionPane.tsx:170-176`); es un resto de cuando la cabecera tenía los controles de modelo y modo (recomendado, a confirmar). Quedan «Abrir en vista única», «Mover a la izquierda / derecha» y «Quitar del board».
+- **Menú «⋯» del panel, más corto** (dueño, 2026-10-12): se quitan «Marcar resultados como leídos», «Mostrar u ocultar panel lateral» (ya tiene su botón) y «Plegar panel» (ya tiene su botón). También **«Configurar siguiente mensaje»**, que solo pone el cursor en el composer del panel (`SessionPane.tsx:170-176`); es un resto de cuando la cabecera tenía los controles de modelo y modo (confirmado por el dueño). Quedan «Abrir en vista única», «Mover a la izquierda / derecha» y «Quitar del board».
 
 ### B.2 El panel colapsado mantiene su estado
 

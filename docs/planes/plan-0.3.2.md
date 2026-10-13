@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46 y 48 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47 y 48, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46 y 47).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48 y 49, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -231,7 +231,8 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
 | 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta en curso) |
-| 48 | Lo que enseñó una sesión larga con el Visual Lab (5 imágenes + 5 videos): sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI (+ Visual Lab) | Propuesto (causas verificadas) |
+| 48 | Lo que enseñó una sesión larga con un MCP de medios: sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI | Decidido (causas verificadas) |
+| 49 | La cabecera del turno en curso, como tarjeta de estado: qué hace, el paso de la lista y la acción con su tiempo | Agent | Decidido (diseño A) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1357,25 +1358,50 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 7. **El título falló dos veces** (`SessionTitleFailed`, `error:ProviderError`): la conversación quedó con el mensaje recortado, «Necesito que hagas lo siguiente: Usando el MCP…».
 8. **No hubo lista de pasos.** La tarea era claramente de varios pasos (5 imágenes, 5 videos, en orden) y `checklist.update` estaba disponible, pero `deepseek-v4.1-flash` no la usó. El recordatorio de hoy (`checklist/reminder.py`) solo actúa cuando ya existe una lista.
 
-**Propuesta para Rinari:**
+**Propuesta para Rinari** (decisiones del dueño, 2026-10-12). **Todo es genérico, para cualquier servidor MCP y cualquier herramienta:** nada se escribe a medida del Visual Lab ni de ningún otro servidor.
 - **Esperas largas sin gastar el modelo:**
-  - las notificaciones de progreso de MCP (`notifications/progress`, del estándar) **renuevan el tiempo de espera** de la llamada; así un `wait_for_job` puede esperar minutos en una sola llamada mientras el servidor informe progreso;
-  - el tiempo por servidor (hasta 300 s) se ve y se cambia en Ajustes → MCP;
-  - **el detector de bucles no cuenta como repetición** una llamada con los mismos argumentos si el resultado cambió (otro estado, más progreso): eso es esperar, no dar vueltas.
-- **Salidas MCP que no cumplen su esquema:** si la herramienta trae contenido de texto, se le pasa al modelo con un aviso («la salida no cumple su esquema») en lugar de fallar. Solo falla si no hay nada usable.
-- **Descargas grandes al proyecto:** `web.download` escribe **en disco por partes** (sin guardarlo entero en memoria), con un tope propio para archivos (por ejemplo 500 MiB, configurable), el tamaño y el SHA-256 en el resultado.
-- **Nombres de herramienta tolerantes:** si el modelo escribe `mcp_Servidor_herramienta` y existe `mcp.Servidor.herramienta` sin ambigüedad, se usa esa; si no, el error sugiere el nombre exacto.
+  - las notificaciones de progreso de MCP (`notifications/progress`, parte del estándar) **renuevan el tiempo de espera** de la llamada, en cualquier servidor que las envíe. Así un servidor puede tener una llamada abierta minutos mientras informe progreso;
+  - el tiempo máximo por servidor (ya existe, hasta 300 s) se ve y se cambia en Ajustes → MCP;
+  - **el detector de bucles no cuenta como repetición** una llamada con los mismos argumentos si el resultado cambió (otro estado, más progreso), en cualquier herramienta: eso es esperar, no dar vueltas.
+- **Salidas que no cumplen su esquema** (cualquier herramienta MCP que declare `outputSchema`): si trae contenido de texto, se le pasa al modelo con un aviso («la salida no cumple su esquema») en lugar de fallar. Solo falla si no hay nada usable. No hay nada escrito para una herramienta en particular.
+- **Descargas grandes:** `web.download` escribe **en disco por partes** (sin guardarlo entero en memoria), con un tope propio para archivos de **1 GiB** (configurable), y el tamaño y el SHA-256 en el resultado.
+- **Nombres de herramienta tolerantes, sin riesgo:**
+  - si el modelo escribe `mcp_Servidor_herramienta` y, al normalizar puntos y guiones bajos, coincide con **exactamente una** herramienta registrada (`mcp.Servidor.herramienta`), se usa esa;
+  - **no da permisos nuevos:** la política, las aprobaciones y la guardia de contenido externo se evalúan sobre la herramienta real, igual que si el nombre hubiera venido bien escrito; solo puede resolver a herramientas que ya están registradas y expuestas en ese turno;
+  - si hay dos o más candidatas, o ninguna, no adivina: el error sugiere el nombre exacto.
 - **Título de respaldo:** si el modelo de títulos falla, se intenta con el modelo de la conversación y, si no, un título corto armado del pedido (las primeras palabras con sentido, sin «Necesito que…»).
-- **Lista de pasos que arranca sola:** en BUILD, si un turno lleva unas 6 rondas de herramientas sin lista y el pedido tiene varios pasos, una nota del harness le recuerda al modelo que la cree (una sola vez por turno).
+- **Lista de pasos que arranca sola, solo cuando la amerita.** Una nota del harness, **una sola vez por turno**, le recuerda al modelo que la cree si se cumplen todas estas condiciones:
+  - el modo es BUILD o PLAN (nunca en preguntas o charla);
+  - el turno lleva unas 6 rondas de herramientas sin lista;
+  - y el trabajo es de varios pasos: el pedido enumera varias cosas (una lista, «y luego», varias cantidades o archivos), o el turno ya cambió varios archivos o lanzó varios trabajos.
 
-**Para el Visual Lab (el MCP, fuera de Rinari):**
-- arreglar la salida de `prompt_guide` para que cumpla su `output_schema` (o quitar el esquema);
-- marcar con `readOnlyHint` las herramientas que solo leen (`prompt_guide`, `capabilities`, `get_job`, `find_job`, `list_library`, `get_media`, …);
-- que `wait_for_job` espere más y envíe progreso, aprovechando la renovación de arriba;
-- revisar por qué `review_with_agent` respondió dos veces «El agente no pudo completar la operación».
+El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint`, el progreso en las esperas) se entregó aparte al dueño, para su propio repo. Rinari no tiene nada específico de ese servidor.
 
 **Pruebas.**
-- CLI: una llamada MCP con notificaciones de progreso pasa de los 30 s sin `TIMEOUT`; el detector no avisa si el resultado cambia entre llamadas iguales; una salida que no cumple su esquema llega como texto con aviso; `web.download` de 50 MiB se escribe por partes con su SHA-256; `mcp_X_y` se resuelve a `mcp.X.y`; el título de respaldo; la nota de la lista de pasos después de 6 rondas sin lista.
+- CLI: una llamada MCP con notificaciones de progreso pasa de los 30 s sin `TIMEOUT`; el detector no avisa si el resultado cambia entre llamadas iguales; una salida que no cumple su esquema llega como texto con aviso; `web.download` de 50 MiB se escribe por partes con su SHA-256 y respeta el tope de 1 GiB; `mcp_X_y` se resuelve a `mcp.X.y` solo si hay una única coincidencia, con la misma política y aprobación que el nombre exacto; el título de respaldo; la nota de la lista de pasos después de 6 rondas sin lista en BUILD con un pedido de varios pasos, y ninguna nota en una pregunta o en PLAN sin trabajo.
+
+---
+
+## 49. La cabecera del turno en curso, como tarjeta de estado
+
+**Qué se vio** (dueño, con captura). Mientras Rinari trabaja, la cabecera dice «Rinari · En proceso desde hace 20m 33s · Pensando… ~7,0 M tokens». Son dos líneas sueltas que no dicen **qué** está haciendo, con el estilo de antes (`ActivityHeader.tsx`, `turn-head` en `TurnTimelineView.tsx`).
+
+**Diseño elegido (A, dueño 2026-10-12):** una tarjeta de la familia nueva.
+```
+(Rinari)  Generar el video del búho            20 m · 7,0 M
+          Paso 4/5 · esperando el trabajo · 25 s
+▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ (línea viva, sutil)
+```
+- **Primera línea, qué hace:** el título del **paso en curso de la lista de pasos** si hay lista; si no, la acción del momento («Leyendo src/app.ts», «Esperando el trabajo»), o «Pensando…» cuando solo piensa.
+- **Segunda línea:**
+  - **«Paso 4/5» sale de la lista de pasos** (el paso en curso sobre el total). Sin lista, no aparece;
+  - después, **la acción del momento con su propio tiempo** («esperando el trabajo · 25 s»), que se reinicia con cada acción. Así se distingue un turno largo que avanza de uno trabado.
+- **A la derecha:** el tiempo total del turno y los tokens (el costo, si el proveedor lo informa).
+- **Abajo:** una línea fina animada mientras trabaja; con movimiento reducido, quieta.
+- **La cara de Rinari** cambia con el estado, como hoy.
+- **En Boards,** con el panel angosto, la tarjeta se reduce a una línea («Generar el video del búho · 4/5 · 20 m · 7,0 M»), con el detalle al pasar el ratón. En un panel recién enviado no aparece hasta que hay algo que contar (C.1 del plan de Boards).
+
+**Pruebas.** Vitest de la tarjeta: con lista (título del paso y «Paso 4/5»), sin lista (la acción), solo pensando, el tiempo de la acción que se reinicia al cambiar de acción, el costo si existe y la versión de una línea. Escenario: un turno largo con lista muestra el paso que avanza; el movimiento se muestrea cuadro a cuadro y con `RINARI_UI_REDUCED_MOTION=1`.
 
 ---
 
@@ -1427,6 +1453,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pregunta. La tarjeta ofrece «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari» (ventana real con perfil de Rinari por proyecto, el dueño pasa la verificación y el agente sigue). No se disfraza el navegador ni se intentan resolver captchas. |
 | 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras 3 s sin uso, nunca en un campo de contraseña. |
 | 47 | Panel lateral: seis vistas (Navegador, Terminal, Archivos, Cambios, Agentes, Flujo; Workspace se reparte), un botón por vista en la barra de título con indicador, hasta 3 apiladas con «Ampliar». En Boards actúan sobre el panel enfocado. |
+| 48 | Todo genérico para cualquier MCP: el progreso renueva el tiempo de espera, el detector no cuenta esperas con resultado que cambia, las salidas fuera de esquema llegan como texto con aviso, `web.download` por partes hasta 1 GiB, nombres tolerantes solo con una coincidencia y la misma política, título de respaldo, y la nota de la lista solo cuando la amerita. |
+| 49 | Cabecera del turno en curso como tarjeta: qué hace (el paso de la lista o la acción), «Paso n/m» de la lista, la acción con su propio tiempo, y tiempo total y tokens a la derecha. En Boards angosto, una línea. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

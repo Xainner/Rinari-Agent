@@ -241,7 +241,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
-| 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir) |
+| 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir; sin pantalla en blanco) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1726,8 +1726,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **La vista previa HTML** usa el origen permitido por la CSP (revisar `frame-src` frente al servidor local de vistas previas de `HtmlPreview`).
 6. **Registro más útil:** los avisos repetidos iguales se agrupan («×120 en 10 min») en vez de una línea cada vez.
 
-**Decisión pendiente.**
-1. ¿La ventana se quedó en blanco el 2026-10-13 hacia las 10:55 (hora local)? Si sí, confirma la caída; si no, el error vino de una parte que no desmonta la vista principal.
+**Lo que dijo el dueño (2026-10-13):** no recuerda que la ventana se quedara en blanco. Encaja con la causa probable: el #185 se lanza en el `setState` que pasa el límite. Si ese `setState` viene de un callback fuera de React (el `ResizeObserver` del chat, que fuerza un `flushSync` de Virtua), el error corta **solo ese callback** y la interfaz sigue en pie; por eso sale como «Uncaught Error» y los avisos de `ResizeObserver` siguen después (17:23). Lo más que se vería es que el chat dejó de seguir el final por un momento. Igual se agrega la red de seguridad del punto 1, porque el mismo error dentro de un render sí dejaría la ventana en blanco.
 
 **Pruebas.**
 - Escenario `chat-stream-heavy`: el modelo falso transmite, a velocidad alta, una respuesta como la de esa sesión (varios bloques de código, tabla con rutas largas, negritas) con el chat abajo y con el panel lateral abierto; sin #185, sin avisos de `ResizeObserver` y el chat sigue el final. También bajo carga y con `RINARI_UI_REDUCED_MOTION=1`.

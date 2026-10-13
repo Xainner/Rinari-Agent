@@ -1011,6 +1011,14 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
   - varios turnos a la vez se agrupan.
 - Escenario `turn-notify`: el modelo falso termina un plan en otra conversación, aparecen el toast y la entrada en la campana, y «Revisar plan» lleva a la tarjeta.
 
+**Añadido (dueño, 2026-10-13, con capturas): saber *cuál* conversación es.** Dentro de la ventana, en otra conversación, suena el aviso y sube el número en el botón de atención (la cara de Rinari con «2»), pero **en la barra lateral no se ve cuál** te necesita: la conversación con una aprobación pendiente solo muestra el círculo de «trabajando».
+- **Causa (verificada).** Las señales de la barra lateral («Necesita tu intervención», «El último turno falló», «Resultado sin leer») salen **solo de los paneles de Boards** (`boardSignalBySession`, `App.tsx:398-407`). Fuera de Boards no hay señal: una conversación esperando tu aprobación sigue «trabajando» para la barra lateral. El número del botón de atención cuenta las aprobaciones de todas las sesiones (`attentionSessionCount`, `App.tsx:111-114`), pero la lista de la campana solo sabe nombrar las del board (`boardLabelFor`).
+- **Propuesta.**
+  - Las señales de la barra lateral valen para **todas las conversaciones**, no solo las de Boards: **ámbar** «Te necesita» (aprobación o pregunta) **en lugar del círculo de trabajando**, **rojo** si falló y un **punto de acento** si hay un resultado sin leer. La de la conversación abierta se rige por el #62.
+  - Un proyecto **plegado** muestra en su fila la señal más urgente de sus conversaciones, para no tener que desplegarlo.
+  - El menú del botón de atención lista **cada conversación pendiente por su nombre** (y su proyecto), con «Ir»; tocarla abre la conversación en la tarjeta de aprobación o en el resultado.
+- **Pruebas.** Vitest de la barra lateral: una conversación fuera de Boards con una aprobación pendiente muestra «Te necesita» en vez del círculo; un proyecto plegado muestra la señal; el menú de atención nombra la conversación y «Ir» la abre en la aprobación.
+
 **Complemento:** lo que se ve **al volver a la ventana** cuando la conversación que terminó es la que está a la vista está en el #62.
 
 ---
@@ -1656,7 +1664,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 1. **Chat sin proyecto:** «Denegar», «Permitir una vez» y **«Permitir en este chat»**. Se quita «Siempre en los chats»: un permiso dado en un chat no se extiende a los demás. El Engine deja de ofrecer `allow_project` cuando no hay proyecto.
 2. **Conversación de proyecto:** «Denegar», «Permitir una vez», **«En esta sesión»** y **«Siempre en este proyecto»**.
 3. **«En este chat» / «En esta sesión» se guarda con la conversación**: sobrevive a reiniciar la app y se borra con la conversación.
-4. **Los textos pasan a `es.ts` / `en.ts`**, y se actualiza `grants.hint`.
+4. **Los textos pasan a `es.ts` / `en.ts`**, y se actualiza `grants.hint`. Lo mismo para el **motivo** que muestra la tarjeta: hoy sale en inglés aunque la app esté en español («shell.exec: read-only mode: a command could change files, so each one is asked», captura del dueño, 2026-10-13); el Engine manda un código de motivo y la app lo traduce.
 5. **Los permisos «Siempre en los chats» que ya existan** dejan de aplicarse y se ven en Ajustes como «antiguos», con «Quitar».
 
 **Decisiones del dueño (2026-10-13).**

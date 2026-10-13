@@ -1260,7 +1260,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
   - el agente sigue trabajando en esa misma ventana, y como el perfil se guarda, la sesión iniciada sirve para la próxima vez;
   - si el sitio vuelve a pedir la verificación, el agente se detiene y pregunta otra vez; nunca la resuelve él.
 - **Sin garantía.** Un Chrome de verdad con una persona resolviendo el desafío es la mejor opción legítima. Aun así, algunos sitios bloquean cualquier navegador conectado a una herramienta de automatización, y ahí queda «Abrir en mi navegador».
-- **Más adelante, fuera de 0.3.2:** que el agente use el Chrome del dueño con su perfil (como la extensión de Claude para Chrome). Es otro proyecto, con más cuidado de seguridad.
+- **Más adelante, fuera de 0.3.2:** que el agente use el navegador del dueño con una extensión (como la de Claude para Chrome). El dueño lo aprobó como idea (2026-10-12): [idea-extension-navegador.md](idea-extension-navegador.md).
 
 **Pruebas.** CLI: una página de prueba con el iframe de Turnstile da `HUMAN_CHECK`. App: la tarjeta con «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari»; esta abre una ventana real con el perfil de Rinari del proyecto, y el agente sigue ahí. Escenario: el modelo falso abre esa página y el turno termina en la pregunta al dueño, sin reintentos.
 

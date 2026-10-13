@@ -1284,9 +1284,14 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
    - medir primero con un perfil de una sesión real (cuánto bloquea cada captura al proceso principal);
    - sacar la codificación del proceso principal: cuando la vista está en pantalla, capturar con CDP (`Page.captureScreenshot`, que codifica fuera del proceso principal) y dejar `capturePage` solo de respaldo; JPEG o WebP para las vistas previas en lugar de PNG, y no redimensionar en el proceso principal;
    - no hace falta una librería: es dónde y cómo se codifica la captura.
-2. **Página de inicio de Rinari** (en lugar de «Preparando…» y de la página en blanco):
-   - una página local con el estilo de Rinari: barra de búsqueda o dirección, los sitios abiertos hace poco en esta conversación o proyecto, y los servidores locales en marcha (los `localhost` del registro de procesos) como accesos directos;
-   - aparece al instante; el navegador se prepara detrás sin mostrarlo.
+2. **Página de inicio de Rinari** (en lugar de «Preparando…» y de la página en blanco). Una página local, con el estilo Obsidiana, que se ve al abrir el navegador, en una pestaña nueva y cuando el agente no está usando ninguna página:
+   - **arriba, una barra de dirección y búsqueda** (Ctrl+L la enfoca): una dirección abre el sitio; un texto busca con el buscador elegido en Ajustes → Navegador;
+   - **«En marcha»:** las vistas previas de este proyecto que están corriendo (`workspace_preview_*`, por ejemplo `localhost:5173`) y las páginas locales que sirve el Engine (`browser/local_pages.py`, como un informe generado), cada una con un punto vivo y un clic para abrirla. Es lo más útil al programar: la app que estás construyendo, a un clic;
+   - **«Recientes en este proyecto»:** los últimos sitios que abrió el agente o el dueño en las conversaciones del proyecto (o del chat, si no hay proyecto), con su icono y título;
+   - **«Fijados»:** los sitios que el dueño fija desde la barra del navegador (por proyecto);
+   - **a un costado, la Rinari pequeña** con una expresión tranquila y una línea de estado («Lista para navegar» / «Rinari está usando esta página»);
+   - **todo es local:** la página no carga nada de internet por sí sola, y los iconos de los sitios se guardan al visitarlos;
+   - aparece al instante; el navegador se prepara detrás sin mostrar «Preparando…».
 3. **Cursor del agente visible:**
    - un cursor con el estilo de Rinari que **viaja** hasta donde el agente hace clic (con una onda al hacer clic) y muestra un indicador al escribir;
    - se dibuja en una capa transparente encima de la página, **sin tocar el DOM de la página** (no aparece en las capturas del agente ni cambia lo que lee);
@@ -1303,7 +1308,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 - Medición antes y después: durante una ráfaga de capturas del agente, la app sigue a 60 cuadros (muestreo con `requestAnimationFrame` en la ventana principal).
 - `browser:vertical` (la prueba `browser-integration` del CI) con la captura por CDP y su respaldo.
 - Escenario `browser-handoff`: el dueño hace clic en la página y el agente espera (chip visible); a los 3 s sin tocarla, el agente retoma; con el foco en un campo de contraseña, el agente no retoma.
-- La página de inicio aparece sin «Preparando…» y lista los `localhost` en marcha; el cursor viaja al punto del clic y no aparece en la captura del agente.
+- La página de inicio aparece sin «Preparando…», lista las vistas previas en marcha y los recientes del proyecto, y la barra abre una dirección o busca; el cursor viaja al punto del clic y no aparece en la captura del agente.
 
 ---
 

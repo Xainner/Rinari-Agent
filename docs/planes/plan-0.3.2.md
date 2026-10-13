@@ -243,7 +243,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 | 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir; sin pantalla en blanco) |
 | 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó (Rinari no la cerró antes de responder), y una lista 4/4 sigue «Trabajando» hasta el final del turno | CLI + Agent | Propuesto (causa verificada) |
-| 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Propuesto (falta 1 decisión) |
+| 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1783,7 +1783,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Propuesta.**
 1. **«Confiar» encendido por defecto** en cada carpeta que el dueño añade al crear un proyecto (la principal y las extra). Si la carpeta ya era de confianza, la casilla sale encendida y con «Ya es de confianza». El resumen («… con 2 carpetas, 2 de confianza») lo refleja, y se puede apagar antes de «Crear».
-   - **Excepción** (decisión pendiente): si la carpeta trae **hooks propios** (`.rinari/hooks.json`) o **servidores MCP propios**, la casilla sale apagada con una línea: «Esta carpeta trae hooks o servidores MCP que ejecutan comandos; revísalos antes de confiar». `project.folders.validate` añade `has_hooks` y `has_mcp` a cada carpeta.
+   - **Excepción** (decisión del dueño): si la carpeta trae **hooks propios** (`.rinari/hooks.json`) o **servidores MCP propios**, la casilla sale apagada con una línea: «Esta carpeta trae hooks o servidores MCP que ejecutan comandos; revísalos antes de confiar». `project.folders.validate` añade `has_hooks` y `has_mcp` a cada carpeta.
 2. **Al guardar, una conversación temporal del proyecto:**
    - la app llama a `project.create` con `open: false` y después a `openDraft(project.id)`: se abre la vista Normal con el composer listo, el chip del #42 mostrando el proyecto (con su rama) y **sin sesión creada**;
    - la sesión nace con el primer envío, como cualquier borrador; si el dueño se va sin escribir, **no queda ninguna conversación vacía**;
@@ -1792,11 +1792,10 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 3. **Los demás caminos que crean proyectos** siguen igual: «Añadir panel» en Boards ya pasa `openSession: false` y abre su propio borrador de panel; ahí se aplica lo mismo de la confianza.
 4. `open: true` se conserva en el protocolo para la CLI y otros clientes.
 
-**Decisión pendiente.**
-1. ¿Las carpetas que traen hooks o servidores MCP propios también salen con «Confiar» encendido? Recomendado: **no**, salen apagadas con el aviso, porque esos archivos ejecutan comandos al abrir el proyecto (por ejemplo, una carpeta clonada de internet). Todas las demás, encendidas.
+**Decisión del dueño (2026-10-13).** Las carpetas que traen hooks o servidores MCP propios salen con «Confiar» **apagado y el aviso**, porque esos archivos ejecutan comandos al abrir el proyecto (por ejemplo, una carpeta clonada de internet). Todas las demás, encendidas.
 
 **Pruebas.**
-- Vitest de `CreateProjectDialog`: una carpeta nueva sale con «Confiar» encendido; una ya de confianza sale encendida con su nota; una con hooks o MCP sale apagada con el aviso (según la decisión); «Crear» llama a `project.create` con `open: false` y abre el borrador del proyecto.
+- Vitest de `CreateProjectDialog`: una carpeta nueva sale con «Confiar» encendido; una ya de confianza sale encendida con su nota; una con hooks o MCP sale apagada con el aviso; «Crear» llama a `project.create` con `open: false` y abre el borrador del proyecto.
 - CLI: `project.folders.validate` informa `has_hooks` y `has_mcp`.
 - Escenario `create-project`: crear un proyecto, ver el composer con el chip del proyecto y ninguna conversación nueva en la barra lateral; enviar un mensaje crea la conversación bajo el proyecto; cerrar sin escribir no deja nada.
 
@@ -1859,6 +1858,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 55 | El plan va como tarjeta en el chat y como vista «Plan» en el panel lateral, que se abre sola cada vez que termina un plan. «Implementar» arranca de una vez, sin burbuja del usuario. «Ajustar» responde ahí mismo y produce la versión siguiente del mismo plan. |
 | 56 | Chat suelto: «Denegar», «Permitir una vez» y «Permitir en este chat» (sin «Siempre en los chats»). Proyecto: además «En esta sesión» y «Siempre en este proyecto». El permiso de chat o sesión se guarda con la conversación; los «Siempre en los chats» antiguos dejan de aplicarse y se pueden quitar en Ajustes. |
 | 57 | Audio y video se adjuntan como artefacto; los archivos viajan por ruta, nunca dentro del mensaje, con tope de 1 GiB; el composer avisa antes de enviar y los errores dicen el nombre real y quedan en el registro. |
+| 60 | Al crear un proyecto, «Confiar» sale encendido salvo en carpetas con hooks o servidores MCP propios (apagado con aviso); al guardar se abre un borrador del proyecto con el chip del #42, sin sesión vacía. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

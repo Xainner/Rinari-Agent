@@ -78,6 +78,7 @@ Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se
 3. **Una barra más limpia.**
    - A la vista: los contadores (trabajando, te necesitan, sin leer), «Ajustar a la vista» y «Añadir panel».
    - En un menú «⋯»: «Colapsar terminados», «Modo foco», «Marcar todo como leído» y «Quitar todos».
+   - **Se quita la columna fija «Añadir panel»** al final del board (~132 px): repetía el botón de la barra y les quitaba ancho a los paneles (dueño, 2026-10-12). El estado vacío del board conserva su botón.
    - La regla de `boards-fit` sigue: que aparezca un contador nunca cambia la altura de la barra.
 
 4. ~~Salidas como paneles~~: **cambiado por el dueño** (2026-10-12). El panel lateral de cada panel se sigue abriendo con su botón, como hoy, y **se puede extender** mucho más, con «Ampliar» incluido. Eso lo resuelve [plan-0.3.2.md](plan-0.3.2.md) #44 para toda la app, junto con el navegador en tamaños de escritorio. Flujos pasa a ser una pestaña del panel lateral (#43). Boards solo los aprovecha; ya no hacen falta «Sacar a un panel» ni la etiqueta «de B».

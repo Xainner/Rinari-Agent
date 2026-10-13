@@ -1219,16 +1219,20 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
    - **sin el tope de 800 px:** se arrastra hasta dejar al chat en un mínimo angosto;
    - **botón «Ampliar»** en la barra del panel lateral (y doble clic en el borde): el panel lateral ocupa toda el área de la conversación, o del panel en Boards, y el chat queda como una columna estrecha con la cara de Rinari y el composer. El mismo botón, o Esc, lo devuelve al ancho de antes;
    - el ancho se recuerda por pestaña.
-2. **El tamaño de la página, separado del tamaño del panel**, en la pestaña Navegador:
+2. **El tamaño de la página, separado del tamaño del panel**, en la pestaña Navegador (con cuidado del riesgo, que preocupa al dueño):
    - un selector de tamaño: **Ajustar al panel** (como hoy), **Móvil 390**, **Tablet 768**, **Escritorio 1280** y **Ancho 1920**;
-   - si la página es más ancha que el panel, se ve **reducida para que quepa** (con el porcentaje a la vista: «1280 × 800 · 62 %»). El agente trabaja sobre el tamaño real, y sus capturas y clics usan las coordenadas de la página, no las de la pantalla;
-   - **el agente puede pedirlo él:** una herramienta (o un parámetro de las del navegador) para fijar el tamaño, con lo que puede probar un diseño responsive en varios anchos y comparar capturas. El selector muestra el tamaño que eligió el agente.
-3. **Riesgo a validar al implementar.** El navegador nativo y sus coordenadas (`ViewLayoutCoordinator`) ya separan el área visible del viewport. Mostrarlo reducido (con el zoom de Electron o la emulación de tamaño de CDP) tiene que mantener bien los clics y las capturas. Se prueba con `npm run browser:vertical`, la prueba `browser-integration` del CI.
+   - **sin reducir la página.** Si la página es más ancha que el panel, se ve a su tamaño real y el panel se **desplaza en horizontal** para recorrerla, con el tamaño a la vista («1280 × 800»). La base ya existe: el navegador nativo distingue dónde estaría la página entera (`logicalBounds`) de lo que se ve (`visibleBounds`) y coloca la página desplazada sin cambiar su viewport (`ViewLayoutCoordinator.ts`). Es lo que ya usa Boards cuando su scroll recorta un panel;
+   - así **el agente no se entera:** trabaja sobre una página de 1280 px, y sus clics y capturas van en coordenadas de la página, igual que hoy. Lo único nuevo es que el panel muestra una parte;
+   - **el agente puede pedirlo él:** una herramienta (o un parámetro de las del navegador) para fijar el tamaño y probar un diseño en varios anchos. El selector muestra el tamaño que eligió el agente.
+3. **El riesgo, acotado por fases:**
+   - **44a. Panel lateral extensible y «Ampliar».** Es solo disposición; no toca el navegador. Riesgo bajo.
+   - **44b. Tamaño de página con desplazamiento horizontal.** Reutiliza el recorte que ya funciona en Boards. Riesgo bajo o medio; se valida con `npm run browser:vertical` (la prueba `browser-integration` del CI) y con el escenario de abajo.
+   - **Fuera de 0.3.2: ver la página reducida** para que quepa entera (zoom o emulación de tamaño de CDP). Es lo que más puede romper clics y capturas, así que no entra. Si con 44b no basta, se estudia aparte con una sonda propia.
 
 **Pruebas.**
 - Vitest del panel lateral: arrastrar más allá de 800 px, «Ampliar» y volver (también con Esc), el ancho por pestaña, y lo mismo dentro de un panel de Boards.
 - CLI: la herramienta de tamaño valida los límites y queda en el estado del navegador.
-- `browser:vertical` y un escenario: con «Escritorio 1280» en un panel de 600 px, la página mide 1280 de ancho, se ve reducida, y un clic del agente cae en el elemento correcto; la captura sale a 1280.
+- `browser:vertical` y un escenario: con «Escritorio 1280» en un panel de 600 px, la página mide 1280 de ancho, el panel se desplaza en horizontal, un clic del agente cae en el elemento correcto (también con el panel desplazado) y la captura sale a 1280.
 
 ---
 
@@ -1276,7 +1280,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 41 | La tarjeta de cambios pasa al estilo nuevo con lista de archivos. «Revisar» (la tarjeta y la fila de abajo) abre «Cambios del turno» en el panel lateral con los colores del `DiffView`; funciona sin git. |
 | 42 | Chip de proyecto solo en conversaciones nuevas (lo escrito viaja al cambiar). Empieza en «Sin proyecto». Lista: proyectos del perfil activo por uso reciente, buscador y «Abrir carpeta…». Las existentes se mueven desde la barra lateral. |
 | 43 | Flujos es una pestaña del panel lateral (Normal y Boards), con versión compacta y selector «Esta conversación · Proyecto». Sale el modo «Flujos» de arriba. |
-| 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar». En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920), se ve reducido si no cabe, y el agente puede pedir el tamaño. |
+| 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.3.2 por riesgo. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

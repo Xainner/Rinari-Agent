@@ -35,6 +35,13 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 - **Al terminar:** el resultado en una línea y el check; si no lo leíste, queda marcado «Nuevo», como hoy.
 - **Al pie:** los tokens, el tiempo y el modelo.
 
+**Vistazo al pasar el ratón** (decidido por el dueño, 2026-10-12). Sobre un panel plegado (la columna o la tira de 48 px), una tarjeta flotante muestra sin desplegarlo:
+- la última respuesta (las primeras líneas, con «Ver todo» que despliega el panel);
+- el paso en curso y la acción del momento;
+- si te necesita, la aprobación o la pregunta, **resoluble ahí mismo** (Permitir / Denegar / Responder).
+
+Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se queda mientras el ratón esté encima y se cierra con Esc. Con teclado: al enfocar la tira, Espacio abre el vistazo. Con movimiento reducido aparece sin animación.
+
 **Reglas:**
 - Plegar y desplegar es **siempre a mano**: el panel no cambia de tamaño solo por su estado.
 - Si en el board no cabe una columna de ~200 px, el panel cae a la tira de 48 px de hoy, con el punto de estado y el anillo.
@@ -42,6 +49,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 - Tras un arranque en frío hace falta saber si una sesión plegada está trabajando: eso es C11 (`busy` en `session.list`).
 
 **Pruebas.**
+- Vitest del vistazo: aparece tras la pausa y no al pasar de largo, muestra la respuesta y el paso, y resuelve una aprobación sin desplegar.
 - Vitest de la columna plegada: el anillo y el paso, la acción en curso, el aviso de aprobación o pregunta, el resultado sin leer, y la caída a la tira de 48 px cuando no hay sitio.
 - Escenario de Boards: se pliega un panel que trabaja y la columna se actualiza con los eventos (paso, acción, fin) sin desplegarse; con `RINARI_UI_REDUCED_MOTION=1` también. La regla de `boards-fit` (que nada cambie la altura de la barra) sigue.
 
@@ -50,7 +58,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 | Fase | Qué | Tamaño |
 |---|---|---|
 | B1 | Limpieza: la mensajería entre paneles (con el `PeerBroker` del Engine) y «Quitar y cerrar sesión»; y el arreglo del «Preparando el turno…» (C.1) | S–M |
-| B2 | El panel colapsado con su estado en vivo | M |
+| B2 | El panel colapsado con su estado en vivo, y el vistazo al pasar el ratón (B.2) | M |
 | B3 | Atajos de teclado, añadir un panel en un gesto y la barra más limpia (B.4) | S–M |
 | B4 | Salidas como paneles: «Sacar a un panel» el navegador, la terminal, los archivos, los agentes o el Flujo de una sesión (B.4, punto 4) | L |
 

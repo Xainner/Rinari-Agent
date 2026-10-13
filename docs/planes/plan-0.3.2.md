@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59 y 60 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59 y 60, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54 y 56–59) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55 y 60).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60 y 61 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60 y 61, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59 y 61) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55 y 60).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -244,6 +244,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir; sin pantalla en blanco) |
 | 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó (Rinari no la cerró antes de responder), y una lista 4/4 sigue «Trabajando» hasta el final del turno | CLI + Agent | Propuesto (causa verificada) |
 | 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Decidido |
+| 61 | Lecciones de `ses_01M4V9MXD0H839MT18JWEFDDZX`: las páginas web llegan comprimidas (gzip) en vez de texto, la basura se queda en el contexto, y la verificación de una descarga se enreda | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1798,6 +1799,59 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - Vitest de `CreateProjectDialog`: una carpeta nueva sale con «Confiar» encendido; una ya de confianza sale encendida con su nota; una con hooks o MCP sale apagada con el aviso; «Crear» llama a `project.create` con `open: false` y abre el borrador del proyecto.
 - CLI: `project.folders.validate` informa `has_hooks` y `has_mcp`.
 - Escenario `create-project`: crear un proyecto, ver el composer con el chip del proyecto y ninguna conversación nueva en la barra lateral; enviar un mensaje crea la conversación bajo el proyecto; cerrar sin escribir no deja nada.
+
+---
+
+## 61. Lecciones de `ses_01M4V9MXD0H839MT18JWEFDDZX` (buscar Qwen 4 27B y bajar un logo)
+
+**Qué se vio** (dueño, 2026-10-13). Tres turnos en el proyecto `032`: «Holi», «Puedes buscar información de qwen 4 27b?» y «Puedes entrar aquí https://recetica.com/ y descargar el logo? ocupo revisarlo». Rinari dijo dos veces que **el fetcher le devolvía bytes comprimidos en vez de texto**. El dueño quería **revisar** el logo y recibió una ruta en un bloque de código.
+
+**Números de la sesión** (`session_events`): 21 llamadas al modelo, **3,73 M tokens de entrada** (3,42 M en caché) para una búsqueda y una descarga.
+
+### 61a. Las páginas web llegan comprimidas (el hallazgo grave)
+
+**Causa (verificada).** `web/client.py:149` lee el cuerpo con `response.iter_raw()`, que en httpx devuelve **los bytes tal como llegan de la red, sin descomprimir**. httpx pide `Accept-Encoding: gzip, deflate` por defecto, así que cualquier sitio que comprime (casi todos) entrega gzip y Rinari lo trata como texto. `http/client.py:214` (`http.request`) tiene el mismo `iter_raw()`. Está así desde la fase 5 (`d8abf31`).
+- En esta sesión fallaron **ocho sitios distintos** con `web.fetch`, `web.extract_markdown`, `web.extract_text` y `web.open` (todos empiezan con `1f 8b`, la firma de gzip); `web.links` devolvió 0 enlaces y `web.extract_metadata` vino vacío por lo mismo.
+- **Todas respondieron `ok: true`.** Nada avisó de que el «texto» era binario.
+- Rinari lo rodeó con `http.request` y `Accept-Encoding: identity`, y con `curl`. `web.search` sí funcionó (su respuesta llega por otro camino).
+
+**Propuesta.**
+1. **Descomprimir:** `iter_bytes()` en lugar de `iter_raw()` en los dos clientes, con el tope de tamaño aplicado a lo **descomprimido** (y un tope aparte para lo comprimido, para que un archivo-bomba no se infle sin límite).
+2. **Nunca entregar binario como texto:** si el cuerpo, ya descomprimido, no es texto (bytes nulos o de control por encima de un umbral, o un tipo de contenido binario), la herramienta responde con un error claro (`CONTENT_BINARY`, con el tipo de contenido y la codificación) en vez de `ok: true`, y sugiere `web.download`.
+3. **Prueba de regresión** con respuestas gzip, deflate y br, más una prueba contra un sitio real en la batería en vivo.
+4. **Es candidato a hotfix**, porque rompe la lectura de casi cualquier página. La decisión es del dueño.
+
+### 61b. La basura se quedó en el contexto
+
+- Las siete lecturas comprimidas metieron **unos 220 mil tokens de bytes sin sentido** en la conversación: la entrada pasó de 21 mil a 65 mil, luego a 181 mil y luego a 244 mil tokens. Esa basura **viajó en cada llamada siguiente**, incluido todo el turno del logo, que no tenía nada que ver (unas 12 llamadas de ~250 mil tokens cada una). Recién se fue al recortarse el contexto a mitad de la verificación (19:02:33).
+- **Propuesta:** además del 61a.2, una salida de herramienta que no es texto legible nunca entra entera al contexto; en el peor caso entra un aviso de una línea con la referencia al artefacto.
+
+### 61c. La verificación de una descarga se enreda
+
+- Para «descarga el logo», Rinari hizo seis llamadas de verificación (`verify.plan`, tres `verify.record` y dos `verify.evaluate`).
+- **`verify.evaluate` rechazó los ids que acababa de devolver `verify.record`** (`val_…`, «Task not found»): el parámetro `task_ids` espera otra cosa, pero nada lo dice.
+- **La compuerta exigió evidencia de tipo «test»**, aunque `verify.plan` acababa de decir «no hay suite de pruebas; verifica a mano y registra lo que comprobaste». Para pasar, Rinari registró su revisión de píxeles **como si fuera un test**. La compuerta empuja a etiquetar mal.
+- **Propuesta:**
+  - `verify.evaluate` acepta los ids de evidencia que devuelve `verify.record`, o el error explica qué espera;
+  - lo que exige la compuerta sigue lo que dijo `verify.plan`: sin suite de pruebas, basta la evidencia manual o personalizada;
+  - un turno que solo añade archivos binarios que el dueño pidió descargar (imágenes, audio, documentos) no necesita más que comprobar el archivo.
+
+### 61d. El dueño quería ver el logo
+
+- Rinari bajó el logo, lo miró con `fs.read_image` (la imagen se volvió a mandar al modelo en cada una de las 10 llamadas siguientes) y analizó sus píxeles con cuatro scripts de PowerShell. Al dueño le dejó la ruta **en un bloque de código**, sin vista previa.
+- Es el mismo problema del **#35**: con `file.present`, el logo habría salido como tarjeta con miniatura, que era lo que el dueño pedía («ocupo revisarlo»). Se añade este caso a las pruebas del #35.
+- **Se revisa aparte:** volver a mandar una imagen de 1024×1024 en cada llamada después de que el modelo ya la vio y la describió. Se mide cuánto pesa antes de cambiar nada.
+
+### 61e. El título se quedó en «Holi»
+
+- El primer mensaje fue un saludo y la llamada del título falló (la cabecera de OpenCode del #48). El título provisional quedó «Holi», y los reintentos vuelven a usar **el primer mensaje** («Holi»), no el primero con tema.
+- **Propuesta** (junto al arreglo del #48): si el título provisional vino de un mensaje sin tema, el reintento usa el mensaje más reciente con tema («Puedes buscar información de qwen 4 27b?»).
+
+**Pruebas.**
+- CLI: `web.fetch` / `web.extract_*` / `web.open` / `http.request` contra un servidor de prueba que comprime con gzip, deflate y br devuelven el texto legible; el tope se aplica a lo descomprimido; un cuerpo binario devuelve `CONTENT_BINARY`; una bomba de compresión se corta.
+- CLI: `verify.evaluate` con los ids de `verify.record`; la compuerta, sin suite de pruebas, acepta evidencia manual; un turno que solo descarga una imagen no exige «test».
+- CLI: el título se reintenta desde el primer mensaje con tema.
+- Escenario: el modelo falso lee una página comprimida y recibe texto; una página binaria no infla el contexto.
 
 ---
 

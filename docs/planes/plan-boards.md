@@ -49,7 +49,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 
 | Fase | Qué | Tamaño |
 |---|---|---|
-| B1 | Limpieza: la mensajería entre paneles y «Quitar y cerrar sesión» | S–M |
+| B1 | Limpieza: la mensajería entre paneles (con el `PeerBroker` del Engine) y «Quitar y cerrar sesión»; y el arreglo del «Preparando el turno…» (C.1) | S–M |
 | B2 | El panel colapsado con su estado en vivo | M |
 
 ### B.4 Después, sobre esta base
@@ -75,7 +75,7 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 
 | # | Qué | De dónde | Estado |
 |---|---|---|---|
-| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Causa verificada. En 0.3.2 como #39 |
+| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Causa verificada. En este plan, fase B1 (salió de 0.3.2) |
 | C2 | El composer le quitaba el foco al cajón del panel lateral (el rojo de `boards-side-panel` en `main`) | Plan 0.3.2, «CI» | Hecho en la rama `0.3.2` (0c7f34f, sin subir) |
 | C3 | La flecha de la lista de pasos apunta al revés; revisar que en los paneles (`density="pane"`) también esté anclada abajo | Plan 0.3.2, #22 | Decidido |
 | C4 | Los avisos de turno terminado solo existen para paneles del board. Se extienden a todas las conversaciones reutilizando `useBoardNotifications`, y sus preferencias pasan a Ajustes → Notificaciones | Plan 0.3.2, #33 | Decidido. Toca código de Boards: coordinar |
@@ -135,5 +135,5 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 | B-3 | Paneles que cambian de tamaño solos según su estado | Descartado (dueño, 2026-10-12) |
 | B-4 | Comparar | Todavía no (dueño, 2026-10-12) |
 | B-5 | Lo demás de las versiones anteriores (B.5) | Aparcado: se propone pieza por pieza después de usar Boards limpio |
-| C-1 | Los arreglos chicos de Boards ya analizados (C1–C5) van con 0.3.2. La limpieza (B1) y el panel colapsado (B2) se quedan en este plan, para quien tome Boards, fuera de 0.3.2 | Decidido (dueño, 2026-10-12) |
+| C-1 | Lo que es solo de Boards sale de 0.3.2 y queda en este plan: C1 («Preparando el turno…»), la limpieza (B1) y el panel colapsado (B2) | Decidido (dueño, 2026-10-12) |
 | C-2 | El buzón de los peers (`PeerBroker`) se retira con la mensajería, para que Rinari Agency construya bien su propia base | Decidido (dueño, 2026-10-12) |

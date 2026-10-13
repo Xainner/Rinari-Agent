@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38 y 40 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39 y 40, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30 y 37–39) y las funciones (23–24, 31–36 y 40).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38 y 40, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37 y 38) y las funciones (23–24, 31–36 y 40).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -223,7 +223,6 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 36 | «Oídos»: `audio.transcribe` con el whisper del dictado (Planka, Bug) | CLI + Agent | Decidido |
 | 37 | Preguntas: un solo botón «Continuar» / «Enviar respuestas» (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 38 | Confianza después de `git init`: automática y en el momento (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
-| 39 | Boards: «Preparando el turno…» aparece un instante en el panel al enviar (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 40 | Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
@@ -1087,20 +1086,6 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ---
 
-## 39. Boards: «Preparando el turno…» parpadea en el panel
-
-**Qué se vio** (Planka, Bug, con captura). En un panel de Boards, al enviar, aparece un instante «En proceso desde hace 0 s · Preparando el turno…» y luego desaparece. Que no esté es lo correcto; lo que sobra es que aparezca.
-
-**Causa (verificada).** En un panel, la cabecera viva del turno se oculta mientras Rinari piensa (`TurnTimelineView.tsx:619-623`, `paneThinking`), pero solo en el estado `thinking`. Antes, el Engine emite `turn.preparing` y el estado es `preparing` (`activityPresentation.ts:129`), en el que la cabecera sí se muestra. Al llegar la primera respuesta pasa a `thinking` y se esconde: de ahí el parpadeo.
-
-**Propuesta.** En un panel, `preparing` se trata como `thinking`. Una línea; el chat normal no cambia.
-
-**Pruebas.** Vitest de `TurnTimelineView` con `surface="pane"` (solo `turn.preparing`: sin cabecera viva) y un escenario de Boards que muestrea con `requestAnimationFrame` desde el envío hasta la primera acción.
-
-Detalle y el resto de lo pendiente de Boards: [plan-boards.md](plan-boards.md), Parte C.
-
----
-
 ## 40. Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada
 
 **De dónde viene.** El análisis de Boards (2026-10-11). Las sesiones hijas se sacaron del plan de Boards a su propio plan, [plan-sesiones-hijas.md](plan-sesiones-hijas.md): la fase A1 entra en 0.3.2, y A2 y A3 van en la versión siguiente (decisión del dueño, 2026-10-12).
@@ -1170,8 +1155,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 36 | `audio.transcribe` usa el whisper.cpp del dictado. Si no está instalado, una tarjeta al dueño con el botón a Ajustes → Dictado, donde también se explica el uso. |
 | 37 | Un único botón principal: «Continuar» hasta la última pregunta y «Enviar respuestas» en ella. |
 | 38 | `git init` sin remotos dentro de una carpeta de confianza actualiza la huella sola. Los demás cambios de identidad se preguntan al terminar el turno, no al volver a abrir. |
-| 39 | En un panel de Boards, `preparing` no muestra la cabecera viva, igual que `thinking`. Lo demás (la limpieza de Boards y el panel colapsado con estado, las hijas A2–A3 y Rinari Agency) queda en sus documentos. |
 | 40 | Entra solo la fase A1 de las sesiones hijas (vínculo y barra lateral anidada). A2 (`session.start`, permisos heredados, tarjeta de entrega) y A3 (mensajes a las hijas, worktrees) van en la versión siguiente. |
+| Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |
 

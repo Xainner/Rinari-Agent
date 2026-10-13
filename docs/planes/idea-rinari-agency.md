@@ -58,7 +58,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 - **Consistencia entre cuadros:** misma silueta, la misma paleta limitada (~16 colores), contorno de 1 píxel, sin antialiasing y **un punto de apoyo fijo** (el sprite no «tiembla» al cambiar de cuadro).
 - **Las invariantes del personaje** de `rinari-familiars-proto/art/CHARACTER.md` (los accesorios nunca cambian de lado), simplificadas a lo que se lee en un sprite.
 - **Tamaño y escala:** por ejemplo 32×48 o 48×64 píxeles por cuadro, escalado entero (×2, ×3) con píxel nítido; caminar a ~10–12 cuadros por segundo.
-- **Proceso:** la IA sirve para bocetar poses y explorar, pero **cada hoja se limpia a mano cuadro a cuadro** (o la hace un artista de pixel art) y pasa una revisión: un visor que reproduce cada animación en grande, con papel cebolla, y una lista de comprobación (pies plantados, piernas que se alternan, nada cambia de lado, sin temblor).
+- **Proceso (decisión del dueño, 2026-10-12): los sprites los hace Codex CLI**, con la suscripción de imágenes, bajo la guía de la sesión que los produzca, que exige la mejor calidad posible: genera, revisa cada cuadro contra el ciclo y las invariantes, y regenera o corrige lo que falle hasta que pase. Cada hoja pasa una revisión: un visor que reproduce cada animación en grande, con papel cebolla, y una lista de comprobación (pies plantados, piernas que se alternan, nada cambia de lado, sin temblor).
 - **Atuendos por oficio como capas** (auriculares para *Audio*, claqueta para *Video*, pluma para *Writer*…) encima de una hoja base, en vez de rehacer la hoja entera por agente.
 
 **Estados, cada uno con su animación** (ver también 10.3):
@@ -266,10 +266,8 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 ## 11. Preguntas abiertas
 
 1. ¿Un agente sin equipo puede tener reglas y disparadores propios (por ejemplo, el agente *Emails* con su regla de reenvío), o eso siempre vive en un equipo? Recomendado: sí, también solo.
-2. ¿Quién hace la hoja base de sprites de Rinari: limpiarla a mano a partir de bocetos con IA, o encargarla a un artista de pixel art? Los atuendos por oficio serían capas encima (6.1).
-3. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta?
-4. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan?
-
+2. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta?
+3. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan?
 ## 12. Fases propuestas
 
 | Fase | Qué | Depende de |

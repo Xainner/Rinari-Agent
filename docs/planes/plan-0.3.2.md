@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60 y 61 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60 y 61, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59 y 61) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55 y 60).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61 y 62, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61 y 62) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55 y 60).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -245,6 +245,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó (Rinari no la cerró antes de responder), y una lista 4/4 sigue «Trabajando» hasta el final del turno | CLI + Agent | Propuesto (causa verificada) |
 | 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Decidido |
 | 61 | Lecciones de `ses_01M4V9MXD0H839MT18JWEFDDZX`: las páginas web llegan comprimidas (gzip) en vez de texto, la basura se queda en el contexto, y la verificación de una descarga se enreda | CLI + Agent | Propuesto (causa verificada) |
+| 62 | Al volver a la ventana, nada indica que la conversación a la vista terminó mientras no estabas (suena y sale el «1» en la barra de tareas, pero adentro no se ve) | Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1009,6 +1010,8 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
   - un plan usa su texto y su botón;
   - varios turnos a la vez se agrupan.
 - Escenario `turn-notify`: el modelo falso termina un plan en otra conversación, aparecen el toast y la entrada en la campana, y «Revisar plan» lleva a la tarjeta.
+
+**Complemento:** lo que se ve **al volver a la ventana** cuando la conversación que terminó es la que está a la vista está en el #62.
 
 ---
 
@@ -1852,6 +1855,33 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - CLI: `verify.evaluate` con los ids de `verify.record`; la compuerta, sin suite de pruebas, acepta evidencia manual; un turno que solo descarga una imagen no exige «test».
 - CLI: el título se reintenta desde el primer mensaje con tema.
 - Escenario: el modelo falso lee una página comprimida y recibe texto; una página binaria no infla el contexto.
+
+---
+
+## 62. Al volver a la ventana, ver qué terminó mientras no estabas
+
+**Qué se vio** (dueño, 2026-10-13). Rinari en el monitor 1 con una conversación abierta; el dueño trabaja en Chrome en el monitor 2. Cuando el turno termina, **suena** y sale el **«1» en la barra de tareas**, pero al volver a la ventana de Rinari **no hay ninguna señal** de qué terminó.
+
+**¿Lo cubre el #33?** Solo en parte. El #33 avisa de turnos de **otras** conversaciones (toast, sistema, campana) y manda una notificación del sistema si la ventana no está al frente. Este caso es la conversación **que está a la vista**, y lo que falta es lo que se ve **al volver**.
+
+**Causa (verificada).**
+- La conversación activa sí se marca «sin leer» al terminar (`BoardActivityController.tsx:199` sigue también la sesión activa), y por eso sale el «1» (`attentionIndicators.ts`).
+- La única marca en la ventana es la palabra **«Nuevo»**, pequeña, en la línea de datos al pie del resultado (`TurnMeta.tsx`, `turn-meta-new`).
+- Al volver, el resultado ya está en pantalla y `useResultVisibility` lo marca como leído a los **500 ms** (`RESULT_READ_DWELL_MS`). En medio segundo desaparecen «Nuevo» y el «1»: **la señal se borra antes de que el dueño la vea**.
+
+**Propuesta.**
+1. **Una marca que se ve** en el resultado que terminó mientras la ventana no tenía atención:
+   - el bloque del resultado lleva un borde de acento con un brillo suave, y arriba una píldora **«Nuevo · terminó hace 4 min»** (o «Falló» / «Te necesita», con su color);
+   - el brillo se va apagando despacio después de leerse (unos segundos), no de golpe.
+2. **Leído = visto de verdad:** al recuperar la ventana, el resultado cuenta como leído cuando **el dueño hace algo** en la ventana (mueve el ratón sobre el chat, hace scroll o teclea) y el resultado está a la vista, o tras unos **3 s** de ventana atendida. No a los 500 ms. El «1» de la barra de tareas baja en ese mismo momento.
+3. **Si el resultado no está a la vista** (el dueño estaba más arriba en el chat), un botón flotante **«↓ Nuevo resultado»** lleva a él.
+4. **La cara de Rinari** en la cabecera de la conversación (la que reemplaza al punto de estado, B.1b de Boards) muestra el desenlace un momento al volver: contenta si terminó, preocupada si falló.
+5. **Sin movimiento** con `RINARI_UI_REDUCED_MOTION`: la marca y la píldora se ven igual, sin brillo ni desvanecido.
+6. En Boards vale lo mismo para el panel enfocado.
+
+**Pruebas.**
+- Vitest: con la ventana sin atención, un turno que termina deja la marca; al recuperar la atención no se marca leído a los 500 ms, sino con actividad o a los 3 s; el «1» baja al mismo tiempo; con el resultado fuera de la vista aparece «↓ Nuevo resultado».
+- Escenario `return-to-window`: se simula la pérdida de atención, el modelo falso termina, se recupera la atención, la marca se ve y se va tras la actividad; con movimiento reducido, sin animación.
 
 ---
 

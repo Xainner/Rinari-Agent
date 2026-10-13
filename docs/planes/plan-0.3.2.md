@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57 y 59 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58 y 59, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54 y 56–59) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59 y 60 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59 y 60, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54 y 56–59) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55 y 60).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -243,6 +243,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 | 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir; sin pantalla en blanco) |
 | 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó (Rinari no la cerró antes de responder), y una lista 4/4 sigue «Trabajando» hasta el final del turno | CLI + Agent | Propuesto (causa verificada) |
+| 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Propuesto (falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1765,6 +1766,39 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - CLI: `replace()` con todos los pasos hechos deja `completed`; añadir un paso pendiente lo vuelve `active`; cerrar en el turno siguiente una lista `open` la deja `completed`.
 - App: vitest de «Marcar todo como hecho» en el estado `open`, y una lista 4/4 nunca muestra «Trabajando en la lista».
 - Escenario `checklist-dock`: un turno que deja la lista atrasada termina con la lista completa tras la nota.
+
+---
+
+## 60. Crear un proyecto: confianza por defecto y una conversación temporal
+
+**Qué se pidió** (dueño, 2026-10-13). Va con el selector de proyecto del #42.
+1. En «Crear proyecto», la casilla **«Confiar»** sale apagada al añadir la primera carpeta: que salga **encendida**.
+2. Al guardar el proyecto se abre una sesión ya creada. Que sea una **conversación temporal** (un borrador, como las de «Nueva conversación») **ya asociada al proyecto**, con el mismo comportamiento del selector del #42.
+
+**Qué hay hoy (verificado).**
+- **La confianza empieza apagada para todas las carpetas:** `CreateProjectDialog.tsx` crea cada fila con `trust: false`, tanto las que llegan abiertas (`:66`) como las que se eligen con «Añadir carpetas» (`:105`). Tampoco refleja una carpeta en la que **ya se confiaba** (`projectFoldersValidate` devuelve `trust_state`, pero la casilla no lo usa).
+- Qué significa confiar (`createProject.trustExplain`): Rinari usa las instrucciones de la carpeta (`RINARI.md`) y sus hooks (`.rinari/hooks.json`), y la edita sin preguntar; los servidores MCP del proyecto siguen la confianza de la carpeta principal. No es Acceso completo. Una carpeta extra sin confianza queda fuera del proyecto.
+- **Al crear, el Engine crea una sesión vacía:** `project.create` con `open: true` (el valor por defecto, `engine.ts:904`) hace `sessions.new` + `promote` en la carpeta principal (`engine_protocol/server.py:3181-3209`), y la app la abre (`App.tsx:598-603`). Si no se escribe nada, queda una conversación vacía en la barra lateral.
+- **El borrador ya existe:** `openDraft(projectId)` (`useEngineSession.ts:276-280`) abre una conversación del proyecto **sin crearla**; la sesión nace con el primer envío (`stores/conversationDraft.ts`). Es lo mismo que hace el «+» de un proyecto.
+
+**Propuesta.**
+1. **«Confiar» encendido por defecto** en cada carpeta que el dueño añade al crear un proyecto (la principal y las extra). Si la carpeta ya era de confianza, la casilla sale encendida y con «Ya es de confianza». El resumen («… con 2 carpetas, 2 de confianza») lo refleja, y se puede apagar antes de «Crear».
+   - **Excepción** (decisión pendiente): si la carpeta trae **hooks propios** (`.rinari/hooks.json`) o **servidores MCP propios**, la casilla sale apagada con una línea: «Esta carpeta trae hooks o servidores MCP que ejecutan comandos; revísalos antes de confiar». `project.folders.validate` añade `has_hooks` y `has_mcp` a cada carpeta.
+2. **Al guardar, una conversación temporal del proyecto:**
+   - la app llama a `project.create` con `open: false` y después a `openDraft(project.id)`: se abre la vista Normal con el composer listo, el chip del #42 mostrando el proyecto (con su rama) y **sin sesión creada**;
+   - la sesión nace con el primer envío, como cualquier borrador; si el dueño se va sin escribir, **no queda ninguna conversación vacía**;
+   - como en el #42, el chip permite cambiar a otro proyecto o a «Sin proyecto» antes del primer envío, y lo escrito viaja con el cambio;
+   - el proyecto aparece abierto en la barra lateral (`reveal`), como hoy.
+3. **Los demás caminos que crean proyectos** siguen igual: «Añadir panel» en Boards ya pasa `openSession: false` y abre su propio borrador de panel; ahí se aplica lo mismo de la confianza.
+4. `open: true` se conserva en el protocolo para la CLI y otros clientes.
+
+**Decisión pendiente.**
+1. ¿Las carpetas que traen hooks o servidores MCP propios también salen con «Confiar» encendido? Recomendado: **no**, salen apagadas con el aviso, porque esos archivos ejecutan comandos al abrir el proyecto (por ejemplo, una carpeta clonada de internet). Todas las demás, encendidas.
+
+**Pruebas.**
+- Vitest de `CreateProjectDialog`: una carpeta nueva sale con «Confiar» encendido; una ya de confianza sale encendida con su nota; una con hooks o MCP sale apagada con el aviso (según la decisión); «Crear» llama a `project.create` con `open: false` y abre el borrador del proyecto.
+- CLI: `project.folders.validate` informa `has_hooks` y `has_mcp`.
+- Escenario `create-project`: crear un proyecto, ver el composer con el chip del proyecto y ninguna conversación nueva en la barra lateral; enviar un mensaje crea la conversación bajo el proyecto; cerrar sin escribir no deja nada.
 
 ---
 

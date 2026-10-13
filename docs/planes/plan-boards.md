@@ -22,6 +22,10 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 - **«Quitar y cerrar sesión»** en el menú del panel (`BoardView.tsx:231-238`, `board.pane.removeAndClose`). En la práctica archivaba la conversación: `session.close` la sacaba del listado y detenía sus vistas previas, el navegador y los procesos. Además, el nombre se confundía con salir de la cuenta. **Queda solo «Quitar del board»**, que saca el panel sin tocar la conversación. Archivar se hace desde la barra lateral, como con cualquier conversación. Se retiran el diálogo de confirmación y las claves `board.pane.removeAndClose*`.
 - Lo demás de Boards se queda como está: paneles por sesión, plegar y desplegar, el panel lateral por sesión, ajustar a la vista, el foco y los avisos de atención.
 
+### B.1b La cabecera del panel, más limpia (dueño, 2026-10-12)
+- **Se quita el punto de estado** junto al título: el estado ya lo dicen la cara animada de Rinari y los colores cuando algo salta (el borde ámbar si te necesita, el rojo si falla). En la tira de 48 px el punto también pasa a ser la cara de Rinari, en chico.
+- **No hay «＋» de panel nuevo en la cabecera.**
+
 ### B.2 El panel colapsado mantiene su estado
 
 **Hoy.** Un panel plegado es una tira vertical de 48 px (`CollapsedPaneStrip.tsx`) con un punto de estado, el título en vertical, el modelo y algunas insignias. No dice en qué va la sesión: para saberlo hay que desplegarla.
@@ -65,12 +69,12 @@ Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se
 ### B.4 Mejoras decididas (dueño, 2026-10-12)
 
 1. **Atajos de teclado.**
-   - **Ctrl+1…9:** ir al panel N (lo enfoca y pone el cursor en su composer).
-   - **Ctrl+J:** ir al siguiente panel que te necesita (aprobación, pregunta o fallo), en orden de llegada. Si no hay ninguno, un aviso corto «Nada te necesita».
+   - **Ctrl+1…9:** ir al panel N (lo enfoca y pone el cursor en su composer). Si el panel está plegado, lo enfoca **sin desplegarlo** y abre su vistazo (dueño, 2026-10-12).
+   - **Ctrl+J:** ir al siguiente panel que te necesita (aprobación, pregunta o fallo), en orden de llegada; si está plegado, abre su vistazo sin desplegarlo. Si no hay ninguno, un aviso corto «Nada te necesita».
    - Se suman a los de hoy (Ctrl+W, Ctrl+N) y aparecen en la ayuda de atajos.
 2. **Añadir un panel en un gesto.**
    - **Arrastrar** una conversación desde la barra lateral al board: se suelta entre dos paneles o al final, con una guía que marca dónde caerá.
-   - **«＋ en este proyecto»** en la cabecera de cada panel: abre otro panel del mismo proyecto y deja elegir el modo (PLAN, BUILD o REVIEW). Sirve para el uso de «A planea, B codifica, C revisa» sin pasar por el diálogo.
+   - ~~«＋ en este proyecto» en la cabecera~~: **quitado** por el dueño (2026-10-12) al verlo en la maqueta; la cabecera queda más limpia. Un panel nuevo se añade arrastrando o con «Añadir panel».
    - El diálogo «Añadir panel» de hoy se queda para lo demás.
 3. **Una barra más limpia.**
    - A la vista: los contadores (trabajando, te necesitan, sin leer), «Ajustar a la vista» y «Añadir panel».
@@ -81,9 +85,9 @@ Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se
    - Hoy el panel lateral de cada sesión (Agentes, Archivos, Navegador, Workspace, Terminal; `SessionDock`) vive dentro del panel como un cajón: tapa el chat, muestra una cosa a la vez y con 3–4 paneles queda apretado.
    - «**Sacar a un panel**» lo pone como un panel más del board, al lado de su sesión: el chat de B y su app corriendo a la vez, o la terminal de C mientras corre las pruebas. También el **Flujo** de la sesión (`FlowView` con su alcance).
    - Lleva el color de su sesión y la etiqueta «de *B*». Sigue a su sesión: si se quita B del board, su salida también. «Devolver al panel» la regresa al cajón.
-   - Se pliega, se mueve y se ajusta como cualquier panel; no cambia de tamaño sola.
+   - Se mueve y se ajusta como cualquier panel; no cambia de tamaño sola. **Al plegar la sesión, se pliegan también sus salidas** (dueño, 2026-10-12), y al desplegarla vuelven.
 
-**Pruebas.** Vitest de los atajos (Ctrl+1…9, Ctrl+J con y sin pendientes), del soltar desde la barra lateral (posición) y de la barra (qué queda a la vista y qué en el menú). Escenario de Boards: arrastrar una conversación, «＋ en este proyecto» con el modo elegido, y Ctrl+J entre dos paneles que esperan.
+**Pruebas.** Vitest de los atajos (Ctrl+1…9, Ctrl+J con y sin pendientes), del soltar desde la barra lateral (posición) y de la barra (qué queda a la vista y qué en el menú). Escenario de Boards: arrastrar una conversación, Ctrl+J entre dos paneles que esperan (uno plegado: se abre su vistazo) y plegar una sesión con una salida sacada.
 
 Las siguientes mejoras se proponen una por una a partir de usar Boards ya limpio, cada una con su porqué. Si alguna necesita verse antes de construirla, se hace una maqueta de esa pieza, no de todo Boards.
 

@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48 y 50 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51 y 52, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51 y 52) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50 y 53 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52 y 53, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45 y 51–53) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -236,6 +236,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Decidido (con Rinari abierta o en la bandeja) |
 | 51 | Al enviar, la cabecera «Rinari trabajando» aparece antes de que termine de llegar el mensaje | Agent | Decidido (causa verificada) |
 | 52 | El texto en streaming aparece por oraciones de golpe: revelado suave, palabra por palabra | Agent | Decidido (causa verificada) |
+| 53 | Skills: importar desde Claude Code / Codex bloquea el Engine; instalar desde skills.sh o `npx skills add` no funciona | CLI + Agent | Propuesto (causa verificada y medida) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1369,7 +1370,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 4. **Una aprobación con Acceso completo** para `prompt_guide` («llamada MCP externa… después de leer contenido externo»). Las herramientas de solo lectura del Visual Lab no declaran `readOnlyHint`, así que Rinari las trata como capaces de efectos. Rinari ya respeta esa marca (`mcp/adapter.py`).
 5. **`web.download` cortó un MP4 en 2 MiB** (2 097 152 bytes): la descarga se guarda entera en memoria con el tope de las páginas web. El agente lo resolvió con ffmpeg sobre la URL, pero bajar un video al proyecto debería funcionar sin trucos.
 6. **`TOOL_NOT_FOUND` para `mcp_Rinari_Visual_Lab_get_job_preview`:** el modelo escribió el nombre con guiones bajos en vez de puntos (`mcp.Rinari_Visual_Lab.get_job_preview`), y la herramienta existía.
-7. **El título falló dos veces** (`SessionTitleFailed`, `error:ProviderError`): la conversación quedó con el mensaje recortado, «Necesito que hagas lo siguiente: Usando el MCP…».
+7. **El título falló dos veces** (`SessionTitleFailed`, `error:ProviderError`): la conversación quedó con el mensaje recortado, «Necesito que hagas lo siguiente: Usando el MCP…». **No es solo esta sesión:** `engine.log` muestra el mismo fallo en casi todas las conversaciones nuevas desde el 2026-10-11. El título se pide al modelo de la conversación (`cli/agent_runtime.py`, `generate_title`), y el registro solo guarda «ProviderError», sin el código del proveedor: hay que registrar el código y el estado HTTP (sin contenido) para saber por qué falla.
 8. **No hubo lista de pasos.** La tarea era claramente de varios pasos (5 imágenes, 5 videos, en orden) y `checklist.update` estaba disponible, pero `deepseek-v4.1-flash` no la usó. El recordatorio de hoy (`checklist/reminder.py`) solo actúa cuando ya existe una lista.
 
 **Propuesta para Rinari** (decisiones del dueño, 2026-10-12). **Todo es genérico, para cualquier servidor MCP y cualquier herramienta:** nada se escribe a medida del Visual Lab ni de ningún otro servidor.
@@ -1488,6 +1489,45 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Pruebas.**
 - Vitest del revelado: con un trozo grande, el texto visible crece en varios cuadros y no de golpe; con atraso acumulado, acelera; al completar, muestra todo al instante; con movimiento reducido, no hay revelado.
 - Escenario: el modelo falso manda la respuesta en 3 trozos grandes; se muestrea cuadro a cuadro que la longitud visible crece de forma gradual y que el cursor está al final.
+
+---
+
+## 53. Skills: importar sin bloquear el Engine, e instalar desde skills.sh
+
+**Qué se vio** (dueño, 2026-10-13). Quiso instalar una skill de skills.sh, que se instala con `npx skills add https://github.com/minimax-ai/minimax-h3 --skill 3d-animation-short-generator`. En Ajustes → Skills no hay cómo; con la URL del sitio (`https://www.skills.sh/minimax-ai/minimax-h3/3d-animation-short-generator`) el Engine dio un error de tiempo y después **no se podían enviar mensajes**. «Importar de Claude Code / Codex» se quedó pensando sin hacer nada.
+
+**Lo que dicen los registros** (`%APPDATA%/rinari-agent/logs/app.log`, 2026-10-13):
+- 04:34:33 `skill_import_scan` → `ENGINE_TIMEOUT`;
+- 04:35:02 – 04:35:05 `bundle_list`, `skill_job_start` y `session_create` → `ENGINE_TIMEOUT` (todo lo que se pidió mientras tanto);
+- 04:35:05 el Engine se cerró y la app lo reinició (listo a las 04:35:10). Mientras estuvo bloqueado no se podía hacer nada, tampoco enviar mensajes.
+
+**Causa (verificada y medida).**
+1. **Importar bloquea el Engine entero.** `skill.import.scan` corre **en el hilo que atiende todos los pedidos** (`engine_protocol/skills.py:101`, `skills/service.py:523`). Por cada skill de `~/.claude/skills`, `~/.codex/skills` y `~/.agents/skills` hace la revisión completa (`review_skill`, que lee todo el contenido) y vuelve a listar la biblioteca (`library()`) por cada candidata.
+   - En la PC del dueño, `~/.claude/skills` pesa **282 MB** (`rinari-promo` 177 MB, `promo-video` 46 MB, `motion-site` 44 MB, con videos e imágenes de referencia).
+   - Medido: la revisión de las 15 candidatas tarda **~70 s** (`rinari-promo` 9–30 s, `promo-video` 9–18 s; varias están repetidas en `.agents/skills`). El límite de un pedido es 30 s: el Engine no contesta, todo lo que llega detrás vence, y la app termina reiniciándolo.
+2. **skills.sh no se entiende.** `parse_source` (`skills/install.py:54-94`) solo reconoce GitHub (repo, `tree/` o `blob/`), un `.zip` o una URL directa. La URL de skills.sh cae en «URL directa» y descarga la página HTML, que no es una skill. Tampoco se puede pegar el comando `npx skills add <repo> --skill <nombre>`.
+3. **El fallo de la instalación fue efecto del bloqueo:** `skill.job.start` ya corre en segundo plano, pero el pedido para iniciarlo llegó con el Engine ocupado por la importación.
+
+**Propuesta.**
+1. **Ningún trabajo largo en el hilo de pedidos.** Importar pasa a ser un trabajo en segundo plano, como instalar (`skill.job.*`), con progreso («Revisando 6 de 15…») y cancelación. El Engine sigue atendiendo todo lo demás mientras tanto.
+2. **Importar en dos pasos:**
+   - una **lista rápida** con lo barato (nombre, descripción, si ya está instalada, de dónde viene), sin revisar el contenido;
+   - la **revisión completa solo de las que el dueño marca** para importar, con su progreso.
+3. **La revisión, más liviana:**
+   - busca riesgos solo en los archivos de texto (instrucciones, scripts) y por debajo de un tamaño; los binarios (videos, imágenes, fuentes) entran en el hash por partes, sin analizarse;
+   - la biblioteca se lista una vez por importación, no una vez por candidata;
+   - las candidatas repetidas (la misma skill en `.claude`, `.codex` y `.agents`, o enlaces) se muestran una sola vez, con sus orígenes.
+4. **Instalar desde skills.sh y desde el comando:**
+   - una URL de skills.sh (`skills.sh/<dueño>/<repo>/<skill>`) se traduce al repo de GitHub y a la skill con ese nombre dentro;
+   - se puede **pegar el comando** `npx skills add <repo> --skill <nombre>` tal cual; Rinari saca el repo y la skill;
+   - si el repo trae varias skills y no se dice cuál, se muestran para elegir.
+5. **Errores claros en Ajustes → Skills:** si algo falla o vence, se dice qué y se puede reintentar; la pantalla nunca se queda «pensando» sin fin.
+6. **Vigilancia general:** el Engine registra cualquier pedido que tarde más de unos segundos en el hilo de pedidos (solo el nombre y la duración), para encontrar otros casos así antes de que bloqueen.
+
+**Pruebas.**
+- CLI: con una skill de prueba de 200 MB, `skill.import.scan` vuelve al instante con la lista rápida y la revisión corre como trabajo con progreso; durante la revisión, `session.create` y `bundle.list` responden; cancelar detiene el trabajo; la revisión no analiza binarios; las repetidas salen una vez.
+- CLI: `parse_source` con una URL de skills.sh y con el comando `npx skills add … --skill …` da el repo y la skill correctos; un repo con varias skills y sin nombre pide elegir.
+- App: importar muestra progreso y se puede cancelar; instalar pegando el comando; un fallo muestra el motivo y «Reintentar».
 
 ---
 

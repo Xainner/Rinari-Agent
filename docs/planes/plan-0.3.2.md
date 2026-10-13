@@ -1811,7 +1811,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 ### 61a. Las páginas web llegan comprimidas (el hallazgo grave)
 
 **Causa (verificada).** `web/client.py:149` lee el cuerpo con `response.iter_raw()`, que en httpx devuelve **los bytes tal como llegan de la red, sin descomprimir**. httpx pide `Accept-Encoding: gzip, deflate` por defecto, así que cualquier sitio que comprime (casi todos) entrega gzip y Rinari lo trata como texto. `http/client.py:214` (`http.request`) tiene el mismo `iter_raw()`. Está así desde la fase 5 (`d8abf31`).
-- En esta sesión fallaron **ocho sitios distintos** con `web.fetch`, `web.extract_markdown`, `web.extract_text` y `web.open` (todos empiezan con `1f 8b`, la firma de gzip); `web.links` devolvió 0 enlaces y `web.extract_metadata` vino vacío por lo mismo.
+- En esta sesión fallaron **nueve sitios distintos** (diez lecturas) con `web.fetch`, `web.extract_markdown`, `web.extract_text` y `web.open` (todos empiezan con `1f 8b`, la firma de gzip); `web.links` devolvió 0 enlaces y `web.extract_metadata` vino vacío por lo mismo.
 - **Todas respondieron `ok: true`.** Nada avisó de que el «texto» era binario.
 - Rinari lo rodeó con `http.request` y `Accept-Encoding: identity`, y con `curl`. `web.search` sí funcionó (su respuesta llega por otro camino).
 
@@ -1823,7 +1823,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 ### 61b. La basura se quedó en el contexto
 
-- Las siete lecturas comprimidas metieron **unos 220 mil tokens de bytes sin sentido** en la conversación: la entrada pasó de 21 mil a 65 mil, luego a 181 mil y luego a 244 mil tokens. Esa basura **viajó en cada llamada siguiente**, incluido todo el turno del logo, que no tenía nada que ver (unas 12 llamadas de ~250 mil tokens cada una). Recién se fue al recortarse el contexto a mitad de la verificación (19:02:33).
+- Las nueve lecturas comprimidas del turno de Qwen metieron **unos 220 mil tokens de bytes sin sentido** en la conversación: la entrada pasó de 21 mil a 65 mil, luego a 181 mil y luego a 244 mil tokens. Esa basura **viajó en cada llamada siguiente**, incluido todo el turno del logo, que no tenía nada que ver (unas 12 llamadas de ~250 mil tokens cada una). Recién se fue al recortarse el contexto a mitad de la verificación (19:02:33).
 - **Propuesta:** además del 61a.2, una salida de herramienta que no es texto legible nunca entra entera al contexto; en el peor caso entra un aviso de una línea con la referencia al artefacto.
 
 ### 61c. La verificación de una descarga se enreda

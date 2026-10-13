@@ -230,7 +230,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 44 | El panel lateral se puede extender mucho más, y el navegador del agente prueba en tamaños anchos (Planka, Idea) | CLI + Agent | Decidido (causa verificada) |
 | 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
 | 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Decidido |
-| 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta revisada) |
+| 47 | Panel lateral nuevo: botones en la barra de título y hasta 4 vistas en mosaico, como Claude Code | Agent | Decidido (maqueta revisada) |
 | 48 | Lo que enseñó una sesión larga con un MCP de medios: sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI | Decidido (causas verificadas) |
 | 49 | La cabecera del turno en curso, como tarjeta de estado: qué hace, el paso de la lista y la acción con su tiempo | Agent | Decidido (diseño A) |
 | 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Decidido (con Rinari abierta o en la bandeja) |
@@ -1336,14 +1336,21 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
    - Artefactos entra en Archivos;
    - Tareas, Verificación e Insight quedan en un menú «Más».
 2. **Un botón por vista en la barra de título**, con su indicador vivo: el punto de la terminal que corre, el anillo del navegador en vivo, el número de archivos cambiados, los agentes trabajando. Un clic abre o cierra esa vista; el botón genérico «Panel lateral» desaparece.
-3. **Hasta 3 vistas apiladas** en el panel lateral, una debajo de otra, con separadores que se arrastran. Cada vista tiene su cabecera con el título, **«Ampliar»** (#44) y cerrar. La disposición (qué vistas y qué altura) se recuerda por conversación.
+3. **Hasta 4 vistas en mosaico** (dueño, 2026-10-13, al comparar con Claude Code y Codex: tres en una sola columna se ven incómodas y desperdician el ancho). La disposición depende de cuántas haya:
+   - **1:** ocupa todo el panel;
+   - **2:** una arriba y otra abajo (o lado a lado si el panel es muy ancho y bajo);
+   - **3:** **dos apiladas a la izquierda y una alta a la derecha**, como Claude Code;
+   - **4:** **cuadrícula de 2×2**;
+   - los separadores se arrastran en los dos ejes; una vista se puede **arrastrar por su cabecera** para cambiarla de sitio;
+   - **si el panel es angosto** (menos de ~640 px), el mosaico pasa a una sola columna, para que nada quede ilegible; al ensancharlo vuelve el mosaico.
+   Cada vista tiene su cabecera con el título, **«Ampliar»** (#44) y cerrar. La disposición (qué vistas, en qué sitio y con qué tamaños) se recuerda por conversación.
 4. **En Boards:** los botones de la barra de título actúan sobre el **panel enfocado**, y cada panel conserva su panel lateral con las vistas apiladas (se abre con su botón, como hoy).
 5. **Movimiento:** abrir una vista la desliza desde la barra de título hasta su sitio en la pila; los separadores no rebotan; con movimiento reducido, todo es instantáneo.
 6. **Sin conversación** (pantalla de inicio, conversación nueva todavía sin enviar, Ajustes y demás pantallas sin sesión): **los botones de las vistas no aparecen**, como en la pantalla de inicio de Claude Code (dueño, 2026-10-12). Aparecen, con un fundido suave, cuando hay una conversación; con movimiento reducido, sin animación.
 7. **Decisiones de la maqueta** (dueño, 2026-10-12):
    - **Ctrl+B** oculta y vuelve a mostrar el panel lateral con la misma disposición, sin cerrar sus vistas;
-   - las vistas de «Más» (Tareas, Verificación, Insight) **cuentan** para el límite de 3;
-   - una vista nueva entra **abajo**; con 3 abiertas, se elige cuál reemplazar y ocupa su sitio;
+   - las vistas de «Más» (Tareas, Verificación, Insight) **cuentan** para el límite de 4;
+   - una vista nueva ocupa **el siguiente lugar del mosaico** (1 → 2 → 3 → 4); con 4 abiertas, se elige cuál reemplazar y ocupa su sitio;
    - el ancho y la pila se recuerdan **por conversación** (el #44 se ajusta a esto);
    - al ampliar, el chat queda como una columna con **la cara, el estado, los últimos mensajes y el composer**;
    - **indicadores** también en Flujo (ámbar si una etapa te necesita) y en Archivos (un artefacto nuevo);
@@ -1354,7 +1361,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 **Maqueta.** Antes de construirlo se hace una maqueta solo del panel lateral (`Documents/Proyectos/rinari-sidepanel-proto`).
 
 **Pruebas.**
-- Vitest: abrir y cerrar vistas desde la barra de título, el límite de 3, los separadores, «Ampliar» de una vista, recordar la disposición, y en Boards que los botones actúen sobre el panel enfocado.
+- Vitest: abrir y cerrar vistas desde la barra de título, el límite de 4, las disposiciones de 1 a 4 (2 apiladas + 1 alta, 2×2), la caída a una columna en un panel angosto, arrastrar una vista por su cabecera, los separadores en los dos ejes, «Ampliar» de una vista, recordar la disposición, y en Boards que los botones actúen sobre el panel enfocado.
 - Escenario `side-panel-stack`: Navegador y Terminal apilados, se arrastra el separador y se amplía el Navegador; el movimiento se muestrea cuadro a cuadro y con `RINARI_UI_REDUCED_MOTION=1`.
 
 ---
@@ -1566,7 +1573,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Propuesta.**
 - **En el chat, una tarjeta compacta** de la familia nueva: el título del plan, cuántos pasos tiene, un resumen de dos líneas y los botones **«Ver plan»**, **«Implementar»** y **«Ajustar»** (las acciones que ya existen).
 - **En el panel lateral, una vista «Plan»** con el plan completo bien presentado: secciones plegables, los pasos como lista (que al implementar se vuelve la lista de pasos del turno), los archivos que nombra como enlaces, y las mismas acciones arriba, fijas.
-- **La vista «Plan» aparece** en la barra de título solo cuando la conversación tiene un plan, y **se abre sola cada vez que termina un plan** (dueño, 2026-10-13). Cuenta para el límite de 3 vistas apiladas (#47).
+- **La vista «Plan» aparece** en la barra de título solo cuando la conversación tiene un plan, y **se abre sola cada vez que termina un plan** (dueño, 2026-10-13). Cuenta para el límite de 4 vistas (#47).
 - **Varios planes en la misma conversación:** la vista muestra el último, con un selector para ver los anteriores.
 - **En Boards,** la tarjeta va en el panel y «Ver plan» abre el panel lateral de ese panel.
 - El aviso «El plan de *X* está listo» (#33) lleva a la tarjeta y abre la vista.
@@ -1635,7 +1642,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.3.2 por riesgo. |
 | 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pregunta. La tarjeta ofrece «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari» (ventana real con perfil de Rinari por proyecto, el dueño pasa la verificación y el agente sigue). No se disfraza el navegador ni se intentan resolver captchas. |
 | 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras 3 s sin uso, nunca en un campo de contraseña. |
-| 47 | Panel lateral: seis vistas (Navegador, Terminal, Archivos, Cambios, Agentes, Flujo; Workspace se reparte), un botón por vista en la barra de título con indicador, hasta 3 apiladas con «Ampliar». En Boards actúan sobre el panel enfocado. |
+| 47 | Panel lateral: seis vistas (Navegador, Terminal, Archivos, Cambios, Agentes, Flujo; Workspace se reparte), un botón por vista en la barra de título con indicador, hasta 4 en mosaico (1 completa, 2 apiladas, 3 = dos a la izquierda y una alta a la derecha, 4 = 2×2; una columna si el panel es angosto) con «Ampliar». En Boards actúan sobre el panel enfocado. |
 | 48 | Todo genérico para cualquier MCP: el progreso renueva el tiempo de espera, el detector no cuenta esperas con resultado que cambia, las salidas fuera de esquema llegan como texto con aviso, `web.download` por partes hasta 1 GiB, nombres tolerantes solo con una coincidencia y la misma política, título de respaldo, y la nota de la lista solo cuando la amerita. |
 | 49 | Cabecera del turno en curso como tarjeta: qué hace (el paso de la lista o la acción), «Paso n/m» de la lista, la acción con su propio tiempo, y tiempo total y tokens a la derecha. En Boards angosto, una línea. |
 | 50 | Tareas «Comando» sin modelo, con salida y código guardados y opción de pasarle la salida a un agente, más horarios cron. En 0.3.2 solo con Rinari abierta o en la bandeja (iniciar con Windows en la bandeja, activado por defecto). El Programador del sistema y el servidor, después. |

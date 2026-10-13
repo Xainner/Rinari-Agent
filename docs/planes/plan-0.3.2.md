@@ -1333,6 +1333,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 3. **Hasta 3 vistas apiladas** en el panel lateral, una debajo de otra, con separadores que se arrastran. Cada vista tiene su cabecera con el título, **«Ampliar»** (#44) y cerrar. La disposición (qué vistas y qué altura) se recuerda por conversación.
 4. **En Boards:** los botones de la barra de título actúan sobre el **panel enfocado**, y cada panel conserva su panel lateral con las vistas apiladas (se abre con su botón, como hoy).
 5. **Movimiento:** abrir una vista la desliza desde la barra de título hasta su sitio en la pila; los separadores no rebotan; con movimiento reducido, todo es instantáneo.
+6. **Sin conversación** (pantalla de inicio, conversación nueva todavía sin enviar, Ajustes y demás pantallas sin sesión): **los botones de las vistas no aparecen**, como en la pantalla de inicio de Claude Code (dueño, 2026-10-12). Aparecen, con un fundido suave, cuando hay una conversación; con movimiento reducido, sin animación.
 
 **Maqueta.** Antes de construirlo se hace una maqueta solo del panel lateral (`Documents/Proyectos/rinari-sidepanel-proto`).
 

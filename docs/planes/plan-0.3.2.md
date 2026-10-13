@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46 y 48 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48 y 49, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48 y 50 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49 y 50, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46, 47 y 49).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -233,6 +233,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta revisada) |
 | 48 | Lo que enseñó una sesión larga con un MCP de medios: sondeo caro, salidas MCP inválidas, descarga cortada a 2 MiB, nombres de herramienta, título y lista de pasos | CLI | Decidido (causas verificadas) |
 | 49 | La cabecera del turno en curso, como tarjeta de estado: qué hace, el paso de la lista y la acción con su tiempo | Agent | Decidido (diseño A) |
+| 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Propuesto (faltan 2 decisiones) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1413,6 +1414,38 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - **En Boards,** con el panel angosto, la tarjeta se reduce a una línea («Generar el video del búho · 4/5 · 20 m · 7,0 M»), con el detalle al pasar el ratón. En un panel recién enviado no aparece hasta que hay algo que contar (C.1 del plan de Boards).
 
 **Pruebas.** Vitest de la tarjeta: con lista (título del paso y «Paso 4/5»), sin lista (la acción), solo pensando, el tiempo de la acción que se reinicia al cambiar de acción, el costo si existe y la versión de una línea. Escenario: un turno largo con lista muestra el paso que avanza; el movimiento se muestrea cuadro a cuadro y con `RINARI_UI_REDUCED_MOTION=1`.
+
+---
+
+## 50. Tareas programadas con comandos y scripts
+
+**Qué se pidió** (dueño, 2026-10-12). Hermes tiene en su app de escritorio trabajos programados que corren scripts (cron jobs). Rinari, en el escritorio, solo tiene tareas estilo recordatorio o un turno del agente. El Gateway lo tiene fácil por ser un servidor; ¿cómo llega el escritorio a ese nivel?
+
+**Qué hay hoy (verificado).**
+- Las tareas programadas (`engine_protocol/schedule.py`, migración `0040_scheduled_tasks.sql`) tienen dos tipos: **`reminder`** (un aviso) y **`agent`** (un turno del agente con un mensaje, en un proyecto o un chat, con sus permisos aprobados al crearla). **No hay un tipo que ejecute un comando o un script.**
+- **Corren mientras el Engine vive:** con la app abierta o en la bandeja. Lo que venció con la app cerrada se ejecuta al volver, dentro de una ventana de recuperación, o queda como omitido.
+- El Gateway tiene su propio planificador (`croniter`) en el servidor ([plan-gateway.md](plan-gateway.md)).
+
+**Propuesta.**
+1. **Un tipo nuevo: «Comando».** La tarea ejecuta un comando o un script **sin el modelo**: cero tokens, determinista e inmediato.
+   - Carpeta de trabajo (el proyecto o una carpeta), variables de entorno, tiempo máximo y el intérprete (PowerShell, bash, Python, Node…);
+   - corre con el registro de procesos (`ProcessRegistry`): salida guardada, código de salida y duración en el historial de la tarea;
+   - **qué hacer con el resultado:** nada; avisar solo si falla; o **pasarle la salida a un agente** («si falla, que Rinari lo revise», o «resume este log cada mañana»). Así se combinan script y agente.
+2. **Horarios tipo cron**, además de los de hoy: «cada N minutos», diario, semanal y una expresión cron para lo avanzado, con la próxima ejecución a la vista.
+3. **Que corra aunque Rinari esté cerrado.** Tres niveles, de menos a más:
+   - **Bandeja e inicio con el sistema:** «Iniciar Rinari con Windows, en la bandeja» deja el Engine vivo mientras la PC esté encendida. Cubre la mayoría de los casos.
+   - **El programador del sistema:** por tarea, «Ejecutar aunque Rinari esté cerrado» la registra en el Programador de tareas de Windows (o `launchd` / `systemd --user`) para correr la CLI sin ventana (`rinari schedule run <id>`). Con la opción «Despertar el equipo», funciona incluso con la PC suspendida.
+   - **En el servidor (24/7):** cuando la app pueda conectarse al Engine del Gateway, la tarea se crea allí ([plan-gateway.md](plan-gateway.md)).
+4. **Riesgo a validar:** que la app y una ejecución de la CLI sin ventana no escriban a la vez la misma base de datos sin coordinación. El Engine ya usa candados por sesión y SQLite, pero hay que comprobar el caso de dos procesos.
+5. **Permisos:** la tarea guarda lo que se le aprobó al crearla (como hoy) y sigue el modo elegido ([plan-permisos-v4.md](plan-permisos-v4.md)); un comando programado muestra el comando exacto al crearlo y al editarlo.
+
+**Decisiones pendientes.**
+1. ¿Entra en 0.3.2 todo junto, o el tipo «Comando» y los horarios cron en 0.3.2 y «aunque Rinari esté cerrado» (el programador del sistema) después?
+2. ¿«Iniciar Rinari con Windows, en la bandeja» activado por defecto, o se ofrece al crear la primera tarea programada?
+
+**Pruebas.**
+- CLI: una tarea «Comando» corre sin el modelo y guarda salida, código y duración; «avisar solo si falla»; «pasar la salida a un agente» arranca un turno con esa salida; una expresión cron calcula la próxima ejecución; `rinari schedule run <id>` sin ventana con la app abierta no corrompe la base.
+- App: crear una tarea «Comando» (con el comando a la vista), el historial con la salida, y la opción del programador del sistema.
 
 ---
 

@@ -1,70 +1,83 @@
 # Rinari Agency: equipos de agentes que viven y trabajan juntos
 
-Estado: **idea en exploración** (2026-10-11; nombre decidido el 2026-10-12). No es un plan todavía. Es un primer boceto para pensarlo con el dueño, que pidió algo **innovador** y que sea **una función importante de Rinari**, no una copia de los «bots» de otros productos.
+Estado: **v2, en diseño con el dueño** (2026-10-12). Pasa de idea a plan: las decisiones de abajo ya están tomadas; lo que sigue abierto está en «Preguntas abiertas».
 
-Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-boards.md)): la comunicación entre agentes se piensa aquí, desde cero.
+Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-boards.md)): la comunicación entre agentes se piensa aquí, desde cero. Los permisos de toda la app se rehacen en su propio plan ([plan-permisos-v4.md](plan-permisos-v4.md)), y el Gateway tiene el suyo ([plan-gateway.md](plan-gateway.md)).
 
-**Para quien se suma a esta parte:** el documento junta las ideas del dueño en orden de llegada (secciones 3 a 3e). Las decisiones que ya tomó son el nombre (abajo), la **pizarra de recados** como espacio compartido, los **N equipos** y la **oficina de 8 bits**, cuyo prototipo interactivo está en `Documents/Proyectos/rinari-familiars-proto` (`index.html`; la carpeta conserva el nombre provisional). Lo abierto está en la sección 6.
+**Para quien se suma:** el prototipo de la oficina de 8 bits está en `Documents/Proyectos/rinari-familiars-proto` (`index.html`); al dueño le encantó y es la referencia visual. La carpeta conserva el nombre provisional.
 
 ---
 
 ## 1. El nombre
 
-**Rinari Agency** (decisión del dueño, 2026-10-12).
-- Se descartaron «Rinari Bots» (el término ya está muy usado: X, Hermes, GPTs…) y «Familiares / Families», que no le gustó al dueño.
-- Encaja con la idea: **una agencia** con **N equipos** (sección 3e), cada uno con sus **agentes** de oficio, su pizarra y su oficina.
-- En el resto del documento: la **Agency** es la función; cada miembro es un **agente** («el agente de QA revisó el PR»); un **equipo** es un grupo de agentes con su pizarra.
-- **Pizarra de recados:** el espacio compartido de cada equipo. En las secciones más viejas aparece como «Mesa»; es lo mismo.
-- Pendiente antes de publicarlo: confirmar que «Rinari Agency» no choca con una marca registrada.
+**Rinari Agency** (decisión del dueño, 2026-10-12). Se descartaron «Rinari Bots» (muy usado) y «Familiares / Families». En el documento: la **Agency** es la función; cada miembro es un **agente**; un **equipo** es un grupo de agentes con su oficina, que en el edificio es **un piso**. Pendiente antes de publicarlo: confirmar que «Rinari Agency» no choca con una marca registrada.
 
-## 2. Qué es
+## 2. Cómo se entra: la tarjeta y las dos vistas
 
-> Un **agente** de la Agency es **persistente**, con nombre, oficio, Soul, modelo, herramientas, memoria y permisos propios. Vive aunque no haya una conversación abierta. Se despierta por **eventos** y trabaja con los demás en una **Mesa** compartida, donde se piden cosas, se las reparten, se revisan entre sí y le entregan al dueño **resultados ya verificados**.
+- **La tarjeta «Rinari Agency»** vive abajo a la izquierda, a lo ancho, **encima de Ajustes**, con el arte del ícono de la Agency (Rinari chibi con orejas de gato y auriculares, fondo morado) y una línea de estado en vivo: «3 trabajando · 1 te necesita».
+- **Al pulsarla, cambia toda la interfaz** (con la cámara entrando al edificio): desaparecen proyectos y conversaciones; la barra lateral muestra equipos y agentes; el «+» pasa a ser **«Nuevo agente»**. La misma tarjeta pasa a decir «Volver a Rinari».
+- **Dentro de la Agency hay dos vistas**, como hoy Normal | Boards:
+  - **Normal:** la vista de trabajo, por chats. Cada agente con su chat directo, el chat de cada oficina, los recados y las sesiones. Es la interfaz de siempre adaptada a la Agency.
+  - **Agencia:** el edificio en 8 bits, sobre los mismos datos. Es la vista espectacular; nunca es obligatoria para trabajar.
 
-Sale de piezas que Rinari ya tiene:
-- **Perfiles como espacios de trabajo** (Soul, modelo y modo): un agente es un perfil «encarnado».
-- **Tareas programadas:** el reloj, uno de sus disparadores.
-- **El Gateway** (Telegram, Discord, WhatsApp, web): por donde el dueño habla con su equipo desde el teléfono.
-- **El transporte se construye de nuevo.** El buzón de los mensajes entre paneles de Boards (`PeerBroker`) se retira con esa mensajería (decisión del dueño, 2026-10-12), para que la Agency tenga una base propia, pensada para pedidos con contrato y pizarras. De aquel buzón se toman las lecciones: cola durable, Stop/Reanudar, sin duplicados y lo que dice otro agente como dato.
-- **Memoria visible, notas y lista de pasos:** cómo cuentan lo que hacen.
+## 3. El modelo: agentes, equipos y puestos
 
-## 3. Lo que lo haría distinto
+- **Por perfil:** perfil → **su Agency** → sus equipos = **los pisos de su edificio**. Otro perfil tiene otro edificio, con la misma estructura.
+- **El agente es una persona:** ícono, nombre, oficio, instrucciones (su Soul), modelo por defecto, herramientas y MCP permitidos, autonomía, presupuesto y **memoria propia**. Tiene **su chat directo** (una sesión) para hablarle a solas, darle órdenes y ver qué hace. **Puede existir sin equipo.**
+- **Un equipo es un lugar de trabajo** (una oficina, un piso): su chat, su pizarra de recados, sus credenciales, su memoria de equipo, su presupuesto y sus reglas.
+- **Un puesto:** al sumar un agente a un equipo, ocupa un escritorio en esa oficina. Es **una sesión vinculada al equipo**, con la pizarra, las credenciales y la memoria de ese equipo. El mismo agente puede tener **puestos en varios equipos**: su memoria propia viaja con él; en cada puesto solo ve lo de ese equipo (la clave de YouTube del «Canal infantil» no existe en «Servidor Saturno»).
+- **Cada recado que toma** se trabaja en una **sesión hija de su puesto** ([sesiones hijas](plan-sesiones-hijas.md)), que el dueño puede abrir.
+- **Modelos:** el agente tiene su modelo por defecto; cada puesto o recado puede cambiarlo.
 
-1. **Una Mesa, no mensajes directos.**
-   - Los agentes no se mandan DMs sueltos. Publican en una **Mesa** (un pizarrón compartido), con **tipos de mensaje**: *pedido*, *hallazgo*, *pregunta*, *propuesta*, *decisión*, *entrega*.
-   - Cada agente lee los temas de su oficio.
-   - El dueño ve la Mesa como el chat de su equipo y puede intervenir en cualquier hilo.
-   - Así se acaban los ping-pong y los «saltos»: un pedido tiene **dueño, estado y cierre**.
-2. **Pedidos con contrato.**
-   - Un pedido declara qué se quiere, cómo se sabe que está hecho (criterios), un presupuesto (tokens, tiempo y coste) y el alcance de permisos.
-   - Un agente **lo toma** y desde ese momento responde por él.
-   - Si se pasa del presupuesto, se detiene y pregunta.
-3. **Revisión cruzada antes de llegar al dueño.**
-   - Lo que entrega un agente lo revisa otro (por ejemplo, el de QA revisa al de código) con evidencias: pruebas, capturas, diff.
-   - Al dueño le llega **«hecho y verificado»**, o **«hecho, pero QA encontró esto»**.
-   - Es la «verificación honesta» de Rinari llevada a equipo.
-4. **Despertarse por eventos, no solo por reloj.**
-   - Disparadores: una hora, un archivo que cambia, un push o un CI rojo, un correo o webhook que llega por el Gateway, un mensaje en Telegram, que otro agente te nombre en la Mesa o una condición («si el disco pasa del 90 %»).
-   - Cada disparador queda visible y se puede pausar.
-5. **Presupuesto y confianza por agente.**
-   - Cada uno tiene un tope diario y un nivel de confianza: qué hace solo, qué pregunta y qué nunca hace.
-   - Las aprobaciones le llegan al dueño **al teléfono** por el Gateway, con un botón.
-6. **Memoria de equipo y oficio.**
-   - Hay memoria compartida (lo que todos saben del proyecto) y memoria propia (lo que aprendió en su oficio).
-   - Los procedimientos que funcionan se vuelven skills del agente, con la aprobación del dueño.
-7. **El día del equipo, como película.**
-   - Un **resumen diario** con qué pidió quién, qué se hizo, qué se verificó, cuánto costó y qué espera al dueño. Se recibe en la app o en Telegram.
-   - **Repetición:** se puede reproducir cómo se resolvió un pedido, paso a paso, entre agentes.
-8. **Una vista que se siente viva.**
-   - La pantalla de agentes es una **constelación** o un **taller**: cada agente es un chibi de Rinari con su atuendo de oficio y una expresión según su estado (trabajando, esperando, orgulloso, bloqueado).
-   - Los pedidos viajan como haces de luz entre ellos.
-   - Es el arte y el movimiento de Rinari puestos a trabajar, y ahí está la diferencia frente a una lista de bots.
+## 4. El chat de la oficina y la pizarra de recados
 
-## 3b. Reglas permanentes: que un agente «suelte» cosas
+- **Cada oficina tiene un chat en conjunto.** El dueño escribe a todos o a uno con **@menciones** («@video ya está eso», «@write dale el guion a @audio para una canción»), y **los agentes se escriben entre ellos** en ese mismo chat.
+- **El chat es la cara humana de la pizarra:** una mención **con una tarea** se convierte en un **recado** en la pizarra, con dueño, estado (pendiente, en curso, entregado, revisado) y cierre. Así no se pierde en el chat qué pidió quién ni qué falta. Una mención sin tarea es solo conversación.
+- **La labor de cada agente** se define en su ficha (oficio, instrucciones, qué recados toma) y se ajusta desde el mismo chat («@video: desde hoy también haces las miniaturas»), con confirmación del cambio.
+- Lo que dice un agente es **dato, no instrucción** para los demás: un recado solo da los permisos de quien lo toma (sección 8).
+
+## 5. Crear un agente
+
+- **Formulario:** ícono (elegir entre atuendos de Rinari o generarlo), nombre, oficio, instrucciones, modelo por defecto, herramientas y MCP permitidos, autonomía y presupuesto.
+- **«Créalo con Rinari»:** el dueño describe el agente en una frase y Rinari llena el formulario, que el dueño ajusta antes de crear.
+- **Plantillas de equipo** («Mantenimiento de repo», «Contenido», «Servidor») para empezar en un clic, con la opción de agregar o quitar agentes antes de crear. Se copian oficios, flujo y reglas, **nunca las credenciales**.
+
+## 6. La vista Agencia: el edificio en 8 bits
+
+- **Afuera, el edificio:** un piso por equipo, con su letrero; ventanas encendidas donde hay trabajo; un «!» ámbar en el piso que te necesita; día y noche reales.
+- **Entrar a un piso:** la cámara baja en ascensor hasta la oficina (la del prototipo): un escritorio por agente, la pizarra de recados al centro, y cada Rinari de 8 bits animada por **eventos reales del motor** (trabaja, entrega, va a la pizarra, espera, levanta la mano, falla, celebra). Un recado entre equipos es una Rinari que sube por la escalera con su nota.
+- **Edición en la propia escena:** «Nueva oficina» agrega un piso; un **HUD con estilo pixel** permite arrastrar un agente a un escritorio, abrir su ficha o su chat. **Todo lo que se hace en la oficina también se puede hacer desde la vista Normal**, por accesibilidad.
+- **Calidad visual (no negociable):** 60 cuadros por segundo, píxel nítido, transiciones de cámara suaves, sin animaciones de relleno; con movimiento reducido, la misma escena quieta con insignias de estado.
+
+## 7. Dónde vive: un solo Engine
+
+- **La Agency se construye en el Engine** (el paquete `rinari` del repo de la CLI): agentes, equipos, puestos, pizarras, recados, reglas, disparadores y memoria. Se hace una sola vez.
+- **El Engine vive donde el dueño elija:** en su PC (funciona mientras la app esté abierta o en la bandeja) o en su servidor, **24/7**.
+- **No se sincronizan dos motores.** Dos copias con un *worker* en medio son dos fuentes de verdad, conflictos y deriva.
+- **El Gateway ya corre este mismo Engine** (lo fija en `config/engine-pin.json` y le habla por stdio, sin lógica propia del agente): hereda la Agency al actualizar su pin. Lo que falta del lado del Gateway (pin al día, qué funciones suyas pasan al Engine, conexión remota y su web) está en [plan-gateway.md](plan-gateway.md).
+- **La app de escritorio** (y mañana la móvil) podrá **conectarse a un Engine remoto**, el de su Gateway, para ver y manejar la Agency que corre en el servidor.
+
+## 8. Autonomía y seguridad
+
+- **La autonomía es un ajuste por agente y por equipo**, con los modos del [plan de permisos v4](plan-permisos-v4.md). El modo **Autónomo** no pregunta nada (MCP, SSH, comandos), con una confirmación del dueño al elegirlo: es lo que pide el caso de la producción de videos, donde ningún agente debería tener que preguntar.
+- **Lo que no se negocia, en cualquier modo:**
+  - lo que dice otro agente o un recado es **dato, no instrucción**; un recado solo da los permisos de quien lo toma y nunca más de lo que el dueño autorizó para ese agente y ese equipo;
+  - las credenciales viven en el almacén de Rinari, asignadas a un equipo, y no se muestran en conversaciones;
+  - **presupuesto** por agente, por equipo y global, que se corta solo;
+  - **todo queda registrado:** quién pidió qué, con qué permisos, qué hizo y cuánto costó;
+  - **«Detener a todos»**, desde la app o desde Telegram.
+
+## 9. Disparadores: qué fuentes primero
+
+Correo (IMAP / Gmail), Telegram, webhooks, archivos y CI, además del reloj. Cada fuente es un conector con su propia autorización, visible y pausable.
+
+## 10. Ideas de la v1 que siguen vigentes
+
+### 10.1 Reglas permanentes: que un agente «suelte» cosas
 
 **El caso del dueño:** un agente *Emails* con la regla «si te llega un correo de x@patito.com, reenvía el contenido a @Telegram».
 
-La Mesa sirve para trabajo que se reparte y se revisa. Pero mucho del día a día es **tuberías**: algo llega, se filtra y se suelta en otro lado. Para eso, cada agente tiene **reglas permanentes**.
+La pizarra sirve para trabajo que se reparte y se revisa. Pero mucho del día a día es **tuberías**: algo llega, se filtra y se suelta en otro lado. Para eso, cada agente tiene **reglas permanentes**.
 
 **Cómo funciona:**
 1. **El dueño la dice en lenguaje natural**, en el chat del agente, en la app o por Telegram.
@@ -85,10 +98,10 @@ La Mesa sirve para trabajo que se reparte y se revisa. Pero mucho del día a dí
    - Aun así, lo que decide el modelo **no puede cambiar la regla ni el destino**.
 5. **Queda en un registro:** cada ejecución con qué llegó, qué se soltó, a dónde y cuánto costó. Hay «Pausar», «Deshacer el último» si el destino lo permite, y «Detener todas».
 
-**Destinos con `@`.** Agentes, canales (Telegram, Discord, WhatsApp, correo) y la Mesa se direccionan igual: `@Telegram`, `@QA`, `@Mesa`. Una regla puede:
+**Destinos con `@`.** Agentes, canales (Telegram, Discord, WhatsApp, correo) y la pizarra se direccionan igual: `@Telegram`, `@QA`, `@Pizarra`. Una regla puede:
 - **soltar en un canal** (avisar o reenviar);
 - **soltar a otro agente** (pasarle trabajo: «si llega una factura, mándasela a @Contabilidad»);
-- **soltar en la Mesa** (un pedido con contrato para que alguien lo tome).
+- **soltar en la pizarra** (un pedido con contrato para que alguien lo tome).
 
 Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 
@@ -97,9 +110,9 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 - Solo los destinos que el dueño registró (sus canales y sus agentes) son válidos. Mandar a un destino nuevo es otra regla, con otra aprobación.
 - Hay límites de volumen y tamaño, y un aviso si una regla se dispara mucho más de lo normal (por ejemplo, alguien inundando la bandeja).
 
-## 3c. Mesa redonda: de una reunión a una producción que corre sola
+### 10.2 De una reunión a una producción que corre sola
 
-**El caso del dueño.** Los agentes *Images*, *Audio*, *Video*, *Writer* y *Content_Manager* se reúnen en una **mesa redonda** con el MCP **Rinari Visual Lab**. El dueño les explica el trabajo:
+**El caso del dueño.** Los agentes *Images*, *Audio*, *Video*, *Writer* y *Content_Manager* se reúnen **frente a la pizarra** con el MCP **Rinari Visual Lab**. El dueño les explica el trabajo:
 - **Objetivo:** gestionar un canal de YouTube. La credencial la tiene *Content_Manager*.
 - **Writer** escribe historias de 30 segundos para niños, con un personaje bien descrito. Única regla: animales 3D infantiles.
 - **Images** genera la imagen de cada personaje.
@@ -133,12 +146,12 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 - **Contenido para niños.** YouTube exige marcar los videos «para niños», y eso tiene reglas (comentarios, anuncios). *Content_Manager* debe tenerlo como regla fija de la producción.
 - **Capacidad.** 10 videos con imagen, video y música cada día es trabajo de GPU real. La producción debe conocer la cola del Visual Lab y repartir, no lanzar todo de golpe.
 
-## 3d. La oficina de 8 bits
+### 10.3 La oficina de 8 bits: estados y animaciones
 
-**La idea del dueño:** ver la Mesa como una **oficina en 2D, en pixel art**, con una Rinari de 8 bits por agente, cada una con su nombre. Cuando trabajan, se ve dónde y qué hacen.
+**La idea del dueño:** ver la pizarra como una **oficina en 2D, en pixel art**, con una Rinari de 8 bits por agente, cada una con su nombre. Cuando trabajan, se ve dónde y qué hacen.
 
 **Es viable**, y es justo el tipo de cosa que hace distinta a Rinari:
-- **Escena:** una oficina con un escritorio por agente y la mesa redonda al centro. Se dibuja en `canvas` (o PixiJS) a resolución baja, escalada con píxel nítido. Cuesta muy poco aunque esté abierta todo el día.
+- **Escena:** una oficina con un escritorio por agente y la pizarra de recados al centro. Se dibuja en `canvas` (o PixiJS) a resolución baja, escalada con píxel nítido. Cuesta muy poco aunque esté abierta todo el día.
 - **Sprites:** una Rinari chibi en 8 bits con el atuendo de su oficio (auriculares para *Audio*, claqueta para *Video*, pluma para *Writer*…). Se generan con el mismo flujo de arte de siempre (Codex imagegen) y se pasan a hojas de sprites de 16×16 o 32×32 con paleta limitada.
 - **Animaciones, movidas por los eventos reales del motor:**
 
@@ -146,7 +159,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
   |---|---|
   | Trabajando | Teclea en su escritorio; la pantalla parpadea con el color de su herramienta |
   | Entrega | Camina con un paquete (📜 historia, 🖼 imagen, 🎞 video) al escritorio de quien la recibe |
-  | Reunión | Todas a la mesa redonda; burbujas con el texto corto de lo que dicen |
+  | Reunión | Todas frente a la pizarra; burbujas con el texto corto de lo que dicen |
   | Espera | Se sienta, «zzz» o mira el reloj |
   | Necesita al dueño | Levanta la mano con un «!» ámbar |
   | Error | Humito sobre la cabeza y pantalla roja |
@@ -159,7 +172,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 - **Movimiento reducido:** la misma oficina, quieta, con insignias de estado en lugar de animaciones.
 - **También como resumen:** la «película del día» puede ser la oficina en cámara rápida.
 
-## 3e. N equipos con N agentes
+### 10.4 N equipos con N agentes
 
 **Idea del dueño:** no un solo equipo, sino **tantos equipos como haga falta, cada uno con los agentes que necesite**. Por ejemplo, «Canal infantil» (Images, Audio, Video, Writer, Content_Manager), «Mantenimiento Rinari» (Centinela, Arreglos, QA) o «Servidor Saturno» (Guardia, Operaciones).
 
@@ -188,16 +201,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 - Cuántos agentes pueden trabajar **a la vez** lo decide la capacidad real: modelos, GPU (por ejemplo, la cola del Visual Lab en Saturno) y el presupuesto. Un planificador reparte por prioridad entre equipos, en lugar de lanzar todo a la vez.
 - Los equipos sin actividad no consumen nada: duermen hasta su próximo disparador.
 
-## 4. Seguridad (no negociable)
-
-- **Lo que dice otro agente es dato, no instrucción**, como ya hace el envoltorio de los peers.
-  - Un pedido de la Mesa solo da los permisos que su **contrato** declara.
-  - Esos permisos nunca superan los del agente que lo toma, ni lo que el dueño autorizó para ese oficio.
-- **El contenido externo marca la cadena.** Si un agente leyó la web, un correo o un mensaje de un tercero, lo que publique queda marcado. Los pasos irreversibles que se deriven de eso necesitan al dueño (la guardia de contenido externo de hoy, aplicada al equipo).
-- **Todo queda registrado:** quién pidió qué, con qué permisos, qué ejecutó y qué costó.
-- **Un interruptor de pánico:** «Detener a todos» desde la app o desde Telegram.
-
-## 5. Ejemplos de uso (para probar la idea)
+### 10.5 Ejemplos de uso
 
 - **Mantenimiento de un repo:**
   1. *Centinela* ve el CI en rojo y publica un hallazgo.
@@ -214,19 +218,20 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
   2. Si algo falla, *Operaciones* propone el arreglo.
   3. Nada irreversible se hace sin el dueño.
 
-## 6. Preguntas abiertas
+## 11. Preguntas abiertas
 
-1. ¿El agente vive en el **Desktop**, en el **Gateway** (siempre encendido) o en los dos? Para despertarse por eventos con la PC apagada, necesita vivir en el servidor.
-2. ¿La Mesa es **por proyecto**, **por perfil** o **global** del dueño?
-3. ¿Hasta dónde llega la autonomía por defecto? (Recomendación inicial: hacen solos lo reversible dentro de su contrato; lo demás llega como aprobación).
-4. ¿Cómo se relaciona con las sesiones hijas? (Un agente que toma un pedido abre una **sesión hija suya** para trabajarlo, y así el dueño puede abrirla).
-5. ¿Modelos por agente? Por ejemplo, uno barato para vigilar y uno potente para arreglar.
-6. ¿Plantillas de equipo («Mantenimiento de repo», «Contenido», «Servidor»), para empezar en un clic?
-7. ¿Qué fuentes de eventos primero? Correo (IMAP / Gmail), Telegram, webhooks, archivos y CI. Cada una es un conector con su propia autorización.
+1. ¿Un agente sin equipo puede tener reglas y disparadores propios (por ejemplo, el agente *Emails* con su regla de reenvío), o eso siempre vive en un equipo? Recomendado: sí, también solo.
+2. ¿Cómo se generan los íconos y los sprites de 8 bits de cada agente nuevo? (Elegir de un banco de atuendos ya hecho, o generarlo con el flujo de arte de Rinari al crear el agente.)
+3. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta?
+4. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan?
 
-## 7. Siguiente paso propuesto
+## 12. Fases propuestas
 
-Una **sesión de investigación** dedicada, solo lectura y con informe:
-- qué hacen hoy los equipos de agentes (los bots de X y de Hermes, GPTs, CrewAI/AutoGen/Swarm, Devin y similares) y qué les falta;
-- que «Rinari Agency» no choque con una marca registrada;
-- con eso, una **v2 de este documento** con la arquitectura (dónde vive cada pieza, el protocolo de la Mesa, el esquema de pedidos y contratos) y un **prototipo de la vista**, hecho con el arte de Rinari, para sentirla antes de construirla.
+| Fase | Qué | Depende de |
+|---|---|---|
+| G0 | Pin del Gateway al día y orden de qué funciones pasan al Engine | [plan-gateway.md](plan-gateway.md) |
+| A1 | **Agentes en solitario:** la tarjeta, el espacio Agency con su vista Normal, «Nuevo agente» (formulario y «Créalo con Rinari»), chat directo, memoria propia, modelo por defecto | Sesiones hijas A1 (linaje) |
+| A2 | **Equipos:** oficinas, puestos, chat de oficina con @menciones, pizarra de recados, credenciales y memoria de equipo, plantillas | Permisos v4 (modos por agente y equipo) |
+| A3 | **La vista Agencia:** el edificio y las oficinas de 8 bits con eventos reales, HUD para editar | A2 |
+| A4 | **Reglas y disparadores:** reloj, correo, Telegram, webhooks, archivos y CI; reglas deterministas sin modelo | A2; tareas programadas con comandos (0.3.2 #50) |
+| A5 | **24/7 en el servidor:** la Agency corriendo en el Engine del Gateway y la app conectada a ese Engine | Plan del Gateway (conexión remota) |

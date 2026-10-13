@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38 y 40 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38 y 40, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37 y 38) y las funciones (23–24, 31–36 y 40).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40 y 41, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38 y 41) y las funciones (23–24, 31–36 y 40).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -224,6 +224,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 37 | Preguntas: un solo botón «Continuar» / «Enviar respuestas» (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 38 | Confianza después de `git init`: automática y en el momento (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 40 | Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada | CLI + Agent | Decidido |
+| 41 | La tarjeta de cambios del turno tiene el estilo viejo, y «Revisar» muestra el diff sin colores | Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1115,6 +1116,43 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ---
 
+## 41. Cambios del turno: tarjeta con el estilo nuevo y revisión con colores en el panel lateral
+
+*(El #39 salió de 0.3.2 al plan de Boards; por eso este es el #41.)*
+
+**Qué se vio** (dueño, con capturas; sesión con `deepseek-v4.1-flash` en una carpeta que no es repo git).
+- La tarjeta «3 archivo(s) de este turno · +248 −0», con su aviso «Se observaron estos cambios, pero la cobertura fue parcial…» y los botones «Revisar» y «Deshacer», tiene el estilo viejo.
+- «Revisar» despliega cada archivo dentro de la tarjeta con el diff en texto plano: sin colores, sin números de línea y con las rutas absolutas de las cabeceras `---`/`+++`.
+
+**Causa (verificada).**
+- `src/features/activity/ChangeSetRow.tsx` es anterior al rediseño:
+  - clases sueltas en lugar de los componentes canónicos;
+  - textos fijos en el código («archivo(s) de este turno», «Revisar», «Deshacer», «sensible», el diálogo de deshacer) en lugar de i18n, con el plural «archivo(s)»;
+  - el diff va en un `<pre>` sin formato (`:95`).
+- **Ya existe un visor de diff con colores:** `src/features/workspace/DiffView.tsx` (líneas añadidas y quitadas con color, números de línea, el tramo que cambió dentro de la línea, sin las cabeceras), que usa el panel Cambios del lateral (`ChangesPanel.tsx`).
+- **«Revisar cambios» de la fila de abajo** (`TurnMeta`) abre el panel lateral en Workspace → Cambios (`SingleSessionView.tsx:48`). Ese panel muestra el **estado git de todo el repo**, no los cambios de este turno, y en una carpeta sin git solo dice «no es un repositorio» (`ChangesPanel.tsx:79`). En esta sesión, ese botón no mostraba nada útil.
+- Resultado: hay dos botones de «revisar» que hacen cosas distintas, y ninguno muestra bien los cambios del turno.
+
+**Propuesta.**
+1. **La tarjeta, con el estilo nuevo** (la familia de tarjetas del timeline, como la de memoria o la de entrega):
+   - cabecera con el icono, «3 archivos cambiados» (plural bien hecho) y `+248 −0`;
+   - debajo, la **lista de archivos**, cada uno con su tipo (creado, modificado, borrado, renombrado) como chip, su ruta relativa y su `+/−`;
+   - el aviso de cobertura parcial pasa a una nota discreta con un icono de información: «Puede haber otros cambios que no se registraron». El ámbar queda para cuando de verdad hay conflicto o algo sensible;
+   - todos los textos, a i18n.
+2. **«Revisar» abre los cambios de este turno en el panel lateral,** con los colores del `DiffView`:
+   - una vista **«Cambios del turno»** en el lateral, con la lista de archivos a un lado y el diff del elegido; funciona **sin git**, porque usa el registro de cambios del turno (`reviewTurnChanges`), no `git diff`;
+   - al pulsar un archivo de la lista de la tarjeta, el lateral se abre en ese archivo;
+   - desde el diff, «Abrir archivo» lo lleva a la pestaña Archivos.
+3. **Un solo «Revisar».** «Revisar cambios» de la fila de abajo abre la misma vista del turno. La pestaña Cambios de git (todo el repo) se queda como está, con un selector «Este turno · Todo el repo» cuando el proyecto es git.
+4. **Deshacer** sigue igual en el fondo (vista previa y conflictos), con el diálogo en i18n y el estilo nuevo.
+
+**Pruebas.**
+- Vitest de la tarjeta: el plural, la lista con chips y `+/−`, la nota de cobertura y los textos en ES/EN.
+- Vitest de la vista «Cambios del turno»: sin git muestra los archivos y el diff con colores; con git, el selector cambia a todo el repo.
+- Escenario `turn-changes`: el modelo falso crea y modifica archivos en una carpeta sin git; «Revisar» abre el lateral con el diff con colores; «Revisar cambios» de la fila de abajo lleva al mismo lugar.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -1156,6 +1194,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 37 | Un único botón principal: «Continuar» hasta la última pregunta y «Enviar respuestas» en ella. |
 | 38 | `git init` sin remotos dentro de una carpeta de confianza actualiza la huella sola. Los demás cambios de identidad se preguntan al terminar el turno, no al volver a abrir. |
 | 40 | Entra solo la fase A1 de las sesiones hijas (vínculo y barra lateral anidada). A2 (`session.start`, permisos heredados, tarjeta de entrega) y A3 (mensajes a las hijas, worktrees) van en la versión siguiente. |
+| 41 | La tarjeta de cambios pasa al estilo nuevo con lista de archivos. «Revisar» (la tarjeta y la fila de abajo) abre «Cambios del turno» en el panel lateral con los colores del `DiffView`; funciona sin git. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

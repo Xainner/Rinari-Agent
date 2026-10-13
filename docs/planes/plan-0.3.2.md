@@ -1170,7 +1170,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 36 | `audio.transcribe` usa el whisper.cpp del dictado. Si no está instalado, una tarjeta al dueño con el botón a Ajustes → Dictado, donde también se explica el uso. |
 | 37 | Un único botón principal: «Continuar» hasta la última pregunta y «Enviar respuestas» en ella. |
 | 38 | `git init` sin remotos dentro de una carpeta de confianza actualiza la huella sola. Los demás cambios de identidad se preguntan al terminar el turno, no al volver a abrir. |
-| 39 | En un panel de Boards, `preparing` no muestra la cabecera viva, igual que `thinking`. Lo demás de Boards (hijas, Boards reimaginado, Rinari Agency) queda en sus documentos, fuera de 0.3.2. |
+| 39 | En un panel de Boards, `preparing` no muestra la cabecera viva, igual que `thinking`. Lo demás (la limpieza de Boards y el panel colapsado con estado, las hijas A2–A3 y Rinari Agency) queda en sus documentos. |
 | 40 | Entra solo la fase A1 de las sesiones hijas (vínculo y barra lateral anidada). A2 (`session.start`, permisos heredados, tarjeta de entrega) y A3 (mensajes a las hijas, worktrees) van en la versión siguiente. |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

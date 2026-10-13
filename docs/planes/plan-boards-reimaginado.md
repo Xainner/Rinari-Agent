@@ -1,91 +1,82 @@
 # Boards reimaginado
 
-Estado: **propuesta para revisar**, tercera versión (2026-10-12). Incorpora la dirección del dueño:
+Estado: **propuesta para revisar**, cuarta versión (2026-10-12). Incorpora la dirección del dueño:
 - **Se quita la mensajería entre paneles de Boards.** La comunicación entre agentes pasa a una función nueva, **Rinari Agency**, que tiene su documento propio: [idea-rinari-agency.md](idea-rinari-agency.md).
 - **Las sesiones madre → hija** (anidadas, con los permisos de la madre) tienen su propio plan, porque no son de Boards: [plan-sesiones-hijas.md](plan-sesiones-hijas.md). Aquí se citan como «la Parte A».
-- **Boards se reimagina para lo que es:** varias sesiones en pantalla, trabajando en paralelo, de la forma más eficiente posible.
+- **Boards es una mesa de trabajo:** varios paneles a la vez (3–4, a veces 6), cada uno con su propio trabajo, del mismo proyecto o de otros, con sus salidas y sus Flujos como paneles propios. Nada se reacomoda solo (Parte B).
 - **Todo lo pendiente de Boards en un solo lugar** (Parte C): lo que estaba en el plan 0.3.2, en Planka y en `docs/debt.md`, más el bug nuevo del «Preparando el turno…». Al final, un mapa del código para quien se suma a Boards o a la Agency.
 
 ---
 
-## Parte B. Boards reimaginado: varias sesiones en pantalla, trabajando en paralelo
+## Parte B. Boards: una mesa de trabajo con varias sesiones a la vez
 
-### B.1 El problema real
+> **Cuarta versión (2026-10-12).** La versión anterior repartía la pantalla «según la atención»: lo que trabajaba solo se encogía a una tira. Al verla en la maqueta, el dueño dijo que está bien pero que **no es lo que busca**: Boards es para **trabajar** en varios paneles a la vez, no para vigilarlos. Lo que se toma y lo que se deja de esa versión está en B.7.
 
-Cuando hay 3–6 sesiones trabajando a la vez, lo difícil no es verlas: es **saber cuál te necesita, sin perder el hilo de las otras**. Hoy Boards:
-- **Reparte el espacio por igual,** aunque 4 de 5 paneles solo estén esperando o trabajando solos.
-- **Esconde las aprobaciones y preguntas:** cada una vive en su panel, y si ese panel está plegado o fuera de la vista no te enteras a tiempo.
-- **Tiene un solo board global,** que no es por perfil ni por proyecto.
-- **Se arma a mano** panel por panel, y cuesta rehacerlo.
-- **No ayuda a comparar:** el mismo encargo a dos modelos, dos enfoques…
-- **Tiene la mensajería entre paneles,** que confunde y no hace lo que uno espera. **Se quita.**
+### B.1 Para qué es Boards (el dueño, 2026-10-12)
+- **Trabajar con varios paneles a la vez:** normalmente 3–4, a veces 6.
+- **Cada panel lleva su propio trabajo.** Pueden ser del mismo proyecto, de proyectos distintos o sesiones sueltas, y pueden estar relacionados o no. Por ejemplo: tres paneles del mismo proyecto, donde A planea, B codifica y C revisa; y al lado, una sesión suelta del dueño haciendo otra cosa.
+- **Las salidas como paneles propios:** el navegador, la terminal, los archivos y los agentes de cada sesión, y su vista de **Flujos**, bien visibles, no apretados en un cajón.
+- **Limpieza:** Boards nació al inicio del proyecto y arrastra cosas que no sirven (la mensajería entre paneles, «Quitar y cerrar sesión»).
 
 ### B.2 Principio de diseño
 
-> **La pantalla se reparte según la atención, no por igual.** Lo que te necesita crece y se pone delante. Lo que trabaja solo se encoge a una tira viva. Lo terminado se pliega.
+> **Una mesa de trabajo estable que controla el dueño.** Nada cambia de tamaño ni de lugar solo. Cada panel está completo y a la vista, con su propio trabajo. Lo que necesita al dueño se avisa sin reacomodar nada.
 
 ### B.3 Las piezas
 
-1. **Paneles que cambian de tamaño solos según su estado** (se puede apagar):
-
-   | Estado | Cómo se ve | Tamaño |
-   |---|---|---|
-   | **Te necesita** (aprobación, pregunta, error) | Borde ámbar que late una vez; se expande | Grande |
-   | **Enfocado** (donde escribes) | Completo | Grande |
-   | **Trabajando solo** | **Tira viva**: título, anillo de la lista de pasos (`3/7`), la acción en curso («Corriendo pruebas…») y tokens/tiempo | Estrecho |
-   | **Terminado** | Tira plegada con su resultado en una línea y un check | Mínimo |
-
-   - Nunca se mueve un panel en el que estás escribiendo: los cambios de tamaño esperan a que lo sueltes.
-   - Las transiciones son suaves (360 ms, `ease-out`), y con movimiento reducido el cambio es instantáneo.
-
-2. **Bandeja «Te necesitan».** Una fila arriba del board junta **todas las aprobaciones y preguntas** de todos los paneles. Se resuelven ahí mismo (Permitir / Denegar / Responder) sin mover el foco. Atajo: **Ctrl+J**, ir a lo siguiente que te necesita.
-
-3. **Composiciones rápidas en lugar de anchos a mano:**
-   - **1 + pila:** uno grande y el resto en tiras, para trabajar uno y vigilar los demás.
-   - **2 lado a lado:** para comparar o trabajar dos a la vez.
-   - **Cuadrícula 2×2:** para vigilar 4.
-   - **Columnas:** lo de hoy.
-
-   Se cambian con un selector en la barra o con **Ctrl+Alt+1…4**. El ajuste fino (arrastrar el borde) sigue, pero ya no es la forma principal.
-
-4. **Espacios guardados.** Un board deja de ser global: hay **varios espacios con nombre**, por perfil y opcionalmente por proyecto («Pagos», «Release 0.4»), con sus sesiones y su composición. Se abren desde la barra lateral o la paleta.
-
-5. **Llenar un board en un gesto:**
-   - **arrastrar** sesiones (o una madre con sus hijas, de [la Parte A](plan-sesiones-hijas.md)) desde la barra lateral;
-   - **«Abrir con sus hijas»**: una madre y todas sus hijas en «1 + pila»;
-   - **desde notas o tareas pendientes:** elegir varias, «Abrir en el board», y cada una nace como sesión en su panel.
-
-6. **Comparar** (lo más diferencial):
-   - **Envía el mismo encargo a 2–4 paneles a la vez,** cada uno con su modelo o modo, por ejemplo `gpt-6.1-sol` contra `qwen3.8` contra DeepSeek.
-   - **Al terminar, una vista de comparación** pone lado a lado los resultados, el tiempo, los tokens, el coste, las pruebas que pasaron y el diff de archivos (cada uno en su worktree).
-   - **«Quedarme con este»** integra la rama elegida y archiva las demás.
-   - Es una arena con **tu propia tarea**, no con benchmarks.
-
-7. **Conflictos de archivos a la vista.** Si dos paneles escriben en la misma carpeta, Boards lo marca con un chip «comparte carpeta con *X*» y ofrece abrir el siguiente en un worktree. Esto convierte el aviso de hoy en una acción.
-
-8. **Teclado:**
-   - **Ctrl+1…9:** ir al panel N;
-   - **Ctrl+J:** lo siguiente que te necesita;
-   - **Ctrl+Shift+Enter:** enviar el composer a todos los paneles seleccionados (el envío múltiple de «Comparar»);
-   - **Ctrl+W / Ctrl+N** como hoy.
+1. **Un mosaico que decides tú.**
+   - Composiciones: 2 lado a lado, 3 en columnas, 1 grande + 2, 2×2 y 3×2 (para los días de 6). Se eligen con un selector o con **Ctrl+Alt+1…5**, y los bordes se ajustan arrastrando.
+   - El mosaico se guarda con el espacio y **no se mueve solo**: un panel que termina, falla o pide algo no cambia de tamaño ni de lugar.
+   - Plegar un panel a una tira sigue existiendo, pero solo a mano.
+2. **Paneles completos, con una densidad pensada para 4–6.**
+   - Cada panel tiene su composer y su conversación entera.
+   - Un modo **compacto** (por panel o para todo el board): menos aire en la línea de tiempo, letra un punto menor, el composer de una línea que crece al escribir y la cabecera en una sola fila.
+3. **Identidad de cada panel, de un vistazo.**
+   - El proyecto con su color, su nombre y su rama, o «sesión suelta»; y el perfil, si es otro.
+   - Una **etiqueta de rol** opcional («Planea», «Codifica», «Revisa» o una libre), que va con el modo PLAN / BUILD / REVIEW del panel.
+   - **Receta «Planear · Codificar · Revisar»:** un gesto abre tres paneles del mismo proyecto, cada uno con su modo y su etiqueta.
+4. **Las salidas como mosaicos propios.**
+   - Hoy cada panel tiene un cajón lateral con una superficie a la vez (Agentes, Archivos, Navegador, Workspace, Terminal; `SessionDock`), y en un panel estrecho queda apretado.
+   - Propuesta: cualquier superficie se puede **sacar a su propio mosaico** («Sacar a un panel»), al lado de la sesión que la produce. Lleva el color de la sesión y una etiqueta «de *Panel B*», y sigue a su sesión: si la sesión se quita del board, su salida también.
+   - Si el panel es ancho, la superficie puede seguir dentro, como hoy.
+   - Ejemplos: la vista previa del navegador de B junto a B; la terminal de C debajo de C; el diff de B al lado de C, que revisa.
+5. **Flujos de cada panel.**
+   - Dentro del panel, un selector **Chat · Flujo**: el panel cambia a la vista de Flujos (`FlowView`) con el alcance de esa sesión o de su proyecto, sin salir de Boards.
+   - Y como cualquier salida, el Flujo también se puede sacar a su propio mosaico.
+6. **Pasar trabajo de un panel a otro, a mano.** En un resultado, «**Enviar a…**» lo manda como mensaje a otro panel (el plan de A pasa a B). Lo decide el dueño en cada caso: no es mensajería entre agentes, que se va (B.4).
+7. **Atención sin mover nada.**
+   - Una bandeja **«Te necesitan»** fija arriba del board (no aparece ni desaparece empujando el resto) junta las aprobaciones y preguntas de todos los paneles, para resolverlas ahí mismo.
+   - **Ctrl+J** salta a lo siguiente que te necesita: enfoca ese panel sin cambiar el mosaico.
+   - En el panel: el borde ámbar que late una vez y una insignia.
+8. **Espacios guardados.** Varios boards con nombre por perfil («Mi board», «Pagos», «Release 0.4»), cada uno con sus paneles, sus salidas y su mosaico, mezclando proyectos con libertad. Se abren desde la barra lateral o la paleta.
+9. **Llenar rápido:** arrastrar sesiones desde la barra lateral (una madre con sus hijas trae a todas, de [las sesiones hijas](plan-sesiones-hijas.md)), «Nuevo panel» con selector de proyecto o sesión suelta, y la receta del punto 3.
+10. **Teclado:** **Ctrl+1…9** ir al panel N; **Ctrl+J** lo siguiente que te necesita; **Ctrl+Alt+1…5** composiciones; **Ctrl+W / Ctrl+N** como hoy.
+11. **Conflictos de carpeta a la vista.** Si dos paneles escriben en la misma carpeta, un chip «comparte carpeta con *X*» ofrece abrir el siguiente en un worktree (C10).
+12. **Comparar,** como función aparte y para más adelante: el mismo encargo a 2–4 paneles con modelos distintos y una vista de resultados (necesita los worktrees de A3 de las [sesiones hijas](plan-sesiones-hijas.md)).
 
 ### B.4 Qué se va
 - La mensajería entre paneles: el grupo de peers, `session.send`, `@Panel`, el «máx. 3 saltos», la opción en Ajustes y el chip de recibir/enviar de la cabecera del panel. El historial de mensajes peer se sigue viendo.
 - El board único global: los paneles guardados pasan al primer espacio, «Mi board».
 - **«Quitar y cerrar sesión»** en el menú del panel (`BoardView.tsx:231-238`, `board.pane.removeAndClose`). En la práctica archivaba la conversación: `session.close` la sacaba del listado y detenía sus vistas previas, el navegador y los procesos. Además, el nombre se confundía con salir de la cuenta. **Queda solo «Quitar del board»**, que saca el panel sin tocar la conversación. Archivar se hace desde la barra lateral, como con cualquier conversación. Se retiran el diálogo de confirmación y las claves `board.pane.removeAndClose*`.
+- De la barra de hoy, lo que el mosaico estable vuelve innecesario («Modo foco» pasa a «1 grande + 2»; «Ajustar a la vista», a las composiciones). Se revisa uno por uno al implementar.
 
 ### B.5 Lo que se queda
-Paneles por sesión, tiras plegadas, el panel lateral por sesión, ajustar a la vista, foco y los avisos de atención. Esto ya funciona y se reaprovecha.
+Paneles por sesión, tiras plegadas (a mano), el panel lateral por sesión (ahora también como mosaico), el foco, los avisos de atención y los recibos de lectura. Esto ya funciona y se reaprovecha.
 
 ### B.6 Fases
 
 | Fase | Qué | Tamaño |
 |---|---|---|
-| B1 | Quitar la mensajería entre paneles y «Quitar y cerrar sesión»; espacios guardados por perfil; composiciones rápidas | M |
-| B2 | Paneles que cambian de tamaño por estado, tira viva y bandeja «Te necesitan» con Ctrl+J | L |
-| B3 | Llenar en un gesto (arrastrar, «con sus hijas», desde notas) | S |
-| B4 | Comparar: envío múltiple, vista de comparación y «Quedarme con este» (necesita los worktrees de A3, [sesiones hijas](plan-sesiones-hijas.md)) | L |
-| B5 | Conflictos de archivos con la acción de worktree, y pulido de movimiento | S |
+| B1 | Limpieza (mensajería, «Quitar y cerrar sesión», barra), espacios guardados por perfil y composiciones estables | M |
+| B2 | Salidas y Flujos como mosaicos propios, y el selector Chat · Flujo en el panel | L |
+| B3 | Identidad del panel (proyecto, rol), densidad compacta y bandeja «Te necesitan» con Ctrl+J | M |
+| B4 | Receta «Planear · Codificar · Revisar», «Enviar a…» y llenar rápido | S |
+| B5 | Conflictos de carpeta con la acción de worktree, y Comparar (necesita A3) | L |
+
+### B.7 De la versión «por atención» (la tercera)
+- **Se toma:** la bandeja «Te necesitan» con Ctrl+J, los espacios guardados, las composiciones rápidas, llenar en un gesto, el chip de carpeta compartida y Comparar (más adelante).
+- **Se deja:** que los paneles cambien de tamaño solos según su estado y la «tira viva» automática. Si algún día hace falta para vigilar muchos agentes, sería un modo opcional, no el de siempre.
+- **La maqueta** (`Documents/Proyectos/rinari-boards-proto`) conserva los modos «Hoy» y «Reimaginado» como referencia. De sus 14 preguntas, las de redimensionado automático (1–4 y 13) dejan de aplicar.
 
 ---
 
@@ -102,10 +93,10 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 | C5 | Pendientes de otros perfiles: agregar paneles filtra por el perfil activo y lo de otros perfiles no se ve | Plan 0.3.2, #34 | Decidido (depende de C4) |
 | C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Decidido (B.4, fase B1) |
 | C7 | Mensajes entre paneles «como subagentes» | Planka, Idea; triage I1 | Resuelto por decisión: la mensajería se quita (B.4) y la comunicación entre agentes pasa a [Rinari Agency](idea-rinari-agency.md) |
-| C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Sin decidir. Encaja con el pulido de movimiento (B5) |
+| C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Sin decidir. Encaja con el pulido de movimiento |
 | C9 | Panel en blanco (0 filas) al pasar de Normal a Boards | Visto 3 veces en uso real; intermitente en el escenario `chat-interaction-fixes` | Abierto, sin causa confirmada. Hipótesis: Virtua con un ancla de scroll restaurada fuera de rango |
-| C10 | Dos paneles escribiendo en la misma carpeta: el Engine no los serializa y el board solo avisa | `docs/debt.md` | Abierto. Lo resuelve B.3.7 (chip y worktree) |
-| C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Abierto. La tira viva (B.3.1) lo necesita |
+| C10 | Dos paneles escribiendo en la misma carpeta: el Engine no los serializa y el board solo avisa | `docs/debt.md` | Abierto. Lo resuelve B.3.11 (chip y worktree) |
+| C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Abierto. Lo necesitan la insignia de estado de cada panel y la bandeja (B.3.7) |
 | C12 | Los recibos de lectura se indexan por instalación, no por home del Engine | `docs/debt.md` | Abierto |
 | C13 | Regla que se mantiene: que aparezca un contador en la barra de Boards nunca cambia su altura | 52530f7, comprobado en `boards-fit` | Vigente |
 
@@ -150,9 +141,12 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 
 | # | Decisión | Recomendado |
 |---|---|---|
-| B-1 | Paneles que cambian de tamaño solos según su estado | Sí, con un interruptor para apagarlo |
+| B-1 | Paneles que cambian de tamaño solos según su estado | **No** (dueño, 2026-10-12): mosaico estable que controla el dueño |
 | B-2 | Varios espacios guardados por perfil, en lugar de un board global | Sí |
-| B-3 | «Comparar» como función estrella de Boards | Sí, en una fase propia |
+| B-3 | «Comparar» como función estrella de Boards | No es la estrella: función aparte, para más adelante (B5) |
+| B-4 | Salidas (navegador, terminal, archivos, agentes) y Flujos se pueden sacar a su propio mosaico, ligado a su sesión | Sí |
+| B-5 | «Enviar a…»: el dueño pasa un resultado de un panel a otro, a mano | Sí (no es mensajería entre agentes) |
+| B-6 | Etiqueta de rol por panel y la receta «Planear · Codificar · Revisar» | Sí |
 | V | Versiones: Parte B en 0.4 (las hijas: A1 en 0.3.2, A2–A3 después); la Agency aparte | B1 primero |
 | C-1 | Los arreglos chicos de Boards ya analizados (C1–C5) van con 0.3.2; la Parte B y la Agency, con quien se sume | Sí: son cambios acotados y C4 toca también lo que no es Boards |
 | C-2 | El buzón de los peers (`PeerBroker`): retirarlo con la mensajería o guardarlo como transporte de la Agency | Guardarlo hasta que la Agency tenga su arquitectura (v2 de su documento) |

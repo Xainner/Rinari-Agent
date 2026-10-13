@@ -242,7 +242,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 | 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir; sin pantalla en blanco) |
-| 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó: Rinari no la cerró antes de responder | CLI + Agent | Propuesto (causa verificada) |
+| 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó (Rinari no la cerró antes de responder), y una lista 4/4 sigue «Trabajando» hasta el final del turno | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1747,16 +1747,23 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - El recordatorio que ya existe (`checklist/reminder.py`, `REMIND_AFTER_ROUNDS = 4`) **no llegó a saltar**: solo avisa tras 4 rondas de herramientas sin actualizar la lista, y aquí hubo 2. No hay ninguna comprobación **al momento de responder**.
 - En las otras cuatro listas de esa misma sesión, Rinari sí la cerró antes de responder: es un descuido del modelo, no algo que pase siempre.
 
+**Lo que pasó en el turno siguiente** (17:47–17:55 UTC, `turn_01M4V60JQ4JNVFNQDP75RSE6BB`).
+- La lista `open` no se limpia al empezar un turno (`begin_turn` solo limpia las `completed`), así que Rinari la vio en su prompt (`render_for_prompt` incluye las `open`) y **la cerró solo**: marcó los 4 pasos como hechos (17:49:43).
+- Pero la lista quedó «4/4 · Trabajando en la lista»: `replace()` (`checklist/service.py:168-177`) **siempre deja el estado `active`** si hay pasos, aunque estén todos hechos, y la app muestra «Trabajando en la lista» porque no hay paso en curso (`ChecklistDock.tsx:50-56`). Solo pasa a «Todo hecho» cuando el turno termina (`settle`).
+- Dos minutos después Rinari armó una lista nueva para la siguiente canción (17:51:39), y esa sí terminó bien.
+
 **Propuesta.**
 1. **Comprobación al final, una vez por turno:** cuando el modelo va a terminar (responde sin pedir herramientas) y la lista activa de ese turno tiene pasos sin terminar, el Engine le pasa **una nota de harness** antes de cerrar: «Tu lista aún dice: paso 2 en curso, pasos 3 y 4 pendientes. Si ya están hechos, actualízala; si no, di qué falta». Rinari responde con un `checklist.update` (y, si hace falta, una línea más). Cuesta una llamada corta al modelo y **solo cuando la lista quedó atrasada**; si la lista ya está al día, no pasa nada.
    - Si después de la nota la lista sigue con pendientes, se respeta: el estado `open` es correcto (de verdad faltó algo) y el texto final lo explica.
    - No se repite en el mismo turno, no corre en turnos cancelados o fallidos, y no cuenta para el detector de bucles.
    - Va junto con el ajuste del recordatorio del #48 («pedir la lista solo cuando lo amerita»).
-2. **En la app, una salida para el dueño:** en el estado «Quedan n pasos» de una lista de un turno que **ya terminó**, el menú de la lista ofrece «Marcar todo como hecho» además de «Descartar», para no quedarse con una lista vieja abierta.
+2. **Lista completa = «Todo hecho» al momento:** cuando un `checklist.update` deja todos los pasos hechos, el estado pasa a `completed` en ese instante, sin esperar al final del turno. Si después Rinari añade pasos o reabre uno, vuelve a `active`. Así una lista vieja que Rinari cierra al empezar otro turno se ve terminada, y una lista que se completa a mitad de turno no queda en «Trabajando».
+3. **En la app, una salida para el dueño:** en el estado «Quedan n pasos» de una lista de un turno que **ya terminó**, el menú de la lista ofrece «Marcar todo como hecho» además de «Descartar», para no quedarse con una lista vieja abierta.
 
 **Pruebas.**
 - CLI: el modelo falso termina con la lista atrasada → recibe una sola nota, actualiza la lista y el turno cierra `completed`; si no la actualiza, queda `open` sin una segunda nota; con la lista al día, ninguna nota; en un turno cancelado, ninguna nota.
-- App: vitest de «Marcar todo como hecho» en el estado `open`.
+- CLI: `replace()` con todos los pasos hechos deja `completed`; añadir un paso pendiente lo vuelve `active`; cerrar en el turno siguiente una lista `open` la deja `completed`.
+- App: vitest de «Marcar todo como hecho» en el estado `open`, y una lista 4/4 nunca muestra «Trabajando en la lista».
 - Escenario `checklist-dock`: un turno que deja la lista atrasada termina con la lista completa tras la nota.
 
 ---

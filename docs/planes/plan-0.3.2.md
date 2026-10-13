@@ -1745,7 +1745,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - Rinari actualizó la lista dos veces (paso 1 en curso, luego paso 1 hecho y paso 2 en curso). Después hizo el trabajo en **solo dos rondas de herramientas** (esperar el job y traer el archivo) y respondió **sin volver a tocar la lista**.
 - Al terminar, `ChecklistService.settle` (`checklist/service.py:188-205`) ve pasos sin terminar en un turno que acabó bien y deja el estado `open`: es honesto con lo que dice la lista, pero la lista estaba atrasada.
 - El recordatorio que ya existe (`checklist/reminder.py`, `REMIND_AFTER_ROUNDS = 4`) **no llegó a saltar**: solo avisa tras 4 rondas de herramientas sin actualizar la lista, y aquí hubo 2. No hay ninguna comprobación **al momento de responder**.
-- En las otras tres listas de esa misma sesión, Rinari sí la cerró antes de responder: es un descuido del modelo, no algo que pase siempre.
+- En las otras cuatro listas de esa misma sesión, Rinari sí la cerró antes de responder: es un descuido del modelo, no algo que pase siempre.
 
 **Propuesta.**
 1. **Comprobación al final, una vez por turno:** cuando el modelo va a terminar (responde sin pedir herramientas) y la lista activa de ese turno tiene pasos sin terminar, el Engine le pasa **una nota de harness** antes de cerrar: «Tu lista aún dice: paso 2 en curso, pasos 3 y 4 pendientes. Si ya están hechos, actualízala; si no, di qué falta». Rinari responde con un `checklist.update` (y, si hace falta, una línea más). Cuesta una llamada corta al modelo y **solo cuando la lista quedó atrasada**; si la lista ya está al día, no pasa nada.

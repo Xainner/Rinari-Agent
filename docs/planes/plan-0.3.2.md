@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60 y 61 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61 y 62, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61 y 62) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55 y 60).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63 y 64, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61 y 62) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -246,6 +246,8 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Decidido |
 | 61 | Lecciones de `ses_01M4V9MXD0H839MT18JWEFDDZX`: las páginas web llegan comprimidas (gzip) en vez de texto, la basura se queda en el contexto, y la verificación de una descarga se enreda | CLI + Agent | Propuesto (causa verificada) |
 | 62 | Al volver a la ventana, nada indica que la conversación a la vista terminó mientras no estabas (suena y sale el «1» en la barra de tareas, pero adentro no se ve) | Agent | Decidido (causa verificada) |
+| 63 | Preguntas al usuario: al pasar de una pregunta a otra (y al volver), una animación que muestre el avance (Planka, Ideas-2) | Agent | Propuesto |
+| 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Propuesto (faltan 2 decisiones) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1889,6 +1891,50 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Pruebas.**
 - Vitest: con la ventana sin atención, un turno que termina deja la marca; al recuperar la atención no se marca leído a los 500 ms, sino con actividad o a los 3 s; el «1» baja al mismo tiempo; con el resultado fuera de la vista aparece «↓ Nuevo resultado».
 - Escenario `return-to-window`: se simula la pérdida de atención, el modelo falso termina, se recupera la atención, la marca se ve y se va tras la actividad; con movimiento reducido, sin animación.
+
+---
+
+## 63. Preguntas: una animación al avanzar y al volver
+
+**Qué se pidió** (Planka, Ideas-2). Cuando Rinari hace 2 o más preguntas, al elegir una respuesta pasa sola a la siguiente (eso está bien), pero el cambio es seco. Que se vea que **avanza**, y lo mismo al ir **para atrás**.
+
+**Qué hay hoy (verificado).** `features/questions/Questions.tsx` cambia `index` y vuelve a pintar el bloque de opciones con `key={question.id}`: la pregunta nueva aparece de golpe. El contador «2 de 4» y las flechas ‹ › ya existen.
+
+**Propuesta.**
+- **Al avanzar:** la pregunta actual sale hacia la izquierda con un desvanecido corto y la siguiente entra desde la derecha (unos 200 ms, con la curva de movimiento de `obsidiana-neon.md`). **Al volver,** al revés.
+- **El progreso se ve:** el «2 de 4» se acompaña de una barra fina o de puntos (uno por pregunta) que se llenan; la respuesta elegida queda marcada un instante antes de pasar, para que se note qué se eligió.
+- La altura de la tarjeta se ajusta suave si la pregunta nueva tiene más o menos opciones.
+- Con `RINARI_UI_REDUCED_MOTION`, sin desplazamiento: cambio inmediato y la barra de progreso igual.
+- El foco del teclado sigue yendo al título de la pregunta nueva (como hoy).
+
+**Pruebas.** Vitest: avanzar y volver cambian la dirección de la transición; la barra de progreso refleja la pregunta actual. Escenario: cuatro preguntas del modelo falso, muestreo cuadro a cuadro con `requestAnimationFrame` del deslizamiento al avanzar y al volver; con movimiento reducido, sin animación.
+
+---
+
+## 64. Notificación de Windows con contenido, como la de ChatGPT
+
+**Qué se pidió** (Planka, Ideas-2, con captura). La notificación de ChatGPT en Windows trae el **título de la conversación** («Planificar integración SICOP»), **las primeras líneas de la respuesta** y una caja **«Reply to ChatGPT»** para contestar desde la notificación.
+
+**Qué hay hoy (verificado).**
+- `electron/main/native/notifications.ts` crea la notificación con un **título y un cuerpo genéricos** (por ejemplo «*X* terminó» o «*X* te necesita»), sin acciones; al pulsarla trae la ventana y abre la conversación.
+- Solo la usan los paneles de Boards; el #33 la extiende a todas las conversaciones.
+- Electron 44: la respuesta en línea (`hasReply`) de `Notification` es **solo de macOS**. En Windows hace falta una notificación con XML propio (`toastXml`, con una caja de texto y botones) y recibir lo que escribe el dueño de vuelta en la app; hay que comprobar que Electron entrega ese texto en Windows antes de prometerlo.
+
+**Propuesta.**
+1. **Contenido real** en la notificación del sistema:
+   - **título:** el nombre de la conversación (y el proyecto si tiene);
+   - **cuerpo:** las primeras líneas de la respuesta, en texto plano (sin Markdown ni bloques de código), o, según el caso, «El plan está listo: *título del plan*», «Te necesita: *el comando o la pregunta*», «Falló: *motivo corto*»;
+   - el icono de Rinari, y la cara según el desenlace si Windows lo permite.
+2. **Botones:** «Abrir» siempre; en un plan, «Revisar plan». **Aprobar desde la notificación, no** (una aprobación se ve completa en la app, con su riesgo).
+3. **Responder desde la notificación** (decisión 2): una caja «Responder a Rinari»; lo escrito se manda a esa conversación (si hay un turno en curso, entra como mensaje durante el turno, #54). Primero se comprueba en Windows con Electron 44; si no entrega el texto, el botón «Responder» abre la app con el composer de esa conversación enfocado.
+4. **Privacidad** (decisión 1): un interruptor en Ajustes → Notificaciones, «Mostrar el contenido en la notificación». Apagado, la notificación dice solo «*Conversación* terminó».
+5. Vale con la app abierta o en la bandeja (el Engine tiene que estar vivo); sigue las mismas reglas de cuándo avisar del #33 y el #62.
+
+**Decisiones pendientes.**
+1. ¿«Mostrar el contenido en la notificación» viene encendido? Recomendado: **sí**, como ChatGPT; se puede apagar (por ejemplo, si la pantalla se ve en reuniones o en la pantalla de bloqueo).
+2. ¿La respuesta desde la notificación entra en 0.3.2? Recomendado: **sí, si la prueba en Windows funciona**; si no, el botón «Responder» que abre el composer.
+
+**Pruebas.** Vitest del armado del texto (respuesta en texto plano y cortada, plan, aprobación, fallo; con el interruptor apagado, sin contenido). Prueba manual en Windows: la notificación sale con título y cuerpo, «Abrir» lleva a la conversación y la respuesta llega a la conversación (o abre el composer).
 
 ---
 

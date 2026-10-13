@@ -268,6 +268,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 1. ¿Un agente sin equipo puede tener reglas y disparadores propios (por ejemplo, el agente *Emails* con su regla de reenvío), o eso siempre vive en un equipo? Recomendado: sí, también solo.
 2. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta?
 3. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan?
+
 ## 12. Fases propuestas
 
 | Fase | Qué | Depende de |

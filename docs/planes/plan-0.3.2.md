@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54 y 55 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54 y 55, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45 y 51–54) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56 y 57 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56 y 57, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56 y 57) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -219,7 +219,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 32 | Mover un comando de primer plano a segundo plano (y al vencer el tope, en vez de matarlo) | CLI + Agent | Decidido |
 | 33 | Avisar cuando termina un turno (y un plan) en cualquier conversación, no solo en el board (Planka, Ideas-2) | Agent | Decidido (causa verificada) |
 | 34 | Indicador de pendientes en los otros perfiles (Planka, Ideas-2) | Agent | Decidido (depende del #33) |
-| 35 | Entregar archivos: herramienta `file.present` y rutas que se vuelven enlace (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
+| 35 | Entregar archivos: herramienta `file.present` y rutas que se vuelven enlace, con todos los formatos y escenarios (35b) (Planka, Bug e Ideas-2) | CLI + Agent | Decidido (causa verificada) |
 | 36 | «Oídos»: `audio.transcribe` con el whisper del dictado (Planka, Bug) | CLI + Agent | Decidido |
 | 37 | Preguntas: un solo botón «Continuar» / «Enviar respuestas» (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 38 | Confianza después de `git init`: automática y en el momento (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
@@ -239,6 +239,8 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 53 | Skills: importar desde Claude Code / Codex bloquea el Engine; instalar desde skills.sh o `npx skills add` no funciona | CLI + Agent | Propuesto (causa verificada y medida) |
 | 54 | Mensaje durante el turno: editarlo o borrarlo mientras no se leyó, y que las imágenes adjuntas se envíen (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | CLI + Agent | Decidido |
+| 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada; faltan 2 decisiones) |
+| 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1050,6 +1052,39 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 - CLI: `file.present` valida el alcance y devuelve la presentación.
 - Escenario: el modelo falso entrega un MP3 con `file.present` y con una ruta en código, y en los dos casos sale el reproductor.
 
+### 35b. Que cubra todos los formatos y escenarios (Planka, Ideas-2, 2026-10-13)
+
+**Qué se pidió.** Validar que `file.present` cubra todos los escenarios y formatos posibles. Todavía no está implementado; lo que hay hoy depende de que el modelo escriba un enlace Markdown.
+
+**Lo que ya existe y se reutiliza (verificado).**
+- El Engine reconoce el tipo por los primeros bytes (`engine_protocol/desktop.py:47-89`): imagen, PDF, video, audio, texto o binario.
+- En el chat, un enlace Markdown se vuelve `FileLink`, con reproductor para audio y video (`Markdown.tsx:83-98`, `MediaPlayer.tsx`). Las imágenes solo se ven si son artefactos; las locales muestran un aviso.
+- En el panel lateral, «Archivos» ya abre casi todo (`FileWorkspace.tsx:643-735`): PDF y Office con `DocumentView` (Office necesita LibreOffice), imagen, audio y video con `MediaView`, HTML en un iframe aislado, Markdown renderizado, código con colores, y el resto con «sin visor interno» y abrir fuera.
+
+**Cobertura propuesta.** Una sola tarjeta en el chat, de la familia nueva; al pulsarla, el archivo se abre en la vista «Archivos» del panel lateral (#47).
+
+| Qué se entrega | En la tarjeta del chat | Al abrirla |
+|---|---|---|
+| Imagen (png, jpg, gif, webp, svg) | Miniatura (el SVG, saneado) | Visor de imagen |
+| Audio y video | Reproductor | Reproductor grande |
+| PDF | Miniatura de la primera página y número de páginas | `DocumentView` |
+| Office (pptx, docx, xlsx) | Miniatura de la primera diapositiva u hoja si hay LibreOffice; si no, el icono y «Abrir» | `DocumentView` |
+| CSV y hojas | Las primeras filas como tabla pequeña | `DocumentView` o tabla |
+| HTML | Nombre e icono, con «Ver en el panel» | Vista previa aislada |
+| Markdown, código y texto | Las primeras líneas | Renderizado o con colores |
+| Carpeta | Cuántos archivos tiene y los primeros nombres | El árbol de esa carpeta en «Archivos» |
+| ZIP | Lo que contiene, sin descomprimir | «Abrir» y «Mostrar en la carpeta» |
+| Varios archivos a la vez | Una tarjeta agrupada (`file.present` acepta una lista) | Cada uno en «Archivos» |
+| Un servidor local (`localhost:5173`) | Tarjeta «Vista previa» | El navegador del panel lateral |
+| Una URL de internet | Tarjeta con el dominio y el título | El navegador del panel lateral |
+| Cualquier otro tipo | Icono, nombre y tamaño | «Abrir» y «Mostrar en la carpeta» |
+
+- `file.present` pasa a ser `file.present({items: [{path | url, caption?}]})`, con el mismo alcance (carpetas del proyecto o del workspace, artefactos de la sesión, y URLs).
+- La red de seguridad (rutas en código que se vuelven enlace) usa la misma tarjeta.
+- **Fuera de la 0.3.2:** un visor 3D (glb, gltf, obj); por ahora, icono y «Abrir».
+
+**Pruebas.** Un juego de archivos de muestra, uno por fila de la tabla, entregados por el modelo falso con `file.present`: cada uno pinta su tarjeta y abre su vista. Office sin LibreOffice cae al icono sin error.
+
 ---
 
 ## 36. «Oídos» para Rinari: transcribir audio con el whisper del dictado
@@ -1595,6 +1630,68 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 ---
 
+## 56. Permisos: los alcances según la conversación
+
+**Qué se vio** (Planka, Bug). En un chat sin proyecto, la tarjeta de aprobación ofrece «Siempre en los chats». El dueño espera: en un chat suelto, «En este chat»; en una conversación de proyecto, «En esta sesión» y «En este proyecto».
+
+**Cómo está hoy (verificado).**
+- **Chat sin proyecto:** «Denegar», «Permitir una vez», «Permitir en este chat» y **«Siempre en los chats»**.
+- **Conversación de proyecto:** «Denegar», «Permitir una vez», «Permitir en este chat» (el mismo texto, aunque sea una sesión de proyecto) y «Siempre en este proyecto».
+- Qué hace cada uno:
+  - **«Permitir en este chat»** vale solo para esa conversación, pero **se guarda en memoria**: se pierde al reiniciar el Engine o la app (`engine_protocol/peers.py:209-212`).
+  - **«Siempre en los chats»** guarda el permiso con la clave fija `"chats"` (`tools/runtime.py:85-89`, `policy/approvals.py:185-193`) en `~/.rinari/policies/approval_grants.json`. **Vale para todos los chats sin proyecto, los de antes y los futuros**, hasta que se quite en Ajustes. No llega a las conversaciones de proyecto.
+  - **«Siempre en este proyecto»** vale para todas las conversaciones de ese proyecto.
+- El Engine decide qué botones salen (`choices`, y `grant_scope` en `engine_protocol/turns.py:1895-1897`). Los textos de los botones están escritos a mano en `TurnTimelineView.tsx:506-542`, fuera de `es.ts` / `en.ts`.
+- Con el plan de permisos v4 ([plan-permisos-v4.md](plan-permisos-v4.md)), «Acceso completo» no pregunta nada; esto aplica a «Solo lectura» y «Proyecto».
+
+**Propuesta.**
+1. **Chat sin proyecto:** «Denegar», «Permitir una vez» y **«Permitir en este chat»**. Se quita «Siempre en los chats»: un permiso dado en un chat no se extiende a los demás. El Engine deja de ofrecer `allow_project` cuando no hay proyecto.
+2. **Conversación de proyecto:** «Denegar», «Permitir una vez», **«En esta sesión»** y **«Siempre en este proyecto»**.
+3. **«En este chat» / «En esta sesión» se guarda con la conversación** (decisión 1): sobrevive a reiniciar la app y se borra con la conversación.
+4. **Los textos pasan a `es.ts` / `en.ts`**, y se actualiza `grants.hint`.
+5. **Los permisos «Siempre en los chats» que ya existan** (decisión 2).
+
+**Decisiones pendientes.**
+1. ¿«En este chat» debe sobrevivir a reiniciar la app? Recomendado: **sí**, guardado con la conversación.
+2. ¿Qué pasa con los permisos «Siempre en los chats» ya guardados? Recomendado: **dejan de aplicarse**, y en Ajustes → Permisos se muestran como «antiguos» con «Quitar», para que el dueño vea qué había.
+
+**Pruebas.**
+- CLI: un chat sin proyecto recibe `deny`, `once` y `session`, nunca `project`; un permiso de sesión sobrevive a reiniciar el Engine y no aplica a otro chat; los permisos antiguos con clave `"chats"` ya no conceden nada.
+- App: vitest de los botones en chat suelto y en proyecto, con los textos de i18n.
+- Escenario: en un chat suelto se aprueba «En este chat»; otro chat nuevo vuelve a preguntar.
+
+---
+
+## 57. Adjuntar audio, video y archivos grandes
+
+**Qué se vio** (Planka, Bug).
+1. Al adjuntar un mp3 («ers - Time Force.mp3»): «Unsupported attachment type: rinari-attachment-f9xql3bb.mp3».
+2. Al adjuntar un mp4: «command params exceed the size limit».
+
+**Causa (verificada).**
+1. **El Engine no acepta audio ni video como adjunto.** `classify()` (`artifacts/attachments.py:611-636`) admite imágenes (PNG, JPEG, WEBP), PDF, Office y texto. Todo lo demás da «Unsupported attachment type» (`:371`). El mensaje, además, muestra el nombre del archivo temporal (`rinari-attachment-….mp3`) en vez del nombre real.
+2. **Un archivo arrastrado o pegado viaja entero dentro del mensaje.** El composer lo lee a memoria y lo manda como texto base64 (`Composer.tsx:634-656`, `engine.ts:1594`). Cada comando entre la ventana y la app tiene un límite de 8 MiB (`electron/shared/validation.ts:20,49`), y el base64 pesa un 33 % más: **cualquier archivo de más de ~6 MiB falla** antes de llegar al Engine, aunque el composer diga que admite 25 MiB. El comentario de `validation.ts:19` ya dice que los adjuntos no deberían ir por ahí.
+   - Los archivos elegidos con «Adjuntar» (el diálogo) o con `@` ya van **por ruta**, sin copiarse a memoria. Los arrastrados también podrían: la app no usa `webUtils.getPathForFile`.
+3. **El composer no comprueba nada antes de enviar**, salvo 8 archivos y 25 MiB. No avisa de tipos no admitidos.
+4. **Ninguno de los dos errores queda en los registros** (`app.log`, `engine.log`): solo se ven en el chip del adjunto.
+
+**Propuesta.**
+1. **Audio y video como adjuntos:** el Engine los guarda como artefacto, sin extraer texto. Al modelo le llega el nombre, el tipo, el tamaño, la duración y la ruta, para que pueda usarlos con sus herramientas (convertir, recortar o, con el #36, transcribir). En la burbuja del mensaje, el reproductor.
+2. **Los archivos van por ruta, no dentro del mensaje:**
+   - arrastrados: la ruta real del archivo (`webUtils.getPathForFile`);
+   - pegados sin ruta (una captura del portapapeles): la app los escribe a un archivo temporal en el proceso principal y manda la ruta.
+   - Así el límite de 8 MiB deja de importar y **el tope sube a 1 GiB** por archivo (el mismo del #48 para descargas).
+3. **El composer avisa antes de enviar** si un archivo no se puede adjuntar (tipo o tamaño), con el motivo. El diálogo «Adjuntar» filtra por los tipos admitidos, con «Todos los archivos» como opción.
+4. **Los errores dicen el nombre real** del archivo y **quedan en el registro** (nombre, tipo, tamaño y código; nunca el contenido).
+5. Lo mismo vale para los adjuntos del mensaje durante el turno (#54).
+
+**Pruebas.**
+- CLI: un mp3 y un mp4 se adjuntan como artefacto, con su duración; el error de un tipo no admitido muestra el nombre real.
+- App: arrastrar un video de 50 MB lo manda por ruta y llega al Engine; pegar una captura usa el archivo temporal; un tipo no admitido avisa antes de enviar.
+- Escenario: el modelo falso recibe un mp3 y un mp4 adjuntos y ve sus datos; las burbujas muestran el reproductor.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -1650,6 +1747,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 52 | Revelado suave del texto en streaming (búfer a ritmo constante que acelera si se acumula, palabras con fundido corto, cursor al final), en chat, Boards y subagentes; nada con movimiento reducido. |
 | 54 | El mensaje durante el turno acepta adjuntos, y mientras no se lee se puede editar o borrar (métodos nuevos `steer.update` / `steer.cancel`); nada se descarta en silencio. |
 | 55 | El plan va como tarjeta en el chat y como vista «Plan» en el panel lateral, que se abre sola cada vez que termina un plan. «Implementar» arranca de una vez, sin burbuja del usuario. «Ajustar» responde ahí mismo y produce la versión siguiente del mismo plan. |
+| 57 | Audio y video se adjuntan como artefacto; los archivos viajan por ruta, nunca dentro del mensaje, con tope de 1 GiB; el composer avisa antes de enviar y los errores dicen el nombre real y quedan en el registro. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

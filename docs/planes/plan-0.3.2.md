@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38 y 40 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41 y 42, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38 y 41) y las funciones (23–24, 31–36, 40 y 42).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40 y 44 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43 y 44, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38 y 41) y las funciones (23–24, 31–36, 40 y 42–44).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -226,6 +226,8 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 40 | Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada | CLI + Agent | Decidido |
 | 41 | La tarjeta de cambios del turno tiene el estilo viejo, y «Revisar» muestra el diff sin colores | Agent | Decidido (causa verificada) |
 | 42 | Elegir el proyecto de una conversación desde el composer, como en Claude Code o Codex | Agent | Decidido (solo conversaciones nuevas) |
+| 43 | Flujos pasa a vivir en el panel lateral, en Normal y en Boards | Agent | Decidido |
+| 44 | El panel lateral se puede extender mucho más, y el navegador del agente prueba en tamaños anchos (Planka, Idea) | CLI + Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1184,6 +1186,52 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ---
 
+## 43. Flujos pasa a vivir en el panel lateral
+
+**Decisión del dueño (2026-10-12).** Flujos deja de ser un modo de arriba (Normal · Boards · Flujos) y pasa a ser **una pestaña del panel lateral**, junto a Agentes, Archivos, Navegador, Workspace y Terminal, en la vista Normal y en cada panel de Boards. Salió al revisar la maqueta de Boards.
+
+**Por qué.** El Flujo trata de una conversación o de su proyecto: tiene sentido junto a ella, como el navegador o la terminal, y en el mismo sitio en Normal y en Boards. El selector de arriba queda en **Normal · Boards**.
+
+**Qué hay hoy.** `src/features/flow/FlowView.tsx` es una vista a pantalla completa (tarjetas de etapas a lo ancho), con alcance de sesión o de proyecto (`FlowScope`) y su atajo propio (`ShortcutAction` `flows`).
+
+**Propuesta.**
+- **Pestaña «Flujo»** en `SessionDock`, con el Flujo de la conversación abierta.
+- **Versión compacta en vertical** para el ancho del panel: una etapa debajo de otra, con su estado y lo que falta; al tocar una etapa se abre su detalle (`FlowStageDetail`) dentro del panel.
+- **Selector «Esta conversación · Proyecto»** dentro de la pestaña, para no perder la vista de todo el proyecto.
+- **Para verlo amplio:** extender el panel lateral (#44).
+- **Se retiran** el modo «Flujos» del selector de arriba y su pantalla; el atajo de Flujos abre la pestaña. Los textos y la ayuda de atajos se actualizan.
+
+**Pruebas.** Vitest de la pestaña (alcance conversación y proyecto, la versión compacta, el detalle de una etapa). Escenario: el Flujo se abre en el panel lateral en Normal y en un panel de Boards; el selector de arriba ya no tiene «Flujos».
+
+---
+
+## 44. El panel lateral se extiende, y el navegador del agente prueba en tamaños anchos
+
+**Qué se pidió** (dueño, y la tarjeta de Planka «Sidepanel que se pueda abrir más, por todo y todo, hasta para que el agente cuando usa el navegador pueda probar en dimensiones altas»). Que el panel lateral se pueda abrir mucho más, hasta casi todo, para ver cualquier pestaña en grande y para que el agente pruebe páginas en tamaños de escritorio.
+
+**Causa (verificada).**
+- **El panel lateral tiene un tope de 800 px**, y el chat no baja de 480 px (`stores/sessionDock.ts:27-31`: `DOCK_MIN_WIDTH`, `DOCK_MAX_WIDTH`, `CHAT_MIN_DOCKED_WIDTH`).
+- **El navegador del agente toma su tamaño del panel.** La vista nativa del navegador usa como viewport sus propios límites en pantalla (`electron/main/browser/BrowserRegistry.ts`, `ViewLayoutCoordinator.ts`). Con el panel a 800 px como mucho, la página que prueba el agente nunca pasa de ~800 px de ancho: **no puede probar una vista de escritorio** (1280 px o más).
+- El agente **no tiene cómo pedir otro tamaño**: las herramientas del navegador (`tools/native/browse.py`) no cambian el viewport.
+
+**Propuesta.**
+1. **Extender el panel lateral, en Normal y en Boards** (en Boards, dentro de su panel, que se abre con el botón como hoy):
+   - **sin el tope de 800 px:** se arrastra hasta dejar al chat en un mínimo angosto;
+   - **botón «Ampliar»** en la barra del panel lateral (y doble clic en el borde): el panel lateral ocupa toda el área de la conversación, o del panel en Boards, y el chat queda como una columna estrecha con la cara de Rinari y el composer. El mismo botón, o Esc, lo devuelve al ancho de antes;
+   - el ancho se recuerda por pestaña.
+2. **El tamaño de la página, separado del tamaño del panel**, en la pestaña Navegador:
+   - un selector de tamaño: **Ajustar al panel** (como hoy), **Móvil 390**, **Tablet 768**, **Escritorio 1280** y **Ancho 1920**;
+   - si la página es más ancha que el panel, se ve **reducida para que quepa** (con el porcentaje a la vista: «1280 × 800 · 62 %»). El agente trabaja sobre el tamaño real, y sus capturas y clics usan las coordenadas de la página, no las de la pantalla;
+   - **el agente puede pedirlo él:** una herramienta (o un parámetro de las del navegador) para fijar el tamaño, con lo que puede probar un diseño responsive en varios anchos y comparar capturas. El selector muestra el tamaño que eligió el agente.
+3. **Riesgo a validar al implementar.** El navegador nativo y sus coordenadas (`ViewLayoutCoordinator`) ya separan el área visible del viewport. Mostrarlo reducido (con el zoom de Electron o la emulación de tamaño de CDP) tiene que mantener bien los clics y las capturas. Se prueba con `npm run browser:vertical`, la prueba `browser-integration` del CI.
+
+**Pruebas.**
+- Vitest del panel lateral: arrastrar más allá de 800 px, «Ampliar» y volver (también con Esc), el ancho por pestaña, y lo mismo dentro de un panel de Boards.
+- CLI: la herramienta de tamaño valida los límites y queda en el estado del navegador.
+- `browser:vertical` y un escenario: con «Escritorio 1280» en un panel de 600 px, la página mide 1280 de ancho, se ve reducida, y un clic del agente cae en el elemento correcto; la captura sale a 1280.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -1227,6 +1275,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 40 | Entra solo la fase A1 de las sesiones hijas (vínculo y barra lateral anidada). A2 (`session.start`, permisos heredados, tarjeta de entrega) y A3 (mensajes a las hijas, worktrees) van en la versión siguiente. |
 | 41 | La tarjeta de cambios pasa al estilo nuevo con lista de archivos. «Revisar» (la tarjeta y la fila de abajo) abre «Cambios del turno» en el panel lateral con los colores del `DiffView`; funciona sin git. |
 | 42 | Chip de proyecto solo en conversaciones nuevas (lo escrito viaja al cambiar). Empieza en «Sin proyecto». Lista: proyectos del perfil activo por uso reciente, buscador y «Abrir carpeta…». Las existentes se mueven desde la barra lateral. |
+| 43 | Flujos es una pestaña del panel lateral (Normal y Boards), con versión compacta y selector «Esta conversación · Proyecto». Sale el modo «Flujos» de arriba. |
+| 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar». En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920), se ve reducido si no cabe, y el agente puede pedir el tamaño. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

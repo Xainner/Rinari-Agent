@@ -64,7 +64,6 @@ Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se
 | B1 | Limpieza: la mensajería entre paneles (con el `PeerBroker` del Engine) y «Quitar y cerrar sesión»; y el arreglo del «Preparando el turno…» (C.1) | S–M |
 | B2 | El panel colapsado con su estado en vivo, y el vistazo al pasar el ratón (B.2) | M |
 | B3 | Atajos de teclado, añadir un panel en un gesto y la barra más limpia (B.4) | S–M |
-| B4 | Salidas como paneles: «Sacar a un panel» el navegador, la terminal, los archivos, los agentes o el Flujo de una sesión (B.4, punto 4) | L |
 
 ### B.4 Mejoras decididas (dueño, 2026-10-12)
 
@@ -81,11 +80,7 @@ Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se
    - En un menú «⋯»: «Colapsar terminados», «Modo foco», «Marcar todo como leído» y «Quitar todos».
    - La regla de `boards-fit` sigue: que aparezca un contador nunca cambia la altura de la barra.
 
-4. **Salidas como paneles** (la función llamativa).
-   - Hoy el panel lateral de cada sesión (Agentes, Archivos, Navegador, Workspace, Terminal; `SessionDock`) vive dentro del panel como un cajón: tapa el chat, muestra una cosa a la vez y con 3–4 paneles queda apretado.
-   - «**Sacar a un panel**» lo pone como un panel más del board, al lado de su sesión: el chat de B y su app corriendo a la vez, o la terminal de C mientras corre las pruebas. También el **Flujo** de la sesión (`FlowView` con su alcance).
-   - Lleva el color de su sesión y la etiqueta «de *B*». Sigue a su sesión: si se quita B del board, su salida también. «Devolver al panel» la regresa al cajón.
-   - Se mueve y se ajusta como cualquier panel; no cambia de tamaño sola. **Al plegar la sesión, se pliegan también sus salidas** (dueño, 2026-10-12), y al desplegarla vuelven.
+4. ~~Salidas como paneles~~: **cambiado por el dueño** (2026-10-12). El panel lateral de cada panel se sigue abriendo con su botón, como hoy, y **se puede extender** mucho más, con «Ampliar» incluido. Eso lo resuelve [plan-0.3.2.md](plan-0.3.2.md) #44 para toda la app, junto con el navegador en tamaños de escritorio. Flujos pasa a ser una pestaña del panel lateral (#43). Boards solo los aprovecha; ya no hacen falta «Sacar a un panel» ni la etiqueta «de B».
 
 **Pruebas.** Vitest de los atajos (Ctrl+1…9, Ctrl+J con y sin pendientes), del soltar desde la barra lateral (posición) y de la barra (qué queda a la vista y qué en el menú). Escenario de Boards: arrastrar una conversación, Ctrl+J entre dos paneles que esperan (uno plegado: se abre su vistazo) y plegar una sesión con una salida sacada.
 
@@ -96,11 +91,10 @@ Salieron de las versiones anteriores de este plan y de la maqueta (`Documents/Pr
 - la bandeja «Te necesitan» con Ctrl+J;
 - espacios guardados (varios boards con nombre por perfil);
 - composiciones rápidas (1 + pila, 2 lado a lado, 2×2, 3×2);
-- un selector «Chat · Flujo» dentro del panel (las salidas como paneles ya están decididas: B4);
 - etiqueta de rol por panel y la receta «Planear · Codificar · Revisar»;
 - el chip de carpeta compartida con «Abrir en worktree» (C10);
 - **Comparar** (el mismo encargo a varios modelos), que el dueño dejó para más adelante;
-- **descartados** por el dueño: que los paneles cambien de tamaño solos según su estado; «Enviar a…» entre paneles (se quita con la mensajería); y el resumen «Mientras no estabas» al volver a Boards.
+- **descartados** por el dueño: que los paneles cambien de tamaño solos según su estado; «Enviar a…» entre paneles (se quita con la mensajería); el resumen «Mientras no estabas» al volver a Boards; y las salidas como paneles propios (las reemplaza el panel lateral extensible, 0.3.2 #44).
 
 ---
 

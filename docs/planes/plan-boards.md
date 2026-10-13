@@ -52,6 +52,7 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
 | B1 | Limpieza: la mensajería entre paneles (con el `PeerBroker` del Engine) y «Quitar y cerrar sesión»; y el arreglo del «Preparando el turno…» (C.1) | S–M |
 | B2 | El panel colapsado con su estado en vivo | M |
 | B3 | Atajos de teclado, añadir un panel en un gesto y la barra más limpia (B.4) | S–M |
+| B4 | Salidas como paneles: «Sacar a un panel» el navegador, la terminal, los archivos, los agentes o el Flujo de una sesión (B.4, punto 4) | L |
 
 ### B.4 Mejoras decididas (dueño, 2026-10-12)
 
@@ -68,6 +69,12 @@ Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complica
    - En un menú «⋯»: «Colapsar terminados», «Modo foco», «Marcar todo como leído» y «Quitar todos».
    - La regla de `boards-fit` sigue: que aparezca un contador nunca cambia la altura de la barra.
 
+4. **Salidas como paneles** (la función llamativa).
+   - Hoy el panel lateral de cada sesión (Agentes, Archivos, Navegador, Workspace, Terminal; `SessionDock`) vive dentro del panel como un cajón: tapa el chat, muestra una cosa a la vez y con 3–4 paneles queda apretado.
+   - «**Sacar a un panel**» lo pone como un panel más del board, al lado de su sesión: el chat de B y su app corriendo a la vez, o la terminal de C mientras corre las pruebas. También el **Flujo** de la sesión (`FlowView` con su alcance).
+   - Lleva el color de su sesión y la etiqueta «de *B*». Sigue a su sesión: si se quita B del board, su salida también. «Devolver al panel» la regresa al cajón.
+   - Se pliega, se mueve y se ajusta como cualquier panel; no cambia de tamaño sola.
+
 **Pruebas.** Vitest de los atajos (Ctrl+1…9, Ctrl+J con y sin pendientes), del soltar desde la barra lateral (posición) y de la barra (qué queda a la vista y qué en el menú). Escenario de Boards: arrastrar una conversación, «＋ en este proyecto» con el modo elegido, y Ctrl+J entre dos paneles que esperan.
 
 Las siguientes mejoras se proponen una por una a partir de usar Boards ya limpio, cada una con su porqué. Si alguna necesita verse antes de construirla, se hace una maqueta de esa pieza, no de todo Boards.
@@ -77,7 +84,7 @@ Salieron de las versiones anteriores de este plan y de la maqueta (`Documents/Pr
 - la bandeja «Te necesitan» con Ctrl+J;
 - espacios guardados (varios boards con nombre por perfil);
 - composiciones rápidas (1 + pila, 2 lado a lado, 2×2, 3×2);
-- las salidas (navegador, terminal, archivos, agentes) y los Flujos como paneles propios, o un selector «Chat · Flujo» dentro del panel;
+- un selector «Chat · Flujo» dentro del panel (las salidas como paneles ya están decididas: B4);
 - etiqueta de rol por panel y la receta «Planear · Codificar · Revisar»;
 - el chip de carpeta compartida con «Abrir en worktree» (C10);
 - **Comparar** (el mismo encargo a varios modelos), que el dueño dejó para más adelante;

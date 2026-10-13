@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45 y 46 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45 y 46, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44 y 46).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46 y 47, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41 y 45) y las funciones (23–24, 31–36, 40, 42–44, 46 y 47).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -230,6 +230,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 44 | El panel lateral se puede extender mucho más, y el navegador del agente prueba en tamaños anchos (Planka, Idea) | CLI + Agent | Decidido (causa verificada) |
 | 45 | Cloudflare Turnstile rechaza el navegador de Rinari: decirlo claro y pasar al navegador del dueño (Planka, Bug) | CLI + Agent | Propuesto |
 | 46 | Navegador como uno de verdad: página de inicio, fluido mientras el agente trabaja, cursor del agente visible y control sin botones (Planka, Ideas-2) | CLI + Agent | Decidido |
+| 47 | Panel lateral nuevo: botones en la barra de título y varias vistas apiladas, como Claude Code | Agent | Decidido (maqueta en curso) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1312,6 +1313,33 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ---
 
+## 47. Panel lateral nuevo: botones en la barra de título y vistas apiladas
+
+**Qué se pidió** (dueño, 2026-10-12). El panel lateral es un tema recurrente. Claude Code, Codex y Hermes ponen el navegador y las demás herramientas en la barra de título, y su panel lateral admite varias ventanas a la vez. «Solo nosotros lo tenemos así.» El dueño eligió la dirección **A** entre tres (A: botones en la barra de título y vistas apiladas; B: una barra de iconos vertical; C: pestañas que se dividen).
+
+**Qué hay hoy (verificado).**
+- **Una sola superficie a la vez** (`SessionDock.tsx`): Agentes, Archivos, Navegador, Workspace y Terminal, en una barra segmentada.
+- **Workspace es una pestaña con seis pestañas dentro** (`WorkspaceTab`: Cambios, Tareas, Verificación, Checkpoints, Artefactos, Insight).
+- Se abre con un botón genérico «Panel lateral» de la barra de arriba (`topbar.sidePanel`), que no dice qué contiene ni si algo está pasando.
+
+**Propuesta.**
+1. **Contenido más plano: seis vistas principales.** Navegador, Terminal, Archivos, Cambios, Agentes y Flujo (#43). Lo de Workspace se reparte:
+   - Checkpoints entra en Cambios (son sus puntos para deshacer, junto a «Cambios del turno» del #41);
+   - Artefactos entra en Archivos;
+   - Tareas, Verificación e Insight quedan en un menú «Más».
+2. **Un botón por vista en la barra de título**, con su indicador vivo: el punto de la terminal que corre, el anillo del navegador en vivo, el número de archivos cambiados, los agentes trabajando. Un clic abre o cierra esa vista; el botón genérico «Panel lateral» desaparece.
+3. **Hasta 3 vistas apiladas** en el panel lateral, una debajo de otra, con separadores que se arrastran. Cada vista tiene su cabecera con el título, **«Ampliar»** (#44) y cerrar. La disposición (qué vistas y qué altura) se recuerda por conversación.
+4. **En Boards:** los botones de la barra de título actúan sobre el **panel enfocado**, y cada panel conserva su panel lateral con las vistas apiladas (se abre con su botón, como hoy).
+5. **Movimiento:** abrir una vista la desliza desde la barra de título hasta su sitio en la pila; los separadores no rebotan; con movimiento reducido, todo es instantáneo.
+
+**Maqueta.** Antes de construirlo se hace una maqueta solo del panel lateral (`Documents/Proyectos/rinari-sidepanel-proto`).
+
+**Pruebas.**
+- Vitest: abrir y cerrar vistas desde la barra de título, el límite de 3, los separadores, «Ampliar» de una vista, recordar la disposición, y en Boards que los botones actúen sobre el panel enfocado.
+- Escenario `side-panel-stack`: Navegador y Terminal apilados, se arrastra el separador y se amplía el Navegador; el movimiento se muestrea cuadro a cuadro y con `RINARI_UI_REDUCED_MOTION=1`.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -1359,6 +1387,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.3.2 por riesgo. |
 | 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pregunta. La tarjeta ofrece «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari» (ventana real con perfil de Rinari por proyecto, el dueño pasa la verificación y el agente sigue). No se disfraza el navegador ni se intentan resolver captchas. |
 | 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras 3 s sin uso, nunca en un campo de contraseña. |
+| 47 | Panel lateral: seis vistas (Navegador, Terminal, Archivos, Cambios, Agentes, Flujo; Workspace se reparte), un botón por vista en la barra de título con indicador, hasta 3 apiladas con «Ampliar». En Boards actúan sobre el panel enfocado. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

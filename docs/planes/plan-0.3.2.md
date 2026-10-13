@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38 y 40 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40 y 41, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38 y 41) y las funciones (23–24, 31–36 y 40).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41 y 42, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38 y 41) y las funciones (23–24, 31–36, 40 y 42).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -225,6 +225,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 38 | Confianza después de `git init`: automática y en el momento (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 40 | Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada | CLI + Agent | Decidido |
 | 41 | La tarjeta de cambios del turno tiene el estilo viejo, y «Revisar» muestra el diff sin colores | Agent | Decidido (causa verificada) |
+| 42 | Elegir el proyecto de una conversación desde el composer, como en Claude Code o Codex | Agent | Propuesto (faltan 3 decisiones) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1150,6 +1151,45 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 - Vitest de la tarjeta: el plural, la lista con chips y `+/−`, la nota de cobertura y los textos en ES/EN.
 - Vitest de la vista «Cambios del turno»: sin git muestra los archivos y el diff con colores; con git, el selector cambia a todo el repo.
 - Escenario `turn-changes`: el modelo falso crea y modifica archivos en una carpeta sin git; «Revisar» abre el lateral con el diff con colores; «Revisar cambios» de la fila de abajo lleva al mismo lugar.
+
+---
+
+## 42. Elegir el proyecto de la conversación desde el composer
+
+**Qué se pidió** (dueño, con capturas de Claude Code y Codex). Al empezar una conversación nueva, ya sea con «Nueva conversación» arriba, con el «+» de un proyecto o en un panel de Boards, poder elegir a qué proyecto pertenece desde el mismo composer.
+- **Claude Code:** debajo del composer hay chips «Local · *carpeta* · rama · worktree». El de la carpeta abre una lista con «Sin carpeta», «Reciente» y «Abrir carpeta…».
+- **Codex:** un chip con el proyecto (con ✕ para quitarlo) y «Este ordenador», más el atajo «Cambiar el proyecto de este chat» (Ctrl+Alt+Shift+O).
+
+**Qué hay hoy (verificado).**
+- **El borrador ya tiene un proyecto, pero fijo.** Una conversación nueva es un borrador (`stores/conversationDraft.ts`) con `projectId` y la sesión se crea al primer envío. Ese `projectId` lo decide **por dónde entraste** («Nueva conversación» → chat general; el «+» de un proyecto → ese proyecto; «Añadir panel» → lo que elegiste en el diálogo). En el composer no se puede cambiar.
+- **Hay un borrador por destino** (`draftKeyFor`: `draft` o `draft:project:<id>`), con su texto y adjuntos. Cambiar de proyecto, hoy, sería cambiar de borrador: lo escrito no viaja.
+- **Mover una conversación existente ya funciona en el Engine** (`session.move`, `application/session_service.py:458`). Cambia la carpeta de trabajo para lo que siga; los archivos que ya creó se quedan donde estaban. Además reinicia el estado compactado, las skills activas, los anclajes y la rama, y si el proyecto es de otro perfil pasa la conversación a ese perfil. Toma el candado del turno, así que no se puede con un turno en curso.
+- **En la app solo está en el menú de la barra lateral** («Mover a proyecto…», `AppSidebar.tsx`, `App.tsx:660`), no en el composer.
+
+**Propuesta.**
+1. **Un chip de proyecto en el composer** de toda conversación nueva (vista Normal, «+» de un proyecto, panel de Boards):
+   - muestra el proyecto con su nombre y su rama, o «Sin proyecto» (chat general);
+   - al abrirlo: «Sin proyecto», **Recientes** (los proyectos del perfil activo por última actividad), un buscador con todos y «Abrir carpeta…» (el flujo que ya existe en «Añadir panel»);
+   - el «+» de un proyecto lo trae ya elegido; «Nueva conversación», en «Sin proyecto» (o en el último usado: decisión 2);
+   - **lo escrito viaja con el cambio:** el texto, los adjuntos, el modo y el modelo del borrador pasan al nuevo destino.
+2. **En una conversación que ya existe,** el mismo chip permite cambiar el proyecto con `session.move`:
+   - antes del primer mensaje es libre;
+   - con historial, pide confirmar y dice qué pasa: «La conversación sigue con su historial. Los archivos que ya creó se quedan en *carpeta anterior*, y lo que siga trabaja en *carpeta nueva*»;
+   - desactivado con un turno en curso (el Engine lo bloquea), con el motivo en el tooltip;
+   - si el proyecto es de otro perfil, se avisa de que la conversación pasa a ese perfil.
+3. **Atajo** para abrir el chip desde el teclado, como el de Codex. Se elige uno que no choque con los atajos de hoy.
+4. **En Boards,** el chip vive en el composer de cada panel, y elegir un proyecto que ya está en otro panel muestra el aviso de carpeta compartida que existe hoy.
+5. **El worktree** (la casilla de Claude Code) **no entra ahora:** llega con la fase A3 de las [sesiones hijas](plan-sesiones-hijas.md).
+
+**Decisiones pendientes.**
+1. ¿Se puede cambiar el proyecto de una conversación **con historial** desde el chip, con confirmación, o solo antes del primer mensaje (y lo demás sigue en la barra lateral)?
+2. «Nueva conversación» arriba: ¿empieza en «Sin proyecto» o en el **último proyecto usado**?
+3. ¿Los Recientes muestran solo el perfil activo, o también otros perfiles en un grupo aparte?
+
+**Pruebas.**
+- Vitest del chip: la lista (Sin proyecto, Recientes, buscador, Abrir carpeta), el cambio de proyecto en un borrador conserva texto, adjuntos, modo y modelo, y el primer envío crea la sesión en el proyecto elegido.
+- Vitest de una conversación existente: la confirmación con historial llama a `session.move`; desactivado con un turno en curso.
+- Escenario `composer-project`: «Nueva conversación», se elige un proyecto en el chip, se envía y la conversación aparece bajo ese proyecto en la barra lateral; en Boards, lo mismo en un panel nuevo.
 
 ---
 

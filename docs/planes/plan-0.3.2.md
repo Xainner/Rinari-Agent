@@ -1235,7 +1235,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
    - **Fuera de 0.3.2: ver la página reducida** para que quepa entera (zoom o emulación de tamaño de CDP). Es lo que más puede romper clics y capturas, así que no entra. Si con 44b no basta, se estudia aparte con una sonda propia.
 
 **Pruebas.**
-- Vitest del panel lateral: arrastrar más allá de 800 px, «Ampliar» y volver (también con Esc), el ancho por pestaña, y lo mismo dentro de un panel de Boards.
+- Vitest del panel lateral: arrastrar más allá de 800 px, «Ampliar» y volver (también con Esc), el ancho por conversación, y lo mismo dentro de un panel de Boards.
 - CLI: la herramienta de tamaño valida los límites y queda en el estado del navegador.
 - `browser:vertical` y un escenario: con «Escritorio 1280» en un panel de 600 px, la página mide 1280 de ancho, el panel se desplaza en horizontal, un clic del agente cae en el elemento correcto (también con el panel desplazado) y la captura sale a 1280.
 

@@ -245,7 +245,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 59 | La lista de pasos queda «Quedan 3 pasos» aunque el trabajo terminó (Rinari no la cerró antes de responder), y una lista 4/4 sigue «Trabajando» hasta el final del turno | CLI + Agent | Propuesto (causa verificada) |
 | 60 | Crear un proyecto: «Confiar» encendido por defecto, y al guardarlo una conversación temporal del proyecto (borrador) en vez de una sesión ya creada | CLI + Agent | Decidido |
 | 61 | Lecciones de `ses_01M4V9MXD0H839MT18JWEFDDZX`: las páginas web llegan comprimidas (gzip) en vez de texto, la basura se queda en el contexto, y la verificación de una descarga se enreda | CLI + Agent | Propuesto (causa verificada) |
-| 62 | Al volver a la ventana, nada indica que la conversación a la vista terminó mientras no estabas (suena y sale el «1» en la barra de tareas, pero adentro no se ve) | Agent | Propuesto (causa verificada) |
+| 62 | Al volver a la ventana, nada indica que la conversación a la vista terminó mientras no estabas (suena y sale el «1» en la barra de tareas, pero adentro no se ve) | Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1875,9 +1875,8 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
    - el brillo se va apagando despacio después de leerse (unos segundos), no de golpe.
 2. **Leído = visto de verdad:** al recuperar la ventana, el resultado cuenta como leído cuando **el dueño hace algo** en la ventana (mueve el ratón sobre el chat, hace scroll o teclea) y el resultado está a la vista, o tras unos **3 s** de ventana atendida. No a los 500 ms. El «1» de la barra de tareas baja en ese mismo momento.
 3. **Si el resultado no está a la vista** (el dueño estaba más arriba en el chat), un botón flotante **«↓ Nuevo resultado»** lleva a él.
-4. **La cara de Rinari** en la cabecera de la conversación (la que reemplaza al punto de estado, B.1b de Boards) muestra el desenlace un momento al volver: contenta si terminó, preocupada si falló.
-5. **Sin movimiento** con `RINARI_UI_REDUCED_MOTION`: la marca y la píldora se ven igual, sin brillo ni desvanecido.
-6. En Boards vale lo mismo para el panel enfocado.
+4. **Sin movimiento** con `RINARI_UI_REDUCED_MOTION`: la marca y la píldora se ven igual, sin brillo ni desvanecido.
+5. En Boards vale lo mismo para el panel enfocado.
 
 **Pruebas.**
 - Vitest: con la ventana sin atención, un turno que termina deja la marca; al recuperar la atención no se marca leído a los 500 ms, sino con actividad o a los 3 s; el «1» baja al mismo tiempo; con el resultado fuera de la vista aparece «↓ Nuevo resultado».
@@ -1943,6 +1942,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 56 | Chat suelto: «Denegar», «Permitir una vez» y «Permitir en este chat» (sin «Siempre en los chats»). Proyecto: además «En esta sesión» y «Siempre en este proyecto». El permiso de chat o sesión se guarda con la conversación; los «Siempre en los chats» antiguos dejan de aplicarse y se pueden quitar en Ajustes. |
 | 57 | Audio y video se adjuntan como artefacto; los archivos viajan por ruta, nunca dentro del mensaje, con tope de 1 GiB; el composer avisa antes de enviar y los errores dicen el nombre real y quedan en el registro. |
 | 60 | Al crear un proyecto, «Confiar» sale encendido salvo en carpetas con hooks o servidores MCP propios (apagado con aviso); al guardar se abre un borrador del proyecto con el chip del #42, sin sesión vacía. |
+| 62 | Al volver a la ventana, el resultado que terminó mientras no estabas lleva una marca visible («Nuevo · terminó hace…», borde con brillo suave) y se da por leído con actividad del dueño o a los 3 s, no a los 500 ms; el «1» baja al mismo tiempo; «↓ Nuevo resultado» si no está a la vista. Sin la cara de Rinari en la cabecera (descartado). |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

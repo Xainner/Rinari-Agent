@@ -49,6 +49,51 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 - **Edición en la propia escena:** «Nueva oficina» agrega un piso; un **HUD con estilo pixel** permite arrastrar un agente a un escritorio, abrir su ficha o su chat. **Todo lo que se hace en la oficina también se puede hacer desde la vista Normal**, por accesibilidad.
 - **Calidad visual (no negociable):** 60 cuadros por segundo, píxel nítido, transiciones de cámara suaves, sin animaciones de relleno; con movimiento reducido, la misma escena quieta con insignias de estado.
 
+### 6.1 Sprites: la mejor calidad posible
+
+**Lo que se vio en el prototipo** (dueño, 2026-10-12, con captura del ciclo de caminar). Se entiende que es una maqueta, pero muestra lo que hay que cuidar: el pie del fondo nunca se ve de frente, y en un cuadro las piernas se cruzan, así que Rinari más bien se caería. Los cuadros generados uno a uno con IA no respetan un ciclo de caminar.
+
+**Qué exige la versión de verdad:**
+- **Ciclos de animación bien hechos**, con los cuadros clave de siempre (contacto, bajada, paso y subida) para **las dos piernas**: cada pie se ve plantado cuando toca, las piernas se alternan sin cruzarse, y el cuerpo sube y baja lo justo.
+- **Consistencia entre cuadros:** misma silueta, la misma paleta limitada (~16 colores), contorno de 1 píxel, sin antialiasing y **un punto de apoyo fijo** (el sprite no «tiembla» al cambiar de cuadro).
+- **Las invariantes del personaje** de `rinari-familiars-proto/art/CHARACTER.md` (los accesorios nunca cambian de lado), simplificadas a lo que se lee en un sprite.
+- **Tamaño y escala:** por ejemplo 32×48 o 48×64 píxeles por cuadro, escalado entero (×2, ×3) con píxel nítido; caminar a ~10–12 cuadros por segundo.
+- **Proceso:** la IA sirve para bocetar poses y explorar, pero **cada hoja se limpia a mano cuadro a cuadro** (o la hace un artista de pixel art) y pasa una revisión: un visor que reproduce cada animación en grande, con papel cebolla, y una lista de comprobación (pies plantados, piernas que se alternan, nada cambia de lado, sin temblor).
+- **Atuendos por oficio como capas** (auriculares para *Audio*, claqueta para *Video*, pluma para *Writer*…) encima de una hoja base, en vez de rehacer la hoja entera por agente.
+
+**Estados, cada uno con su animación** (ver también 10.3):
+
+| Estado | Animación |
+|---|---|
+| Trabajando | Sentada, teclea (3–4 cuadros); la pantalla parpadea con el color de su herramienta |
+| Pensando | Sentada, mano en la barbilla, una burbuja «…» |
+| Caminando | Ciclo completo de lado, y de frente y de espaldas para los pasillos |
+| Entregando | Camina con el paquete y se lo da a quien lo recibe (la otra lo toma) |
+| En la pizarra | De espaldas, clava o despega la nota |
+| Reunión | De pie frente a la pizarra, habla con su burbuja |
+| Esperando | Apoyada en la mano, «zzz» |
+| Necesita al dueño | Se levanta con la mano en alto y un «!» ámbar, rebota suave |
+| **Falló** | **Se tropieza y se cae** (idea del dueño), se levanta sacudiéndose, con humito y la pantalla roja |
+| Terminó | Salta y choca la mano con las demás; confeti de píxeles |
+| Llega un agente nuevo | Entra por la puerta, saluda y se sienta en su escritorio |
+| Se va | Se despide y sale por la puerta |
+
+### 6.2 La oficina: escritorios y límite
+
+**Un agente nuevo es un escritorio nuevo.** Para que la oficina siempre se vea diseñada (no muebles tirados al azar), los escritorios van en **lugares fijos según cuántos agentes hay**:
+
+| Agentes | Disposición |
+|---|---|
+| 1–2 | Dos escritorios al frente, la pizarra al centro |
+| 3–4 | Dos a cada lado de la pizarra, como alas |
+| 5–6 | **Tres columnas por dos filas** (izquierda, centro y derecha): es la del prototipo, que tenía 5 y espacio para un sexto en el centro |
+| 7–8 | **Oficina grande:** el piso se ensancha (dos alas), con la pizarra al centro y un pasillo |
+
+- **Límite: 8 agentes por oficina.** Con 6 la oficina luce mejor; de 7 a 8 cambia a la oficina grande. Para más, se crea **otro equipo (otro piso)**; un agente puede tener puestos en los dos.
+- Al llegar al límite, «Agregar agente» lo dice y ofrece crear otra oficina.
+- **El pasillo, la puerta, la pizarra, el reloj y el mostrador** tienen lugar fijo en cada disposición, para que las caminatas no atraviesen muebles.
+- Cada escritorio lleva **la placa con el nombre** del agente y un detalle de su oficio.
+
 ## 7. Dónde vive: un solo Engine
 
 - **La Agency se construye en el Engine** (el paquete `rinari` del repo de la CLI): agentes, equipos, puestos, pizarras, recados, reglas, disparadores y memoria. Se hace una sola vez.
@@ -221,7 +266,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 ## 11. Preguntas abiertas
 
 1. ¿Un agente sin equipo puede tener reglas y disparadores propios (por ejemplo, el agente *Emails* con su regla de reenvío), o eso siempre vive en un equipo? Recomendado: sí, también solo.
-2. ¿Cómo se generan los íconos y los sprites de 8 bits de cada agente nuevo? (Elegir de un banco de atuendos ya hecho, o generarlo con el flujo de arte de Rinari al crear el agente.)
+2. ¿Quién hace la hoja base de sprites de Rinari: limpiarla a mano a partir de bocetos con IA, o encargarla a un artista de pixel art? Los atuendos por oficio serían capas encima (6.1).
 3. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta?
 4. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan?
 

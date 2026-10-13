@@ -239,7 +239,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 53 | Skills: importar desde Claude Code / Codex bloquea el Engine; instalar desde skills.sh o `npx skills add` no funciona | CLI + Agent | Propuesto (causa verificada y medida) |
 | 54 | Mensaje durante el turno: editarlo o borrarlo mientras no se leyó, y que las imágenes adjuntas se envíen (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | CLI + Agent | Decidido |
-| 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada; faltan 2 decisiones) |
+| 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
@@ -1415,6 +1415,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 5. **`web.download` cortó un MP4 en 2 MiB** (2 097 152 bytes): la descarga se guarda entera en memoria con el tope de las páginas web. El agente lo resolvió con ffmpeg sobre la URL, pero bajar un video al proyecto debería funcionar sin trucos.
 6. **`TOOL_NOT_FOUND` para `mcp_Rinari_Visual_Lab_get_job_preview`:** el modelo escribió el nombre con guiones bajos en vez de puntos (`mcp.Rinari_Visual_Lab.get_job_preview`), y la herramienta existía.
 7. **El título falló dos veces** (`SessionTitleFailed`, `error:ProviderError`): la conversación quedó con el mensaje recortado, «Necesito que hagas lo siguiente: Usando el MCP…». **No es solo esta sesión:** `engine.log` muestra el mismo fallo en casi todas las conversaciones nuevas desde el 2026-10-11. El título se pide al modelo de la conversación (`cli/agent_runtime.py`, `generate_title`), y el registro solo guarda «ProviderError», sin el código del proveedor: hay que registrar el código y el estado HTTP (sin contenido) para saber por qué falla. **Hotfix de diagnóstico ya aplicado** (2026-10-13): la rama `hotfix/title-failure-log` del CLI (99c6448, local) registra el código, el proveedor, el modelo, el id de la petición y el mensaje del proveedor (cortado a 300 caracteres); el mismo archivo se copió a la instalación del dueño (respaldo `session_service.py.bak-hotfix-title-log` junto al original). Al llegar al #48, leer `%APPDATA%/rinari-agent/logs/engine.log`.
+   - **Causa encontrada con el hotfix** (registros del 2026-10-13, 16:24, 16:29 y 16:51 UTC): OpenCode Go responde `HTTP 400 … Request is missing x-opencode-session and cannot be routed efficiently` (modelo `glm-5.3-flash`). Los turnos mandan esa cabecera (`session_affinity_headers`, `providers/adapters/http.py:46`, a partir de `ModelRequest.session_id`), pero **`generate_title` (`cli/agent_runtime.py:2243-2260`) arma su `ModelRequest` sin `session_id`**. Arreglo: pasar el id de la sesión también en la llamada del título, revisadas las demás `ModelRequest` del Engine, es la única llamada real al proveedor sin él (las otras sin `session_id` solo arman peticiones internas). Prueba: la petición del título lleva `x-opencode-session` hacia OpenCode.
 8. **No hubo lista de pasos.** La tarea era claramente de varios pasos (5 imágenes, 5 videos, en orden) y `checklist.update` estaba disponible, pero `deepseek-v4.1-flash` no la usó. El recordatorio de hoy (`checklist/reminder.py`) solo actúa cuando ya existe una lista.
 
 **Propuesta para Rinari** (decisiones del dueño, 2026-10-12). **Todo es genérico, para cualquier servidor MCP y cualquier herramienta:** nada se escribe a medida del Visual Lab ni de ningún otro servidor.
@@ -1647,13 +1648,13 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Propuesta.**
 1. **Chat sin proyecto:** «Denegar», «Permitir una vez» y **«Permitir en este chat»**. Se quita «Siempre en los chats»: un permiso dado en un chat no se extiende a los demás. El Engine deja de ofrecer `allow_project` cuando no hay proyecto.
 2. **Conversación de proyecto:** «Denegar», «Permitir una vez», **«En esta sesión»** y **«Siempre en este proyecto»**.
-3. **«En este chat» / «En esta sesión» se guarda con la conversación** (decisión 1): sobrevive a reiniciar la app y se borra con la conversación.
+3. **«En este chat» / «En esta sesión» se guarda con la conversación**: sobrevive a reiniciar la app y se borra con la conversación.
 4. **Los textos pasan a `es.ts` / `en.ts`**, y se actualiza `grants.hint`.
-5. **Los permisos «Siempre en los chats» que ya existan** (decisión 2).
+5. **Los permisos «Siempre en los chats» que ya existan** dejan de aplicarse y se ven en Ajustes como «antiguos», con «Quitar».
 
-**Decisiones pendientes.**
-1. ¿«En este chat» debe sobrevivir a reiniciar la app? Recomendado: **sí**, guardado con la conversación.
-2. ¿Qué pasa con los permisos «Siempre en los chats» ya guardados? Recomendado: **dejan de aplicarse**, y en Ajustes → Permisos se muestran como «antiguos» con «Quitar», para que el dueño vea qué había.
+**Decisiones del dueño (2026-10-13).**
+1. «En este chat» / «En esta sesión» **sobrevive a reiniciar la app**: se guarda con la conversación y se borra con ella.
+2. Los permisos «Siempre en los chats» ya guardados **dejan de aplicarse**; en Ajustes → Permisos se muestran como «antiguos» con «Quitar», para que el dueño vea qué había.
 
 **Pruebas.**
 - CLI: un chat sin proyecto recibe `deny`, `once` y `session`, nunca `project`; un permiso de sesión sobrevive a reiniciar el Engine y no aplica a otro chat; los permisos antiguos con clave `"chats"` ya no conceden nada.
@@ -1747,6 +1748,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 52 | Revelado suave del texto en streaming (búfer a ritmo constante que acelera si se acumula, palabras con fundido corto, cursor al final), en chat, Boards y subagentes; nada con movimiento reducido. |
 | 54 | El mensaje durante el turno acepta adjuntos, y mientras no se lee se puede editar o borrar (métodos nuevos `steer.update` / `steer.cancel`); nada se descarta en silencio. |
 | 55 | El plan va como tarjeta en el chat y como vista «Plan» en el panel lateral, que se abre sola cada vez que termina un plan. «Implementar» arranca de una vez, sin burbuja del usuario. «Ajustar» responde ahí mismo y produce la versión siguiente del mismo plan. |
+| 56 | Chat suelto: «Denegar», «Permitir una vez» y «Permitir en este chat» (sin «Siempre en los chats»). Proyecto: además «En esta sesión» y «Siempre en este proyecto». El permiso de chat o sesión se guarda con la conversación; los «Siempre en los chats» antiguos dejan de aplicarse y se pueden quitar en Ajustes. |
 | 57 | Audio y video se adjuntan como artefacto; los archivos viajan por ruta, nunca dentro del mensaje, con tope de 1 GiB; el composer avisa antes de enviar y los errores dicen el nombre real y quedan en el registro. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

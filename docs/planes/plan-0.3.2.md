@@ -1097,7 +1097,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 **Pruebas.** Vitest de `TurnTimelineView` con `surface="pane"` (solo `turn.preparing`: sin cabecera viva) y un escenario de Boards que muestrea con `requestAnimationFrame` desde el envío hasta la primera acción.
 
-Detalle y el resto de lo pendiente de Boards: [plan-boards-reimaginado.md](plan-boards-reimaginado.md), Parte C.
+Detalle y el resto de lo pendiente de Boards: [plan-boards.md](plan-boards.md), Parte C.
 
 ---
 

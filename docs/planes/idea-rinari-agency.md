@@ -2,7 +2,7 @@
 
 Estado: **idea en exploración** (2026-10-11; nombre decidido el 2026-10-12). No es un plan todavía. Es un primer boceto para pensarlo con el dueño, que pidió algo **innovador** y que sea **una función importante de Rinari**, no una copia de los «bots» de otros productos.
 
-Viene de quitar la mensajería entre paneles de Boards ([plan-boards-reimaginado.md](plan-boards-reimaginado.md)): la comunicación entre agentes se piensa aquí, desde cero.
+Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-boards.md)): la comunicación entre agentes se piensa aquí, desde cero.
 
 **Para quien se suma a esta parte:** el documento junta las ideas del dueño en orden de llegada (secciones 3 a 3e). Las decisiones que ya tomó son el nombre (abajo), la **pizarra de recados** como espacio compartido, los **N equipos** y la **oficina de 8 bits**, cuyo prototipo interactivo está en `Documents/Proyectos/rinari-familiars-proto` (`index.html`; la carpeta conserva el nombre provisional). Lo abierto está en la sección 6.
 

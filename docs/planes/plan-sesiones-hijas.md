@@ -6,7 +6,7 @@ Estado: **decidido**, sacado del plan de Boards el 2026-10-12 (no es de Boards: 
 - **A1 entra en 0.3.2** ([plan-0.3.2.md](plan-0.3.2.md), #40): el vínculo madre → hija y la barra lateral anidada. Ya da valor con lo que existe, porque las notas aceptadas, los forks y las tareas programadas crean sesiones.
 - **A2 y A3, en la versión siguiente:** `session.start`, la herencia de permisos y la tarjeta de entrega; luego los mensajes a las hijas, los worktrees e «Integrar rama».
 
-Lo que Boards toma de aquí: «Abrir con sus hijas» (B3 en [plan-boards-reimaginado.md](plan-boards-reimaginado.md)) y los worktrees de A3, que necesita «Comparar» (B4). La comunicación entre agentes que no son madre e hija es de [Rinari Agency](idea-rinari-agency.md).
+Boards no depende de las hijas por ahora ([plan-boards.md](plan-boards.md) quedó en limpieza y panel colapsado con estado). Si más adelante vuelven ideas aparcadas como «Abrir con sus hijas» o Comparar, usarían el linaje de A1 y los worktrees de A3. La comunicación entre agentes que no son madre e hija es de [Rinari Agency](idea-rinari-agency.md).
 
 ---
 

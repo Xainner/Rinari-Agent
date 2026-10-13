@@ -20,7 +20,7 @@ Revisión de solo lectura de la documentación de Rinari-Agent (main 3ae3d25, 0.
 | `docs/assets/readme-artwork.md`, `readme-artwork-v2.md` | **Reemplazado** | El README nuevo (#110) usa `docs/assets/readme/`. | Borrar o unir en una nota de arte del README. |
 | `docs/soul-default-3.0.md`, `docs/identity-migration.md` | Revisar | 09-08 y 09-20. El Soul activo ya es Soul 4.0 / `rinari-default`. | Actualizar o archivar. |
 | Vigentes | **OK** | `CLAUDE.md`, `README.md` (#110), `docs/design/obsidiana-neon.md`, `docs/interactive-workspace.md`, `docs/migration/desktop-parity.md`, `tests/ui/README.md` y los README de escenarios, `docs/attachments.md`, `docs/sounds.md`, `docs/image-viewer.md`, `docs/ocr-packaging.md`, `docs/background-processes.md`, `docs/architecture/browser-native.md`. | Mantener. `interactive-workspace.md` cambiará con el plan de Boards. |
-| Nuevos sin commitear (en `worktrees/v032-agent/docs`) | **Vigentes** | `plan-0.3.2.md`, `planka-triage-0.3.2.md`, `plan-boards-reimaginado.md`, `idea-rinari-bots.md` (hoy `idea-rinari-agency.md`) y esta auditoría. | Commitearlos en la rama `0.3.2`, bajo `docs/planes/`. |
+| Nuevos sin commitear (en `worktrees/v032-agent/docs`) | **Vigentes** | `plan-0.3.2.md`, `planka-triage-0.3.2.md`, `plan-boards-reimaginado.md` (hoy `plan-boards.md`), `idea-rinari-bots.md` (hoy `idea-rinari-agency.md`) y esta auditoría. | Commitearlos en la rama `0.3.2`, bajo `docs/planes/`. |
 
 ## Rinari-CLI
 

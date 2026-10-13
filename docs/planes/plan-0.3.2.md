@@ -20,7 +20,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53 y 54 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54 y 55 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
 2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54 y 55, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45 y 51–54) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
@@ -238,7 +238,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 52 | El texto en streaming aparece por oraciones de golpe: revelado suave, palabra por palabra | Agent | Decidido (causa verificada) |
 | 53 | Skills: importar desde Claude Code / Codex bloquea el Engine; instalar desde skills.sh o `npx skills add` no funciona | CLI + Agent | Propuesto (causa verificada y medida) |
 | 54 | Mensaje durante el turno: editarlo o borrarlo mientras no se leyó, y que las imágenes adjuntas se envíen (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
-| 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | Agent | Propuesto (falta 1 decisión) |
+| 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1566,17 +1566,25 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Propuesta.**
 - **En el chat, una tarjeta compacta** de la familia nueva: el título del plan, cuántos pasos tiene, un resumen de dos líneas y los botones **«Ver plan»**, **«Implementar»** y **«Ajustar»** (las acciones que ya existen).
 - **En el panel lateral, una vista «Plan»** con el plan completo bien presentado: secciones plegables, los pasos como lista (que al implementar se vuelve la lista de pasos del turno), los archivos que nombra como enlaces, y las mismas acciones arriba, fijas.
-- **La vista «Plan» aparece** en la barra de título solo cuando la conversación tiene un plan, y **se abre sola la primera vez** que termina un plan (decisión pendiente, abajo). Cuenta para el límite de 3 vistas apiladas (#47).
+- **La vista «Plan» aparece** en la barra de título solo cuando la conversación tiene un plan, y **se abre sola cada vez que termina un plan** (dueño, 2026-10-13). Cuenta para el límite de 3 vistas apiladas (#47).
 - **Varios planes en la misma conversación:** la vista muestra el último, con un selector para ver los anteriores.
 - **En Boards,** la tarjeta va en el panel y «Ver plan» abre el panel lateral de ese panel.
 - El aviso «El plan de *X* está listo» (#33) lleva a la tarjeta y abre la vista.
 
-**Decisión pendiente.**
-1. ¿La vista «Plan» se abre sola al terminar un plan, o solo al pulsar «Ver plan»? Recomendado: **sola la primera vez** en cada conversación; después, con el botón.
+**«Implementar» arranca de una vez** (dueño, 2026-10-13).
+- **Qué hay hoy:** pulsar «Implementar plan» cambia la conversación a BUILD y envía, **como si lo hubiera escrito el dueño**, el texto «Implementa el plan propuesto en el turno anterior. Continúa en BUILD y verifica los cambios.» (`useEngineSession.ts:307-318`, `plan.implementPrompt`). Esa burbuja sobra.
+- **Propuesta:** el turno arranca directamente, con su origen marcado (`origin {kind: "user", source: "plan_implement", plan_turn_id}`): el modelo recibe la instrucción, pero en el chat **no aparece una burbuja del usuario**, sino un separador «Implementando el plan · *título*», como el de los turnos de `/goal` (#23). La lista de pasos del turno nace de los pasos del plan.
+
+**«Ajustar» con una respuesta ahí mismo** (dueño, 2026-10-13).
+- **Hoy** solo hay «Implementar plan» y «Ahora no»; con «Ahora no» el plan queda ahí, sin forma de pedir cambios sobre él.
+- **Propuesta:** «Ajustar» abre un **campo de respuesta en la misma tarjeta** (y arriba de la vista «Plan»), para escribir qué cambiar («quita la migración, usa la tabla existente»). Al enviarlo:
+  - arranca un turno PLAN que revisa **ese** plan con el comentario (con origen `plan_adjust` y el plan de referencia), sin una burbuja suelta del usuario: en el chat se ve «Ajuste del plan: *tu comentario*» pegado a la tarjeta;
+  - el resultado es **la versión 2 del mismo plan**: la tarjeta y la vista se actualizan, con «v2» y lo que cambió resaltado respecto de la anterior; las versiones previas quedan en el selector;
+  - «Ahora no» sigue, más discreto, para cerrar la tarjeta sin hacer nada.
 
 **Pruebas.**
 - Vitest de la tarjeta (título, pasos, resumen, acciones) y de la vista (secciones, pasos, enlaces, selector de planes).
-- Escenario: un turno PLAN del modelo falso termina, aparece la tarjeta y la vista se abre en el panel lateral; «Implementar» desde la vista arranca el turno BUILD con la lista de pasos.
+- Escenario: un turno PLAN del modelo falso termina, aparece la tarjeta y la vista se abre sola en el panel lateral; «Ajustar» con un comentario produce la v2 con los cambios resaltados; «Implementar» arranca el turno BUILD sin burbuja del usuario, con el separador y la lista de pasos del plan.
 
 ---
 
@@ -1634,6 +1642,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 51 | La cabecera viva espera a que termine la llegada del mensaje (500 ms) y entra después; `turn.preparing` no la adelanta. |
 | 52 | Revelado suave del texto en streaming (búfer a ritmo constante que acelera si se acumula, palabras con fundido corto, cursor al final), en chat, Boards y subagentes; nada con movimiento reducido. |
 | 54 | El mensaje durante el turno acepta adjuntos, y mientras no se lee se puede editar o borrar (métodos nuevos `steer.update` / `steer.cancel`); nada se descarta en silencio. |
+| 55 | El plan va como tarjeta en el chat y como vista «Plan» en el panel lateral, que se abre sola cada vez que termina un plan. «Implementar» arranca de una vez, sin burbuja del usuario. «Ajustar» responde ahí mismo y produce la versión siguiente del mismo plan. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

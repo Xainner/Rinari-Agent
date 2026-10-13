@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56 y 57 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56 y 57, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56 y 57) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 y 58, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54 y 56–58) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49 y 55).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -241,6 +241,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 57 | Adjuntar audio o video falla: el mp3 da «Unsupported attachment type» y el mp4 «command params exceed the size limit» (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
+| 58 | Revisión de `app.log`: la ventana del chat se cayó una vez durante el streaming (React #185), y el registro se llena de avisos | Agent | Propuesto (causa probable, sin reproducir) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1690,6 +1691,49 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - CLI: un mp3 y un mp4 se adjuntan como artefacto, con su duración; el error de un tipo no admitido muestra el nombre real.
 - App: arrastrar un video de 50 MB lo manda por ruta y llega al Engine; pegar una captura usa el archivo temporal; un tipo no admitido avisa antes de enviar.
 - Escenario: el modelo falso recibe un mp3 y un mp4 adjuntos y ve sus datos; las burbujas muestran el reproductor.
+
+---
+
+## 58. Lo que muestra `app.log`: una caída del chat y ruido en el registro
+
+**Qué se vio** (`%APPDATA%/rinari-agent/logs/app.log`, 2026-10-11 a 2026-10-13, 7401 líneas).
+
+1. **Una caída de la ventana** el 2026-10-13 a las 16:55:06 UTC: `Minified React error #185` («demasiadas actualizaciones seguidas», un bucle de estado). Pasó **mientras Rinari escribía su respuesta final** en `ses_01M4V18RCEH0W5FFQR2MR6H534` (el turno terminó a las 16:55:12). La respuesta tenía varios bloques de código, títulos en negrita y una tabla con código en línea y una ruta larga de Windows.
+   - **Causa probable (leyendo el código, sin reproducir):** el seguimiento automático del final del chat pelea con la medición de filas de Virtua.
+     - En `ChatView.tsx:350-366` un `ResizeObserver` vigila el contenido y el área de scroll. En cada cambio de tamaño fuerza el scroll al final, llama a `scrollToIndex` y actualiza `atBottom`.
+     - Además, `ChatView.tsx:369-375` llama a `scrollToIndex(last, {align:'end'})` **con cada token**.
+     - Virtua vuelve a pintar con `flushSync` cuando cambia la altura de una fila y compensa el scroll en un `useLayoutEffect`. Con una fila que crece en cada cuadro, esa cadena se repite dentro del mismo commit hasta que React corta con el #185.
+   - **Lo que la alimenta:**
+     - un bloque de código en streaming vuelve a `<pre>` sin colores con cada token (`Markdown.tsx:19-30`: `setHtml(null)` y luego el resaltado asíncrono), así que su altura cambia dos veces por token;
+     - si el texto empieza a parecer matemáticas a mitad del streaming, el bloque entero se vuelve a montar (`Markdown.tsx:122`).
+   - **Sin red de seguridad:** `createRoot` (`src/main.tsx:71-77`) no pasa `onUncaughtError` / `onCaughtError`, y **no hay ningún ErrorBoundary** en la app. Un error así desmonta toda la interfaz (ventana en blanco), y el registro solo guarda el mensaje cortado, sin saber qué componente fue.
+2. **7332 avisos «ResizeObserver loop completed with undelivered notifications»** en tres días (el 98 % del registro). Es la misma pelea del punto 1 en pequeño: no rompe nada, pero tapa lo importante.
+3. **«MaxListenersExceededWarning: 11 rinari:push.engineEvent listeners»** (5 veces, al abrir la app). No es una fuga: unas 20 partes de la app se suscriben a los eventos del Engine, cada una con su `ipcRenderer.on` (`electron/preload/index.ts:83-92`). Hay una carrera pequeña en `memoryStore.ts:104-128` que puede dejar un oyente de más.
+4. **«la ventana se muestra por did-finish-load: la página no llegó a pintar»** (5 veces, al arrancar): la ventana se mostró por el plan B porque la página tardó en pintar. Coincide con los arranques del 11, 12 y 13.
+5. **Una vista previa HTML bloqueada** (2026-10-11 05:47): `frame-src 'none'` impidió abrir `http://<id>.localhost:55502/index.html` en un iframe.
+6. **«the browser host binding was revoked: degraded»** (2 veces), justo cuando el Engine se reinició (04:35, el bloqueo del #53) o se degradó.
+7. **Los títulos:** la causa ya está en el #48 (falta la cabecera `x-opencode-session` en la llamada del título).
+
+**Propuesta.**
+1. **Red de seguridad para errores de interfaz:**
+   - `createRoot` con `onUncaughtError` y `onCaughtError` que registran el mensaje **y la pila de componentes** (sin contenido del usuario);
+   - un ErrorBoundary por zona (chat, panel lateral, cada panel de Boards, Ajustes): si una zona falla, muestra «Algo falló aquí · Recargar esta vista» y el resto de la app sigue funcionando.
+2. **Seguir el final del chat sin pelear con Virtua:**
+   - un solo mecanismo: mientras el dueño está abajo, se pide ir al final **una vez por cuadro** (`requestAnimationFrame`), no con cada token ni dentro del `ResizeObserver`;
+   - el `ResizeObserver` solo marca que hace falta seguir; no mueve el scroll ni cambia estado si nada cambió.
+3. **Bloques de código estables en streaming:** se conserva el último resaltado mientras llega el nuevo (sin volver a `<pre>` en cada token), y se resalta como mucho unas veces por segundo; la decisión de «tiene matemáticas» se toma al terminar el bloque, no a mitad.
+4. **Un solo oyente de eventos del Engine** en preload, que reparte a los suscriptores de la app (adiós al aviso de MaxListeners y a la carrera de `memoryStore`).
+5. **La vista previa HTML** usa el origen permitido por la CSP (revisar `frame-src` frente al servidor local de vistas previas de `HtmlPreview`).
+6. **Registro más útil:** los avisos repetidos iguales se agrupan («×120 en 10 min») en vez de una línea cada vez.
+
+**Decisión pendiente.**
+1. ¿La ventana se quedó en blanco el 2026-10-13 hacia las 10:55 (hora local)? Si sí, confirma la caída; si no, el error vino de una parte que no desmonta la vista principal.
+
+**Pruebas.**
+- Escenario `chat-stream-heavy`: el modelo falso transmite, a velocidad alta, una respuesta como la de esa sesión (varios bloques de código, tabla con rutas largas, negritas) con el chat abajo y con el panel lateral abierto; sin #185, sin avisos de `ResizeObserver` y el chat sigue el final. También bajo carga y con `RINARI_UI_REDUCED_MOTION=1`.
+- Vitest: un componente que lanza un error dentro de un ErrorBoundary muestra «Recargar esta vista» y el error queda registrado con la pila de componentes.
+- Vitest del bloque de código: durante el streaming no vuelve a `<pre>` sin colores.
+- Preload: 30 suscriptores usan un solo `ipcRenderer.on`.
 
 ---
 

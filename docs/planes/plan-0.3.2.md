@@ -27,6 +27,31 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
 4. Release 0.3.2 cuando el dueño lo pida: bump, `docs/releases/v0.3.2.md` y el tag (lo empuja el dueño).
 
+### Bloques de trabajo
+
+Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código o dependen unos de otros se hacen juntos. Los números no cambian (son los de Planka y los commits). Orden: primero los bloques que son base de otros. Decidido con el dueño el 2026-10-13.
+
+| Orden | Bloque | Puntos | Por qué juntos |
+|---|---|---|---|
+| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
+| 2 | Verificación y objetivos | 61c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
+| 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55 y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
+| 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
+| 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
+| 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
+| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35, 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
+| 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
+| 9 | Imágenes y visión | 11, 14, 15, 61d | El mismo camino de imágenes del Engine. |
+| 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
+| 11 | Límites y proveedores | 3, 24, 27, 19, 13 | Las mismas lecturas de uso y de errores del proveedor. |
+| 12 | Proyecto y confianza | 42, 60, 38 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
+| 13 | Subagentes y sesiones hijas | 5, 25, 40 | El mismo vínculo madre → hija y su panel. |
+| 14 | Comandos y tareas | 32, 50 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
+| 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.3.2, va solo. |
+| 16 | Preguntas | 37, 63 | El mismo componente. |
+| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 18 | Sueltos | 4, 8 | Independientes y pequeños. |
+
 ---
 
 ## CI. `boards-side-panel` rojo en `main`

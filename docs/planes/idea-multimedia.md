@@ -55,6 +55,6 @@ El mismo patrón de conectores:
 4. **M4:** video.
 
 ## Decisiones del dueño (2026-10-14)
-1. **Versión:** pendiente de cerrar junto con el nombre de la versión (el dueño propone subir la 0.4.0 a **0.4.0**).
+1. **Versión: entra en la 0.4.0** (decisión del dueño, 2026-10-14).
 2. **Ningún conector por defecto.** Si no hay ninguno configurado, Rinari lo dice con honestidad («no tengo cómo crear imágenes; configura un conector en Ajustes → Visión e imágenes») y no improvisa con otras herramientas.
 3. **La primera fase incluye todo lo de imágenes:** crear, editar, variaciones, escalar y quitar fondo (M1 y la parte de imágenes de M2 se juntan).

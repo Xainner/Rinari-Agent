@@ -1,6 +1,6 @@
 # Multimedia en Rinari Agent: crear y editar imágenes (y después audio y video)
 
-Estado: **idea en análisis** (Planka, Ideas-2, 2026-10-13). No es parte de la 0.3.2 salvo que el dueño lo diga.
+Estado: **idea en análisis** (Planka, Ideas-2, 2026-10-13). No es parte de la 0.4.0 salvo que el dueño lo diga.
 
 ## Qué se pidió
 
@@ -9,7 +9,7 @@ Validar qué tan posible es darle a Rinari **un set de herramientas para crear y
 ## Qué hay hoy
 
 - Rinari **ve** imágenes (`fs.read_image`, captura del navegador, adjuntos, visión por modelo en Ajustes → Visión e imágenes), pero **no crea ni edita** ninguna por sí mismo.
-- Ya lo hacemos por fuera: el arte de Rinari sale de **Codex CLI** (skill `rinari-promo`, suscripción de ChatGPT), y la sesión de Visual Lab mostró que un **MCP de medios** funciona (con los arreglos del #48 de la 0.3.2: progreso, descargas grandes, salidas fuera de esquema).
+- Ya lo hacemos por fuera: el arte de Rinari sale de **Codex CLI** (skill `rinari-promo`, suscripción de ChatGPT), y la sesión de Visual Lab mostró que un **MCP de medios** funciona (con los arreglos del #48 de la 0.4.0: progreso, descargas grandes, salidas fuera de esquema).
 - Mostrar el resultado al dueño depende del `file.present` del #35.
 
 ## Referencia: Hermes Agent
@@ -55,6 +55,6 @@ El mismo patrón de conectores:
 4. **M4:** video.
 
 ## Decisiones del dueño (2026-10-14)
-1. **Versión:** pendiente de cerrar junto con el nombre de la versión (el dueño propone subir la 0.3.2 a **0.4.0**).
+1. **Versión:** pendiente de cerrar junto con el nombre de la versión (el dueño propone subir la 0.4.0 a **0.4.0**).
 2. **Ningún conector por defecto.** Si no hay ninguno configurado, Rinari lo dice con honestidad («no tengo cómo crear imágenes; configura un conector en Ajustes → Visión e imágenes») y no improvisa con otras herramientas.
 3. **La primera fase incluye todo lo de imágenes:** crear, editar, variaciones, escalar y quitar fondo (M1 y la parte de imágenes de M2 se juntan).

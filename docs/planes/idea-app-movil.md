@@ -15,7 +15,7 @@ Cada usuario se conecta desde el teléfono **a su propio Gateway**, por direcci�
 - **Sí a la tarjeta del turno en curso fuera de la app** (2026-10-13), en los dos sistemas:
   - **iOS:** Live Activity (pantalla de bloqueo y Dynamic Island) y widget de pantalla de inicio;
   - **Android:** el equivalente: notificación en curso con su progreso (las «Live Updates» de las versiones recientes de Android, o una notificación persistente con barra de progreso en las anteriores) y widget de pantalla de inicio.
-  - Muestran lo mismo que la tarjeta de estado de la app ([plan 0.3.2](plan-0.3.2.md) #49): qué hace Rinari, el paso de la lista, el tiempo, y un aviso cuando te necesita (aprobación o pregunta), con un toque que abre la conversación.
+  - Muestran lo mismo que la tarjeta de estado de la app ([plan 0.4.0](plan-0.4.0.md) #49): qué hace Rinari, el paso de la lista, el tiempo, y un aviso cuando te necesita (aprobación o pregunta), con un toque que abre la conversación.
 
 ## Preguntas abiertas
 

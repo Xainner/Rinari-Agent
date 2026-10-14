@@ -82,7 +82,7 @@ Aparece tras un instante de pausa (~300 ms) para no saltar al pasar de largo, se
    - **Se quita la columna fija «Añadir panel»** al final del board (~132 px): repetía el botón de la barra y les quitaba ancho a los paneles (dueño, 2026-10-12). El estado vacío del board conserva su botón.
    - La regla de `boards-fit` sigue: que aparezca un contador nunca cambia la altura de la barra.
 
-4. ~~Salidas como paneles~~: **cambiado por el dueño** (2026-10-12). El panel lateral de cada panel se sigue abriendo con su botón, como hoy, y **se puede extender** mucho más, con «Ampliar» incluido. Eso lo resuelve [plan-0.3.2.md](plan-0.3.2.md) #44 para toda la app, junto con el navegador en tamaños de escritorio. Flujos pasa a ser una pestaña del panel lateral (#43). Boards solo los aprovecha; ya no hacen falta «Sacar a un panel» ni la etiqueta «de B».
+4. ~~Salidas como paneles~~: **cambiado por el dueño** (2026-10-12). El panel lateral de cada panel se sigue abriendo con su botón, como hoy, y **se puede extender** mucho más, con «Ampliar» incluido. Eso lo resuelve [plan-0.4.0.md](plan-0.4.0.md) #44 para toda la app, junto con el navegador en tamaños de escritorio. Flujos pasa a ser una pestaña del panel lateral (#43). Boards solo los aprovecha; ya no hacen falta «Sacar a un panel» ni la etiqueta «de B».
 
 **Pruebas.** Vitest de los atajos (Ctrl+1…9, Ctrl+J con y sin pendientes), del soltar desde la barra lateral (posición) y de la barra (qué queda a la vista y qué en el menú). Escenario de Boards: arrastrar una conversación, Ctrl+J entre dos paneles que esperan (uno plegado: se abre su vistazo).
 
@@ -96,21 +96,21 @@ Salieron de las versiones anteriores de este plan y de la maqueta (`Documents/Pr
 - etiqueta de rol por panel y la receta «Planear · Codificar · Revisar»;
 - el chip de carpeta compartida con «Abrir en worktree» (C10);
 - **Comparar** (el mismo encargo a varios modelos), que el dueño dejó para más adelante;
-- **descartados** por el dueño: que los paneles cambien de tamaño solos según su estado; «Enviar a…» entre paneles (se quita con la mensajería); el resumen «Mientras no estabas» al volver a Boards; y las salidas como paneles propios (las reemplaza el panel lateral extensible, 0.3.2 #44).
+- **descartados** por el dueño: que los paneles cambien de tamaño solos según su estado; «Enviar a…» entre paneles (se quita con la mensajería); el resumen «Mientras no estabas» al volver a Boards; y las salidas como paneles propios (las reemplaza el panel lateral extensible, 0.4.0 #44).
 
 ---
 
 ## Parte C. Lo pendiente de Boards hoy
 
-Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka, `docs/debt.md` y lo visto en pruebas), junto en un solo lugar.
+Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka, `docs/debt.md` y lo visto en pruebas), junto en un solo lugar.
 
 | # | Qué | De dónde | Estado |
 |---|---|---|---|
-| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Causa verificada. En este plan, fase B1 (salió de 0.3.2) |
-| C2 | El composer le quitaba el foco al cajón del panel lateral (el rojo de `boards-side-panel` en `main`) | Plan 0.3.2, «CI» | Hecho en la rama `0.3.2` (0c7f34f, sin subir) |
-| C3 | La flecha de la lista de pasos apunta al revés; revisar que en los paneles (`density="pane"`) también esté anclada abajo | Plan 0.3.2, #22 | Decidido |
-| C4 | Los avisos de turno terminado solo existen para paneles del board. Se extienden a todas las conversaciones reutilizando `useBoardNotifications`, y sus preferencias pasan a Ajustes → Notificaciones | Plan 0.3.2, #33 | Decidido. Toca código de Boards: coordinar |
-| C5 | Pendientes de otros perfiles: agregar paneles filtra por el perfil activo y lo de otros perfiles no se ve | Plan 0.3.2, #34 | Decidido (depende de C4) |
+| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Causa verificada. En este plan, fase B1 (salió de 0.4.0) |
+| C2 | El composer le quitaba el foco al cajón del panel lateral (el rojo de `boards-side-panel` en `main`) | Plan 0.4.0, «CI» | Hecho en la rama `0.4.0` (0c7f34f, sin subir) |
+| C3 | La flecha de la lista de pasos apunta al revés; revisar que en los paneles (`density="pane"`) también esté anclada abajo | Plan 0.4.0, #22 | Decidido |
+| C4 | Los avisos de turno terminado solo existen para paneles del board. Se extienden a todas las conversaciones reutilizando `useBoardNotifications`, y sus preferencias pasan a Ajustes → Notificaciones | Plan 0.4.0, #33 | Decidido. Toca código de Boards: coordinar |
+| C5 | Pendientes de otros perfiles: agregar paneles filtra por el perfil activo y lo de otros perfiles no se ve | Plan 0.4.0, #34 | Decidido (depende de C4) |
 | C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Decidido (B.1, fase B1) |
 | C7 | Mensajes entre paneles «como subagentes» | Planka, Idea; triage I1 | Resuelto por decisión: la mensajería se quita (B.1) y la comunicación entre agentes pasa a [Rinari Agency](idea-rinari-agency.md) |
 | C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Sin decidir. Encaja con el pulido de movimiento |
@@ -166,5 +166,5 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.3.2, Planka,
 | B-3 | Paneles que cambian de tamaño solos según su estado | Descartado (dueño, 2026-10-12) |
 | B-4 | Comparar | Todavía no (dueño, 2026-10-12) |
 | B-5 | Lo demás de las versiones anteriores (B.5) | Aparcado: se propone pieza por pieza después de usar Boards limpio |
-| C-1 | Lo que es solo de Boards sale de 0.3.2 y queda en este plan: C1 («Preparando el turno…»), la limpieza (B1) y el panel colapsado (B2) | Decidido (dueño, 2026-10-12) |
+| C-1 | Lo que es solo de Boards sale de 0.4.0 y queda en este plan: C1 («Preparando el turno…»), la limpieza (B1) y el panel colapsado (B2) | Decidido (dueño, 2026-10-12) |
 | C-2 | El buzón de los peers (`PeerBroker`) se retira con la mensajería, para que Rinari Agency construya bien su propia base | Decidido (dueño, 2026-10-12) |

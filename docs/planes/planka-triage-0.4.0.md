@@ -1,25 +1,25 @@
-# Triage de Planka para la 0.3.2
+# Triage de Planka para la 0.4.0
 
 Fecha: 2026-10-11. Tablero **Agent** del proyecto **Rinari Agent**, listas **Bug** e **Idea**.
 
 - Tarjetas leídas de nuevo con `planka_cards_list` y `planka_card_get`. Ninguna tiene descripción (salvo «Herramientas y demás en contexto»), comentarios ni adjuntos.
 - La fecha de creación sale del id de Planka.
-- Código revisado: la rama `0.3.2` de Agent (`worktrees/v032-agent`, 0c7f34f) y la del CLI (`worktrees/v032-cli`, igual que `main` en 2a94168).
+- Código revisado: la rama `0.4.0` de Agent (`worktrees/v032-agent`, 0c7f34f) y la del CLI (`worktrees/v032-cli`, igual que `main` en 2a94168).
 - Es solo análisis: no se tocó Planka ni el código.
-- Plan de referencia: [plan-0.3.2.md](plan-0.3.2.md), hallazgos 3–17. Ninguna tarjeta está cubierta tal cual por el plan; las relaciones parciales se indican en cada sección.
+- Plan de referencia: [plan-0.4.0.md](plan-0.4.0.md), hallazgos 3–17. Ninguna tarjeta está cubierta tal cual por el plan; las relaciones parciales se indican en cada sección.
 
 ## Resumen
 
-**Decisión del dueño (2026-10-11):** B2, B3 y B1 entran en el plan como los hallazgos **18**, **19** y **20** de [plan-0.3.2.md](plan-0.3.2.md). Las demás tarjetas quedan fuera hasta que él diga.
+**Decisión del dueño (2026-10-11):** B2, B3 y B1 entran en el plan como los hallazgos **18**, **19** y **20** de [plan-0.4.0.md](plan-0.4.0.md). Las demás tarjetas quedan fuera hasta que él diga.
 
 | # | Tarjeta | Lista | ¿Aplica? | Recomendación | Tamaño |
 |---|---|---|---|---|---|
-| B1 | Rebote del scroll al bajar con la rueda mientras Rinari trabaja | Bug | No se pudo determinar (hay una causa probable en el código actual) | **Entra en 0.3.2**: primero el escenario que lo reproduce, luego el arreglo | M |
-| B2 | No deja poner más de una imagen en el composer | Bug | Sí | **Entra en 0.3.2** | S |
-| B3 | No deja eliminar el proveedor activo si no hay otro | Bug | Sí | **Entra en 0.3.2** | S |
+| B1 | Rebote del scroll al bajar con la rueda mientras Rinari trabaja | Bug | No se pudo determinar (hay una causa probable en el código actual) | **Entra en 0.4.0**: primero el escenario que lo reproduce, luego el arreglo | M |
+| B2 | No deja poner más de una imagen en el composer | Bug | Sí | **Entra en 0.4.0** | S |
+| B3 | No deja eliminar el proveedor activo si no hay otro | Bug | Sí | **Entra en 0.4.0** | S |
 | B4 | Un subagente y su padre se quedan esperando hasta un mensaje de seguimiento (`ses_01M46E3SM7NE8R7SSGNERRFH2G`) | Bug | No se pudo determinar (sesión de otro usuario; dos arreglos relacionados llegaron después de la tarjeta) | Para después: pedir el diagnóstico de la sesión; mejora opcional de visibilidad junto al #5 | S (visibilidad) |
 | I1 | Mensajes entre paneles de Boards como subagentes | Idea | Parcialmente (la mensajería entre paneles ya existe) | Para después: un plan propio de Boards | L |
-| I2 | Herramientas y demás en contexto en cada mensaje | Idea | Parcialmente (todo se reenvía por diseño, pero ya hay caché de prefijo y una parte la rompe) | **Entra en 0.3.2** solo el orden estable de herramientas; el resto, para después | S (+ M después) |
+| I2 | Herramientas y demás en contexto en cada mensaje | Idea | Parcialmente (todo se reenvía por diseño, pero ya hay caché de prefijo y una parte la rompe) | **Entra en 0.4.0** solo el orden estable de herramientas; el resto, para después | S (+ M después) |
 | I3 | «¿Un framework de tests ahí sería ceremonia?» | Idea | Ya resuelto | Descartar o cerrar | — |
 
 ---
@@ -59,7 +59,7 @@ Fecha: 2026-10-11. Tablero **Agent** del proyecto **Rinari Agent**, listas **Bug
 - Repetir con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`.
 - Un vitest de `activityLayout.begin` puede cubrir el cálculo: anclar con `top < viewport.top` no debe mover `scrollTop`.
 
-**Recomendación: entra en 0.3.2.** Es de la misma familia que el #16 del plan (misma función, `activityLayout.begin`), así que conviene tocarlas juntas.
+**Recomendación: entra en 0.4.0.** Es de la misma familia que el #16 del plan (misma función, `activityLayout.begin`), así que conviene tocarlas juntas.
 - Primero el escenario. Si no reproduce, se cierra la tarjeta con esa evidencia.
 - Si reproduce, el arreglo:
   - para `manual=false`, anclar al **primer elemento visible** dentro del turno (como hace el navegador con `overflow-anchor`), no a la cabecera del turno recortada a la vista;
@@ -84,7 +84,7 @@ Fecha: 2026-10-11. Tablero **Agent** del proyecto **Rinari Agent**, listas **Bug
 - «Adjuntar archivos» (`chooseFiles`, `:664-676`) usa la ruta real, así que por ahí sí entran varias. Eso explica que el fallo se vea al pegar.
 - Ningún commit ha cambiado la deduplicación. El último que tocó ese bloque es `3d12f8b` (2026-10-01, resaltar la zona de arrastre), y no cambió esa regla.
 
-**Recomendación: entra en 0.3.2.**
+**Recomendación: entra en 0.4.0.**
 - Para archivos del navegador (con `data_url`), deduplicar por contenido (tamaño + hash del `data_url`, o `lastModified` + tamaño), no por nombre. Para rutas reales, seguir deduplicando por ruta.
 - `id` con `crypto.randomUUID()`.
 - Si se descarta un duplicado de verdad, mostrar un aviso breve en `attachmentNotice` en vez de callar.
@@ -108,7 +108,7 @@ Fecha: 2026-10-11. Tablero **Agent** del proyecto **Rinari Agent**, listas **Bug
 - **App** (`src/features/providers/ProvidersView.tsx:209-222`, `:398-418`): con un solo proveedor no hay selector «Mover sesiones activas a» y se llama sin `switch_to`. El usuario confirma, sale el toast de error y el proveedor sigue ahí.
 - **Quedarse sin proveedores ya está resuelto en la app:** con 0 proveedores se abre el asistente (`src/App.tsx:364-374`) y Modelos muestra «Añadir proveedor» (`ModelsView.tsx:19-29`).
 
-**Recomendación: entra en 0.3.2.**
+**Recomendación: entra en 0.4.0.**
 - **Engine:** si es el activo, no llega `switch_to` y **no queda ningún otro proveedor**, borrar y limpiar el activo (la rama que ya existe). Si quedan otros, seguir pidiendo `switch_to`, para no dejar sesiones sin modelo por accidente.
 - **App:** con un solo proveedor, el diálogo dice que Rinari quedará sin proveedor y que se abrirá el asistente. Texto nuevo en `es.ts` y `en.ts`.
 - Revisar que una sesión abierta con un modelo de ese proveedor muestre el aviso de «sin modelo» y no se rompa.
@@ -128,7 +128,7 @@ Fecha: 2026-10-11. Tablero **Agent** del proyecto **Rinari Agent**, listas **Bug
 - La sesión no está en `~/.rinari/state.db` del dueño (búsqueda de solo lectura en todas las tablas por `session_id`/`id`), así que no hay eventos que mirar.
 - No sabemos si fue en la app o en el CLI, ni con qué versión.
 
-**Cómo funciona hoy** (Engine `0.3.2`):
+**Cómo funciona hoy** (Engine `0.4.0`):
 - `agent.spawn` no bloquea: el hijo corre en un hilo y la herramienta devuelve `running` (`agents/orchestrator.py:267-272`).
 - Cuando el padre da una respuesta sin herramientas, `collect_for_final` **bloquea el turno hasta que terminan todos los hijos** (`runtime/agent.py:432-433`, `agents/orchestrator.py:282-308`), con un tope de 600 s por hijo antes de cancelarlo.
 - Nada despierta al padre fuera de un turno.
@@ -219,7 +219,7 @@ Fecha: 2026-10-11. Tablero **Agent** del proyecto **Rinari Agent**, listas **Bug
 - No se registra `cache_creation_input_tokens`, así que no se ve cuánto se reescribe.
 
 **Recomendación:**
-- **Entra en 0.3.2 solo el orden estable (S).**
+- **Entra en 0.4.0 solo el orden estable (S).**
   - El núcleo va primero, como hoy. Las demás herramientas expuestas van en orden fijo (alfabético), en lugar del orden de uso.
   - Dentro del turno, una herramienta activada no desaparece hasta que el turno termina (solo puede crecer).
   - Pruebas unitarias: usar una herramienta no-núcleo no cambia el orden de `exposed_names`, y la lista no encoge dentro del turno.

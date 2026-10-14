@@ -1,16 +1,35 @@
-# Plan 0.3.2
+# Plan 0.4.0
 
 Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hasta que el dueño diga «iniciamos».
 
-- Ramas `0.3.2` en Rinari-Agent y Rinari-CLI, creadas desde `main` el 2026-10-10. En `main` están la 0.3.1 (tag `v0.3.1` en 5d4fab5) y el Engine 2a94168.
+- Ramas `0.4.0` en Rinari-Agent y Rinari-CLI, creadas desde `main` el 2026-10-10 (se llamaban `0.3.2`; renombradas en local el 2026-10-14, el remoto `origin/0.3.2` se reemplaza al subir). En `main` están la 0.3.1 (tag `v0.3.1` en 5d4fab5) y el Engine 2a94168.
 - Lo urgente no pasa por aquí: va en una rama `hotfix/…` creada desde `main`.
 - Origen de los hallazgos: `Documents/Proyectos/rinari-motion/out/v030/hallazgos.md`, grabación del film 0.3.0/0.3.1. Los números de la tabla son los de ese archivo. El 1 y el 2 ya se corrigieron en 0.3.1 y el 9 es del proyecto demo, así que no aparecen aquí.
+
+## Alcance de la 0.4.0
+
+Decisión del dueño (2026-10-14): la versión que se planeaba como 0.3.2 pasa a ser **0.4.0**, y entra **todo lo que hemos visto**: los hallazgos de este plan y los planes e ideas de esta carpeta.
+
+| Documento | Qué entra | Estado |
+|---|---|---|
+| Este plan | Los hallazgos #3–#66 (el 9 y el 39 no aplican) | Decididos casi todos |
+| [plan-boards.md](plan-boards.md) | Parte B (limpieza, panel plegado con estado, atajos y barra) y Parte C | Decidido |
+| [plan-sesiones-hijas.md](plan-sesiones-hijas.md) | A1 (#40) y también A2–A3 | A1 decidido; A2–A3 por detallar |
+| [plan-permisos-v4.md](plan-permisos-v4.md) | Tres modos, interruptor de destinos nuevos, lista catastrófica | Decidido |
+| [idea-multimedia.md](idea-multimedia.md) | Imágenes completas (fase 1); audio y video después | Decisiones tomadas |
+| [idea-nightly.md](idea-nightly.md) | Nightly local y por GitHub, compartiendo `~/.rinari` con salvaguardas | Decidido |
+| [plan-gateway.md](plan-gateway.md) | G0–G4 | Borrador, 3 preguntas abiertas |
+| [idea-rinari-agency.md](idea-rinari-agency.md) | Rinari Agency (A1–A5) | Idea, 3 preguntas abiertas |
+| [idea-extension-navegador.md](idea-extension-navegador.md) | Extensión de Chrome/Edge | Idea, 4 preguntas abiertas |
+| [idea-app-movil.md](idea-app-movil.md) | App iOS y Android | Idea, 3 preguntas abiertas |
+
+Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se cierran sus preguntas antes de «iniciamos».
 
 ## Resumen
 
 | # | Hallazgo | Repo | Estado |
 |---|---|---|---|
-| CI | `boards-side-panel` rojo en `main` tras #109 | Agent | Hecho en `0.3.2` (0c7f34f, local) |
+| CI | `boards-side-panel` rojo en `main` tras #109 | Agent | Hecho en `0.4.0` (0c7f34f, local) |
 | 3 | OpenRouter 402 con saldo bajo | CLI | Decidido |
 | 4 | La nota no sale sola | CLI | Decidido |
 | 5 | Subagentes bloqueados en REVIEW | CLI | Decidido |
@@ -20,12 +39,12 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61 y 66 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65 y 66, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61 y 66 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65 y 66, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
-4. Release 0.3.2 cuando el dueño lo pida: bump, `docs/releases/v0.3.2.md` y el tag (lo empuja el dueño).
+4. Release 0.4.0 cuando el dueño lo pida: bump, `docs/releases/v0.4.0.md` y el tag (lo empuja el dueño).
 
 ### Bloques de trabajo
 
@@ -47,7 +66,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 12 | Proyecto y confianza | 42, 60, 38 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
 | 13 | Subagentes y sesiones hijas | 5, 25, 40 | El mismo vínculo madre → hija y su panel. |
 | 14 | Comandos y tareas | 32, 50 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
-| 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.3.2, va solo. |
+| 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
 | 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8 | Independientes y pequeños. |
@@ -276,7 +295,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 65 | La barra de progreso del dictado (descarga del modelo) se ve con el estilo de Windows, verde y gris (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 66 | Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad): el turno termina en silencio con respuestas vacías, la lista se queda «abierta» mientras trabaja, «Verificación completada» miente y tiene el estilo viejo, y una skill manda todo al workspace de otro chat (se deja como está) (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 
-Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
+Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
 ---
 
@@ -1125,7 +1144,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 - `file.present` pasa a ser `file.present({items: [{path | url, caption?}]})`, con el mismo alcance (carpetas del proyecto o del workspace, artefactos de la sesión, y URLs).
 - La red de seguridad (rutas en código que se vuelven enlace) usa la misma tarjeta.
-- **Fuera de la 0.3.2:** un visor 3D (glb, gltf, obj); por ahora, icono y «Abrir».
+- **Fuera de la 0.4.0:** un visor 3D (glb, gltf, obj); por ahora, icono y «Abrir».
 
 **Pruebas.** Un juego de archivos de muestra, uno por fila de la tabla, entregados por el modelo falso con `file.present`: cada uno pinta su tarjeta y abre su vista. Office sin LibreOffice cae al icono sin error.
 
@@ -1182,7 +1201,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ## 40. Sesiones hijas, fase A1: el vínculo madre → hija y la barra lateral anidada
 
-**De dónde viene.** El análisis de Boards (2026-10-11). Las sesiones hijas se sacaron del plan de Boards a su propio plan, [plan-sesiones-hijas.md](plan-sesiones-hijas.md): la fase A1 entra en 0.3.2, y A2 y A3 van en la versión siguiente (decisión del dueño, 2026-10-12).
+**De dónde viene.** El análisis de Boards (2026-10-11). Las sesiones hijas se sacaron del plan de Boards a su propio plan, [plan-sesiones-hijas.md](plan-sesiones-hijas.md): la fase A1 entra en 0.4.0, y A2 y A3 van en la versión siguiente (decisión del dueño, 2026-10-12).
 
 **Qué hay hoy.** Las notas aceptadas, los forks y las tareas programadas ya crean sesiones, pero no queda ningún vínculo visible:
 - la tabla `sessions` no tiene `parent_session_id`; solo existe `forked_from` (migración `0013`), y la app no lo lee;
@@ -1211,7 +1230,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 
 ## 41. Cambios del turno: tarjeta con el estilo nuevo y revisión con colores en el panel lateral
 
-*(El #39 salió de 0.3.2 al plan de Boards; por eso este es el #41.)*
+*(El #39 salió de 0.4.0 al plan de Boards; por eso este es el #41.)*
 
 **Qué se vio** (dueño, con capturas; sesión con `deepseek-v4.1-flash` en una carpeta que no es repo git).
 - La tarjeta «3 archivo(s) de este turno · +248 −0», con su aviso «Se observaron estos cambios, pero la cobertura fue parcial…» y los botones «Revisar» y «Deshacer», tiene el estilo viejo.
@@ -1317,7 +1336,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 3. **El riesgo, acotado por fases:**
    - **44a. Panel lateral extensible y «Ampliar».** Es solo disposición; no toca el navegador. Riesgo bajo.
    - **44b. Tamaño de página con desplazamiento horizontal.** Reutiliza el recorte que ya funciona en Boards. Riesgo bajo o medio; se valida con `npm run browser:vertical` (la prueba `browser-integration` del CI) y con el escenario de abajo.
-   - **Fuera de 0.3.2: ver la página reducida** para que quepa entera (zoom o emulación de tamaño de CDP). Es lo que más puede romper clics y capturas, así que no entra. Si con 44b no basta, se estudia aparte con una sonda propia.
+   - **Fuera de 0.4.0: ver la página reducida** para que quepa entera (zoom o emulación de tamaño de CDP). Es lo que más puede romper clics y capturas, así que no entra. Si con 44b no basta, se estudia aparte con una sonda propia.
 
 **Pruebas.**
 - Vitest del panel lateral: arrastrar más allá de 800 px, «Ampliar» y volver (también con Esc), el ancho por conversación, y lo mismo dentro de un panel de Boards.
@@ -1348,7 +1367,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
   - el agente sigue trabajando en esa misma ventana, y como el perfil se guarda, la sesión iniciada sirve para la próxima vez;
   - si el sitio vuelve a pedir la verificación, el agente se detiene y pregunta otra vez; nunca la resuelve él.
 - **Sin garantía.** Un Chrome de verdad con una persona resolviendo el desafío es la mejor opción legítima. Aun así, algunos sitios bloquean cualquier navegador conectado a una herramienta de automatización, y ahí queda «Abrir en mi navegador».
-- **Más adelante, fuera de 0.3.2:** que el agente use el navegador del dueño con una extensión (como la de Claude para Chrome). El dueño lo aprobó como idea (2026-10-12): [idea-extension-navegador.md](idea-extension-navegador.md).
+- **Más adelante, fuera de 0.4.0:** que el agente use el navegador del dueño con una extensión (como la de Claude para Chrome). El dueño lo aprobó como idea (2026-10-12): [idea-extension-navegador.md](idea-extension-navegador.md).
 
 **Pruebas.** CLI: una página de prueba con el iframe de Turnstile da `HUMAN_CHECK`. App: la tarjeta con «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari»; esta abre una ventana real con el perfil de Rinari del proyecto, y el agente sigue ahí. Escenario: el modelo falso abre esa página y el turno termina en la pregunta al dueño, sin reintentos.
 
@@ -1532,7 +1551,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **Permisos:** la tarea guarda lo que se le aprobó al crearla (como hoy) y sigue el modo elegido ([plan-permisos-v4.md](plan-permisos-v4.md)); un comando programado muestra el comando exacto al crearlo y al editarlo.
 
 **Decidido** (dueño, 2026-10-12):
-- **En 0.3.2 entra lo que corre con Rinari abierta o en la bandeja:** el tipo «Comando», pasar la salida a un agente y los horarios cron. El Programador de tareas del sistema y el servidor quedan para después.
+- **En 0.4.0 entra lo que corre con Rinari abierta o en la bandeja:** el tipo «Comando», pasar la salida a un agente y los horarios cron. El Programador de tareas del sistema y el servidor quedan para después.
 - **Iniciar con Windows en la bandeja, activado por defecto** (la opción ya existe; cambia su valor inicial para instalaciones nuevas).
 - El riesgo de dos procesos sobre la misma base queda para cuando se haga el Programador del sistema.
 
@@ -1979,7 +1998,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Decisiones del dueño (2026-10-13).**
 1. «Mostrar el contenido en la notificación» viene **encendido**, como ChatGPT; se puede apagar.
-2. Responder desde la notificación **entra en 0.3.2 si la prueba en Windows funciona**; si no, el botón «Responder» abre el composer de esa conversación.
+2. Responder desde la notificación **entra en 0.4.0 si la prueba en Windows funciona**; si no, el botón «Responder» abre el composer de esa conversación.
 
 **Pruebas.** Vitest del armado del texto (respuesta en texto plano y cortada, plan, aprobación, fallo; con el interruptor apagado, sin contenido). Prueba manual en Windows: la notificación sale con título y cuerpo, «Abrir» lleva a la conversación y la respuesta llega a la conversación (o abre el composer).
 
@@ -2048,7 +2067,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 
 | # | Decisión |
 |---|---|
-| CI | El arreglo del foco del cajón entra con 0.3.2, no como hotfix. |
+| CI | El arreglo del foco del cajón entra con 0.4.0, no como hotfix. |
 | 3 | OpenRouter 402: solo el reintento con el tope que da el proveedor, sin tope por defecto. |
 | 5 | Subagentes en REVIEW permitidos, y los hijos heredan la solo lectura. |
 | 7 | En Flows, la lista de pasos se muestra como «Tasks», sin tocar el esquema. |
@@ -2067,7 +2086,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 21 | Los pasos del subagente usan el mismo «rail» compartido que el timeline (#10): centrado y de bolita a bolita. |
 | 22 | La flecha de la lista de pasos sigue la dirección en que crece: cerrada ↑, abierta ↓. |
 | 23 | `/goal`: «logrado» = Rinari lo declara con evidencia y la verificación lo confirma. Sin tope por defecto (se puede poner uno), con «estancado» tras 3 iteraciones sin progreso. |
-| 24 | Entra en 0.3.2. Funciona con la app abierta o en la bandeja; continúa (no reenvía); por defecto pregunta. |
+| 24 | Entra en 0.4.0. Funciona con la app abierta o en la bandeja; continúa (no reenvía); por defecto pregunta. |
 | 25 | Cada instrucción del coordinador lleva su propio id. El panel de Agentes las muestra en orden, entre los pasos, también en sesiones viejas. |
 | 26 | El límite de altura de la lista queda siempre puesto; solo cambia el scroll, para que cerrar no salte. |
 | 27 | Una ventana con la hora de reinicio vencida se ve «restablecida · actualizando…» y se refresca sola, también al llegar la hora. |
@@ -2086,13 +2105,13 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 41 | La tarjeta de cambios pasa al estilo nuevo con lista de archivos. «Revisar» (la tarjeta y la fila de abajo) abre «Cambios del turno» en el panel lateral con los colores del `DiffView`; funciona sin git. |
 | 42 | Chip de proyecto solo en conversaciones nuevas (lo escrito viaja al cambiar). Empieza en «Sin proyecto». Lista: proyectos del perfil activo por uso reciente, buscador y «Abrir carpeta…». Las existentes se mueven desde la barra lateral. |
 | 43 | Flujos es una pestaña del panel lateral (Normal y Boards), con versión compacta y selector «Esta conversación · Proyecto». Sale el modo «Flujos» de arriba. |
-| 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.3.2 por riesgo. |
+| 44 | El panel lateral se extiende sin el tope de 800 px y tiene «Ampliar» (44a). En el Navegador, el tamaño de la página va separado del panel (Ajustar, 390, 768, 1280, 1920) y se recorre con desplazamiento horizontal, sin reducirla (44b); el agente puede pedir el tamaño. La vista reducida queda fuera de 0.4.0 por riesgo. |
 | 45 | Ante una verificación humana (Turnstile, captchas) el agente se detiene y pregunta. La tarjeta ofrece «Abrir en mi navegador» y «Abrir en Chrome/Edge con Rinari» (ventana real con perfil de Rinari por proyecto, el dueño pasa la verificación y el agente sigue). No se disfraza el navegador ni se intentan resolver captchas. |
 | 46 | Capturas fuera del proceso principal (medir primero), página de inicio de Rinari, cursor del agente en una capa aparte y control implícito: el dueño lo toma al usarlo y el agente lo retoma tras 3 s sin uso, nunca en un campo de contraseña. |
 | 47 | Panel lateral: seis vistas (Navegador, Terminal, Archivos, Cambios, Agentes, Flujo; Workspace se reparte), un botón por vista en la barra de título con indicador, hasta 4 en mosaico (1 completa, 2 apiladas, 3 = dos a la izquierda y una alta a la derecha, 4 = 2×2; una columna si el panel es angosto) con «Ampliar». En Boards actúan sobre el panel enfocado. |
 | 48 | Todo genérico para cualquier MCP: el progreso renueva el tiempo de espera, el detector no cuenta esperas con resultado que cambia, las salidas fuera de esquema llegan como texto con aviso, `web.download` por partes hasta 1 GiB, nombres tolerantes solo con una coincidencia y la misma política, título de respaldo, y la nota de la lista solo cuando la amerita. |
 | 49 | Cabecera del turno en curso como tarjeta: qué hace (el paso de la lista o la acción), «Paso n/m» de la lista, la acción con su propio tiempo, y tiempo total y tokens a la derecha. En Boards angosto, una línea. |
-| 50 | Tareas «Comando» sin modelo, con salida y código guardados y opción de pasarle la salida a un agente, más horarios cron. En 0.3.2 solo con Rinari abierta o en la bandeja (iniciar con Windows en la bandeja, activado por defecto). El Programador del sistema y el servidor, después. |
+| 50 | Tareas «Comando» sin modelo, con salida y código guardados y opción de pasarle la salida a un agente, más horarios cron. En 0.4.0 solo con Rinari abierta o en la bandeja (iniciar con Windows en la bandeja, activado por defecto). El Programador del sistema y el servidor, después. |
 | 51 | La cabecera viva espera a que termine la llegada del mensaje (500 ms) y entra después; `turn.preparing` no la adelanta. |
 | 52 | Revelado suave del texto en streaming (búfer a ritmo constante que acelera si se acumula, palabras con fundido corto, cursor al final), en chat, Boards y subagentes; nada con movimiento reducido. |
 | 54 | El mensaje durante el turno acepta adjuntos, y mientras no se lee se puede editar o borrar (métodos nuevos `steer.update` / `steer.cancel`); nada se descarta en silencio. |
@@ -2102,8 +2121,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 60 | Al crear un proyecto, «Confiar» sale encendido salvo en carpetas con hooks o servidores MCP propios (apagado con aviso); al guardar se abre un borrador del proyecto con el chip del #42, sin sesión vacía. |
 | 62 | Al volver a la ventana, el resultado que terminó mientras no estabas lleva una marca visible («Nuevo · terminó hace…», borde con brillo suave) y se da por leído con actividad del dueño o a los 3 s, no a los 500 ms; el «1» baja al mismo tiempo; «↓ Nuevo resultado» si no está a la vista. Sin la cara de Rinari en la cabecera (descartado). |
 | 64 | Notificación de Windows con el nombre de la conversación y las primeras líneas de la respuesta (o del plan, la aprobación o el fallo), «Abrir» y «Revisar plan»; sin aprobar desde ahí. Contenido visible por defecto, con interruptor. Responder desde la notificación si funciona en Windows; si no, «Responder» abre el composer. |
-| Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
+| Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
-| Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |
+| Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |
 
 Estado: **esperando más hallazgos**. No se implementa hasta que el dueño diga «iniciamos».

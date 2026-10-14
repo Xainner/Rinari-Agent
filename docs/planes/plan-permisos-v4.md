@@ -10,7 +10,7 @@ En `policy/engine.py` (RInari-CLI):
   - **Acceso completo:** «no pregunta nada salvo la lista dura».
 - **La lista dura, siempre preguntada:** `force push`, borrar fuera del proyecto y los secretos del sistema (claves SSH, almacenes de credenciales). No admite «siempre».
 - **La guardia de contenido externo:** después de leer contenido de fuera (una página, una API, **el resultado de un MCP**), la siguiente acción que envía datos fuera (un POST, **una llamada MCP**, `git push`, `curl` con cuerpo, subir algo en el navegador) **pregunta incluso en Acceso completo**.
-- **Por eso pregunta tanto en la práctica:** casi toda tarea con MCP lee un resultado de MCP (contenido externo) y luego vuelve a llamar al MCP (envío): la guardia salta en Acceso completo. Pasó en la sesión del Visual Lab ([plan 0.3.2](plan-0.3.2.md) #48), y lo mismo con SSH.
+- **Por eso pregunta tanto en la práctica:** casi toda tarea con MCP lee un resultado de MCP (contenido externo) y luego vuelve a llamar al MCP (envío): la guardia salta en Acceso completo. Pasó en la sesión del Visual Lab ([plan 0.4.0](plan-0.4.0.md) #48), y lo mismo con SSH.
 
 ## Lo decidido: tres modos
 

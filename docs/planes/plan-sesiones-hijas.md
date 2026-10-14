@@ -3,7 +3,7 @@
 Estado: **decidido**, sacado del plan de Boards el 2026-10-12 (no es de Boards: vive en la barra lateral y en el chat).
 
 **Versiones** (decisión del dueño, 2026-10-12):
-- **A1 entra en 0.3.2** ([plan-0.3.2.md](plan-0.3.2.md), #40): el vínculo madre → hija y la barra lateral anidada. Ya da valor con lo que existe, porque las notas aceptadas, los forks y las tareas programadas crean sesiones.
+- **A1 entra en 0.4.0** ([plan-0.4.0.md](plan-0.4.0.md), #40): el vínculo madre → hija y la barra lateral anidada. Ya da valor con lo que existe, porque las notas aceptadas, los forks y las tareas programadas crean sesiones.
 - **A2 y A3, en la versión siguiente:** `session.start`, la herencia de permisos y la tarjeta de entrega; luego los mensajes a las hijas, los worktrees e «Integrar rama».
 
 Boards no depende de las hijas por ahora ([plan-boards.md](plan-boards.md) quedó en limpieza y panel colapsado con estado). Si más adelante vuelven ideas aparcadas como «Abrir con sus hijas» o Comparar, usarían el linaje de A1 y los worktrees de A3. La comunicación entre agentes que no son madre e hija es de [Rinari Agency](idea-rinari-agency.md).
@@ -102,4 +102,4 @@ Rinari no tiene archivo de reglas: las aprobaciones de sesión («siempre en est
 | A-3 | La madre retoma un turno corto cuando termina una hija que abrió Rinari (y no cuando nace de una nota) | Decidido |
 | A-4 | `session.message` solo de la madre a sus hijas, nada lateral | Decidido |
 | A-5 | Una hija que escribe en el mismo repo usa worktree por defecto | Decidido, preguntando la primera vez por proyecto |
-| V | A1 en 0.3.2; A2 y A3 en la versión siguiente | Decidido (2026-10-12) |
+| V | A1 en 0.4.0; A2 y A3 en la versión siguiente | Decidido (2026-10-12) |

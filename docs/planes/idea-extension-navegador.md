@@ -1,10 +1,10 @@
 # Rinari en tu navegador: una extensión para Chrome y Edge
 
-Estado: **idea aprobada para después de 0.3.2** (dueño, 2026-10-12). Todavía no es un plan.
+Estado: **idea aprobada para después de 0.4.0** (dueño, 2026-10-12). Todavía no es un plan.
 
 ## De dónde sale
 
-Del #45 del [plan 0.3.2](plan-0.3.2.md): Cloudflare Turnstile y otras verificaciones humanas rechazan el navegador integrado de Rinari, porque es un navegador automatizado. Cambiar de motor (por ejemplo, a Firefox) no lo arregla. Disfrazar el navegador no se hace. Lo que sí sirve, para los sitios donde el dueño ya inició sesión, es que **el agente trabaje en el navegador de siempre del dueño**, como la extensión de Claude para Chrome.
+Del #45 del [plan 0.4.0](plan-0.4.0.md): Cloudflare Turnstile y otras verificaciones humanas rechazan el navegador integrado de Rinari, porque es un navegador automatizado. Cambiar de motor (por ejemplo, a Firefox) no lo arregla. Disfrazar el navegador no se hace. Lo que sí sirve, para los sitios donde el dueño ya inició sesión, es que **el agente trabaje en el navegador de siempre del dueño**, como la extensión de Claude para Chrome.
 
 ## Qué sería
 

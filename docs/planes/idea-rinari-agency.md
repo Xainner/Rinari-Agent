@@ -277,5 +277,5 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 | A1 | **Agentes en solitario:** la tarjeta, el espacio Agency con su vista Normal, «Nuevo agente» (formulario y «Créalo con Rinari»), chat directo, memoria propia, modelo por defecto | Sesiones hijas A1 (linaje) |
 | A2 | **Equipos:** oficinas, puestos, chat de oficina con @menciones, pizarra de recados, credenciales y memoria de equipo, plantillas | Permisos v4 (modos por agente y equipo) |
 | A3 | **La vista Agencia:** el edificio y las oficinas de 8 bits con eventos reales, HUD para editar | A2 |
-| A4 | **Reglas y disparadores:** reloj, correo, Telegram, webhooks, archivos y CI; reglas deterministas sin modelo | A2; tareas programadas con comandos (0.3.2 #50) |
+| A4 | **Reglas y disparadores:** reloj, correo, Telegram, webhooks, archivos y CI; reglas deterministas sin modelo | A2; tareas programadas con comandos (0.4.0 #50) |
 | A5 | **24/7 en el servidor:** la Agency corriendo en el Engine del Gateway y la app conectada a ese Engine | Plan del Gateway (conexión remota) |

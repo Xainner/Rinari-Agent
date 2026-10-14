@@ -20,8 +20,8 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60 y 61 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64 y 65, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62 y 65) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61 y 66 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65 y 66, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -33,15 +33,15 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 
 | Orden | Bloque | Puntos | Por qué juntos |
 |---|---|---|---|
-| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
-| 2 | Verificación y objetivos | 61c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
+| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 66a (respuestas vacías), 66d–e (rutas en skills, argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
+| 2 | Verificación y objetivos | 61c y 66c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
 | 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55 y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
-| 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
-| 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
+| 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
+| 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
 | 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35, 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
-| 9 | Imágenes y visión | 11, 14, 15, 61d | El mismo camino de imágenes del Engine. |
+| 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f) | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
 | 11 | Límites y proveedores | 3, 24, 27, 19, 13 | Las mismas lecturas de uso y de errores del proveedor. |
 | 12 | Proyecto y confianza | 42, 60, 38 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
@@ -274,6 +274,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 63 | Preguntas al usuario: al pasar de una pregunta a otra (y al volver), una animación que muestre el avance (Planka, Ideas-2) | Agent | Propuesto |
 | 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Decidido |
 | 65 | La barra de progreso del dictado (descarga del modelo) se ve con el estilo de Windows, verde y gris (Planka, Bug) | Agent | Decidido (causa verificada) |
+| 66 | Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad): el turno termina en silencio con respuestas vacías, la lista se queda «abierta» mientras trabaja, «Verificación completada» miente y tiene el estilo viejo, y una skill manda todo al workspace de otro chat (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1996,6 +1997,51 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Propuesta.** Un componente canónico `ProgressBar` en el sistema de diseño (`docs/design/obsidiana-neon.md`): pista oscura, relleno con el degradado de acento, bordes redondeados, transición suave del avance, modo indeterminado (brillo que recorre) cuando no se sabe el total, y `role="progressbar"` con sus valores para lectores de pantalla. Reemplaza los tres `<progress>`, y se añade a la lista de comprobación del diseño («nada de controles nativos sin estilo»).
 
 **Pruebas.** Vitest del componente (valor, indeterminado, accesibilidad); captura del composer descargando un modelo en `ui-tour`; un test que falla si aparece un `<progress>` nativo en `src`.
+
+---
+
+## 66. Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad con motion graphics)
+
+**Qué se vio** (Planka, Bug, 2026-10-14). La sesión «se detuvo» sin decir por qué; salió «Verificación completada» con el estilo viejo; «se cayó» la primera vez; la animación de la lista quedó congelada hasta que el modelo volvió a actualizarla; tras varios «continúa» terminó, pero dejó el resultado **en la carpeta de un workspace**, no en la del proyecto.
+
+**Datos de la sesión** (`session_events`): modelo `qwen3.8-flash-next-ud-q4_k_xl` en el proveedor propio xAInner (`api.xainner.com`), perfil Acceso completo, esfuerzo alto, skills `promo-video` y `rinari-lab-imagen`. 7 turnos, 107 llamadas al modelo, 257 herramientas (13 fallidas), **~12 M tokens de entrada** sin caché (`cached_input_tokens` nulo) y el contexto creciendo hasta ~215 mil por llamada.
+
+### 66a. El turno termina en silencio con una respuesta vacía
+- **Causa (verificada).** Los turnos 1 a 5 terminaron porque el modelo devolvió `end_turn` con **0 tokens de salida** (solo razonamiento), a mitad del trabajo y justo después de prometer más pasos. `runtime/agent.py:537-561` toma cualquier respuesta sin herramientas como la respuesta final, **aunque esté vacía**: sin reintento, sin aviso y sin motivo. `turn.completed` llega con `content: ""` y `kind: "answer"`; el chat no muestra nada (solo Boards tiene `board.result.summaryEmpty`).
+- **La «caída»** de la primera vez fue esto, no la app: a las 02:25:30 falló `node capture.mjs` («Node is either not clickable…») y la llamada siguiente volvió vacía. En `app.log` no hay errores de la app a esa hora.
+- **Propuesta.**
+  1. Si la respuesta final viene **vacía** (sin texto ni herramientas), el Engine le pasa una nota de harness («tu respuesta llegó vacía; continúa con el trabajo o di dónde quedó») y reintenta **una vez**.
+  2. Si vuelve a venir vacía, el turno termina con `kind: "empty"` y un motivo, y el chat lo dice: «El modelo terminó sin responder · Continuar». La lista de pasos de ese turno queda `interrupted`, no `open`.
+  3. Vale para cualquier proveedor; es común en modelos cuantizados o con razonamiento largo.
+
+### 66b. La lista se queda «abierta» mientras Rinari trabaja
+- **Causa (verificada).** Al terminar cada turno vacío, `settle` dejó la lista en `open` (`checklist/service.py:198-204`). Al empezar el turno siguiente **nada la vuelve a `active`**, así que el dock no dibuja el avance (`ChecklistDock.tsx:46`, `working = state === 'active'`) y el recordatorio no corre (`checklist/reminder.py:40`). Huecos de 1 a 14 minutos con la lista «congelada» mientras el modelo trabajaba (turnos 2 a 6).
+- **Propuesta** (se suma al #59): al empezar un turno con una lista `open` o `interrupted`, vuelve a `active` para ese turno; el dock toma «turno en curso» como trabajando aunque el estado no haya cambiado aún.
+
+### 66c. «Verificación completada» miente y tiene el estilo viejo
+- **Causa (verificada).** La fila sale de `TurnTimelineView.tsx:219-220, 233-234`, con los textos escritos a mano (fuera de `es.ts`/`en.ts`) y un `div` con un check, no la fila `act-row` de las herramientas. El reductor guarda el resultado (`turnTimelineReducer.ts:528-537`) pero **nadie lo muestra**: cinco de las seis verificaciones fueron `IMPLEMENTED_UNVERIFIED` («sin evidencia de validación») y todas dijeron «Verificación completada». Solo la última fue `DONE`.
+- **Propuesta.** La fila pasa al estilo `act-row` y dice el resultado real: «Verificado» (DONE), «Sin evidencia» (IMPLEMENTED_UNVERIFIED), «Parcial», «Bloqueado», «Falló», con su color; al abrirla, los motivos. Textos en i18n.
+
+### 66d. Una skill manda el trabajo al workspace de otro chat
+- **Causa (verificada).** Todo se escribió en `~/.rinari/workspaces/chat_01M3TNGT7R55DCTRQ2TWYFQ5EG/…` (el entregable `entregables/dondecr-spot/dondecr-spot-1080p60.mp4`), aunque `workspace_root` de cada turno era `Proyectos/032`. La skill instalada `promo-video` **lleva escrita la ruta de otro chat**: `SKILL.md:30`, `references/guia-completa.md:5`, `references/produccion-ampliada.md:26` (`$WORKSPACE = '…chat_01M3TNGT7R55DCTRQ2TWYFQ5EG'`) y `references/hallazgos.md:55`. La skill se armó en esa conversación y se quedó con sus rutas. Con Acceso completo nada lo frenó. La respuesta final dio una ruta relativa que, en la app, apunta a `032` y no existe.
+- **Propuesta.**
+  1. **Al guardar o instalar una skill** (aprendida, creada por Rinari o importada), el validador **avisa** si trae rutas absolutas de `~/.rinari/workspaces/…` o de otra conversación, y ofrece cambiarlas por «la carpeta de trabajo de la conversación» (`{workspace}`) o «el proyecto».
+  2. Cuando Rinari escribe fuera de la carpeta de la conversación o del proyecto, la fila de la herramienta lo marca («fuera del proyecto»), también en Acceso completo; la respuesta final da **rutas absolutas** de lo que entregó (o `file.present`, #35).
+  3. **Arreglar la skill `promo-video` del dueño** (sus rutas): es un archivo del dueño; se hace solo con su permiso.
+
+### 66e. Argumentos con el tipo equivocado
+- 7 de los 13 fallos fueron `INVALID_ARGUMENT` por **listas o booleanos enviados como texto** (`checklist.update items` ×3, `fs.patch files`, `capability.search load: "True"` ×2), típico de modelos cuantizados. Ya hay tolerancia para algunos casos (`test_tool_argument_tolerance.py`).
+- **Propuesta.** Si un argumento que debe ser lista u objeto llega como texto JSON válido, o un booleano llega como `"true"`/`"false"`, se convierte antes de validar; si no se puede, el error dice el tipo esperado con un ejemplo.
+
+### 66f. Lo demás
+- **Avisos del detector de bucles invisibles:** hubo dos (03:41:44 oscilación `checklist.update` + el mismo ffmpeg; 03:55:55 el mismo error ×3) y la app no los muestra (`TurnTimelineView.tsx:216`). Propuesta: una fila discreta «Rinari estaba repitiendo X; se le avisó».
+- **Imágenes reenviadas:** 98 `VisualPixelsDelivered` con 247 imágenes para solo 33 distintas (una, 21 veces). Refuerza el 61d: las capturas viejas no se reenvían enteras en cada llamada.
+- **Otra vez gzip:** `web.fetch` de dondecr.com volvió comprimido (02:12:52): mismo 61a.
+- **`checklist.update` en exceso:** 48 de 257 llamadas, casi todas repitiendo los mismos conteos (entra en el ajuste del recordatorio del #48/#59).
+
+**Pruebas.**
+- CLI: una respuesta final vacía recibe una nota y un reintento; dos vacías terminan con `kind: "empty"` y motivo, y la lista queda `interrupted`; una lista `open` vuelve a `active` al empezar el turno; el validador de skills avisa de una ruta `~/.rinari/workspaces/chat_*`; `items` como texto JSON se convierte.
+- App: «El modelo terminó sin responder · Continuar»; la fila de verificación con su resultado y estilo; el dock trabajando con la lista reabierta; la fila del aviso de bucle.
 
 ---
 

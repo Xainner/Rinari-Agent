@@ -261,7 +261,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 50 | Tareas programadas con comandos y scripts (como los cron jobs de Hermes), horarios cron y que corran aunque Rinari esté cerrado | CLI + Agent | Decidido (con Rinari abierta o en la bandeja) |
 | 51 | Al enviar, la cabecera «Rinari trabajando» aparece antes de que termine de llegar el mensaje | Agent | Decidido (causa verificada) |
 | 52 | El texto en streaming aparece por oraciones de golpe: revelado suave, palabra por palabra | Agent | Decidido (causa verificada) |
-| 53 | Skills: importar desde Claude Code / Codex bloquea el Engine; instalar desde skills.sh o `npx skills add` no funciona | CLI + Agent | Propuesto (causa verificada y medida) |
+| 53 | Skills: importar desde Claude Code / Codex bloquea el Engine; instalar desde skills.sh o `npx skills add` no funciona, y un repo o .zip grande choca con los topes aunque la skill sea chica (53b) | CLI + Agent | Propuesto (causa verificada y medida) |
 | 54 | Mensaje durante el turno: editarlo o borrarlo mientras no se leyó, y que las imágenes adjuntas se envíen (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
 | 55 | El plan, como tarjeta en el chat y desplegado en el panel lateral, como Codex y Claude Code (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 56 | Permisos: en un chat suelto sale «Siempre en los chats»; los alcances deben ser «En este chat» y, en proyecto, «En esta sesión» y «En este proyecto» (Planka, Bug) | CLI + Agent | Decidido (causa verificada) |
@@ -1611,8 +1611,28 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **Errores claros en Ajustes → Skills:** si algo falla o vence, se dice qué y se puede reintentar; la pantalla nunca se queda «pensando» sin fin.
 6. **Vigilancia general:** el Engine registra cualquier pedido que tarde más de unos segundos en el hilo de pedidos (solo el nombre y la duración), para encontrar otros casos así antes de que bloqueen.
 
+### 53b. Instalar desde un repo o un .zip grande: los topes miran todo, no la skill (dueño, 2026-10-13)
+
+**Qué se vio.** Con el link de GitHub: «download exceeds 26214400 bytes». Con el .zip descargado a mano: «archive has over 2000 files». **No hay forma de instalar la skill.**
+
+**Causa (verificada).**
+- Para cualquier link de GitHub, `parse_source` (`skills/install.py:79-90`) baja **el repo entero** como .zip (`codeload.github.com/<dueño>/<repo>/zip/<ref>`), aunque el link apunte a una sola carpeta (`tree/<ref>/<ruta>`) y la skill pese poco. Un repo con muchas skills, como `minimax-ai/minimax-h3`, pasa de los **25 MiB** de `DOWNLOAD_MAX_BYTES` (`:28`).
+- Con un .zip local, `safe_extract` (`:164-176`) aplica los topes de **2000 archivos** y **60 MiB** al .zip **completo** antes de buscar la skill (`EXTRACT_MAX_FILES`, `EXTRACT_MAX_BYTES`), y extrae todo.
+- Los topes tienen sentido (evitan bombas de compresión), pero se aplican a lo que no se va a instalar.
+
+**Propuesta.**
+1. **De GitHub, bajar solo la skill:**
+   - con la API de árboles de GitHub (`git/trees/<ref>?recursive=1`, una llamada) se listan los `SKILL.md` del repo y los archivos de la carpeta elegida;
+   - se bajan **solo esos archivos** (`raw.githubusercontent.com`), con el tope aplicado a la skill;
+   - si el link no dice qué skill (o viene de skills.sh o de `npx skills add … --skill <nombre>`, del 53.4), la misma lista sirve para elegir;
+   - si la API no responde (límite sin token), se usa `git clone --depth 1 --filter=blob:none --sparse` con solo esa carpeta cuando hay git; si tampoco, el .zip completo como hoy.
+2. **De un .zip, mirar el índice primero:** leer el índice del .zip (no cuesta nada), encontrar los `SKILL.md`, elegir la skill y **extraer solo sus archivos**. Los topes de archivos y tamaño se aplican a esa skill.
+3. **Topes por skill, con salida:** si una skill sola pasa de los topes, el aviso dice cuánto pesa y cuántos archivos tiene, y ofrece **«Instalar igual»** (con la revisión del 53.3: el texto se revisa, los binarios entran por hash). La protección contra bombas de compresión (tamaño expandido frente a comprimido) se mantiene siempre.
+4. Los errores dicen qué tope se pasó, sobre qué (el repo entero o la skill) y qué hacer.
+
 **Pruebas.**
 - CLI: con una skill de prueba de 200 MB, `skill.import.scan` vuelve al instante con la lista rápida y la revisión corre como trabajo con progreso; durante la revisión, `session.create` y `bundle.list` responden; cancelar detiene el trabajo; la revisión no analiza binarios; las repetidas salen una vez.
+- CLI: un repo de 80 MB con una skill de 200 KB se instala bajando solo la skill (API de árboles simulada); un .zip con 5000 archivos instala la skill elegida extrayendo solo sus archivos; una skill de más de 60 MB pide «Instalar igual»; una bomba de compresión se corta igual.
 - CLI: `parse_source` con una URL de skills.sh y con el comando `npx skills add … --skill …` da el repo y la skill correctos; un repo con varias skills y sin nombre pide elegir.
 - App: importar muestra progreso y se puede cancelar; instalar pegando el comando; un fallo muestra el motivo y «Reintentar».
 

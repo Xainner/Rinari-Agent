@@ -1,6 +1,6 @@
 # Multimedia en Rinari Agent: crear y editar imágenes (y después audio y video)
 
-Estado: **idea en análisis** (Planka, Ideas-2, 2026-10-13). No es parte de la 0.4.0 salvo que el dueño lo diga.
+Estado: **entra en la 0.4.0** (Planka, Ideas-2, 2026-10-13; decisión del dueño, 2026-10-14).
 
 ## Qué se pidió
 

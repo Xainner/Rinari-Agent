@@ -247,7 +247,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 61 | Lecciones de `ses_01M4V9MXD0H839MT18JWEFDDZX`: las páginas web llegan comprimidas (gzip) en vez de texto, la basura se queda en el contexto, y la verificación de una descarga se enreda | CLI + Agent | Propuesto (causa verificada) |
 | 62 | Al volver a la ventana, nada indica que la conversación a la vista terminó mientras no estabas (suena y sale el «1» en la barra de tareas, pero adentro no se ve) | Agent | Decidido (causa verificada) |
 | 63 | Preguntas al usuario: al pasar de una pregunta a otra (y al volver), una animación que muestre el avance (Planka, Ideas-2) | Agent | Propuesto |
-| 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Propuesto (faltan 2 decisiones) |
+| 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1930,9 +1930,9 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 4. **Privacidad** (decisión 1): un interruptor en Ajustes → Notificaciones, «Mostrar el contenido en la notificación». Apagado, la notificación dice solo «*Conversación* terminó».
 5. Vale con la app abierta o en la bandeja (el Engine tiene que estar vivo); sigue las mismas reglas de cuándo avisar del #33 y el #62.
 
-**Decisiones pendientes.**
-1. ¿«Mostrar el contenido en la notificación» viene encendido? Recomendado: **sí**, como ChatGPT; se puede apagar (por ejemplo, si la pantalla se ve en reuniones o en la pantalla de bloqueo).
-2. ¿La respuesta desde la notificación entra en 0.3.2? Recomendado: **sí, si la prueba en Windows funciona**; si no, el botón «Responder» que abre el composer.
+**Decisiones del dueño (2026-10-13).**
+1. «Mostrar el contenido en la notificación» viene **encendido**, como ChatGPT; se puede apagar.
+2. Responder desde la notificación **entra en 0.3.2 si la prueba en Windows funciona**; si no, el botón «Responder» abre el composer de esa conversación.
 
 **Pruebas.** Vitest del armado del texto (respuesta en texto plano y cortada, plan, aprobación, fallo; con el interruptor apagado, sin contenido). Prueba manual en Windows: la notificación sale con título y cuerpo, «Abrir» lleva a la conversación y la respuesta llega a la conversación (o abre el composer).
 
@@ -1997,6 +1997,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 57 | Audio y video se adjuntan como artefacto; los archivos viajan por ruta, nunca dentro del mensaje, con tope de 1 GiB; el composer avisa antes de enviar y los errores dicen el nombre real y quedan en el registro. |
 | 60 | Al crear un proyecto, «Confiar» sale encendido salvo en carpetas con hooks o servidores MCP propios (apagado con aviso); al guardar se abre un borrador del proyecto con el chip del #42, sin sesión vacía. |
 | 62 | Al volver a la ventana, el resultado que terminó mientras no estabas lleva una marca visible («Nuevo · terminó hace…», borde con brillo suave) y se da por leído con actividad del dueño o a los 3 s, no a los 500 ms; el «1» baja al mismo tiempo; «↓ Nuevo resultado» si no está a la vista. Sin la cara de Rinari en la cabecera (descartado). |
+| 64 | Notificación de Windows con el nombre de la conversación y las primeras líneas de la respuesta (o del plan, la aprobación o el fallo), «Abrir» y «Revisar plan»; sin aprobar desde ahí. Contenido visible por defecto, con interruptor. Responder desde la notificación si funciona en Windows; si no, «Responder» abre el composer. |
 | Boards | Lo que es solo de Boards no va en 0.3.2: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.3.2. |

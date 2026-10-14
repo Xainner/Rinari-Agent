@@ -33,7 +33,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 
 | Orden | Bloque | Puntos | Por qué juntos |
 |---|---|---|---|
-| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 66a (respuestas vacías), 66d–e (rutas en skills, argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
+| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 66a (respuestas vacías), 66e (argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
 | 2 | Verificación y objetivos | 61c y 66c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
 | 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55 y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
@@ -274,7 +274,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 63 | Preguntas al usuario: al pasar de una pregunta a otra (y al volver), una animación que muestre el avance (Planka, Ideas-2) | Agent | Propuesto |
 | 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Decidido |
 | 65 | La barra de progreso del dictado (descarga del modelo) se ve con el estilo de Windows, verde y gris (Planka, Bug) | Agent | Decidido (causa verificada) |
-| 66 | Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad): el turno termina en silencio con respuestas vacías, la lista se queda «abierta» mientras trabaja, «Verificación completada» miente y tiene el estilo viejo, y una skill manda todo al workspace de otro chat (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
+| 66 | Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad): el turno termina en silencio con respuestas vacías, la lista se queda «abierta» mientras trabaja, «Verificación completada» miente y tiene el estilo viejo, y una skill manda todo al workspace de otro chat (se deja como está) (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2024,10 +2024,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 ### 66d. Una skill manda el trabajo al workspace de otro chat
 - **Causa (verificada).** Todo se escribió en `~/.rinari/workspaces/chat_01M3TNGT7R55DCTRQ2TWYFQ5EG/…` (el entregable `entregables/dondecr-spot/dondecr-spot-1080p60.mp4`), aunque `workspace_root` de cada turno era `Proyectos/032`. La skill instalada `promo-video` **lleva escrita la ruta de otro chat**: `SKILL.md:30`, `references/guia-completa.md:5`, `references/produccion-ampliada.md:26` (`$WORKSPACE = '…chat_01M3TNGT7R55DCTRQ2TWYFQ5EG'`) y `references/hallazgos.md:55`. La skill se armó en esa conversación y se quedó con sus rutas. Con Acceso completo nada lo frenó. La respuesta final dio una ruta relativa que, en la app, apunta a `032` y no existe.
-- **Propuesta.**
-  1. **Al guardar o instalar una skill** (aprendida, creada por Rinari o importada), el validador **avisa** si trae rutas absolutas de `~/.rinari/workspaces/…` o de otra conversación, y ofrece cambiarlas por «la carpeta de trabajo de la conversación» (`{workspace}`) o «el proyecto».
-  2. Cuando Rinari escribe fuera de la carpeta de la conversación o del proyecto, la fila de la herramienta lo marca («fuera del proyecto»), también en Acceso completo; la respuesta final da **rutas absolutas** de lo que entregó (o `file.present`, #35).
-  3. **Arreglar la skill `promo-video` del dueño** (sus rutas): es un archivo del dueño; se hace solo con su permiso.
+- **Decisión del dueño (2026-10-14): se deja como está.** No se agrega aviso de rutas en skills ni marca de «fuera del proyecto», y la skill `promo-video` no se toca.
 
 ### 66e. Argumentos con el tipo equivocado
 - 7 de los 13 fallos fueron `INVALID_ARGUMENT` por **listas o booleanos enviados como texto** (`checklist.update items` ×3, `fs.patch files`, `capability.search load: "True"` ×2), típico de modelos cuantizados. Ya hay tolerancia para algunos casos (`test_tool_argument_tolerance.py`).
@@ -2040,7 +2037,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - **`checklist.update` en exceso:** 48 de 257 llamadas, casi todas repitiendo los mismos conteos (entra en el ajuste del recordatorio del #48/#59).
 
 **Pruebas.**
-- CLI: una respuesta final vacía recibe una nota y un reintento; dos vacías terminan con `kind: "empty"` y motivo, y la lista queda `interrupted`; una lista `open` vuelve a `active` al empezar el turno; el validador de skills avisa de una ruta `~/.rinari/workspaces/chat_*`; `items` como texto JSON se convierte.
+- CLI: una respuesta final vacía recibe una nota y un reintento; dos vacías terminan con `kind: "empty"` y motivo, y la lista queda `interrupted`; una lista `open` vuelve a `active` al empezar el turno; `items` como texto JSON se convierte.
 - App: «El modelo terminó sin responder · Continuar»; la fila de verificación con su resultado y estilo; el dock trabajando con la lista reabierta; la fila del aviso de bucle.
 
 ---

@@ -49,12 +49,12 @@ El mismo patrón de conectores:
 - **video:** modelos de video vía FAL u otros, y MCPs como Visual Lab (que ya hace covers de canciones).
 
 ## Fases
-1. **M1:** `image.generate` / `image.edit`, conectores OpenAI API, Codex CLI y FAL, entrega con `file.present`, confirmación con costo.
-2. **M2:** MCP asignado como conector, ComfyUI local, Google y OpenRouter, variaciones y escalado.
+1. **M1:** todas las herramientas de imagen (crear, editar, variaciones, escalar, quitar fondo), conectores OpenAI API, Codex CLI y FAL, entrega con `file.present`, confirmación con costo, sin conector por defecto.
+2. **M2:** más conectores (MCP asignado, ComfyUI local, Google y OpenRouter) si no entraron en M1.
 3. **M3:** audio (voz, música, efectos).
 4. **M4:** video.
 
-## Preguntas abiertas
-1. ¿Entra en la versión siguiente a la 0.3.2, o antes?
-2. ¿Qué conector va por defecto? Recomendado: **Codex CLI con la suscripción** si el dueño ya la tiene (sin costo extra); si no, OpenAI API.
-3. ¿M1 incluye editar desde el primer día, o solo crear?
+## Decisiones del dueño (2026-10-14)
+1. **Versión:** pendiente de cerrar junto con el nombre de la versión (el dueño propone subir la 0.3.2 a **0.4.0**).
+2. **Ningún conector por defecto.** Si no hay ninguno configurado, Rinari lo dice con honestidad («no tengo cómo crear imágenes; configura un conector en Ajustes → Visión e imágenes») y no improvisa con otras herramientas.
+3. **La primera fase incluye todo lo de imágenes:** crear, editar, variaciones, escalar y quitar fondo (M1 y la parte de imágenes de M2 se juntan).

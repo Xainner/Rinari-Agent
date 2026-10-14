@@ -21,7 +21,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 ## Orden de entrega
 
 1. Un PR de CLI `0.3.2 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60 y 61 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63 y 64, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61 y 62) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+2. Un PR de Agent `0.3.2 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64 y 65, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62 y 65) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -49,7 +49,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 14 | Comandos y tareas | 32, 50 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.3.2, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8 | Independientes y pequeños. |
 
 ---
@@ -273,6 +273,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 62 | Al volver a la ventana, nada indica que la conversación a la vista terminó mientras no estabas (suena y sale el «1» en la barra de tareas, pero adentro no se ve) | Agent | Decidido (causa verificada) |
 | 63 | Preguntas al usuario: al pasar de una pregunta a otra (y al volver), una animación que muestre el avance (Planka, Ideas-2) | Agent | Propuesto |
 | 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Decidido |
+| 65 | La barra de progreso del dictado (descarga del modelo) se ve con el estilo de Windows, verde y gris (Planka, Bug) | Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.3.2.md](planka-triage-0.3.2.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1980,6 +1981,21 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 2. Responder desde la notificación **entra en 0.3.2 si la prueba en Windows funciona**; si no, el botón «Responder» abre el composer de esa conversación.
 
 **Pruebas.** Vitest del armado del texto (respuesta en texto plano y cortada, plan, aprobación, fallo; con el interruptor apagado, sin contenido). Prueba manual en Windows: la notificación sale con título y cuerpo, «Abrir» lleva a la conversación y la respuesta llega a la conversación (o abre el composer).
+
+---
+
+## 65. Barras de progreso con el estilo de la app
+
+**Qué se vio** (Planka, Bug, con captura). Al descargar el modelo del dictado, la barra sale **verde sobre gris**, la de Windows, con «28 %» al lado.
+
+**Causa (verificada).** Se usa el `<progress>` nativo del navegador sin estilo en tres lugares:
+- `features/dictation/DictationButton.tsx:199` (la del composer, la de la captura);
+- `features/dictation/DictationSettings.tsx:155` (Ajustes → Dictado);
+- `features/providers/ProviderUsagePanel.tsx:53` (ventanas de uso del proveedor; solo cambia el color con `accent-color`).
+
+**Propuesta.** Un componente canónico `ProgressBar` en el sistema de diseño (`docs/design/obsidiana-neon.md`): pista oscura, relleno con el degradado de acento, bordes redondeados, transición suave del avance, modo indeterminado (brillo que recorre) cuando no se sabe el total, y `role="progressbar"` con sus valores para lectores de pantalla. Reemplaza los tres `<progress>`, y se añade a la lista de comprobación del diseño («nada de controles nativos sin estilo»).
+
+**Pruebas.** Vitest del componente (valor, indeterminado, accesibilidad); captura del composer descargando un modelo en `ui-tour`; un test que falla si aparece un `<progress>` nativo en `src`.
 
 ---
 

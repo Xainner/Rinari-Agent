@@ -4,6 +4,7 @@ Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hast
 
 - Ramas `0.4.0` en Rinari-Agent y Rinari-CLI, creadas desde `main` el 2026-10-10 (se llamaban `0.3.2`; renombradas en local el 2026-10-14, el remoto `origin/0.3.2` se reemplaza al subir). En `main` están la 0.3.1 (tag `v0.3.1` en 5d4fab5) y el Engine 2a94168.
 - Lo urgente no pasa por aquí: va en una rama `hotfix/…` creada desde `main`.
+- **Regla de interfaz (dueño, 2026-10-14): todo lo que toque la UI pasa por la sesión de pulido de UI** («Full overhaul of Rinari Agent's UI», `local_38910bee-334b-4267-8cd5-c234fea5eaad`, la encargada de la UI). Antes de dar por terminado un punto o un bloque con cambios de interfaz (componentes, estilos, animaciones, textos visibles, maquetas que se vuelven pantallas), se le pasa para revisión y pulido con [obsidiana-neon.md](../design/obsidiana-neon.md), y sus ajustes entran antes de subir. Aplica también a Boards, Agency, multimedia y cualquier plan de esta carpeta.
 - Origen de los hallazgos: `Documents/Proyectos/rinari-motion/out/v030/hallazgos.md`, grabación del film 0.3.0/0.3.1. Los números de la tabla son los de ese archivo. El 1 y el 2 ya se corrigieron en 0.3.1 y el 9 es del proyecto demo, así que no aparecen aquí.
 
 ## Alcance de la 0.4.0

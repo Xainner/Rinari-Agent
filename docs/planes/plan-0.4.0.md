@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90 y 91 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91 y 92, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66 y 88) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91 y 93 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92 y 93, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -69,7 +69,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque y rendimiento | 70, 91 | Saludo, reintento e historial por páginas; base para equipos lentos. |
@@ -323,9 +323,10 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 87 | Personalidad: no se nota diferencia entre «Mínimo», «Equilibrado» y «Personaje completo»; y rediseño de la pantalla (dueño) | CLI + Agent | Propuesto (causa verificada) |
 | 88 | El chat no queda abajo del todo mientras Rinari trabaja: baja, sube un poco y se queda corto (Planka, Bug; `ses_01M506SYS4YBZ203KZ2JAXE0FX`) | Agent | Propuesto (causa verificada) |
 | 89 | El botón de bajar muestra tres puntos animados mientras Rinari trabaja, y la flecha cuando no (Planka, Ideas-2) | Agent | Propuesto |
-| 90 | Procesos que el modelo deja corriendo (servidores, watchers): se quedan huérfanos al cerrar la app, el modelo no los ve y los repite (Planka, Ideas-2) | CLI + Agent | Propuesto (causa verificada, falta 1 decisión) |
-| 91 | Arranque más rápido, carga más ligera y un Engine más estable (Planka, Ideas-2) | CLI + Agent | Propuesto (medido, falta 1 decisión) |
+| 90 | Procesos que el modelo deja corriendo (servidores, watchers): se quedan huérfanos al cerrar la app, el modelo no los ve y los repite (Planka, Ideas-2) | CLI + Agent | Decidido (causa verificada) |
+| 91 | Arranque más rápido, carga más ligera y un Engine más estable (Planka, Ideas-2) | CLI + Agent | Decidido (medido) |
 | 92 | Ajustes: pasada visual a Agentes, Modelos (alias con «Editar»), Skills y Contexto; Memoria y Personalidad ya van en #75 y #87 (Planka, Ideas-2) | Agent | Propuesto |
+| 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Propuesto (causa verificada, falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2680,8 +2681,8 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 7. **Tope:** ~8 procesos vivos por conversación, con un error claro que sugiere detener uno.
 8. **App:** «Detener todos» en el panel Terminal y en `ProcessesDock`, la sección «Huérfanos», chips de puerto/URL que abren el navegador del panel, y la tarjeta «En segundo plano» del Resumen (#82). Pasa por la sesión de pulido de UI.
 
-**Decisión pendiente.**
-1. Al **cerrar Rinari del todo** (no al minimizar a la bandeja), ¿se detienen los servidores que dejó el modelo? Recomendado: **sí**, como Claude Code; si alguno debe seguir, el modelo lo arranca con `persist: true` y la app pregunta al cerrar «¿Dejar corriendo *npm run dev*?».
+**Decisión (dueño, 2026-10-15).**
+1. Al **cerrar Rinari del todo** (no al minimizar a la bandeja) **se detienen** los servidores que dejó el modelo, como en Claude Code; si alguno debe seguir, el modelo lo arranca con `persist: true` y la app pregunta al cerrar «¿Dejar corriendo *npm run dev*?».
 
 **Pruebas.** CLI: `engine.shutdown` detiene los procesos; con Job Object, un `cmd /c start` hijo también muere; `process.logs` devuelve el final aunque la salida pase de 512 KiB; un segundo `process.start` del mismo servidor devuelve el existente; el registro persistente marca huérfanos tras un reinicio; tope de 8. App: «Detener todos», sección de huérfanos. Escenario: el modelo falso arranca un servidor, se reinicia el Engine y el panel lo muestra como huérfano; «Detener» lo mata.
 
@@ -2712,8 +2713,8 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 8. **Almacenamiento:** el Engine deja de escribir los eventos duplicados con nombre viejo y compacta los `tool.output.delta` al terminar la herramienta (una migración limpia los existentes: ~40 % menos de eventos). Y **Ajustes → Almacenamiento**: cuánto ocupa cada cosa (conversaciones, espacios de trabajo, navegador, artefactos, caché) con «Limpiar» por apartado.
 9. **Estabilidad medida:** un escenario `startup-timing` que falla si el arranque empaquetado pasa de un umbral, y un escenario de abrir una conversación de 10 000 eventos con tiempo máximo.
 
-**Decisión pendiente.**
-1. ¿La limpieza de `~/.rinari` es **automática** (por ejemplo, caché y espacios de trabajo de conversaciones borradas o archivadas hace más de 30 días) o **solo manual** desde Ajustes → Almacenamiento? Recomendado: **manual, con una sugerencia** cuando pase de un tamaño («Rinari ocupa 11 GB; 6,8 GB son espacios de trabajo viejos. Revisar»).
+**Decisión (dueño, 2026-10-15).**
+1. La limpieza de `~/.rinari` es **manual**, desde Ajustes → Almacenamiento, **con una sugerencia** cuando pase de un tamaño («Rinari ocupa 11 GB; 6,8 GB son espacios de trabajo viejos. Revisar»). Nada se borra solo.
 
 **Pruebas.** Electron: la ventana se muestra sin el respaldo de 1,5 s; el Engine se lanza antes de que el renderer lo pida. CLI: la entrada rápida saluda sin importar Typer (comprobado con `-X importtime`); `session.timeline` de 10 000 eventos en < 50 ms y < 500 KB; no se escriben eventos duplicados; la migración compacta los `delta`. App: Ajustes → Almacenamiento con tamaños; escenarios `startup-timing` y de conversación grande.
 
@@ -2734,7 +2735,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Propuesta.**
 1. **Modelos:**
    - cada modelo guardado es una fila de solo lectura (alias, id del proveedor, visión, contexto, «Activo») con **«Editar»** (lápiz): al pulsarlo, el alias se vuelve un campo con **«Guardar»** y **«Cancelar»** (Esc cancela, Enter guarda), y guarda con `model_alias`; si el alias ya existe, el error sale debajo del campo. Mismo patrón que `RecordRow` de Memoria (`MemorySettings.tsx:218-301`);
-   - los modelos descubiertos se muestran como «Disponibles» con **«Añadir»** (el alias se pone después con «Editar», o en el mismo paso si se pulsa el lápiz);
+   - **no hay modelos «por guardar»:** todo lo que el proveedor anuncia ya está guardado (#93), así que desaparece el botón «Guardar» de la lista;
    - «Quitar» pide confirmación; botones e insignias canónicos; estado vacío con chibi.
 2. **Agentes:** cabecera e introducción como las demás; una tarjeta por agente con su avatar o icono, el selector canónico (#12) para modelo y respaldo, el `Switch` de la app, «Restablecer» como botón fantasma, y un aviso «Guardado» al cambiar; la procedencia en palabras («como el general», «del perfil *X*», que encaja con el #86); textos por i18n; estados de carga y vacío.
 3. **Skills:** `.seg-tabs` para los filtros, `SearchField`, insignias canónicas, estado vacío con chibi y error con «Reintentar».
@@ -2743,6 +2744,36 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 6. Todo según la lista de comprobación de [obsidiana-neon.md](../design/obsidiana-neon.md) (carga, vacío, error con reintento y normal en cada pantalla) y **pasa por la sesión de pulido de UI**.
 
 **Pruebas.** Vitest de Modelos: la fila es de solo lectura hasta «Editar»; «Guardar» llama a `model_alias`; «Cancelar» y Esc restauran; alias repetido muestra el error; «Quitar» pide confirmación. Vitest de Agentes con el selector y el aviso «Guardado». Capturas nuevas de las seis pantallas en `ui-tour` (las últimas son del 10 de octubre).
+
+---
+
+## 93. Guardar los modelos del proveedor: siempre automático
+
+**Qué se vio** (dueño, 2026-10-15). Se decidió que al configurar un proveedor (en el asistente inicial o en Ajustes → Proveedores) sus modelos **se guardan solos**. Aun así, en Ajustes → Proveedores → Modelos salen **todos con «Guardar»**, y tampoco se guardan solos con «Actualizar modelos» del composer. El flujo tiene que quedar correcto.
+
+**Lo que dicen los datos (base del dueño, en una copia).** Los modelos **sí están guardados**: el proveedor Anthropic que se agregó hoy (16:42:33) tiene sus **14 modelos guardados un segundo después** (16:42:34). Comparando con lo que anuncia cada proveedor, solo faltan **5**: 3 de xAInner y 2 de OpenCode Go, que el proveedor empezó a ofrecer después.
+
+**Causas (verificadas).**
+1. **La lista se dibuja antes de que termine el guardado y no se vuelve a leer.** Al agregar un proveedor en Ajustes, la app abre su tarjeta al momento (`setExpanded(alias)`) y lanza el guardado **sin esperarlo** (`void registerProviderModels(alias)`, `ProvidersView.tsx:138-139`; lo mismo al cambiar la credencial, `:173`, y al iniciar sesión por OAuth, `ProviderDetails.tsx:45`). `ModelCatalog` lee la lista **una sola vez al montarse** (`ModelCatalog.tsx:38-60`, depende solo del alias): la lee cuando aún no hay nada guardado, así que todos salen «por guardar», y el `onChanged` posterior no la recarga. Los modelos ya están guardados; la pantalla miente hasta que se sale y se vuelve.
+2. **Hay tres formas de «actualizar» y solo una guarda.**
+   - «Actualizar» de Ajustes → Modelos usa `model.refresh` con `add_new` y **sí guarda** los nuevos (`registerModels.ts`).
+   - «Actualizar modelos» del composer usa el descubrimiento en segundo plano (`model.discovery.*`): los nuevos entran al selector como **no guardados** (`saved: false`, `useCatalog.ts:26-55`) y solo se guardan si se eligen (`useEngineSession.ts:241-249`).
+   - `model.discover`, que usa la tarjeta, **solo lee** (`model_service.py:132-159`).
+3. **«Guardar» de la lista registra con el id como alias**, el mismo que ya existe: si se pulsa sobre uno que en realidad está guardado, choca.
+
+**Propuesta.**
+1. **Una sola regla en el Engine: lo que el proveedor anuncia queda guardado.** Cualquier lectura del catálogo de un proveedor (al configurarlo, al cambiar la credencial, al iniciar sesión, «Actualizar» de Ajustes, «Actualizar modelos» del composer y el descubrimiento en segundo plano) **guarda los nuevos** con su id como alias (`refresh(add_new=True)`, que ya resuelve choques de alias y no duplica) y marca «no disponible» los que el proveedor dejó de ofrecer. `model.discovery.completed` lleva lo guardado y lo añadido. Así desaparecen los modelos «no guardados» del selector (`saved: false`).
+2. **Evento `models.changed`** cuando se añaden, quitan o renombran modelos: `ModelCatalog`, Ajustes → Modelos, el selector del composer y Agentes se recargan solos. La tarjeta del proveedor muestra «Guardando modelos…» mientras el guardado inicial está en curso, y después la lista ya guardada.
+3. **Sin «Guardar» en la lista:** cada modelo es una fila de solo lectura con «Editar» para el alias (#92), «Usar», «Probar» y «Quitar».
+4. **«Quitar» no vuelve a aparecer en la siguiente actualización:** quitar un modelo lo **oculta** (queda en una lista de ocultos del proveedor, que la actualización respeta), y la tarjeta tiene «Ocultos (n)» con «Mostrar» para recuperarlo. Sin esto, guardar todo automáticamente devolvería lo quitado cada vez.
+5. **Al actualizar a 0.4.0**, una pasada única guarda lo que falte (los 5 de hoy) y deja todo coherente.
+6. Aviso discreto cuando se añaden modelos nuevos: «OpenCode Go: 2 modelos nuevos» con «Ver».
+7. Pasa por la sesión de pulido de UI (la fila, «Guardando modelos…», «Ocultos»).
+
+**Decisión pendiente.**
+1. ¿«Quitar» un modelo lo **oculta** (y la actualización no lo vuelve a traer, con «Ocultos» para recuperarlo) o lo **borra** (y vuelve si el proveedor lo sigue ofreciendo)? Recomendado: **ocultar**.
+
+**Pruebas.** CLI: `model.discovery` y `model.discover` guardan los nuevos y marcan los que faltan; un modelo oculto no vuelve con la actualización; «Mostrar» lo recupera; `models.changed` se emite en cada cambio; la pasada de migración guarda los que falten. App: al agregar un proveedor en Ajustes la tarjeta muestra «Guardando modelos…» y luego la lista **sin ningún «Guardar»**; «Actualizar modelos» del composer deja los nuevos guardados (sin `saved: false`); vitest de «Ocultos». Escenario: agregar un proveedor falso con 5 modelos → los 5 guardados y visibles sin salir de la pantalla; el proveedor anuncia uno más → «Actualizar» del composer lo guarda y aparece en Ajustes.
 
 ---
 
@@ -2819,6 +2850,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 83 | La rama sale de la barra lateral, de la barra de título y de la cabecera de los paneles; vive en Resumen → Entorno y en el chip de proyecto de una conversación nueva; la barra de título queda solo con el título de la conversación (sin chip de proyecto ni de modo); el aviso de cambio de rama se mantiene y enciende el Resumen; sin marca de rama en la barra lateral, tampoco con worktree. |
 | 86 | Perfiles: tarjeta con alma, modelos por agente y trabajo; formulario con selectores; alma de Rinari por defecto; se quita el modo del perfil; «Usar este perfil» no toca la configuración global. |
 | 87 | Niveles de personalidad con reglas concretas y ejemplos, al final del prompt, **sin kaomoji** en ningún nivel; pantalla nueva con vista previa por nivel y galería de almas. |
+| 90 | Al cerrar Rinari del todo se detienen los procesos que dejó el modelo (salvo `persist: true`, que se pregunta al cerrar). Minimizar a la bandeja no detiene nada. |
+| 91 | La limpieza de `~/.rinari` es manual (Ajustes → Almacenamiento) con una sugerencia al pasar de un tamaño; nada se borra solo. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

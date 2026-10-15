@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75 y 76 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76 y 77, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80 y 81 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80 y 81, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -63,8 +63,8 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f), 77 | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
-| 11 | Límites y proveedores | 3, 24, 27, 19, 13 | Las mismas lecturas de uso y de errores del proveedor. |
-| 12 | Proyecto y confianza | 42, 60, 38 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
+| 11 | Límites y proveedores | 3, 24, 27, 19, 13, 80 | Las mismas lecturas de uso y de errores del proveedor. |
+| 12 | Proyecto y confianza | 42, 60, 38, 81 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
 | 13 | Subagentes y sesiones hijas | 5, 25, 40, 73 | El mismo vínculo madre → hija y su panel. |
 | 14 | Comandos y tareas | 32, 50 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
@@ -73,6 +73,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
+| 22 | Uso y diagnóstico | 78, 79 | El informe de uso alimenta el paquete de revisión; los dos leen lo mismo del Engine. |
 | 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. |
 
 ---
@@ -309,6 +310,10 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Decidido |
 | 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos y salidas grandes, con lo que hacen OpenCode, Hermes, Codex, Claude Code y Gemini CLI (Planka, Validar) | CLI + Agent | Propuesto (investigado) |
 | 77 | Imágenes en el composer: quitar la barra «Leer imágenes como» y una vista previa grande y bonita, igual en el composer y en el chat (dueño, con capturas) | Agent | Decidido |
+| 78 | `/usage` en el chat: un informe de uso completo y bonito (límites del plan, contexto, uso por modelo, herramientas y avisos de desperdicio) que reemplaza «Contexto y uso» del panel lateral (propuesta de Claude, ampliada por el dueño) | CLI + Agent | Propuesto (faltan 2 decisiones) |
+| 79 | «Exportar para revisión»: una conversación (o desde un mensaje) en un paquete para analizarla, con los registros de esas horas y sin secretos (propuesta de Claude) | CLI + Agent | Propuesto (falta 1 decisión) |
+| 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Propuesto (faltan 2 decisiones) |
+| 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Propuesto |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2310,6 +2315,103 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Decisión del dueño (2026-10-14).** Si el modelo no ve imágenes, se cambia **solo** a texto (OCR), con la marca en el chip; se puede cambiar desde el chip.
 
 **Pruebas.** Vitest: sin barra en el composer; con un modelo sin visión el chip marca «Texto»; el menú del chip cambia el modo y la marca. Escenario: abrir una imagen desde el composer, un mensaje y el timeline abre el mismo visor a pantalla casi completa, con zoom, flechas y Esc; captura en `ui-tour`; con movimiento reducido, sin animación.
+
+---
+
+## 78. `/usage`: el informe de uso en el chat
+
+**Qué se pidió** (dueño, 2026-10-14, sobre la propuesta del «termómetro»). Un comando `/usage` en la app que pinte **en el chat** un informe de uso detallado, bonito y con diseño, que se pueda **copiar**, al estilo del de Claude Code (límites del plan con su reinicio, uso de la sesión por modelo con tokens de entrada, salida, caché leída y escrita). Quitar del panel lateral la sección de uso, que hoy muestra poco, y que el anillo de contexto lleve a este informe.
+
+**Qué hay hoy (verificado).**
+- **Workspace → «Contexto y uso»** (`features/workspace/InsightPanel.tsx`): estado del contexto, `usage.get` (llamadas, tokens de entrada, salida, caché y razonamiento, herramientas ok/error) con `cost` siempre nulo, y los contadores del estado compactado. Se carga una vez, sin refrescarse.
+- **El anillo de contexto** (`features/context/ContextRing.tsx`): % usado, ventana, umbral de compactación y última compactación; al abrir el globo pide `provider.usage.get` y muestra las ventanas del plan. Botones «Detalles» (abre la pestaña anterior) y «Compactar ahora».
+- **Ajustes → Proveedores → «Uso y límites»** (`ProviderUsagePanel.tsx`): ventanas y saldos de cada proveedor y el uso local por proveedor.
+- **`/usage` existe solo en la CLI** (`commands/catalog.py:110`, `cli/slash.py:199-219`): llamadas, tokens, tiempo y costo.
+- **Datos del Engine:** `provider.usage.get` informa ventanas y reinicios de OpenCode Go y ChatGPT/Codex, y saldos de OpenRouter y DeepSeek; **Claude Subscription no informa nada** (`providers/usage.py:118`). `usage.updated` suma tokens por turno, pero **sin modelo ni costo**; el modelo de cada llamada está en `ModelInvoked` (`context_anchor.model`) y en `model.started`, sin agrupar. **No se registran los tokens de escritura de caché** (`models/types.py:107-122`). No hay tabla de precios: hay costo solo si el modelo tiene precios configurados (`cli/snapshot.py:173-180`).
+- **No hay precedente** de una tarjeta local en el chat: los comandos de la app abren el panel lateral (`features/engine/slashUi.ts`).
+
+**Propuesta.**
+1. **`/usage` en la app** (y el mismo informe en la CLI). No llama al modelo: pinta una **tarjeta de informe** en el chat, de la familia nueva. Por defecto, de esta conversación; un selector arriba: **Esta conversación · Hoy · Este proyecto · Todo**.
+2. **Qué lleva** (cada bloque solo si hay datos):
+   - **Cliente:** versión de la app y del Engine, perfil, proveedor y modelo de la conversación.
+   - **Límites del plan** (del proveedor de la conversación y de los demás conectados): cada ventana con su barra, el % usado y **cuándo se reinicia** (en relativo, «en 3 h 12 min», y la hora local); saldos y créditos donde el proveedor los da; «no informado» con su motivo donde no (por ejemplo Claude Subscription).
+   - **Contexto:** el anillo grande, tokens usados de la ventana, umbral de compactación, compactaciones hechas y la última.
+   - **Uso por modelo:** una fila por modelo usado (el principal, los subagentes y el auxiliar del #80): llamadas, entrada, salida, **caché leída, caché escrita**, razonamiento, % de caché y costo cuando se conoce el precio.
+   - **Herramientas:** total, correctas y con error, y las 5 más usadas.
+   - **Avisos de desperdicio** (lo que era el «termómetro»), cada uno con su arreglo de un toque: la misma imagen reenviada muchas veces (#61d), salidas grandes que siguen en el contexto, respuestas vacías (#66a), caché que el proveedor no está usando, bucles detectados. Sin avisos, «Todo en orden».
+   - **Tiempo:** duración de la conversación y tiempo activo de los turnos.
+3. **Copiar:** un botón copia el informe como texto (Markdown) con el formato del ejemplo del dueño (`Plan limits:` / `Session:` …), y otro lo descarga como `.md`. Un botón «Actualizar».
+4. **El Engine:** un método nuevo `usage.report` (ámbito y referencia) que junta todo: agrupa `ModelInvoked` por modelo, cuenta compactaciones, imágenes reenviadas (por `sha256` en `VisualPixelsDelivered`) y avisos; `Usage` gana `cache_write_tokens` (Anthropic `cache_creation_input_tokens`; los demás cuando lo informen); costo cuando haya precios (una tabla opcional de precios en `model_metadata.json` y el precio manual por modelo que ya existe).
+5. **Se quita** la sección «Contexto y uso» del Workspace (#47). El anillo de contexto conserva su globo rápido, y su botón «Detalles» ejecuta `/usage`. Ajustes → Proveedores → «Uso y límites» se queda (es la vista por proveedor).
+6. Pasa por la sesión de pulido de UI.
+
+**Decisiones pendientes.**
+1. ¿La tarjeta del informe **se queda** en la conversación (como un evento guardado, que al volver a abrirla sigue ahí como foto de ese momento) o es **momentánea** (desaparece al recargar)? Recomendado: **se queda**, marcada como «Informe de uso · 14 oct, 21:40», sin mandarse nunca al modelo.
+2. Los límites de **Claude Subscription**: ¿investigamos leerlos de la CLI de Claude (si los expone) para que salgan como en el ejemplo? Recomendado: **sí, investigar**; si no se puede, «no informado».
+
+**Pruebas.** CLI: `usage.report` con dos modelos, subagentes y compactaciones da las filas y totales correctos; la imagen repetida aparece como aviso; `cache_write_tokens` desde Anthropic. App: vitest de la tarjeta (bloques, vacíos, copiar, selector); escenario: `/usage` pinta la tarjeta sin llamar al modelo; el «Detalles» del anillo la abre; captura en `ui-tour`.
+
+---
+
+## 79. «Exportar para revisión»
+
+**Qué se propuso** (Claude, aprobado por el dueño, 2026-10-14). Hoy, para revisar una conversación, el dueño pasa su id y se lee la base a mano; desde otra PC hace falta un comando de Python. Que la app lo haga sola.
+
+**Propuesta.**
+1. **Dónde:** clic derecho en una conversación de la barra lateral → «Exportar para revisión…»; y en un mensaje → «Exportar desde aquí» (para empezar en un punto, como la sesión de contenido explícito que el dueño pidió revisar solo desde «Entrega»).
+2. **Diálogo:** desde qué mensaje (o todo), **«Incluir el texto de los mensajes»** (apagado = solo eventos, herramientas, errores y uso, sin lo que se dijo), «Incluir los registros de la app de esas horas», y dónde guardar.
+3. **Qué lleva el paquete (.zip):** los eventos de la sesión en JSONL (los del rango elegido), la lista de pasos, las verificaciones, el informe de uso del #78, los fragmentos de `app.log` y `engine.log` de esas horas, y un `entorno.json` (versiones de la app y del Engine, sistema, proveedor y modelo por id, perfil de permisos). Un `LEEME.md` dice qué se incluyó y qué no.
+4. **Siempre se quitan:** claves y secretos (el detector que ya usa la memoria), cabeceras de autorización, tokens; la carpeta de usuario se puede anonimizar (`C:\Users\<usuario>`).
+5. **CLI:** `rinari session export <id> --review [--from <seq>] [--no-messages]`.
+6. Leerlo después es solo descomprimir y leer (lo hago con mis herramientas, en solo lectura).
+
+**Decisión pendiente.**
+1. ¿«Incluir el texto de los mensajes» viene **encendido o apagado**? Recomendado: **encendido** (sin el texto se pierde la mitad del análisis), con el aviso de que el paquete lleva la conversación completa.
+
+**Pruebas.** CLI: exportar con y sin mensajes y desde un `seq`; ningún secreto de prueba sobrevive; el `.zip` trae los registros del intervalo. App: el diálogo y «Exportar desde aquí».
+
+---
+
+## 80. Modelo de respaldo y modelo auxiliar
+
+**Qué se propuso** (Claude, aprobado por el dueño, 2026-10-14). Los títulos fallaron días enteros por el proveedor del modelo principal (#48), y un modelo cuantizado dejó cinco turnos en silencio (#66a). Hoy todo depende de un solo modelo: si falla, el turno muere; y cada título, resumen o revisión interna usa el modelo caro de la conversación.
+
+**Qué hay hoy (verificado).** Los errores pasajeros se reintentan con espera (`models/router.py:687-692`, `invoke_with_retry`), pero no en streaming. No existe un modelo de respaldo ni uno auxiliar. Los perfiles ya permiten un modelo por agente (`2b5ba90`).
+
+**Propuesta.**
+1. **Modelo de respaldo** (Ajustes → Proveedores; global, y por perfil si se quiere):
+   - **cuándo entra:** cuando el principal falla **después** de sus reintentos (error del proveedor, sin conexión, tiempo agotado, límites o cuota) o cuando da **dos respuestas vacías seguidas** (#66a);
+   - **qué hace:** el turno **sigue** con el respaldo desde el mismo historial, sin perder nada; el timeline marca «Seguí con *modelo de respaldo* porque *motivo*»; el turno siguiente vuelve a intentar con el principal;
+   - respeta lo que el respaldo puede hacer: si no ve imágenes, las imágenes del contexto van como texto (#77); si su ventana es menor, se compacta antes;
+   - **nunca** entra por un rechazo de contenido del modelo (eso no es un fallo técnico).
+2. **Modelo auxiliar** (Ajustes → Proveedores): un modelo barato para las llamadas internas: **títulos**, propuestas de memoria, revisión de skills, resúmenes de archivos y la nota de la lista de pasos. Si no se configura, se usa el de la conversación (como hoy). El arreglo de la cabecera de OpenCode del #48 aplica también aquí.
+3. En el informe del #78, cada modelo con su fila (principal, respaldo, auxiliar).
+
+**Decisiones pendientes.**
+1. Si se acaban los **límites** del principal y hay respaldo: ¿se usa el respaldo **de inmediato**, o se ofrece primero esperar al reinicio (#24)? Recomendado: **el respaldo de inmediato**, y la tarjeta del #24 solo cuando no hay respaldo (o como opción «Esperar al principal»).
+2. ¿La **compactación** del contexto también usa el auxiliar? Recomendado: **no por defecto** (un mal resumen hace perder contexto); un interruptor para quien lo quiera.
+
+**Pruebas.** CLI: un principal que falla tras sus reintentos y el turno sigue con el respaldo con el aviso; dos respuestas vacías activan el respaldo; un rechazo de contenido no; los títulos usan el auxiliar; sin auxiliar, el de la conversación. App: el aviso en el timeline y los ajustes.
+
+---
+
+## 81. `/init`: Rinari conoce el proyecto
+
+**Qué se propuso** (Claude, aprobado por el dueño, 2026-10-14). En cada conversación Rinari vuelve a descubrir cómo es el proyecto, y la verificación se enreda cuando no sabe cómo probarlo (#61c). Claude Code y Codex tienen su `/init`.
+
+**Qué hay hoy (verificado).** `rinari init` en la CLI crea `.rinari/`, un `RINARI.md` de plantilla y el registro del proyecto (`cli/commands/system.py:465-500`). Las instrucciones `RINARI.md` (y `~/.rinari/RINARI.md` global) ya se cargan en el prompt (`instructions/resolver.py`).
+
+**Propuesta.**
+1. **`/init` en la app** (y una sugerencia «Conoce el proyecto» en la conversación temporal de un proyecto nuevo, #60): Rinari recorre el proyecto en **solo lectura** (un subagente explorador con presupuesto) y redacta un `RINARI.md` con:
+   - qué es el proyecto y su tecnología;
+   - **cómo se instala, se prueba, se compila y se ejecuta** (los comandos reales que encontró);
+   - convenciones, carpetas importantes y lo que no se debe tocar.
+2. **Tarjeta de propuesta** en el chat con el archivo (o el diff si ya existía un `RINARI.md`): «Guardar», «Editar» y «Descartar». Nada se escribe sin el «Guardar» del dueño.
+3. Si el proyecto ya tiene `AGENTS.md` o `CLAUDE.md`, se ofrece **reutilizarlos** (enlazarlos o resumirlos) en vez de duplicar.
+4. **La verificación lo usa:** `verify.plan` lee los comandos de prueba y compilación del `RINARI.md` (sección «Cómo probar») antes de adivinar; sin comandos, la compuerta pide evidencia manual (#61c).
+5. `/init` de nuevo actualiza el archivo, mostrando qué cambia.
+
+**Pruebas.** CLI: en un proyecto de ejemplo con `package.json` y `pytest`, el borrador trae los comandos correctos; con `AGENTS.md`, la oferta de reutilizarlo; `verify.plan` toma los comandos del `RINARI.md`. App: la tarjeta con Guardar / Editar / Descartar y el diff.
 
 ---
 

@@ -41,7 +41,7 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 ## Orden de entrega
 
 1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75 y 76 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75 y 76, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76 y 77, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -61,7 +61,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
 | 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35 + 67 (juntos), 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
-| 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f) | El mismo camino de imágenes del Engine. |
+| 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f), 77 | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
 | 11 | Límites y proveedores | 3, 24, 27, 19, 13 | Las mismas lecturas de uso y de errores del proveedor. |
 | 12 | Proyecto y confianza | 42, 60, 38 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
@@ -308,6 +308,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 74 | El acceso directo del escritorio dice «Rinari», no «Rinari Agent» (Planka, Ideas-2) | Agent (instalador) | Decidido |
 | 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Decidido |
 | 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos y salidas grandes, con lo que hacen OpenCode, Hermes, Codex, Claude Code y Gemini CLI (Planka, Validar) | CLI + Agent | Propuesto (investigado) |
+| 77 | Imágenes en el composer: quitar la barra «Leer imágenes como» y una vista previa grande y bonita, igual en el composer y en el chat (dueño, con capturas) | Agent | Propuesto (falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2279,6 +2280,37 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - CLI: leer un .md de 5000 líneas devuelve la primera página con su pie y ningún artefacto; seguir con `fs.read_lines` desde la línea indicada; releer sin cambios devuelve el aviso; si el archivo cambió, el pie lo dice; editar tras un cambio externo pide releer.
 - CLI: una salida de terminal de 1 MB se guarda como texto con saltos de línea reales, el aviso trae principio y final, y `fs.read_lines` / `fs.search_text` la recorren; una respuesta MCP grande con su tope propio; el total por turno respeta el 30 %.
 - CLI: un binario devuelve «archivo binario», nunca su contenido como texto.
+
+---
+
+## 77. Imágenes en el composer: sin la barra «Leer imágenes como» y una vista previa de verdad
+
+**Qué se vio** (dueño, 2026-10-14, con capturas).
+1. Al adjuntar una imagen aparece la barra **«Leer imágenes como: Imagen · Texto (OCR) · Texto e imagen»** encima del composer. No le gusta: es un anuncio que estorba para algo que casi siempre es «Imagen».
+2. La **vista previa** de una imagen del composer (y de las adjuntas en un mensaje) sale **pequeña** y fea; la de una imagen que Rinari ve en el chat sale grande.
+
+**Qué hay hoy (verificado).**
+- La barra es un grupo de tres botones que sale siempre que hay una imagen adjunta (`Composer.tsx:725-742`, textos `attach.read.*` en `es.ts:2158-2164`); además, a veces, una línea con la ruta de visión (`attach.visionRoute`, `Composer.tsx:724`).
+- Hay **dos visores distintos**: el del composer y los mensajes es `AttachmentPreview` (`components/AttachmentPreview.tsx`), un diálogo de `max-w-3xl` (768 px) con la imagen a `max-h-[65vh]`; el de las imágenes que mira Rinari es el de `ImageActivity.tsx:63`, de `max-w-6xl`. Ninguno tiene zoom ni paso entre imágenes.
+
+**Propuesta.**
+1. **Sin barra:** por defecto la imagen va **como imagen** al modelo con visión, como ya funciona. Lo demás pasa a donde molesta menos:
+   - **automático cuando hace falta:** si el modelo de la conversación **no** tiene visión, la imagen se manda como texto reconocido (OCR) sin preguntar, y el chip lo dice con una marca pequeña «Texto» (con su explicación al pasar el ratón);
+   - **a mano, por imagen:** en el chip del adjunto (clic derecho o el menú «⋯»): «Enviar como imagen» / «Solo el texto (OCR)» / «Texto e imagen». Si se elige algo distinto de lo normal, el chip lleva la marca («OCR», «OCR + imagen»);
+   - **preferencia general** en Ajustes → Visión e imágenes: «Cómo enviar imágenes por defecto» (Imagen, por defecto);
+   - la línea de la ruta de visión pasa al tooltip del chip.
+2. **Un solo visor de imágenes**, grande, para todo (composer, mensajes del dueño, imágenes que ve Rinari, «Archivos»):
+   - ocupa casi toda la ventana (~92 % de ancho y alto), fondo oscuro desenfocado, la imagen ajustada a la pantalla;
+   - **zoom** (rueda, doble clic, «Ajustar» / «100 %») y arrastrar para moverse;
+   - **flechas** (y ← →) para pasar entre las imágenes del mismo mensaje o del composer, con contador «2 de 4»;
+   - acciones arriba: descargar, copiar, «Abrir en Archivos», «Mostrar en el explorador»; para imágenes con OCR, una pestaña «Texto reconocido»;
+   - abre y cierra con una animación suave desde la miniatura (sin animación con movimiento reducido); Esc cierra.
+   - Pasa por la sesión de pulido de UI.
+
+**Decisión pendiente.**
+1. ¿El cambio automático a texto cuando el modelo no ve imágenes está bien, o prefieres que avise y pregunte? Recomendado: **automático**, con la marca en el chip (es lo que el usuario querría casi siempre, y se puede cambiar en el chip).
+
+**Pruebas.** Vitest: sin barra en el composer; con un modelo sin visión el chip marca «Texto»; el menú del chip cambia el modo y la marca. Escenario: abrir una imagen desde el composer, un mensaje y el timeline abre el mismo visor a pantalla casi completa, con zoom, flechas y Esc; captura en `ui-tour`; con movimiento reducido, sin animación.
 
 ---
 

@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93, 94 y 95 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93 y 94, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93, 94, 95 y 96 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94 y 96, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -69,7 +69,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 17 | Estilo nuevo pendiente | **96 primero (prioridad alta)**; 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque y rendimiento | 70, 91 | Saludo, reintento e historial por páginas; base para equipos lentos. |
@@ -329,6 +329,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 95 | Rinari habla de sí misma en tercera persona («veré dónde guarda Rinari sus sesiones») en vez de «veré dónde guardo mis sesiones» (dueño) | CLI | Propuesto (causa verificada) |
+| 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent (+ CLI menor) | Propuesto (falta 1 decisión) · prioridad alta |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2837,6 +2838,48 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 6. **Evaluación en vivo** (opcional, fuera del CI, como la del #87): 10 pedidos sobre sí misma («¿dónde guardas las conversaciones?», «revisa por qué falló el turno anterior», «¿qué skills tienes?», «mira tu configuración») y se cuentan las referencias a sí misma en tercera persona: objetivo 0, en las respuestas y en las líneas de avance.
 
 **Pruebas.** CLI: la regla está en el prompt con cualquier alma (también con una vacía); la prueba de textos en verde; el error de motor detenido llega al modelo en segunda persona y al dueño traducido; las memorias nuevas sobre sí misma salen en primera persona (con el modelo falso guiado por la instrucción). Evaluación en vivo manual con los conteos.
+
+---
+
+## 96. Ajustes → Avanzado: para qué sirve y rediseño (prioridad alta)
+
+**Qué se pidió** (dueño, 2026-10-15). Ver el uso de Ajustes → Avanzado y rediseñarla con urgencia.
+
+**Qué hay hoy (verificado, `components/settings/AdvancedSettings.tsx` + `ExecutionSettings.tsx`).**
+1. **«Mostrar nombres técnicos de actividad»** (interruptor): en el timeline, junto a la frase legible («Ejecutó un comando»), muestra el nombre de la herramienta (`shell.exec`). Es solo de presentación y se guarda en la app.
+2. **«Ejecución de modelos»** (plegable, «Con los valores por defecto funciona sola»): la política de este equipo para **todas** las llamadas a modelos (conversaciones, subagentes, Boards y visión). Se guarda en `~/.rinari/model-execution.json`; el del dueño solo tiene `max_concurrency: 8`, lo demás está por defecto.
+   - **Llamadas a la vez por proveedor** (por defecto 8; las suscripciones por CLI externa, 2): cuántas llamadas al mismo proveedor pueden ir en paralelo. Importa cuando Boards o los subagentes reparten trabajo; un servidor local de una sola tarjeta quiere 1.
+   - **Tiempos de espera** (segundos), los que hoy ves en cada error: **conexión 15**, **primer dato 120** (cuánto espera a que el modelo empiece a responder), **inactividad 120** (silencio a mitad de respuesta) y **duración total 900** (15 min por llamada). Se tocan para un servidor lento (por ejemplo, un modelo local que tarda en cargar).
+   - **Por proveedor:** una fila por proveedor con su propio «a la vez» y sus cuatro tiempos (vacío = hereda).
+   - **Máximo de tokens de salida por modelo:** tope de largo de la respuesta, para servidores que rechazan un `max_tokens` grande.
+   - «Guardar» abajo del todo.
+
+**Problemas.**
+- **Un muro de campos:** con los datos del dueño (5 proveedores y 79 modelos guardados) el plegable abre **5 + 4 + 25 + 79 ≈ 113 campos numéricos** sin agrupar, sin búsqueda y con «Guardar» al final.
+- **Cosas en el lugar equivocado:** el máximo de salida es un ajuste **del modelo** y los tiempos por proveedor son **del proveedor**, pero viven aquí, lejos de donde se piensan.
+- **No dice para qué sirve cada cosa** ni cuándo tocarla, ni muestra el valor que se está usando (solo un placeholder gris); un número inválido falla al guardar sin marcar el campo.
+- **Se guarda por la vía de la configuración de visión** (`visionSettingsGet/Set`): guardar ejecución reenvía toda la configuración de visión.
+- **La descripción de la página** («Preferencias de diagnóstico y presentación») no cuenta lo que hay, y le falta lo que sí buscaría alguien avanzado (registros, diagnóstico, almacenamiento, el motor).
+- Estilo viejo: cabecera sin `font-display`, `details` hecho a mano, campos sueltos.
+
+**Propuesta.**
+1. **Cada ajuste donde se piensa** (decisión 1):
+   - **máximo de salida** → en la fila de cada modelo (Ajustes → Modelos, panel de «Editar» del #92), con «Automático» por defecto;
+   - **llamadas a la vez y tiempos de un proveedor** → en el proveedor (Ajustes → Proveedores → pestaña «Conexión»), con «Heredar» por defecto y la nota de cuándo cambiarlo («un servidor local de una sola tarjeta: 1 a la vez y primer dato 300 s»).
+2. **Avanzado queda corto y en tarjetas**, cada una con una frase de para qué sirve:
+   - **Conexiones con los modelos:** «a la vez» global y los cuatro tiempos globales como **ajustes predefinidos** («Normal», «Servidor lento», «Red inestable») más «Personalizado», que despliega los cuatro campos con el valor en uso a la vista y su explicación corta. Un aviso si un proveedor tiene valores propios («2 proveedores tienen ajustes propios · Ver»).
+   - **Diagnóstico:** «Mostrar nombres técnicos de actividad», «Abrir carpeta de registros», «Exportar diagnóstico» (hoy en Acerca de) y el paquete de revisión del #79.
+   - **Almacenamiento** (#91): cuánto ocupa cada cosa, con «Limpiar» por apartado.
+   - **Motor:** versión del Engine y del protocolo, «Reiniciar motor» (con confirmación si hay turnos en curso) y «Abrir mi carpeta» (`~/.rinari`).
+   - **Restablecer:** vuelve a los valores por defecto los ajustes de esta página (con confirmación).
+3. **Guardado claro:** cada tarjeta guarda sola con un aviso «Guardado» (como Contexto), los campos inválidos se marcan en el sitio con el rango permitido, y los valores por defecto se ven, no solo en gris.
+4. **Engine:** la ejecución tiene su propio par `execution.settings.get/set` (deja de viajar dentro de la configuración de visión); los mismos datos de `model-execution.json`.
+5. Componentes canónicos de [obsidiana-neon.md](../design/obsidiana-neon.md) (cabecera, `Section`, `.seg-tabs` para los predefinidos, `Switch`, campos `.field-input`), estados de carga y error con reintento, y **pasa por la sesión de pulido de UI**.
+
+**Decisión pendiente.**
+1. ¿Se **mueven** el máximo de salida (a Modelos) y los ajustes por proveedor (a Proveedores), o se quedan en Avanzado bien ordenados? Recomendado: **moverlos**; Avanzado queda con lo global y el diagnóstico.
+
+**Pruebas.** Vitest: los predefinidos escriben los cuatro tiempos; «Personalizado» muestra los valores en uso; un valor fuera de rango se marca y no guarda; el máximo de salida en la fila del modelo y la pestaña «Conexión» del proveedor guardan en `model-execution.json`; «Restablecer» deja los valores por defecto. CLI: `execution.settings.get/set` valida igual que hoy y no toca la visión. Captura en `ui-tour` de Avanzado, Modelos (con máximo de salida) y Proveedores → Conexión.
 
 ---
 

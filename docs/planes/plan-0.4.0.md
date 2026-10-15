@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80 y 81 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80 y 81, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81 y 82 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81 y 82, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -55,7 +55,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 |---|---|---|---|
 | 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 76 (lecturas y salidas grandes), 66a (respuestas vacías), 66e (argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
 | 2 | Verificación y objetivos | 61c y 66c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
-| 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55 y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
+| 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55, 82 (Resumen) y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
@@ -314,6 +314,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 79 | «Exportar para revisión»: una conversación (o desde un mensaje) en un paquete para analizarla, con los registros de esas horas y sin secretos (propuesta de Claude) | CLI + Agent | Decidido |
 | 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Decidido |
 | 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
+| 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Propuesto (faltan 3 decisiones) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2411,6 +2412,42 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. `/init` de nuevo actualiza el archivo, mostrando qué cambia.
 
 **Pruebas.** CLI: en un proyecto de ejemplo con `package.json` y `pytest`, el borrador trae los comandos correctos; con `AGENTS.md`, la oferta de reutilizarlo; `verify.plan` toma los comandos del `RINARI.md`. App: la tarjeta con Guardar / Editar / Descartar y el diff.
+
+---
+
+## 82. «Resumen»: el estado de la conversación en un mini panel lateral
+
+**Qué se pidió** (dueño, 2026-10-14, con capturas de Codex y Claude Code). Una **tarjeta de resumen** como la de Codex y Claude Code, que llega con el panel lateral nuevo (#47):
+- Codex: un botón en la barra de título abre una tarjeta con el proyecto y su menú, **Cambios**, **Resultados** (lo generado), **Fuentes** (páginas consultadas, «Búsqueda web», «Ver todo») y **Tareas programadas**.
+- Claude Code: una columna de tarjetas: **Entorno**, **Contexto** (con su %), **Conectores**, **Resultados** y **Cambios** (repo con `+157 −0`, **Crear PR**, el PR asociado).
+- Cada fila **lleva a su vista**: «Cambios» abre los cambios; si la conversación hizo un plan, el plan abre la vista «Plan» (#55); también el repo, los PR y la rama actual.
+- Es un **mini panel lateral**: o está el resumen, o las vistas. Si el resumen está abierto y se abre el navegador (o cualquier otra vista), el resumen se cierra y queda la vista; y al revés.
+
+**Qué hay hoy (verificado).** Los datos existen repartidos: los cambios del turno (`turn.changes.completed`), el estado de git del proyecto (rama y cambios sin guardar; `git_head`, `project_status`), los artefactos y archivos entregados, las herramientas web usadas (URLs en sus eventos), los MCP de la sesión, la lista de pasos, el plan, los subagentes, los procesos en segundo plano (#32) y las tareas programadas. **No hay integración con PR** (no se usa `gh` en el Engine) ni un lugar que lo junte todo.
+
+**Propuesta.**
+1. **Botón «Resumen»** en la barra de título, el primero del grupo del panel lateral (#47), con el icono de lista; su indicador se enciende cuando algo pide atención (cambios sin revisar, un proceso que falló, un plan nuevo).
+2. **Mini panel:** ancho angosto (~320 px; el chat casi no se encoge), tarjetas apiladas con el estilo de la app, y **excluyente con las vistas**: abrir cualquier vista (Navegador, Archivos, Cambios…) cierra el resumen y muestra la vista con su mosaico (#47); volver a pulsar «Resumen» lo trae y deja guardado el mosaico. Ctrl+B oculta lo que esté abierto.
+3. **Tarjetas** (cada una solo si tiene algo; plegables; el orden y cuáles se ven se eligen en el «⋯» del resumen):
+   - **Entorno:** proyecto o «Sin proyecto», carpeta, **rama actual** y si hay cambios sin guardar, worktree, modelo, perfil de permisos. Al pulsar: un detalle con todo eso y «Abrir carpeta» / «Abrir terminal aquí».
+   - **Contexto:** la barra con el %, y al pulsar el informe `/usage` (#78).
+   - **Plan y pasos:** si la conversación tiene plan, «Plan v2 · 7 pasos» → abre la vista «Plan» (#55); la lista de pasos con «3 de 5».
+   - **Cambios:** el repo con `+157 −12`, archivos tocados → abre la vista «Cambios» (#41); **«Crear PR»** cuando hay remoto en GitHub y `gh` está instalado y con sesión (abre una tarjeta de confirmación con título, rama base y descripción; publicar algo siempre se confirma); los **PR de la rama** con su estado (abierto, fusionado, CI en verde o rojo) → se abren en el navegador del panel.
+   - **Resultados:** lo que Rinari entregó o generó en la conversación (archivos, imágenes, documentos; con miniatura) → «Archivos» o el visor de imágenes (#77).
+   - **Fuentes:** las páginas que consultó y las búsquedas → se abren en el navegador del panel; «Ver todo» con la lista completa.
+   - **Conectores:** los MCP activos en la sesión con su estado, y las skills activadas.
+   - **Agentes:** los subagentes con su apodo (#73) y estado → vista «Agentes».
+   - **En segundo plano:** procesos que siguen corriendo (#32) → «Terminal»; tareas programadas de la conversación o del proyecto → «Programadas».
+4. **En vivo:** se actualiza con los eventos de la sesión, sin recargar; en Boards cada panel tiene su resumen.
+5. **El Engine:** un método `session.summary` que junta lo anterior en una sola llamada (y un evento cuando cambia); `repo.status` con remoto, rama, adelantos/atrasos y, si hay `gh`, los PR de la rama (solo lectura); `repo.pr.create` detrás de la confirmación.
+6. **Pasa por la sesión de pulido de UI** (diseño de las tarjetas, ancho del mini panel, transición entre resumen y vistas).
+
+**Decisiones pendientes.**
+1. ¿El resumen se abre **solo** al empezar una conversación? Recomendado: **no**; se recuerda abierto o cerrado por conversación.
+2. ¿«Crear PR» entra en 0.4.0? Recomendado: **sí**, con confirmación y solo con `gh` autenticado; sin `gh`, «Crear PR» abre la página de GitHub para crearlo.
+3. ¿Las «Fuentes» incluyen también lo que leyeron los MCP (por ejemplo, Planka)? Recomendado: **sí**, agrupado por conector.
+
+**Pruebas.** Vitest de cada tarjeta (con y sin datos), del cambio resumen ↔ vistas y del «⋯». CLI: `session.summary` con cambios, fuentes, resultados y plan; `repo.status` con y sin `gh`. Escenario: una conversación con plan, cambios y una búsqueda web muestra las tarjetas; pulsar «Cambios» abre la vista y cierra el resumen; volver al resumen; captura en `ui-tour`.
 
 ---
 

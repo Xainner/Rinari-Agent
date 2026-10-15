@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81 y 82 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83 y 84, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86 y 87 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86 y 87, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -71,6 +71,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 16 | Preguntas | 37, 63 | El mismo componente. |
 | 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
+| 23 | Perfiles y personalidad | 85, 86, 87 (y la memoria por perfil del #75) | Lo que es un perfil (alma, modo, modelos, trabajo) y cómo habla Rinari se diseñan juntos. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
 | 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. |
@@ -317,6 +318,9 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Decidido |
 | 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Decidido |
 | 84 | El número de la barra de tareas no baja al entrar en la conversación que avisó (segunda vez; `ses_01M4Z0GEV3GMYWW2HAATKFDCGG`) | Agent | Propuesto (causa confirmada) |
+| 85 | Proyectos y conversaciones archivados: solo los del perfil activo (hoy salen los de todos los perfiles) (dueño) | Agent | Propuesto (causa verificada) |
+| 86 | Ajustes → Perfiles: rediseño que muestre lo que de verdad guarda un perfil; el «modo» del perfil hoy no hace nada; el alma por defecto, la de Rinari (dueño, con captura) | CLI + Agent | Propuesto (falta 1 decisión) |
+| 87 | Personalidad: no se nota diferencia entre «Mínimo», «Equilibrado» y «Personaje completo»; y rediseño de la pantalla (dueño) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2515,6 +2519,84 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 6. Va con el bloque de avisos (#33, #62, #64).
 
 **Pruebas.** Vitest de los recibos: enviar un mensaje marca los anteriores; un turno `stopped` sin texto no queda sin leer; entrar abajo marca los anteriores; «Marcar todo como leído» deja el número en 0. Escenario: un resultado arriba de un turno largo, entrar en la conversación y escribir: el número baja.
+
+---
+
+## 85. Archivados: solo los del perfil activo
+
+**Qué se pidió** (dueño, 2026-10-15). En la barra lateral, «Proyectos archivados» y «Sesiones archivadas» deben mostrar solo los del perfil activo, y aparecer solo si hay alguno.
+
+**Qué hay hoy (verificado).**
+- Lo activo sí se filtra por perfil (`AppSidebar.tsx:212-213`, `inProfile`), pero **lo archivado no**: `archivedProjectResults` / `archivedSessionResults` (`AppSidebar.tsx:279-291`) salen de las listas completas, y estas se piden sin perfil (`useProjects.ts:33-43`, `useSessionList.ts:187, 209`; sin el parámetro el Engine devuelve todos los perfiles, `server.py:3038-3047`).
+- En los datos del dueño: con el perfil `proyecto-kurokami` activo se ven **9 proyectos y 4 conversaciones archivados del perfil `default`**.
+- Ocultar las secciones vacías **ya funciona** (`AppSidebar.tsx:628, 690`).
+
+**Propuesta.** Filtrar lo archivado con el mismo `inProfile` que lo activo (y pedir al Engine las listas del perfil activo); la búsqueda dentro de archivados tampoco cruza perfiles. Las secciones siguen ocultas si quedan vacías. Si un archivado pertenece a un perfil borrado, ya está reasignado a `default` (`rinari_profiles.py:145-168`) y aparece ahí.
+
+**Pruebas.** Vitest de la barra lateral: con dos perfiles, los archivados del otro no salen; sin archivados en el perfil, las secciones no aparecen.
+
+---
+
+## 86. Ajustes → Perfiles: mostrar lo que de verdad es un perfil
+
+**Qué se pidió** (dueño, 2026-10-15, con captura). La pantalla de perfiles solo dice nombre, id, «Aplicar» y «Eliminar», y no deja ver lo que el perfil guarda y maneja (alma propia, nombre, etc.). ¿Qué hace hoy el «modo» de un perfil? Y el alma de un perfil nuevo debería ser la de Rinari, y desde ahí cambiarla.
+
+**Qué es hoy un perfil (verificado, `profiles/bundles.py:31-38`).** `id`, `name`, `description`, `soul_id`, `mode` y `agents` (por agente: modelo, respaldo, esfuerzo, activo), guardado en `<home>/profile_bundles/<id>.toml`. Además, cada proyecto y conversación lleva su `rinari_profile_id`: el perfil **agrupa el trabajo** (la barra lateral muestra solo lo del perfil activo). No tiene permisos ni memoria propios (la memoria por perfil llega con el #75).
+- **Pantalla** (`features/ecosystem/ProfilesView.tsx`): tarjetas con nombre, id, alma, modo y descripción; «Crear perfil» abre un diálogo con cuatro campos de texto libre (id, nombre, alma, modo), sin selectores ni modelos por agente.
+- **Los perfiles del dueño** (`proyecto-kurokami`, `sfchs`, `test`) solo tienen id, nombre y descripción: ni alma, ni modo, ni modelos.
+- **«Aplicar»** activa el alma de forma global y **escribe los modelos del perfil en la configuración global** de agentes (`server.py:3310-3327`), aunque su propia descripción dice que «nada global cambia».
+- **El modo del perfil no hace nada en la app:** solo se usa si la conversación se crea sin modo (`session_service.py:444-456`), y la app **siempre** manda uno (`build` por defecto, `engine.ts:838`, `useSessionList.ts:407`). Solo tiene efecto al pulsar «Aplicar» con una conversación abierta (le cambia el modo a esa). Además acepta cualquier texto (`bundles.py:113-114`).
+- **El alma de un perfil nuevo** es «ninguna» (`soul_id = None`), que cae en el alma global activa y, si no hay, en la de Rinari (`runtime/identity.py:62-89`). En la práctica habla Rinari, pero la pantalla no lo dice.
+
+**Propuesta.**
+1. **Tarjeta de perfil que cuenta lo que es:**
+   - nombre, descripción y una marca **«En uso»** en el activo;
+   - **Alma:** avatar y nombre del alma («Rinari» por defecto);
+   - **Modo inicial** de las conversaciones nuevas (Plan, Build, Review);
+   - **Modelos por agente:** principal, explorador, revisor… con su proveedor (o «los de siempre» si no cambia ninguno);
+   - **Trabajo:** cuántos proyectos y conversaciones tiene, con «Ver en la barra lateral»;
+   - acciones: **«Usar este perfil»** (en vez de «Aplicar»), «Editar», «Duplicar» y «Eliminar» (que explica: «sus proyectos y conversaciones pasan a Default»).
+2. **Crear y editar con un formulario de verdad**, no campos de texto: nombre y descripción; el **id** se genera del nombre; **selector de alma** (con «Rinari» elegida por defecto); **selector de modo**; **modelos por agente** con el selector de modelos de la app.
+3. **El alma por defecto es la de Rinari:** un perfil nuevo nace con `soul_id = rinari-default` explícito (y se ve), y el dueño la cambia si quiere.
+4. **El modo funciona** (decisión 1): el modo del perfil es el **modo con el que empieza** cada conversación nueva de ese perfil (el composer ya lo trae elegido), y solo acepta Plan, Build o Review.
+5. **«Usar este perfil» no toca la configuración global:** los modelos por agente se aplican por perfil (ya se leen así, `agent_runtime.py:1327-1335`); se quita la escritura global de `server.py:3313-3327`.
+6. Pasa por la sesión de pulido de UI.
+
+**Decisión pendiente.**
+1. ¿El modo del perfil se **arregla** (modo inicial de las conversaciones nuevas del perfil) o se **quita**? Recomendado: **arreglarlo**: un perfil «Revisor» que empieza en Review o uno «Planificación» en Plan es útil.
+
+**Pruebas.** CLI: crear un perfil sin alma le pone `rinari-default`; el modo inválido se rechaza; «usar este perfil» no cambia la configuración global de agentes. App: la tarjeta con alma, modo, modelos y trabajo; el formulario con selectores; una conversación nueva en un perfil con modo Plan empieza en Plan.
+
+---
+
+## 87. Personalidad: que los niveles se noten, y una pantalla nueva
+
+**Qué se vio** (dueño, 2026-10-15). Tiene «Personaje completo» y no nota diferencia con «Equilibrado» ni con «Mínimo». Quiere una mejora visual de la pantalla de personalidad.
+
+**Qué hay hoy (verificado).**
+- El nivel se guarda en `<home>/soul_settings.toml` (`character_intensity`; el del dueño es `full`) y **sí llega al prompt**: en cada turno se añade al final del alma un bloque con instrucciones distintas para cada nivel (`cli/agent_runtime.py:221-227`, `soul/intensity.py:20-45`). No es un error de guardado.
+- **Por qué no se nota:**
+  - las instrucciones son **suaves y parecidas** entre sí («una de cada tres respuestas» frente a «la mayoría de las veces», «emoji rara vez» frente a «algún emoji»), y el alma de Rinari ya marca mucho la voz por sí sola, así que «Equilibrado» y «Completo» se parecen;
+  - el bloque va dentro del segmento del alma, **antes** de muchas otras instrucciones del sistema (formato, verificación, idioma, «sé conciso») que tiran hacia lo neutro;
+  - huecos: si el alma activa no tiene texto (como `minimax` del dueño), **no se añade ningún nivel**; en la CLI interactiva el nivel no cambia hasta reiniciar; los subagentes no llevan alma (eso está bien).
+- **Pantalla** (`features/souls/SoulsView.tsx`): título y «Crear», la nota «solo voz», el selector de nivel (`CharacterIntensity.tsx`, con la cara de Rinari que cambia por nivel) y una tarjeta por alma con «Activar», «Ver» (el texto en un `<pre>`), «Editar» y «Eliminar».
+
+**Propuesta.**
+1. **Niveles que se notan**, con reglas concretas y observables, no adverbios:
+   - **Mínimo:** sin aperturas ni cierres de personaje, sin emoji ni kaomoji, sin bromas; tono amable y directo.
+   - **Equilibrado:** una línea de personaje al abrir **o** cerrar en las respuestas conversacionales; reacciones en primera persona a los resultados; emoji muy de vez en cuando.
+   - **Personaje completo:** **siempre** abre y cierra con su voz en lo conversacional; muletillas y reacciones propias de Rinari (tsundere, celos fingidos, orgullo), kaomoji y emoji en las líneas de conversación; el cuerpo técnico igual de completo; fuera en código, comandos, errores, seguridad y estados.
+   - Cada nivel con **dos o tres ejemplos** cortos de cómo suena, para que el modelo los imite.
+2. **El bloque del nivel va al final del prompt del sistema** (después de las reglas de formato), donde pesa más, y con una línea que diga que manda sobre el tono neutro del resto.
+3. **Huecos:** un alma sin texto también recibe el nivel; la CLI interactiva relee el alma y el nivel en cada turno.
+4. **Prueba de verdad:** una evaluación con el modelo falso no sirve; se añade una evaluación en vivo (opcional, fuera del CI) que pide las mismas 10 respuestas en cada nivel y cuenta aperturas/cierres de personaje y emoji: «Completo» debe tener claramente más que «Equilibrado», y este más que «Mínimo».
+5. **Pantalla nueva de personalidad:**
+   - arriba, **«Cómo habla Rinari»**: el selector de nivel grande, con la cara de Rinari por nivel y una **vista previa en vivo**: tres respuestas de ejemplo (un saludo, un resultado y un error) que cambian al elegir el nivel (escritas a mano para cada nivel, sin llamar al modelo);
+   - abajo, **las almas como galería**: tarjeta con avatar, nombre, descripción corta y «En uso»; al abrir una, un panel con su texto renderizado (Markdown), «Usar», «Duplicar para editar», «Exportar» e «Importar alma» (archivo `.toml` + `.md`);
+   - el editor de almas con vista previa del texto y aviso si queda vacía («sin texto, Rinari usará solo el nivel de personalidad»);
+   - pasa por la sesión de pulido de UI.
+
+**Pruebas.** CLI: cada nivel produce su bloque nuevo al final del prompt; un alma vacía también recibe el nivel; la CLI interactiva toma el cambio en el turno siguiente. App: vitest de la vista previa por nivel y de la galería. Evaluación en vivo (manual) con los conteos por nivel.
 
 ---
 

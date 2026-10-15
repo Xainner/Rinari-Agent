@@ -41,7 +41,7 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 ## Orden de entrega
 
 1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81 y 82 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81 y 82, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82 y 83, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -55,7 +55,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 |---|---|---|---|
 | 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 76 (lecturas y salidas grandes), 66a (respuestas vacías), 66e (argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
 | 2 | Verificación y objetivos | 61c y 66c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
-| 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55, 82 (Resumen) y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
+| 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55, 82 (Resumen) y 83 (la rama pasa al Resumen), y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
@@ -315,6 +315,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Decidido |
 | 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
 | 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Decidido |
+| 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Propuesto (falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2448,6 +2449,34 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 3. Las «Fuentes» incluyen lo que leyeron los **MCP**, agrupado por conector.
 
 **Pruebas.** Vitest de cada tarjeta (con y sin datos), del cambio resumen ↔ vistas y del «⋯». CLI: `session.summary` con cambios, fuentes, resultados y plan; `repo.status` con y sin `gh`. Escenario: una conversación con plan, cambios y una búsqueda web muestra las tarjetas; pulsar «Cambios» abre la vista y cierra el resumen; volver al resumen; captura en `ui-tour`.
+
+---
+
+## 83. La rama de git sale de la barra lateral y de la barra de título
+
+**Qué se vio** (dueño, 2026-10-14, con capturas). Con el «Resumen» (#82), la rama ya tiene su lugar. Hoy aparece en:
+- la **barra de título**: el chip del proyecto lleva `· rama · cambios`, y una rama larga (`fix/wizard-qa-status-reconcil…`) **se monta encima** del chip de modo (`Editado · build`);
+- la **barra lateral**: la fila del proyecto lleva la rama al lado del nombre y le quita espacio (`Saturn…  fix/wizard-qa-stat…  8`), lo que además empeora el problema del «+» del #69.
+
+**Qué hay hoy (verificado).**
+- Barra de título: `components/app-shell/ChatHeader.tsx:53-73`. El chip del proyecto tiene `max-w-55`, pero la rama va en un `span` con `shrink-0` que no se encoge y desborda sobre el chip de modo.
+- Barra lateral: la fila del proyecto con su rama (`.project-branch`, `src/styles/index.css:1630`, `AppSidebar.tsx`).
+- Cabecera de los paneles de Boards: `features/board/PaneHeader.tsx:171` (`· rama · n`).
+- El **aviso de cambio de rama** (lote 4: «la rama cambió desde el último trabajo: A → B», `useSessionList.ts:62, 298`) se muestra al abrir la conversación.
+
+**Propuesta.**
+1. **Se quita la rama** de la barra lateral (filas de proyecto), de la barra de título (el chip queda solo con el nombre del proyecto, que sigue abriendo la página del proyecto) y de la cabecera de los paneles de Boards (va con la limpieza B.1b del plan de Boards).
+2. **Dónde vive ahora:**
+   - **Resumen → Entorno** (#82): rama, cambios sin guardar, adelantos/atrasos respecto al remoto, worktree, y «sin git» si no hay repositorio;
+   - el **chip de proyecto del composer** al empezar una conversación nueva (#42), porque ahí ayuda a elegir; desaparece al primer envío, como el chip.
+3. **El aviso de cambio de rama se mantiene**, y además enciende el indicador del botón «Resumen» y deja una línea ámbar en la tarjeta Entorno («La rama cambió desde tu último trabajo: A → B»), para no perderlo si se cerró el aviso.
+4. **La barra de título no se monta nunca:** el título, el chip del proyecto y el chip de modo se recortan con «…» por orden (primero el título, luego el proyecto), sin superponerse; vale también en ventanas angostas.
+5. Pasa por la sesión de pulido de UI.
+
+**Decisión pendiente.**
+1. Las conversaciones que trabajan en su **propio worktree** (sesiones hijas A3): ahí la rama es lo que distingue una conversación de otra. ¿Llevan un pequeño icono de rama en su fila de la barra lateral, con la rama al pasar el ratón? Recomendado: **sí**, solo el icono (sin texto) y solo en esas conversaciones.
+
+**Pruebas.** Vitest: la barra lateral y la barra de título sin rama; el chip del composer nuevo con rama; el aviso de cambio de rama enciende el indicador del Resumen; con un nombre de proyecto y un título largos, nada se superpone (también a 900 px de ancho). Captura en `ui-tour`.
 
 ---
 

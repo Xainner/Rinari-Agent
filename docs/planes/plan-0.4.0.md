@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93, 94, 95 y 96 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94 y 96, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93, 94, 95, 96 y 97 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 96 y 97, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -63,7 +63,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f), 77 | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
-| 11 | Límites y proveedores | 3, 24, 27, 19, 13, 80, 94 | Las mismas lecturas de uso y de errores del proveedor. |
+| 11 | Límites y proveedores | 3, 24, 27, 19, 13, 80, 94, 97 (la pantalla de Proveedores junta los de este bloque y #12, #78, #93, #96) | Las mismas lecturas de uso y de errores del proveedor. |
 | 12 | Proyecto y confianza | 42, 60, 38, 81 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
 | 13 | Subagentes y sesiones hijas | 5, 25, 40, 73 | El mismo vínculo madre → hija y su panel. |
 | 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
@@ -330,6 +330,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 95 | Rinari habla de sí misma en tercera persona («veré dónde guarda Rinari sus sesiones») en vez de «veré dónde guardo mis sesiones» (dueño) | CLI | Propuesto (causa verificada) |
 | 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido · prioridad alta |
+| 97 | Activar y desactivar proveedores (desactivado: sus modelos no salen en el composer ni en ningún selector), y rediseño de Ajustes → Proveedores y del diálogo «Agregar proveedor» (dueño) | CLI + Agent | Propuesto (falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2916,6 +2917,47 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 2. La tarjeta **Red** (proxy, certificados de Windows con `truststore` y «Probar conexión») **entra en 0.4.0**, con un solo creador de clientes HTTP en el Engine para los 12 sitios que hoy los crean por su cuenta.
 
 **Pruebas.** Vitest: los predefinidos escriben los cuatro tiempos; «Personalizado» muestra los valores en uso; un valor fuera de rango se marca y no guarda; el máximo de salida en la fila del modelo y la pestaña «Conexión» del proveedor guardan en `model-execution.json`; «Restablecer» deja los valores por defecto. CLI: `execution.settings.get/set` valida igual que hoy y no toca la visión. CLI: los ajustes muertos fuera del esquema sin romper archivos viejos; los límites de subagentes del archivo se aplican; con la tarjeta Red, el creador único de clientes usa los certificados de Windows y el proxy elegido. App: resumen de cada tarjeta plegada, búsqueda, «Restablecer el estado de la interfaz». Captura en `ui-tour` de Avanzado (plegada y con tarjetas abiertas), Modelos (con máximo de salida) y Proveedores → Conexión; con movimiento reducido, sin animación.
+
+---
+
+## 97. Proveedores: activar y desactivar, y una pantalla nueva
+
+**Qué se pidió** (dueño, 2026-10-15). Poder **desactivar y activar** un proveedor: desactivado, sus modelos no salen en el composer (ni en otros lados). Validar si la pantalla de Proveedores entra en la mejora de UI, y también la ventana de «Agregar proveedor».
+
+**Qué hay hoy (verificado).**
+- **No existe** activar/desactivar: el registro del proveedor (`storage/records.py:14-27`) no tiene ese campo. Lo único parecido es el interruptor global «Claude Subscription (experimental)», que habilita todo el tipo de proveedores por CLI externa (`provider_service.py:86-97`).
+- La lista de proveedores la leen muchos sitios del Engine (`providers.list()`: el descubrimiento y la actualización de modelos, el uso y los límites, las instantáneas para la app, el diagnóstico, `rinari.status`, la CLI y sus comandos); el selector del composer arma su lista con `model.list` y el descubrimiento en segundo plano (`useCatalog.ts`).
+- **Pantalla** (`features/providers/ProvidersView.tsx`, 429 líneas): una tarjeta por proveedor con el título armado a mano («prueba-local · Activo»), una línea de datos sueltos (tipo, modelos guardados, endpoint, credencial, «Sin comprobar») y cuatro botones con estilo viejo (Probar, Ver detalles y límites, Editar proveedor, Eliminar); al abrir, pestañas de credencial, modelos, uso y diagnóstico (`ProviderDetails.tsx`). Abajo, el interruptor experimental de Claude Subscription.
+- **«Agregar proveedor»** (`ProviderForm.tsx` en un diálogo): un `<select>` nativo con los 15 tipos, alias, endpoint, radios de autenticación, la clave o variable de entorno y una pista de cuenta, todo seguido. El **asistente inicial** (`ProviderWizard.tsx`) ya elige el tipo con una cuadrícula de tarjetas con logo, pero el diálogo de Ajustes no la usa.
+- **Ya hay muchos puntos del plan que tocan esta pantalla**: #12 (selector con estilo viejo), #13 (modelos gratis), #19 (borrar el proveedor activo), #24 («al quedarte sin límites…»), #27 y #78 (uso y límites), #80 (modelo de respaldo y auxiliar), #93 (guardado de modelos), #94 («Probar» de verdad), #96 (pestaña «Conexión»). **Sí entra en la mejora de UI**, y conviene rediseñarla una sola vez con todos.
+
+**Propuesta A: activar y desactivar.**
+1. **Engine:** campo `enabled` en el proveedor (migración; por defecto activado) y `provider.update {enabled}`. Con un proveedor desactivado:
+   - sus modelos **no salen** en `model.list` ni en el descubrimiento (salvo que se pida `include_disabled`, como hace Ajustes), así que desaparecen del composer, de Boards y de todos los selectores (Agentes, Visión, resumidor de Contexto, respaldo y auxiliar del #80, perfiles del #86);
+   - no se descubren modelos, no se consulta el uso ni los límites, y no se le hace ninguna llamada; la credencial **se conserva**;
+   - el router lo rechaza con un error claro si algo lo pide igual («El proveedor *X* está desactivado»).
+2. **Al desactivar, la app dice qué depende de él** antes de confirmar: «Es el modelo activo · lo usan 2 agentes y el resumidor · 1 tarea programada · 3 conversaciones recientes». En el mismo diálogo se elige **un modelo de reemplazo** para lo global (modelo activo, agentes, resumidor, visión, respaldo); las tareas programadas que lo usan quedan en pausa con su aviso.
+3. **Conversaciones que ya lo usaban:** conservan su modelo; al enviar, en vez de fallar, una tarjeta: «*deepseek-v4-pro* es de OpenCode Go, que está desactivado. Elegir otro modelo / Activar OpenCode Go».
+4. **Se puede desactivar el último** proveedor activo: Rinari queda sin modelos y ofrece el asistente, como en el #19.
+5. **Claude Subscription:** el interruptor experimental sigue siendo la puerta del tipo; cada proveedor de ese tipo tiene además su propio activar/desactivar.
+
+**Propuesta B: la pantalla de Proveedores.**
+1. **Lista de tarjetas** con logo, nombre, un chip de estado (Conectado · Sin credencial · Error · **Desactivado**), un **interruptor** para activar/desactivar, cuántos modelos tiene, un mini anillo de uso o saldo (#27/#78) y la última latencia de «Probar». Desactivado, la tarjeta queda atenuada y al final.
+2. **Al abrir una**, un panel con pestañas: **Resumen** (estado, credencial, cuenta, endpoint, «Probar» de verdad del #94), **Modelos** (#92/#93, con «Ocultos»), **Conexión** (#96: a la vez y tiempos), **Uso y límites** (#78, y «al quedarte sin límites» del #24) y **Diagnóstico**. Acciones con los botones canónicos: Editar, Probar y Eliminar (con confirmación que dice qué depende de él, como al desactivar).
+3. **Arriba de la lista, lo global:** modelo de respaldo y modelo auxiliar (#80), cada uno con el selector canónico.
+4. Sin título armado a mano ni datos sueltos: cada dato con su etiqueta, el endpoint en mono y recortado, y «Sin comprobar» como estado del chip.
+
+**Propuesta C: «Agregar proveedor».**
+1. **Mismo componente que el asistente inicial** (una sola fuente): paso 1, **elegir el tipo** en una cuadrícula de tarjetas con logo, agrupadas («Suscripciones»: ChatGPT, Claude; «Por API»: OpenAI, Anthropic, OpenRouter, DeepSeek, OpenCode Go/Zen, Gemini…; «Local»: Ollama, LM Studio, servidor propio), con búsqueda y una línea de qué es cada uno.
+2. Paso 2, **solo los campos que ese tipo necesita**: la clave con mostrar/ocultar y el enlace «¿Dónde la consigo?» (los del catálogo, `catalog.py:233`); el endpoint solo para «servidor propio» o en «Opciones avanzadas» (también ahí la variable de entorno y la pista de cuenta); el alias se propone solo y se puede cambiar.
+3. **«Probar» antes de guardar:** conecta, cuenta los modelos y mide la latencia («Conectado · 37 modelos · 0,4 s»); si falla, el motivo junto al campo que lo causa (clave inválida, endpoint inalcanzable).
+4. **Al guardar**, la animación de los modelos guardándose («Guardando 37 modelos…» → «37 modelos guardados», #93) y la opción «Usar uno ahora».
+5. Componentes canónicos y movimiento de [obsidiana-neon.md](../design/obsidiana-neon.md); **pasa por la sesión de pulido de UI**, igual que la pantalla de Proveedores.
+
+**Decisión pendiente.**
+1. ¿Activar/desactivar es **global** o **por perfil** (#86)? Recomendado: **global**; un perfil ya elige sus modelos por agente, y un proveedor desactivado no debería gastar ni consultarse en ningún perfil.
+
+**Pruebas.** CLI: un proveedor desactivado no aparece en `model.list` ni en el descubrimiento, no se consulta su uso y el router lo rechaza con su error; `include_disabled` lo trae; reactivar lo devuelve todo; la migración deja todos activados. App: el interruptor de la tarjeta; el diálogo de dependencias con reemplazo; la tarjeta «proveedor desactivado» al enviar en una conversación vieja; el composer sin sus modelos; «Agregar proveedor» con la cuadrícula, «Probar» antes de guardar y los errores en su campo. Escenario: desactivar un proveedor falso usado por un agente, elegir reemplazo, comprobar el composer y reactivarlo. Captura en `ui-tour` de Proveedores (con uno desactivado), el panel abierto y el diálogo de agregar.
 
 ---
 

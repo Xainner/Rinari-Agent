@@ -316,7 +316,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
 | 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Decidido |
 | 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Decidido |
-| 84 | El número de la barra de tareas no baja al entrar en la conversación que avisó (segunda vez; `ses_01M4Z0GEV3GMYWW2HAATKFDCGG`) | Agent | Propuesto (causa probable; falta diagnóstico) |
+| 84 | El número de la barra de tareas no baja al entrar en la conversación que avisó (segunda vez; `ses_01M4Z0GEV3GMYWW2HAATKFDCGG`) | Agent | Propuesto (causa confirmada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2493,12 +2493,19 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - `app.log` no registra nada de esos minutos aparte de los avisos de `ResizeObserver`: hoy **no hay registro** de por qué el número sube o baja.
 - La aprobación se quita bien de la lista al resolverse (`turnTimelineReducer.ts:851-867`), y un turno cancelado nace «visto» (`stores/boardAttention.ts:192, 225`); así que lo más probable es un **resultado marcado «sin leer» que nunca llega a cumplir la regla de «visto»**. Qué turno exactamente no se puede saber: los recibos viven en el almacenamiento de la ventana y no quedan en los registros.
 
+**Diagnóstico confirmado** (2026-10-15, leyendo solo los recibos de lectura guardados por la app en su almacenamiento local, sin contenido). El «2» de la barra de tareas eran **dos resultados sin leer de otras conversaciones**, no de la que el dueño abrió:
+1. **Una conversación que ya no existe** (`ses_01M4MPB1DYKBKBW0Z2F8S4SC9P`, borrada: no está en la base): su recibo «sin leer» quedó huérfano y **nunca se puede limpiar**, porque no hay conversación que abrir. Es un +1 permanente.
+2. **Otra conversación del mismo proyecto** (`ses_01M4Y6323GTZGP5DGGRPRMMRY5`, terminó un turno a las 05:26 UTC, dos minutos antes de abrir la nueva): ese resultado sigue sin verse. Como la barra lateral no marca qué conversación tiene algo pendiente (#33), no había forma de saber cuál era.
+- Cancelar el turno **no** tuvo que ver: un turno cancelado a mano nace «visto».
+
 **Causas posibles (verificadas en el código).**
 1. **Un resultado que no se dibuja nunca se marca como visto:** `TurnResult` devuelve `null` si el turno no tiene texto final, ni cambios, ni falló (`TurnResult.tsx:45`); sin bloque no hay `useResultVisibility`, y un turno «detenido» (`stopped`) sin texto queda **sin leer para siempre**.
 2. **Un resultado que quedó fuera de la vista:** si después de ese resultado viene otro turno largo (muchas herramientas), al entrar el chat está abajo y el resultado anterior queda arriba, fuera de pantalla: no se marca (`useResultVisibility.ts`), y el número no baja aunque el dueño ya siguió conversando.
 3. Los avisos del #62: la regla de 500 ms hace que a veces se marque antes de verlo, y otras (fuera de pantalla) nunca.
 
 **Propuesta.**
+0. **Recibos huérfanos fuera:** al borrar o archivar una conversación se borran sus recibos; al arrancar, la app descarta los recibos de conversaciones que ya no existen (o que el Engine no devuelve). Nunca un número que no se puede limpiar.
+0b. **Saber cuál es:** las señales de la barra lateral del #33 (punto en la conversación con un resultado sin leer) y el menú del botón de atención con cada conversación por su nombre; el tooltip del icono de la bandeja dice cuáles («2 pendientes: *Título A*, *Título B*»).
 1. **Escribir en la conversación cuenta como «visto»:** cuando el dueño envía un mensaje en una conversación, todos sus resultados anteriores sin leer pasan a «visto» (si siguió hablando, ya los vio).
 2. **Un turno sin bloque de resultado no queda sin leer:** si `TurnResult` no tiene nada que dibujar, el recibo se marca al ver la cabecera del turno (o nace «visto», como los cancelados).
 3. **Entrar en la conversación y estar abajo del todo** marca como vistos los resultados anteriores al último visible (con la regla de actividad del #62).

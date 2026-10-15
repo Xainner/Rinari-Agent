@@ -59,7 +59,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
-| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35, 36, 67, 76 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
+| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35 + 67 (juntos), 36, 76 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f) | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
@@ -298,16 +298,16 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Decidido |
 | 65 | La barra de progreso del dictado (descarga del modelo) se ve con el estilo de Windows, verde y gris (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 66 | Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad): el turno termina en silencio con respuestas vacías, la lista se queda «abierta» mientras trabaja, «Verificación completada» miente y tiene el estilo viejo, y una skill manda todo al workspace de otro chat (se deja como está) (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
-| 67 | «A file path is required» al abrir o mostrar en el explorador un archivo enlazado en el chat o en «Archivos» (Planka, Bug) | Agent | Propuesto (causa verificada) |
+| 67 | «A file path is required» al abrir o mostrar en el explorador un archivo enlazado en el chat o en «Archivos»; va con el #35 (Planka, Bug) | Agent | Propuesto (causa verificada) |
 | 68 | Textos en inglés con la app en español: el detalle del motor bajo la tarjeta de fallo, los errores de comandos, y el «Diagnóstico de la interrupción» en JSON (Planka, Bug ×2) | CLI + Agent | Propuesto (causa verificada) |
 | 69 | Barra lateral: con nombres largos el «+» del proyecto queda fuera y aparece scroll horizontal (Planka, Bug) | Agent | Propuesto (causa verificada) |
 | 70 | El Engine tarda más de 15 s en arrancar en un equipo con antivirus y la app lo da por caído; `session.history` vence; «Copiar detalles» no avisa (Planka, Bug ×2) | CLI + Agent | Propuesto (causa verificada) |
-| 71 | Primer uso: preguntar el nombre, preferencias y usos principales, y guardarlo en la memoria del usuario (Planka, Ideas-2) | CLI + Agent | Propuesto (faltan decisiones) |
+| 71 | Primer uso: preguntar el nombre, preferencias y usos principales, y guardarlo en la memoria del usuario (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 72 | Corrector ortográfico: sugerencias con clic derecho en el composer (Planka, Ideas-2) | Agent | Propuesto (causa verificada) |
-| 73 | Nombres variados para los subagentes, como en Codex (Planka, Ideas-2) | CLI + Agent | Propuesto (falta 1 decisión) |
-| 74 | El acceso directo del escritorio dice «Rinari», no «Rinari Agent» (Planka, Ideas-2) | Agent (instalador) | Propuesto (falta 1 decisión) |
-| 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Propuesto (faltan decisiones) |
-| 76 | Leer un .md deja un artefacto .txt: ¿está bien? (Planka, Validar) | CLI + Agent | Validado (sin problema; ajuste menor) |
+| 73 | Nombres variados para los subagentes, como en Codex (Planka, Ideas-2) | CLI + Agent | Decidido |
+| 74 | El acceso directo del escritorio dice «Rinari», no «Rinari Agent» (Planka, Ideas-2) | Agent (instalador) | Decidido |
+| 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Decidido |
+| 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos grandes (Planka, Validar) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2094,7 +2094,10 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 2. Rutas relativas se resuelven contra la carpeta del turno (`workspace_root`); `sandbox:/mnt/data/x` se traduce al nombre del archivo en esa carpeta.
 3. Para artefactos, «Mostrar en el explorador» usa `artifact.resolve` y abre el archivo guardado.
 4. Electron y la app rechazan la ruta vacía con un aviso en español («Este enlace no apunta a un archivo»), nunca el código crudo.
-5. Va junto con el `file.present` del #35 (misma tarjeta y mismas acciones).
+5. **Va de la mano con el #35** (respuesta al dueño, 2026-10-14). Se cubren mutuamente, pero ninguno basta solo:
+   - con `file.present`, lo que Rinari **entrega a propósito** llega con su ruta o artefacto resueltos por el Engine, sin depender de cómo escribió el enlace: ese caso deja de fallar;
+   - pero el modelo seguirá escribiendo enlaces y rutas en el texto (la «red de seguridad» del #35, punto 2), y ahí es donde se vaciaba la ruta: el #67 arregla ese camino;
+   - se implementan juntos, con la misma tarjeta y las mismas acciones (abrir, mostrar en el explorador) en el chat y en «Archivos».
 
 **Pruebas.** Vitest de `FileLink` con vacío, relativo, `sandbox:`, `artifact://` y absoluto; escenario: el modelo falso entrega una ruta relativa y una imagen, y «Abrir» y «Mostrar en el explorador» funcionan.
 
@@ -2162,9 +2165,9 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - **Se puede repetir** desde Ajustes → Memoria («Contarle a Rinari sobre ti»).
 - Pasa por la sesión de pulido de UI (diseño y animación de la bienvenida).
 
-**Decisiones pendientes.**
-1. ¿Las preguntas van antes o después de conectar el proveedor? Recomendado: **antes**, para que Rinari ya salude por el nombre al conectar.
-2. ¿Qué usos van en la lista? Recomendado: los de arriba más «Otro (escribir)».
+**Decisiones del dueño (2026-10-14).**
+1. Las preguntas van **antes** de conectar el proveedor.
+2. La lista de usos: los de arriba más «Otro (escribir)».
 
 ---
 
@@ -2188,7 +2191,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Propuesta.** Un **apodo** por subagente, elegido de una lista por idioma (unos 60 nombres) de forma reproducible por sesión, **único** dentro de la conversación (con «II» si se acaba la lista). Se guarda con el subagente y sobrevive a reanudar. El id sigue siendo la clave para las herramientas; el apodo es solo para mostrar: «Vega · explorador» en el panel de Agentes, el timeline y los avisos. Nunca nombres de personas reales.
 
-**Decisión pendiente.** ¿De qué tema son los nombres? Recomendado: **estrellas y constelaciones** (Vega, Altair, Lyra, Orión…), que van con la estética de Rinari; otras opciones: minerales, flores, gatos.
+**Decisión del dueño (2026-10-14).** Los nombres son de **estrellas y constelaciones** (Vega, Altair, Lyra, Orión…).
 
 ---
 
@@ -2200,7 +2203,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Propuesta.** El acceso directo pasa a `Rinari.lnk`. **No** se cambia `productName` ni el `appId` (moverían la carpeta de datos, romperían el actualizador y la entrada de desinstalación). Al actualizar, el instalador borra el `Rinari Agent.lnk` viejo (solo si apunta a nuestro ejecutable, como ya hace) para no dejar dos; el desinstalador borra los dos nombres. Los anclajes de la barra de tareas siguen funcionando porque el AppUserModelID no cambia.
 
-**Decisión pendiente.** ¿También el menú Inicio dice «Rinari»? Recomendado: **sí**, igual que el escritorio.
+**Decisión del dueño (2026-10-14).** El menú Inicio también dice «Rinari».
 
 ---
 
@@ -2225,20 +2228,31 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **Categorías:** se mantienen y se añaden «persona» (gente y personajes), «recurso» (enlaces, guías, referencias) y «decisión»; todas traducidas.
 6. **Gestor de memoria:** vista por ámbito (pestañas o columna lateral: General, Perfiles, Proyectos, Chats) con conteos, agrupado por categoría, búsqueda, filtros, **selección múltiple** (mover de ámbito, olvidar), edición en línea, origen de cada memoria (de qué conversación salió, con enlace) y «sin usar hace tiempo». Pasa por la sesión de pulido de UI.
 
-**Decisiones pendientes.**
-1. ¿Las cuatro (general, perfil, proyecto, chat)? Recomendado: **sí**.
-2. ¿Qué pasa con la memoria de un chat al borrarlo? Recomendado: **se borra con él** (como ya pasa con las memorias que salieron de un chat excluido).
-3. ¿Las categorías nuevas («persona», «recurso», «decisión»)? Recomendado: **sí**.
+**Decisiones del dueño (2026-10-14).**
+1. Los **cuatro ámbitos**: general, perfil, proyecto y chat.
+2. La memoria de un chat **se borra con él**.
+3. Se añaden las categorías **persona, recurso y decisión**.
 
 ---
 
-## 76. Leer un .md deja un artefacto .txt
+## 76. Leer un archivo grande: el flujo, no solo la extensión
 
-**Pregunta** (Planka, Validar): cuando Rinari lee un .md, lo pasa a un artefacto .txt; ¿está bien?
+**Pregunta** (Planka, Validar; aclarada por el dueño, 2026-10-14): cuando Rinari lee un .md grande, lo pasa a un artefacto .txt. ¿Está bien que el flujo sea así?
 
-**Respuesta (verificada): sí, está bien.** Ese artefacto **no es el archivo**, es la respuesta completa de la herramienta (un JSON con la ruta y el texto dentro) que se guarda aparte cuando es demasiado grande para el contexto (`tools/runtime.py:829-857`, `tools/observations.py:72-84`). El .md original sigue en su lugar. Ponerle .md sería peor: «Archivos» lo mostraría como Markdown roto.
+**Cómo funciona hoy (verificado).** Cuando una herramienta devuelve más de lo que cabe en el contexto, el Engine guarda **la respuesta completa** en un artefacto (`tools/observations.py:72-93`, `tools/runtime.py:829-857`) y al modelo le llega un resumen parcial con `result_ref` y la instrucción de recuperar el resto con `artifact.read` desde el byte 0. Esa copia es el **sobre JSON** de la herramienta (`{"ok":…, "data":{"path":…, "text":…}}`), con el Markdown escapado dentro; de ahí el `.txt`. El .md original no se toca.
 
-**Ajuste menor.** Esos artefactos se guardan como `.json` (con colores en «Archivos») cuando son respuestas de herramientas en JSON, y al abrirlos desde el timeline se ofrece «Abrir el archivo original» cuando la herramienta leyó un archivo con ruta.
+**¿Está bien?** Para lo que **no se puede repetir** (la salida de un comando, una página web, un MCP), sí: guardar la respuesta completa es lo correcto. Para **un archivo que está en el disco, no**:
+- el modelo vuelve a leer una **copia** en JSON escapado en vez del archivo, lo que le cuesta más tokens y le hace más difícil citar líneas;
+- la copia duplica el archivo en `~/.rinari/artifacts`;
+- en «Archivos» se ve un JSON, no el documento.
+
+**Propuesta.**
+1. **Archivos del disco:** la recuperación apunta al **original**, por rangos de líneas: «leíste hasta la línea 400 de 1250; sigue con `fs.read_lines` desde la 401». Se guarda el `sha256` de la lectura: si el archivo cambió entre lecturas, la herramienta lo avisa.
+2. **Solo si hace falta una copia** (el archivo es temporal o puede cambiar), se guarda el **texto tal cual**, con su extensión (`.md`, `.py`…), no el sobre JSON.
+3. **Lo que no se puede repetir** (comandos, web, MCP) sigue guardándose completo, como hoy, pero como `.json` cuando es JSON (con colores en «Archivos»).
+4. En el timeline, una lectura grande ofrece «Abrir el archivo» (el original), no la copia.
+
+**Pruebas.** CLI: leer un .md de 3000 líneas devuelve la primera parte y una recuperación con `fs.read_lines` y el rango siguiente, sin artefacto; si el archivo cambió, el aviso; un comando con salida enorme sigue dejando su artefacto `.json`/texto.
 
 ---
 
@@ -2302,6 +2316,10 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 60 | Al crear un proyecto, «Confiar» sale encendido salvo en carpetas con hooks o servidores MCP propios (apagado con aviso); al guardar se abre un borrador del proyecto con el chip del #42, sin sesión vacía. |
 | 62 | Al volver a la ventana, el resultado que terminó mientras no estabas lleva una marca visible («Nuevo · terminó hace…», borde con brillo suave) y se da por leído con actividad del dueño o a los 3 s, no a los 500 ms; el «1» baja al mismo tiempo; «↓ Nuevo resultado» si no está a la vista. Sin la cara de Rinari en la cabecera (descartado). |
 | 64 | Notificación de Windows con el nombre de la conversación y las primeras líneas de la respuesta (o del plan, la aprobación o el fallo), «Abrir» y «Revisar plan»; sin aprobar desde ahí. Contenido visible por defecto, con interruptor. Responder desde la notificación si funciona en Windows; si no, «Responder» abre el composer. |
+| 71 | Bienvenida de primer uso antes de conectar el proveedor: nombre, usos (con «Otro») y preferencias; se puede saltar y repetir; se guarda en la memoria del usuario. |
+| 73 | Apodos de subagentes con nombres de estrellas y constelaciones, únicos por conversación. |
+| 74 | El acceso directo del escritorio y del menú Inicio se llaman «Rinari»; `productName` y `appId` no cambian. |
+| 75 | Memoria en cuatro ámbitos (general, perfil, proyecto, chat), el modelo elige y la tarjeta deja cambiarlo; la de un chat se borra con él; categorías nuevas persona, recurso y decisión; gestor de memoria por ámbito. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

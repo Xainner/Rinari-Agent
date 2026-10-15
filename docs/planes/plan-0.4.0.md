@@ -53,13 +53,13 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 
 | Orden | Bloque | Puntos | Por qué juntos |
 |---|---|---|---|
-| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 66a (respuestas vacías), 66e (argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
+| 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 76 (lecturas y salidas grandes), 66a (respuestas vacías), 66e (argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
 | 2 | Verificación y objetivos | 61c y 66c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
 | 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55 y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
-| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35 + 67 (juntos), 36, 76 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
+| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35 + 67 (juntos), 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f) | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
@@ -307,7 +307,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 73 | Nombres variados para los subagentes, como en Codex (Planka, Ideas-2) | CLI + Agent | Decidido |
 | 74 | El acceso directo del escritorio dice «Rinari», no «Rinari Agent» (Planka, Ideas-2) | Agent (instalador) | Decidido |
 | 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Decidido |
-| 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos grandes (Planka, Validar) | CLI + Agent | Propuesto (causa verificada) |
+| 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos y salidas grandes, con lo que hacen OpenCode, Hermes, Codex, Claude Code y Gemini CLI (Planka, Validar) | CLI + Agent | Propuesto (investigado) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2246,13 +2246,39 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - la copia duplica el archivo en `~/.rinari/artifacts`;
 - en «Archivos» se ve un JSON, no el documento.
 
-**Propuesta.**
-1. **Archivos del disco:** la recuperación apunta al **original**, por rangos de líneas: «leíste hasta la línea 400 de 1250; sigue con `fs.read_lines` desde la 401». Se guarda el `sha256` de la lectura: si el archivo cambió entre lecturas, la herramienta lo avisa.
-2. **Solo si hace falta una copia** (el archivo es temporal o puede cambiar), se guarda el **texto tal cual**, con su extensión (`.md`, `.py`…), no el sobre JSON.
-3. **Lo que no se puede repetir** (comandos, web, MCP) sigue guardándose completo, como hoy, pero como `.json` cuando es JSON (con colores en «Archivos»).
-4. En el timeline, una lectura grande ofrece «Abrir el archivo» (el original), no la copia.
+**Cómo lo resuelven otros agentes** (investigado el 2026-10-14 en su código y documentación):
 
-**Pruebas.** CLI: leer un .md de 3000 líneas devuelve la primera parte y una recuperación con `fs.read_lines` y el rango siguiente, sin artefacto; si el archivo cambió, el aviso; un comando con salida enorme sigue dejando su artefacto `.json`/texto.
+| Agente | Leer un archivo grande | Salida de herramienta demasiado grande |
+|---|---|---|
+| OpenCode (v1 y la reescritura v2) | `read` por páginas del **archivo original**: 2000 líneas / 50 KiB, líneas cortadas a 2000 caracteres, con número de línea y «Showing lines X-Y of N. Use offset=Z to continue». **Nunca** guarda una copia de una lectura. | Bash, grep, web y MCP: 2000 líneas / 50 KiB; el texto completo va a `tool-output/tool_<id>` (se borra a los 7 días) con «Full output saved to X. Use Grep… or Read with offset/limit». |
+| Hermes Agent | `read_file` por páginas (2000 líneas, presupuesto de 100 mil caracteres) y **excluida** del volcado «para evitar el bucle guardar → leer → guardar». Detecta lecturas repetidas de un archivo sin cambios y las bloquea a la tercera. | Por resultado hasta el 15 % de la ventana y por turno el 30 %; lo demás va a `cache/spillover/{id}.txt` con una vista previa de 1500 caracteres. **Tuvo el mismo error que Rinari**: guardar el sobre JSON dejaba el documento en una sola línea y no se podía paginar; lo arreglaron guardando el texto sin el sobre (issue 90426). La terminal guarda 40 % del principio y 60 % del final. |
+| Codex CLI | No tiene herramienta de lectura: usa la terminal (`sed`, `rg`). | Corta por el medio con «…N tokens truncated…» (10 mil tokens por defecto); no guarda nada para que el modelo lo relea. |
+| Claude Code | `Read` por páginas del original: 2000 líneas, 25 mil tokens por llamada; una lectura demasiado grande devuelve la primera página y un aviso. Nunca guarda copias de lecturas. | Bash hasta ~30 mil caracteres en línea; MCP por encima de ~25 mil tokens se guarda en `tool-results/<id>.txt` como **texto plano**, con una vista previa de 2 KB, y se lee con las herramientas normales (Read, Grep). |
+| Gemini CLI | `read_file` con `start_line`/`end_line`, 2000 líneas, «Showing lines X-Y of N… use start_line: Y+1». | La terminal por encima de 40 mil caracteres: 20 % del principio y 80 % del final; el texto completo a un archivo. |
+
+**Conclusión:** todos leen los archivos grandes **por páginas del original** y ninguno guarda una copia de una lectura; solo guardan lo que no se puede repetir (comandos, web, MCP), y **como texto plano** que se lee con las herramientas normales.
+
+**Propuesta (lo mejor de cada uno).**
+1. **`fs.read` se pagina solo y nunca se vuelca a un artefacto.**
+   - Hasta 2000 líneas y lo menor entre 50 KiB y el 15 % de la ventana del modelo (mínimo 8 mil caracteres); líneas de más de 2000 caracteres se cortan con «… (línea cortada)»; cada línea con su número.
+   - Si no cabe, devuelve **una página, no un error**, con el pie: «Mostrando las líneas 1–812 de 5430 · sha 3f2a… · sigue con `fs.read_lines` desde la 813; usa `fs.search_text` para buscar algo concreto».
+   - `fs.read` y `fs.read_lines` quedan fuera del volcado por presupuesto (como Hermes).
+2. **Solo se guarda lo que no se puede repetir** (terminal, web, MCP, búsquedas, subagentes), y se guarda **el texto de dentro**, con saltos de línea reales, **nunca el sobre JSON**; los datos de la llamada (herramienta, argumentos, código de salida, hora) van en una cabecera corta o en un `.meta.json` aparte. La extensión según el contenido (`.txt`, `.json`, `.md`, `.html`).
+3. **Las copias se leen con las herramientas normales**: se guardan en la carpeta de la sesión (`…/tool-results/<call_id>.txt`) y se paginan con `fs.read_lines` y `fs.search_text` por líneas. `artifact.read` por bytes deja de ser el camino recomendado (los modelos paginan mucho mejor por líneas y un corte por bytes puede partir un carácter); la URI `artifact://` queda como alias.
+4. **El aviso al modelo:** «Salida demasiado grande (412 KB, 9812 líneas). Texto completo guardado en: <ruta>. Recórrelo con `fs.read_lines` o búscalo con `fs.search_text`; no vuelvas a ejecutar el comando. Vista previa: …». Para la terminal, la vista previa lleva el principio y el final (40/60), para que los errores del final se vean; para web y MCP, el principio.
+5. **Umbrales:** por resultado, lo menor entre 2000 líneas / 50 KiB y el 15 % de la ventana; MCP con un tope más bajo (~50 mil caracteres); por turno, el 30 % de la ventana, volcando primero los resultados más grandes. Se mide lo que el modelo **realmente** verá (después de escapar el JSON). La ruta se anuncia solo después de comprobar que el archivo se escribió completo. Las copias se borran a los 7 días.
+6. **Cambios entre lecturas:** se registra ruta, fecha, tamaño y `sha256` de cada lectura de la sesión.
+   - Volver a leer el mismo rango sin cambios devuelve «sin cambios desde el turno N» (y se frena a la tercera vez, como Hermes).
+   - Si el archivo cambió entre páginas, el pie avisa que los números de línea pueden haberse movido.
+   - Editar o escribir un archivo que cambió desde la última lectura pide releerlo antes.
+   - Las copias guardadas no cambian nunca (el hash va en el nombre).
+7. **Binarios:** se detectan por los primeros bytes o un byte nulo en los primeros 8 KiB. Imágenes y PDF como adjuntos (PDF por rangos de páginas si pasa de ~10), Office a texto, y el resto con un error claro «archivo binario»; nunca base64 como texto (se une con el 61a).
+8. En el timeline, una lectura grande ofrece «Abrir el archivo» (el original), y una salida guardada «Abrir la salida completa» (la copia de texto, con colores según su tipo).
+
+**Pruebas.**
+- CLI: leer un .md de 5000 líneas devuelve la primera página con su pie y ningún artefacto; seguir con `fs.read_lines` desde la línea indicada; releer sin cambios devuelve el aviso; si el archivo cambió, el pie lo dice; editar tras un cambio externo pide releer.
+- CLI: una salida de terminal de 1 MB se guarda como texto con saltos de línea reales, el aviso trae principio y final, y `fs.read_lines` / `fs.search_text` la recorren; una respuesta MCP grande con su tope propio; el total por turno respeta el 30 %.
+- CLI: un binario devuelve «archivo binario», nunca su contenido como texto.
 
 ---
 

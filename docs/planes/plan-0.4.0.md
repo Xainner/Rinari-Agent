@@ -2465,12 +2465,16 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - El **aviso de cambio de rama** (lote 4: «la rama cambió desde el último trabajo: A → B», `useSessionList.ts:62, 298`) se muestra al abrir la conversación.
 
 **Propuesta.**
-1. **Se quita la rama** de la barra lateral (filas de proyecto), de la barra de título (el chip queda solo con el nombre del proyecto, que sigue abriendo la página del proyecto) y de la cabecera de los paneles de Boards (va con la limpieza B.1b del plan de Boards).
+1. **Se quita la rama** de la barra lateral (filas de proyecto), de la barra de título y de la cabecera de los paneles de Boards (va con la limpieza B.1b del plan de Boards).
 2. **Dónde vive ahora:**
    - **Resumen → Entorno** (#82): rama, cambios sin guardar, adelantos/atrasos respecto al remoto, worktree, y «sin git» si no hay repositorio;
    - el **chip de proyecto del composer** al empezar una conversación nueva (#42), porque ahí ayuda a elegir; desaparece al primer envío, como el chip.
 3. **El aviso de cambio de rama se mantiene**, y además enciende el indicador del botón «Resumen» y deja una línea ámbar en la tarjeta Entorno («La rama cambió desde tu último trabajo: A → B»), para no perderlo si se cerró el aviso.
-4. **La barra de título no se monta nunca** (la de arriba de la conversación, en la vista Normal; y lo mismo en la cabecera de cada panel de Boards): el título, el chip del proyecto y el chip de modo se recortan con «…» por orden (primero el título, luego el proyecto), sin superponerse; vale también en ventanas angostas.
+4. **La barra de título queda solo con el título de la conversación** (decisión del dueño, 2026-10-14): se quitan también el chip del proyecto y el chip de modo (`Editado · build`).
+   - el proyecto se ve en la barra lateral y en Resumen → Entorno, desde donde se abre su página;
+   - el modo ya está en el composer (el selector de modo y permisos);
+   - un título largo se recorta con «…» y el completo sale al pasar el ratón.
+   - En la cabecera de los paneles de Boards rige su propia limpieza (B.1b), sin rama.
 5. Pasa por la sesión de pulido de UI.
 
 **Decisión del dueño (2026-10-14).** Ninguna marca de rama en la barra lateral, tampoco para las conversaciones con worktree propio: varias conversaciones (o sesiones hijas) pueden compartir rama, no usar ninguna o trabajar directo en el proyecto, así que la rama no las identifica. Para verla está el Resumen.
@@ -2549,7 +2553,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 80 | Modelo de respaldo tras los reintentos o dos respuestas vacías (nunca por rechazo de contenido), con aviso en el timeline y vuelta al principal en el turno siguiente; con límites agotados, el respaldo de inmediato. Modelo auxiliar para títulos, memoria, skills y resúmenes; la compactación no lo usa salvo que se active. |
 | 81 | `/init` en la app: exploración en solo lectura y propuesta de `RINARI.md` con Guardar / Editar / Descartar; reutiliza `AGENTS.md`/`CLAUDE.md`; `verify.plan` toma de ahí los comandos. |
 | 82 | «Resumen» como mini panel lateral excluyente con las vistas (#47): entorno, contexto, plan y pasos, cambios con repo/rama/PR y «Crear PR» (confirmado, con `gh`; sin `gh`, la página de GitHub), resultados, fuentes (web y MCP), conectores, agentes y procesos; no se abre solo y se recuerda por conversación. |
-| 83 | La rama sale de la barra lateral, de la barra de título y de la cabecera de los paneles; vive en Resumen → Entorno y en el chip de proyecto de una conversación nueva; el aviso de cambio de rama se mantiene y enciende el Resumen; sin marca de rama en la barra lateral, tampoco con worktree. |
+| 83 | La rama sale de la barra lateral, de la barra de título y de la cabecera de los paneles; vive en Resumen → Entorno y en el chip de proyecto de una conversación nueva; la barra de título queda solo con el título de la conversación (sin chip de proyecto ni de modo); el aviso de cambio de rama se mantiene y enciende el Resumen; sin marca de rama en la barra lateral, tampoco con worktree. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

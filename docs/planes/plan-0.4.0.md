@@ -319,7 +319,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Decidido |
 | 84 | El número de la barra de tareas no baja al entrar en la conversación que avisó (segunda vez; `ses_01M4Z0GEV3GMYWW2HAATKFDCGG`) | Agent | Propuesto (causa confirmada) |
 | 85 | Proyectos y conversaciones archivados: solo los del perfil activo (hoy salen los de todos los perfiles) (dueño) | Agent | Propuesto (causa verificada) |
-| 86 | Ajustes → Perfiles: rediseño que muestre lo que de verdad guarda un perfil; el «modo» del perfil hoy no hace nada; el alma por defecto, la de Rinari (dueño, con captura) | CLI + Agent | Propuesto (falta 1 decisión) |
+| 86 | Ajustes → Perfiles: rediseño que muestre lo que de verdad guarda un perfil; el «modo» del perfil hoy no hace nada (se quita); el alma por defecto, la de Rinari (dueño, con captura) | CLI + Agent | Decidido |
 | 87 | Personalidad: no se nota diferencia entre «Mínimo», «Equilibrado» y «Personaje completo»; y rediseño de la pantalla (dueño) | CLI + Agent | Propuesto (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
@@ -2552,20 +2552,18 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 1. **Tarjeta de perfil que cuenta lo que es:**
    - nombre, descripción y una marca **«En uso»** en el activo;
    - **Alma:** avatar y nombre del alma («Rinari» por defecto);
-   - **Modo inicial** de las conversaciones nuevas (Plan, Build, Review);
    - **Modelos por agente:** principal, explorador, revisor… con su proveedor (o «los de siempre» si no cambia ninguno);
    - **Trabajo:** cuántos proyectos y conversaciones tiene, con «Ver en la barra lateral»;
    - acciones: **«Usar este perfil»** (en vez de «Aplicar»), «Editar», «Duplicar» y «Eliminar» (que explica: «sus proyectos y conversaciones pasan a Default»).
-2. **Crear y editar con un formulario de verdad**, no campos de texto: nombre y descripción; el **id** se genera del nombre; **selector de alma** (con «Rinari» elegida por defecto); **selector de modo**; **modelos por agente** con el selector de modelos de la app.
+2. **Crear y editar con un formulario de verdad**, no campos de texto: nombre y descripción; el **id** se genera del nombre; **selector de alma** (con «Rinari» elegida por defecto); **modelos por agente** con el selector de modelos de la app.
 3. **El alma por defecto es la de Rinari:** un perfil nuevo nace con `soul_id = rinari-default` explícito (y se ve), y el dueño la cambia si quiere.
-4. **El modo funciona** (decisión 1): el modo del perfil es el **modo con el que empieza** cada conversación nueva de ese perfil (el composer ya lo trae elegido), y solo acepta Plan, Build o Review.
+4. **Se quita el modo del perfil** (decisión del dueño): no aporta hoy (la app siempre elige el modo de cada conversación). Sale de la pantalla, del formulario y del archivo del perfil (el Engine ignora el campo en perfiles viejos); se puede retomar más adelante con una idea mejor. La descripción del perfil queda para contar para qué se usa.
 5. **«Usar este perfil» no toca la configuración global:** los modelos por agente se aplican por perfil (ya se leen así, `agent_runtime.py:1327-1335`); se quita la escritura global de `server.py:3313-3327`.
 6. Pasa por la sesión de pulido de UI.
 
-**Decisión pendiente.**
-1. ¿El modo del perfil se **arregla** (modo inicial de las conversaciones nuevas del perfil) o se **quita**? Recomendado: **arreglarlo**: un perfil «Revisor» que empieza en Review o uno «Planificación» en Plan es útil.
+**Decisión del dueño (2026-10-15).** Se **quita** el modo del perfil por ahora.
 
-**Pruebas.** CLI: crear un perfil sin alma le pone `rinari-default`; el modo inválido se rechaza; «usar este perfil» no cambia la configuración global de agentes. App: la tarjeta con alma, modo, modelos y trabajo; el formulario con selectores; una conversación nueva en un perfil con modo Plan empieza en Plan.
+**Pruebas.** CLI: crear un perfil sin alma le pone `rinari-default`; un perfil viejo con `mode` se carga sin error y el campo se ignora; «usar este perfil» no cambia la configuración global de agentes. App: la tarjeta con alma, modelos y trabajo; el formulario con selectores, sin modo.
 
 ---
 
@@ -2583,13 +2581,13 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Propuesta.**
 1. **Niveles que se notan**, con reglas concretas y observables, no adverbios:
-   - **Mínimo:** sin aperturas ni cierres de personaje, sin emoji ni kaomoji, sin bromas; tono amable y directo.
+   - **Mínimo:** sin aperturas ni cierres de personaje, sin emoji, sin bromas; tono amable y directo.
    - **Equilibrado:** una línea de personaje al abrir **o** cerrar en las respuestas conversacionales; reacciones en primera persona a los resultados; emoji muy de vez en cuando.
-   - **Personaje completo:** **siempre** abre y cierra con su voz en lo conversacional; muletillas y reacciones propias de Rinari (tsundere, celos fingidos, orgullo), kaomoji y emoji en las líneas de conversación; el cuerpo técnico igual de completo; fuera en código, comandos, errores, seguridad y estados.
+   - **Personaje completo:** **siempre** abre y cierra con su voz en lo conversacional; muletillas y reacciones propias de Rinari (tsundere, celos fingidos, orgullo) y algún emoji en las líneas de conversación, **sin kaomoji** (decisión del dueño); el cuerpo técnico igual de completo; fuera en código, comandos, errores, seguridad y estados.
    - Cada nivel con **dos o tres ejemplos** cortos de cómo suena, para que el modelo los imite.
 2. **El bloque del nivel va al final del prompt del sistema** (después de las reglas de formato), donde pesa más, y con una línea que diga que manda sobre el tono neutro del resto.
 3. **Huecos:** un alma sin texto también recibe el nivel; la CLI interactiva relee el alma y el nivel en cada turno.
-4. **Prueba de verdad:** una evaluación con el modelo falso no sirve; se añade una evaluación en vivo (opcional, fuera del CI) que pide las mismas 10 respuestas en cada nivel y cuenta aperturas/cierres de personaje y emoji: «Completo» debe tener claramente más que «Equilibrado», y este más que «Mínimo».
+4. **Prueba de verdad:** una evaluación con el modelo falso no sirve; se añade una evaluación en vivo (opcional, fuera del CI) que pide las mismas 10 respuestas en cada nivel y cuenta aperturas/cierres de personaje y emoji (y que no haya kaomoji en ningún nivel): «Completo» debe tener claramente más que «Equilibrado», y este más que «Mínimo».
 5. **Pantalla nueva de personalidad:**
    - arriba, **«Cómo habla Rinari»**: el selector de nivel grande, con la cara de Rinari por nivel y una **vista previa en vivo**: tres respuestas de ejemplo (un saludo, un resultado y un error) que cambian al elegir el nivel (escritas a mano para cada nivel, sin llamar al modelo);
    - abajo, **las almas como galería**: tarjeta con avatar, nombre, descripción corta y «En uso»; al abrir una, un panel con su texto renderizado (Markdown), «Usar», «Duplicar para editar», «Exportar» e «Importar alma» (archivo `.toml` + `.md`);
@@ -2671,6 +2669,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 81 | `/init` en la app: exploración en solo lectura y propuesta de `RINARI.md` con Guardar / Editar / Descartar; reutiliza `AGENTS.md`/`CLAUDE.md`; `verify.plan` toma de ahí los comandos. |
 | 82 | «Resumen» como mini panel lateral excluyente con las vistas (#47): entorno, contexto, plan y pasos, cambios con repo/rama/PR y «Crear PR» (confirmado, con `gh`; sin `gh`, la página de GitHub), resultados, fuentes (web y MCP), conectores, agentes y procesos; no se abre solo y se recuerda por conversación. |
 | 83 | La rama sale de la barra lateral, de la barra de título y de la cabecera de los paneles; vive en Resumen → Entorno y en el chip de proyecto de una conversación nueva; la barra de título queda solo con el título de la conversación (sin chip de proyecto ni de modo); el aviso de cambio de rama se mantiene y enciende el Resumen; sin marca de rama en la barra lateral, tampoco con worktree. |
+| 86 | Perfiles: tarjeta con alma, modelos por agente y trabajo; formulario con selectores; alma de Rinari por defecto; se quita el modo del perfil; «Usar este perfil» no toca la configuración global. |
+| 87 | Niveles de personalidad con reglas concretas y ejemplos, al final del prompt, **sin kaomoji** en ningún nivel; pantalla nueva con vista previa por nivel y galería de almas. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

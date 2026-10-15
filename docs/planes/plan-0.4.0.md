@@ -315,7 +315,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Decidido |
 | 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
 | 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Decidido |
-| 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Propuesto (falta 1 decisión) |
+| 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2470,11 +2470,10 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
    - **Resumen → Entorno** (#82): rama, cambios sin guardar, adelantos/atrasos respecto al remoto, worktree, y «sin git» si no hay repositorio;
    - el **chip de proyecto del composer** al empezar una conversación nueva (#42), porque ahí ayuda a elegir; desaparece al primer envío, como el chip.
 3. **El aviso de cambio de rama se mantiene**, y además enciende el indicador del botón «Resumen» y deja una línea ámbar en la tarjeta Entorno («La rama cambió desde tu último trabajo: A → B»), para no perderlo si se cerró el aviso.
-4. **La barra de título no se monta nunca:** el título, el chip del proyecto y el chip de modo se recortan con «…» por orden (primero el título, luego el proyecto), sin superponerse; vale también en ventanas angostas.
+4. **La barra de título no se monta nunca** (la de arriba de la conversación, en la vista Normal; y lo mismo en la cabecera de cada panel de Boards): el título, el chip del proyecto y el chip de modo se recortan con «…» por orden (primero el título, luego el proyecto), sin superponerse; vale también en ventanas angostas.
 5. Pasa por la sesión de pulido de UI.
 
-**Decisión pendiente.**
-1. Las conversaciones que trabajan en su **propio worktree** (sesiones hijas A3): ahí la rama es lo que distingue una conversación de otra. ¿Llevan un pequeño icono de rama en su fila de la barra lateral, con la rama al pasar el ratón? Recomendado: **sí**, solo el icono (sin texto) y solo en esas conversaciones.
+**Decisión del dueño (2026-10-14).** Ninguna marca de rama en la barra lateral, tampoco para las conversaciones con worktree propio: varias conversaciones (o sesiones hijas) pueden compartir rama, no usar ninguna o trabajar directo en el proyecto, así que la rama no las identifica. Para verla está el Resumen.
 
 **Pruebas.** Vitest: la barra lateral y la barra de título sin rama; el chip del composer nuevo con rama; el aviso de cambio de rama enciende el indicador del Resumen; con un nombre de proyecto y un título largos, nada se superpone (también a 900 px de ancho). Captura en `ui-tour`.
 
@@ -2550,6 +2549,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 80 | Modelo de respaldo tras los reintentos o dos respuestas vacías (nunca por rechazo de contenido), con aviso en el timeline y vuelta al principal en el turno siguiente; con límites agotados, el respaldo de inmediato. Modelo auxiliar para títulos, memoria, skills y resúmenes; la compactación no lo usa salvo que se active. |
 | 81 | `/init` en la app: exploración en solo lectura y propuesta de `RINARI.md` con Guardar / Editar / Descartar; reutiliza `AGENTS.md`/`CLAUDE.md`; `verify.plan` toma de ahí los comandos. |
 | 82 | «Resumen» como mini panel lateral excluyente con las vistas (#47): entorno, contexto, plan y pasos, cambios con repo/rama/PR y «Crear PR» (confirmado, con `gh`; sin `gh`, la página de GitHub), resultados, fuentes (web y MCP), conectores, agentes y procesos; no se abre solo y se recuerda por conversación. |
+| 83 | La rama sale de la barra lateral, de la barra de título y de la cabecera de los paneles; vive en Resumen → Entorno y en el chip de proyecto de una conversación nueva; el aviso de cambio de rama se mantiene y enciende el Resumen; sin marca de rama en la barra lateral, tampoco con worktree. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

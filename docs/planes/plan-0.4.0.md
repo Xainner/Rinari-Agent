@@ -41,7 +41,7 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 ## Orden de entrega
 
 1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81 y 82 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82 y 83, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83 y 84, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -58,7 +58,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55, 82 (Resumen) y 83 (la rama pasa al Resumen), y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
-| 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
+| 6 | Avisos y atención | 33, 34, 62, 64, 84 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
 | 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35 + 67 (juntos), 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f), 77 | El mismo camino de imágenes del Engine. |
@@ -316,6 +316,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
 | 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Decidido |
 | 83 | Quitar la rama de git de la barra lateral, de la barra de título y de la cabecera de los paneles: pasa al «Resumen» (#82) (dueño, con capturas) | Agent | Decidido |
+| 84 | El número de la barra de tareas no baja al entrar en la conversación que avisó (segunda vez; `ses_01M4Z0GEV3GMYWW2HAATKFDCGG`) | Agent | Propuesto (causa probable; falta diagnóstico) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2480,6 +2481,32 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Decisión del dueño (2026-10-14).** Ninguna marca de rama en la barra lateral, tampoco para las conversaciones con worktree propio: varias conversaciones (o sesiones hijas) pueden compartir rama, no usar ninguna o trabajar directo en el proyecto, así que la rama no las identifica. Para verla está el Resumen.
 
 **Pruebas.** Vitest: la barra lateral y la barra de título sin rama; el chip del composer nuevo con rama; el aviso de cambio de rama enciende el indicador del Resumen; con un nombre de proyecto y un título largos, nada se superpone (también a 900 px de ancho). Captura en `ui-tour`.
+
+---
+
+## 84. El número de la barra de tareas no baja al entrar en la conversación
+
+**Qué se vio** (dueño, 2026-10-15; segunda vez). Rinari avisó, el dueño entró en la conversación (`ses_01M4Z0GEV3GMYWW2HAATKFDCGG`) y el número de la barra de tareas **siguió ahí**. Revisado sin leer el contenido de la conversación (solo tipos de evento, tiempos y estados).
+
+**Lo que dicen los datos.**
+- Cuatro turnos: tres terminados normalmente (05:30, 05:32, 05:33 UTC, con respuesta) y uno con una aprobación (`fs.write`, pedida 05:41:52 y aprobada «siempre en este proyecto» 05:42:01) que terminó **cancelado** a las 05:45:49.
+- `app.log` no registra nada de esos minutos aparte de los avisos de `ResizeObserver`: hoy **no hay registro** de por qué el número sube o baja.
+- La aprobación se quita bien de la lista al resolverse (`turnTimelineReducer.ts:851-867`), y un turno cancelado nace «visto» (`stores/boardAttention.ts:192, 225`); así que lo más probable es un **resultado marcado «sin leer» que nunca llega a cumplir la regla de «visto»**. Qué turno exactamente no se puede saber: los recibos viven en el almacenamiento de la ventana y no quedan en los registros.
+
+**Causas posibles (verificadas en el código).**
+1. **Un resultado que no se dibuja nunca se marca como visto:** `TurnResult` devuelve `null` si el turno no tiene texto final, ni cambios, ni falló (`TurnResult.tsx:45`); sin bloque no hay `useResultVisibility`, y un turno «detenido» (`stopped`) sin texto queda **sin leer para siempre**.
+2. **Un resultado que quedó fuera de la vista:** si después de ese resultado viene otro turno largo (muchas herramientas), al entrar el chat está abajo y el resultado anterior queda arriba, fuera de pantalla: no se marca (`useResultVisibility.ts`), y el número no baja aunque el dueño ya siguió conversando.
+3. Los avisos del #62: la regla de 500 ms hace que a veces se marque antes de verlo, y otras (fuera de pantalla) nunca.
+
+**Propuesta.**
+1. **Escribir en la conversación cuenta como «visto»:** cuando el dueño envía un mensaje en una conversación, todos sus resultados anteriores sin leer pasan a «visto» (si siguió hablando, ya los vio).
+2. **Un turno sin bloque de resultado no queda sin leer:** si `TurnResult` no tiene nada que dibujar, el recibo se marca al ver la cabecera del turno (o nace «visto», como los cancelados).
+3. **Entrar en la conversación y estar abajo del todo** marca como vistos los resultados anteriores al último visible (con la regla de actividad del #62).
+4. **«Marcar todo como leído»** en el menú de la bandeja, en el clic derecho del icono de la barra de tareas y en el menú del botón de atención (#33).
+5. **Registro de diagnóstico:** cada vez que el número cambia, `app.log` guarda una línea corta (sesión, turnos sin leer con su estado, aprobaciones y preguntas pendientes; nunca contenido). Así el próximo caso se ve en el registro.
+6. Va con el bloque de avisos (#33, #62, #64).
+
+**Pruebas.** Vitest de los recibos: enviar un mensaje marca los anteriores; un turno `stopped` sin texto no queda sin leer; entrar abajo marca los anteriores; «Marcar todo como leído» deja el número en 0. Escenario: un resultado arriba de un turno largo, entrar en la conversación y escribir: el número baja.
 
 ---
 

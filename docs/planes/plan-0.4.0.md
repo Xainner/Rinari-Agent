@@ -2552,7 +2552,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 1. **Tarjeta de perfil que cuenta lo que es:**
    - nombre, descripción y una marca **«En uso»** en el activo;
    - **Alma:** avatar y nombre del alma («Rinari» por defecto);
-   - **Modelos por agente:** principal, explorador, revisor… con su proveedor (o «los de siempre» si no cambia ninguno);
+   - **Modelos por agente:** principal, explorador, revisor… con su proveedor. Cada agente **hereda la asignación general** salvo que el perfil lo cambie (así funciona hoy: `agent_runtime.py:1305-1324` parte de la general y solo reemplaza lo que el perfil define). La tarjeta lo distingue: «como el general» o el modelo propio del perfil, y en el formulario cada agente tiene «Volver al general»;
    - **Trabajo:** cuántos proyectos y conversaciones tiene, con «Ver en la barra lateral»;
    - acciones: **«Usar este perfil»** (en vez de «Aplicar»), «Editar», «Duplicar» y «Eliminar» (que explica: «sus proyectos y conversaciones pasan a Default»).
 2. **Crear y editar con un formulario de verdad**, no campos de texto: nombre y descripción; el **id** se genera del nombre; **selector de alma** (con «Rinari» elegida por defecto); **modelos por agente** con el selector de modelos de la app.

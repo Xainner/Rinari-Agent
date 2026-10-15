@@ -70,10 +70,10 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
 | 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
-| 18 | Sueltos | 4, 8, 72, 74 |
+| 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
-| 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. | Independientes y pequeños. |
+| 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. |
 
 ---
 

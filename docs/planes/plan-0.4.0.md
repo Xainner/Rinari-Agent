@@ -330,7 +330,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 95 | Rinari habla de sí misma en tercera persona («veré dónde guarda Rinari sus sesiones») en vez de «veré dónde guardo mis sesiones» (dueño) | CLI | Propuesto (causa verificada) |
 | 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido · prioridad alta |
-| 97 | Activar y desactivar proveedores (desactivado: sus modelos no salen en el composer ni en ningún selector), y rediseño de Ajustes → Proveedores y del diálogo «Agregar proveedor» (dueño) | CLI + Agent | Propuesto (falta 1 decisión) |
+| 97 | Activar y desactivar proveedores (desactivado: sus modelos no salen en el composer ni en ningún selector), y rediseño de Ajustes → Proveedores y del diálogo «Agregar proveedor» (dueño) | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2954,8 +2954,8 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 4. **Al guardar**, la animación de los modelos guardándose («Guardando 37 modelos…» → «37 modelos guardados», #93) y la opción «Usar uno ahora».
 5. Componentes canónicos y movimiento de [obsidiana-neon.md](../design/obsidiana-neon.md); **pasa por la sesión de pulido de UI**, igual que la pantalla de Proveedores.
 
-**Decisión pendiente.**
-1. ¿Activar/desactivar es **global** o **por perfil** (#86)? Recomendado: **global**; un perfil ya elige sus modelos por agente, y un proveedor desactivado no debería gastar ni consultarse en ningún perfil.
+**Decisión (dueño, 2026-10-15).**
+1. Activar/desactivar es **global**: un perfil ya elige sus modelos por agente, y un proveedor desactivado no gasta ni se consulta en ningún perfil.
 
 **Pruebas.** CLI: un proveedor desactivado no aparece en `model.list` ni en el descubrimiento, no se consulta su uso y el router lo rechaza con su error; `include_disabled` lo trae; reactivar lo devuelve todo; la migración deja todos activados. App: el interruptor de la tarjeta; el diálogo de dependencias con reemplazo; la tarjeta «proveedor desactivado» al enviar en una conversación vieja; el composer sin sus modelos; «Agregar proveedor» con la cuadrícula, «Probar» antes de guardar y los errores en su campo. Escenario: desactivar un proveedor falso usado por un agente, elegir reemplazo, comprobar el composer y reactivarlo. Captura en `ui-tour` de Proveedores (con uno desactivado), el panel abierto y el diálogo de agregar.
 
@@ -3038,6 +3038,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 91 | La limpieza de `~/.rinari` es manual (Ajustes → Almacenamiento) con una sugerencia al pasar de un tamaño; nada se borra solo. |
 | 94 | El protocolo nativo de Google entra en 0.4.0 (adaptador nuevo), además del catálogo al día, el aprendizaje del protocolo y «Probar» de verdad. |
 | 96 | Avanzado: el máximo de salida pasa a Modelos y lo de cada proveedor a Proveedores → «Conexión»; Avanzado queda con Estado, Conexiones, Límites del turno, Red (entra en 0.4.0), Diagnóstico, Almacenamiento, Procesos, Motor, Actualizaciones y Restablecer; los ajustes que no hacen nada salen del esquema. |
+| 97 | Activar/desactivar proveedores es global; desactivado, sus modelos salen de todos los selectores, no se le llama y la clave se conserva; pantalla de Proveedores y «Agregar proveedor» rediseñadas juntas (el diálogo usa el asistente inicial). |
 | 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

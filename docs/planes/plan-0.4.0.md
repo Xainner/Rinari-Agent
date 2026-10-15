@@ -73,8 +73,8 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
-| 22 | Uso y diagnóstico | 78, 79 | El informe de uso alimenta el paquete de revisión; los dos leen lo mismo del Engine. |
 | 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. |
+| 22 | Uso y diagnóstico | 78, 79 | El informe de uso alimenta el paquete de revisión; los dos leen lo mismo del Engine. |
 
 ---
 

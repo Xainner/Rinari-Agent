@@ -310,10 +310,10 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Decidido |
 | 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos y salidas grandes, con lo que hacen OpenCode, Hermes, Codex, Claude Code y Gemini CLI (Planka, Validar) | CLI + Agent | Propuesto (investigado) |
 | 77 | Imágenes en el composer: quitar la barra «Leer imágenes como» y una vista previa grande y bonita, igual en el composer y en el chat (dueño, con capturas) | Agent | Decidido |
-| 78 | `/usage` en el chat: un informe de uso completo y bonito (límites del plan, contexto, uso por modelo, herramientas y avisos de desperdicio) que reemplaza «Contexto y uso» del panel lateral (propuesta de Claude, ampliada por el dueño) | CLI + Agent | Propuesto (faltan 2 decisiones) |
-| 79 | «Exportar para revisión»: una conversación (o desde un mensaje) en un paquete para analizarla, con los registros de esas horas y sin secretos (propuesta de Claude) | CLI + Agent | Propuesto (falta 1 decisión) |
-| 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Propuesto (faltan 2 decisiones) |
-| 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Propuesto |
+| 78 | `/usage` en el chat: un informe de uso completo y bonito (límites del plan, contexto, uso por modelo, herramientas y avisos de desperdicio) que reemplaza «Contexto y uso» del panel lateral (propuesta de Claude, ampliada por el dueño) | CLI + Agent | Decidido |
+| 79 | «Exportar para revisión»: una conversación (o desde un mensaje) en un paquete para analizarla, con los registros de esas horas y sin secretos (propuesta de Claude) | CLI + Agent | Decidido |
+| 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Decidido |
+| 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2345,9 +2345,9 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **Se quita** la sección «Contexto y uso» del Workspace (#47). El anillo de contexto conserva su globo rápido, y su botón «Detalles» ejecuta `/usage`. Ajustes → Proveedores → «Uso y límites» se queda (es la vista por proveedor).
 6. Pasa por la sesión de pulido de UI.
 
-**Decisiones pendientes.**
-1. ¿La tarjeta del informe **se queda** en la conversación (como un evento guardado, que al volver a abrirla sigue ahí como foto de ese momento) o es **momentánea** (desaparece al recargar)? Recomendado: **se queda**, marcada como «Informe de uso · 14 oct, 21:40», sin mandarse nunca al modelo.
-2. Los límites de **Claude Subscription**: ¿investigamos leerlos de la CLI de Claude (si los expone) para que salgan como en el ejemplo? Recomendado: **sí, investigar**; si no se puede, «no informado».
+**Decisiones del dueño (2026-10-14).**
+1. La tarjeta del informe **se queda** en la conversación como foto de ese momento («Informe de uso · fecha y hora»), guardada como evento y **nunca** enviada al modelo.
+2. Se **investiga** leer los límites de Claude Subscription desde la CLI de Claude; si no se puede, «no informado».
 
 **Pruebas.** CLI: `usage.report` con dos modelos, subagentes y compactaciones da las filas y totales correctos; la imagen repetida aparece como aviso; `cache_write_tokens` desde Anthropic. App: vitest de la tarjeta (bloques, vacíos, copiar, selector); escenario: `/usage` pinta la tarjeta sin llamar al modelo; el «Detalles» del anillo la abre; captura en `ui-tour`.
 
@@ -2365,8 +2365,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **CLI:** `rinari session export <id> --review [--from <seq>] [--no-messages]`.
 6. Leerlo después es solo descomprimir y leer (lo hago con mis herramientas, en solo lectura).
 
-**Decisión pendiente.**
-1. ¿«Incluir el texto de los mensajes» viene **encendido o apagado**? Recomendado: **encendido** (sin el texto se pierde la mitad del análisis), con el aviso de que el paquete lleva la conversación completa.
+**Decisión del dueño (2026-10-14).** «Incluir el texto de los mensajes» viene **encendido**, con el aviso de que el paquete lleva la conversación completa.
 
 **Pruebas.** CLI: exportar con y sin mensajes y desde un `seq`; ningún secreto de prueba sobrevive; el `.zip` trae los registros del intervalo. App: el diálogo y «Exportar desde aquí».
 
@@ -2387,9 +2386,9 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 2. **Modelo auxiliar** (Ajustes → Proveedores): un modelo barato para las llamadas internas: **títulos**, propuestas de memoria, revisión de skills, resúmenes de archivos y la nota de la lista de pasos. Si no se configura, se usa el de la conversación (como hoy). El arreglo de la cabecera de OpenCode del #48 aplica también aquí.
 3. En el informe del #78, cada modelo con su fila (principal, respaldo, auxiliar).
 
-**Decisiones pendientes.**
-1. Si se acaban los **límites** del principal y hay respaldo: ¿se usa el respaldo **de inmediato**, o se ofrece primero esperar al reinicio (#24)? Recomendado: **el respaldo de inmediato**, y la tarjeta del #24 solo cuando no hay respaldo (o como opción «Esperar al principal»).
-2. ¿La **compactación** del contexto también usa el auxiliar? Recomendado: **no por defecto** (un mal resumen hace perder contexto); un interruptor para quien lo quiera.
+**Decisiones del dueño (2026-10-14).**
+1. Si se acaban los límites del principal y hay respaldo, se usa **el respaldo de inmediato**; la tarjeta del #24 queda para cuando no hay respaldo, o como opción «Esperar al principal».
+2. La compactación **no** usa el auxiliar por defecto; hay un interruptor para quien lo quiera.
 
 **Pruebas.** CLI: un principal que falla tras sus reintentos y el turno sigue con el respaldo con el aviso; dos respuestas vacías activan el respaldo; un rechazo de contenido no; los títulos usan el auxiliar; sin auxiliar, el de la conversación. App: el aviso en el timeline y los ajustes.
 
@@ -2480,6 +2479,10 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 74 | El acceso directo del escritorio y del menú Inicio se llaman «Rinari»; `productName` y `appId` no cambian. |
 | 75 | Memoria en cuatro ámbitos (general, perfil, proyecto, chat), el modelo elige y la tarjeta deja cambiarlo; la de un chat se borra con él; categorías nuevas persona, recurso y decisión; gestor de memoria por ámbito. |
 | 77 | Sin la barra «Leer imágenes como»: imagen por defecto, OCR automático si el modelo no ve, cambio por imagen desde el chip y preferencia en Ajustes; un solo visor de imágenes grande con zoom y flechas en todo el chat. |
+| 78 | `/usage` en la app y la CLI: tarjeta de informe (cliente, límites del plan con reinicio, contexto, uso por modelo con caché leída y escrita y costo, herramientas, avisos de desperdicio), copiable y descargable; se queda en la conversación como foto, sin ir al modelo; se quita «Contexto y uso» del Workspace; se investiga leer los límites de Claude Subscription. |
+| 79 | «Exportar para revisión» desde la barra lateral o desde un mensaje: .zip con eventos, lista de pasos, verificaciones, informe de uso, registros de esas horas y entorno; secretos siempre fuera; el texto de los mensajes incluido por defecto con aviso. |
+| 80 | Modelo de respaldo tras los reintentos o dos respuestas vacías (nunca por rechazo de contenido), con aviso en el timeline y vuelta al principal en el turno siguiente; con límites agotados, el respaldo de inmediato. Modelo auxiliar para títulos, memoria, skills y resúmenes; la compactación no lo usa salvo que se active. |
+| 81 | `/init` en la app: exploración en solo lectura y propuesta de `RINARI.md` con Guardar / Editar / Descartar; reutiliza `AGENTS.md`/`CLAUDE.md`; `verify.plan` toma de ahí los comandos. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

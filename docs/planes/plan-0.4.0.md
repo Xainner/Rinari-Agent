@@ -326,7 +326,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 90 | Procesos que el modelo deja corriendo (servidores, watchers): se quedan huérfanos al cerrar la app, el modelo no los ve y los repite (Planka, Ideas-2) | CLI + Agent | Decidido (causa verificada) |
 | 91 | Arranque más rápido, carga más ligera y un Engine más estable (Planka, Ideas-2) | CLI + Agent | Decidido (medido) |
 | 92 | Ajustes: pasada visual a Agentes, Modelos (alias con «Editar»), Skills y Contexto; Memoria y Personalidad ya van en #75 y #87 (Planka, Ideas-2) | Agent | Propuesto |
-| 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Propuesto (causa verificada, falta 1 decisión) |
+| 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2770,8 +2770,8 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 6. Aviso discreto cuando se añaden modelos nuevos: «OpenCode Go: 2 modelos nuevos» con «Ver».
 7. Pasa por la sesión de pulido de UI (la fila, «Guardando modelos…», «Ocultos»).
 
-**Decisión pendiente.**
-1. ¿«Quitar» un modelo lo **oculta** (y la actualización no lo vuelve a traer, con «Ocultos» para recuperarlo) o lo **borra** (y vuelve si el proveedor lo sigue ofreciendo)? Recomendado: **ocultar**.
+**Decisión (dueño, 2026-10-15).**
+1. «Quitar» un modelo lo **oculta**: la actualización no lo vuelve a traer, y «Ocultos (n)» en la tarjeta del proveedor permite recuperarlo.
 
 **Pruebas.** CLI: `model.discovery` y `model.discover` guardan los nuevos y marcan los que faltan; un modelo oculto no vuelve con la actualización; «Mostrar» lo recupera; `models.changed` se emite en cada cambio; la pasada de migración guarda los que falten. App: al agregar un proveedor en Ajustes la tarjeta muestra «Guardando modelos…» y luego la lista **sin ningún «Guardar»**; «Actualizar modelos» del composer deja los nuevos guardados (sin `saved: false`); vitest de «Ocultos». Escenario: agregar un proveedor falso con 5 modelos → los 5 guardados y visibles sin salir de la pantalla; el proveedor anuncia uno más → «Actualizar» del composer lo guarda y aparece en Ajustes.
 
@@ -2852,6 +2852,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 87 | Niveles de personalidad con reglas concretas y ejemplos, al final del prompt, **sin kaomoji** en ningún nivel; pantalla nueva con vista previa por nivel y galería de almas. |
 | 90 | Al cerrar Rinari del todo se detienen los procesos que dejó el modelo (salvo `persist: true`, que se pregunta al cerrar). Minimizar a la bandeja no detiene nada. |
 | 91 | La limpieza de `~/.rinari` es manual (Ajustes → Almacenamiento) con una sugerencia al pasar de un tamaño; nada se borra solo. |
+| 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

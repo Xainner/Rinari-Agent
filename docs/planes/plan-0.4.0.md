@@ -327,7 +327,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 91 | Arranque más rápido, carga más ligera y un Engine más estable (Planka, Ideas-2) | CLI + Agent | Decidido (medido) |
 | 92 | Ajustes: pasada visual a Agentes, Modelos (alias con «Editar»), Skills y Contexto; Memoria y Personalidad ya van en #75 y #87 (Planka, Ideas-2) | Agent | Propuesto |
 | 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Decidido (causa verificada) |
-| 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Propuesto (causa verificada, falta 1 decisión) |
+| 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Decidido (causa verificada) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2798,8 +2798,10 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **Si de verdad no hay forma:** el modelo queda guardado (#93) pero en el selector sale **«No compatible todavía»**, sin poder elegirlo, con el motivo al pasar el ratón («usa el protocolo nativo de Google»); el error, si llega, lo dice con esas palabras y ofrece «Cambiar modelo».
 6. **«Probar» de verdad:** en Ajustes → Modelos, «Probar» hace una llamada mínima por el protocolo elegido y dice «Funciona · protocolo de Google · 0,7 s» o el motivo del fallo.
 
-**Decisión pendiente.**
-1. ¿Entra en 0.4.0 el **protocolo nativo de Google**? Recomendado: **sí**; OpenCode ya sirve Gemini así y no es el único proveedor que lo hará. Sin él, estos modelos quedan como «No compatible todavía» (puntos 3–6 igual).
+**Decisión (dueño, 2026-10-15).**
+1. El **protocolo nativo de Google entra en 0.4.0**.
+
+**Arreglo temporal en la instalación del dueño (2026-10-15).** Mientras llega la 0.4.0, una sesión aparte parchea solo el Engine instalado (sin ramas ni commits) para que `gemini-4-argon-contributor` funcione por OpenCode Go. La próxima actualización de la app lo reemplaza; el arreglo de verdad es este punto.
 
 **Pruebas.** CLI: un id desconocido en el descubrimiento actualiza el catálogo antes de guardarse; un `@ai-sdk/google` usa el adaptador de Google (contra un servidor falso: texto, imagen, herramienta, razonamiento y uso); el 400 «does not support this protocol» prueba otros protocolos, guarda el bueno y repite; las direcciones nuevas de OpenCode con respaldo a la antigua; «Probar» hace una llamada real mínima. App: el selector marca «No compatible todavía» y no deja elegirlo; la línea del timeline al cambiar de protocolo. En vivo (manual, fuera del CI): `gemini-4-argon-contributor` responde por OpenCode Go.
 
@@ -2880,6 +2882,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 87 | Niveles de personalidad con reglas concretas y ejemplos, al final del prompt, **sin kaomoji** en ningún nivel; pantalla nueva con vista previa por nivel y galería de almas. |
 | 90 | Al cerrar Rinari del todo se detienen los procesos que dejó el modelo (salvo `persist: true`, que se pregunta al cerrar). Minimizar a la bandeja no detiene nada. |
 | 91 | La limpieza de `~/.rinari` es manual (Ajustes → Almacenamiento) con una sugerencia al pasar de un tamaño; nada se borra solo. |
+| 94 | El protocolo nativo de Google entra en 0.4.0 (adaptador nuevo), además del catálogo al día, el aprendizaje del protocolo y «Probar» de verdad. |
 | 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

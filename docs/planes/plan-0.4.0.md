@@ -329,7 +329,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 95 | Rinari habla de sí misma en tercera persona («veré dónde guarda Rinari sus sesiones») en vez de «veré dónde guardo mis sesiones» (dueño) | CLI | Propuesto (causa verificada) |
-| 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido, falta 1 decisión (red) · prioridad alta |
+| 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido · prioridad alta |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2912,8 +2912,8 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 - una **búsqueda** arriba que filtra tarjetas y controles («proxy», «timeout», «bucle»);
 - con movimiento reducido, todo sin animación y con el mismo orden.
 
-**Decisión pendiente.**
-2. ¿La tarjeta **Red** (proxy, certificados de Windows y «Probar conexión») entra en 0.4.0? Recomendado: **sí**; sin ella, Rinari no funciona en redes de empresa con inspección TLS, y el cambio en el Engine es pequeño (un solo creador de clientes HTTP para los 12 sitios que hoy los crean por su cuenta).
+**Decisión (dueño, 2026-10-15).**
+2. La tarjeta **Red** (proxy, certificados de Windows con `truststore` y «Probar conexión») **entra en 0.4.0**, con un solo creador de clientes HTTP en el Engine para los 12 sitios que hoy los crean por su cuenta.
 
 **Pruebas.** Vitest: los predefinidos escriben los cuatro tiempos; «Personalizado» muestra los valores en uso; un valor fuera de rango se marca y no guarda; el máximo de salida en la fila del modelo y la pestaña «Conexión» del proveedor guardan en `model-execution.json`; «Restablecer» deja los valores por defecto. CLI: `execution.settings.get/set` valida igual que hoy y no toca la visión. CLI: los ajustes muertos fuera del esquema sin romper archivos viejos; los límites de subagentes del archivo se aplican; con la tarjeta Red, el creador único de clientes usa los certificados de Windows y el proxy elegido. App: resumen de cada tarjeta plegada, búsqueda, «Restablecer el estado de la interfaz». Captura en `ui-tour` de Avanzado (plegada y con tarjetas abiertas), Modelos (con máximo de salida) y Proveedores → Conexión; con movimiento reducido, sin animación.
 
@@ -2995,6 +2995,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 90 | Al cerrar Rinari del todo se detienen los procesos que dejó el modelo (salvo `persist: true`, que se pregunta al cerrar). Minimizar a la bandeja no detiene nada. |
 | 91 | La limpieza de `~/.rinari` es manual (Ajustes → Almacenamiento) con una sugerencia al pasar de un tamaño; nada se borra solo. |
 | 94 | El protocolo nativo de Google entra en 0.4.0 (adaptador nuevo), además del catálogo al día, el aprendizaje del protocolo y «Probar» de verdad. |
+| 96 | Avanzado: el máximo de salida pasa a Modelos y lo de cada proveedor a Proveedores → «Conexión»; Avanzado queda con Estado, Conexiones, Límites del turno, Red (entra en 0.4.0), Diagnóstico, Almacenamiento, Procesos, Motor, Actualizaciones y Restablecer; los ajustes que no hacen nada salen del esquema. |
 | 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

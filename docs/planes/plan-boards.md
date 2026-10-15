@@ -119,6 +119,7 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka,
 | C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Abierto. Lo necesita el panel colapsado con estado (B.2) |
 | C12 | Los recibos de lectura se indexan por instalación, no por home del Engine | `docs/debt.md` | Abierto |
 | C13 | Regla que se mantiene: que aparezca un contador en la barra de Boards nunca cambia su altura | 52530f7, comprobado en `boards-fit` | Vigente |
+| C14 | La confirmación de «¿Activar Acceso completo?» sale centrada en toda la ventana, no sobre el panel donde se cambió el permiso (Planka, Bug, 2026-10-14). Causa: `FullAccessDialog.tsx:36-37` usa `AlertDialog`, que se monta en `document.body` con `fixed` (`components/ui/alert-dialog.tsx:30-35`). Propuesta: `AlertDialogContent` acepta un `container`; en Boards se usa la sección del panel (`SessionPane.tsx:200`, `data-pane-id`) con `position: relative` y el diálogo se dibuja `absolute` dentro de ella, con el foco atrapado en el panel. |
 
 ### C.1 «Preparando el turno…» parpadea en el panel
 

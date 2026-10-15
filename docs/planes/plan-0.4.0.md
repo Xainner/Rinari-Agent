@@ -59,18 +59,21 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
-| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35, 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
+| 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35, 36, 67, 76 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f) | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
 | 11 | Límites y proveedores | 3, 24, 27, 19, 13 | Las mismas lecturas de uso y de errores del proveedor. |
 | 12 | Proyecto y confianza | 42, 60, 38 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
-| 13 | Subagentes y sesiones hijas | 5, 25, 40 | El mismo vínculo madre → hija y su panel. |
+| 13 | Subagentes y sesiones hijas | 5, 25, 40, 73 | El mismo vínculo madre → hija y su panel. |
 | 14 | Comandos y tareas | 32, 50 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
-| 18 | Sueltos | 4, 8 | Independientes y pequeños. |
+| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 18 | Sueltos | 4, 8, 72, 74 |
+| 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
+| 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
+| 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. | Independientes y pequeños. |
 
 ---
 
@@ -295,6 +298,16 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 64 | Notificación de Windows con contenido, como la de ChatGPT: título de la conversación, las primeras líneas de la respuesta y responder desde ahí (Planka, Ideas-2) | Agent | Decidido |
 | 65 | La barra de progreso del dictado (descarga del modelo) se ve con el estilo de Windows, verde y gris (Planka, Bug) | Agent | Decidido (causa verificada) |
 | 66 | Lecciones de `ses_01M4W2TWAQENGD477M7GMYWH1H` (video ad): el turno termina en silencio con respuestas vacías, la lista se queda «abierta» mientras trabaja, «Verificación completada» miente y tiene el estilo viejo, y una skill manda todo al workspace de otro chat (se deja como está) (Planka, Bug) | CLI + Agent | Propuesto (causa verificada) |
+| 67 | «A file path is required» al abrir o mostrar en el explorador un archivo enlazado en el chat o en «Archivos» (Planka, Bug) | Agent | Propuesto (causa verificada) |
+| 68 | Textos en inglés con la app en español: el detalle del motor bajo la tarjeta de fallo, los errores de comandos, y el «Diagnóstico de la interrupción» en JSON (Planka, Bug ×2) | CLI + Agent | Propuesto (causa verificada) |
+| 69 | Barra lateral: con nombres largos el «+» del proyecto queda fuera y aparece scroll horizontal (Planka, Bug) | Agent | Propuesto (causa verificada) |
+| 70 | El Engine tarda más de 15 s en arrancar en un equipo con antivirus y la app lo da por caído; `session.history` vence; «Copiar detalles» no avisa (Planka, Bug ×2) | CLI + Agent | Propuesto (causa verificada) |
+| 71 | Primer uso: preguntar el nombre, preferencias y usos principales, y guardarlo en la memoria del usuario (Planka, Ideas-2) | CLI + Agent | Propuesto (faltan decisiones) |
+| 72 | Corrector ortográfico: sugerencias con clic derecho en el composer (Planka, Ideas-2) | Agent | Propuesto (causa verificada) |
+| 73 | Nombres variados para los subagentes, como en Codex (Planka, Ideas-2) | CLI + Agent | Propuesto (falta 1 decisión) |
+| 74 | El acceso directo del escritorio dice «Rinari», no «Rinari Agent» (Planka, Ideas-2) | Agent (instalador) | Propuesto (falta 1 decisión) |
+| 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Propuesto (faltan decisiones) |
+| 76 | Leer un .md deja un artefacto .txt: ¿está bien? (Planka, Validar) | CLI + Agent | Validado (sin problema; ajuste menor) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -1633,6 +1646,14 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **Errores claros en Ajustes → Skills:** si algo falla o vence, se dice qué y se puede reintentar; la pantalla nunca se queda «pensando» sin fin.
 6. **Vigilancia general:** el Engine registra cualquier pedido que tarde más de unos segundos en el hilo de pedidos (solo el nombre y la duración), para encontrar otros casos así antes de que bloqueen.
 
+### 53c. Instalar varias skills a la vez (Planka, Bug, 2026-10-14)
+
+**Qué se vio.** De un .zip o una carpeta con muchas skills, la lista muestra cada una con «Instalar skill»; al instalar **una**, el diálogo se cierra y hay que volver a cargar el .zip para la siguiente.
+
+**Causa (verificada).** `InstallSkillDialog.tsx`: cada fila tiene su botón, solo se instala una a la vez (`installing: string | null`), y al terminar llama a `onClose()` (`:93`), que borra todo el estado (`:40-48`).
+
+**Propuesta.** Casillas por fila (desactivadas en las ya instaladas), «Seleccionar todas» e **«Instalar seleccionadas (n)»** con progreso «k de n»; el diálogo **no se cierra**: cada fila pasa a «Instalada» o muestra su error; un aviso resumen al final. Cada skill conserva su revisión (una con avisos de riesgo pide su confirmación aparte). Pasa por la sesión de pulido de UI.
+
 ### 53b. Instalar desde un repo o un .zip grande: los topes miran todo, no la skill (dueño, 2026-10-13)
 
 **Qué se vio.** Con el link de GitHub: «download exceeds 26214400 bytes». Con el .zip descargado a mano: «archive has over 2000 files». **No hay forma de instalar la skill.**
@@ -2059,6 +2080,165 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 **Pruebas.**
 - CLI: una respuesta final vacía recibe una nota y un reintento; dos vacías terminan con `kind: "empty"` y motivo, y la lista queda `interrupted`; una lista `open` vuelve a `active` al empezar el turno; `items` como texto JSON se convierte.
 - App: «El modelo terminó sin responder · Continuar»; la fila de verificación con su resultado y estilo; el dock trabajando con la lista reabierta; la fila del aviso de bucle.
+
+---
+
+## 67. Abrir un archivo enlazado: «A file path is required»
+
+**Qué se vio** (Planka, Bug; `ses_01M4Y6323GTZGP5DGGRPRMMRY5`). En «Archivos» y desde el chat, al pulsar un archivo entregado o «Abrir en el explorador» con clic derecho: `INVALID_PARAMS: A file path is required`.
+
+**Causa (verificada).** El error sale del Engine (`engine_protocol/desktop.py:334-336`) cuando la ruta llega **vacía**. Se vacía en la app: `fileUrlTransform` (`FileWorkspace.tsx:65-69`) convierte cualquier enlace que no reconoce (`sandbox:`, `computer:`, esquemas raros) en `''`; `FileLink` toma `''` por defecto (`:72`) y `localFileTarget('')` devuelve `''` en vez de `null` (`:45-62`), así que el enlace se trata como archivo con `data-file-path=""`. Electron tampoco rechaza el texto vacío (`assertString`, `electron/shared/validation.ts:55`). En la sesión, los archivos entregados eran **rutas relativas** del proyecto (y artefactos `artifact://` de las imágenes): el dato del Engine estaba bien, el enlace se perdió al dibujarse.
+
+**Propuesta.**
+1. `localFileTarget` devuelve `null` para vacío o espacios; un enlace no admitido se dibuja como texto, no como archivo.
+2. Rutas relativas se resuelven contra la carpeta del turno (`workspace_root`); `sandbox:/mnt/data/x` se traduce al nombre del archivo en esa carpeta.
+3. Para artefactos, «Mostrar en el explorador» usa `artifact.resolve` y abre el archivo guardado.
+4. Electron y la app rechazan la ruta vacía con un aviso en español («Este enlace no apunta a un archivo»), nunca el código crudo.
+5. Va junto con el `file.present` del #35 (misma tarjeta y mismas acciones).
+
+**Pruebas.** Vitest de `FileLink` con vacío, relativo, `sandbox:`, `artifact://` y absoluto; escenario: el modelo falso entrega una ruta relativa y una imagen, y «Abrir» y «Mostrar en el explorador» funcionan.
+
+---
+
+## 68. Todo en español: errores del motor, diagnóstico y textos sueltos
+
+**Qué se vio** (Planka, Bug ×2). Bajo la tarjeta «Rinari se cerró mientras este turno trabajaba…» aparece el detalle en inglés («Rinari's engine stopped before this turn finished…»), y el «Diagnóstico de la interrupción» es un JSON crudo (`{"reason": "engine_exited", …}`) con el estilo viejo. Pidió revisar otros textos sin traducir.
+
+**Causa (verificada).**
+- El texto en inglés es una constante del Engine (`engine_protocol/orphans.py:37-40`) que la app muestra tal cual bajo el texto traducido (`TurnResult.tsx:111`).
+- El diagnóstico es `JSON.stringify(errorDetails)` en un `<pre>` (`TurnResult.tsx:68-72`).
+- **Más textos en inglés:** `commandMessage` (`services/engine.ts:796-799`) devuelve `CÓDIGO: mensaje en inglés` y se usa en ~185 avisos; los errores de herramientas (`TurnTimelineView.tsx:307, 336`); el motivo de un conflicto de cambios (`ChangeSetRow.tsx:104`); la descripción de la aprobación (`TurnTimelineView.tsx:193`, ya en el #56); el detalle del arranque (`StartupSplash.tsx:51`, `App.tsx:580`); «Engine returned no file path» (`electron/main/index.ts:267`).
+
+**Propuesta.**
+1. **Traducir por código, no por texto:** un mapa `error.<CÓDIGO>` en `es.ts`/`en.ts` para los códigos del protocolo (y los motivos `reason` conocidos). El texto del Engine queda como respaldo y en el diagnóstico.
+2. **Si la causa ya está explicada** por la tarjeta, el texto crudo del Engine no se muestra debajo.
+3. **El diagnóstico, diseñado:** una lista con etiquetas en español («Motivo: el motor se cerró», «Se puede continuar: sí», «Cerrado al reiniciar: sí»…), con el estilo de la tarjeta de fallo y un botón «Copiar diagnóstico» para el JSON.
+4. Un test que recorre los componentes y avisa de textos visibles en inglés escritos a mano (lista de excepciones para nombres propios).
+
+**Pruebas.** Vitest de `commandMessage` con códigos conocidos y desconocidos; de la tarjeta de interrupción (sin texto en inglés) y del diagnóstico; captura en `ui-tour`.
+
+---
+
+## 69. Barra lateral: el «+» del proyecto siempre a la vista
+
+**Qué se vio** (Planka, Bug, en el equipo de un usuario). Con nombres de proyecto largos y la rama, el «+» de la fila del proyecto no se ve y aparece scroll horizontal; al pulsar una conversación la barra se corrió sola a la derecha.
+
+**Causa (verificada).** `.sidebar-project` (`src/styles/index.css:1532`) tiene `width: 100%` sin `min-width: 0`: como elemento flex no puede encogerse por debajo de su contenido (el nombre completo, `nowrap`), así que empuja el «+» y el «⋯» fuera de la fila (`AppSidebar.tsx:568-595`). El contenedor usa `overflow-x-hidden`, que sigue siendo desplazable, y al enfocar una conversación se desplaza de lado (`AppSidebar.tsx:503`).
+
+**Propuesta.** La fila y el botón con `min-width: 0` y `flex: 1 1 0`; el nombre se corta con «…»; la rama se encoge hasta un máximo; el contador, el pin, el «+» y el «⋯» nunca se encogen; el contenedor con `overflow-x: clip` (sin desplazamiento lateral). El «+» puede quedar siempre visible con opacidad baja. Va al bloque de estilo y pasa por la sesión de pulido de UI.
+
+**Pruebas.** Vitest/escenario con un nombre de 80 caracteres y una rama larga: «+» visible, sin scroll horizontal, al pulsar una conversación no se desplaza.
+
+---
+
+## 70. Arranque lento del Engine y avisos del arranque
+
+**Qué se vio** (Planka, Bug ×2, equipo con antivirus corporativo). El Engine tardó **19 s** en arrancar y la app lo dio por caído (el límite es 15 s); después `ENGINE_TIMEOUT … (session.history)`. En la pantalla de fallo del arranque, «Copiar detalles» copia sin avisar.
+
+**Causa (verificada).**
+- El saludo inicial tiene **15 s** (`HANDSHAKE_TIMEOUT_MS`, `electron/main/engine/NdjsonTransport.ts:27`), un solo intento y sin reintento (`EngineSupervisor.startWith`, `:201-227`).
+- `session.history` tiene **10 s** (`EngineSupervisor.ts:78-96`) y el Engine lee **toda** la conversación antes de cortar a las últimas 200 (`server.py:875-896`, `message_repo.list` sin `LIMIT`, `storage/repositories/sessions.py:359-364`, y `redact_history` sobre todo): en una sesión larga tarda cada vez más. La app la pide sin límite (`useSessionList.ts:239`).
+- «Copiar detalles» ignora el resultado (`StartupSplash.tsx:57`).
+
+**Propuesta.**
+1. **Arranque:** hasta **45 s** en el primer arranque y en instalaciones empaquetadas; pasado 10 s, la pantalla dice «Arrancando el motor… (el primer arranque puede tardar más)». Si falla, **un reintento automático** antes de mostrar el error. La app recuerda cuánto tardó la última vez y ajusta el límite (el doble, entre 30 y 60 s).
+2. **Historial por páginas:** el Engine lee solo la ventana pedida (`ORDER BY seq DESC LIMIT`), con un cursor «cargar anteriores»; la app pide ~100 mensajes. Límite de `session.history` a 30 s mientras tanto.
+3. **«Copiar detalles»:** el botón cambia a «Copiado» con un check durante 1,5 s (como en los bloques de código), y si falla, un aviso.
+4. Respuesta a la nota del usuario («avisar al autor»): no hace falta, queda corregido aquí.
+
+**Pruebas.** Electron: un Engine falso que saluda a los 20 s arranca sin error; uno que no saluda se reintenta una vez. CLI: `session.history` con 5000 mensajes tarda lo mismo que con 100. Vitest del botón «Copiado».
+
+---
+
+## 71. Primer uso: conocer al usuario
+
+**Qué se pidió** (Planka, Ideas-2). Al instalar, la primera vez, preguntarle al usuario **cómo quiere que lo llamen**, **sus preferencias** y **sus usos principales** (selección múltiple; el uso no limita nada, solo orienta: alguien puede ser ingeniero y usar Rinari para imágenes). Guardarlo en su memoria para que Rinari sepa con quién trata. La ventana debe tener una UI increíble, con el diseño de la app.
+
+**Qué hay hoy (verificado).** El único asistente de primer uso es el de proveedores (`ProviderWizard`, `App.tsx:344-374`). No hay «sobre mí» del usuario. Las almas (`soul/`) son la voz de Rinari, no datos del usuario.
+
+**Propuesta.**
+- **Bienvenida en pasos** (con Rinari de cuerpo entero, como la maqueta móvil): 1) «¿Cómo te llamo?»; 2) «¿Para qué me vas a usar?» (chips de selección múltiple: programar, diseño e imágenes, documentos y oficina, investigación, automatizar tareas, aprender, otro…); 3) «¿Algo que deba saber de cómo te gusta trabajar?» (texto libre opcional, con ejemplos); 4) conectar un proveedor (el asistente actual). Todo se puede **saltar**.
+- **Se guarda en la memoria del usuario** con un comando propio, como datos del dueño (sin aprobación): el nombre como dato fijo («nombre preferido») que **siempre** entra al prompt, los usos y preferencias como registros normales. Volver a responder reemplaza lo anterior.
+- **Se puede repetir** desde Ajustes → Memoria («Contarle a Rinari sobre ti»).
+- Pasa por la sesión de pulido de UI (diseño y animación de la bienvenida).
+
+**Decisiones pendientes.**
+1. ¿Las preguntas van antes o después de conectar el proveedor? Recomendado: **antes**, para que Rinari ya salude por el nombre al conectar.
+2. ¿Qué usos van en la lista? Recomendado: los de arriba más «Otro (escribir)».
+
+---
+
+## 72. Corrector ortográfico con sugerencias
+
+**Qué se pidió** (Planka, Ideas-2, con captura). El composer subraya la palabra mal escrita, pero el clic derecho no ofrece corregirla.
+
+**Causa (verificada).** El corrector está activo (`spellcheck: true`, `electron/main/window.ts:198`), pero el idioma no se fija (`setSpellCheckerLanguages` no se llama; usa el de Windows) y el menú propio de la app (`DesktopContextMenu.tsx:12-47`) cancela el menú nativo y solo ofrece deshacer, cortar, copiar y pegar. Las sugerencias solo llegan al proceso principal (`webContents` → `context-menu`, con `misspelledWord` y `dictionarySuggestions`), que hoy no las escucha.
+
+**Propuesta.** Fijar los idiomas `es` y `en-US`; escuchar `context-menu` en el proceso principal y pasar la palabra y las sugerencias al menú propio: arriba, hasta 5 sugerencias (reemplazan la palabra), «Agregar al diccionario» y un separador; textos en i18n. Funciona en el composer y en cualquier campo editable.
+
+**Pruebas.** Electron: con una palabra mal escrita, el menú trae sugerencias y reemplazarla cambia el texto; «Agregar al diccionario» la quita del subrayado.
+
+---
+
+## 73. Nombres para los subagentes
+
+**Qué se pidió** (Planka, Ideas-2). En Codex los subagentes tienen nombres curiosos; hacer lo mismo.
+
+**Qué hay hoy (verificado).** El id es un contador (`agt_001`, `agents/orchestrator.py:232`) y el panel de Agentes muestra el tipo («explorer», `AgentsPanel.tsx:82`).
+
+**Propuesta.** Un **apodo** por subagente, elegido de una lista por idioma (unos 60 nombres) de forma reproducible por sesión, **único** dentro de la conversación (con «II» si se acaba la lista). Se guarda con el subagente y sobrevive a reanudar. El id sigue siendo la clave para las herramientas; el apodo es solo para mostrar: «Vega · explorador» en el panel de Agentes, el timeline y los avisos. Nunca nombres de personas reales.
+
+**Decisión pendiente.** ¿De qué tema son los nombres? Recomendado: **estrellas y constelaciones** (Vega, Altair, Lyra, Orión…), que van con la estética de Rinari; otras opciones: minerales, flores, gatos.
+
+---
+
+## 74. El acceso directo se llama «Rinari»
+
+**Qué se pidió** (Planka, Ideas-2).
+
+**Qué hay hoy (verificado).** El instalador propio crea `Rinari Agent.lnk` en el escritorio y en el menú Inicio (`installer/setup/src-tauri/src/operations.rs:1764-1811`, nombre en `:1772`).
+
+**Propuesta.** El acceso directo pasa a `Rinari.lnk`. **No** se cambia `productName` ni el `appId` (moverían la carpeta de datos, romperían el actualizador y la entrada de desinstalación). Al actualizar, el instalador borra el `Rinari Agent.lnk` viejo (solo si apunta a nuestro ejecutable, como ya hace) para no dejar dos; el desinstalador borra los dos nombres. Los anclajes de la barra de tareas siguen funcionando porque el AppUserModelID no cambia.
+
+**Decisión pendiente.** ¿También el menú Inicio dice «Rinari»? Recomendado: **sí**, igual que el escritorio.
+
+---
+
+## 75. Memoria por ámbitos y un gestor de memoria de verdad
+
+**Qué se pidió** (Planka, Validar). Memoria **general, por perfil, por proyecto y por chat**; herramientas para que el modelo elija dónde guardar; con la memoria automática apagada, la tarjeta de aprobación muestra a dónde va y deja cambiarlo ahí mismo; mantener las categorías (¿son fijas o las pone el modelo?) y quizá añadir más; y una **gestión avanzada** en la app, porque hoy es una lista larga hacia abajo. Hoy guarda cosas como «Guía H3 del proyecto» o «Referencias de las chicas de MaestroX» sin decir a qué pertenecen.
+
+**Qué hay hoy (verificado).**
+- **Ámbitos:** solo **general** (`user_memory`, sin perfil ni chat) y **proyecto** (`project_memory`, por carpeta), más memoria episódica (resúmenes de tareas) y de patrones. **No hay memoria por perfil ni por chat** (`memory/service.py:1-15`, `storage/repositories/memory.py`).
+- **Herramientas:** `memory.remember` (general, proyecto o patrón), `memory.propose`, `memory.recall`, `memory.update`, `memory.forget`, `memory.episodic` (`tools/native/memory.py`).
+- **Modo:** `memory.learned_facts` = `ask` (por defecto) o `auto`. Las propuestas pendientes van a `memory_candidates`; la tarjeta «Recordado: …» sale de `memory.remembered`.
+- **Categorías: fijas en el Engine**, no las inventa el modelo: general = preferencia, regla, dato, entorno, flujo de trabajo; proyecto = dato, regla, convención, entorno, flujo de trabajo (`repositories/memory.py:15-16`). La app las traduce (falta «convención»).
+- **Qué entra al prompt:** siempre el entorno y el flujo de trabajo (general + proyecto actual, hasta 20); el resto, las 15 más parecidas al mensaje por cada almacén (`service.py:2011-2098`).
+- **Protecciones que ya existen** (y deben heredar los ámbitos nuevos): lo que viene de turnos no iniciados por el dueño o después de contenido externo siempre es propuesta; datos sensibles, propuesta; secretos, rechazados; subagentes no guardan; excluir o borrar una conversación revoca sus memorias.
+- **Gestor:** búsqueda y filtros por categoría, editar y olvidar por fila (`MemorySettings.tsx`), pero sin agrupar por ámbito o proyecto, sin acciones en lote y sin mostrar el ámbito.
+
+**Propuesta.**
+1. **Cuatro ámbitos:** general, **perfil** (el perfil de Rinari activo), proyecto y **chat** (solo esa conversación). Migración nueva: una tabla con `scope` y `scope_ref` (o columnas `profile_id`/`session_id`), que conserva las memorias actuales como general y proyecto.
+2. **El modelo elige el ámbito** al guardar (`scope` en `memory.remember`/`memory.propose`), con una guía corta: preferencias del dueño → general; cosas de un proyecto → proyecto; de este trabajo puntual → chat; del rol de un perfil → perfil.
+3. **La tarjeta lo dice y se cambia ahí:** «Recordar en: Proyecto MaestroX ▾» con las opciones válidas; en automático, la tarjeta «Recordado» también dice dónde, con «Mover».
+4. **Al prompt** entra general + perfil activo + proyecto actual + chat actual.
+5. **Categorías:** se mantienen y se añaden «persona» (gente y personajes), «recurso» (enlaces, guías, referencias) y «decisión»; todas traducidas.
+6. **Gestor de memoria:** vista por ámbito (pestañas o columna lateral: General, Perfiles, Proyectos, Chats) con conteos, agrupado por categoría, búsqueda, filtros, **selección múltiple** (mover de ámbito, olvidar), edición en línea, origen de cada memoria (de qué conversación salió, con enlace) y «sin usar hace tiempo». Pasa por la sesión de pulido de UI.
+
+**Decisiones pendientes.**
+1. ¿Las cuatro (general, perfil, proyecto, chat)? Recomendado: **sí**.
+2. ¿Qué pasa con la memoria de un chat al borrarlo? Recomendado: **se borra con él** (como ya pasa con las memorias que salieron de un chat excluido).
+3. ¿Las categorías nuevas («persona», «recurso», «decisión»)? Recomendado: **sí**.
+
+---
+
+## 76. Leer un .md deja un artefacto .txt
+
+**Pregunta** (Planka, Validar): cuando Rinari lee un .md, lo pasa a un artefacto .txt; ¿está bien?
+
+**Respuesta (verificada): sí, está bien.** Ese artefacto **no es el archivo**, es la respuesta completa de la herramienta (un JSON con la ruta y el texto dentro) que se guarda aparte cuando es demasiado grande para el contexto (`tools/runtime.py:829-857`, `tools/observations.py:72-84`). El .md original sigue en su lugar. Ponerle .md sería peor: «Archivos» lo mostraría como Markdown roto.
+
+**Ajuste menor.** Esos artefactos se guardan como `.json` (con colores en «Archivos») cuando son respuestas de herramientas en JSON, y al abrirlos desde el timeline se ofrece «Abrir el archivo original» cuando la herramienta leyó un archivo con ruta.
 
 ---
 

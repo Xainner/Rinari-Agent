@@ -329,7 +329,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Decidido (causa verificada) |
 | 95 | Rinari habla de sí misma en tercera persona («veré dónde guarda Rinari sus sesiones») en vez de «veré dónde guardo mis sesiones» (dueño) | CLI | Propuesto (causa verificada) |
-| 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent (+ CLI menor) | Propuesto (falta 1 decisión) · prioridad alta |
+| 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido, falta 1 decisión (red) · prioridad alta |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2876,10 +2876,46 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 4. **Engine:** la ejecución tiene su propio par `execution.settings.get/set` (deja de viajar dentro de la configuración de visión); los mismos datos de `model-execution.json`.
 5. Componentes canónicos de [obsidiana-neon.md](../design/obsidiana-neon.md) (cabecera, `Section`, `.seg-tabs` para los predefinidos, `Switch`, campos `.field-input`), estados de carga y error con reintento, y **pasa por la sesión de pulido de UI**.
 
-**Decisión pendiente.**
-1. ¿Se **mueven** el máximo de salida (a Modelos) y los ajustes por proveedor (a Proveedores), o se quedan en Avanzado bien ordenados? Recomendado: **moverlos**; Avanzado queda con lo global y el diagnóstico.
+**Decisión (dueño, 2026-10-15).**
+1. **Se mueven**: el máximo de salida a Modelos y los ajustes por proveedor a Proveedores → «Conexión». Avanzado queda con lo global y el diagnóstico. El dueño pide además revisar que todo lo que quede sea útil, qué más debería vivir ahí, y una UI espectacular.
 
-**Pruebas.** Vitest: los predefinidos escriben los cuatro tiempos; «Personalizado» muestra los valores en uso; un valor fuera de rango se marca y no guarda; el máximo de salida en la fila del modelo y la pestaña «Conexión» del proveedor guardan en `model-execution.json`; «Restablecer» deja los valores por defecto. CLI: `execution.settings.get/set` valida igual que hoy y no toca la visión. Captura en `ui-tour` de Avanzado, Modelos (con máximo de salida) y Proveedores → Conexión.
+**Inventario (2026-10-15): qué más debería vivir en Avanzado y qué sobra.**
+- **Ajustes del Engine que existen y no tienen pantalla** (y sí se usan): los límites de emergencia por turno (`runtime.emergency.*`: 120 min, 500 llamadas al modelo, 5000 herramientas, 100 subagentes; `agent_runtime.py:2224-2228`), el tope de coste por turno (`runtime.cost.max_turn_cost`, apagado), la detección de bucles (`runtime.safeguards.loop_detection`), herramientas en paralelo por ronda (`runtime.tools.max_concurrency`, 4), cuánto de la salida de una herramienta llega al modelo (`observation_bytes` 64 KiB por llamada, 256 KiB por ronda) y desde qué tamaño se guarda como artefacto (`context.artifact_output_threshold_kb`, 16; va con el #76).
+- **Ajustes que no hacen nada** (se leen del archivo pero ningún código los usa): `agent.max_turns` / `max_tool_calls` / `max_runtime_minutes`, `runtime.execution`, `runtime.safeguards.progress_detection`, `permissions.approval_policy`, `workspace.project_root_markers`, `instructions.*` (la ruta de `RINARI.md` está fija) y `telemetry.local_traces` / `redact_secrets` (parecen un control de privacidad que no existe). Y `agents.enabled` / `max_concurrent` / `max_depth` / `max_total` **se ignoran**: el Engine usa constantes (`agent_runtime.py:994-1002`).
+- **Red:** el Engine usa el proxy de las variables de entorno sin decirlo, y **los certificados de `certifi`, no los de Windows**: en una red de empresa con inspección TLS (como la del usuario del #70) falla todo salvo que se configure `SSL_CERT_FILE` a mano. La app (Chromium) sí usa el proxy y los certificados del sistema. No hay ninguna opción para esto.
+- **Sin pantalla en la app:** el límite del saludo del Engine (15 s, el #70 lo vuelve adaptativo), el nivel de los registros (no existe un modo detallado), el canal de actualizaciones (Nightly, [idea-nightly.md](idea-nightly.md)) y la comprobación automática, la aceleración por hardware (útil en máquinas virtuales o con GPU problemáticas) y las variables `RINARI_*` que cambian rutas de herramientas (Tesseract, whisper, LibreOffice, el navegador…), que hoy no se ven en ningún lado.
+- **El interruptor actual hace más de lo que dice:** «Mostrar nombres técnicos de actividad» además oculta o muestra filas enteras de análisis de imagen y sus detalles (`TurnTimelineView.tsx:133, 570, 669-670`), mientras los detalles de comandos salen siempre (`:338`).
+- **En otras pantallas:** «Exportar diagnóstico», la versión del protocolo y el bloque técnico de Acerca de (`AboutSettings.tsx:188-221`) son de Avanzado; los mensajes entre paneles de Boards (General) también encajan aquí.
+
+**La pantalla completa** (cada tarjeta plegada muestra su resumen en una línea; al abrirla, sus controles con una frase de para qué sirven):
+| Tarjeta | Qué tiene | Resumen plegada |
+|---|---|---|
+| **Estado** (cabecera) | Motor conectado, versión del Engine y de la app, tiempo de arranque del último inicio (#91.6), espacio total usado, y un chip «3 ajustes cambiados» que lleva a ellos | — |
+| **Conexiones con los modelos** | «A la vez» global y los tiempos con predefinidos (Normal / Servidor lento / Red inestable / Personalizado) | «Normal · 8 a la vez» |
+| **Límites del turno** | Los límites de emergencia, el tope de coste por turno, la detección de bucles, herramientas en paralelo, cuánto de cada salida llega al modelo y el umbral de artefacto; los límites de subagentes **conectados de verdad** (hoy se ignoran) | «Sin tope de coste · bucles: activado» |
+| **Red** | Proxy (Sistema / Manual / Ninguno), certificados (**los de Windows** por defecto, con `truststore`, o un archivo propio) y «Probar conexión» (contra cada proveedor, con el tiempo de respuesta) | «Proxy del sistema · certificados de Windows» |
+| **Diagnóstico** | «Mostrar detalles técnicos» (renombrado, y que haga lo mismo con comandos e imágenes), «Registros detallados» (temporal, se apaga solo en 24 h; ahí entra la línea del #84), «Abrir carpeta de registros», «Exportar diagnóstico» y «Exportar para revisión» (#79) | «Registros normales» |
+| **Almacenamiento** | Barra por apartados (conversaciones, espacios de trabajo, navegador, artefactos, caché) con «Limpiar» en cada uno y la sugerencia del #91 | «11 GB · 6,8 GB de espacios viejos» |
+| **Procesos** | Los procesos en segundo plano y los huérfanos (#90) con «Detener todos» | «2 corriendo · 1 huérfano» |
+| **Motor** | Reiniciar motor, abrir mi carpeta (`~/.rinari`), abrir el `RINARI.md` global, límite de arranque (Automático / 30 / 60 s), variables de entorno activas (solo lectura) y «Desactivar aceleración por hardware» (pide reiniciar) | «0.4.0 · arrancó en 3,1 s» |
+| **Actualizaciones** | Canal (Estable / Nightly, con «Volver a la versión normal») y comprobación automática | «Estable · al día» |
+| **Restablecer** | Restablecer esta página, y «Restablecer el estado de la interfaz» (borradores, paneles, avisos guardados en la app; no toca conversaciones ni el Engine), ambos con confirmación | — |
+
+**Lo que se quita o se mueve:** los ajustes que no hacen nada salen del esquema (un archivo viejo que los tenga sigue cargando sin error); `network.mode` y sus reglas van a Herramientas/Permisos (necesitan un método del protocolo); «Exportar diagnóstico» y el bloque técnico salen de Acerca de.
+
+**Que se vea espectacular** (con la sesión de pulido de UI y [obsidiana-neon.md](../design/obsidiana-neon.md)):
+- la cabecera **Estado** como una tarjeta de vidrio con un pulso suave en «Motor conectado», el tiempo de arranque y el espacio como cifras grandes en `font-display`;
+- tarjetas en una cuadrícula de dos columnas (una en ventanas angostas) con su icono, que se despliegan con animación de diseño (`layout`) sin saltos;
+- **Almacenamiento** como una barra segmentada que se llena animada por apartado, con el apartado bajo el ratón resaltado; «Limpiar» anima la barra encogiéndose;
+- **Probar conexión** con una fila por proveedor que se ilumina al responder y muestra la latencia (y un mini gráfico de las últimas pruebas);
+- los valores **cambiados** respecto al de fábrica llevan un punto de acento y su propio «↺»;
+- una **búsqueda** arriba que filtra tarjetas y controles («proxy», «timeout», «bucle»);
+- con movimiento reducido, todo sin animación y con el mismo orden.
+
+**Decisión pendiente.**
+2. ¿La tarjeta **Red** (proxy, certificados de Windows y «Probar conexión») entra en 0.4.0? Recomendado: **sí**; sin ella, Rinari no funciona en redes de empresa con inspección TLS, y el cambio en el Engine es pequeño (un solo creador de clientes HTTP para los 12 sitios que hoy los crean por su cuenta).
+
+**Pruebas.** Vitest: los predefinidos escriben los cuatro tiempos; «Personalizado» muestra los valores en uso; un valor fuera de rango se marca y no guarda; el máximo de salida en la fila del modelo y la pestaña «Conexión» del proveedor guardan en `model-execution.json`; «Restablecer» deja los valores por defecto. CLI: `execution.settings.get/set` valida igual que hoy y no toca la visión. CLI: los ajustes muertos fuera del esquema sin romper archivos viejos; los límites de subagentes del archivo se aplican; con la tarjeta Red, el creador único de clientes usa los certificados de Windows y el proxy elegido. App: resumen de cada tarjeta plegada, búsqueda, «Restablecer el estado de la interfaz». Captura en `ui-tour` de Avanzado (plegada y con tarjetas abiertas), Modelos (con máximo de salida) y Proveedores → Conexión; con movimiento reducido, sin animación.
 
 ---
 

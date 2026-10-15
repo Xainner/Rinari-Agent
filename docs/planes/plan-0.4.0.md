@@ -2495,7 +2495,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Diagnóstico confirmado** (2026-10-15, leyendo solo los recibos de lectura guardados por la app en su almacenamiento local, sin contenido). El «2» de la barra de tareas eran **dos resultados sin leer de otras conversaciones**, no de la que el dueño abrió:
 1. **Una conversación que ya no existe** (`ses_01M4MPB1DYKBKBW0Z2F8S4SC9P`, borrada: no está en la base): su recibo «sin leer» quedó huérfano y **nunca se puede limpiar**, porque no hay conversación que abrir. Es un +1 permanente.
-2. **Otra conversación del mismo proyecto** (`ses_01M4Y6323GTZGP5DGGRPRMMRY5`, terminó un turno a las 05:26 UTC, dos minutos antes de abrir la nueva): ese resultado sigue sin verse. Como la barra lateral no marca qué conversación tiene algo pendiente (#33), no había forma de saber cuál era.
+2. **Un turno de compactación en otra conversación del mismo proyecto** (`ses_01M4Y6323GTZGP5DGGRPRMMRY5`, turno `turn_01M4Z03M7E…`, 05:21–05:26 UTC): el turno fue **solo compactar el contexto** (`turn.completed` con `kind: "compaction"`, sin texto ni cambios). La app lo trató como un resultado terminado: lo marcó «sin leer» y avisó «terminó». Pero `TurnResult` no dibuja nada para un turno sin texto ni cambios (`TurnResult.tsx:45`), así que **no hay bloque que ver** y el recibo no se puede marcar como visto: el dueño bajó hasta el final de esa conversación y el número no bajó. Es la causa 1 de abajo, confirmada.
 - Cancelar el turno **no** tuvo que ver: un turno cancelado a mano nace «visto».
 
 **Causas posibles (verificadas en el código).**
@@ -2504,6 +2504,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 3. Los avisos del #62: la regla de 500 ms hace que a veces se marque antes de verlo, y otras (fuera de pantalla) nunca.
 
 **Propuesta.**
+0a. **Un turno que solo compacta no es un resultado:** nace «visto» y no avisa (la tarjeta de compactación del #28 queda en el timeline); si el dueño pidió `/compact` y no está mirando, a lo sumo un aviso discreto «Contexto compactado» sin número.
 0. **Recibos huérfanos fuera:** al borrar o archivar una conversación se borran sus recibos; al arrancar, la app descarta los recibos de conversaciones que ya no existen (o que el Engine no devuelve). Nunca un número que no se puede limpiar.
 0b. **Saber cuál es:** las señales de la barra lateral del #33 (punto en la conversación con un resultado sin leer) y el menú del botón de atención con cada conversación por su nombre; el tooltip del icono de la bandeja dice cuáles («2 pendientes: *Título A*, *Título B*»).
 1. **Escribir en la conversación cuenta como «visto»:** cuando el dueño envía un mensaje en una conversación, todos sus resultados anteriores sin leer pasan a «visto» (si siguió hablando, ya los vio).

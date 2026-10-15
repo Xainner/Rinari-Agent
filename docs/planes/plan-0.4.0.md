@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91 y 93 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92 y 93, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93 y 94 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93 y 94, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -63,7 +63,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 8 | Mensaje durante el turno | 31, 54 (editar y borrar) | La misma cola y la misma burbuja «Pendiente». |
 | 9 | Imágenes y visión | 11, 14, 15, 61d (y la evidencia del 66f), 77 | El mismo camino de imágenes del Engine. |
 | 10 | Navegador | 44b, 45, 46 | El mismo navegador nativo y la prueba `browser:vertical`. |
-| 11 | Límites y proveedores | 3, 24, 27, 19, 13, 80 | Las mismas lecturas de uso y de errores del proveedor. |
+| 11 | Límites y proveedores | 3, 24, 27, 19, 13, 80, 94 | Las mismas lecturas de uso y de errores del proveedor. |
 | 12 | Proyecto y confianza | 42, 60, 38, 81 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
 | 13 | Subagentes y sesiones hijas | 5, 25, 40, 73 | El mismo vínculo madre → hija y su panel. |
 | 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
@@ -327,6 +327,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 91 | Arranque más rápido, carga más ligera y un Engine más estable (Planka, Ideas-2) | CLI + Agent | Decidido (medido) |
 | 92 | Ajustes: pasada visual a Agentes, Modelos (alias con «Editar»), Skills y Contexto; Memoria y Personalidad ya van en #75 y #87 (Planka, Ideas-2) | Agent | Propuesto |
 | 93 | Los modelos salen «por guardar» aunque ya se guardaron, y los nuevos del proveedor no se guardan solos al actualizar (dueño) | CLI + Agent | Decidido (causa verificada) |
+| 94 | OpenCode Go: `gemini-4-argon-contributor` falla con «Model does not support this protocol»: usa el protocolo de Google y Rinari lo manda por el de OpenAI (dueño) | CLI + Agent | Propuesto (causa verificada, falta 1 decisión) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2774,6 +2775,33 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 1. «Quitar» un modelo lo **oculta**: la actualización no lo vuelve a traer, y «Ocultos (n)» en la tarjeta del proveedor permite recuperarlo.
 
 **Pruebas.** CLI: `model.discovery` y `model.discover` guardan los nuevos y marcan los que faltan; un modelo oculto no vuelve con la actualización; «Mostrar» lo recupera; `models.changed` se emite en cada cambio; la pasada de migración guarda los que falten. App: al agregar un proveedor en Ajustes la tarjeta muestra «Guardando modelos…» y luego la lista **sin ningún «Guardar»**; «Actualizar modelos» del composer deja los nuevos guardados (sin `saved: false`); vitest de «Ocultos». Escenario: agregar un proveedor falso con 5 modelos → los 5 guardados y visibles sin salir de la pantalla; el proveedor anuncia uno más → «Actualizar» del composer lo guarda y aparece en Ajustes.
+
+---
+
+## 94. Modelos que hablan otro protocolo: el caso de Gemini en OpenCode Go
+
+**Qué se vio** (dueño, 2026-10-15). Al usar `gemini-4-argon-contributor` de OpenCode Go: «opencode-go rechazó la solicitud: no es compatible con gemini-4-argon-contributor o con su endpoint. Provider returned HTTP 400 for https://opencode.ai/zen/go/v1/chat/completions: Model does not support this protocol.» (`ses_01M50K3CKYBE5X10SJ9FM60FGT`, 20:12 UTC).
+
+**Causa (verificada).**
+- OpenCode Go sirve cada modelo por su protocolo: unos por el de OpenAI (`/chat/completions` o `/responses`), otros por el de Anthropic (`/messages`) y este **por el nativo de Google** (`…/google/v1beta/models/gemini-4-argon-contributor`, `@ai-sdk/google`, según la tabla de https://opencode.ai/docs/go/ y models.dev).
+- Rinari elige el protocolo con el catálogo público guardado en la PC (`~/.rinari/cache/model_metadata.json`) y unas listas fijas (`providers/metadata.py:166-185`, `catalog.py:284`). **El catálogo guardado es del 12 de octubre y el modelo salió el 13**: sin datos, Rinari usó `chat` por defecto y OpenCode lo rechazó. El modelo se guardó a las 19:44 sin ninguna capacidad descubierta.
+- Aunque el catálogo hubiera estado al día, el resultado sería `unsupported-google-native`: **Rinari no habla el protocolo de Google** (no hay adaptador; el proveedor «Google Gemini» usa la capa compatible con OpenAI de Google).
+- **Las listas fijas ya se desactualizaron:** la de `/messages` incluye `minimax-m2.5`, `qwen3.7-max` y `qwen3.6-plus`, que OpenCode Go ya no ofrece, y la de `/responses` no tiene `gpt-6-luna` (hoy funciona solo porque el catálogo lo sabe).
+- **La documentación de OpenCode Go ya usa direcciones nuevas por protocolo** (`https://opencode.ai/inference/go/openai/v1/…`, `/inference/go/anthropic/v1/messages`, `/inference/go/google/v1beta/models/…`); Rinari sigue con `https://opencode.ai/zen/go/v1`, que todavía responde.
+- El mensaje de error no dice la causa real, y «Probar» de Ajustes solo comprueba que el modelo está en el catálogo, no que se pueda usar.
+
+**Propuesta.**
+1. **Protocolo nativo de Google** (adaptador nuevo `providers/adapters/google.py`): `streamGenerateContent` con texto, imágenes, herramientas (`functionDeclarations`), razonamiento (`thinkingConfig`) y uso de tokens. Lo usan los modelos `@ai-sdk/google` de OpenCode Go y Zen y, de paso, el proveedor «Google Gemini» puede pasar al protocolo nativo (más completo que la capa compatible).
+2. **Direcciones por protocolo de OpenCode:** cada protocolo va a su dirección documentada (`/inference/go/openai`, `/anthropic`, `/google`); si la nueva falla con 404, se usa la antigua y se recuerda.
+3. **Catálogo al día:** si al descubrir modelos aparece un id que el catálogo guardado no conoce, Rinari **actualiza el catálogo público antes de guardarlo** (como mucho una vez por hora). Las listas fijas se reducen a un respaldo y se actualizan con la tabla de la documentación.
+4. **Aprende el protocolo si el proveedor lo rechaza:** ante «Model does not support this protocol» (o un 404/500 propio de una ruta equivocada), Rinari prueba una vez los otros protocolos con una llamada mínima, **guarda el que funciona en el modelo** (el ajuste por modelo ya manda sobre lo inferido) y repite el turno solo, con una línea en el timeline: «gemini-4-argon-contributor usa el protocolo de Google; Rinari lo cambió y siguió». Igual que la visión aprendida del #14.
+5. **Si de verdad no hay forma:** el modelo queda guardado (#93) pero en el selector sale **«No compatible todavía»**, sin poder elegirlo, con el motivo al pasar el ratón («usa el protocolo nativo de Google»); el error, si llega, lo dice con esas palabras y ofrece «Cambiar modelo».
+6. **«Probar» de verdad:** en Ajustes → Modelos, «Probar» hace una llamada mínima por el protocolo elegido y dice «Funciona · protocolo de Google · 0,7 s» o el motivo del fallo.
+
+**Decisión pendiente.**
+1. ¿Entra en 0.4.0 el **protocolo nativo de Google**? Recomendado: **sí**; OpenCode ya sirve Gemini así y no es el único proveedor que lo hará. Sin él, estos modelos quedan como «No compatible todavía» (puntos 3–6 igual).
+
+**Pruebas.** CLI: un id desconocido en el descubrimiento actualiza el catálogo antes de guardarse; un `@ai-sdk/google` usa el adaptador de Google (contra un servidor falso: texto, imagen, herramienta, razonamiento y uso); el 400 «does not support this protocol» prueba otros protocolos, guarda el bueno y repite; las direcciones nuevas de OpenCode con respaldo a la antigua; «Probar» hace una llamada real mínima. App: el selector marca «No compatible todavía» y no deja elegirlo; la línea del timeline al cambiar de protocolo. En vivo (manual, fuera del CI): `gemini-4-argon-contributor` responde por OpenCode Go.
 
 ---
 

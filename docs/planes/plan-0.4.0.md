@@ -40,8 +40,8 @@ Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se ci
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86 y 87 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
-2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86 y 87, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65 y 66) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90 y 91 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91 y 92, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66 y 88) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
    - Agent: tsc, typecheck:electron, vitest, protocol/parity:check, los escenarios tocados varias veces (también con la CPU cargada y con `RINARI_UI_REDUCED_MOTION=1`) y `ui:e2e --all`.
@@ -56,7 +56,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 1 | Lecciones de sesiones reales (robustez del Engine) | 61a–b (páginas comprimidas, basura en el contexto), 76 (lecturas y salidas grandes), 66a (respuestas vacías), 66e (argumentos), 53 (nada largo en el hilo de pedidos), 48 (MCP, `web.download`, nombres), títulos (48 + 61e) | Base: ningún resultado roto llena el contexto ni bloquea el Engine. Los títulos son un solo arreglo. |
 | 2 | Verificación y objetivos | 61c y 66c → 59 → 23 | El `/goal` se da por logrado con la compuerta de verificación: el 61c va antes; el cierre de la lista del 59 usa la misma comprobación de fin de turno. |
 | 3 | Panel lateral | 47 primero; encima 43, 44a, 41, 55, 82 (Resumen) y 83 (la rama pasa al Resumen), y la apertura en «Archivos» del 35b | El 47 crea los botones y el mosaico; los demás son vistas que cuelgan de él. |
-| 4 | Turno en vivo | 58 primero; luego 20, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
+| 4 | Turno en vivo | 58 primero; luego 20 y 88 (juntos: el mismo seguimiento del final), 89, 49, 51, 52 y la fila de avisos de bucle (66f) | Todo pasa mientras Rinari escribe, en el mismo lugar del chat. El 58 (bucle del scroll) va antes del 52, que añade animación ahí. |
 | 5 | Lista de pasos | 6, 7, 22, 26, 30, 59 y 66b (la parte de la app), el recordatorio del 48 y el «Paso n/m» del 49 | Cómo se ve, cómo se cierra, cuándo se recuerda y cómo la lee Flujos. |
 | 6 | Avisos y atención | 33, 34, 62, 64, 84 y el aviso del 24 | La misma lógica de quién mira, qué está sin leer y los mismos ajustes. |
 | 7 | Archivos de ida y vuelta | 18, 57, 54 (adjuntos), 35 + 67 (juntos), 36 | El mismo camino de artefactos y el mismo reproductor, para lo que manda el dueño y lo que entrega Rinari. |
@@ -66,13 +66,13 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 11 | Límites y proveedores | 3, 24, 27, 19, 13, 80 | Las mismas lecturas de uso y de errores del proveedor. |
 | 12 | Proyecto y confianza | 42, 60, 38, 81 | El mismo flujo de «nueva conversación en un proyecto» y la misma confianza en carpetas. |
 | 13 | Subagentes y sesiones hijas | 5, 25, 40, 73 | El mismo vínculo madre → hija y su panel. |
-| 14 | Comandos y tareas | 32, 50 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
+| 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
-| 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
+| 20 | Arranque y rendimiento | 70, 91 | Saludo, reintento e historial por páginas; base para equipos lentos. |
 | 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. |
 | 22 | Uso y diagnóstico | 78, 79 | El informe de uso alimenta el paquete de revisión; los dos leen lo mismo del Engine. |
 | 23 | Perfiles y personalidad | 85, 86, 87 (y la memoria por perfil del #75) | Lo que es un perfil (alma, modo, modelos, trabajo) y cómo habla Rinari se diseñan juntos. |
@@ -321,6 +321,11 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 85 | Proyectos y conversaciones archivados: solo los del perfil activo (hoy salen los de todos los perfiles) (dueño) | Agent | Propuesto (causa verificada) |
 | 86 | Ajustes → Perfiles: rediseño que muestre lo que de verdad guarda un perfil; el «modo» del perfil hoy no hace nada (se quita); el alma por defecto, la de Rinari (dueño, con captura) | CLI + Agent | Decidido |
 | 87 | Personalidad: no se nota diferencia entre «Mínimo», «Equilibrado» y «Personaje completo»; y rediseño de la pantalla (dueño) | CLI + Agent | Propuesto (causa verificada) |
+| 88 | El chat no queda abajo del todo mientras Rinari trabaja: baja, sube un poco y se queda corto (Planka, Bug; `ses_01M506SYS4YBZ203KZ2JAXE0FX`) | Agent | Propuesto (causa verificada) |
+| 89 | El botón de bajar muestra tres puntos animados mientras Rinari trabaja, y la flecha cuando no (Planka, Ideas-2) | Agent | Propuesto |
+| 90 | Procesos que el modelo deja corriendo (servidores, watchers): se quedan huérfanos al cerrar la app, el modelo no los ve y los repite (Planka, Ideas-2) | CLI + Agent | Propuesto (causa verificada, falta 1 decisión) |
+| 91 | Arranque más rápido, carga más ligera y un Engine más estable (Planka, Ideas-2) | CLI + Agent | Propuesto (medido, falta 1 decisión) |
+| 92 | Ajustes: pasada visual a Agentes, Modelos (alias con «Editar»), Skills y Contexto; Memoria y Personalidad ya van en #75 y #87 (Planka, Ideas-2) | Agent | Propuesto |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2595,6 +2600,149 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
    - pasa por la sesión de pulido de UI.
 
 **Pruebas.** CLI: cada nivel produce su bloque nuevo al final del prompt; un alma vacía también recibe el nivel; la CLI interactiva toma el cambio en el turno siguiente. App: vitest de la vista previa por nivel y de la galería. Evaluación en vivo (manual) con los conteos por nivel.
+
+---
+
+## 88. El chat no queda abajo del todo mientras Rinari trabaja
+
+**Qué se vio** (Planka, Bug, 2026-10-15). Con la conversación abierta y abajo, y una lista de pasos corriendo, el chat «baja, luego como que sube un poco, luego muestra y queda sin scroll abajo». Sesión `ses_01M506SYS4YBZ203KZ2JAXE0FX`.
+
+**Lo que dicen los datos.** La sesión tiene **274 mensajes**; tras un reinicio del Engine (17:15) la app recargó el historial, que trae los últimos 200, así que arriba del chat apareció la línea «+N mensajes anteriores». Después vino un turno de 52 min (95 llamadas al modelo, 167 herramientas, la lista de pasos de 5 a 6 pasos, una guía del dueño a mitad). En `app.log` no hay errores de scroll, solo ráfagas de avisos de `ResizeObserver` al final del turno (mucho cambio de tamaño por cuadro).
+
+**Causas (verificadas en el código).**
+1. **La lista virtual no sabe que hay una línea encima («sube un poco»).** La nota «+N mensajes anteriores» se dibuja dentro del scroll, **antes** del `Virtualizer` (`ChatView.tsx:455-459`), y no se le pasa `startMargin` (virtua lo pide para todo lo que va antes de la lista). `scrollToIndex(último, 'end')` calcula sin esa línea y **se queda ~32 px corto** del final. Se llama en cada cambio del turno (`:373`), al cambiar la altura de la vista (`:357`, por ejemplo cuando aparece la lista de pasos), en `goToEnd` (`:394`) y en el botón (`:493`). El seguimiento por `ResizeObserver` baja al fondo real (`:356`) y luego `scrollToIndex` sube 32 px: eso es el «baja y luego sube un poco». Solo pasa en conversaciones con más de 200 mensajes, por eso es «a veces».
+2. **Un scroll del propio programa se toma como si lo hubiera hecho el dueño («queda sin scroll»).** `handleScroll` (`:215-224`) apaga «seguir el final» ante **cualquier** evento `scroll`, midiendo la altura en el momento del evento. Si entre el scroll y su evento el contenido crece (la respuesta final, el resultado, la tarjeta de cambios), la distancia supera los 80 px y el chat deja de seguir sin que nadie lo tocara. La única protección (`jumpRef`, `:207-213`) solo se arma al enviar y **se quita al terminar el turno** (`:212`), justo cuando llegan los cambios más grandes.
+- **No es** el mismo error que el #20 (allí el dueño está leyendo arriba) ni el #16 (aperturas a mano); pero cuando la causa 2 apaga el seguimiento, entra en juego el mecanismo del #20 y puede subir más. La lista de pasos no es la causa: solo dispara un `scrollToIndex` más (causa 1).
+
+**Propuesta.**
+1. **La nota cuenta:** se mide su altura y se pasa como `startMargin` (o pasa a ser la fila 0 de la lista virtual).
+2. **Una sola forma de «ir al final»:** `scrollToIndex` solo para montar la última fila y, en el cuadro siguiente, `scrollTop = scrollHeight`. La usan los cuatro sitios de arriba.
+3. **Solo un gesto apaga el seguimiento:** se apaga si el scroll bajó respecto a la última posición que puso el programa **y** hubo rueda, clic, toque, tecla de desplazamiento o arrastre de la barra en los últimos ~300 ms. Que el contenido crezca nunca lo apaga. Es el mismo contador de gestos que propone el #20, así que van juntos.
+4. La protección del envío no se quita al terminar el turno hasta que el plegado se asienta (dos cuadros después de `turn.completed`).
+
+**Pruebas.** Escenario nuevo `chat-follow-live`: una conversación de más de 200 mensajes (con la nota visible) y la lista de pasos abierta; el modelo falso hace ~6 pasos con texto y una respuesta final larga; se muestrea cada cuadro: el botón de bajar nunca aparece, el seguimiento no se apaga sin gesto, y al final la distancia al fondo es **≤ 2 px** (hoy los escenarios aceptan < 80 px y no lo verían). Variante con un clic en el chat antes de que crezca. Vitest: un `scroll` que llega después de crecer más de 80 px no apaga el seguimiento; con la nota, `scrollToIndex` llega al fondo real. Sin regresiones en `checklist-dock`, `activity-disclosure`, `chat-send-jump` y `subagent-follow`; varias pasadas, con la CPU cargada y con movimiento reducido.
+
+---
+
+## 89. El botón de bajar muestra que Rinari sigue trabajando
+
+**Qué se pidió** (Planka, Ideas-2, con captura). Si el dueño subió en el chat y Rinari está trabajando, el botón de bajar muestra **tres puntos animados** en vez de la flecha, con la misma función; si Rinari no está haciendo nada, la flecha como hoy.
+
+**Qué hay hoy (verificado).** `components/chat/ScrollToBottom.tsx`: un círculo con `ArrowDown`, con el estilo viejo (`bg-elevated`, borde y sombra genéricos), centrado sobre el texto. `ChatView.tsx:174` ya sabe si hay un turno en curso en la conversación (`activeTimeline`), y `index.css:412` tiene una animación `rinari-bounce-dot` que nadie usa.
+
+**Propuesta.**
+1. Con un turno en curso (`running`, `approval` o `cancelling`), el botón muestra **tres puntos** que saltan en ola (la `rinari-bounce-dot` con desfase por punto) en el color de acento; al terminar el turno vuelve la flecha con un fundido corto. Con movimiento reducido, los tres puntos quietos.
+2. Si hay una aprobación o una pregunta esperando, el botón lo dice: punto ámbar y «Rinari te necesita» al pasar el ratón (va con #33/#62).
+3. El nombre accesible cambia: «Ir al final · Rinari trabajando».
+4. Botón con los tokens de Obsidiana (vidrio, borde de acento suave) y que no tape el texto: se ancla al borde superior del composer.
+5. Pasa por la sesión de pulido de UI.
+
+**Pruebas.** Vitest: con turno en curso salen los puntos y sin turno la flecha; el clic baja igual en los dos casos. Captura en `ui-tour` de los dos estados; con movimiento reducido, sin animación.
+
+---
+
+## 90. Procesos que el modelo deja corriendo (servidores y watchers)
+
+**Qué se pidió** (Planka, Ideas-2). Revisar cómo manejamos los «watchers» que deja el modelo al hacer tareas (servidores de desarrollo, `--watch`, `http.server`, bucles de sondeo): si lo hacemos bien, si se puede mejorar, si le damos herramientas, y cómo lo hacen Codex, Claude Code, Hermes y otros.
+
+**Qué hay hoy (verificado).**
+- Un registro de procesos por conversación (`tools/native/process.py:127-242`) con `process.start`, `output`, `wait`, `signal` y `list`; `shell.exec` con `background=true` lo usa (`shell.py:282-285`). `wait.for` ya sabe esperar a un puerto, una URL, una línea de salida o un archivo (`wait.py:234-305`). El prompt le dice al modelo que use procesos gestionados (`agent_runtime.py:292-296`).
+- Al terminar un turno los procesos siguen (a propósito). Se matan al cerrar o borrar la conversación (`server.py:681, 719`), al terminar un subagente y con «Detener» en el panel Terminal / `ProcessesDock`.
+- Un `shell.exec` de primer plano con un watcher no se cuelga: se corta a los 60 s (máx. 600) con la pista de usar segundo plano.
+
+**Problemas encontrados.**
+1. **Al cerrar la app, reiniciar o caerse el Engine, todos los procesos quedan huérfanos.** El Engine nunca ejecuta su cierre: `rinari engine --stdio` sale de `run_stdio` sin llamar a `server.close()` (`cli/commands/engine.py:32-36`), y la app lo termina con `child.kill()` sin pedirle que cierre (`NdjsonTransport.ts:418-426`). El registro vive en memoria: tras reiniciar, el panel ya no los muestra pero siguen corriendo.
+2. **Sin Job Object en Windows.** Se mata con `taskkill /F /T` con un límite de **1 s** y luego solo el proceso raíz (`shell.py:162-174`): con la máquina cargada no alcanza, y lo lanzado con `start`, `&` o `Start-Process` escapa del árbol (pasó con un `cmd /c start chrome.exe --remote-debugging…`).
+3. **El modelo deja de ver los errores de un watcher hablador:** el búfer guarda los **primeros** 512 KiB y descarta lo demás (`process.py:41`); `process.output` lee ese inicio, así que una vez lleno los errores nuevos no se ven.
+4. **Riesgo de PID reutilizado:** al terminar un subagente se mata cada handle, también los que ya terminaron (sin comprobar `poll()`).
+5. **Sin tope, sin recordatorio, sin aviso al terminar:** no hay límite de procesos, el modelo no sabe al empezar un turno qué tiene corriendo, y si un servidor se cae no se entera.
+6. En la CLI interactiva, `AgentSession.end()` cierra el navegador pero no los procesos.
+
+**Uso real (base del dueño, 12 sep – 15 oct).** 235 procesos en segundo plano en 37 conversaciones; 74 eran servidores o watchers: **41 nunca se detuvieron**, 13 se detuvieron y 18 terminaron solos. El mismo `python -m http.server 8099` se arrancó **6 veces** en una conversación (con reinicios del Engine de por medio) y el puerto 8080 unas 7; dos choques reales de «puerto en uso» en 4173. El modelo lo suplió a mano: `netstat -ano` 34 veces y `taskkill` 16.
+
+**Cómo lo hacen otros.**
+- **Claude Code:** `run_in_background` devuelve un id; la salida se lee aparte y se detiene con una herramienta; **avisa al modelo cuando termina**; `Monitor` espera una condición; todo se mata al salir.
+- **Codex CLI:** «unified exec»: el comando devuelve lo que lleva y un `session_id`, se le escribe por stdin; `/ps` lista los terminales en segundo plano con sus últimas líneas y `/stop` los limpia.
+- **Gemini CLI:** `is_background` devuelve el PID; `/shells` muestra registros y mata.
+- **Hermes:** herramienta `process` con list, poll, wait, log, kill y write, y `notify_on_complete` para avisar al terminar.
+
+**Propuesta.**
+1. **Cierre de verdad:** la app pide `engine.shutdown` antes de matar el Engine (espera ~3 s), que llama a `server.close()` y detiene todos los procesos; el modo CLI también los cierra al salir.
+2. **Job Object por conversación en Windows** (`KILL_ON_JOB_CLOSE`, sin breakaway; el proceso se crea suspendido, se asigna y se reanuda): detener mata todo el árbol, incluso lo lanzado con `start`, y si el Engine se cae Windows los mata solo. `taskkill /T` queda de respaldo con 5 s, y nunca se mata un handle que ya terminó.
+3. **Registro de procesos persistente** (pid, comando, carpeta, puerto, conversación) en `engine-operations.sqlite`: al arrancar, los que sigan vivos aparecen como «huérfanos» en el panel con «Detener».
+4. **Herramientas:**
+   - `process.start` con `name`, `ready_when` (puerto, URL o línea de salida; usa `wait.for` y devuelve «listo» con las últimas líneas) y `notify` (al terminar, al fallar o nunca);
+   - `process.logs` con las **últimas** N líneas, `grep` y cursor, sobre un búfer circular (arregla el punto 3);
+   - `process.stop` por handle, nombre o puerto (mata el árbol);
+   - `process.list` con puerto, «listo», última línea y antigüedad.
+5. **Que el modelo sepa:** al empezar cada turno, una línea «Corriendo: proc_002 `npm run dev` :5173 · listo · 12 min»; si un proceso termina o falla, se le avisa en el turno siguiente (o al momento, si el turno está en curso).
+6. **Sin duplicados:** antes de arrancar, si ya hay uno igual (misma carpeta y comando) o el puerto pedido ya está escuchando, se devuelve el existente (`reused: true`); si el puerto es de otro programa, se dice cuál.
+7. **Tope:** ~8 procesos vivos por conversación, con un error claro que sugiere detener uno.
+8. **App:** «Detener todos» en el panel Terminal y en `ProcessesDock`, la sección «Huérfanos», chips de puerto/URL que abren el navegador del panel, y la tarjeta «En segundo plano» del Resumen (#82). Pasa por la sesión de pulido de UI.
+
+**Decisión pendiente.**
+1. Al **cerrar Rinari del todo** (no al minimizar a la bandeja), ¿se detienen los servidores que dejó el modelo? Recomendado: **sí**, como Claude Code; si alguno debe seguir, el modelo lo arranca con `persist: true` y la app pregunta al cerrar «¿Dejar corriendo *npm run dev*?».
+
+**Pruebas.** CLI: `engine.shutdown` detiene los procesos; con Job Object, un `cmd /c start` hijo también muere; `process.logs` devuelve el final aunque la salida pase de 512 KiB; un segundo `process.start` del mismo servidor devuelve el existente; el registro persistente marca huérfanos tras un reinicio; tope de 8. App: «Detener todos», sección de huérfanos. Escenario: el modelo falso arranca un servidor, se reinicia el Engine y el panel lo muestra como huérfano; «Detener» lo mata.
+
+---
+
+## 91. Arranque más rápido, carga más ligera y un Engine más estable
+
+**Qué se pidió** (Planka, Ideas-2). Mayor velocidad de arranque, mejor optimización de carga, mejorar el proceso del Engine y validar mejor la estabilidad.
+
+**Lo medido (2026-10-15).**
+- **Arranques reales (10, del 11 al 15 de octubre):** el Engine tarda **3,7–5,6 s** en saludar (mediana ~4,8 s, y subiendo); hay margen frente a los 15 s, pero un equipo lento lo pasa (#70).
+- **La ventana se muestra siempre por el plan B:** en los 10 arranques `ready-to-show` no llegó y la ventana esperó el respaldo fijo de **1,5 s** (`electron/main/window.ts:254-256`; el aviso «la ventana se muestra por did-finish-load» sale cada vez).
+- **Todo va en serie:** el Engine no arranca hasta que el renderer carga el bloque principal (1,29 MB) y monta `useEngineSession`.
+- **El Engine arranca por la CLI completa:** `rinari engine --stdio` importa los ~43 comandos de Typer (761 ms empaquetado, 1,6 s en desarrollo) y construye el árbol de comandos **dos veces** (228 ms); el llavero de credenciales tarda 184 ms. Nada pesado más (sin MCP, modelos ni whisper antes del saludo).
+- **Abrir una conversación larga:** `session.history` es rápido (30–40 ms), pero **`session.timeline` tarda 0,4–0,5 s y manda 6–7 MB** (todos los turnos, 9341 eventos) que cruzan Engine → Electron → renderer. El Engine además consulta `suppressed_message_ids()` **una vez por mensaje** (`server.py:1417-1422`, ~1185 consultas) y, al paginar, relee toda la sesión.
+- **Llamadas que fallan al arrancar o con borradores:** `bundle_list` antes de que el Engine esté listo (ENGINE_DOWN en 5 de 10 arranques), y `session_image_support`, `queue_list`, `checkpoint_list` y `context_status` con conversaciones que aún no existen.
+- **Estabilidad (5 días):** 1 caída real del Engine (la del #53), 6 ENGINE_TIMEOUT (2 de `project_status` a 5 s), 1 React #185 (#58), avisos `MaxListeners` en cada arranque, y `ResizeObserver` ocupa el **98 % de `app.log`**. Un cierre normal se registra como «degradado» con un ERROR.
+- **Base de datos:** `state.db` pesa 234 MB: 127 000 eventos con 120 MB de contenido. **Los eventos de herramientas se guardan dos veces** (`ToolRequested` y `tool.requested`, `ToolCompleted` y `tool.completed`; siguen escribiéndose hoy) y los trozos de salida en vivo (`tool.output.delta`, 11 759 filas, 11 MB) se guardan aunque luego llega la salida completa. Los índices están bien (≤ 26 ms). La carpeta `~/.rinari` ocupa **11 GB** (espacios de trabajo 6,8 GB, navegador 1,5 GB, artefactos 1,2 GB, caché 1 GB) sin limpieza.
+
+**Propuesta** (por orden de ganancia; lo del #70 —límite de 45 s, reintento e historial por páginas— sigue igual y esto ataca la causa).
+1. **Ventana sin espera muerta:** se muestra cuando el renderer avisa de su primer cuadro (o en `did-finish-load`), sin el 1,5 s fijo; el fondo oscuro ya evita el destello. ~1,5 s menos en cada arranque y 10 ERROR falsos menos.
+2. **El Engine arranca en paralelo:** el proceso principal lo lanza en `whenReady`, mientras carga la ventana; `engine_start` del renderer se vuelve idempotente. ~1–2 s menos.
+3. **Entrada rápida del Engine:** `python -m rinari.engine_protocol` sin Typer ni los comandos de la CLI, y el llavero y los adaptadores de proveedores se cargan al usarse. El saludo llega ~40–50 % antes.
+4. **Timeline ligero:** se leen por SQL solo los turnos pedidos, se arregla la consulta por mensaje, no se mandan los `tool.output.delta` ni los argumentos repetidos, y las salidas largas de herramientas se recortan con «ver completo» a demanda. De 6–7 MB a < 500 KB.
+5. **Carga perezosa en la app:** Ajustes, la terminal (xterm), el Markdown y los paneles se cargan al abrirse; el bloque principal baja a ~la mitad (estimado).
+6. **Una línea de tiempos de arranque en `app.log`:** inicio, ventana, primer cuadro, Engine lanzado, saludo, primera lista y primer historial. Se ve en el diagnóstico (#79).
+7. **Arreglos chicos:** el cierre normal se registra como «detenido»; nada de `bundle_list` antes de que el Engine esté listo; no se piden datos de conversaciones que aún no existen; `MaxListeners` y la avalancha de `ResizeObserver` (se registra una vez por minuto con un contador, va con #58).
+8. **Almacenamiento:** el Engine deja de escribir los eventos duplicados con nombre viejo y compacta los `tool.output.delta` al terminar la herramienta (una migración limpia los existentes: ~40 % menos de eventos). Y **Ajustes → Almacenamiento**: cuánto ocupa cada cosa (conversaciones, espacios de trabajo, navegador, artefactos, caché) con «Limpiar» por apartado.
+9. **Estabilidad medida:** un escenario `startup-timing` que falla si el arranque empaquetado pasa de un umbral, y un escenario de abrir una conversación de 10 000 eventos con tiempo máximo.
+
+**Decisión pendiente.**
+1. ¿La limpieza de `~/.rinari` es **automática** (por ejemplo, caché y espacios de trabajo de conversaciones borradas o archivadas hace más de 30 días) o **solo manual** desde Ajustes → Almacenamiento? Recomendado: **manual, con una sugerencia** cuando pase de un tamaño («Rinari ocupa 11 GB; 6,8 GB son espacios de trabajo viejos. Revisar»).
+
+**Pruebas.** Electron: la ventana se muestra sin el respaldo de 1,5 s; el Engine se lanza antes de que el renderer lo pida. CLI: la entrada rápida saluda sin importar Typer (comprobado con `-X importtime`); `session.timeline` de 10 000 eventos en < 50 ms y < 500 KB; no se escriben eventos duplicados; la migración compacta los `delta`. App: Ajustes → Almacenamiento con tamaños; escenarios `startup-timing` y de conversación grande.
+
+---
+
+## 92. Ajustes: pasada visual a Agentes, Modelos, Skills y Contexto
+
+**Qué se pidió** (Planka, Ideas-2). Mejoras visuales en Ajustes: Agentes, Modelos (y que el botón «Guardar» sea un «Editar»: solo al pulsarlo se puede cambiar el alias y luego guardar), Skills, Memoria, Personalidad y Contexto.
+
+**Qué ya está en el plan.** **Memoria** → gestor completo del #75. **Personalidad** → pantalla nueva del #87. **Perfiles** → #86. **Skills** → lo funcional en el #53 (importar en segundo plano, skills.sh, errores claros), no lo visual. El selector canónico (`Select`) → #12.
+
+**Qué hay hoy (verificado).**
+- **Modelos** (`features/providers/ModelsView.tsx` + `ModelCatalog.tsx`): el campo de alias **solo existe para los modelos descubiertos aún sin guardar** (`ModelCatalog.tsx:177-185`), siempre editable, con estilo viejo y relleno con el id del proveedor; su «Guardar» (`:186-193`) **registra** el modelo, no renombra. **Los modelos guardados no se pueden renombrar desde la app** (filas `:198-247`: solo Usar, Probar y Quitar), aunque el Engine ya tiene `model_alias` (`services/engine.ts:1544-1549`, sin usar). «Quitar» no pide confirmación; botones, insignia «Activo», «Actualizar» y el estado vacío con estilo viejo.
+- **Agentes** (`features/agents/AgentsView.tsx`): una sección por agente con dos `<select>` nativos (modelo y respaldo, `:145-179`), un interruptor hecho a mano aunque existe `components/ui/switch` (`:183-199`), «Restablecer» sin estilo, guardado al cambiar sin aviso, sin cabecera ni estados de carga/vacío, la procedencia en crudo y «Session permissions» escrito a mano en es/en (`:134`).
+- **Skills** (`features/skills/SkillsView.tsx`): la más actual; quedan los filtros hechos a mano en vez de `.seg-tabs` (`:129-147`), una búsqueda propia en vez de `SearchField` (`:148-157`), insignias sueltas (`:175-187`) y un estado vacío sin chibi ni error con reintento (`:207-211`).
+- **Contexto** (`components/settings/ContextSettings.tsx`): cabecera distinta a las demás (`:59-60`, sin `font-display` y con otro ancho), el resumidor en un `<select>` nativo (`:79-84`), el umbral como número suelto (`:70`), «Descartar» sin estilo (`:90`) y nada se dibuja hasta que llega el borrador.
+
+**Propuesta.**
+1. **Modelos:**
+   - cada modelo guardado es una fila de solo lectura (alias, id del proveedor, visión, contexto, «Activo») con **«Editar»** (lápiz): al pulsarlo, el alias se vuelve un campo con **«Guardar»** y **«Cancelar»** (Esc cancela, Enter guarda), y guarda con `model_alias`; si el alias ya existe, el error sale debajo del campo. Mismo patrón que `RecordRow` de Memoria (`MemorySettings.tsx:218-301`);
+   - los modelos descubiertos se muestran como «Disponibles» con **«Añadir»** (el alias se pone después con «Editar», o en el mismo paso si se pulsa el lápiz);
+   - «Quitar» pide confirmación; botones e insignias canónicos; estado vacío con chibi.
+2. **Agentes:** cabecera e introducción como las demás; una tarjeta por agente con su avatar o icono, el selector canónico (#12) para modelo y respaldo, el `Switch` de la app, «Restablecer» como botón fantasma, y un aviso «Guardado» al cambiar; la procedencia en palabras («como el general», «del perfil *X*», que encaja con el #86); textos por i18n; estados de carga y vacío.
+3. **Skills:** `.seg-tabs` para los filtros, `SearchField`, insignias canónicas, estado vacío con chibi y error con «Reintentar».
+4. **Contexto:** cabecera igual a las demás; el resumidor con el selector canónico; el umbral como control deslizante con el % y una frase de qué significa («compacta cuando el contexto llega al 80 %»); «Descartar» canónico; estado de carga.
+5. **Memoria y Personalidad:** lo que queda fuera de #75 y #87 (los radios y filtros hechos a mano → `.seg-tabs`, y los estados vacíos con chibi) se hace dentro de esos puntos.
+6. Todo según la lista de comprobación de [obsidiana-neon.md](../design/obsidiana-neon.md) (carga, vacío, error con reintento y normal en cada pantalla) y **pasa por la sesión de pulido de UI**.
+
+**Pruebas.** Vitest de Modelos: la fila es de solo lectura hasta «Editar»; «Guardar» llama a `model_alias`; «Cancelar» y Esc restauran; alias repetido muestra el error; «Quitar» pide confirmación. Vitest de Agentes con el selector y el aviso «Guardado». Capturas nuevas de las seis pantallas en `ui-tour` (las últimas son del 10 de octubre).
 
 ---
 

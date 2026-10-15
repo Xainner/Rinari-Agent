@@ -314,7 +314,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 79 | «Exportar para revisión»: una conversación (o desde un mensaje) en un paquete para analizarla, con los registros de esas horas y sin secretos (propuesta de Claude) | CLI + Agent | Decidido |
 | 80 | Modelo de respaldo cuando el principal falla, y modelo auxiliar barato para las llamadas internas (propuesta de Claude) | CLI + Agent | Decidido |
 | 81 | `/init`: Rinari conoce el proyecto y propone su `RINARI.md` (propuesta de Claude) | CLI + Agent | Decidido |
-| 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Propuesto (faltan 3 decisiones) |
+| 82 | «Resumen»: un mini panel lateral con el estado de la conversación (entorno, contexto, plan, cambios con repo/rama/PR, resultados, fuentes, conectores, agentes, procesos), como Claude Code y Codex; cada fila abre su vista (dueño, con capturas) | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2442,10 +2442,10 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 5. **El Engine:** un método `session.summary` que junta lo anterior en una sola llamada (y un evento cuando cambia); `repo.status` con remoto, rama, adelantos/atrasos y, si hay `gh`, los PR de la rama (solo lectura); `repo.pr.create` detrás de la confirmación.
 6. **Pasa por la sesión de pulido de UI** (diseño de las tarjetas, ancho del mini panel, transición entre resumen y vistas).
 
-**Decisiones pendientes.**
-1. ¿El resumen se abre **solo** al empezar una conversación? Recomendado: **no**; se recuerda abierto o cerrado por conversación.
-2. ¿«Crear PR» entra en 0.4.0? Recomendado: **sí**, con confirmación y solo con `gh` autenticado; sin `gh`, «Crear PR» abre la página de GitHub para crearlo.
-3. ¿Las «Fuentes» incluyen también lo que leyeron los MCP (por ejemplo, Planka)? Recomendado: **sí**, agrupado por conector.
+**Decisiones del dueño (2026-10-14).**
+1. El resumen **no** se abre solo; se recuerda abierto o cerrado por conversación.
+2. «Crear PR» **entra en 0.4.0**, con confirmación y solo con `gh` autenticado; sin `gh`, abre la página de GitHub para crearlo.
+3. Las «Fuentes» incluyen lo que leyeron los **MCP**, agrupado por conector.
 
 **Pruebas.** Vitest de cada tarjeta (con y sin datos), del cambio resumen ↔ vistas y del «⋯». CLI: `session.summary` con cambios, fuentes, resultados y plan; `repo.status` con y sin `gh`. Escenario: una conversación con plan, cambios y una búsqueda web muestra las tarjetas; pulsar «Cambios» abre la vista y cierra el resumen; volver al resumen; captura en `ui-tour`.
 
@@ -2520,6 +2520,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 79 | «Exportar para revisión» desde la barra lateral o desde un mensaje: .zip con eventos, lista de pasos, verificaciones, informe de uso, registros de esas horas y entorno; secretos siempre fuera; el texto de los mensajes incluido por defecto con aviso. |
 | 80 | Modelo de respaldo tras los reintentos o dos respuestas vacías (nunca por rechazo de contenido), con aviso en el timeline y vuelta al principal en el turno siguiente; con límites agotados, el respaldo de inmediato. Modelo auxiliar para títulos, memoria, skills y resúmenes; la compactación no lo usa salvo que se active. |
 | 81 | `/init` en la app: exploración en solo lectura y propuesta de `RINARI.md` con Guardar / Editar / Descartar; reutiliza `AGENTS.md`/`CLAUDE.md`; `verify.plan` toma de ahí los comandos. |
+| 82 | «Resumen» como mini panel lateral excluyente con las vistas (#47): entorno, contexto, plan y pasos, cambios con repo/rama/PR y «Crear PR» (confirmado, con `gh`; sin `gh`, la página de GitHub), resultados, fuentes (web y MCP), conectores, agentes y procesos; no se abre solo y se recuerda por conversación. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

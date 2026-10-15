@@ -71,11 +71,11 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 16 | Preguntas | 37, 63 | El mismo componente. |
 | 17 | Estilo nuevo pendiente | 10, 12, 15, 16, 17, 21, 28, 29, 65, 69 | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
-| 23 | Perfiles y personalidad | 85, 86, 87 (y la memoria por perfil del #75) | Lo que es un perfil (alma, modo, modelos, trabajo) y cómo habla Rinari se diseñan juntos. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque del Engine | 70 | Saludo, reintento e historial por páginas; base para equipos lentos. |
 | 21 | Memoria y usuario | 75, 71 | La bienvenida guarda en la memoria del usuario; conviene tener los ámbitos nuevos antes. |
 | 22 | Uso y diagnóstico | 78, 79 | El informe de uso alimenta el paquete de revisión; los dos leen lo mismo del Engine. |
+| 23 | Perfiles y personalidad | 85, 86, 87 (y la memoria por perfil del #75) | Lo que es un perfil (alma, modo, modelos, trabajo) y cómo habla Rinari se diseñan juntos. |
 
 ---
 

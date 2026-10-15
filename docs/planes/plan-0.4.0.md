@@ -308,7 +308,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 74 | El acceso directo del escritorio dice «Rinari», no «Rinari Agent» (Planka, Ideas-2) | Agent (instalador) | Decidido |
 | 75 | Memoria por ámbitos (general, perfil, proyecto, chat), el modelo elige dónde guardar, y un gestor de memoria de verdad (Planka, Validar) | CLI + Agent | Decidido |
 | 76 | Leer un archivo grande deja una copia en un artefacto .txt: el flujo de lectura de archivos y salidas grandes, con lo que hacen OpenCode, Hermes, Codex, Claude Code y Gemini CLI (Planka, Validar) | CLI + Agent | Propuesto (investigado) |
-| 77 | Imágenes en el composer: quitar la barra «Leer imágenes como» y una vista previa grande y bonita, igual en el composer y en el chat (dueño, con capturas) | Agent | Propuesto (falta 1 decisión) |
+| 77 | Imágenes en el composer: quitar la barra «Leer imágenes como» y una vista previa grande y bonita, igual en el composer y en el chat (dueño, con capturas) | Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2307,8 +2307,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
    - abre y cierra con una animación suave desde la miniatura (sin animación con movimiento reducido); Esc cierra.
    - Pasa por la sesión de pulido de UI.
 
-**Decisión pendiente.**
-1. ¿El cambio automático a texto cuando el modelo no ve imágenes está bien, o prefieres que avise y pregunte? Recomendado: **automático**, con la marca en el chip (es lo que el usuario querría casi siempre, y se puede cambiar en el chip).
+**Decisión del dueño (2026-10-14).** Si el modelo no ve imágenes, se cambia **solo** a texto (OCR), con la marca en el chip; se puede cambiar desde el chip.
 
 **Pruebas.** Vitest: sin barra en el composer; con un modelo sin visión el chip marca «Texto»; el menú del chip cambia el modo y la marca. Escenario: abrir una imagen desde el composer, un mensaje y el timeline abre el mismo visor a pantalla casi completa, con zoom, flechas y Esc; captura en `ui-tour`; con movimiento reducido, sin animación.
 
@@ -2378,6 +2377,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 73 | Apodos de subagentes con nombres de estrellas y constelaciones, únicos por conversación. |
 | 74 | El acceso directo del escritorio y del menú Inicio se llaman «Rinari»; `productName` y `appId` no cambian. |
 | 75 | Memoria en cuatro ámbitos (general, perfil, proyecto, chat), el modelo elige y la tarjeta deja cambiarlo; la de un chat se borra con él; categorías nuevas persona, recurso y decisión; gestor de memoria por ámbito. |
+| 77 | Sin la barra «Leer imágenes como»: imagen por defecto, OCR automático si el modelo no ve, cambio por imagen desde el chip y preferencia en Ajustes; un solo visor de imágenes grande con zoom y flechas en todo el chat. |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |
 | Después | Herramientas de Docker y conectores de servicios profesionales (Planka, Ideas-2): fuera de 0.4.0. |

@@ -2631,6 +2631,8 @@ export const en: Record<I18nKey, string> = {
   'context.usedPercent': '{n}% used',
   'context.resets': 'resets {date}',
   'context.resetDone': 'Reset · updating…',
+  'composer.providerFree': '{name} (free)',
+  'composer.otherProvider': 'Other',
   'context.details': 'View detailed usage',
   'sidebar.identityMenu': 'Rinari and profiles',
   'sidebar.identityIdle': 'Ready to work',

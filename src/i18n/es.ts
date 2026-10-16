@@ -2649,6 +2649,8 @@ export const es = {
   'context.usedPercent': '{n} % usado',
   'context.resets': 'se reinicia {date}',
   'context.resetDone': 'Restablecido · actualizando…',
+  'composer.providerFree': '{name} (gratis)',
+  'composer.otherProvider': 'Otros',
   'context.details': 'Ver uso detallado',
   'sidebar.identityMenu': 'Rinari y perfiles',
   'sidebar.identityIdle': 'Lista para trabajar',

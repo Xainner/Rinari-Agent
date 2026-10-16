@@ -109,7 +109,13 @@ export function useBoardNotifications(options: UseBoardNotificationsOptions): vo
       const name = label(sessionId)
       if (decision.system) {
         const text = notificationText({ outcome, conversation: name, project: latest.current.projectFor?.(sessionId) ?? null, detail }, lang, prefs.showContent)
-        void sendSystemNotification({ ...text, target: { sessionId, turnId } }).catch(() => undefined)
+        // «Abrir» (o «Revisar plan») y «Responder»; una aprobación se ve entera en la app, no se aprueba aquí.
+        void sendSystemNotification({
+          ...text,
+          target: { sessionId, turnId },
+          actions: [outcome === 'plan' ? { id: 'review-plan', label: t('notify.reviewPlan') } : { id: 'open', label: t('notify.open') }],
+          ...(kind === 'terminal' ? { reply: { placeholder: t('notify.replyPlaceholder') } } : {}),
+        }).catch(() => undefined)
       }
       if (decision.toast) {
         const plan = outcome === 'plan'

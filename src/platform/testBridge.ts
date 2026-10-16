@@ -22,6 +22,7 @@ import type {
   NativeBrowserPreview,
   NativeBrowserSlotLayout,
   NotificationSupport,
+  NotificationReply,
   NotificationTarget,
   OpenFilesOptions,
   OpenJsonResult,
@@ -55,6 +56,7 @@ export interface TestBridge extends DesktopBridge {
   notificationSupport: NotificationSupport
   /** Simula el clic del usuario en una notificación. */
   activateNotification(target: NotificationTarget): void
+  replyNotification(reply: NotificationReply): void
   /** Operaciones de ciclo de vida pedidas, en orden. */
   readonly engineCalls: string[]
   engineStatus: EngineStatus
@@ -132,6 +134,7 @@ export function createTestBridge(): TestBridge {
   const menuListeners = new Set<(action: string) => void>()
   const openListeners = new Set<(request: OpenRequest) => void>()
   const notificationListeners = new Set<(target: NotificationTarget) => void>()
+  const replyListeners = new Set<(reply: NotificationReply) => void>()
   const updateListeners = new Set<(state: UpdateState) => void>()
   const browserListeners = new Set<(view: NativeBrowserContext) => void>()
 
@@ -428,6 +431,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
         notificationListeners.add(callback)
         return () => notificationListeners.delete(callback)
       },
+      async onReplied(callback) {
+        replyListeners.add(callback)
+        return () => replyListeners.delete(callback)
+      },
     },
 
     updates: {
@@ -478,6 +485,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     activateNotification(target) {
       for (const listener of [...notificationListeners]) listener(target)
     },
+    replyNotification(reply) {
+      for (const listener of [...replyListeners]) listener(reply)
+    },
 
     reset() {
       handlers.clear()
@@ -505,6 +515,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }
       notificationListeners.clear()
+      replyListeners.clear()
       bridge.openedUrls.length = 0
       bridge.nextFileSelection = null
       bridge.filePaths.clear()

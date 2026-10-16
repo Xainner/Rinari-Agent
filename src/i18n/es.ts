@@ -2238,6 +2238,7 @@ export const es = {
   'notify.go': 'Ir',
   'notify.open': 'Abrir',
   'notify.reviewPlan': 'Revisar plan',
+  'notify.replyPlaceholder': 'Responder a Rinari',
   'notify.grouped': '{n} conversaciones terminaron.',
   'notify.groupedTitle': 'Rinari terminó varias cosas',
   'notifications.module.conversations': 'Conversaciones',

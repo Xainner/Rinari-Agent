@@ -88,6 +88,7 @@ export const PUSH = {
   contextMenuAction: 'rinari:push.contextMenuAction',
   /** El usuario pulsó una notificación: el renderer resuelve el destino. */
   notificationActivated: 'rinari:push.notificationActivated',
+  notificationReplied: 'rinari:push.notificationReplied',
   /**
    * Cambió el contexto del browser de una sesión: pestañas, control o estado.
    * Se empuja para que la toolbar no tenga que sondear —el §10 limita el poll
@@ -195,6 +196,17 @@ export interface NotificationSupport {
 export interface NotificationTarget {
   sessionId?: string
   turnId?: string
+  /** Botón que se pulsó en la notificación (#64); sin él, fue un clic. */
+  action?: NotificationActionId
+}
+
+/** Botones de una notificación: abrir, o abrir en el plan. Aprobar, nunca (#64). */
+export type NotificationActionId = 'open' | 'review-plan'
+
+/** Lo que el dueño escribió en «Responder» de la notificación (#64). */
+export interface NotificationReply {
+  target: NotificationTarget
+  text: string
 }
 
 /** Segundo plano: la preferencia de main y la verdad del sistema. */
@@ -216,6 +228,10 @@ export interface SystemNotificationRequest {
   title: string
   body: string
   target?: NotificationTarget
+  /** Botones (Windows y macOS), en orden. */
+  actions?: Array<{ id: NotificationActionId; label: string }>
+  /** Caja «Responder» (Windows y macOS): lo escrito llega como `notificationReplied`. */
+  reply?: { placeholder: string }
   /** Sin sonido del sistema: la app reproduce su propio tono. */
   silent?: boolean
 }

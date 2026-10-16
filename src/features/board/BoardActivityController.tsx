@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useEngineData, useOptionalEngineCommands, useRuntimeStore } from '../engine/EngineContext'
-import { onNotificationActivated } from '../../services/notifications'
+import { onNotificationActivated, onNotificationReplied } from '../../services/notifications'
 import { requestTurnReveal } from './boardCommands'
 import {
   derivePaneStatus,
@@ -247,17 +247,30 @@ export default function BoardActivityController() {
     watchedSessionIds,
     openConversation,
   })
-  // Clic en la notificación del sistema de un turno: abre la conversación ahí.
-  // Las de tareas programadas no llevan turno; las abre ScheduleNotifier.
+  // Clic (o «Abrir» / «Revisar plan») en la notificación del sistema de un
+  // turno: abre la conversación ahí. Las de tareas programadas no llevan
+  // turno; las abre ScheduleNotifier. «Responder» manda el texto a esa
+  // conversación sin abrir la ventana: un mensaje nuevo, o uno durante el
+  // turno si Rinari está trabajando (#64, #54).
   const openRef = useRef(openConversation)
   openRef.current = openConversation
+  const commandsRef = useRef(commands)
+  commandsRef.current = commands
   useEffect(() => {
-    let stop: (() => void) | null = null
+    const stops: Array<() => void> = []
     let disposed = false
+    const keep = (unsubscribe: () => void) => { if (disposed) unsubscribe(); else stops.push(unsubscribe) }
     void onNotificationActivated((target) => {
       if (target.sessionId && target.turnId) openRef.current({ sessionId: target.sessionId, turnId: target.turnId })
-    }).then((unsubscribe) => { if (disposed) unsubscribe(); else stop = unsubscribe }).catch(() => undefined)
-    return () => { disposed = true; stop?.() }
+    }).then(keep).catch(() => undefined)
+    void onNotificationReplied(({ target, text }) => {
+      const engine = commandsRef.current
+      if (!engine || !target.sessionId || !text.trim()) return
+      const sessionId = target.sessionId
+      const delivered = engine.isBusy(sessionId) ? engine.steerTo(sessionId, text) : engine.sendTo(sessionId, text)
+      void delivered.catch(() => false)
+    }).then(keep).catch(() => undefined)
+    return () => { disposed = true; for (const stop of stops.splice(0)) stop() }
   }, [])
   usePeerNotifications({
     supported: data.status?.capabilities.session_peer_messaging_v1 === true,

@@ -19,6 +19,7 @@ export type {
   EngineStatus,
   HostOnlyCommand,
   NotificationSupport,
+  NotificationReply,
   NotificationTarget,
   OpenFilesOptions,
   OpenRequest,

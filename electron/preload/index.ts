@@ -37,6 +37,7 @@ import {
   type DiagnosticsPreview,
   type EngineStatus,
   type NotificationSupport,
+  type NotificationReply,
   type NotificationTarget,
   type OpenExternalFileRequest,
   type WorkspaceMedia,
@@ -241,6 +242,9 @@ const api = {
     /** Clic en una notificación: solo el destino, nunca una acción. */
     onActivated: (callback: (target: NotificationTarget) => void) =>
       subscribe<NotificationTarget>(PUSH.notificationActivated, callback),
+    /** «Responder» desde la notificación (#64). */
+    onReplied: (callback: (reply: NotificationReply) => void) =>
+      subscribe<NotificationReply>(PUSH.notificationReplied, callback),
   },
 
   updates: {

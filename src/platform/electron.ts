@@ -23,6 +23,7 @@ import type {
   NativeBrowserContext,
   NativeBrowserControl,
   NativeBrowserPreview,
+  NotificationReply,
   NotificationTarget,
   OpenFilesOptions,
   OpenJsonRequest,
@@ -100,6 +101,7 @@ interface DesktopHostApi {
     support(): Promise<NotificationSupport>
     send(notification: SystemNotification): Promise<boolean>
     onActivated(callback: (target: NotificationTarget) => void): Unsubscribe
+    onReplied?(callback: (reply: NotificationReply) => void): Unsubscribe
   }
   updates: {
     check(): Promise<UpdateAvailable | null>
@@ -336,6 +338,8 @@ export const electronBridge: DesktopBridge = {
     support: () => required().notifications.support(),
     send: (notification) => required().notifications.send(notification),
     onActivated: (callback) => ready(required().notifications.onActivated(callback)),
+    // Un host anterior sin «Responder» no lo ofrece: nada que escuchar.
+    onReplied: (callback) => ready(required().notifications.onReplied?.(callback) ?? (() => {})),
   },
 
   updates: {

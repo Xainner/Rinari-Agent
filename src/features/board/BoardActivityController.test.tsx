@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
-installMockPlatform()
+const mockPlatform = installMockPlatform()
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
@@ -131,4 +131,17 @@ it('#84: a turn that only compacted the context is not an unread result', () => 
   })
   const receipt = useBoardAttentionStore.getState().sessions.ses_a?.turns.t_compact
   expect(receipt?.state).toBe('seen')
+})
+
+it('#64: «Responder» from a system notification sends the text to that conversation, or steers it while it works', async () => {
+  const steerTo = vi.fn(async () => true)
+  const isBusy = vi.fn(() => false)
+  const engine = engineFixture({ sessions, historyInfo: { ses_a: { total: 0, hasMore: false } }, steerTo, isBusy } as never)
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  await act(async () => { await Promise.resolve() })
+  act(() => { mockPlatform.bridge.replyNotification({ target: { sessionId: 'ses_a', turnId: 't1' }, text: 'sí, adelante' }) })
+  expect(engine.sendTo).toHaveBeenCalledWith('ses_a', 'sí, adelante')
+  isBusy.mockReturnValue(true)
+  act(() => { mockPlatform.bridge.replyNotification({ target: { sessionId: 'ses_a' }, text: 'y el logo en SVG' }) })
+  expect(steerTo).toHaveBeenCalledWith('ses_a', 'y el logo en SVG')
 })

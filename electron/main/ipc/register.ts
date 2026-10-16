@@ -33,6 +33,7 @@ import {
   type OpenJsonResult,
   type SaveJsonRequest,
   type SaveJsonResult,
+  type NotificationActionId,
   type SystemNotificationRequest,
   type FlowScopeRequest,
 } from '../../shared/contracts'
@@ -249,6 +250,18 @@ function assertNotification(value: unknown): SystemNotificationRequest {
     throw new ValidationError('notification target must be an object')
   }
   const entry = (target ?? {}) as Record<string, unknown>
+  const actions = raw.actions === undefined ? undefined : (() => {
+    if (!Array.isArray(raw.actions) || raw.actions.length > 2) throw new ValidationError('notification actions must be a list of at most 2')
+    return raw.actions.map((item) => {
+      const action = (item ?? {}) as Record<string, unknown>
+      if (action.id !== 'open' && action.id !== 'review-plan') throw new ValidationError('unknown notification action')
+      return { id: action.id as NotificationActionId, label: assertString(action.label, 'label', 40) }
+    })
+  })()
+  const reply = raw.reply === undefined ? undefined : (() => {
+    const value = (raw.reply ?? {}) as Record<string, unknown>
+    return { placeholder: assertString(value.placeholder, 'placeholder', 80) }
+  })()
   return {
     title: assertString(raw.title, 'title', 120),
     body: assertString(raw.body, 'body', 400),
@@ -257,6 +270,8 @@ function assertNotification(value: unknown): SystemNotificationRequest {
       sessionId: entry.sessionId === undefined ? undefined : assertString(entry.sessionId, 'sessionId', 128),
       turnId: entry.turnId === undefined ? undefined : assertString(entry.turnId, 'turnId', 128),
     },
+    ...(actions ? { actions } : {}),
+    ...(reply ? { reply } : {}),
   }
 }
 

@@ -98,6 +98,17 @@ export interface NotificationSupport {
 export interface NotificationTarget {
   sessionId?: string
   turnId?: string
+  /** Botón pulsado (#64); sin él, fue un clic. */
+  action?: NotificationActionId
+}
+
+/** Botones de una notificación: abrir, o abrir en el plan. Aprobar, nunca (#64). */
+export type NotificationActionId = 'open' | 'review-plan'
+
+/** Lo escrito en «Responder» de una notificación (#64). */
+export interface NotificationReply {
+  target: NotificationTarget
+  text: string
 }
 
 export interface SystemNotification {
@@ -105,6 +116,10 @@ export interface SystemNotification {
   body: string
   /** Qué abrir al pulsarla. Es una referencia, no una acción. */
   target?: NotificationTarget
+  /** Botones (Windows y macOS), en orden; como mucho dos. */
+  actions?: Array<{ id: NotificationActionId; label: string }>
+  /** Caja «Responder» (Windows y macOS). */
+  reply?: { placeholder: string }
   /** Sin sonido del sistema: la app reproduce su propio tono. */
   silent?: boolean
 }
@@ -299,6 +314,8 @@ export interface DesktopBridge {
     send(notification: SystemNotification): Promise<boolean>
     /** Clic del usuario: el renderer resuelve el destino y no envía nada. */
     onActivated(callback: (target: NotificationTarget) => void): Promise<Unsubscribe>
+    /** «Responder» desde la notificación: el texto va a esa conversación (#64). */
+    onReplied(callback: (reply: NotificationReply) => void): Promise<Unsubscribe>
   }
 
   updates: {

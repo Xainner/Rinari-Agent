@@ -250,6 +250,7 @@ const engine = new EngineSupervisor({
 
 const notifications = createNotifications({
   onActivate: (target) => send(PUSH.notificationActivated, target),
+  onReply: (reply) => send(PUSH.notificationReplied, reply),
   focusWindow: () => {
     if (mainWindow && !mainWindow.isDestroyed()) presentWindow(mainWindow)
   },

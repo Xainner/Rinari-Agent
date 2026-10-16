@@ -89,20 +89,20 @@ export default function DisableProviderDialog({
           <AlertDialogDescription>{t('providers.disable.body')}</AlertDialogDescription>
         </AlertDialogHeader>
         {lines.length > 0 && (
-          <div className="space-y-3 px-6">
-            <ul className="space-y-1 text-sm text-[var(--text)]" data-testid="disable-provider-deps">
-              {lines.map((line) => <li key={line}>· {line}</li>)}
+          <div className="disable-provider-body">
+            <ul className="disable-provider-deps" data-testid="disable-provider-deps">
+              {lines.map((line) => <li key={line}>{line}</li>)}
             </ul>
             {candidates.length > 0 ? (
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--text)]" htmlFor="provider-replacement">
+                <label className="field-label" htmlFor="provider-replacement">
                   {t('providers.disable.replacement')}
                 </label>
                 <select
                   id="provider-replacement"
                   value={replacement}
                   onChange={(event) => setReplacement(event.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[var(--bg-subtle)] px-3 py-2 text-sm"
+                  className="field-input"
                 >
                   {candidates.map((model) => (
                     <option key={model.id} value={model.id}>{`${model.alias} · ${model.provider ?? ''}`}</option>
@@ -110,7 +110,7 @@ export default function DisableProviderDialog({
                 </select>
               </div>
             ) : (
-              <p className="text-sm text-[var(--text-subtle)]">{t('providers.disable.noReplacement')}</p>
+              <p className="field-hint">{t('providers.disable.noReplacement')}</p>
             )}
           </div>
         )}

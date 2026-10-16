@@ -38,7 +38,7 @@ scenario(async () => {
   assert.equal((await command('provider_list')).active_alias, 'reserva')
   assert.deepEqual((await command('model_list', {})).models.map((m) => m.alias), ['reserva-modelo'])
   assert.equal((await command('agent_config_get', { agent })).agent.assignment.model, spare.id)
-  await wait(`[...document.querySelectorAll('[data-anchor^="provider:"] h2')].at(-1)?.innerText.includes('prueba-local · Desactivado')`)
+  await wait(`(() => { const h = [...document.querySelectorAll('[data-anchor^="provider:"] h2')].at(-1); return h?.innerText.includes('prueba-local') && [...h.querySelectorAll('.provider-chip')].some(c => c.textContent === 'Desactivado') })()`)
   await settleAnimations()
   await screenshot('providers-with-one-off')
 

@@ -120,7 +120,7 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
               type="button"
               data-testid="failure-switch-model"
               onClick={() => requestModelPicker(timeline.sessionId)}
-              className="rounded-lg border border-[var(--accent)]/40 px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+              className="btn btn-secondary btn-xs"
             >
               {t('failure.action.switchModel')}
             </button>
@@ -129,7 +129,7 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
             <button
               type="button"
               onClick={() => openProvider({ providerId: cause.providerId, alias: cause.providerAlias, tab })}
-              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+              className="btn btn-secondary btn-xs"
             >
               {t(`failure.action.${tab}` as I18nKey)}
             </button>
@@ -147,7 +147,7 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
                   })
                   .catch((error) => toast.error(commandMessage(error)))
               }}
-              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+              className="btn btn-secondary btn-xs"
             >
               {t('failure.action.enableProvider', { provider })}
             </button>
@@ -156,7 +156,7 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
             <button
               type="button"
               onClick={() => { void engineApi.contextCompact(timeline.sessionId).catch((error) => toast.error(commandMessage(error))) }}
-              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+              className="btn btn-secondary btn-xs"
             >
               {t('failure.action.compact')}
             </button>

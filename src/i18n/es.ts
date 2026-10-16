@@ -1001,6 +1001,8 @@ export const es = {
   'providers.delete': 'Eliminar',
   'providers.confirmDelete': 'Eliminar “{name}” de forma permanente con sus modelos.',
   'providers.switchTo': 'Mover sesiones activas a',
+  'modelRoles.title': 'Modelo de respaldo y auxiliar',
+  'modelRoles.desc': 'Sin elegir, todo usa el modelo de la conversación.',
   'modelRoles.none': "El de la conversación",
   'modelRoles.fallback': "Modelo de respaldo",
   'modelRoles.fallbackHint': "Si el principal falla (proveedor, conexión, límites) o responde vacío dos veces, el turno sigue con este.",

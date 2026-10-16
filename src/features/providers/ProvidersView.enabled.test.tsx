@@ -96,7 +96,8 @@ it('a turned-off provider goes last, dimmed, and the switch turns it back on', a
   const switches = screen.getAllByTestId('provider-enabled')
   expect(switches[0].getAttribute('aria-checked')).toBe('true')
   expect(switches[1].getAttribute('aria-checked')).toBe('false')
-  expect(screen.getByText('spare · Desactivado')).toBeTruthy()
+  expect(screen.getByText('spare')).toBeTruthy()
+  expect(screen.getByText('Desactivado')).toBeTruthy()
   fireEvent.click(switches[1])
   await waitFor(() => expect(calls).toEqual([
     ['provider_update', expect.objectContaining({ reference: 'spare', enabled: true })],

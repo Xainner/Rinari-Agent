@@ -22,6 +22,10 @@ import {
   SquareTerminal,
   TriangleAlert,
   Wrench,
+  BrainCog,
+  ImageOff,
+  Languages,
+  LifeBuoy,
 } from 'lucide-react'
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
@@ -118,7 +122,21 @@ function FallbackNotice({ item }: { item: Extract<TimelineItem, { type: 'system'
   const models = useOptionalEngineData()?.models
   const name = (item.label && models?.find((model) => model.id === item.label)?.alias) || item.label || ''
   const why = t(FALLBACK_REASONS[item.status ?? ''] ?? 'activity.fallback.provider')
-  return <p data-testid="model-fallback" className="py-1 text-[12px] text-[var(--warning)]">{t('activity.fallback', { model: name, reason: why })}</p>
+  return <ActivityNotice testId="model-fallback" tone="warning" icon={<LifeBuoy size={12} />}>{t('activity.fallback', { model: name, reason: why })}</ActivityNotice>
+}
+
+/**
+ * Un aviso del turno que no es una acción: el modelo de respaldo, un protocolo
+ * aprendido, un razonamiento que el modelo no admite, imágenes que no se
+ * leyeron. Una sola fila con icono y tono, en la familia del timeline.
+ */
+function ActivityNotice({ testId, tone, icon, children }: { testId: string; tone: 'warning' | 'info'; icon: ReactNode; children: ReactNode }) {
+  return (
+    <p data-testid={testId} className="act-notice" data-tone={tone}>
+      <span className="act-notice-icon" aria-hidden="true">{icon}</span>
+      <span className="min-w-0">{children}</span>
+    </p>
+  )
 }
 
 const VERIFICATION_TONES: Record<string, string> = {
@@ -193,7 +211,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.fallback === 'without_images') {
-    return <p data-testid="vision-without-images" className="flex items-center gap-2 py-1 text-[12px] text-[var(--warning)]"><TriangleAlert size={12} aria-hidden="true" />{t('vision.withoutImages')}</p>
+    return <ActivityNotice testId="vision-without-images" tone="warning" icon={<ImageOff size={12} />}>{t('vision.withoutImages')}</ActivityNotice>
   }
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
@@ -281,10 +299,10 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'system' && item.kind === 'model_fallback') return <FallbackNotice item={item} />
   if (item.type === 'system' && item.kind === 'protocol_learned') {
     const protocol = t(`activity.protocol.${item.status ?? 'chat'}` as I18nKey)
-    return <p data-testid="protocol-learned" className="py-1 text-[12px] text-[var(--text-subtle)]">{t('activity.protocolLearned', { model: item.label ?? '', protocol })}</p>
+    return <ActivityNotice testId="protocol-learned" tone="info" icon={<Languages size={12} />}>{t('activity.protocolLearned', { model: item.label ?? '', protocol })}</ActivityNotice>
   }
   if (item.type === 'system' && item.kind === 'reasoning_dropped') {
-    return <p data-testid="reasoning-dropped" className="py-1 text-[12px] text-[var(--text-subtle)]">{t('activity.reasoningDropped', { effort: item.label ?? '' })}</p>
+    return <ActivityNotice testId="reasoning-dropped" tone="info" icon={<BrainCog size={12} />}>{t('activity.reasoningDropped', { effort: item.label ?? '' })}</ActivityNotice>
   }
   if (item.type === 'system') return null
   if (item.type === 'verification') return <VerificationRow item={item} active={active} />

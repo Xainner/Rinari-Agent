@@ -182,12 +182,12 @@ export default function ModelPicker({
                 disabled={unsupportedModel(model)}
                 title={unsupportedModel(model) ? t('composer.unsupportedModelHint') : undefined}
                 onClick={() => { setOpen(false); onUseModel(model) }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium text-[var(--text)]">
                     {modelDisplayName(model)}
-                    {unsupportedModel(model) && <span className="ml-1.5 text-[10px] font-normal text-[var(--text-subtle)]">{t('composer.unsupportedModel')}</span>}
+                    {unsupportedModel(model) && <span className="r-chip model-unsupported">{t('composer.unsupportedModel')}</span>}
                   </span>
                   <span
                     className="block truncate font-mono text-[11px] text-[var(--text-subtle)]"

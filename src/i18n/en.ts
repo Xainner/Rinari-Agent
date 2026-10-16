@@ -983,6 +983,8 @@ export const en: Record<I18nKey, string> = {
   'providers.delete': 'Delete',
   'providers.confirmDelete': 'Permanently delete “{name}” with its models.',
   'providers.switchTo': 'Move active state to',
+  'modelRoles.title': 'Fallback and auxiliary model',
+  'modelRoles.desc': 'Without a choice, everything uses the conversation model.',
   'modelRoles.none': "The conversation's",
   'modelRoles.fallback': "Fallback model",
   'modelRoles.fallbackHint': "If the main model fails (provider, connection, limits) or answers empty twice, the turn goes on with this one.",

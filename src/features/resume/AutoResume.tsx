@@ -50,22 +50,22 @@ export function AutoResume({ sessionId, resetsAt, failedAt }: { sessionId: strin
   if (waiting && resume) {
     const minutes = Math.max(0, Math.round((Date.parse(resume.resume_at) - now) / 60_000))
     return (
-      <div data-testid="auto-resume" data-state="waiting" className="space-y-1.5 pl-[22px]">
-        <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-          <Clock size={12} aria-hidden="true" />
+      <div data-testid="auto-resume" data-state="waiting" className="resume-card">
+        <p className="resume-card-line">
+          <span className="resume-card-clock" aria-hidden="true"><Clock size={12} /></span>
           {resume.mode === 'poll'
             ? t('resume.waitingBalance')
             : t('resume.waitingAt', { time: time(resume.resume_at), minutes })}
         </p>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] hover:bg-[var(--bg-hover)]" onClick={() => void run(() => engineApi.resumeNow(sessionId))}>
-            <Play size={11} className="mr-1 inline" aria-hidden="true" />{t('resume.now')}
+        <div className="resume-card-actions">
+          <button type="button" className="btn btn-secondary btn-xs" onClick={() => void run(() => engineApi.resumeNow(sessionId))}>
+            <Play size={11} aria-hidden="true" />{t('resume.now')}
           </button>
-          <button type="button" className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-hover)]" onClick={() => void run(() => engineApi.resumeCancel(sessionId))}>
-            <X size={11} className="mr-1 inline" aria-hidden="true" />{t('resume.cancel')}
+          <button type="button" className="btn btn-quiet btn-xs" onClick={() => void run(() => engineApi.resumeCancel(sessionId))}>
+            <X size={11} aria-hidden="true" />{t('resume.cancel')}
           </button>
         </div>
-        <p className="text-[11px] text-[var(--text-subtle)]">{t('resume.keepOpen')}</p>
+        <p className="resume-card-hint">{t('resume.keepOpen')}</p>
       </div>
     )
   }
@@ -73,12 +73,13 @@ export function AutoResume({ sessionId, resetsAt, failedAt }: { sessionId: strin
   const settledAfter = resume && failedAt !== undefined && Date.parse(resume.updated_at) >= failedAt
   if (settledAfter) return null
   return (
-    <div data-testid="auto-resume" data-state="offer" className="pl-[22px]">
+    <div data-testid="auto-resume" data-state="offer">
       <button
         type="button"
-        className="rounded-lg border border-[var(--accent)]/40 px-2.5 py-1 text-xs font-semibold text-[var(--text)] hover:bg-[var(--bg-hover)]"
+        className="btn btn-secondary btn-xs"
         onClick={() => void run(() => engineApi.resumeArm(sessionId, resetsAt))}
       >
+        <Clock size={11} aria-hidden="true" />
         {resetsAt ? t('resume.offerAt', { time: time(resetsAt) }) : t('resume.offer')}
       </button>
     </div>

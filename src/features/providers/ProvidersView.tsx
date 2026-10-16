@@ -275,7 +275,7 @@ export default function ProvidersView({
           <Section
             key={provider.id}
             anchor={`provider:${provider.id}`}
-            className={off ? 'opacity-60' : undefined}
+            className={off ? 'provider-off' : undefined}
             title={
               // The whole title opens the card: only the small «details» button did.
               // The on/off switch sits beside it (#97): a switch cannot live inside a button.
@@ -287,7 +287,10 @@ export default function ProvidersView({
                 className="flex w-full items-center gap-2.5 text-left"
               >
                 <ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={22} />
-                <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}${off ? ` · ${t('providers.disabled')}` : ''}`}</span>
+                <span className="min-w-0 truncate">{provider.alias}</span>
+                {provider.active && <span className="r-chip provider-chip" data-tone="success">{t('providers.active')}</span>}
+                {off && <span className="r-chip provider-chip">{t('providers.disabled')}</span>}
+                <span className="flex-1" />
                 <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>
               <Switch

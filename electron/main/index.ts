@@ -16,6 +16,7 @@ import { APP_USER_MODEL_ID, IS_NIGHTLY, NIGHTLY_USER_DATA_DIR, PRODUCT_NAME } fr
 import { OTHER_EXECUTABLE, isImageRunning } from './otherChannel'
 import { BrowserRegistry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
+import { loadPage } from './browser/loadPage'
 import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
 import { bundleFileName, createDiagnostics, logsDirFor } from './diagnostics'
@@ -513,7 +514,7 @@ function browserServices(): HostServices['browser'] {
         await entry.view.webContents.loadURL('about:blank')
       }
       await browserRegistry!.attach(entry)
-      await entry.view.webContents.loadURL(url)
+      await loadPage(entry.view.webContents, url)
       await browserHost?.publishTargets(context.contextId)
       publishBrowserContext(sessionId)
       return { url }

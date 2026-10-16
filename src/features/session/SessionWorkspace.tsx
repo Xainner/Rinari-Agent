@@ -195,8 +195,10 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   const browserActive = layout.visible && layout.views.includes('browser')
   const browser = useBrowserFrame(sessionId, { active: browserActive, targetId, enabled: browserEnabled, probe: browserProbe })
   // Browser nativo: el panel se revela cuando el contexto pasa a estar listo,
-  // que es cuando el agente empieza a usarlo de verdad. Una vez por contexto,
-  // y sólo con el panel oculto: si el usuario lo cerró, es su decisión.
+  // que es cuando el agente empieza a usarlo de verdad. Una vez por contexto:
+  // si el usuario lo cerró después, es su decisión. Con el panel abierto en
+  // otra vista (Resumen, Archivos…) el Navegador se apila con ella; antes no
+  // se mostraba y parecía que Rinari no había abierto nada.
   const nativeState = useRef<string | null>(null)
   const [nativeLive, setNativeLive] = useState<'agent' | 'live' | null>(null)
   const focusedRef = useRef(focused)
@@ -214,7 +216,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
         if (view.backend !== 'electron-native' || view.context_state !== 'ready') return
         if (previous === 'ready' || !automaticBrowserUiEnabled()) return
         const current = useSessionDockStore.getState().layoutFor(sessionId)
-        if (focusedRef.current && !current.visible) reveal(sessionId, 'browser')
+        if (focusedRef.current && (!current.visible || !current.views.includes('browser'))) reveal(sessionId, 'browser')
       })
       .then((stop) => {
         if (alive) unsubscribe = stop

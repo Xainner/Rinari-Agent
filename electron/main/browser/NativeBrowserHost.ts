@@ -32,6 +32,7 @@ import {
 import { verifyUploadFile } from './uploadProvenance'
 import { HOLD_PROBE, OwnerActivity, type OwnerInputKind } from './ownerActivity'
 import { AgentCursor, type Point } from './agentCursor'
+import { loadPage } from './loadPage'
 
 export type { HostRequest }
 
@@ -852,9 +853,15 @@ export class NativeBrowserHost {
           void this.publishTargets(context.contextId)
           return { target_id: entry.targetId, url }
         }
-        await entry.view.webContents.loadURL(url)
-        void this.publishTargets(context.contextId)
-        return { target_id: entry.targetId, url }
+        // La pestaña ya existe aunque la carga falle: la app se entera igual
+        // (y revela el panel). Sin esto, un fallo de carga dejaba el panel
+        // cerrado con una página abierta detrás.
+        try {
+          await loadPage(entry.view.webContents, url)
+        } finally {
+          void this.publishTargets(context.contextId)
+        }
+        return { target_id: entry.targetId, url: entry.view.webContents.getURL() || url }
       }
 
       case 'context.closePage': {

@@ -68,6 +68,8 @@ export const CONTEXT_OPERATIONS = new Set([
   'context.close',
   'context.setControl',
   'context.selectTarget',
+  // El ancho de la página, aparte del panel (plan 0.4.0 #44b).
+  'context.setViewport',
 ])
 
 export type Resolution =

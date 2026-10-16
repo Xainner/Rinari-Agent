@@ -17,7 +17,9 @@
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 
-import type { BrowserRegistry, ContextEntry } from './BrowserRegistry'
+import { app, systemPreferences } from 'electron'
+
+import type { BrowserRegistry, ContextEntry, TargetEntry } from './BrowserRegistry'
 import {
   RequestLedger,
   fingerprintOf,
@@ -28,6 +30,8 @@ import {
   type HostRequest,
 } from './operations'
 import { verifyUploadFile } from './uploadProvenance'
+import { HOLD_PROBE, OwnerActivity, type OwnerInputKind } from './ownerActivity'
+import { AgentCursor, type Point } from './agentCursor'
 
 export type { HostRequest }
 
@@ -49,6 +53,12 @@ export const ENGINE_BROKER_CAPABILITY = 'browser_host_bridge_v1'
 
 /** Tope propio de operaciones a la vez; el Engine tiene el suyo (§5.4). */
 const MAX_CONCURRENT = 8
+/** Cada cuánto, como mucho, se le cuenta al Engine que el dueño sigue (#46). */
+const OWNER_REPORT_MS = 300
+/** Mundo aislado donde se mira el foco: la página no lo ve. */
+const OWNER_WORLD = 1_046
+/** Una captura por CDP que no vuelve en este tiempo cae a `capturePage`. */
+const CDP_CAPTURE_MS = 5_000
 
 export interface HostBinding {
   binding_id: string
@@ -65,6 +75,8 @@ export interface NativeBrowserHostDeps {
   onContextChanged?: (sessionId: string) => void
   /** Retira el foco de cualquier página remota y lo devuelve al renderer. */
   focusTrustedRenderer?: () => void
+  /** ¿Tiene la ventana de Rinari el foco del sistema? (#46) */
+  windowFocused?: () => boolean
 }
 
 /** Lo que produjo una ejecución: resultado o error, nunca ambos. */
@@ -109,6 +121,15 @@ export class NativeBrowserHost {
   private readonly returningToAgent = new Map<string, symbol>()
   /** Una sola petición User → Agent por sesión; los duplicados la comparten. */
   private readonly returnToAgentInFlight = new Map<string, Promise<unknown>>()
+  /** Quién usa cada contexto: el dueño o el agente por CDP (plan 0.4.0 #46). */
+  private readonly owners = new Map<string, OwnerActivity>()
+  /** Sesiones cuyo «el dueño lo toma» ya va camino del Engine. */
+  private readonly claiming = new Set<string>()
+  /** Lo pendiente de contar al Engine sobre el uso del dueño, por contexto. */
+  private readonly ownerReports = new Map<
+    string,
+    { timer: ReturnType<typeof setTimeout> | null; active: boolean; lastAt: number }
+  >()
 
   constructor(private readonly deps: NativeBrowserHostDeps) {}
 
@@ -225,6 +246,8 @@ export class NativeBrowserHost {
     if (state === 'user') {
       this.returningToAgent.delete(sessionId)
       this.deps.registry.setControl(context, 'user')
+      // El navegador es del dueño: el cursor del agente se va.
+      context.cursor?.hide()
       return
     }
     if (state === 'agent') {
@@ -321,6 +344,86 @@ export class NativeBrowserHost {
         this.returningToAgent.delete(sessionId)
       }
     }
+  }
+
+  /** El cursor visible del agente en este contexto (#46). */
+  private cursorOf(context: ContextEntry): AgentCursor {
+    if (!(context.cursor instanceof AgentCursor)) {
+      context.cursor = new AgentCursor(context, reducedMotion)
+    }
+    return context.cursor as AgentCursor
+  }
+
+  private ownerOf(contextId: string): OwnerActivity {
+    let tracker = this.owners.get(contextId)
+    if (!tracker) {
+      tracker = new OwnerActivity()
+      this.owners.set(contextId, tracker)
+    }
+    return tracker
+  }
+
+  /**
+   * Entrada en una página: si es el dueño usándola, el navegador es suyo
+   * (plan 0.4.0 #46). Sin botones: lo toma con solo usarlo, y el Engine se
+   * lo devuelve al agente cuando lleva un rato sin tocarlo.
+   */
+  ownerInput(context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind): void {
+    if (kind === 'blur') {
+      // No es uso: solo puede soltar un campo a medio rellenar, y solo si el
+      // foco se fue a otra parte de Rinari. Cambiar de aplicación también
+      // quita el foco a la página, pero el campo sigue a medias.
+      if (this.deps.windowFocused && !this.deps.windowFocused()) return
+      this.reportOwner(context, entry, false)
+      return
+    }
+    if (!this.ownerOf(context.contextId).observe(kind)) return
+    const sessionId = context.sessionId
+    if (context.control !== 'user' && !this.claiming.has(sessionId) && this.binding) {
+      this.claiming.add(sessionId)
+      void this.setControl(sessionId, 'user')
+        .catch((error) => this.deps.onError?.('the owner could not take the browser', error))
+        .finally(() => this.claiming.delete(sessionId))
+    }
+    this.reportOwner(context, entry, true)
+  }
+
+  /**
+   * Le cuenta al Engine que el dueño sigue, y si el foco está en algo que el
+   * agente no debe interrumpir (una contraseña, un campo a medio rellenar).
+   * Agrupado: como mucho uno cada `OWNER_REPORT_MS`.
+   */
+  private reportOwner(context: ContextEntry, entry: TargetEntry, active: boolean): void {
+    let state = this.ownerReports.get(context.contextId)
+    if (!state) {
+      state = { timer: null, active: false, lastAt: 0 }
+      this.ownerReports.set(context.contextId, state)
+    }
+    if (active) state.active = true
+    if (state.timer) return
+    const report = state
+    const wait = Math.max(60, OWNER_REPORT_MS - (Date.now() - report.lastAt))
+    report.timer = setTimeout(() => {
+      report.timer = null
+      const wasActive = report.active
+      report.active = false
+      report.lastAt = Date.now()
+      // La pestaña pudo cerrarse mientras tanto: entonces su vista ya no
+      // tiene webContents, y un temporizador que lanza en main abre el
+      // diálogo de error del proceso principal.
+      const contents = entry.view?.webContents
+      const probe = !contents || contents.isDestroyed()
+        ? Promise.resolve(false)
+        : contents
+            .executeJavaScriptInIsolatedWorld(OWNER_WORLD, [{ code: HOLD_PROBE }])
+            .then(Boolean, () => false)
+      void probe.then((hold) => {
+        // `release`: el foco salió sin que el dueño hiciera nada nuevo, así
+        // que no cuenta como uso.
+        const detail = hold ? 'hold' : wasActive ? 'free' : 'release'
+        this.notify('owner-activity', context.contextId, entry.targetId, detail)
+      })
+    }, wait)
   }
 
   /** Captura acotada del target activo para el modo seguro del agente. */
@@ -586,6 +689,11 @@ export class NativeBrowserHost {
             'this context is not being composited, so there is nothing to capture yet',
           )
         }
+        // Con la página en pantalla, por CDP: codifica en el proceso de la
+        // página y no en el principal, que es el que pinta la app (#46). Una
+        // captura grande por `capturePage` frenaba la ventana entera.
+        const live = await this.captureByCdp(context, entry)
+        if (live) return { data: live }
         const image = await entry.view.webContents.capturePage()
         const png = image.toPNG()
         // Una captura vacía no es una captura. `capturePage` resuelve tan
@@ -771,12 +879,49 @@ export class NativeBrowserHost {
         return { control: owner }
       }
 
+      case 'context.setViewport': {
+        const width = request.params.width
+        if (width !== null && (typeof width !== 'number' || !Number.isInteger(width) || width < 320 || width > 2560)) {
+          throw new OperationError('INVALID_ARGUMENT', 'the page width must be 320–2560 pixels, or null to fit the panel')
+        }
+        registry.setViewportWidth(context, width)
+        // La barra relee el contexto y el selector enseña el ancho elegido.
+        void this.publishTargets(context.contextId)
+        return { width }
+      }
+
       case 'context.close':
         registry.disposeContext(context.contextId)
         return { closed: true }
 
       default:
         return await this.runPageOperation(request, context)
+    }
+  }
+
+  /**
+   * Captura por CDP de una página que se ve en pantalla, o `null`.
+   *
+   * Solo entonces: `Page.captureScreenshot` se queda colgado sobre una vista
+   * que no está compuesta en pantalla (§8.3). Con plazo, y cualquier fallo
+   * cae a `capturePage`, que sigue siendo la que vale con el panel cerrado.
+   */
+  private async captureByCdp(context: ContextEntry, entry: TargetEntry): Promise<string | null> {
+    if (!context.geometry?.visible || context.presentedTarget !== entry.targetId) return null
+    try {
+      await this.deps.registry.attach(entry)
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const shot = (await Promise.race([
+        entry.view.webContents.debugger.sendCommand('Page.captureScreenshot', { format: 'png' }),
+        new Promise((resolve) => {
+          timer = setTimeout(() => resolve(null), CDP_CAPTURE_MS)
+        }),
+      ]).finally(() => clearTimeout(timer))) as { data?: unknown } | null
+      const data = typeof shot?.data === 'string' ? shot.data : ''
+      if (!data || encodedPngBytes(Math.ceil((data.length * 3) / 4)) > MAX_REPLY_BYTES) return null
+      return data
+    } catch {
+      return null
     }
   }
 
@@ -808,8 +953,18 @@ export class NativeBrowserHost {
     }
 
     await this.deps.registry.attach(entry)
+    // Lo que el agente teclea o pulsa pasa por el mismo camino que lo del
+    // dueño; mientras está en vuelo no cuenta como suyo (#46).
+    const agentInput = method.startsWith('Input.')
+    const owner = this.ownerOf(context.contextId)
+    // El cursor del agente llega antes de que caiga el clic (#46).
+    const pointer = agentInput ? pointerOf(method, request.params) : null
+    if (pointer?.travel) await this.cursorOf(context).moveTo(pointer.at)
+    if (agentInput) owner.beginAgentInput()
     try {
       const value = await entry.view.webContents.debugger.sendCommand(method, request.params)
+      if (pointer?.released) this.cursorOf(context).clicked(pointer.at)
+      if (agentInput && !pointer) this.cursorOf(context).typing()
       // Navegar cambia la URL y el título que la toolbar enseña; sin esto la
       // UI se quedaría con la foto anterior hasta el siguiente cambio de
       // pestaña.
@@ -823,9 +978,38 @@ export class NativeBrowserHost {
         throw new OperationError('BROWSER_DISCONNECTED', text)
       }
       throw new OperationError('BROWSER_PROTOCOL', text)
+    } finally {
+      if (agentInput) owner.endAgentInput()
     }
   }
 
+}
+
+/** Movimiento reducido del sistema, o forzado (lo usa la batería con `RINARI_UI_REDUCED_MOTION`). */
+function reducedMotion(): boolean {
+  if (app.commandLine.hasSwitch('force-prefers-reduced-motion')) return true
+  try {
+    return systemPreferences.getAnimationSettings().prefersReducedMotion
+  } catch {
+    return false
+  }
+}
+
+/** Dónde actúa una orden de ratón del agente, o `null` si es de teclado. */
+function pointerOf(
+  method: string,
+  params: Record<string, unknown>,
+): { at: Point; travel: boolean; released: boolean } | null {
+  if (method !== 'Input.dispatchMouseEvent') return null
+  const x = Number(params.x)
+  const y = Number(params.y)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+  const type = String(params.type ?? '')
+  return {
+    at: { x, y },
+    travel: type === 'mouseMoved' || type === 'mousePressed',
+    released: type === 'mouseReleased',
+  }
 }
 
 function messageOf(error: unknown): string {

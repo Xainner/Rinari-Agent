@@ -27,6 +27,7 @@ import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { isAbsolute, resolve, sep } from 'node:path'
 
 import { isNavigableUrl, safeDownloadName } from './operations'
+import type { OwnerInputKind } from './ownerActivity'
 import type { ResolvedLayout } from './ViewLayoutCoordinator'
 
 /** Quién puede mutar la página ahora mismo (§7). */
@@ -244,12 +245,25 @@ export interface ContextEntry {
   geometry: ResolvedLayout | null
   /** Qué target se presentó a tamaño real la última vez (`null`: ninguno). */
   presentedTarget?: string | null
+  /**
+   * Ancho de página que pidió el agente (plan 0.4.0 #44b), o `null` para
+   * ajustarla al panel. Con el panel abierto lo aplica el renderer (el slot
+   * mide ese ancho y se recorre en horizontal); sin panel, `applyGeometry`.
+   */
+  viewportWidth?: number | null
+  /** El cursor del agente, una vista aparte encima de la página (plan 0.4.0 #46). */
+  cursor?: { raise(): void; hide(): void; dispose(): void } | null
 }
 
 export interface RegistryDeps {
   window: BaseWindow
   /** Se avisa al broker de pérdidas de control y crashes (§5.2). */
   onEvent: (event: { kind: string; contextId: string; targetId?: string; detail?: unknown }) => void
+  /**
+   * Entrada que llega a una página: el dueño puede estar usándola (plan
+   * 0.4.0 #46). Quien escucha separa la suya de la que despacha el agente.
+   */
+  onInput?: (context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind) => void
 }
 
 /**
@@ -440,7 +454,25 @@ export class BrowserRegistry {
     }
     contents.on('render-process-gone', onCrash)
 
+    // El dueño toma el navegador con solo usarlo (#46): se escucha sin
+    // interceptar nada. Cortar aquí la entrada cortaría también la del agente,
+    // que la sonda midió que pasa por el mismo camino.
+    const onKey = (_event: unknown, input: { type: string }) => {
+      this.deps.onInput?.(context, entry, input.type === 'keyDown' || input.type === 'rawKeyDown' ? 'keyDown' : 'other')
+    }
+    const onMouse = (_event: unknown, mouse: { type: OwnerInputKind }) => {
+      this.deps.onInput?.(context, entry, mouse.type)
+    }
+    // Al irse el foco de la página puede soltarse un campo a medio rellenar.
+    const onBlur = () => this.deps.onInput?.(context, entry, 'blur')
+    contents.on('before-input-event', onKey)
+    contents.on('before-mouse-event', onMouse)
+    contents.on('blur', onBlur)
+
     entry.dispose.push(() => {
+      contents.off('before-input-event', onKey)
+      contents.off('before-mouse-event', onMouse)
+      contents.off('blur', onBlur)
       contents.debugger.off('detach', onDetach)
       contents.off('render-process-gone', onCrash)
       contents.off('will-navigate', guardNavigation)
@@ -684,6 +716,12 @@ export class BrowserRegistry {
     return bounds.width > 0 && bounds.height > 0
   }
 
+  /** El ancho de página del agente (#44b); se aplica ya si no hay panel. */
+  setViewportWidth(context: ContextEntry, width: number | null): void {
+    context.viewportWidth = width
+    this.applyGeometry(context)
+  }
+
   /** Geometría del slot (§8.1): main coloca, React sólo reserva el espacio. */
   setGeometry(context: ContextEntry, layout: ResolvedLayout): void {
     context.geometry = layout
@@ -717,14 +755,18 @@ export class BrowserRegistry {
     // Se aplica también sin geometría: antes esto volvía sin hacer nada, así
     // que un contexto que nadie había presentado dejaba sus vistas sin bounds
     // y la página sin viewport.
-    // Mientras manda el agente la página se conserva viva y compuesta en el
-    // suelo 1×1. La UI enseña una captura del MISMO target. No hay superficie
-    // física bajo el cursor que pueda recibir input humano accidental.
-    const presented = geometry !== null && geometry.visible && context.control === 'user'
+    // La página se ve en vivo mande quien mande (plan 0.4.0 #46). Antes, con
+    // el agente al mando, bajaba al suelo 1×1 y la UI enseñaba una captura
+    // cada ~1 s: se veía a saltos, y codificar esas capturas en el proceso
+    // principal trababa la ventana entera. Ahora el dueño la toma con solo
+    // usarla, y main lo detecta (`onInput`).
+    const presented = geometry !== null && geometry.visible
     const container = presented ? geometry.container : LAYOUT_FLOOR
     // El tamaño lógico se conserva escondido: el §8.3 pide que ocultar el panel
     // no le cambie el viewport al documento, y reescribirlo lo cambiaría.
-    const page = geometry ? geometry.page : { x: 0, y: 0, ...DEFAULT_LOGICAL_SIZE }
+    const page = geometry
+      ? geometry.page
+      : { x: 0, y: 0, ...DEFAULT_LOGICAL_SIZE, width: context.viewportWidth ?? DEFAULT_LOGICAL_SIZE.width }
     context.container.setBounds({ ...container })
     // Nunca `setVisible(false)`: una vista que no se compone no maqueta, y en
     // el suelo ya no ocupa nada que se vea.
@@ -801,8 +843,9 @@ export class BrowserRegistry {
     this.applyGeometry(context)
   }
 
-  /** Devuelve la barrera al frente del contenedor. */
+  /** Devuelve el cursor del agente y la barrera al frente del contenedor. */
   private raiseBarrier(context: ContextEntry): void {
+    context.cursor?.raise()
     const barrier = context.barrier
     if (!barrier) return
     context.container.removeChildView(barrier)
@@ -815,6 +858,8 @@ export class BrowserRegistry {
     for (const entry of context.targets.values()) this.disposeTarget(context, entry)
     context.targets.clear()
     context.order = []
+    context.cursor?.dispose()
+    context.cursor = null
     if (context.barrier) {
       if (!context.barrier.webContents.isDestroyed()) context.barrier.webContents.close()
       context.barrier = null

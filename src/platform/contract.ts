@@ -377,6 +377,12 @@ export interface NativeBrowserContext {
   control?: 'agent' | 'user'
   control_state?: 'agent' | 'taking-user-control' | 'user' | 'uncertain'
   control_revision?: number
+  /** Rinari necesita la página y espera a que dejes de usarla (plan 0.4.0 #46). */
+  agent_waiting?: boolean
+  /** La sesión sigue en un Chrome/Edge de verdad, en otra ventana (#45). */
+  external?: boolean
+  /** Ancho de página que pidió el agente; `null`: ajustarla al panel (#44b). */
+  viewport_width?: number | null
   active_target_id?: string | null
   targets?: NativeBrowserTarget[]
 }

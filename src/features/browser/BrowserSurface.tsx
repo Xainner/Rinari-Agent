@@ -1,7 +1,12 @@
+import { useEffect, useState } from 'react'
+
 import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
-import type { NativeBrowserTarget } from '../../platform/contract'
+import type { NativeBrowserContext, NativeBrowserTarget } from '../../platform/contract'
+import { CHAT_KEY, rememberable, useBrowserPrefs } from '../../stores/browserPrefs'
 
+import BrowserHome from './BrowserHome'
+import { PAGE_WIDTHS, usePageSizeStore } from './pageSize'
 import BrowserToolbar from './BrowserToolbar'
 import NativeBrowserSlot from './NativeBrowserSlot'
 import ScreenshotBrowserFallback from './ScreenshotBrowserFallback'
@@ -17,8 +22,10 @@ export interface BrowserSurfaceProps {
   shown?: boolean
   /** Overlays de Rinari encima ahora mismo (§8.3). */
   overlayDepth?: number
-  /** Hay un turno en curso en la sesión (reparto automático del control). */
+  /** Hay un turno en curso en la sesión: Rinari puede estar usando la página. */
   busy?: boolean
+  /** Proyecto de la conversación: los recientes y fijados de la página de inicio son suyos. */
+  projectId?: string | null
 }
 
 /**
@@ -37,6 +44,17 @@ export interface BrowserSurfaceProps {
  *
  * Ocultar la superficie no cierra nada: retira la presentación y ya.
  */
+/**
+ * ¿Se ve la página de inicio? Sin navegador todavía, mientras se prepara, o
+ * con la pestaña activa en blanco (plan 0.4.0 #46).
+ */
+export function showsHome(context: NativeBrowserContext | null): boolean {
+  if (!context || context.context_state === 'absent' || context.context_state === 'creating') return true
+  if (context.context_state !== 'ready') return false
+  const active = (context.targets ?? []).find((page) => page.active)
+  return !active || !active.url || active.url === 'about:blank'
+}
+
 export default function BrowserSurface({
   sessionId,
   frame,
@@ -46,9 +64,20 @@ export default function BrowserSurface({
   shown = true,
   overlayDepth = 0,
   busy,
+  projectId,
 }: BrowserSurfaceProps) {
   const { t } = useI18n()
-  const native = useNativeBrowser(sessionId, { shown, overlayDepth, busy })
+  const projectKey = projectId || CHAT_KEY
+  const recordVisit = useBrowserPrefs((state) => state.recordVisit)
+  const togglePin = useBrowserPrefs((state) => state.togglePin)
+  const pinnedUrls = useBrowserPrefs((state) => state.pinned[projectKey])
+  // La página de inicio (#46) se ve en lugar de «Preparando…» y de una
+  // página en blanco: mientras está, la vista nativa no se presenta.
+  const native = useNativeBrowser(sessionId, {
+    shown,
+    overlayDepth,
+    presentWhen: (view) => !showsHome(view),
+  })
   const context = native.context
 
   const useNative = Boolean(context?.supported && context.backend === 'electron-native')
@@ -72,6 +101,47 @@ export default function BrowserSurface({
     : (frame?.url ?? '')
 
   const problem = error || native.error
+  const home = useNative && showsHome(context)
+
+  // Tamaño de la página (#44b). Lo que pida el agente manda: el selector lo
+  // enseña; el dueño puede cambiarlo después.
+  const chosenWidth = usePageSizeStore((state) => state.bySession[sessionId])
+  const setPageWidth = usePageSizeStore((state) => state.set)
+  const agentWidth = context?.viewport_width
+  useEffect(() => {
+    if (agentWidth !== undefined) setPageWidth(sessionId, agentWidth ?? null)
+  }, [agentWidth, sessionId, setPageWidth])
+  const pageWidth = useNative && !home ? (chosenWidth ?? null) : null
+  const [slotHeight, setSlotHeight] = useState(0)
+  const sizeControl = useNative ? (
+    <label className="browser-size" title={t('browser.size.label')}>
+      <select
+        aria-label={t('browser.size.label')}
+        data-testid="browser-size"
+        className="browser-toolbar-select"
+        value={chosenWidth ?? 'fit'}
+        onChange={(event) => setPageWidth(sessionId, event.target.value === 'fit' ? null : Number(event.target.value))}
+      >
+        <option value="fit">{t('browser.size.fit')}</option>
+        {PAGE_WIDTHS.map((width) => (
+          <option key={width} value={width}>{t(`browser.size.${width}` as const)}</option>
+        ))}
+      </select>
+      {pageWidth && slotHeight > 0 && <span className="browser-size-value" data-testid="browser-size-value">{pageWidth} × {slotHeight}</span>}
+    </label>
+  ) : undefined
+  const activeTitle = useNative ? (nativeTargets.find((page) => page.active)?.title ?? '') : ''
+
+  // Lo que se abre queda en «Recientes» del proyecto.
+  useEffect(() => {
+    if (useNative && rememberable(url)) recordVisit(projectKey, { url, title: activeTitle })
+  }, [useNative, url, activeTitle, projectKey, recordVisit])
+
+  /** Abrir desde la página de inicio: prepara el navegador si aún no existe. */
+  const openFromHome = async (next: string) => {
+    if (!context || context.context_state === 'absent') await native.prepare()
+    await native.navigate(next)
+  }
 
   return (
     <section
@@ -92,8 +162,9 @@ export default function BrowserSurface({
         onNavigate={useNative ? (next) => void native.navigate(next) : undefined}
         onHistory={useNative ? (action) => void native.history(action) : undefined}
         busy={busy}
-        onTakeControl={useNative ? () => void native.takeControl() : undefined}
-        onReturnControl={useNative ? () => void native.returnControl() : undefined}
+        pinned={Boolean(url && (pinnedUrls ?? []).some((place) => place.url === url))}
+        onTogglePin={useNative && rememberable(url) ? () => togglePin(projectKey, { url, title: activeTitle }) : undefined}
+        sizeControl={sizeControl}
       />
 
       {problem && <p role="alert" className="browser-problem">{problem}</p>}
@@ -103,7 +174,16 @@ export default function BrowserSurface({
           context={context}
           slotRef={native.slotRef}
           onPrepare={() => void native.prepare()}
-          preview={native.preview}
+          pageWidth={pageWidth}
+          onHeight={setSlotHeight}
+          home={home ? (
+            <BrowserHome
+              sessionId={sessionId}
+              projectKey={projectKey}
+              busy={busy}
+              onOpen={(next) => void openFromHome(next)}
+            />
+          ) : undefined}
         />
       ) : (
         <ScreenshotBrowserFallback frame={frame} connected={Boolean(connected)} />

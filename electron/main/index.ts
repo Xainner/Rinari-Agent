@@ -214,6 +214,9 @@ const engine = new EngineSupervisor({
       const state = frame.payload.control_state
       if (typeof sessionId === 'string' && typeof state === 'string') {
         browserHost?.applyControl(sessionId, state)
+        // La barra del navegador relee quién manda y si Rinari espera a que
+        // termines (#46): el cambio lo decidió el Engine, no un botón.
+        publishBrowserContext(sessionId)
       }
     }
     for (const tap of engineEventTaps) tap(event as unknown as Record<string, unknown>)
@@ -377,12 +380,23 @@ function browserServices(): HostServices['browser'] {
    * lado que se puede modificar. El estado que se mira es el que el Engine
    * confirmó, que es el mismo que hace cumplir el arbitraje del otro lado.
    */
-  const requireUserControl = (context: { control: string }, what: string) => {
+  // Usar la barra del navegador es tomarlo (plan 0.4.0 #46): ya no hay un
+  // botón «Tomar control» antes. Se pide al Engine y se espera a que lo
+  // confirme —termina lo que el agente tuviera en vuelo—; solo entonces se
+  // toca la página.
+  const takeUserControl = async (context: { control: string; sessionId: string }, what: string) => {
     if (context.control === 'user') return
-    throw Object.assign(
-      new Error(`${what} needs manual control of this browser; take control first`),
-      { code: 'BROWSER_CONTROL_REQUIRED' },
-    )
+    if (!browserHost) throw new Error('the browser host is not ready')
+    await browserHost.setControl(context.sessionId, 'user')
+    const deadline = Date.now() + 12_000
+    while (context.control !== 'user') {
+      if (Date.now() > deadline) {
+        throw Object.assign(new Error(`${what} has to wait: Rinari is finishing a step on this page`), {
+          code: 'BROWSER_CONTROL_REQUIRED',
+        })
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
   }
 
   const requireContext = (sessionId: string) => {
@@ -463,7 +477,7 @@ function browserServices(): HostServices['browser'] {
       // `target_id` va a la **activa**: cambiarla mientras manda el agente le
       // redirige la siguiente herramienta a otra página sin que nadie lo
       // arbitre. Eso es una mutación concurrente aunque no lo parezca.
-      requireUserControl(context, 'switching tabs')
+      await takeUserControl(context, 'switching tabs')
       if (!browserRegistry!.setActiveTarget(context, targetId)) {
         throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
       }
@@ -489,7 +503,7 @@ function browserServices(): HostServices['browser'] {
       const context = requireContext(sessionId)
       // Navegar la página que el agente está usando es la mutación más grande
       // que hay: se lleva por delante el DOM entero. Requiere el control.
-      requireUserControl(context, 'navigating')
+      await takeUserControl(context, 'navigating')
       // Un contexto recién preparado no tiene página (nace en blanco hasta
       // la primera navegación): escribir una dirección la crea.
       let entry = browserRegistry!.target(context.contextId, null)
@@ -508,7 +522,7 @@ function browserServices(): HostServices['browser'] {
     // usuario sobre la pestaña visible y requieren que tenga el control.
     history: async (sessionId, action) => {
       const context = requireContext(sessionId)
-      requireUserControl(context, 'navigating')
+      await takeUserControl(context, 'navigating')
       const entry = browserRegistry!.target(context.contextId, null)
       if (!entry) return { url: '' }
       const contents = entry.view.webContents
@@ -788,6 +802,7 @@ function openWindow(): void {
     window: mainWindow,
     onEvent: (event) =>
       browserHost?.notify(event.kind, event.contextId, event.targetId, event.detail),
+    onInput: (context, entry, kind) => browserHost?.ownerInput(context, entry, kind),
   })
   browserHost = new NativeBrowserHost({
     registry: browserRegistry,
@@ -798,6 +813,7 @@ function openWindow(): void {
       if (!mainWindow || mainWindow.isDestroyed()) return
       mainWindow.webContents.focus()
     },
+    windowFocused: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()),
   })
 
   // La autorización es del contenido: si navega fuera, se revoca hasta que

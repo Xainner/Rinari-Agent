@@ -489,6 +489,7 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
           // vista nativa: el puntero tiene que seguir llegando a la app.
           overlayDepth={overlayDepth + (dragging ? 1 : 0)}
           busy={busy}
+          projectId={session?.project_id ?? null}
         />
       )
     case 'terminal':

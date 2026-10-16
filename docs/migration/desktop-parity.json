@@ -2048,6 +2048,13 @@
       ]
     },
     {
+      "command": "workspace_preview_list",
+      "kind": "engine",
+      "method": "workspace.preview.list",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "workspace_preview_start",
       "kind": "engine",
       "method": "workspace.preview.start",
@@ -2103,10 +2110,10 @@
     }
   ],
   "summary": {
-    "commands": 251,
-    "engine_backed": 245,
+    "commands": 252,
+    "engine_backed": 246,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 83
+    "without_callers": 84
   }
 }

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
 const host = installMockPlatform()
-import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, expect, it } from 'vitest'
-import { setAutomaticBrowserUi } from './automaticBrowserUi'
+import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { platform } from '../../platform'
 import { useNativeBrowser } from './useNativeBrowser'
 
 const context = {
@@ -24,50 +24,17 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const controls = () =>
-  host.bridge.browserCalls.filter((call) => call.kind === 'setControl').map((call) => (call as { owner: string }).owner)
-
-it('between turns the page goes live; a new turn hands it back to Rinari', async () => {
-  const hook = renderHook(({ busy }) => useNativeBrowser('s1', { shown: true, busy }), { initialProps: { busy: false } })
-  await waitFor(() => expect(controls()).toEqual(['user']))
-  hook.rerender({ busy: true })
-  await waitFor(() => expect(controls()).toEqual(['user', 'agent']))
-  hook.rerender({ busy: false })
-  await waitFor(() => expect(controls()).toEqual(['user', 'agent', 'user']))
-  // The live view is the UI's doing, not the user's: the Engine reclaims it on
-  // Rinari's first action even if this panel is gone when the turn starts.
-  const automatic = host.bridge.browserCalls
-    .filter((call) => call.kind === 'setControl')
-    .map((call) => Boolean((call as { automatic?: boolean }).automatic))
-  expect(automatic).toEqual([true, false, true])
-})
-
-it('what you decide by hand is respected', async () => {
-  const hook = renderHook(({ busy }) => useNativeBrowser('s1', { shown: true, busy }), { initialProps: { busy: true } })
+// Plan 0.4.0 #46: el panel ya no reparte el control entre turnos ni pide
+// capturas. La página se ve en vivo; el dueño la toma usándola (main lo
+// detecta) y el Engine se la devuelve al agente cuando lleva 3 s sin tocarla.
+it('the panel never moves the control nor polls captures', async () => {
+  const preview = vi.spyOn(platform().browser, 'preview')
+  const hook = renderHook(({ shown }) => useNativeBrowser('s1', { shown }), { initialProps: { shown: true } })
   await waitFor(() => expect(hook.result.current.context?.control_state).toBe('agent'))
-  // Taking control mid-turn: the turn does not take it back.
-  await act(() => hook.result.current.takeControl())
-  hook.rerender({ busy: false })
-  hook.rerender({ busy: true })
-  await waitFor(() => expect(controls()).toEqual(['user', 'agent']))
-  // Handing it back while idle: it stays with Rinari until the next turn.
-  hook.rerender({ busy: false })
-  await waitFor(() => expect(controls()).toEqual(['user', 'agent', 'user']))
-  await act(() => hook.result.current.returnControl())
-  hook.rerender({ busy: false })
-  expect(controls()).toEqual(['user', 'agent', 'user', 'agent'])
-})
-
-it('la prueba vertical apaga el reparto automático: nadie mueve el control por detrás', async () => {
-  setAutomaticBrowserUi(false)
-  try {
-    const hook = renderHook(({ busy }) => useNativeBrowser('s1', { shown: true, busy }), { initialProps: { busy: false } })
-    await waitFor(() => expect(hook.result.current.context?.control_state).toBe('agent'))
-    hook.rerender({ busy: true })
-    hook.rerender({ busy: false })
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(controls()).toEqual([])
-  } finally {
-    setAutomaticBrowserUi(true)
-  }
+  hook.rerender({ shown: false })
+  hook.rerender({ shown: true })
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  const kinds = host.bridge.browserCalls.map((call) => call.kind)
+  expect(kinds).not.toContain('setControl')
+  expect(preview).not.toHaveBeenCalled()
 })

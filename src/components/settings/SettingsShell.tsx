@@ -22,6 +22,7 @@ import {
   Eye,
   Gauge,
   Bell,
+  Globe,
 } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useUIStore, type SettingsSection } from '../../stores/ui'
@@ -47,6 +48,7 @@ const GROUPS: Array<{ title: 'settings.group.rinari' | 'settings.group.models' |
     { id: 'tools', icon: ShieldCheck },
     { id: 'terminal', icon: SquareTerminal },
     { id: 'dictation', icon: Mic },
+    { id: 'browser', icon: Globe },
   ] },
   { title: 'settings.group.app', items: [
     { id: 'general', icon: SlidersHorizontal },

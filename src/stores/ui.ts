@@ -48,6 +48,7 @@ export type SettingsSection =
   | 'models'
   | 'vision'
   | 'dictation'
+  | 'browser'
   | 'notifications'
   | 'context'
   | 'memory'

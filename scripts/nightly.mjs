@@ -95,16 +95,6 @@ function main() {
     run('npx', ['vitest', 'run'])
   }
 
-  step('Engine de la rama del CLI')
-  const sourceFile = join(ROOT, 'engine-dist', 'ENGINE_SOURCE.json')
-  const current = existsSync(sourceFile) ? JSON.parse(readFileSync(sourceFile, 'utf8').replace(/^﻿/, '')) : null
-  if (current?.nightly && current.base_git_sha === cliSha && !current.dirty && !cliDirty) {
-    console.log('engine-dist ya es de este commit: se reutiliza.')
-  } else {
-    powershell('scripts/package-engine.ps1', ['-CliRepo', CLI, '-OutDir', 'engine-dist', '-Nightly', ...(cliDirty ? ['-Development'] : [])])
-  }
-  run(process.execPath, ['scripts/hash-package-inputs.mjs'])
-
   const nightlyEnv = {
     RINARI_BUILD_CHANNEL: 'nightly',
     VITE_RINARI_CHANNEL: 'nightly',
@@ -114,8 +104,20 @@ function main() {
     RINARI_SETUP_VERSION: version,
   }
 
-  step('App')
+  step('Engine de la rama del CLI')
+  const sourceFile = join(ROOT, 'engine-dist', 'ENGINE_SOURCE.json')
+  const current = existsSync(sourceFile) ? JSON.parse(readFileSync(sourceFile, 'utf8').replace(/^\uFEFF/, '')) : null
+  if (current?.nightly && current.base_git_sha === cliSha && !current.dirty && !cliDirty) {
+    console.log('engine-dist ya es de este commit: se reutiliza.')
+  } else {
+    powershell('scripts/package-engine.ps1', ['-CliRepo', CLI, '-OutDir', 'engine-dist', '-Nightly', ...(cliDirty ? ['-Development'] : [])])
+  }
+  // Los hashes cubren el Engine y los gráficos del instalador (los de la luna).
   run('npm', ['run', 'installer:art'], { env: nightlyEnv })
+  run(process.execPath, ['scripts/hash-package-inputs.mjs'])
+
+
+  step('App')
   run('npx', ['vite', 'build'], { env: nightlyEnv })
   run(process.execPath, ['scripts/build-desktop.mjs'], { env: nightlyEnv })
   const main = readFileSync(join(ROOT, 'dist-electron', 'main.cjs'), 'utf8')

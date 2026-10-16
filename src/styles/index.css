@@ -2333,6 +2333,9 @@ html[data-motion='reduced'] .provider-card-chevron, html[data-motion='reduced'] 
 .present-web .present-panel-cta { margin-top: auto; }
 .present-player { padding: 8px 10px; border-bottom: 1px solid var(--line-1); background: var(--bg-inset); }
 .present-player[data-idle] { display: flex; align-items: center; gap: 12px; }
+/* El audio ocupa lo mismo parado que sonando: el reproductor nativo mide 54 px, y si la fila creciera al pulsar ▶ la conversación (pegada al final) subiría todo lo de encima bajo el ratón. */
+.present-player[data-thumb='audio'] { display: flex; min-height: calc(54px + 17px); align-items: center; }
+.present-player .media-player-audio { height: 54px; }
 .present-player[data-thumb='video'][data-idle] { aspect-ratio: 16 / 9; max-height: 220px; justify-content: center; background: radial-gradient(80% 80% at 50% 45%, rgb(147 88 255 / 0.14), transparent 70%), var(--bg-inset); }
 .present-play { display: grid; width: 34px; height: 34px; flex-shrink: 0; place-items: center; border: 1px solid rgb(167 139 250 / 0.4); border-radius: 999px; color: var(--violet-300); background: rgb(147 88 255 / 0.16); transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 .present-play svg { margin-left: 2px; }

@@ -124,8 +124,14 @@ scenario(async () => {
   // The audio plays in the card.
   await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-play').scrollIntoView({ block: 'center' })`)
   await settleAnimations()
+  const idleHeight = await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-player').getBoundingClientRect().height`)
   await click(`${CARD} [data-present-kind="audio"] .present-play`)
   await wait(`Boolean(document.querySelector('${CARD} [data-present-kind="audio"] audio'))`)
+  // Pulsar ▶ no cambia la altura: con la conversación pegada al final, crecer
+  // subiría lo de encima y el siguiente clic caería en otro sitio.
+  await settleAnimations()
+  const playingHeight = await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-player').getBoundingClientRect().height`)
+  assert.ok(Math.abs(playingHeight - idleHeight) <= 1, `audio row ${idleHeight}px idle vs ${playingHeight}px playing`)
 
   // The CSV opens in «Archivos».
   await evaluate(`document.querySelector('${CARD} [data-present-kind="sheet"] .present-thumb').scrollIntoView({ block: 'center' })`)

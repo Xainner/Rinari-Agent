@@ -47,7 +47,8 @@ async function run() {
     await until(() => labels().includes('Configuración…'), 'Spanish tray refresh')
     assert.deepEqual(labels(), ['Abrir Rinari', 'Marcar todo como leído', 'Configuración…', 'Buscar actualizaciones', 'Reportar error…', 'Salir'])
     await activate('Configuración…')
-    await wait(`document.body.innerText.includes('Por defecto solo suena lo que pasa donde no estás mirando.')`)
+    // Abre Ajustes en General (los sonidos están en Notificaciones desde el 0.4.0 #34).
+    await wait(`Boolean(document.querySelector('select[aria-label="Idioma"]'))`)
     await screenshot('settings-from-hidden')
     await activate('Buscar actualizaciones')
     await wait(`document.body.innerText.includes('Notas de la versión')`)

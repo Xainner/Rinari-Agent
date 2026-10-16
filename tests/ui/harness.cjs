@@ -96,6 +96,12 @@ async function click(selector, button = 'left') {
   await wait(`Boolean(${q(selector)}) && !${q(selector)}.disabled`)
   await evaluate(`${q(selector)}.scrollIntoView({behavior:'instant',block:'nearest',inline:'nearest'})`)
   await delay(150)
+  // Virtua quita `pointer-events` a la lista mientras se desplaza y los
+  // devuelve 150 ms después del último scroll: un clic en ese rato cae en el
+  // contenedor. Se espera a que el elemento reciba el clic en su centro (sin
+  // fallar si algo lo tapa a propósito: el escenario lo comprobará).
+  const hit = `(() => {const el=${q(selector)};if(!el)return false;const r=el.getBoundingClientRect();const at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return Boolean(at&&(at===el||el.contains(at)))})()`
+  await until(() => evaluate(hit), selector + ' receives the click', 2_000).catch(() => {})
   const point = await center(selector)
   await clickAt(point.x, point.y, button)
 }

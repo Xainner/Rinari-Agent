@@ -32,6 +32,13 @@ import { ZoneBoundary } from '../../components/ZoneBoundary'
 const HANDLE_WIDTH = 6
 /** Lo que tarda en irse el Resumen flotante (`summary-float-out`). */
 const SUMMARY_LEAVE_MS = 180
+/**
+ * Con el chat más angosto que esto el Resumen se aparta (sigue abierto y
+ * vuelve solo al haber sitio), como el panel de Claude Code. Dos umbrales
+ * para que no parpadee al arrastrar justo en el borde.
+ */
+const SUMMARY_HIDE_BELOW = 720
+const SUMMARY_SHOW_FROM = 760
 
 /** Acción tipada: alternar/abrir el panel lateral de **una** sesión (nunca de todos los providers montados). */
 export const DOCK_TOGGLE_EVENT = 'rinari:dock-toggle'
@@ -331,7 +338,9 @@ export default function SessionWorkspace({ sessionId, record, children, density,
  * panel lateral, así que abrirlo no lo abre, no cambia sus vistas (el
  * navegador nativo sigue donde estaba) ni el ancho del chat. No tapa el
  * composer: su borde de abajo se queda encima de él. Esc o la X lo cierran;
- * lo que lleva a otra vista también.
+ * lo que lleva a otra vista también. Si el chat queda muy angosto (el panel
+ * lateral se ensancha, la ventana se estrecha) se aparta sin cerrarse y
+ * regresa solo cuando vuelve a haber sitio.
  */
 function FloatingSummary({ sessionId, record, open, focused, column, onClose }: {
   sessionId: string
@@ -342,26 +351,45 @@ function FloatingSummary({ sessionId, record, open, focused, column, onClose }: 
   onClose: () => void
 }) {
   const { t } = useI18n()
-  // Al cerrarse se queda un momento para irse con su animación. Montado ya
-  // abierto (otra conversación con su Resumen abierto, o al cargar) aparece
-  // quieto: solo entra con movimiento cuando lo abres.
-  const [still] = useState(open)
+  // ¿Cabe? Se mide la columna del chat; sin medida (aún sin pintar) se da por que sí.
+  const [fits, setFits] = useState(true)
+  useLayoutEffect(() => {
+    const chat = column.current
+    if (!open || !chat) return
+    const update = () => {
+      const width = chat.getBoundingClientRect().width
+      if (width > 0) setFits((was) => width >= (was ? SUMMARY_HIDE_BELOW : SUMMARY_SHOW_FROM))
+    }
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(update)
+    observer.observe(chat)
+    return () => observer.disconnect()
+  }, [column, open])
+  const shown = open && fits
+
+  // Al cerrarse (o apartarse) se queda un momento para irse con su animación.
+  // Montado ya abierto (otra conversación con su Resumen abierto, o al
+  // cargar) aparece quieto: solo entra con movimiento cuando lo abres o
+  // cuando vuelve a haber sitio.
+  const [still, setStill] = useState(open)
   const [rendered, setRendered] = useState(open)
   const [leaving, setLeaving] = useState(false)
   useEffect(() => {
-    if (open) {
+    if (shown) {
       setRendered(true)
       setLeaving(false)
       return
     }
     if (!rendered) return
+    setStill(false)
     setLeaving(true)
     const timer = window.setTimeout(() => {
       setRendered(false)
       setLeaving(false)
     }, SUMMARY_LEAVE_MS)
     return () => window.clearTimeout(timer)
-  }, [open, rendered])
+  }, [shown, rendered])
 
   // Hasta dónde puede bajar: encima del composer (y de lo que va con él).
   const [bottom, setBottom] = useState(10)
@@ -384,7 +412,7 @@ function FloatingSummary({ sessionId, record, open, focused, column, onClose }: 
   // Esc lo cierra si nada encima lo quiere y no estás escribiendo en otro sitio.
   const self = useRef<HTMLElement>(null)
   useEffect(() => {
-    if (!open || !focused) return
+    if (!shown || !focused) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || selectOverlayDepth(useOverlayStore.getState()) > 0) return
       const active = document.activeElement as HTMLElement | null
@@ -394,7 +422,7 @@ function FloatingSummary({ sessionId, record, open, focused, column, onClose }: 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, focused, onClose])
+  }, [shown, focused, onClose])
 
   if (!rendered) return null
   return (

@@ -142,6 +142,24 @@ it('#82: el Resumen flota sobre el chat; no abre el panel, no cambia sus vistas 
   expect(workspaceEl.getAttribute('data-dock')).toBe('hidden')
 })
 
+it('con el chat muy angosto el Resumen se aparta sin cerrarse y vuelve solo al haber sitio', async () => {
+  render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  const chat = document.querySelector('.session-workspace-chat') as HTMLElement
+  let width = 600
+  chat.getBoundingClientRect = () => ({ width, height: 700, top: 0, left: 0, right: width, bottom: 700, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  await waitFor(() => expect(screen.queryByTestId('summary-dock')).toBeNull())
+  expect(useSessionDockStore.getState().summaries).not.toEqual({})
+  // Vuelve a haber sitio (el observador de la columna avisa): regresa solo.
+  width = 900
+  for (const observer of resizeObservers) if (observer.element === chat) act(() => observer.callback([{ contentRect: { width } }]))
+  expect(screen.getByTestId('summary-dock')).toBeTruthy()
+  // En el borde no parpadea: 740 está entre los dos umbrales y sigue a la vista.
+  width = 740
+  for (const observer of resizeObservers) if (observer.element === chat) act(() => observer.callback([{ contentRect: { width } }]))
+  expect(screen.getByTestId('summary-dock').hasAttribute('data-leaving')).toBe(false)
+})
+
 it('al cambiar de conversación en el mismo espacio, el panel y el Resumen no animan su entrada ni su salida', () => {
   useSessionDockStore.getState().reveal('ses_a', 'files')
   useSessionDockStore.getState().toggleSummary('ses_b')

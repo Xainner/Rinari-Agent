@@ -102,6 +102,16 @@ scenario(async () => {
   await click('.dock-view-bar button[data-view="summary"]')
   await wait(`!document.querySelector('[data-testid="summary-panel"]')`)
   assert.ok(await evaluate(`document.querySelector('${DOCK}')?.dataset.views?.includes('changes')`), 'closing the summary leaves the side panel as it was')
+  // With the chat too narrow the summary steps aside (still open) and comes back by itself with room.
+  await click('.dock-view-bar button[data-view="summary"]')
+  await wait(`Boolean(document.querySelector('[data-testid="summary-panel"]'))`)
+  await size(900, 800)
+  await wait(`document.querySelector('.session-workspace-chat').getBoundingClientRect().width < 720 && !document.querySelector('[data-testid="summary-dock"]')`)
+  assert.equal(await evaluate(`document.querySelector('.dock-view-bar button[data-view="summary"]').getAttribute('aria-pressed')`), 'true', 'the summary is still open while it steps aside')
+  await size(1500, 900)
+  await wait(`Boolean(document.querySelector('[data-testid="summary-panel"]'))`)
+  await click('.dock-view-bar button[data-view="summary"]')
+  await wait(`!document.querySelector('[data-testid="summary-panel"]')`)
 
   // #83: la barra de título solo lleva el título; nada se monta encima del selector, ni a 900 px.
   assert.equal(await evaluate(`Boolean(document.querySelector('.app-topbar-context button'))`), false, 'no project or mode chip in the title bar')
@@ -111,5 +121,5 @@ scenario(async () => {
   assert.ok(overlap && overlap.width > 40, `the title is still visible at 900 px (${JSON.stringify(overlap)})`)
   assert.ok(overlap.right <= 0, `the title never runs under the view switcher (${JSON.stringify(overlap)})`)
   await screenshot('title-bar-900')
-  report({ passed: ['summary floats over the chat without touching the side panel, its Changes card opens the view', 'card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git, at full height', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
+  report({ passed: ['summary floats over the chat without touching the side panel, steps aside when the chat is narrow and comes back, its Changes card opens the view', 'card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git, at full height', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
 }, { width: 1500, height: 900 })

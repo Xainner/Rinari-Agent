@@ -488,3 +488,11 @@ describe('AppSidebar destinations', () => {
     expect(props.onOpenSchedules).toHaveBeenCalled()
   })
 })
+
+// #83: la rama sale de la barra lateral; ni siquiera una rama larga le quita sitio al nombre.
+it('las filas de proyecto no llevan la rama de git', () => {
+  renderSidebar({ projects: [{ ...project('project', 'Rinari CLI'), git_head: { branch: 'fix/wizard-qa-status-reconcile', detached: false, sha_short: null, operation: null } }] })
+  expect(screen.getByText('Rinari CLI')).toBeTruthy()
+  expect(screen.queryByTestId('project-branch')).toBeNull()
+  expect(screen.queryByText(/fix\/wizard/)).toBeNull()
+})

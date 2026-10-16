@@ -984,7 +984,7 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
    superpuestos; sin ellos queda el margen normal). */
 .app-topbar { -webkit-app-region: drag; app-region: drag; padding-right: max(12px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 6px)); }
 .app-topbar :is(button, a, input, select, textarea, summary, [role="button"], [role="combobox"], [role="menu"], [role="tab"], [tabindex]) { -webkit-app-region: no-drag; app-region: no-drag; }
-.app-topbar-leading { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0; }
+.app-topbar-leading { display: flex; align-items: center; gap: 6px; min-width: min(160px, 30%); flex: 1 1 0; }
 .app-topbar-context { display: flex; align-items: center; min-width: 0; flex: 1 1 0; font-size: 13px; color: var(--text-muted); }
 .app-topbar-center { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 .app-topbar-trailing { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; flex: 1 1 0; font-size: 11px; color: var(--text-subtle); white-space: nowrap; }
@@ -1033,6 +1033,9 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .view-switcher-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--warning); color: #1a1207; font-size: 10px; font-weight: 700; }
 @media (max-width: 900px) {
   .app-topbar-trailing .app-topbar-summary { display: none; }
+}
+/* La barra de título solo lleva el título (#83): cabe hasta ventanas estrechas. */
+@media (max-width: 720px) {
   .app-topbar-context { display: none; }
 }
 @media (max-width: 640px) {

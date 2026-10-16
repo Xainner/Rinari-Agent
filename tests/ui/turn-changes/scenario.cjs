@@ -8,7 +8,7 @@
 const assert = require('node:assert/strict')
 const { mkdirSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
-const { ui, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
+const { ui, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, size, useLocalModel, wait } = require('../harness.cjs')
 
 const DOCK = '[data-testid="session-dock"]'
 const CARD = '[data-testid="turn-changes"]'
@@ -58,5 +58,13 @@ scenario(async () => {
   await wait(`document.querySelector('${DOCK}')?.dataset.views?.includes('files')`)
   await settleAnimations()
   await screenshot('open-in-files')
-  report({ passed: ['card with plural, kinds and +/-', 'review opens the turn diff in the panel without git', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
+  // #83: la barra de título solo lleva el título; nada se monta encima del selector, ni a 900 px.
+  assert.equal(await evaluate(`Boolean(document.querySelector('.app-topbar-context button'))`), false, 'no project or mode chip in the title bar')
+  await size(900, 800)
+  await settleAnimations()
+  const overlap = await evaluate(`(() => { const title = document.querySelector('.app-topbar-context p')?.getBoundingClientRect(); const view = document.querySelector('.view-switcher')?.getBoundingClientRect(); return title && view ? { right: Math.round(title.right - view.left), width: Math.round(title.width) } : null })()`)
+  assert.ok(overlap && overlap.width > 40, `the title is still visible at 900 px (${JSON.stringify(overlap)})`)
+  assert.ok(overlap.right <= 0, `the title never runs under the view switcher (${JSON.stringify(overlap)})`)
+  await screenshot('title-bar-900')
+  report({ passed: ['card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
 }, { width: 1500, height: 900 })

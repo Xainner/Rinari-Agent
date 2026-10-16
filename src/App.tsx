@@ -112,9 +112,6 @@ function App() {
     [session.approvals],
   )
   const activeTitle = activeRecord?.title ?? null
-  const activeProject = activeRecord?.project_id
-    ? session.projects.find((project) => project.id === activeRecord.project_id) ?? null
-    : session.projects.find((project) => project.root === activeRecord?.project_root) ?? null
 
   // Handoff `rinari code [path] [--session]`: misma sesión/proyecto.
   // Con path: project.open registra/deduplica y devuelve la sesión
@@ -696,29 +693,7 @@ function App() {
           <AppStatusBar
             context={
               view === 'chat' && activeHasContent ? (
-                <ChatHeader
-                  title={activeTitle}
-                  sessionId={activeRecord?.id ?? null}
-                  kind={activeRecord?.kind ?? null}
-                  mode={activeRecord?.mode ?? null}
-                  projectRoot={session.activeProjectRoot}
-                  projectName={activeProject?.name ?? session.activeProjectRoot}
-                  git={
-                    session.activeGitStatus?.status.available
-                      ? {
-                          branch: session.activeGitStatus.status.branch,
-                          dirty: session.activeGitStatus.status.dirty,
-                          changed: session.activeGitStatus.status.files.length,
-                        }
-                      : null
-                  }
-                  gitMissing={session.activeGitError !== null}
-                  onOpenProject={
-                    session.activeProjectRoot
-                      ? () => goProject(session.activeProjectRoot as string)
-                      : null
-                  }
-                />
+                <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} />
               ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null

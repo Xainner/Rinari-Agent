@@ -56,7 +56,6 @@ import { ease, useCalmMotion } from '../../lib/motion'
 import { art } from '../../features/rinari/art'
 import { inProfile, useProfileStore } from '../../features/profiles/profileStore'
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
-import { ProjectBranch } from '../../features/projects/ProjectBranch'
 import { TitleSwap } from '../TitleSwap'
 
 export interface AppSidebarProps {
@@ -575,8 +574,8 @@ export function AppSidebar({
                 >
                   <Folder size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
                   <span className="sidebar-project-label">
+                    {/* Sin rama (#83): varias conversaciones pueden compartirla; vive en Resumen. */}
                     <span className="sidebar-project-name">{project.name || projectDisplayName(project.root)}</span>
-                    <ProjectBranch head={project.git_head} />
                   </span>
                   {project.pinned && <Pin size={11} className="text-[var(--text-subtle)]" />}
                   {items.length > 0 && (

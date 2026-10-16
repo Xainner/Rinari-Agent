@@ -132,7 +132,7 @@ function PaneHeader({
   peers,
 }: PaneHeaderProps) {
   const { t } = useI18n()
-  const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, status } = session
+  const { record, project, projectRoot, gitError, busy, approvals, pendingQuestions, status } = session
   // El menú atrapa el foco mientras está abierto y lo devuelve al disparador
   // al cerrarse; «Configurar siguiente mensaje» se ejecuta en ese cierre, ya
   // sin trampa, y cede el foco al Composer en lugar de al botón.
@@ -141,7 +141,6 @@ function PaneHeader({
   const face = useMemo(() => paneFace(status.kind, session.timelines), [status.kind, session.timelines])
   const title = record?.title || t('sidebar.newChat')
   const projectName = project?.name ?? projectRoot
-  const git = gitStatus?.status.available ? gitStatus.status : null
   const interventions = approvals.length + pendingQuestions
   const peerState = !peers ? null
     : !peers.boardEnabled ? 'off'
@@ -165,11 +164,7 @@ function PaneHeader({
           >
             <GitBranch size={11} aria-hidden="true" />
             <span className="truncate">{projectDisplayName(projectName)}</span>
-            {gitError ? (
-              <span className="text-[var(--warning)]">· {t('project.gitMissing')}</span>
-            ) : git?.branch ? (
-              <span className="font-mono text-[var(--text-subtle)]">· {git.branch}{git.dirty ? ` · ${git.files.length}` : ''}</span>
-            ) : null}
+            {gitError && <span className="text-[var(--warning)]">· {t('project.gitMissing')}</span>}
           </span>
         )}
         {sharedRoot && (

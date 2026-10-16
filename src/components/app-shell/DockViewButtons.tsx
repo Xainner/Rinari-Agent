@@ -1,5 +1,5 @@
 import { Ellipsis } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { DOCK_VIEW_ICONS, DOCK_VIEW_LABELS } from '../../features/session/dockViews'
@@ -13,6 +13,15 @@ import {
 import { selectDockSignals, useDockSignalsStore, type DockSignals } from '../../stores/dockSignals'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
+
+/** Por debajo de este ancho de ventana, la barra deja a la vista solo lo abierto o lo que avisa. */
+const COMPACT_QUERY = '(max-width: 1099px)'
+function subscribeCompact(change: () => void): () => void {
+  const query = typeof window.matchMedia === 'function' ? window.matchMedia(COMPACT_QUERY) : null
+  query?.addEventListener('change', change)
+  return () => query?.removeEventListener('change', change)
+}
+const isCompact = () => typeof window.matchMedia === 'function' && window.matchMedia(COMPACT_QUERY).matches
 
 /**
  * Un botón por vista del panel lateral en la barra de título (plan 0.4.0 #47),
@@ -29,8 +38,13 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   const openView = useSessionDockStore((state) => state.openView)
   const [replace, setReplace] = useState<{ view: DockView; rect: DOMRect | undefined } | null>(null)
   const group = useRef<HTMLDivElement>(null)
-  const primary = PRIMARY_VIEWS.filter((view) => view !== 'terminal' || terminalEnabled)
+  const available = PRIMARY_VIEWS.filter((view) => view !== 'terminal' || terminalEnabled)
   const shown = (view: DockView) => layout.visible && layout.views.includes(view)
+  // En una ventana estrecha los botones no le quitan el sitio al título: quedan
+  // los de las vistas abiertas o con algo que avisar, y el resto va en «Más».
+  const compact = useSyncExternalStore(subscribeCompact, isCompact, () => false)
+  const primary = compact ? available.filter((view) => shown(view) || indicatorFor(view, signals, t) !== null) : available
+  const overflow = [...available.filter((view) => !primary.includes(view)), ...MORE_VIEWS]
 
   const press = useCallback((view: DockView, button: HTMLElement | null) => {
     const rect = button?.getBoundingClientRect()
@@ -38,7 +52,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
     if (toggleView(sessionId, view, launch) === 'full') setReplace({ view, rect })
   }, [sessionId, toggleView])
 
-  const moreOpen = MORE_VIEWS.filter(shown)
+  const moreOpen = overflow.filter(shown)
   return (
     <Popover open={replace !== null} onOpenChange={(open) => { if (!open) setReplace(null) }}>
       <PopoverAnchor asChild>
@@ -72,7 +86,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {MORE_VIEWS.map((view) => {
+              {overflow.map((view) => {
                 const Icon = DOCK_VIEW_ICONS[view]
                 return (
                   <DropdownMenuCheckboxItem

@@ -64,3 +64,20 @@ it('los indicadores vivos se dicen también en el nombre del botón', () => {
   expect(screen.getByRole('button', { name: /^Agentes · / }).textContent).toContain('2')
   expect(screen.getByRole('button', { name: 'Flujo · una etapa te necesita' })).toBeTruthy()
 })
+
+it('en una ventana estrecha quedan las vistas abiertas o con aviso, y el resto pasa a «Más»', async () => {
+  const original = window.matchMedia
+  window.matchMedia = ((query: string) => ({ matches: query.includes('1099'), media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+  try {
+    useSessionDockStore.getState().openView('ses_a', 'changes')
+    useDockSignalsStore.getState().publish('ses_a', { agents: 1 })
+    mount()
+    const bar = screen.getByRole('toolbar', { name: 'Vistas del panel lateral' })
+    expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('data-view') ?? button.getAttribute('aria-label'))).toEqual(['changes', 'agents', 'Más vistas'])
+    await userEvent.click(screen.getByRole('button', { name: 'Más vistas' }))
+    expect(await screen.findByRole('menuitemcheckbox', { name: /Navegador/ })).toBeTruthy()
+    expect(screen.getByRole('menuitemcheckbox', { name: /Insight/ })).toBeTruthy()
+  } finally {
+    window.matchMedia = original
+  }
+})

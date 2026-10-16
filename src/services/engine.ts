@@ -563,6 +563,11 @@ export interface SkillDetail extends SkillEntry {
 }
 
 /** Fallback and auxiliary model ids (plan 0.4.0 #80); null = the conversation's model. */
+/** `session.turn.start` origin for a plan action (plan 0.4.0 #55). */
+export type PlanTurnOrigin =
+  | { kind: 'user'; source: 'plan_implement'; plan_turn_id: string }
+  | { kind: 'user'; source: 'plan_adjust'; plan_turn_id: string; comment: string }
+
 export interface ModelRoles {
   fallback: string | null
   auxiliary: string | null
@@ -1437,6 +1442,20 @@ export const engineApi = {
       command: command ?? null,
     })
   },
+  /**
+   * Implement or adjust a finished plan (plan 0.4.0 #55): no typed message.
+   * The Engine checks the plan turn, writes the instruction, switches the
+   * mode (BUILD to implement, PLAN to adjust) and, to implement, seeds the
+   * checklist with the plan's steps. The turn's origin draws a separator.
+   */
+  startPlanTurn: (sessionId: string, origin: PlanTurnOrigin, reasoningEffort?: string | null) =>
+    platform().command<{ status: string; turn_id: string; session_id: string }>("turn_start", {
+      session_id: sessionId,
+      message: '',
+      reasoning_effort: reasoningEffort ?? null,
+      attachments: [],
+      origin,
+    }),
   commandList: (sessionId?: string) =>
     platform().command<{ commands: SlashCommand[] }>('command_list', { session_id: sessionId ?? null }),
   cancelTurn: (sessionId: string) =>

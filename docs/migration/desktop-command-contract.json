@@ -1969,6 +1969,11 @@
           "name": "command",
           "type": "Option<Value>",
           "optional": true
+        },
+        {
+          "name": "origin",
+          "type": "Option<Value>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -2004,6 +2009,11 @@
         {
           "key": "command",
           "from": "command",
+          "optional": true
+        },
+        {
+          "key": "origin",
+          "from": "origin",
           "optional": true
         }
       ],

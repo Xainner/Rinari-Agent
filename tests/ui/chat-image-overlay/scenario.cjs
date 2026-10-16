@@ -33,7 +33,7 @@ async function startOfChat(prefix = '') {
   // lectura: se navega después y se avisa al manejador de scroll real.
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline) {
-    await evaluate(`(()=>{const e=${q(prefix + ' ' + scroller)};e.scrollTop=0;e.dispatchEvent(new Event("scroll"))})()`)
+    await evaluate(`(()=>{const e=${q(prefix + ' ' + scroller)};e.dispatchEvent(new WheelEvent("wheel",{bubbles:true,deltaY:-120}));e.scrollTop=0;e.dispatchEvent(new Event("scroll"))})()`)
     await delay(300)
     if (await evaluate(`Boolean(${q(prefix + ' ' + historical)})`)) return
   }

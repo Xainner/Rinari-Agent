@@ -64,6 +64,8 @@ export interface AttachmentRef {
   uri?: string
   sha256?: string
   kind?: 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'audio' | 'video'
+  /** Duración de un audio o video, si el Engine pudo leerla (#57). */
+  durationS?: number
   derivedUri?: string
   images?: Array<{ uri: string; sha256?: string }>
   ocr?: boolean

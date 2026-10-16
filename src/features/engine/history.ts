@@ -45,6 +45,7 @@ export function historyToMessages(rows: HistoryMessage[]): ChatMessage[] {
         size: attachment.size,
         kind: (attachment.kind as 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'audio' | 'video' | undefined) ?? 'image',
         derivedUri: attachment.derived_uri,
+        durationS: attachment.duration_s,
         images: attachment.images,
         ocr: attachment.ocr,
         keepImage: attachment.ocr ? attachment.keep_image : undefined,

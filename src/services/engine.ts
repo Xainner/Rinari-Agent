@@ -78,6 +78,7 @@ export interface PreparedAttachmentResult {
   sha256?: string
   kind?: string
   derived_uri?: string
+  duration_s?: number
   ocr?: boolean
   keep_image?: boolean
   coverage?: Record<string, unknown>
@@ -109,6 +110,7 @@ export interface HistoryMessage {
     size?: number;
     kind?: string;
     derived_uri?: string;
+    duration_s?: number;
     images?: Array<{ uri: string; sha256?: string }>;
     ocr?: boolean;
     keep_image?: boolean;
@@ -1742,6 +1744,7 @@ function mapPreparedAttachment(item: PreparedAttachmentResult, attachments: Atta
     uri: item.uri || item.images?.[0]?.uri || attachments.uri,
     sha256: item.sha256 || attachments.sha256,
     derivedUri: item.derived_uri || attachments.derivedUri,
+    durationS: item.duration_s ?? attachments.durationS,
     images: item.images || attachments.images,
     ocr: item.ocr ?? attachments.ocr,
     keepImage: item.ocr ? (item.keep_image ?? attachments.keepImage) : undefined,

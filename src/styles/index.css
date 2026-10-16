@@ -2413,6 +2413,9 @@ html[data-motion='reduced'] .present-thumb:hover img { transform: none; }
 .changes-view-empty { display: flex; align-items: center; gap: 8px; padding: 18px 14px; font-size: 12.5px; color: var(--text-subtle); }
 .changes-view-files { flex-shrink: 0; max-height: 40%; overflow-y: auto; padding: 6px 6px; border-bottom: 1px solid var(--line-1); }
 .changes-view-diff { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow-y: auto; }
+/* En la vista Cambios del panel el diff ocupa todo el alto (fuera del panel sigue con su tope de 28rem). */
+.changes-view-diff > .diff-view { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; }
+.changes-view-diff > .diff-view > .diff-body { flex: 1 1 auto; min-height: 0; max-height: none; }
 .changes-view-diff-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; background: color-mix(in srgb, var(--bg-elevated) 90%, transparent); }
 .changes-view-diff-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
 .changes-view-note { padding: 12px 14px; font-size: 12px; color: var(--text-subtle); }

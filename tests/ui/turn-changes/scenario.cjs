@@ -45,6 +45,9 @@ scenario(async () => {
   await clickText('src/caja/qr.ts', `${CARD} .turn-changes-path`, { includes: true })
   await wait(`document.querySelector('${DOCK} [data-testid="turn-diff"]')?.dataset.path === 'src/caja/qr.ts'`)
   await settleAnimations()
+  // The diff takes the whole height of the view, not the 28rem cap it has elsewhere.
+  const fill = await evaluate(`(() => { const box = document.querySelector('${DOCK} [data-testid="turn-diff"]').getBoundingClientRect(); const view = document.querySelector('${DOCK} [data-testid="turn-diff"] .diff-view').getBoundingClientRect(); return { gap: Math.round(box.bottom - view.bottom), cap: getComputedStyle(document.querySelector('${DOCK} [data-testid="turn-diff"] .diff-body')).maxHeight } })()`)
+  assert.ok(fill.gap <= 2 && fill.cap === 'none', 'the diff fills the Changes view: ' + JSON.stringify(fill))
   await screenshot('review-in-panel')
 
   // 3. «Revisar cambios» from the footer goes to the same view.
@@ -103,5 +106,5 @@ scenario(async () => {
   assert.ok(overlap && overlap.width > 40, `the title is still visible at 900 px (${JSON.stringify(overlap)})`)
   assert.ok(overlap.right <= 0, `the title never runs under the view switcher (${JSON.stringify(overlap)})`)
   await screenshot('title-bar-900')
-  report({ passed: ['summary floats over the chat without touching the side panel, its Changes card opens the view', 'card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
+  report({ passed: ['summary floats over the chat without touching the side panel, its Changes card opens the view', 'card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git, at full height', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
 }, { width: 1500, height: 900 })

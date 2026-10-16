@@ -173,6 +173,9 @@ it('keeps large closed activity unmounted and exposes incidents without declarin
   expect(screen.getByText('1 incidencia', { selector: '.turn-done-issues' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno', description: '1 incidencia' }))
   expect(rendered.container.querySelectorAll('pre').length).toBe(0)
+  // Dentro, la fila agrupada no repite la incidencia ni pinta su punto de rojo: un fallo que no bloquea ya lo dice la tarjeta.
+  expect(screen.queryByRole('button', { name: /incidencia/ })).toBeNull()
+  expect(rendered.container.querySelector('.turn-node[data-state="failed"]')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Ver operaciones' }))
   expect(rendered.container.querySelectorAll('details').length).toBe(500)
   expect(rendered.container.querySelectorAll('pre').length).toBe(0)

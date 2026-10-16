@@ -827,9 +827,13 @@ const ActivityDetails = memo(function ActivityDetails({ items, status, onResolve
     : <div key={block.id} className="relative"><span className="turn-node" data-state={nodeState(block.items, live)} aria-hidden="true" /><OperationGroup items={block.items} status={status} onResolveApproval={onResolveApproval} /></div>)}</div>
 })
 
-/** Color del nodo de un grupo en el riel: lo peor que haya pasado, o en curso. */
+/**
+ * Color del nodo de un grupo en el riel: en curso, un subagente o hecho. Una
+ * herramienta que falló sin bloquear el trabajo no lo pinta de rojo: eso ya
+ * lo dice la tarjeta del turno («· 1 incidencia»), y lo que bloquea (turno
+ * fallido, aprobación pendiente) tiene su propio aviso.
+ */
 function nodeState(items: TimelineItem[], live: boolean): string {
-  if (items.some(item => 'status' in item && ['failed', 'cancelled'].includes(item.status ?? ''))) return 'failed'
   if (live && items.some(operationIsActive)) return 'running'
   if (items.some(item => item.type === 'agent')) return 'agent'
   return 'done'
@@ -844,7 +848,6 @@ function OperationGroup({ items, status, onResolveApproval }: {
   const first = items[0]
   const firstDetail = childInspectionKey(childInspectionKey(scope, first.id), first.type)
   const firstOpen = useActivityDisclosure(state => state.entries[firstDetail]?.open ?? false)
-  const issues = activityIssues(items, active)
   const categories = [...new Set(items.map(item => item.type === 'tool' ? toolCategory(item.tool) : item.type))]
   const label = categories.map(category => t(`activity.group.${category}` as I18nKey)).join(' · ')
   const images = items.filter((item): item is VisionTimelineItem => item.type === 'vision')
@@ -857,7 +860,6 @@ function OperationGroup({ items, status, onResolveApproval }: {
   return <div data-operation-group={items[0].id}>
     {items.length === 1 || images.length === items.length ? content : <ActivityDisclosure stateKey={key} operations defaultOpen={firstOpen}
       header={<ActivityText active={active && items.some(operationIsActive)}>{label} · {items.length}</ActivityText>}
-      inspectLabel={issues ? t(issues === 1 ? 'activity.incidentsOne' : 'activity.incidents', { n: issues }) : undefined}
     >{content}</ActivityDisclosure>}
   </div>
 }

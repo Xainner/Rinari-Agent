@@ -284,6 +284,16 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => heldModel([{ text: 'Listo, ya revisé el informe.' }]),
   },
+  'turn-notify': {
+    title: 'Avisos: un plan que termina en otra conversación de Normal avisa con «Revisar plan», la barra lo marca y la campana lo nombra',
+    phases: ['exercise'],
+    model: () => heldModel([{ text: ['# Migrar la API', '', 'Pasar la API a la versión nueva sin cortar el servicio.', '', '## Pasos', '1. Copiar la base.', '2. Probar en paralelo.'].join('\n') }]),
+  },
+  'return-to-window': {
+    title: 'Al volver a la ventana: lo que terminó mientras no estabas se lee con un gesto, no a los 500 ms',
+    phases: ['exercise'],
+    model: () => heldModel([{ text: 'El informe del mes está listo.' }]),
+  },
   'boards-fit': {
     title: 'Boards: Ajustar a la vista',
     phases: ['exercise'],

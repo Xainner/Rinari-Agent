@@ -45,7 +45,7 @@ async function run() {
     await until(() => trayMenu, 'native tray exists')
     await language('es')
     await until(() => labels().includes('Configuración…'), 'Spanish tray refresh')
-    assert.deepEqual(labels(), ['Abrir Rinari', 'Configuración…', 'Buscar actualizaciones', 'Reportar error…', 'Salir'])
+    assert.deepEqual(labels(), ['Abrir Rinari', 'Marcar todo como leído', 'Configuración…', 'Buscar actualizaciones', 'Reportar error…', 'Salir'])
     await activate('Configuración…')
     await wait(`document.body.innerText.includes('Por defecto solo suena lo que pasa donde no estás mirando.')`)
     await screenshot('settings-from-hidden')
@@ -65,7 +65,7 @@ async function run() {
 
     await language('en')
     await until(() => labels().includes('Report a bug…'), 'English tray refresh')
-    assert.deepEqual(labels(), ['Open Rinari', 'Settings…', 'Check for updates', 'Report a bug…', 'Quit'])
+    assert.deepEqual(labels(), ['Open Rinari', 'Mark all as read', 'Settings…', 'Check for updates', 'Report a bug…', 'Quit'])
     await activate('Report a bug…')
     await until(() => opened.length === 2, 'English bug draft')
     assert(new URL(opened[1]).searchParams.get('body').includes('**What happened**'))

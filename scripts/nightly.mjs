@@ -144,6 +144,13 @@ function main() {
   if (isImageRunning('rinari-agent-nightly.exe')) {
     throw new Error('Rinari Agent Nightly está abierta: ciérrala (también desde la bandeja) y vuelve a correr npm run nightly.')
   }
+  // El modo silencioso del instalador sabe instalar y desinstalar, no
+  // actualizar: con una Nightly ya instalada, primero se quita. Desinstalar
+  // borra solo los archivos del programa; `~/.rinari` y las preferencias de
+  // la app se quedan.
+  if (existsSync(join(INSTALL_DIR, '.rinari-install.json'))) {
+    run(setup, ['--silent-uninstall', INSTALL_DIR])
+  }
   run(setup, ['--silent-install', INSTALL_DIR])
   // La instalación silenciosa no crea accesos directos; se crean con el mismo
   // nombre que usa el instalador, así que desinstalar también los quita.

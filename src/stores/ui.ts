@@ -20,7 +20,8 @@ export type View = 'chat' | 'board' | 'settings' | 'engine' | 'workspace' | 'pro
 /** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
 /** Flujos dejó de ser un modo de arriba: vive en el panel lateral (#43). */
 export type WorkspaceView = Extract<View, 'chat' | 'board'>
-export type ProviderTab = 'connection' | 'models' | 'usage' | 'diagnostics'
+/** `connection` es el nombre viejo de «Resumen»: ahí está ahora la conexión (#97). */
+export type ProviderTab = 'summary' | 'connection' | 'models' | 'usage' | 'diagnostics'
 /**
  * Proveedor que Ajustes > Proveedores debe abrir al entrar, y en qué pestaña.
  * Se busca por id: el alias puede haber cambiado desde que se guardó el

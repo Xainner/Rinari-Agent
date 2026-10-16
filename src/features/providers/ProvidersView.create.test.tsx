@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
-// El alta desde el modal de Proveedores. Hay dos puntos de alta en la app -el
-// asistente inicial y este modal- y cuando cada uno armó sus settings por su
-// cuenta, este se olvidó del transporte: el Engine rechazaba el provider con
-// «Unsupported external CLI provider» y la función quedaba inservible desde la
-// pantalla por la que entra casi todo el mundo. Esta prueba cubre el camino
-// real, no solo el constructor compartido.
+// El alta desde «Agregar proveedor». Cuando el asistente inicial y el modal de
+// Ajustes armaban sus settings cada uno por su cuenta, el modal se olvidó del
+// transporte: el Engine rechazaba el provider con «Unsupported external CLI
+// provider». Ahora los dos son el mismo asistente (#97 C); esta prueba cubre el
+// camino real desde Ajustes: la cuadrícula, los campos y «Probar y guardar».
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it } from 'vitest'
 import { createTestBridge } from '../../platform/testBridge'
@@ -66,18 +65,17 @@ async function addWithPreset(
   label: RegExp,
   apiKey?: string,
 ) {
-  fireEvent.click(screen.getByText('Add provider'))
-  const select = (await screen.findByLabelText(/type/i)) as HTMLSelectElement
-  const option = [...select.options].find((item) => label.test(item.textContent ?? ''))
-  expect(option, `preset ${label}`).toBeTruthy()
-  fireEvent.change(select, { target: { value: option!.value } })
-  fireEvent.change(screen.getByLabelText(/alias/i), { target: { value: 'probe' } })
+  fireEvent.click(screen.getAllByRole('button', { name: /Add provider/ })[0])
+  const picker = await screen.findByTestId('provider-type-picker')
+  const card = [...picker.querySelectorAll<HTMLButtonElement>('.provider-picker-card')].find((item) => label.test(item.textContent ?? ''))
+  expect(card, `preset ${label}`).toBeTruthy()
+  fireEvent.click(card!)
+  fireEvent.change(await screen.findByLabelText(/alias/i), { target: { value: 'probe' } })
   if (apiKey !== undefined) {
-    // Por el placeholder: «API key» aparece también como etiqueta del
-    // selector de fuente de la credencial.
     fireEvent.change(screen.getByPlaceholderText(/^sk-/), { target: { value: apiKey } })
   }
-  fireEvent.click(screen.getByText('Save'))
+  // Con clave: «Test and save»; con un CLI la conexión se resuelve en el paso siguiente.
+  fireEvent.click(screen.getByRole('button', { name: apiKey !== undefined ? 'Test and save' : 'Continue' }))
   await waitFor(() => expect(bridge.calls.some((c) => c.name === 'provider_create')).toBe(true))
   return bridge.calls.find((c) => c.name === 'provider_create')!.args as Record<string, unknown>
 }

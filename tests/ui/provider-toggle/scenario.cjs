@@ -6,7 +6,7 @@
 // seguía usando no falla a ciegas: la tarjeta lo dice y «Activar» lo vuelve a
 // encender.
 const assert = require('node:assert/strict')
-const { click, clickText, command, evaluate, input, menuShortcut, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
+const { click, clickText, command, evaluate, input, key, menuShortcut, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
 
 scenario(async () => {
   await useLocalModel()
@@ -42,6 +42,28 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('providers-with-one-off')
 
+  // #97 B: a card opens into its panel, with the tabs and the canonical actions.
+  const spareCard = `[data-anchor="provider:${providers.find((p) => p.alias === 'reserva').id}"]`
+  await click(`${spareCard} .provider-card-open`)
+  await wait(`Boolean(document.querySelector('${spareCard} [role="tablist"]'))`)
+  assert.equal(await evaluate(`document.querySelector('${spareCard} [role="tab"][aria-selected="true"]').textContent`), 'Resumen')
+  assert.ok(await evaluate(`[...document.querySelectorAll('${spareCard} .provider-actions button')].some(b => b.textContent.includes('Probar'))`))
+  await settleAnimations()
+  await screenshot('provider-open')
+
+  // #97 C: «Agregar proveedor» is the onboarding wizard: the grid, then only that type's fields.
+  await clickText('Agregar proveedor', 'button')
+  await wait(`document.querySelectorAll('[role="dialog"] .provider-picker-card').length > 5`)
+  await settleAnimations()
+  await screenshot('add-grid')
+  await click('[role="dialog"] .provider-picker-card[data-preset="openai"]')
+  await wait(`Boolean(document.querySelector('#provider-secret'))`)
+  assert.equal(await evaluate(`Boolean(document.querySelector('#provider-endpoint'))`), false, 'the endpoint waits in the advanced options')
+  await settleAnimations()
+  await screenshot('add-fields')
+  await key('Escape')
+  await wait(`!document.querySelector('[role="dialog"]')`)
+
   await click('button[aria-label="Volver"]')
   await clickText('Proveedor apagado', 'aside button', { includes: true })
   await wait('Boolean(document.querySelector(".composer-surface"))')
@@ -58,6 +80,8 @@ scenario(async () => {
     'the dialog names the active provider and the agent that use it',
     'confirming moves the agent and the active model to the replacement',
     'its models leave model.list and the card goes last as Off',
+    'an open card has its tabs and actions',
+    'Agregar proveedor is the grid and then only the fields of that type',
     'an old conversation says the provider is off and turns it back on',
   ] })
 }, { width: 1400, height: 900 })

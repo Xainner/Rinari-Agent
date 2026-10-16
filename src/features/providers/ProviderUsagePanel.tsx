@@ -5,7 +5,7 @@ import type { ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
 
-export default function ProviderUsagePanel({ providerAlias, compact = false }: { providerAlias: string; compact?: boolean }) {
+export default function ProviderUsagePanel({ providerAlias, compact = false, ring = false }: { providerAlias: string; compact?: boolean; ring?: boolean }) {
   const { t, lang } = useI18n()
   const [snapshot, setSnapshot] = useState<ProviderUsageSnapshot | null>(null)
   const [busy, setBusy] = useState(false)
@@ -26,11 +26,31 @@ export default function ProviderUsagePanel({ providerAlias, compact = false }: {
     generation.current++; inFlight.current = false; setSnapshot(null)
     const visibleRefresh = () => { if (document.visibilityState !== 'hidden') void refresh() }
     visibleRefresh()
-    const timer = compact ? undefined : setInterval(visibleRefresh, 60_000)
-    if (!compact) document.addEventListener('visibilitychange', visibleRefresh)
+    const quiet = compact || ring
+    const timer = quiet ? undefined : setInterval(visibleRefresh, 60_000)
+    if (!quiet) document.addEventListener('visibilitychange', visibleRefresh)
     return () => { generation.current++; clearInterval(timer); document.removeEventListener('visibilitychange', visibleRefresh) }
-  }, [refresh, compact])
+  }, [refresh, compact, ring])
   const date = (value: string) => new Date(value).toLocaleString(lang)
+  // En la tarjeta de la lista (#97 B): un anillo con lo que queda de la ventana más justa, o el saldo.
+  if (ring) {
+    if (!snapshot?.fetched_at) return null
+    const windows = snapshot.windows.filter((window) => window.remaining_percent !== null)
+    const tightest = windows.reduce<typeof windows[number] | null>((low, window) => (low === null || (window.remaining_percent ?? 100) < (low.remaining_percent ?? 100) ? window : low), null)
+    const balance = snapshot.balances.find((entry) => entry.scope === 'account')
+    if (tightest) {
+      const left = Math.max(0, Math.min(100, tightest.remaining_percent ?? 0))
+      const label = t('providers.ringLeft', { n: Math.round(left), window: tightest.id === 'rolling' ? t('providers.windowRolling') : tightest.id === 'weekly' ? t('providers.windowWeekly') : tightest.id === 'monthly' ? t('providers.windowMonthly') : tightest.label })
+      return <span className="provider-ring" data-low={left <= 15 || undefined} role="img" aria-label={label} title={label}>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" className="provider-ring-track" /><circle cx="10" cy="10" r="8" className="provider-ring-value" pathLength={100} strokeDasharray={`${left} 100`} /></svg>
+        <span>{Math.round(left)}%</span>
+      </span>
+    }
+    if (balance && (balance.remaining !== null || balance.unlimited)) {
+      return <span className="provider-ring is-balance" title={balance.label}>{balance.unlimited ? t('providers.keyUnlimited') : `${balance.remaining} ${balance.currency}`}</span>
+    }
+    return null
+  }
   if (compact) return snapshot?.fetched_at ? <p className="text-xs text-[var(--text-muted)]" title={t('providers.updatedAt', { date: date(snapshot.fetched_at) })}>
     {snapshot.windows.map(window => `${window.id === 'rolling' ? '5h' : window.id === 'weekly' ? t('providers.windowWeekly') : window.id === 'monthly' ? t('providers.windowMonthly') : window.label}: ${window.remaining_percent === null ? '—' : `${window.remaining_percent}%`}`).join(' · ')}
     {snapshot.windows.length > 0 && ` ${t('providers.remaining')}`}

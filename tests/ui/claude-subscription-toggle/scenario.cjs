@@ -5,13 +5,13 @@ const assert = require('node:assert/strict')
 const { click, clickText, command, evaluate, key, menuShortcut, report, scenario, screenshot, until, wait } = require('../harness.cjs')
 
 const SWITCH = '[data-testid="experimental-providers"] button[role="switch"]'
-const dialogOffersClaude = `[...document.querySelectorAll('[role="dialog"] select option')].some(o => o.textContent.includes('Claude Subscription'))`
+const dialogOffersClaude = `Boolean(document.querySelector('[role="dialog"] .provider-picker-card[data-preset="claude-subscription"]'))`
 
 async function openAdd() {
   await clickText('Agregar proveedor', 'button')
   await wait(`Boolean(document.querySelector('[role="dialog"]'))`)
-  // The dialog loads the catalog from the Engine when it opens.
-  await wait(`document.querySelectorAll('[role="dialog"] select option').length > 5`)
+  // The dialog loads the catalog from the Engine when it opens: the grid of types (#97 C).
+  await wait(`document.querySelectorAll('[role="dialog"] .provider-picker-card').length > 5`)
 }
 
 scenario(async () => {

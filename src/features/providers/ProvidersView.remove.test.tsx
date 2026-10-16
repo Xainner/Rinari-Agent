@@ -44,7 +44,9 @@ function mount(providers: never[]) {
 
 it('the only provider can be removed, and the dialog says what follows', async () => {
   const removed = mount([provider('solo', true)])
-  fireEvent.click(screen.getAllByText('Eliminar')[0])
+  // Las acciones viven en la tarjeta abierta (#97 B).
+  fireEvent.click(screen.getByRole('button', { expanded: false }))
+  fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }))
   const dialog = await screen.findByRole('alertdialog')
   expect(dialog.textContent).toContain('Es el único')
   expect(within(dialog).queryByLabelText('Mover sesiones activas a')).toBeNull()
@@ -55,7 +57,8 @@ it('the only provider can be removed, and the dialog says what follows', async (
 
 it('with others, it still asks which one takes over', async () => {
   mount([provider('main', true), provider('backup', false)])
-  fireEvent.click(screen.getAllByText('Eliminar')[0])
+  fireEvent.click(screen.getAllByRole('button', { expanded: false })[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }))
   const dialog = await screen.findByRole('alertdialog')
   expect(dialog.textContent).not.toContain('Es el único')
   expect(within(dialog).getByLabelText('Mover sesiones activas a')).toBeTruthy()

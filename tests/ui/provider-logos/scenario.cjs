@@ -53,7 +53,8 @@ scenario(async () => {
   ui.win.webContents.reload() // Observe onboarding before the shared ready helper dismisses it.
   await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===${catalog.length}`)
   const wizard = await healthy('document.querySelector("[role=dialog]")')
-  assert.deepEqual(wizard.map(r=>r.brand),catalog.map(p=>expected[p.id]))
+  // The grid groups the catalog (subscriptions, API, local: #97 C): same logos, not the same order.
+  assert.deepEqual(wizard.map(r=>r.brand).sort(),catalog.map(p=>expected[p.id]).sort())
   await screenshot('wizard-dark')
   await sheet('dark'); await sheet('light')
   await evaluate(`document.documentElement.dataset.theme='dark'`)

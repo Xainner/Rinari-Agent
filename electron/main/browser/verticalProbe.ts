@@ -101,6 +101,35 @@ export interface VerticalDeps {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/** Qué ventana de Windows hay en un punto de la pantalla (diagnóstico de clics físicos). */
+async function windowAt(x: number, y: number): Promise<string> {
+  if (process.platform !== 'win32') return ''
+  const { execFile } = await import('node:child_process')
+  const script = `Add-Type -TypeDefinition @'
+using System; using System.Text; using System.Runtime.InteropServices;
+public class RinariWindowAt {
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
+  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
+  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+}
+'@
+$p = New-Object RinariWindowAt+POINT; $p.X = ${x}; $p.Y = ${y}
+$h = [RinariWindowAt]::WindowFromPoint($p); $r = [RinariWindowAt]::GetAncestor($h, 2)
+$t = New-Object System.Text.StringBuilder 256; $c = New-Object System.Text.StringBuilder 256
+[void][RinariWindowAt]::GetWindowText($r, $t, 256); [void][RinariWindowAt]::GetClassName($h, $c, 256)
+$pid2 = 0; [void][RinariWindowAt]::GetWindowThreadProcessId($r, [ref]$pid2)
+$proc = (Get-Process -Id $pid2 -ErrorAction SilentlyContinue).ProcessName
+Write-Output "title=$t class=$c process=$proc pid=$pid2"`
+  return new Promise((resolve) => {
+    execFile('powershell.exe', ['-NoProfile', '-Command', script], (error, stdout) =>
+      resolve(error ? `error: ${error.message}` : String(stdout).trim()),
+    )
+  })
+}
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
 const overlaps = (
   a: { x: number; y: number; width: number; height: number },
@@ -483,9 +512,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       deps.window.show()
       deps.window.focus()
       await sleep(300)
+      // En una zona vacía de la página: ahora el clic llega, y sobre el
+      // `<input type="file">` del fixture abría el diálogo «Abrir», que se
+      // quedaba encima y tapaba los clics físicos de los pasos siguientes.
       await deps.physicalClick(
-        Math.round(content.x + presented.x + 80),
-        Math.round(content.y + presented.y + 120),
+        Math.round(content.x + presented.x + 300),
+        Math.round(content.y + presented.y + 320),
       )
       for (let attempt = 0; attempt < 40 && !claimed; attempt += 1) {
         claimed = events.slice(eventsBeforePhysical).some(
@@ -836,6 +868,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       page: context.geometry?.page ?? null,
       rect,
     }
+    const missedAt: string[] = []
     if (deps.physicalClick) {
       const { content, container } = fieldGeometry
       const pageOffset = fieldGeometry.page ?? { x: 0, y: 0 }
@@ -855,6 +888,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         )
         await sleep(300)
         if ((await read<number>(view, 'window.__probe.clicks')) > before) break
+        missedAt.push(
+          await windowAt(
+            Math.round(content.x + container.x + pageOffset.x + rect.x),
+            Math.round(content.y + container.y + pageOffset.y + rect.y),
+          ),
+        )
       }
     } else {
       view.webContents.focus()
@@ -971,6 +1010,8 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
         sawManualEdit: sawManual,
         fieldGeometry,
         afterTyping,
+        missedAt,
+        rinariPid: process.pid,
         trace: waited.trace,
       },
     })

@@ -20,7 +20,27 @@ scenario(async () => {
   await seedBoard({ boardId: 'activity', panes: panesFor(ids), focusedPaneId: 'pane_0' })
   await click('.view-switcher button[aria-label="Normal"]')
   await clickText('Actividad A', 'aside button', { includes: true })
+  // The live card enters (sampled frame by frame from the send): its slot grows instead of popping in,
+  // the chat follows without a jump the size of the card, and the card fades up. Reduced motion: it is just there.
+  await evaluate(`(() => { const out = window.__cardFrames = []; const start = performance.now(); const tick = () => { const wrap = document.querySelector('.turn-status-wrap'); const card = wrap?.querySelector('.turn-status'); const scroll = document.querySelector('${scroller}'); out.push({ h: wrap ? wrap.getBoundingClientRect().height : null, o: card ? Number(getComputedStyle(card).opacity) : null, top: scroll ? scroll.scrollTop : null }); if (performance.now() - start < 2500) requestAnimationFrame(tick) }; requestAnimationFrame(tick) })();0`)
   await send('', 'Revisa los archivos locales paso a paso')
+  await wait(`Boolean(document.querySelector('.turn-status-wrap'))`)
+  await delay(900)
+  {
+    const reduced = await evaluate(`document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches`)
+    const frames = await evaluate(`window.__cardFrames`)
+    const shown = frames.filter((frame) => frame.h !== null)
+    assert(shown.length > 5, 'the live card is sampled while it enters: ' + shown.length)
+    const full = shown.at(-1).h
+    assert.equal(shown.at(-1).o, 1, 'the card ends fully visible')
+    if (!reduced) {
+      assert(shown.some((frame) => frame.o > 0.02 && frame.o < 0.98), 'the card fades in over several frames: ' + JSON.stringify(shown.slice(0, 20).map((frame) => frame.o)))
+      assert(shown.filter((frame) => frame.h > 1 && frame.h < full - 1).length >= 3, 'its slot grows over several frames: ' + JSON.stringify(shown.slice(0, 20).map((frame) => Math.round(frame.h))))
+      const start = Math.max(1, frames.indexOf(shown[0]))
+      const jumps = frames.slice(start, start + 30).map((frame, index) => Math.abs((frame.top ?? 0) - (frames[start + index - 1].top ?? 0)))
+      assert(Math.max(...jumps) < full * 0.6, `the chat follows the card without jumping its whole height (${Math.max(...jumps)} px of ${Math.round(full)})`)
+    }
+  }
   await release()
   await until(async () => await pending() > 0, 'first progress classified')
   await wait(`document.body.innerText.includes('PROGRESO 1')`)

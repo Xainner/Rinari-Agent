@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { RinariAvatar } from '../rinari/RinariAvatar'
 import { rinariStateForTurn } from '../rinari/turnState'
@@ -16,6 +17,13 @@ export function shortElapsed(ms: number): string {
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`
 }
+
+/**
+ * Turnos cuya tarjeta ya entró: si se vuelve a montar (Virtua al desplazarte
+ * lejos y volver, cambiar de vista) aparece quieta, sin repetir la entrada.
+ */
+const entered = new Set<string>()
+const ENTERED_KEEP = 200
 
 /** Desde cuándo dura lo que hace ahora: la acción en curso o la última llamada al modelo. */
 function actionSince(timeline: TurnTimeline): number {
@@ -48,8 +56,14 @@ export default function TurnStatusCard({ timeline, now }: { timeline: TurnTimeli
   const stepLabel = step && ownList ? t('turn.status.step', { n: stepIndex + 1, total: ownList.items.length }) : null
   const detail = [stepLabel, step ? action : null, shortElapsed(actionMs)].filter(Boolean).join(' · ')
   const working = !['approval', 'question', 'cancelling'].includes(state.kind)
+  // La primera vez, entra: su hueco crece (el chat baja con él, sin saltar) y la tarjeta llega después.
+  const [entering] = useState(() => !entered.has(timeline.turnId))
+  useEffect(() => {
+    entered.add(timeline.turnId)
+    if (entered.size > ENTERED_KEEP) entered.delete(entered.values().next().value!)
+  }, [timeline.turnId])
   return (
-    <div className="turn-status-wrap">
+    <div className="turn-status-wrap" data-entering={entering || undefined}>
       <div data-live-activity className="turn-status" data-working={working || undefined} title={`${title} · ${detail}`}>
         <RinariAvatar state={rinariStateForTurn(state.kind)} size={38} />
         <div className="turn-status-body">

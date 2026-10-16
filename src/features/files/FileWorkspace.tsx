@@ -43,7 +43,17 @@ const TEXT_PREVIEW_LIMIT = 512 * 1024
 export const FileTurnContext = createContext<string | undefined>(undefined)
 
 export function localFileTarget(href: string): string | null {
+  // Vacío o solo espacios no es un archivo (#67): antes salía `''` y el
+  // Engine respondía «A file path is required».
+  if (!href || !href.trim()) return null
   if (/^(https?:|mailto:|#)/i.test(href)) return null
+  // `sandbox:/mnt/data/x.csv` (lo escriben algunos modelos): el archivo
+  // está en la carpeta del turno con ese nombre.
+  const sandbox = /^sandbox:(?:\/mnt\/data\/)?(.+)$/i.exec(href.trim())
+  if (sandbox) {
+    const name = sandbox[1].split('/').pop() ?? ''
+    return name.trim() ? name : null
+  }
   if (
     /^[a-z][a-z0-9+.-]*:/i.test(href) &&
     !/^(artifact:|file:|[a-z]:[\\/])/i.test(href)
@@ -59,7 +69,15 @@ export function localFileTarget(href: string): string | null {
     path = path.replace(/^file:\/\//i, '')
     if (/^\/[a-z]:[\\/]/i.test(path)) path = path.slice(1)
   }
-  return path.replace(/:(\d+)(?::\d+)?$/, '')
+  const clean = path.replace(/:(\d+)(?::\d+)?$/, '')
+  return clean.trim() ? clean : null
+}
+
+/** `false` (y lo dice) si el enlace no lleva a ningún archivo (#67). */
+function pointsAtFile(path: string): boolean {
+  if (path && path.trim()) return true
+  toast.error(translate(useUIStore.getState().lang, 'files.notAFile'))
+  return false
 }
 
 export function fileUrlTransform(url: string): string {
@@ -78,6 +96,9 @@ export function FileLink({
   const actions = useContext(FileContext)
   const turnId = useContext(FileTurnContext)
   const target = localFileTarget(href)
+  // Un enlace que no apunta a nada que se pueda abrir se lee como texto,
+  // nunca como un archivo con la ruta vacía (#67).
+  if (target === null && !/^(https?:|mailto:|#)/i.test(href)) return <span>{children}</span>
   return (
     <a
       href={href}
@@ -113,6 +134,55 @@ export function FileLink({
       {children}
     </a>
   )
+}
+
+/**
+ * Una ruta local absoluta con extensión, como la escriben los modelos entre
+ * comillas invertidas (`C:\…\cancion.mp3`, `/home/…/informe.pdf`).
+ */
+export function looksLikeLocalPath(text: string): boolean {
+  if (text !== text.trim() || text.length < 4 || text.length > 1024 || text.includes('\n')) return false
+  return /^[A-Za-z]:[\\/][^<>|"*?]*\.[A-Za-z0-9]{1,8}$/.test(text) || /^\/(?:[^/<>|"*?]+\/)+[^/<>|"*?]+\.[A-Za-z0-9]{1,8}$/.test(text)
+}
+
+/** Comprobaciones de existencia ya hechas, por sesión y ruta: una sola llamada por ruta. */
+const pathChecks = new Map<string, Promise<boolean>>()
+
+/**
+ * Red de seguridad del #35: una ruta local escrita como código que **existe**
+ * se vuelve enlace al archivo (con su reproductor si es audio o video). La
+ * comprueba el Engine con la misma autorización que al abrirlo; si no existe
+ * o no se puede abrir, queda como código.
+ */
+export function PathCode({ text, className }: { text: string; className?: string }) {
+  const actions = useContext(FileContext)
+  const turnId = useContext(FileTurnContext)
+  const [exists, setExists] = useState(false)
+  useEffect(() => {
+    if (!actions || !looksLikeLocalPath(text)) return
+    let live = true
+    const key = `${turnId ?? ''}|${text}`
+    let check = pathChecks.get(key)
+    if (!check) {
+      check = actions.media(text, turnId).then(() => true, () => false)
+      pathChecks.set(key, check)
+    }
+    void check.then((ok) => { if (live) setExists(ok) })
+    return () => { live = false }
+  }, [actions, text, turnId])
+  const code = <code className={className}>{text}</code>
+  if (!exists) return code
+  return (
+    <>
+      <FileLink href={text}>{code}</FileLink>
+      <InlineMedia href={text} />
+    </>
+  )
+}
+
+/** Solo para pruebas: olvida las comprobaciones hechas. */
+export function resetPathChecksForTests() {
+  pathChecks.clear()
 }
 
 /**
@@ -515,12 +585,18 @@ export function FileWorkspaceProvider({
     select: setActive,
     close,
     refresh: (key) => void readCurrent(key),
-    open: (path, turnId) => void open(path, turnId),
+    open: (path, turnId) => { if (pointsAtFile(path)) void open(path, turnId) },
     media: (path, turnId) => platform().files.media({ session_id: sessionId, path, turn_id: turnId }),
-    reveal: (path, turnId) => void platform().files.revealInFolder({ session_id: sessionId, path, turn_id: turnId })
-      .catch((error) => toast.error(commandMessage(error))),
-    openExternal: (path, turnId) => void platform().files.openExternal({ session_id: sessionId, path, turn_id: turnId })
-      .catch((error) => toast.error(commandMessage(error))),
+    reveal: (path, turnId) => {
+      if (!pointsAtFile(path)) return
+      void platform().files.revealInFolder({ session_id: sessionId, path, turn_id: turnId })
+        .catch((error) => toast.error(commandMessage(error)))
+    },
+    openExternal: (path, turnId) => {
+      if (!pointsAtFile(path)) return
+      void platform().files.openExternal({ session_id: sessionId, path, turn_id: turnId })
+        .catch((error) => toast.error(commandMessage(error)))
+    },
     source,
     setSource,
   }), [sessionId, currentTabs, selected, close, open, readCurrent, source])

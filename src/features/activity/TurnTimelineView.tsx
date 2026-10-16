@@ -26,6 +26,7 @@ import {
   ImageOff,
   Languages,
   LifeBuoy,
+  Mic,
 } from 'lucide-react'
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
@@ -42,6 +43,7 @@ import TurnResult from './TurnResult'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
+import { PresentedFiles } from './PresentedFiles'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
@@ -130,6 +132,18 @@ function FallbackNotice({ item }: { item: Extract<TimelineItem, { type: 'system'
  * aprendido, un razonamiento que el modelo no admite, imágenes que no se
  * leyeron. Una sola fila con icono y tono, en la familia del timeline.
  */
+/** Rinari quiso escuchar un audio y falta el motor del dictado (#36): el camino para instalarlo. */
+function SpeechSetupNotice({ file }: { file: string }) {
+  const { t } = useI18n()
+  const goSettings = useUIStore((s) => s.goSettings)
+  return (
+    <ActivityNotice testId="speech-setup" tone="warning" icon={<Mic size={12} />}>
+      {t('activity.speechSetup', { file })}{' '}
+      <button type="button" className="underline underline-offset-2" onClick={() => goSettings('dictation')}>{t('activity.speechSetupAction')}</button>
+    </ActivityNotice>
+  )
+}
+
 function ActivityNotice({ testId, tone, icon, children }: { testId: string; tone: 'warning' | 'info'; icon: ReactNode; children: ReactNode }) {
   return (
     <p data-testid={testId} className="act-notice" data-tone={tone}>
@@ -301,6 +315,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const protocol = t(`activity.protocol.${item.status ?? 'chat'}` as I18nKey)
     return <ActivityNotice testId="protocol-learned" tone="info" icon={<Languages size={12} />}>{t('activity.protocolLearned', { model: item.label ?? '', protocol })}</ActivityNotice>
   }
+  if (item.type === 'system' && item.kind === 'speech_setup') return <SpeechSetupNotice file={item.label ?? ''} />
   if (item.type === 'system' && item.kind === 'reasoning_dropped') {
     return <ActivityNotice testId="reasoning-dropped" tone="info" icon={<BrainCog size={12} />}>{t('activity.reasoningDropped', { effort: item.label ?? '' })}</ActivityNotice>
   }
@@ -744,6 +759,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {projection.notices.map(item => item.type !== 'model' && <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
       {projection.memories.map(item => <MemoryActivityCard key={item.id} item={item} />)}
       {projection.skills.map(item => <SkillProposalCard key={item.id} item={item} />)}
+      {projection.presented.map(item => <PresentedFiles key={item.id} item={item} />)}
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />

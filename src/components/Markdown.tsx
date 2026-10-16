@@ -7,7 +7,7 @@ import { highlightToHtml } from '../lib/highlight'
 import { containsMath, escapeCurrency } from '../lib/math-detect'
 import { copyText } from '../lib/clipboard'
 
-import { ArtifactImage, FileLink, InlineMedia, fileUrlTransform } from '../features/files/FileWorkspace'
+import { ArtifactImage, FileLink, InlineMedia, PathCode, fileUrlTransform, looksLikeLocalPath } from '../features/files/FileWorkspace'
 
 const MathMarkdown = lazy(() => import('./MathMarkdown'))
 
@@ -72,6 +72,8 @@ export const markdownComponents: ComponentProps<typeof ReactMarkdown>['component
     const code = String(children).replace(/\n$/, '')
     const isBlock = !!match || code.includes('\n')
     if (!isBlock) {
+      // Una ruta local que existe se vuelve enlace al archivo (#35).
+      if (looksLikeLocalPath(code)) return <PathCode text={code} className={className} />
       return (
         <code className={className} {...props}>
           {children}

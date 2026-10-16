@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { TurnTimeline } from './types'
 import TurnTimelineView from './TurnTimelineView'
+import { createInitialTimelineState, engineEventAction, turnTimelineReducer } from './turnTimelineReducer'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { engineApi } from '../../services/engine'
 
@@ -235,4 +236,24 @@ describe('learned protocol (#94)', () => {
     view({ ...base, items: [{ id: 'system:p', type: 'system', activitySeq: 1, occurredAt: 1_100, kind: 'protocol_learned', label: 'gemini-4-argon-contributor', status: 'google' }] }, 1_200)
     expect(screen.getByTestId('protocol-learned').textContent).toBe('gemini-4-argon-contributor usa el protocolo de Google; Rinari lo cambió y siguió.')
   })
+})
+
+it('file.presented shows its card outside the folded activity and speech.setup_needed points to Dictation (#35, #36)', () => {
+  const NOW_P = 1_700_000_000_000
+  const ev = (name: string, payload: Record<string, unknown>) => engineEventAction({ type: 'event', event: name, payload: { session_id: 's', turn_id: 't', ...payload } }, NOW_P)!
+  let state = turnTimelineReducer(createInitialTimelineState(), ev('turn.started', { message: 'haz la canción' }))
+  state = turnTimelineReducer(state, ev('file.presented', { present_id: 'c1', activity_seq: 2, items: [
+    { kind: 'audio', name: 'cancion.mp3', path: 'C:/out/cancion.mp3', size_bytes: 2048, caption: 'versión final' },
+    { kind: 'folder', name: 'salida', path: 'C:/out/salida', entry_count: 2, entries: ['a.png', 'b.png'] },
+  ] }))
+  state = turnTimelineReducer(state, ev('speech.setup_needed', { reason: 'NOT_INSTALLED', tool: 'audio.transcribe', file: 'cancion.mp3', activity_seq: 3 }))
+  state = turnTimelineReducer(state, ev('turn.completed', { content: 'Listo', activity_seq: 4 }))
+  const timeline = state.timelines.t
+  render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={NOW_P} onResolveApproval={() => {}} /></I18nProvider>)
+  const card = screen.getByTestId('presented-files')
+  expect(card.textContent).toContain('cancion.mp3')
+  expect(card.textContent).toContain('versión final')
+  expect(card.textContent).toContain('2 elementos')
+  expect(card.querySelector('[data-present-kind="audio"] a')?.getAttribute('data-file-path')).toBe('C:/out/cancion.mp3')
+  expect(screen.getByTestId('speech-setup').textContent).toContain('Instalarlo en Ajustes → Dictado')
 })

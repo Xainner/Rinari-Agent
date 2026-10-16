@@ -1,4 +1,4 @@
-import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem } from './types'
+import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem, PresentTimelineItem } from './types'
 
 export const turnIsActive = (status: TurnTimeline['status']) => ['running', 'approval', 'cancelling'].includes(status)
 export const pendingApproval = (item: TimelineItem): item is ApprovalTimelineItem => item.type === 'approval' && ['pending', 'resolving'].includes(item.status)
@@ -47,6 +47,8 @@ export function projectActivity(timeline: TurnTimeline) {
   // Propuestas y recuerdos: tarjetas propias, también desde un subagente.
   const memories: MemoryTimelineItem[] = []
   const skills: SkillTimelineItem[] = []
+  // Lo que Rinari entregó con file.present (#35): a la vista siempre.
+  const presented: PresentTimelineItem[] = []
   const segments: ActivitySegment[] = [{ id: 'initial', items: [], publicTexts: [] }]
   const actions = new Set<string>()
   const incidents = new Set<string>()
@@ -72,9 +74,13 @@ export function projectActivity(timeline: TurnTimeline) {
       if (!skills.some((skill) => skill.id === item.id)) skills.push(item)
       return null
     }
+    if (item.type === 'present') {
+      if (!presented.some((present) => present.id === item.id)) presented.push(item)
+      return null
+    }
     if (item.type === 'question' && item.request.status === 'pending') return ownerActive ? null : { ...item, request: { ...item.request, status: 'expired' } }
     // El modelo ignoró el razonamiento elegido o no ve imágenes: aviso siempre visible.
-    if ((item.type === 'system' && (item.kind === 'reasoning_dropped' || item.kind === 'model_fallback' || item.kind === 'protocol_learned')) || (item.type === 'vision' && item.fallback === 'without_images')) {
+    if ((item.type === 'system' && (item.kind === 'reasoning_dropped' || item.kind === 'model_fallback' || item.kind === 'protocol_learned' || item.kind === 'speech_setup')) || (item.type === 'vision' && item.fallback === 'without_images')) {
       const key = (notice: TimelineItem) => `${notice.type}:${notice.type === 'system' ? notice.kind : ''}`
       if (!notices.some((notice) => key(notice) === key(item))) notices.push(item)
       return null
@@ -110,7 +116,7 @@ export function projectActivity(timeline: TurnTimeline) {
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }
-  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, final, provisional, actions: actions.size, incidents: incidents.size }
+  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, presented, final, provisional, actions: actions.size, incidents: incidents.size }
 }
 
 /** Active identities win over the last row or output timestamp. Token/stdout updates cannot rotate the header. */

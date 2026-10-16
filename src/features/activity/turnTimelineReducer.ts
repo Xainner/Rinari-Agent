@@ -1,18 +1,7 @@
 import type { ChatMessage, PendingApproval, TurnStopReason } from '../../types'
 import { mergeTokenUsage, newestUsage, legacyTokenUsage } from './tokenUsage'
 import type { EngineEventMsg, MessageOrigin, TimelineTurn, TurnChangedFile } from '../../services/engine'
-import type {
-  ApprovalTimelineItem,
-  ModelChange,
-  ModelLabel,
-  SkillSimilar,
-  TimelineItem,
-  TimelineStatus,
-  ToolTimelineItem,
-  ToolPresentation,
-  TurnTimeline,
-  TurnTimelineState,
-} from './types'
+import type { ApprovalTimelineItem, ModelChange, ModelLabel, SkillSimilar, TimelineItem, TimelineStatus, ToolTimelineItem, ToolPresentation, TurnTimeline, TurnTimelineState, PresentedFile } from './types'
 
 // Releen la lista de sesiones. Todo final de turno cuenta (también fallido o
 // cancelado), y `session.renamed` trae el título automático en cuanto el
@@ -90,6 +79,8 @@ function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('memory.candidate.')) return `memory:candidate:${payload.candidate_id}`
   if (event === 'memory.remembered') return `memory:remembered:${payload.memory_id}`
   if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return `skill:${payload.name}`
+  if (event === 'file.presented') return `present:${payload.present_id}`
+  if (event === 'speech.setup_needed') return `speech-setup:${payload.reason}`
   if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
   if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
@@ -339,6 +330,15 @@ function mergeEventItem(
   }
   if (event.startsWith('memory.')) return mergeMemoryItem(current, event, payload, id, activitySeq, occurredAt)
   if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return mergeSkillItem(current, event, payload, id, activitySeq, occurredAt)
+  if (event === 'file.presented') {
+    // Lo que Rinari entregó a propósito (#35).
+    const files = Array.isArray(payload.items) ? payload.items.filter((file): file is PresentedFile => Boolean(file) && typeof file === 'object' && typeof (file as PresentedFile).name === 'string') : []
+    return { id, type: 'present', activitySeq, occurredAt, files }
+  }
+  if (event === 'speech.setup_needed') {
+    // Rinari quiso escuchar un audio sin el motor del dictado (#36).
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'speech_setup', label: text(payload.file), status: text(payload.reason) }
+  }
   if (event === 'steer.applied') {
     return {
       id,
@@ -903,6 +903,8 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event === 'skill.proposal.resolved' ||
     event.event === 'provider.reasoning.dropped' ||
     event.event === 'model.fallback' ||
-    event.event === 'provider.protocol.learned'
+    event.event === 'provider.protocol.learned' ||
+    event.event === 'file.presented' ||
+    event.event === 'speech.setup_needed'
   return relevant ? { type: 'engine/event', event, now } : null
 }

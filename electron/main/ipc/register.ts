@@ -261,12 +261,19 @@ function assertNotification(value: unknown): SystemNotificationRequest {
 }
 
 /** La ruta no se valida aquí: la valida el Engine antes de abrirla. */
+/** Una ruta vacía nunca llega al Engine (#67): el renderer dice «Este enlace no apunta a un archivo». */
+function assertNonEmptyPath(value: unknown): string {
+  const path = assertString(value, 'path', 4096)
+  if (!path.trim()) throw new ValidationError('path must not be empty')
+  return path
+}
+
 function assertOpenExternal(value: unknown): OpenExternalFileRequest {
   if (!value || typeof value !== 'object') throw new ValidationError('request must be an object')
   const raw = value as Record<string, unknown>
   return {
     session_id: assertString(raw.session_id, 'session_id', 128),
-    path: assertString(raw.path, 'path', 4096),
+    path: assertNonEmptyPath(raw.path),
     turn_id: raw.turn_id === undefined || raw.turn_id === null ? undefined : assertString(raw.turn_id, 'turn_id', 128),
   }
 }

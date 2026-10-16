@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill' | 'present'
   activitySeq: number
   occurredAt: number
 }
@@ -155,7 +155,7 @@ export interface VerificationTimelineItem extends TimelineItemBase {
 
 export interface SystemTimelineItem extends TimelineItemBase {
   type: 'system'
-  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped' | 'model_fallback' | 'protocol_learned'
+  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped' | 'model_fallback' | 'protocol_learned' | 'speech_setup'
   status?: string
   label?: string
 }
@@ -246,7 +246,27 @@ export interface SkillTimelineItem extends TimelineItemBase {
   turnedOn?: string[]
 }
 
+/** Un archivo, carpeta o página que Rinari entregó con `file.present` (#35). */
+export interface PresentedFile {
+  kind: string
+  name: string
+  path?: string
+  uri?: string
+  url?: string
+  mime?: string
+  size_bytes?: number
+  caption?: string
+  entry_count?: number
+  entries?: string[]
+}
+
+export interface PresentTimelineItem extends TimelineItemBase {
+  type: 'present'
+  files: PresentedFile[]
+}
+
 export type TimelineItem =
+  | PresentTimelineItem
   | MemoryTimelineItem
   | SkillTimelineItem
   | SteerTimelineItem

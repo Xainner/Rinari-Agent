@@ -2630,6 +2630,7 @@ export const en: Record<I18nKey, string> = {
   'context.reportedByProvider': 'reported by the provider',
   'context.usedPercent': '{n}% used',
   'context.resets': 'resets {date}',
+  'context.resetDone': 'Reset · updating…',
   'context.details': 'View detailed usage',
   'sidebar.identityMenu': 'Rinari and profiles',
   'sidebar.identityIdle': 'Ready to work',

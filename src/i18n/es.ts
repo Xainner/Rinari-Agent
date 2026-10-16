@@ -2648,6 +2648,7 @@ export const es = {
   'context.reportedByProvider': 'informados por el proveedor',
   'context.usedPercent': '{n} % usado',
   'context.resets': 'se reinicia {date}',
+  'context.resetDone': 'Restablecido · actualizando…',
   'context.details': 'Ver uso detallado',
   'sidebar.identityMenu': 'Rinari y perfiles',
   'sidebar.identityIdle': 'Lista para trabajar',

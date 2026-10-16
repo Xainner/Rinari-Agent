@@ -1173,6 +1173,22 @@
       "callers": []
     },
     {
+      "command": "repo_pr_create",
+      "kind": "engine",
+      "method": "repo.pr.create",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "repo_status",
+      "kind": "engine",
+      "method": "repo.status",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "resume_settings_get",
       "kind": "engine",
       "method": "resume.settings.get",
@@ -1534,6 +1550,15 @@
       "method": "session.resume.now",
       "manual": false,
       "callers": []
+    },
+    {
+      "command": "session_summary",
+      "kind": "engine",
+      "method": "session.summary",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "session_timeline",
@@ -2048,10 +2073,10 @@
     }
   ],
   "summary": {
-    "commands": 244,
-    "engine_backed": 238,
+    "commands": 247,
+    "engine_backed": 241,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 79
+    "without_callers": 80
   }
 }

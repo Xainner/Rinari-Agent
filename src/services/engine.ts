@@ -17,7 +17,7 @@ import type {
   PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, SessionResume } from '../types/protocol.generated'
+import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -985,6 +985,29 @@ export const engineApi = {
       auxiliary: 'auxiliary' in changes ? changes.auxiliary ?? '' : undefined,
       auxiliary_compaction: changes.auxiliary_compaction,
     }),
+  /**
+   * The conversation's repository for «Resumen» (plan 0.4.0 #82), read-only.
+   * Git answers now; with `remote_pending` the GitHub part (gh, PRs, checks)
+   * follows as `repo.status.updated` with the same shape.
+   */
+  repoStatus: (sessionId: string, refresh?: boolean) =>
+    platform().command<RepoStatus & { session_id: string }>('repo_status', { sessionId, refresh: refresh ?? null }),
+  /**
+   * Open a pull request with gh after the owner confirmed. Checks that need no
+   * network fail at once (NOT_PUSHED, UNPUSHED_COMMITS, NOT_GITHUB…); gh runs
+   * in the background and ends with `repo.pr.created` {job_id, url, number}
+   * or `repo.pr.failed` {job_id, error}.
+   */
+  repoPrCreate: (sessionId: string, input: { title: string; base: string; body?: string }) =>
+    platform().command<{ status: 'started'; job_id: string; session_id: string }>('repo_pr_create', {
+      sessionId,
+      title: input.title,
+      base: input.base,
+      body: input.body ?? '',
+    }),
+  /** Sources, results, connectors and background work (#82); `session.summary.changed` says when to read again. */
+  sessionSummary: (sessionId: string) =>
+    platform().command<ConversationSummary>('session_summary', { sessionId }),
   resumeSettings: () =>
     platform().command<{ auto_resume_on_limits: 'ask' | 'always' | 'never' }>('resume_settings_get'),
   setResumeSettings: (mode: 'ask' | 'always' | 'never') =>

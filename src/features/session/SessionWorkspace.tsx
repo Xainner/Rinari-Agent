@@ -22,6 +22,7 @@ import type { RuntimeStore } from '../engine/runtimeStore'
 import { useSessionTimelines } from '../engine/sessionSelectors'
 import { sessionAgents } from '../agents/AgentsPanel'
 import { presentedChangeSets } from '../activity/changeSetPresentation'
+import { sessionPlans } from '../plan/planModel'
 import { useAgentRunningCount } from '../terminal/agentTab'
 import SessionDock from './SessionDock'
 import SummaryPanel from '../summary/SummaryPanel'
@@ -250,7 +251,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
 
   return (
     <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
-      {runtime && <TimelineSignals store={runtime} sessionId={sessionId} />}
+      {runtime && <TimelineSignals store={runtime} sessionId={sessionId} focused={focused} />}
       {/* Solo la sesión destino de la barra de título pide su flujo. */}
       {focused && flowSupported && <FlowSignals sessionId={sessionId} />}
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
@@ -316,9 +317,18 @@ function FlowSignals({ sessionId }: { sessionId: string }) {
 }
 
 /** Agentes trabajando y archivos cambiados en el último turno con cambios, para sus botones. */
-function TimelineSignals({ store, sessionId }: { store: RuntimeStore; sessionId: string }) {
+function TimelineSignals({ store, sessionId, focused }: { store: RuntimeStore; sessionId: string; focused: boolean }) {
   const timelines = useSessionTimelines(store, sessionId)
   const publish = useDockSignalsStore((state) => state.publish)
+  const plans = sessionPlans(timelines).length
+  // Cada vez que termina un plan, su vista se abre sola (#55); no al abrir una conversación que ya los tenía.
+  const seenPlans = useRef<number | null>(null)
+  useEffect(() => {
+    const previous = seenPlans.current
+    seenPlans.current = plans
+    if (previous !== null && plans > previous && focused) useSessionDockStore.getState().openView(sessionId, 'plan')
+  }, [plans, focused, sessionId])
+  useEffect(() => { publish(sessionId, { plans }) }, [publish, sessionId, plans])
   const agents = sessionAgents(timelines).filter((entry) => entry.live).length
   let changes = 0
   let latestAt = -Infinity

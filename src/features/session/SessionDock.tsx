@@ -14,6 +14,7 @@ import TasksPanel from '../workspace/TasksPanel'
 import VerificationPanel from '../workspace/VerificationPanel'
 import InsightPanel from '../workspace/InsightPanel'
 import FlowView from '../flow/FlowView'
+import PlanView from '../plan/PlanView'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import {
   DOCK_VIEWS,
@@ -514,6 +515,8 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
       )
     case 'flow':
       return <FlowView sessionId={sessionId} embedded />
+    case 'plan':
+      return <PlanView sessionId={sessionId} />
     case 'tasks':
       return path === null ? noPath : <div className="dock-scroll"><TasksPanel key={path} path={path} /></div>
     case 'verification':

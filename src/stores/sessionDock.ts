@@ -11,12 +11,13 @@ import { create } from 'zustand'
  * `webContentsId`, grants, `busy`, handles CDP ni generaciones: nada de eso
  * es autoridad recuperable.
  */
-export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'tasks' | 'verification' | 'insight'
+export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan' | 'tasks' | 'verification' | 'insight'
 /** Las vistas con botón propio en la barra de título, en su orden. */
 export const PRIMARY_VIEWS: readonly DockView[] = ['browser', 'terminal', 'files', 'changes', 'agents', 'flow']
 /** Las que van en «Más»; cuentan para el límite como las demás. */
 export const MORE_VIEWS: readonly DockView[] = ['tasks', 'verification', 'insight']
-export const DOCK_VIEWS: readonly DockView[] = [...PRIMARY_VIEWS, ...MORE_VIEWS]
+/** La vista «Plan» (#55) tiene botón solo cuando la conversación tiene un plan. */
+export const DOCK_VIEWS: readonly DockView[] = [...PRIMARY_VIEWS, 'plan', ...MORE_VIEWS]
 export const MAX_VIEWS = 4
 
 /** Nombres de antes (una superficie a la vez, Workspace con pestañas): se aceptan al revelar. */

@@ -39,7 +39,8 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   const openView = useSessionDockStore((state) => state.openView)
   const [replace, setReplace] = useState<{ view: DockView; rect: DOMRect | undefined } | null>(null)
   const group = useRef<HTMLDivElement>(null)
-  const available = PRIMARY_VIEWS.filter((view) => view !== 'terminal' || terminalEnabled)
+  // «Plan» se suma a los botones solo cuando la conversación tiene un plan (#55).
+  const available = [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : [])].filter((view) => view !== 'terminal' || terminalEnabled)
   const shown = (view: DockView) => layout.visible && !layout.summary && layout.views.includes(view)
   const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
   const summaryOpen = layout.visible && layout.summary

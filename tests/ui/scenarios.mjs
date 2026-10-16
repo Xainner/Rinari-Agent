@@ -132,6 +132,17 @@ export const scenarios = {
       ],
     }, laneOf),
   },
+  'plan-panel': {
+    title: 'Plan: al terminar un turno PLAN la vista Plan del panel lateral se abre sola, con su botón',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Plan de tarjetas' })),
+      main: [
+        { text: ['# Tarjetas regalo: venta en caja', '', 'Vender tarjetas desde la caja y guardar el saldo.', '', '## Pasos', '1. Crear el modelo GiftCard.', '2. Añadir POST /api/tarjetas.', '3. Pantalla de venta.', '', '## Pruebas', '- Saldo inicial correcto.'].join('\n') },
+        { text: 'EXTRA' },
+      ],
+    }, laneOf),
+  },
   'skill-install': {
     title: 'Instalar skills: varias a la vez con casillas, progreso, chips por fila y confirmación de la que trae avisos',
     phases: ['exercise'],

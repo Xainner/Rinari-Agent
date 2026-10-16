@@ -142,7 +142,8 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
   if (plans.length > 0 || checklist) {
     const done = checklist?.items.filter((item) => item.status === 'completed').length ?? 0
     cards.plan = (
-      <SummaryCard id="plan" icon={<ListChecks size={14} />} title={t('summary.plan.title')} meta={checklist ? t('summary.plan.steps', { done, total: checklist.items.length }) : null} prefs={prefs} onPrefs={update}>
+      <SummaryCard id="plan" icon={<ListChecks size={14} />} title={t('summary.plan.title')} meta={checklist ? t('summary.plan.steps', { done, total: checklist.items.length }) : null}
+        onOpen={plans.length > 0 ? () => openView(sessionId, 'plan') : undefined} openLabel={t('summary.plan.open')} prefs={prefs} onPrefs={update}>
         {plans.length > 0 && <p className="summary-line">{t(plans.length === 1 ? 'summary.plan.oneplan' : 'summary.plan.plans', { n: plans.length })}</p>}
         {checklist && (
           <ul className="summary-list">

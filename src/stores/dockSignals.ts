@@ -16,9 +16,11 @@ export interface DockSignals {
   agents: number
   flowNeedsYou: boolean
   filesNew: boolean
+  /** Planes terminados en la conversación: sin ninguno, la vista «Plan» no tiene botón (#55). */
+  plans: number
 }
 
-export const EMPTY_SIGNALS: DockSignals = { browser: null, terminal: 0, changes: 0, agents: 0, flowNeedsYou: false, filesNew: false }
+export const EMPTY_SIGNALS: DockSignals = { browser: null, terminal: 0, changes: 0, agents: 0, flowNeedsYou: false, filesNew: false, plans: 0 }
 
 interface DockSignalsState {
   bySession: Record<string, DockSignals>

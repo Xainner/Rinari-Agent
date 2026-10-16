@@ -149,6 +149,12 @@ scenario(async () => {
   await settleAnimations()
   const playingHeight = await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-player').getBoundingClientRect().height`)
   assert.ok(Math.abs(playingHeight - idleHeight) <= 1, `audio row ${idleHeight}px idle vs ${playingHeight}px playing`)
+  // Rinari's own player (F): no Chromium controls, the real waveform (decoded once) as the progress bar.
+  const AUDIO = `${CARD} [data-present-kind="audio"]`
+  assert.equal(await evaluate(`document.querySelector('${AUDIO} audio').controls`), false, 'no native audio controls')
+  await wait(`document.querySelector('${AUDIO} .audio-player')?.dataset.wave === 'real'`, 15_000)
+  await wait(`document.querySelectorAll('${AUDIO} .audio-wave i[data-played]').length > 0 || document.querySelector('${AUDIO} audio').ended`, 15_000)
+  await screenshot('audio-player')
 
   // The CSV opens in «Archivos».
   await evaluate(`document.querySelector('${CARD} [data-present-kind="sheet"] .present-thumb').scrollIntoView({ block: 'center' })`)
@@ -157,5 +163,5 @@ scenario(async () => {
   await wait(`document.querySelector('[data-testid="session-dock"]')?.innerText.includes('ventas.csv')`)
   await settleAnimations()
   await screenshot('opened')
-  report({ passed: ['each delivery by kind: thumbnail, rows, lines, page or icon, player, entries, page', 'audio plays in the card', 'CSV opens in Archivos'] })
+  report({ passed: ['each delivery by kind: thumbnail, rows, lines, page or icon, player, entries, page', 'audio plays in the card with its own player and real waveform', 'CSV opens in Archivos'] })
 }, { width: 1500, height: 960 })

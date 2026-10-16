@@ -2384,6 +2384,24 @@ html[data-motion='reduced'] .provider-card-chevron, html[data-motion='reduced'] 
 /* El audio ocupa lo mismo parado que sonando: el reproductor nativo mide 54 px, y si la fila creciera al pulsar ▶ la conversación (pegada al final) subiría todo lo de encima bajo el ratón. */
 .present-player[data-thumb='audio'] { display: flex; min-height: calc(54px + 17px); align-items: center; }
 .present-player .media-player-audio { height: 54px; }
+.present-player[data-thumb='audio'] > .audio-player { flex: 1 1 auto; }
+/* El reproductor de audio de Rinari (F): ▶, la onda (real o decorativa) que es la barra de progreso, el tiempo, silencio y velocidad. */
+.audio-player { display: flex; width: 100%; min-width: 0; min-height: 54px; align-items: center; gap: 10px; }
+.audio-play { display: grid; width: 34px; height: 34px; flex-shrink: 0; place-items: center; border: 1px solid rgb(167 139 250 / 0.4); border-radius: 999px; color: var(--violet-300); background: rgb(147 88 255 / 0.16); transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.audio-play:hover { background: rgb(147 88 255 / 0.28); transform: scale(1.06); }
+.audio-player:not([data-playing]) .audio-play svg { margin-left: 2px; }
+.audio-player[data-playing] .audio-play { color: #fff; background: linear-gradient(135deg, var(--violet-500), var(--magenta-400)); border-color: transparent; box-shadow: 0 0 16px rgb(147 88 255 / 0.4); }
+.audio-wave { position: relative; display: flex; height: 30px; min-width: 0; flex: 1 1 auto; align-items: center; justify-content: space-between; gap: 2px; overflow: hidden; border-radius: 4px; cursor: pointer; touch-action: none; outline: none; }
+.audio-wave:focus-visible { box-shadow: 0 0 0 2px rgb(167 139 250 / 0.5); }
+.audio-wave i { width: 3px; height: var(--h); flex-shrink: 0; border-radius: 2px; background: var(--line-3); transition: height 0.32s var(--ease-out), background-color var(--dur-fast); }
+.audio-wave i[data-played] { background: var(--violet-300); }
+.audio-player[data-wave='decorative'] .audio-wave i:not([data-played]) { background: color-mix(in srgb, var(--line-3) 70%, transparent); }
+.audio-time { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.audio-time > span { color: var(--text-subtle); }
+.audio-button { display: grid; min-width: 26px; height: 26px; flex-shrink: 0; place-items: center; padding: 0 5px; border-radius: 7px; color: var(--text-subtle); font-family: var(--font-mono); font-size: 11px; transition: color var(--dur-fast), background var(--dur-fast); }
+.audio-button:hover { color: var(--text); background: var(--bg-hover); }
+.audio-button[aria-pressed='true'] { color: var(--warning); }
+@container (max-width: 360px) { .audio-time > span, .audio-rate { display: none; } }
 .present-player[data-thumb='video'][data-idle] { aspect-ratio: 16 / 9; max-height: 220px; justify-content: center; background: radial-gradient(80% 80% at 50% 45%, rgb(147 88 255 / 0.14), transparent 70%), var(--bg-inset); }
 .present-play { display: grid; width: 34px; height: 34px; flex-shrink: 0; place-items: center; border: 1px solid rgb(167 139 250 / 0.4); border-radius: 999px; color: var(--violet-300); background: rgb(147 88 255 / 0.16); transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 .present-play svg { margin-left: 2px; }
@@ -2403,6 +2421,8 @@ html[data-motion='reduced'] .provider-card-chevron, html[data-motion='reduced'] 
 .present-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 2px; padding: 2px; border-radius: var(--r-sm); background: rgb(9 7 16 / 0.78); box-shadow: inset 0 0 0 1px var(--line-1); opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
 .present-tile:hover .present-actions, .present-tile:focus-within .present-actions { opacity: 1; }
 @media (hover: none) { .present-actions { opacity: 1; } }
+/* En el audio, las acciones van en la fila del nombre: arriba taparían silencio y velocidad del reproductor. */
+[data-present-kind='audio'] .present-actions { top: auto; bottom: 7px; }
 @media (prefers-reduced-motion: reduce) { .present-thumb[data-state='loading']::after { animation: none; } .present-thumb img, .present-play { transition: none; } .present-thumb:hover img { transform: none; } }
 html[data-motion='reduced'] .present-thumb[data-state='loading']::after { animation: none; }
 html[data-motion='reduced'] .present-thumb img, html[data-motion='reduced'] .present-play { transition: none; }

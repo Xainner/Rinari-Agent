@@ -2547,6 +2547,8 @@ export const en: Record<I18nKey, string> = {
   'viewer.zoomIn': 'Zoom in',
   'viewer.zoomOut': 'Zoom out',
   'viewer.fit': 'Fit',
+  'viewer.expand': 'Expand the window',
+  'viewer.shrink': 'Fit the window to the image',
   'viewer.openInFiles': 'Open in Files',
   'viewer.loading': 'Loading the image…',
   'viewer.retry': 'Retry',

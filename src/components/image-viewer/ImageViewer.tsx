@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Check, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FolderOpen, LoaderCircle, Maximize, Minus, PanelRightOpen, Plus, RotateCcw } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FolderOpen, LoaderCircle, Maximize, Maximize2, Minimize2, Minus, PanelRightOpen, Plus, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
@@ -36,6 +36,36 @@ const PAN_STEP = 80
 
 type Size = { width: number; height: number }
 
+/** Marco alrededor de la imagen ajustada, por lado. */
+const FRAME = 24
+/** El borde del diálogo (1 px por lado). */
+const BORDER = 2
+/** Lo menos que mide la ventana: caben el título, el zoom y las acciones. */
+const MIN_WIDTH = 600
+const MIN_STAGE_HEIGHT = 240
+/** Mientras carga la primera imagen. */
+const LOADING_SIZE: Size = { width: 640, height: 420 }
+
+/** El sitio máximo de la ventana del visor dentro de la de la app. */
+export function viewerMaxSize(viewport: Size): Size {
+  const narrow = viewport.width <= 720
+  return { width: Math.max(320, viewport.width - (narrow ? 32 : 96)), height: Math.max(240, viewport.height - (narrow ? 48 : 72)) }
+}
+
+/**
+ * La ventana ceñida a la imagen (ronda 1434, G): la imagen ajustada sin
+ * ampliarla (nunca más del 100 %), su marco y la barra encima, con un mínimo
+ * para la barra y para las imágenes pequeñas. Devuelve también la escala a la
+ * que se ve, que es la de «Ajustar» en esa ventana.
+ */
+export function fittedViewer(natural: Size, max: Size, bar: number): { size: Size; scale: number } {
+  const room = { width: max.width - 2 * FRAME - BORDER, height: max.height - bar - 2 * FRAME - BORDER }
+  const scale = Math.max(0.01, Math.min(1, room.width / natural.width, room.height / natural.height))
+  const width = Math.min(max.width, Math.max(MIN_WIDTH, Math.ceil(natural.width * scale) + 2 * FRAME + BORDER))
+  const height = Math.min(max.height, Math.max(MIN_STAGE_HEIGHT, Math.ceil(natural.height * scale) + 2 * FRAME) + bar + BORDER)
+  return { size: { width, height }, scale }
+}
+
 /**
  * El visor de imágenes de Rinari (plan 0.4.0 #77): uno solo para el composer,
  * los mensajes, las imágenes que ve Rinari y Archivos. Casi toda la ventana;
@@ -44,6 +74,10 @@ type Size = { width: number; height: number }
  * Archivos, en el explorador o fuera; y, con OCR, la pestaña «Texto
  * reconocido». Entra desde la miniatura y sale con el diálogo (sin
  * animación con movimiento reducido). Esc cierra.
+ *
+ * La ventana se ciñe a la imagen; el zoom la amplía dentro (la ventana no
+ * cambia) y «Expandir» la lleva al tamaño máximo, y de vuelta. Las flechas
+ * van fuera, a los lados de la ventana, para no tapar la imagen.
  */
 export default function ImageViewer({
   open,
@@ -75,6 +109,15 @@ export default function ImageViewer({
   const [stage, setStage] = useState<Size | null>(null)
   const [scale, setScale] = useState<number | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [expanded, setExpanded] = useState(false)
+  const [viewport, setViewport] = useState<Size>(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  const [bar, setBar] = useState(54)
+  // Ref de estado: el diálogo pinta su contenido en un portal un momento después de abrirse.
+  const [barElement, setBarElement] = useState<HTMLDivElement | null>(null)
+  // Al pasar a otra imagen, mientras carga, la ventana conserva el tamaño de la anterior.
+  const lastSize = useRef<Size | null>(null)
+  // El primer tamaño se pone sin transición (la entrada desde la miniatura mide el final); después, transiciona.
+  const [resizable, setResizable] = useState(false)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
   const frameRef = useRef<HTMLDivElement | null>(null)
@@ -108,8 +151,38 @@ export default function ImageViewer({
     return () => observer.disconnect()
   }, [open, tab])
 
-  // Sin escenario medido todavía, se ajusta al 100 %.
-  const fit = natural && stage && stage.width > 48 && stage.height > 48 ? Math.min(1, (stage.width - 48) / natural.width, (stage.height - 48) / natural.height) : 1
+  useEffect(() => {
+    if (!open) return
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [open])
+  useLayoutEffect(() => {
+    const element = barElement
+    if (!open || !element) return
+    const measure = () => { if (element.offsetHeight > 0) setBar(element.offsetHeight) }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [open, barElement])
+  useEffect(() => {
+    if (!open) { setExpanded(false); setResizable(false); lastSize.current = null; return }
+    if (!natural || resizable) return
+    const frame = requestAnimationFrame(() => setResizable(true))
+    return () => cancelAnimationFrame(frame)
+  }, [open, natural, resizable])
+
+  const max = viewerMaxSize(viewport)
+  const fitted = natural ? fittedViewer(natural, max, bar) : null
+  if (fitted && !expanded) lastSize.current = fitted.size
+  const windowSize = expanded ? max : fitted?.size ?? lastSize.current ?? { width: Math.min(max.width, LOADING_SIZE.width), height: Math.min(max.height, LOADING_SIZE.height) }
+  const textSize = { width: Math.max(windowSize.width, 520), height: Math.max(windowSize.height, 360) }
+  // «Ajustar»: ceñida, la escala de la ventana ceñida; expandida, la del escenario medido.
+  const fit = !natural ? 1
+    : !expanded && fitted ? fitted.scale
+      : stage && stage.width > 2 * FRAME && stage.height > 2 * FRAME ? Math.min(1, (stage.width - 2 * FRAME) / natural.width, (stage.height - 2 * FRAME) / natural.height) : 1
   const effective = scale ?? fit
   const zoomed = effective > fit + 0.001
 
@@ -217,10 +290,15 @@ export default function ImageViewer({
         aria-describedby={undefined}
         className="image-viewer"
         data-testid="image-viewer"
+        data-expanded={expanded || undefined}
+        data-resizable={resizable || undefined}
+        style={{ ...(tab === 'text' ? textSize : windowSize), '--viewer-bar-half': `${bar / 2}px` } as React.CSSProperties}
         onKeyDown={onKeyDown}
+        // Las flechas viven fuera de la ventana: pulsarlas no es «pulsar fuera».
+        onPointerDownOutside={(event) => { if ((event.target as HTMLElement | null)?.closest?.('.image-viewer-nav')) event.preventDefault() }}
         onCloseAutoFocus={onCloseFocus ? (event) => { event.preventDefault(); onCloseFocus() } : undefined}
       >
-        <div className="image-viewer-bar">
+        <div ref={setBarElement} className="image-viewer-bar">
           <div className="min-w-0 flex-1">
             <DialogTitle className="image-viewer-title">{image.name}</DialogTitle>
             <DialogDescription className="image-viewer-detail">
@@ -252,6 +330,9 @@ export default function ImageViewer({
             {image.onOpenInFiles && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('viewer.openInFiles')} title={t('viewer.openInFiles')} onClick={() => { image.onOpenInFiles?.(); onClose() }}><PanelRightOpen size={14} aria-hidden="true" /></button>}
             {image.onReveal && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('files.revealInFolder')} title={t('files.revealInFolder')} onClick={image.onReveal}><FolderOpen size={14} aria-hidden="true" /></button>}
             {image.onOpenExternal && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('files.openExternally')} title={t('files.openExternally')} onClick={image.onOpenExternal}><ExternalLink size={14} aria-hidden="true" /></button>}
+            <button type="button" className="btn btn-quiet btn-icon btn-sm image-viewer-expand" aria-label={expanded ? t('viewer.shrink') : t('viewer.expand')} title={expanded ? t('viewer.shrink') : t('viewer.expand')} aria-pressed={expanded} onClick={() => { setExpanded((value) => !value); setScale(null); setPan({ x: 0, y: 0 }) }}>
+              {expanded ? <Minimize2 size={14} aria-hidden="true" /> : <Maximize2 size={14} aria-hidden="true" />}
+            </button>
           </div>
         </div>
 
@@ -303,13 +384,13 @@ export default function ImageViewer({
                 <button type="button" className="btn btn-secondary btn-xs" onClick={() => setRetry((value) => value + 1)}><RotateCcw size={12} aria-hidden="true" /> {t('viewer.retry')}</button>
               </div>
             )}
-            {many && (
-              <>
-                <button type="button" className="image-viewer-nav is-prev" aria-label={t('viewer.previous')} title={t('viewer.previous')} onClick={() => go(-1)}><ChevronLeft size={20} aria-hidden="true" /></button>
-                <button type="button" className="image-viewer-nav is-next" aria-label={t('viewer.next')} title={t('viewer.next')} onClick={() => go(1)}><ChevronRight size={20} aria-hidden="true" /></button>
-              </>
-            )}
           </div>
+        )}
+        {many && (
+          <>
+            <button type="button" className="image-viewer-nav is-prev" aria-label={t('viewer.previous')} title={t('viewer.previous')} onClick={() => go(-1)}><ChevronLeft size={20} aria-hidden="true" /></button>
+            <button type="button" className="image-viewer-nav is-next" aria-label={t('viewer.next')} title={t('viewer.next')} onClick={() => go(1)}><ChevronRight size={20} aria-hidden="true" /></button>
+          </>
         )}
       </DialogContent>
     </Dialog>

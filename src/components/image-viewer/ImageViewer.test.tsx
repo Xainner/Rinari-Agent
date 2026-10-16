@@ -7,7 +7,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
-import ImageViewer, { type ViewerImage } from './ImageViewer'
+import ImageViewer, { fittedViewer, viewerMaxSize, type ViewerImage } from './ImageViewer'
 
 const host = vi.hoisted(() => ({ copy: vi.fn(async () => {}), save: vi.fn(async () => ({ saved: true })) }))
 vi.mock('../../platform', () => ({ platform: () => ({ images: host }) }))
@@ -116,4 +116,20 @@ it('sin archivo no ofrece copiar ni descargar', () => {
   render(<Harness images={images(1)} />)
   expect(screen.queryByRole('button', { name: 'Copiar imagen' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Descargar' })).toBeNull()
+})
+
+// Ronda 1434 (G): la ventana se ciñe a la imagen ajustada, con su marco y la barra encima.
+it('la ventana del visor se ciñe a la imagen: 16:9, muy pequeña y muy alta', () => {
+  const max = viewerMaxSize({ width: 1500, height: 900 })
+  expect(max).toEqual({ width: 1404, height: 828 })
+  const wide = fittedViewer({ width: 1920, height: 1080 }, max, 54)
+  // La limita el alto: sin fondo arriba ni abajo, y a los lados solo el marco.
+  expect(wide.size.height).toBe(828)
+  expect(wide.size.width).toBe(Math.ceil(1920 * wide.scale) + 48 + 2)
+  expect(wide.size.width).toBeLessThan(max.width)
+  // Pequeña: al 100 %, en una ventana pequeña (con el mínimo de la barra).
+  expect(fittedViewer({ width: 64, height: 64 }, max, 54)).toEqual({ size: { width: 600, height: 240 + 54 + 2 }, scale: 1 })
+  // Muy alta: la limita el alto, la ventana queda estrecha.
+  const tall = fittedViewer({ width: 1080, height: 8000 }, max, 54)
+  expect(tall.size).toEqual({ width: 600, height: 828 })
 })

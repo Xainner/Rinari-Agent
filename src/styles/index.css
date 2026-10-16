@@ -2131,15 +2131,19 @@ html[data-motion='reduced'] .act-thumb:hover { transform: none; }
 .attach-read-trigger:hover, .attach-read-trigger[data-state='open'] { color: var(--text); background: var(--bg-hover); }
 
 /* Visor de imágenes (#77): uno solo, casi toda la ventana. El margen deja ver el fondo para cerrar con un clic. */
-.r-dialog.image-viewer { display: flex; width: calc(100vw - 96px); max-width: none; height: calc(100vh - 72px); max-height: none; flex-direction: column; gap: 0; overflow: hidden; padding: 0; border-radius: var(--r-xl); }
-.image-viewer-bar { display: flex; min-width: 0; flex-shrink: 0; align-items: center; gap: 12px; padding: 10px 52px 10px 18px; border-bottom: 1px solid var(--line-1); }
+/* El visor se ciñe a la imagen: su tamaño lo pone el componente (ancho y alto en línea) y transiciona
+   al cambiar de imagen o al expandir. Sin overflow propio: las flechas viven fuera, a los lados. */
+.r-dialog.image-viewer { display: flex; width: calc(100vw - 96px); max-width: none; height: calc(100vh - 72px); max-height: none; flex-direction: column; gap: 0; overflow: visible; padding: 0; border-radius: var(--r-xl); }
+.r-dialog.image-viewer[data-resizable] { transition: width 0.22s var(--ease-out), height 0.22s var(--ease-out); }
+.image-viewer-expand[aria-pressed='true'] { color: var(--text); background: var(--bg-active); }
+.image-viewer-bar { border-radius: var(--r-xl) var(--r-xl) 0 0; display: flex; min-width: 0; flex-shrink: 0; align-items: center; gap: 12px; padding: 10px 52px 10px 18px; border-bottom: 1px solid var(--line-1); }
 .image-viewer-title { overflow: hidden; font-family: var(--font-sans); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .image-viewer-detail { overflow: hidden; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); text-overflow: ellipsis; white-space: nowrap; }
 .image-viewer-zoom { display: flex; flex-shrink: 0; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-inset); }
 .image-viewer-zoom .btn[aria-pressed='true'] { color: var(--text); background: var(--bg-active); }
 .image-viewer-percent { min-width: 46px; font-family: var(--font-mono); font-size: 11px; text-align: center; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .image-viewer-actions { display: flex; flex-shrink: 0; gap: 2px; }
-.image-viewer-stage { position: relative; min-height: 0; flex: 1 1 auto; overflow: hidden; background: repeating-conic-gradient(rgb(255 255 255 / 0.025) 0 25%, transparent 0 50%) 0 0 / 18px 18px, var(--bg-inset); cursor: zoom-in; touch-action: none; user-select: none; }
+.image-viewer-stage { position: relative; min-height: 0; flex: 1 1 auto; overflow: hidden; border-radius: 0 0 var(--r-xl) var(--r-xl); background: repeating-conic-gradient(rgb(255 255 255 / 0.025) 0 25%, transparent 0 50%) 0 0 / 18px 18px, var(--bg-inset); cursor: zoom-in; touch-action: none; user-select: none; }
 .image-viewer-stage[data-zoomed] { cursor: grab; }
 .image-viewer-stage[data-zoomed]:active { cursor: grabbing; }
 .image-viewer-frame { position: absolute; inset: 0; }
@@ -2150,10 +2154,14 @@ html[data-motion='reduced'] .act-thumb:hover { transform: none; }
 .image-viewer-error { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; font-size: 13px; text-align: center; color: var(--danger); }
 .image-viewer-nav { position: absolute; top: 50%; display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgb(167 139 250 / 0.3); border-radius: 999px; color: var(--text); background: rgb(16 12 27 / 0.72); box-shadow: var(--sh-2); translate: 0 -50%; opacity: 0.75; transition: opacity var(--dur-fast), background var(--dur-fast); }
 .image-viewer-nav:hover { opacity: 1; background: rgb(147 88 255 / 0.3); }
-.image-viewer-nav.is-prev { left: 16px; }
-.image-viewer-nav.is-next { right: 16px; }
-.image-viewer-text { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 18px 22px; }
-@media (max-width: 720px) { .r-dialog.image-viewer { width: calc(100vw - 32px); height: calc(100vh - 48px); } .image-viewer-bar { flex-wrap: wrap; } }
+/* Fuera de la ventana ceñida, a sus lados; expandida (o en una ventana estrecha) no hay sitio fuera y van dentro. */
+.image-viewer-nav.is-prev { left: -54px; }
+.image-viewer-nav.is-next { right: -54px; }
+.image-viewer[data-expanded] .image-viewer-nav.is-prev { left: 16px; }
+.image-viewer[data-expanded] .image-viewer-nav.is-next { right: 16px; }
+.image-viewer-nav { top: calc(50% + var(--viewer-bar-half, 27px)); }
+.image-viewer-text { min-height: 0; flex: 1 1 auto; overflow: auto; border-radius: 0 0 var(--r-xl) var(--r-xl); padding: 18px 22px; }
+@media (max-width: 720px) { .image-viewer-bar { flex-wrap: wrap; } .image-viewer-nav.is-prev { left: 12px; } .image-viewer-nav.is-next { right: 12px; } }
 @media (prefers-reduced-motion: reduce) { .image-viewer-img { transition: none; } }
 html[data-motion='reduced'] .image-viewer-img { transition: none; }
 

@@ -2565,6 +2565,8 @@ export const es = {
   'viewer.zoomIn': 'Acercar',
   'viewer.zoomOut': 'Alejar',
   'viewer.fit': 'Ajustar',
+  'viewer.expand': 'Expandir la ventana',
+  'viewer.shrink': 'Ceñir la ventana a la imagen',
   'viewer.openInFiles': 'Abrir en Archivos',
   'viewer.loading': 'Cargando la imagen…',
   'viewer.retry': 'Reintentar',

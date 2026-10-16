@@ -47,6 +47,25 @@ describe('checklist store', () => {
 })
 
 describe('ChecklistDock', () => {
+  it('#26: the inner scroll turns on only once open and off as soon as it closes', () => {
+    vi.useFakeTimers()
+    try {
+      useChecklistStore.getState().apply('s1', list('active', steps('completed', 'in_progress', 'pending')), false)
+      mount()
+      const body = document.querySelector('.checklist-body') as HTMLElement
+      expect(body.hasAttribute('data-settled')).toBe(false)
+      act(() => useChecklistStore.getState().setExpanded('s1', true))
+      expect(body.hasAttribute('data-open')).toBe(true)
+      expect(body.hasAttribute('data-settled')).toBe(false)
+      act(() => { vi.advanceTimersByTime(300) })
+      expect(body.hasAttribute('data-settled')).toBe(true)
+      act(() => useChecklistStore.getState().setExpanded('s1', false))
+      expect(body.hasAttribute('data-settled')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('#6: one step left is singular, two are plural, also when interrupted', async () => {
     mount()
     act(() => applyChecklistEvent({ session_id: 's1', checklist: list('open', steps('completed', 'pending')) }))

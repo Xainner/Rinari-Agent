@@ -40,6 +40,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
   const checklist = entry?.checklist ?? null
   const seen = useSeenStatuses(checklist)
   const finishedLive = useFinishedLive(checklist?.state ?? null)
+  const settled = useSettledOpen(expanded)
   if (!checklist) return null
 
   const { counts, state } = checklist
@@ -105,7 +106,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
           </button>
         )}
       </div>
-      <div id={bodyId} className="checklist-body" data-open={expanded || undefined} inert={!expanded || undefined}>
+      <div id={bodyId} className="checklist-body" data-open={expanded || undefined} data-settled={settled || undefined} inert={!expanded || undefined}>
         <div className="checklist-body-inner">
           {checklist.explanation && <p className="checklist-note">{checklist.explanation}</p>}
           <ol className="checklist-items">
@@ -206,4 +207,24 @@ function useSeenStatuses(checklist: Checklist | null): { arrived: Set<string>; c
     snapshot.current = new Map(checklist.items.map((item) => [item.id, item.status]))
   }
   return diff.current
+}
+
+/** Lo que dura abrir o cerrar la lista (`--dur-base`), con margen. */
+const BODY_TRANSITION_MS = 260
+
+/**
+ * Abierta y ya quieta (#26): el scroll interno solo se enciende al terminar
+ * de abrirse y se apaga en cuanto empieza a cerrarse, así la barra no aparece
+ * a mitad de la animación ni el contenido salta al cerrar. Termina también
+ * con un temporizador: sin animación (movimiento reducido) no llega
+ * `transitionend`.
+ */
+function useSettledOpen(expanded: boolean): boolean {
+  const [settled, setSettled] = useState(expanded)
+  useEffect(() => {
+    if (!expanded) { setSettled(false); return }
+    const timer = window.setTimeout(() => setSettled(true), BODY_TRANSITION_MS)
+    return () => window.clearTimeout(timer)
+  }, [expanded])
+  return settled
 }

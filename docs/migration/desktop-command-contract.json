@@ -2145,6 +2145,11 @@
           "name": "message",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "attachments",
+          "type": "Option<serde_json::Value>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -2160,6 +2165,11 @@
           "key": "message",
           "from": "message",
           "optional": false
+        },
+        {
+          "key": "attachments",
+          "from": "attachments",
+          "optional": true
         }
       ],
       "passthrough": null,
@@ -7783,6 +7793,82 @@
         {
           "key": "session_id",
           "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "turn_steer_update",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "steer_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer.update",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "steer_id",
+          "from": "steer_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "turn_steer_cancel",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "steer_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer.cancel",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "steer_id",
+          "from": "steer_id",
           "optional": false
         }
       ],

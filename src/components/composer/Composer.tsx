@@ -74,7 +74,7 @@ interface ComposerProps {
    * Mientras Rinari trabaja, Enter le da el mensaje en el turno en curso (lo
    * lee al terminar el paso actual). Sin esta prop el compositor espera.
    */
-  onSteer?: (text: string) => Promise<boolean>
+  onSteer?: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
   /** Tab mientras trabaja: el mensaje espera a que termine el turno. */
   onQueue?: (text: string) => Promise<boolean>
   models: ModelSummary[]
@@ -390,20 +390,28 @@ export default function Composer({
 
   const canSteer = isStreaming && Boolean(onSteer)
 
-  /** Mensaje durante el turno: ahora (guiar) o al terminar (cola). Solo texto. */
+  /**
+   * Mensaje durante el turno: ahora (guiar) o al terminar (cola). Al guiar,
+   * los adjuntos listos van con el texto (#54); a la cola, solo el texto.
+   */
   async function handleSteer(later: boolean) {
     const submissionSessionKey = draftKey
-    const content = useComposerStore.getState().getDraft(submissionSessionKey).text
-    const deliver = later ? onQueue : onSteer
-    if (!deliver || !content.trim() || isSubmitting) return
+    const draft = useComposerStore.getState().getDraft(submissionSessionKey)
+    const content = draft.text
+    const files = later ? [] : draft.attachments.filter((item) => item.status !== 'error' && item.status !== 'preparing')
+    if (later ? !onQueue : !onSteer) return
+    if ((!content.trim() && files.length === 0) || isSubmitting) return
     armSendReset()
     setTextFor(submissionSessionKey, '')
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
-      if (!(await deliver(content.trim()))) {
+      const delivered = later ? await onQueue!(content.trim()) : await onSteer!(content.trim(), files)
+      if (!delivered) {
         setTextFor(submissionSessionKey, content)
         cancelSendReset()
+      } else if (files.length) {
+        removeAttachmentsById(files.map((item) => item.id))
       }
     } catch {
       setTextFor(submissionSessionKey, content)

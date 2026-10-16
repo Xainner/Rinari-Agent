@@ -37,7 +37,7 @@ it('replaces Stop with steering only while there is text and restores it after s
   expect(screen.queryByRole('button', { name: 'Detener generación' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Enviar ahora, sin detenerla' }))
   await act(async () => {})
-  expect(onSteer).toHaveBeenCalledWith('Revisa también esto')
+  expect(onSteer).toHaveBeenCalledWith('Revisa también esto', [])
   expect(onSend).not.toHaveBeenCalled()
   expect(onStop).not.toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'Detener generación' })).toBeTruthy()

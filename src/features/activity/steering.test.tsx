@@ -65,8 +65,21 @@ describe('steering the running turn', () => {
   })
 })
 
+describe('editing or withdrawing an unread message (#54)', () => {
+  it('steer.updated changes the pending text and steer.cancelled removes it', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
+    state = turnTimelineReducer(state, { type: 'steer/sent', sessionId: 's1', turnId: 't1', steerId: 't1:steer_1', content: 'primero', now: NOW })
+    state = turnTimelineReducer(state, { type: 'steer/sent', sessionId: 's1', turnId: 't1', steerId: 't1:steer_2', content: 'segundo', now: NOW })
+    state = turnTimelineReducer(state, event('steer.updated', { ...ids, steer_id: 't1:steer_1', message: 'primero, corregido' }))
+    state = turnTimelineReducer(state, event('steer.cancelled', { ...ids, steer_id: 't1:steer_2' }))
+    const steers = state.timelines.t1.items.filter((item) => item.type === 'steer')
+    expect(steers).toHaveLength(1)
+    expect(steers[0]).toMatchObject({ content: 'primero, corregido', status: 'pending' })
+  })
+})
+
 describe('composer while Rinari works', () => {
-  const renderComposer = (props: { onSteer?: (text: string) => Promise<boolean>; onQueue?: (text: string) => Promise<boolean> }) =>
+  const renderComposer = (props: { onSteer?: (text: string, files?: import('../../types').AttachmentRef[]) => Promise<boolean>; onQueue?: (text: string) => Promise<boolean> }) =>
     render(<I18nProvider lang="es"><Composer placement="bottom" sessionId="s1" onSend={vi.fn()} isStreaming onStop={vi.fn()} {...props} models={[]} activeAlias="" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build" onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace" effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={vi.fn()} onSearchFiles={async () => ({ root: '/', files: [] })} /></I18nProvider>)
 
   it('Enter steers the running turn and Tab leaves it for later', async () => {
@@ -78,7 +91,7 @@ describe('composer while Rinari works', () => {
     expect(screen.getByRole('button', { name: 'Enviar ahora, sin detenerla' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Detener generación' })).toBeNull()
     fireEvent.keyDown(box, { key: 'Enter' })
-    await vi.waitFor(() => expect(onSteer).toHaveBeenCalledWith('solo los .py'))
+    await vi.waitFor(() => expect(onSteer).toHaveBeenCalledWith('solo los .py', []))
     expect(useComposerStore.getState().getDraft('s1').text).toBe('')
     expect(screen.getByRole('button', { name: 'Detener generación' })).toBeTruthy()
     fireEvent.change(box, { target: { value: 'luego los tests' } })
@@ -94,6 +107,17 @@ describe('composer while Rinari works', () => {
     fireEvent.keyDown(box, { key: 'Enter' })
     await vi.waitFor(() => expect(onSteer).toHaveBeenCalled())
     await vi.waitFor(() => expect(useComposerStore.getState().getDraft('s1').text).toBe('no se pierde'))
+  })
+
+  it('a message during the turn takes its ready files along and clears them (#54)', async () => {
+    const onSteer = vi.fn(async () => true)
+    useComposerStore.getState().addAttachmentFor('s1', { id: 'att_1', path: 'C:/shots/a.png', name: 'a.png', source: 'native', kind: 'image', status: 'ready' })
+    renderComposer({ onSteer })
+    const box = screen.getByRole('textbox', { name: /mensaje/i })
+    fireEvent.change(box, { target: { value: 'mira la captura' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await vi.waitFor(() => expect(onSteer).toHaveBeenCalledWith('mira la captura', [expect.objectContaining({ id: 'att_1' })]))
+    await vi.waitFor(() => expect(useComposerStore.getState().getDraft('s1').attachments).toHaveLength(0))
   })
 
   it('without steering support it only offers Stop', () => {

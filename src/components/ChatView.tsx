@@ -52,7 +52,7 @@ interface ChatViewProps {
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   onStop: () => void
   /** El Engine anuncia `turn_steering_v1`: escribir mientras trabaja la guía. */
-  onSteer?: (text: string) => Promise<boolean>
+  onSteer?: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
   onQueue?: (text: string) => Promise<boolean>
   /** Mensajes que esperan al final del turno, sobre el compositor. */
   queue?: ReactNode

@@ -1925,6 +1925,20 @@
       ]
     },
     {
+      "command": "turn_steer_cancel",
+      "kind": "engine",
+      "method": "session.turn.steer.cancel",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "turn_steer_update",
+      "kind": "engine",
+      "method": "session.turn.steer.update",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "usage_get",
       "kind": "engine",
       "method": "usage.get",
@@ -2073,10 +2087,10 @@
     }
   ],
   "summary": {
-    "commands": 247,
-    "engine_backed": 241,
+    "commands": 249,
+    "engine_backed": 243,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 80
+    "without_callers": 82
   }
 }

@@ -849,6 +849,17 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
     } else if (event === 'steer.returned') {
       // Lo que el turno no llegó a leer vuelve al compositor (useTurnRuntime).
       timeline = { ...timeline, items: timeline.items.filter((item) => item.type !== 'steer' || item.status !== 'pending') }
+    } else if (event === 'steer.cancelled') {
+      // Borrado antes de que Rinari lo leyera (#54).
+      timeline = { ...timeline, items: timeline.items.filter((item) => item.id !== `steer:${text(payload.steer_id)}`) }
+    } else if (event === 'steer.updated') {
+      // Editado antes de que Rinari lo leyera (#54).
+      timeline = {
+        ...timeline,
+        items: timeline.items.map((item) => item.type === 'steer' && item.id === `steer:${text(payload.steer_id)}` && item.status === 'pending'
+          ? { ...item, content: text(payload.message) || item.content }
+          : item),
+      }
     } else {
       timeline = mergeIntoTimeline(timeline, event, payload, action.now)
       if (event === 'approval.requested' && ['running', 'approval'].includes(timeline.status)) timeline = { ...timeline, status: 'approval' }

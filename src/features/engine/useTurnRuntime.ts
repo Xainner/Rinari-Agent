@@ -14,6 +14,7 @@ import { applyResumeEvent } from '../resume/resumeStore'
 import { markRenamedFromEvent } from '../../stores/titleMotion'
 import { onProfileEvent } from '../profiles/profileStore'
 import { applyFollowupEvent } from '../followups/followupStore'
+import type { AttachmentRef } from '../../types'
 
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
 export const SESSION_REFRESH_DEBOUNCE_MS = 150
@@ -134,9 +135,9 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
    * Mensaje para el turno en curso. El Engine lo lee tras el paso actual;
    * si el turno ya terminó, lo trata como mensaje normal.
    */
-  const steerTurn = useCallback(async (sessionId: string, message: string): Promise<boolean> => {
+  const steerTurn = useCallback(async (sessionId: string, message: string, attachments: AttachmentRef[] = []): Promise<boolean> => {
     try {
-      const result = await engineApi.turnSteer(sessionId, message)
+      const result = await engineApi.turnSteer(sessionId, message, attachments)
       if (result.delivery === 'steer') {
         store.getState().dispatch({
           type: 'steer/sent',

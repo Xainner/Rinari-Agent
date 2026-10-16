@@ -232,6 +232,8 @@ export type DesktopCommand =
   | "turn_changes_undo_preview"
   | "turn_start"
   | "turn_steer"
+  | "turn_steer_cancel"
+  | "turn_steer_update"
   | "usage_get"
   | "verification_latest"
   | "verification_plan"
@@ -481,6 +483,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "turn_changes_undo_preview",
   "turn_start",
   "turn_steer",
+  "turn_steer_cancel",
+  "turn_steer_update",
   "usage_get",
   "verification_latest",
   "verification_plan",
@@ -745,6 +749,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "turn_changes_undo_preview",
   "turn_start",
   "turn_steer",
+  "turn_steer_cancel",
+  "turn_steer_update",
   "usage_get",
   "verification_latest",
   "verification_plan",

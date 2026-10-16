@@ -1335,8 +1335,19 @@ export const engineApi = {
    * Mensaje para el turno en curso: Rinari lo lee al terminar el paso actual,
    * sin cortar nada. Sin turno en marcha es un mensaje normal (`queued`).
    */
-  turnSteer: (session_id: string, message: string) =>
-    platform().command<SteerResult>("turn_steer", { session_id, message }),
+  /** Message for the running turn; its files go with it (plan 0.4.0 #54). */
+  turnSteer: (session_id: string, message: string, attachments: Array<AttachmentInput | AttachmentRef> = []) =>
+    platform().command<SteerResult>("turn_steer", {
+      session_id,
+      message,
+      attachments: attachments.length ? attachmentInputs(attachments) : null,
+    }),
+  /** Edit an unread message sent during the turn; STEER_ALREADY_READ once read (#54). */
+  turnSteerUpdate: (session_id: string, steer_id: string, message: string) =>
+    platform().command<{ status: 'updated'; steer_id: string; message: string }>("turn_steer_update", { session_id, steer_id, message }),
+  /** Withdraw an unread message sent during the turn (#54). */
+  turnSteerCancel: (session_id: string, steer_id: string) =>
+    platform().command<{ status: 'cancelled'; steer_id: string }>("turn_steer_cancel", { session_id, steer_id }),
   queueList: (session_id: string) =>
     platform().command<{
       session_id: string

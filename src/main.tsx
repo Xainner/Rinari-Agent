@@ -5,6 +5,7 @@ import { translate } from './i18n'
 import { useUIStore } from './stores/ui'
 import { trackInputModality } from './lib/inputModality'
 import './styles/index.css'
+import { reportUiError } from './components/ZoneBoundary'
 
 trackInputModality()
 
@@ -68,7 +69,10 @@ async function bootstrap(): Promise<void> {
   vertical.registerBrowserVerticalUiProbe(
     (window as { rinariDesktop?: { browserVerticalMode?: boolean } }).rinariDesktop?.browserVerticalMode === true,
   )
-  root ??= ReactDOM.createRoot(container)
+  // Un error de render deja su rastro en app.log con la pila de componentes (#58).
+  root ??= ReactDOM.createRoot(container, {
+    onUncaughtError: (error, info) => reportUiError('app', error, info.componentStack),
+  })
   root.render(
     <React.StrictMode>
       <App />

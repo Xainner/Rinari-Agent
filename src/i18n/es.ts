@@ -2366,6 +2366,8 @@ export const es = {
   'app.engineStatus': 'Diagnóstico y registros',
   'app.menuLabel': 'Menú de Rinari Agent',
   'app.openFile': 'Abrir archivo',
+  'app.zoneFailed': "Algo falló aquí.",
+  'app.zoneReload': "Recargar esta vista",
   'app.openLink': 'Abrir enlace',
   'app.copyAddress': 'Copiar dirección',
   'app.newConversation': 'Nueva conversación',

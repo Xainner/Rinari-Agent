@@ -12,6 +12,7 @@ import type { ModelSummary } from '../../services/engine'
 import { runUiCommand } from './slashUi'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 /**
  * Vista Normal: la sesión activa con las mismas primitivas y el mismo
@@ -68,6 +69,7 @@ export default function SingleSessionView({
       engineGeneration={data.engineGeneration}
       busy={busy}
     >
+      <ZoneBoundary zone="chat">
       <ChatView
         queue={steering ? <QueueBar sessionId={sessionId} refreshKey={busy} showInput={false} /> : undefined}
         processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
@@ -119,6 +121,7 @@ export default function SingleSessionView({
         historyNote={sessionId !== '' ? (data.historyInfo[sessionId] ?? null) : null}
         onReviewChanges={sessionId ? reviewChanges : undefined}
       />
+      </ZoneBoundary>
     </SessionWorkspace>
     {confirmDialog}
     </ReadTrackingContext.Provider>

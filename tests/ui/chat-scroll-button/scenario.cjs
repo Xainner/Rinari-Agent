@@ -11,7 +11,7 @@ async function readAbove(prefix) {
   // Un panel recién montado aún mide filas y vuelve a pegarse al final: se
   // repite el desplazamiento hasta que la flecha aparece.
   await wait(`(() => {if (${q(prefix + ' ' + arrow)}) return true
-    const el=${q(prefix + ' ' + scroller)};el.scrollTop=Math.max(0,el.scrollHeight-el.clientHeight-450);el.dispatchEvent(new Event('scroll'));return false})()`)
+    const el=${q(prefix + ' ' + scroller)};el.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:-120}));el.scrollTop=Math.max(0,el.scrollHeight-el.clientHeight-450);el.dispatchEvent(new Event('scroll'));return false})()`)
 }
 async function verify(prefix, name) {
   await readAbove(prefix)

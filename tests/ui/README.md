@@ -63,6 +63,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |
 | [provider-limit](provider-limit/README.md) | Cuota agotada: la razón real y «Revisar uso y límites» del proveedor que falló |
+| [chat-follow-live](chat-follow-live/README.md) | Seguir el final mientras Rinari escribe una respuesta pesada: sin flecha, sin apagarse con un clic, ≤ 2 px del fondo |
 | [provider-toggle](provider-toggle/README.md) | Desactivar un proveedor: dependencias, reemplazo, «Desactivado» y «Activar» desde la tarjeta de error |
 | [session-menu-id](session-menu-id/README.md) | ID de sesión en una sola línea |
 | [session-title](session-title/README.md) | Título que resume el primer mensaje, en vivo |

@@ -208,7 +208,42 @@ function ChatView({
   const jumpRef = useRef(false)
   const streamingRef = useRef(isStreaming)
   streamingRef.current = isStreaming
-  const userScrolls = () => { jumpRef.current = false }
+  // Solo un gesto de la persona (rueda, toque, tecla, clic o la barra
+  // sostenida) apaga «seguir el final» (plan 0.4.0 #88 y #20). Un `scroll`
+  // que llega después de que el contenido creció no es un gesto: antes
+  // bastaba con que la respuesta final creciera más de 80 px entre el scroll
+  // del programa y su evento para que el chat dejara de seguir solo.
+  const gestureAtRef = useRef(0)
+  const pointerHeldRef = useRef(false)
+  const userScrolls = () => { jumpRef.current = false; gestureAtRef.current = performance.now() }
+  const pointerDown = () => { userScrolls(); pointerHeldRef.current = true }
+  useEffect(() => {
+    const release = () => { pointerHeldRef.current = false }
+    window.addEventListener('pointerup', release)
+    window.addEventListener('pointercancel', release)
+    return () => {
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', release)
+    }
+  }, [])
+  const autoFollowRef = useRef(autoFollow)
+  autoFollowRef.current = autoFollow
+  // Un solo mecanismo para ir al final (#58): como mucho una vez por cuadro,
+  // nunca con cada token ni dentro del ResizeObserver, que solo lo pide.
+  const followFrameRef = useRef(0)
+  const scheduleFollow = useCallback(() => {
+    if (followFrameRef.current) return
+    followFrameRef.current = requestAnimationFrame(() => {
+      followFrameRef.current = 0
+      const scroller = scrollRef.current
+      if (!scroller || restoreRef.current || !followRef.current || !autoFollowRef.current) return
+      const last = streamRef.current.length - 1
+      if (last >= 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
+      // El fondo real, también con la nota «+N mensajes anteriores» arriba.
+      if (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 1) scroller.scrollTop = scroller.scrollHeight
+    })
+  }, [])
+  useEffect(() => () => cancelAnimationFrame(followFrameRef.current), [])
   useEffect(() => {
     if (!isStreaming) jumpRef.current = false
   }, [isStreaming])
@@ -217,12 +252,18 @@ function ChatView({
     const el = scrollRef.current
     if (!el) return
     const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const gesture = pointerHeldRef.current || performance.now() - gestureAtRef.current < 300
+    if (!bottom && followRef.current && !gesture) {
+      // Creció el contenido o movió el programa: se sigue abajo.
+      scheduleFollow()
+      return
+    }
     if (jumpRef.current && !bottom) return
     if (jumpRef.current && !streamingRef.current) jumpRef.current = false
     setAtBottom(bottom)
     followRef.current = bottom
     anchorRef.current = snapshotAnchor()
-  }, [snapshotAnchor])
+  }, [snapshotAnchor, scheduleFollow])
 
   const activityLayout = useMemo<ActivityLayout>(() => ({
     begin(anchor, manual = true) {
@@ -348,32 +389,48 @@ function ChatView({
     const scroller = scrollRef.current
     if (!content || !scroller) return
     let frame = 0
-    const observer = new ResizeObserver((entries) => {
-      const viewportChanged = entries.some(entry => entry.target === scroller)
+    const observer = new ResizeObserver(() => {
+      // Solo marca: el movimiento lo hace scheduleFollow, una vez por cuadro.
+      if (restoreRef.current) return
+      if (autoFollow && followRef.current) {
+        scheduleFollow()
+        return
+      }
+      // Folding activity can remove all overflow without firing `scroll`.
+      // Measure even while reading above or when auto-follow is disabled.
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        if (restoreRef.current) return
-        if (autoFollow && followRef.current) {
-          scroller.scrollTop = scroller.scrollHeight
-          if (viewportChanged && streamRef.current.length > 0) virtRef.current?.scrollToIndex(streamRef.current.length - 1, { align: 'end' })
-        }
-        // Folding activity can remove all overflow without firing `scroll`.
-        // Measure even while reading above or when auto-follow is disabled.
-        handleScroll()
-      })
+      frame = requestAnimationFrame(handleScroll)
     })
-    observer.observe(content)
     observer.observe(scroller)
-    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
-  }, [autoFollow, presentation, sessionId, handleScroll])
+    // Mientras Rinari escribe, el contenido no se observa: Virtua mide sus
+    // filas (más hondas) y eso cambia el alto del contenido (más arriba)
+    // dentro del mismo ciclo, y el navegador avisaba «ResizeObserver loop
+    // completed with undelivered notifications» (#58). En su lugar, una
+    // lectura de la altura por cuadro.
+    let watch = 0
+    if (activeTimeline) {
+      let height = scroller.scrollHeight
+      const tick = () => {
+        const next = scroller.scrollHeight
+        if (next !== height) {
+          height = next
+          if (!restoreRef.current && autoFollow && followRef.current) scheduleFollow()
+          else handleScroll()
+        }
+        watch = requestAnimationFrame(tick)
+      }
+      watch = requestAnimationFrame(tick)
+    } else {
+      observer.observe(content)
+    }
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); cancelAnimationFrame(watch) }
+  }, [autoFollow, presentation, sessionId, handleScroll, scheduleFollow, activeTimeline])
 
   useEffect(() => {
     // Autoscroll inteligente: solo sigue si el usuario ya estaba abajo
     // y la preferencia está activa; nunca mientras se restaura un ancla.
-    if (autoFollow && atBottom && stream.length > 0 && !restoreRef.current) {
-      virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
-    }
-  }, [stream, isStreaming, atBottom, autoFollow])
+    if (autoFollow && atBottom && stream.length > 0 && !restoreRef.current) scheduleFollow()
+  }, [stream, isStreaming, atBottom, autoFollow, scheduleFollow])
 
   // Enviar (o guiar) es una intención nueva: aunque se estuviera leyendo
   // arriba, se va al final en cuanto el Engine acepta el mensaje. Con
@@ -452,7 +509,7 @@ function ChatView({
     <ActivityImageProvider key={sessionId}><ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
     <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={userScrolls} onKeyDown={userScrolls}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={pointerDown} onKeyDown={userScrolls}>
             {historyNote?.hasMore && (
               <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">
                 {t('history.hasMore', { n: historyNote.total })}

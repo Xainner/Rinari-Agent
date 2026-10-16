@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useEffect, useState, type ComponentProps } from 'react'
+import { Suspense, lazy, memo, useEffect, useRef, useState, type ComponentProps } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Check, Copy, ImageOff } from 'lucide-react'
@@ -11,21 +11,31 @@ import { ArtifactImage, FileLink, InlineMedia, PathCode, fileUrlTransform, looks
 
 const MathMarkdown = lazy(() => import('./MathMarkdown'))
 
+/** Como mucho un resaltado cada tanto mientras el bloque crece (#58). */
+const HIGHLIGHT_EVERY_MS = 250
+
 export function CodeBlock({ code, language }: { code: string; language: string }) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [html, setHtml] = useState<string | null>(null)
+  const lastRun = useRef(0)
 
   useEffect(() => {
     let cancelled = false
-    // Carga lazy del highlighter al aparecer el primer bloque (fetch de una vez).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHtml(null)
-    void highlightToHtml(code, language).then((h) => {
-      if (!cancelled && h) setHtml(h)
-    })
+    // Mientras el bloque llega token a token se conserva el último resaltado
+    // (no se vuelve a `<pre>` sin colores en cada token) y se resalta como
+    // mucho unas cuatro veces por segundo (plan 0.4.0 #58): la altura ya no
+    // cambia dos veces por token. La carga del highlighter es lazy.
+    const wait = Math.max(0, lastRun.current + HIGHLIGHT_EVERY_MS - Date.now())
+    const timer = window.setTimeout(() => {
+      lastRun.current = Date.now()
+      void highlightToHtml(code, language).then((h) => {
+        if (!cancelled && h) setHtml(h)
+      })
+    }, wait)
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
   }, [code, language])
 
@@ -121,7 +131,12 @@ function LocalImageNotice({ src, alt }: { src: string; alt: string }) {
 
 function Markdown({ children: raw }: { children: string }) {
   const children = escapeCurrency(raw)
-  if (containsMath(children)) {
+  // Una vez que el texto tiene matemáticas, se queda en el renderizador de
+  // matemáticas: si cambiara de idea a mitad del streaming, todo el bloque se
+  // volvería a montar (#58).
+  const math = useRef(false)
+  if (!math.current && containsMath(children)) math.current = true
+  if (math.current) {
     return (
       <div className="md-body">
         <Suspense fallback={<BaseMarkdown>{children}</BaseMarkdown>}>

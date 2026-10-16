@@ -27,6 +27,7 @@ import { useAgentRunningCount } from '../terminal/agentTab'
 import SessionDock from './SessionDock'
 import SummaryPanel from '../summary/SummaryPanel'
 import { cn } from '../../lib/utils'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 const HANDLE_WIDTH = 6
 /** El Resumen es un mini panel angosto: el chat casi no se encoge (#82). */
@@ -282,6 +283,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
                 onDoubleClick={() => setAmp(sessionId, layout.amp ? null : 'all')}
               />
             )}
+            <ZoneBoundary zone="side-panel">
             <SessionDock
               sessionId={sessionId}
               session={record}
@@ -296,6 +298,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
               terminalEnabled={terminalEnabled}
               busy={busy}
             />
+            </ZoneBoundary>
           </>
         )}
       </div>

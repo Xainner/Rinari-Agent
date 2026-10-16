@@ -2348,6 +2348,8 @@ export const en: Record<I18nKey, string> = {
   'app.engineStatus': 'Diagnostics and logs',
   'app.menuLabel': 'Rinari Agent menu',
   'app.openFile': 'Open file',
+  'app.zoneFailed': "Something failed here.",
+  'app.zoneReload': "Reload this view",
   'app.openLink': 'Open link',
   'app.copyAddress': 'Copy address',
   'app.newConversation': 'New conversation',

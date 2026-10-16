@@ -14,6 +14,7 @@ import { screen } from 'electron'
 import { APP_ORIGIN, contentSecurityPolicy } from './appScheme'
 import { CHROME_BACKGROUND, CHROME_OVERLAY_HEIGHT, CHROME_SYMBOL } from '../shared/chrome'
 import type { WindowState } from '../shared/contracts'
+import { createRepeatGrouper } from './repeatGrouper'
 
 export interface WindowDeps {
   preloadPath: string
@@ -261,9 +262,12 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
 
   // Errores del renderer al proceso principal: sin esto, una excepción en el
   // arranque de React no aparece en ningún sitio que se pueda leer.
+  // Los avisos repetidos iguales se agrupan (#58): «(×120 más en 10 min)».
+  const rendererLog = createRepeatGrouper((entry) => console.error(entry))
   window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    if (level >= 2) console.error(`[renderer] ${message} (${sourceId}:${line})`)
+    if (level >= 2) rendererLog.log(`[renderer] ${message} (${sourceId}:${line})`)
   })
+  window.on('closed', () => rendererLog.flush())
   window.webContents.on('render-process-gone', (_event, details) => {
     console.error(`[renderer] el proceso se fue: ${details.reason}`)
   })

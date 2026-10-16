@@ -161,12 +161,36 @@ export function scriptedModel(initial = []) {
         return
       }
       const message = nextMessage()
+      const entry = served[served.length - 1] ?? {}
       if (wantsStream) {
         response.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           Connection: 'keep-alive',
         })
+        // `{ text, streamDelayMs, streamChunk }`: the answer arrives in pieces
+        // over time, like a real model writing (escenarios de scroll en vivo).
+        if (entry.streamDelayMs && !message.tool_calls && typeof message.content === 'string') {
+          const base = { id: `chatcmpl-${step}`, object: 'chat.completion.chunk', model: 'fake-vertical' }
+          const size = entry.streamChunk ?? 24
+          const pieces = []
+          for (let at = 0; at < message.content.length; at += size) pieces.push(message.content.slice(at, at + size))
+          const send = (chunk) => response.write(`data: ${JSON.stringify(chunk)}\n\n`)
+          let index = 0
+          const next = () => {
+            if (index < pieces.length) {
+              send({ ...base, choices: [{ index: 0, delta: index === 0 ? { role: 'assistant', content: pieces[0] } : { content: pieces[index] }, finish_reason: null }] })
+              index += 1
+              setTimeout(next, entry.streamDelayMs)
+              return
+            }
+            send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
+            send({ ...base, choices: [], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })
+            response.end('data: [DONE]\n\n')
+          }
+          next()
+          return
+        }
         response.end(stream(message))
         return
       }

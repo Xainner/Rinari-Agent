@@ -307,6 +307,35 @@ export const scenarios = {
       writeFileSync(join(data, 'nota.txt'), Array.from({ length: 150 }, (_, i) => `Línea ${i + 1}: adjunto de texto con desplazamiento interno.`).join('\n'))
     },
   },
+  'chat-follow-live': {
+    title: 'Chat: sigue el final mientras Rinari escribe una respuesta pesada',
+    phases: ['exercise'],
+    model: () => {
+      const heavy = (n) => [
+        `## Informe ${n}`,
+        '',
+        paragraphs(6, (i) => `**Punto ${i}.** El servicio de facturación revisa \`C:\\Users\\Ana\\Documents\\Proyectos\\facturacion\\src\\servicios\\cobros\\pendientes.ts\` antes de cerrar el mes.`),
+        '',
+        '```ts',
+        ...Array.from({ length: 18 }, (_, i) => `export const paso${i} = (total: number) => total * ${i + 1} // ajuste ${i}`),
+        '```',
+        '',
+        '| Archivo | Ruta | Estado |',
+        '|---|---|---|',
+        ...Array.from({ length: 10 }, (_, i) => `| cobro${i}.ts | \`C:\\Users\\Ana\\Documents\\Proyectos\\facturacion\\src\\cobro${i}.ts\` | **revisado** |`),
+        '',
+        '```python',
+        ...Array.from({ length: 12 }, (_, i) => `def paso_${i}(total):\n    return total * ${i + 1}`),
+        '```',
+        '',
+        paragraphs(8, (i) => `Conclusión ${i}: todo cuadra con el informe ${n}.`),
+      ].join('\n')
+      return startRoutedModel({
+        title: Array.from({ length: 4 }, () => ({ text: 'Seguir el final' })),
+        main: [1, 2].map((n) => ({ text: heavy(n), streamDelayMs: 12, streamChunk: 36 })),
+      }, laneOf)
+    },
+  },
   'chat-scroll-button': {
     title: 'Chat: flecha de bajar junto al composer',
     phases: ['exercise'],

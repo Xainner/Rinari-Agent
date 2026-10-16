@@ -98,8 +98,9 @@ describe('CSP de producción', () => {
     expect(csp).not.toMatch(/script-src[^;]*https?:/)
   })
 
-  it('no admite marcos ni incrustar la app en otro sitio', () => {
-    expect(csp).toContain("frame-src 'none'")
+  it('solo enmarca vistas previas locales y no deja incrustar la app en otro sitio', () => {
+    expect(csp).toMatch(/frame-src http:\/\/localhost:\* http:\/\/127\.0\.0\.1:\* http:\/\/\[::1\]:\* http:\/\/\*\.localhost:\*(;|$)/)
+    expect(csp).not.toMatch(/frame-src[^;]*https:/)
     expect(csp).toContain("frame-ancestors 'none'")
     expect(csp).toContain("object-src 'none'")
   })
@@ -122,14 +123,26 @@ describe('DEV-03 — la CSP de desarrollo no se hereda en producción', () => {
   it('ni siquiera en desarrollo se abre con comodines', () => {
     // `script-src *` o `unsafe-eval` global convertirían el modo dev en la
     // política real de la app.
-    expect(dev).not.toContain('*')
+    // `frame-src` solo admite vistas previas locales (loopback, cualquier
+    // puerto): se comprueba aparte.
+    expect(withoutFrames(dev)).not.toContain('*')
     expect(dev).not.toContain('unsafe-eval')
+    expect(frames(dev)).toEqual(frames(contentSecurityPolicy()))
   })
 
   it('la de producción no menciona ningún origen de desarrollo', () => {
     const prod = contentSecurityPolicy()
-    expect(prod).not.toContain('localhost')
+    expect(withoutFrames(prod)).not.toContain('localhost')
+    expect(frames(prod).split(' ').slice(1).every((source) => /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]|\*\.localhost):\*$/.test(source))).toBe(true)
     expect(prod).not.toContain('ws://')
     expect(prod).not.toContain('unsafe-inline; ')
   })
 })
+
+function frames(policy: string): string {
+  return policy.split('; ').find((directive) => directive.startsWith('frame-src')) ?? ''
+}
+
+function withoutFrames(policy: string): string {
+  return policy.split('; ').filter((directive) => !directive.startsWith('frame-src')).join('; ')
+}

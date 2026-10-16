@@ -79,15 +79,50 @@ async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
   })
 }
 
+/**
+ * Un solo `ipcRenderer.on` por canal, que reparte a los suscriptores de la
+ * app (plan 0.4.0 #58): unas 20 partes escuchan `engineEvent` y cada una
+ * sumaba su oyente (MaxListenersExceededWarning). El oyente se quita cuando
+ * se va el último suscriptor.
+ */
+const fanouts = new Map<string, Set<(payload: unknown) => void>>()
+const fanoutListeners = new Map<string, (event: IpcRendererEvent, payload: unknown) => void>()
+
 /** Suscripción que entrega solo la carga y cuya baja es idempotente. */
 function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
-  const listener = (_event: IpcRendererEvent, payload: T) => callback(payload)
-  ipcRenderer.on(channel, listener)
+  let callbacks = fanouts.get(channel)
+  if (!callbacks) {
+    const set = new Set<(payload: unknown) => void>()
+    callbacks = set
+    fanouts.set(channel, set)
+    const listener = (_event: IpcRendererEvent, payload: unknown) => {
+      // Una copia: un suscriptor que se da de baja al recibir no salta a otro.
+      for (const each of [...set]) {
+        try {
+          each(payload)
+        } catch (error) {
+          console.error(`[rinari] ${channel} subscriber failed`, error)
+        }
+      }
+    }
+    fanoutListeners.set(channel, listener)
+    ipcRenderer.on(channel, listener)
+  }
+  const entry = (payload: unknown) => callback(payload as T)
+  callbacks.add(entry)
   let removed = false
   return () => {
     if (removed) return
     removed = true
-    ipcRenderer.removeListener(channel, listener)
+    const set = fanouts.get(channel)
+    if (!set) return
+    set.delete(entry)
+    if (set.size === 0) {
+      fanouts.delete(channel)
+      const listener = fanoutListeners.get(channel)
+      fanoutListeners.delete(channel)
+      if (listener) ipcRenderer.removeListener(channel, listener)
+    }
   }
 }
 

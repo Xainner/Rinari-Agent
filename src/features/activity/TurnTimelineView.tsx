@@ -61,6 +61,7 @@ import { RinariAvatar } from '../rinari/RinariAvatar'
 import { useAgentFocusStore } from '../../stores/agentFocus'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { rinariStateForTurn } from '../rinari/turnState'
+import { useReducedMotion } from 'framer-motion'
 
 interface Props {
   timeline: TurnTimeline
@@ -698,6 +699,9 @@ export default function TurnTimelineView(props: Props) {
 }
 
 /** Lo que escribiste mientras Rinari trabajaba, en el punto donde lo leyó. */
+/** La subida del mensaje recién enviado (`.user-bubble.is-fresh`, `rinari-send 0.5s`). */
+const SEND_ARRIVAL_MS = 500
+
 function SteerBubble({ item }: { item: SteerTimelineItem }) {
   const { t } = useI18n()
   return (
@@ -721,11 +725,21 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const working = ['preparing', 'recovering', 'retrying', 'action', 'thinking', 'responding'].includes(state.kind)
     || state.kind === 'waiting' && state.parallel > 0
   const active = turnIsActive(timeline.status)
+  const systemReducedMotion = useReducedMotion()
+  const appReducedMotion = useUIStore(s => s.reduceMotion)
+  const reducedMotion = appReducedMotion || Boolean(systemReducedMotion)
   // En un panel, «pensando» (sin acciones ni texto aún) ya lo dice la cabecera
   // del panel con la cara de Rinari: la fila viva aparece cuando hay algo que
   // contar (una acción, la respuesta, un reintento, la cancelación).
   const paneThinking = surface === 'pane' && state.kind === 'thinking' && timeline.status !== 'cancelling'
-  const showHeader = !paneThinking && (!active || timeline.items.length > 0 || now - timeline.startedAt >= 300 || timeline.status === 'cancelling')
+  // Primero llega tu mensaje, después aparece Rinari (#51): la cabecera viva
+  // espera a que termine la subida de la burbuja (`rinari-send`, 500 ms; nada
+  // con movimiento reducido), y `turn.preparing` no cuenta como algo que
+  // contar.
+  const arrival = reducedMotion ? 0 : SEND_ARRIVAL_MS
+  const elapsed = now - timeline.startedAt
+  const meaningful = timeline.items.some((item) => !(item.type === 'system' && item.kind === 'turn_preparing'))
+  const showHeader = !paneThinking && (!active || timeline.status === 'cancelling' || (elapsed >= arrival && (meaningful || elapsed >= Math.max(300, arrival))))
   const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
   return (
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>

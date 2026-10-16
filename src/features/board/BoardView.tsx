@@ -34,6 +34,7 @@ import SessionPane from './SessionPane'
 import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
 import { usePeerGroup } from './usePeerGroup'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 export interface BoardActions {
   addPane: () => void
@@ -296,6 +297,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
                 const root = canonicalRoot(data.sessionsById[pane.sessionId])
                 return (
                   <Fragment key={pane.paneId}>
+                    <ZoneBoundary zone="board-pane">
                     <SessionPane
                       pane={pane}
                       focused={pane.paneId === focusedPaneId}
@@ -310,6 +312,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
                       peerMessaging={peerMessaging}
                       peerLabelFor={peerLabelFor}
                     />
+                    </ZoneBoundary>
                     {!pane.collapsed && !fitToView && <PaneResizer pane={pane} />}
                   </Fragment>
                 )

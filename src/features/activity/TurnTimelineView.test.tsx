@@ -45,14 +45,26 @@ describe('TurnTimelineView', () => {
     expect(screen.getByText('Revisar requisitos')).toBeTruthy()
   })
   it('debounces thinking and keeps ordinary chat free of completion cards', () => {
-    const rendered = view(base, 1_299)
+    // #51: the live header waits for the sent message to finish arriving (500 ms).
+    const rendered = view({ ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }, 1_499)
     expect(screen.queryByText('Pensando…')).toBeNull()
-    rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={base} now={1_301} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
+    rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={base} now={1_501} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
     expect(screen.getByText('Pensando…')).toBeTruthy()
     rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={{ ...base, status: 'completed', completedAt: 2_000, items: [{ id: 'model:m1', type: 'model', activitySeq: 1, occurredAt: 2_000, modelCallId: 'm1', status: 'completed', content: 'Hola', outputKind: 'final' }] }} now={2_000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
     expect(screen.getAllByText('Hola')).toHaveLength(2)
     expect(screen.queryByText(/acciones/)).toBeNull()
     expect(screen.queryByText('Completado')).toBeNull()
+  })
+
+  it('#51: with reduced motion the live header does not wait for the arrival', async () => {
+    const { useUIStore } = await import('../../stores/ui')
+    useUIStore.setState({ reduceMotion: true })
+    try {
+      view(base, 1_301)
+      expect(screen.getByText('Pensando…')).toBeTruthy()
+    } finally {
+      useUIStore.setState({ reduceMotion: false })
+    }
   })
 
   it('resolves an approval from its chronological row', async () => {

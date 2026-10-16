@@ -184,7 +184,11 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   // Navegador del Engine: se consulta a la cadencia de capturas solo con la
   // vista a la vista. Un browser aparece por actividad del agente, así que
   // fuera de ella basta una sonda al montar y otra al terminar un turno.
-  const [targetId, setTargetId] = useState('')
+  // La pestaña elegida es de su conversación: este componente sigue montado
+  // al cambiar de conversación en la vista Normal.
+  const [targetOf, setTargetOf] = useState<{ sessionId: string; targetId: string }>({ sessionId, targetId: '' })
+  const targetId = targetOf.sessionId === sessionId ? targetOf.targetId : ''
+  const setTargetId = useCallback((next: string) => setTargetOf({ sessionId, targetId: next }), [sessionId])
   const [browserProbe, setBrowserProbe] = useState(0)
   const wasBusy = useRef(false)
   useEffect(() => {
@@ -410,10 +414,11 @@ function TimelineSignals({ store, sessionId, focused }: { store: RuntimeStore; s
   const publish = useDockSignalsStore((state) => state.publish)
   const plans = sessionPlans(timelines).length
   // Cada vez que termina un plan, su vista se abre sola (#55); no al abrir una conversación que ya los tenía.
-  const seenPlans = useRef<number | null>(null)
+  // Se cuenta por conversación: al cambiar a una con más planes no se abría por error.
+  const seenPlans = useRef<{ sessionId: string; plans: number } | null>(null)
   useEffect(() => {
-    const previous = seenPlans.current
-    seenPlans.current = plans
+    const previous = seenPlans.current?.sessionId === sessionId ? seenPlans.current.plans : null
+    seenPlans.current = { sessionId, plans }
     if (previous !== null && plans > previous && focused) useSessionDockStore.getState().openView(sessionId, 'plan')
   }, [plans, focused, sessionId])
   useEffect(() => { publish(sessionId, { plans }) }, [publish, sessionId, plans])

@@ -8,7 +8,8 @@
 //    abre también: antes la app recordaba el «listo» de la anterior y no
 //    veía el cambio.
 // 4. Una conversación que ya existía y nunca usó el navegador tampoco lo
-//    muestra «en vivo» al pasar a ella.
+//    muestra «en vivo» al pasar a ella, aunque haya corrido turnos: cada
+//    turno prepara el navegador de su sesión por si lo usa.
 const assert = require('node:assert/strict')
 const { click, clickText, command, evaluate, input, report, scenario, screenshot, settleAnimations, useLocalModel, wait, reload } = require('../harness.cjs')
 
@@ -45,6 +46,11 @@ scenario(async () => {
   await command('session_create', { chat: true, title: 'Charla' })
   await reload()
   await click('.view-switcher button[aria-label="Normal"]')
+
+  // 0. «Charla» corre un turno sin navegador.
+  await clickText('Charla', 'aside li button', { includes: true })
+  await wait('Boolean(document.querySelector(".composer-surface"))')
+  await send('hola', 'HOLA CHARLA')
 
   // 1. Primera conversación.
   await newConversation()

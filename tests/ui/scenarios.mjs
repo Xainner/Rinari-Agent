@@ -75,6 +75,7 @@ export const scenarios = {
       const model = await startRoutedModel({
         title: Array.from({ length: 6 }, () => ({ text: 'Web' })),
         main: [
+          { text: 'HOLA CHARLA' },
           { tool: 'capability.search', args: { query: '+browser.navigate +browser.open', limit: 3, load: true }, say: 'Busco el navegador.' },
           { tool: 'browser.navigate', args: { url, target_id: '' }, say: 'Entro.' },
           { tool: 'browser.open', args: { url }, say: 'Abro una pestaña.' },

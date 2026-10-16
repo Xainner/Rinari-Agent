@@ -2093,6 +2093,7 @@ export const es = {
   'cmd.collapseFinishedPanes': 'Boards: colapsar terminados',
   'cmd.toggleFocusMode': 'Boards: alternar modo foco',
   'cmd.markAllBoardResultsRead': 'Boards: marcar todos los resultados como leídos',
+  'cmd.markAllRead': 'Marcar todo como leído',
 
   // -- Avisos, tarjeta de resultado y lista de pendientes (§8.7–8.10) -----------
   'board.toast.done': '«{label}» finalizó.',

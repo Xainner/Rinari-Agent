@@ -63,7 +63,7 @@ it('shows the derived status, a NEW badge for unread results and clears it on "m
   expect(within(pane).getByTestId('pane-status').dataset.kind).toBe('needs_you')
   act(() => {
     dispatch(event('approval.resolved', { turn_id: 't1', session_id: 'ses_a', approval_id: 'apr_1', decision: 'allow_once' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   expect(within(pane).getByTestId('pane-status').dataset.kind).toBe('done')
   expect(within(pane).getByTestId('pane-unread').textContent).toContain('Nuevo')

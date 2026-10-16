@@ -16,7 +16,9 @@ import { useBoardStatusStore } from '../../stores/boardStatus'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 import { useAttentionIndicators } from '../notifications/attentionIndicators'
 import { useUIStore } from '../../stores/ui'
-import { useWindowAttention } from '../../hooks/useWindowAttention'
+import { getWindowAttention, useWindowAttention } from '../../hooks/useWindowAttention'
+import { hasResultBlock } from '../activity/resultBlock'
+import { lookupSession } from '../notifications/sessionDirectory'
 import { useWindowTitle } from '../../hooks/useWindowTitle'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useI18n } from '../../i18n'
@@ -90,7 +92,10 @@ export default function BoardActivityController() {
         return
       }
       const source: TerminalSource = wasActive ? 'live' : previousStatus === undefined ? 'history' : 'snapshot'
-      attention.observeTerminal(turn.sessionId, turn.turnId, outcome, source, turn.completedAt)
+      attention.observeTerminal(turn.sessionId, turn.turnId, outcome, source, turn.completedAt, {
+        quiet: !hasResultBlock(turn),
+        away: !getWindowAttention().attended,
+      })
     }
 
     const scan = () => {
@@ -122,6 +127,24 @@ export default function BoardActivityController() {
     scan()
     return store.subscribe(scan)
   }, [store, memberIds, data.historyInfo, data.engineGeneration])
+
+  // -- recibos huérfanos (#84): una conversación borrada o archivada no deja
+  // un «sin leer» que nadie puede limpiar. Lo que la lista no trae se
+  // pregunta una vez; si el Engine no contesta, no se borra nada.
+  useEffect(() => {
+    if (!data.ready || !data.sessionsLoaded || data.sessionsError) return
+    let cancelled = false
+    const forget = (id: string) => { if (!cancelled) useBoardAttentionStore.getState().forgetSession(id) }
+    for (const id of Object.keys(useBoardAttentionStore.getState().sessions)) {
+      const row = data.sessionsById[id]
+      if (row) {
+        if (row.state === 'archived') forget(id)
+        continue
+      }
+      void lookupSession(id).then((entry) => { if (entry && (!entry.exists || entry.archived)) forget(id) })
+    }
+    return () => { cancelled = true }
+  }, [data.ready, data.sessionsLoaded, data.sessionsError, data.sessionsById])
 
   // -- estado derivado central por panel (toolbar, barra superior, título) ----
   const memberKey = members.map((pane) => `${pane.paneId}:${pane.sessionId}`).join('|')
@@ -199,7 +222,12 @@ export default function BoardActivityController() {
     () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : [])])],
     [members, data.activeSession],
   )
-  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds })
+  const titleFor = useCallback((sessionId: string): string | null => {
+    const record = data.sessionsById[sessionId]
+    if (!record) return null
+    return record.title || (record.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
+  }, [data.sessionsById, t])
+  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds, titleFor })
   useWindowTitle(summary.count)
 
   // Mensajes de pares: se reconocen al atender el panel (expandido, enfocado,

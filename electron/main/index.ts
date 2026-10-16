@@ -29,6 +29,7 @@ import { defaultMigrationDirectory, MigrationService } from './migration/Migrati
 import { createBackground, HIDDEN_START_ARG, type Background } from './native/background'
 import { HandoffQueue, openRequestFromData, parseOpenRequest } from './native/handoff'
 import { runRequestedUpdate, updateRequestFromData, wantsUpdate } from './updates/cliRequest'
+import { markAllReadFromData, markAllReadTask, wantsMarkAllRead } from './native/jumpList'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createMediaRegistry, mediaToken, serveMedia } from './native/mediaFiles'
@@ -124,6 +125,16 @@ function showMainWindow(): void {
  */
 function currentHostText(): HostText {
   return hostText(background?.language ?? hostLanguageFromLocale(app.getLocale()))
+}
+
+/** Tarea de la barra de tareas (#84); solo instalada, en Windows. */
+function installJumpList(): void {
+  if (process.platform !== 'win32' || !app.isPackaged) return
+  try {
+    app.setUserTasks([markAllReadTask(process.execPath, currentHostText())])
+  } catch (error) {
+    console.warn('[rinari] jump list:', error)
+  }
 }
 
 /** Menú de aplicación; se rehace cuando la interfaz cambia de idioma. */
@@ -619,6 +630,7 @@ function buildServices(): HostServices {
         if (requireBackground().setLanguage(language)) {
           installApplicationMenu()
           tray.refresh()
+          installJumpList()
         }
       },
       setIndicators: (state) => {
@@ -1104,10 +1116,16 @@ const launchRequest = parseOpenRequest(process.argv, app.isPackaged ? 1 : 2)
 // `rinari update` con la app abierta la arranca con `--update`: esa segunda
 // instancia se lo entrega a esta, que se actualiza con su propio diálogo.
 const launchUpdate = wantsUpdate(process.argv, app.isPackaged ? 1 : 2)
-if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdate })) {
+const launchMarkAllRead = wantsMarkAllRead(process.argv, app.isPackaged ? 1 : 2)
+if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdate, markAllRead: launchMarkAllRead })) {
   app.quit()
 } else {
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
+    // «Marcar todo como leído» desde la barra de tareas: sin traer la ventana.
+    if (markAllReadFromData(additionalData)) {
+      send(PUSH.menuAction, 'mark-all-read')
+      return
+    }
     handoff.push(openRequestFromData(additionalData) ?? parseOpenRequest(argv, app.isPackaged ? 1 : 2))
     if (mainWindow) presentWindow(mainWindow)
     if (updateRequestFromData(additionalData)) void runRequestedUpdate(updates)
@@ -1134,6 +1152,7 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
     })
     // Después de los ajustes: el menú sale ya en el idioma guardado.
     installApplicationMenu()
+    installJumpList()
     if (background.backgroundMode) void tray.show()
     unregisterIpc = registerIpc(registry, buildServices())
     handoff.push(launchRequest)

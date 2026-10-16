@@ -45,6 +45,8 @@ export type DesktopAction =
   | 'collapse-finished-panes'
   | 'toggle-focus-mode'
   | 'mark-all-board-results-read'
+  /** Todos los resultados sin leer de todas las conversaciones (#84): bandeja, barra de tareas, campana. */
+  | 'mark-all-read'
 
 export function dispatchAction(action: DesktopAction) {
   window.dispatchEvent(new CustomEvent('rinari-action', { detail: action }))

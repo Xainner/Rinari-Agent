@@ -15,6 +15,7 @@ import { useTurnRuntime } from './useTurnRuntime'
 import { selectSessionModel, selectSessionTimelines } from './sessionSelectors'
 import { sessionPlans } from '../plan/planModel'
 import { useSessionUiStore } from '../../stores/sessionUi'
+import { unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
 import { sessionForDraft, useConversationDraftStore, type ConversationDraft } from '../../stores/conversationDraft'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
@@ -144,6 +145,10 @@ export function useEngineSession() {
         sessionId,
         message: { id: optimisticId, role: 'user', content: trimmed, createdAt: Date.now(), attachments: preparedAttachments },
       })
+      // Si escribió en la conversación, ya vio lo anterior (#84).
+      const attention = useBoardAttentionStore.getState()
+      const unread = unreadTurnIds(attention.sessions[sessionId])
+      if (unread.length > 0) attention.markSessionResultsSeen(sessionId, unread)
       runtime.dispatch({ type: 'busy/set', sessionId, busy: true })
       try {
         const started = await engineApi.startTurn(

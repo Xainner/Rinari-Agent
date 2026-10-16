@@ -37,6 +37,7 @@ import {
   markAllBoardResultsRead,
   toggleFocusMode,
 } from './features/board/boardCommands'
+import { markEverythingRead } from './features/notifications/attentionCommands'
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import DockViewButtons from './components/app-shell/DockViewButtons'
@@ -500,6 +501,7 @@ function App() {
         }
         case 'toggle-focus-mode': goBoard(); toggleFocusMode(); break
         case 'mark-all-board-results-read': markAllBoardResultsRead(); break
+        case 'mark-all-read': markEverythingRead(); break
         case 'open-folder': useCreateProjectStore.getState().openWith(); break
         case 'close-session': {
           // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.

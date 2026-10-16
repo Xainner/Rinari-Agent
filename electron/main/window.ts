@@ -265,7 +265,8 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   // Los avisos repetidos iguales se agrupan (#58): «(×120 más en 10 min)».
   const rendererLog = createRepeatGrouper((entry) => console.error(entry))
   window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    if (level >= 2) rendererLog.log(`[renderer] ${message} (${sourceId}:${line})`)
+    // Avisos y errores, más las líneas de diagnóstico propias (`[rinari] …`).
+    if (level >= 2 || message.startsWith('[rinari] ')) rendererLog.log(`[renderer] ${message} (${sourceId}:${line})`)
   })
   window.on('closed', () => rendererLog.flush())
   window.webContents.on('render-process-gone', (_event, details) => {

@@ -2076,6 +2076,7 @@ export const en: Record<I18nKey, string> = {
   'cmd.collapseFinishedPanes': 'Boards: collapse finished',
   'cmd.toggleFocusMode': 'Boards: toggle focus mode',
   'cmd.markAllBoardResultsRead': 'Boards: mark all results as read',
+  'cmd.markAllRead': 'Mark all as read',
 
   // -- Notifications, result card and attention list (§8.7–8.10) ---------------
   'board.toast.done': '“{label}” finished.',

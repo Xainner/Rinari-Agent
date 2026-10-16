@@ -16,6 +16,7 @@ import { refreshWindowAttentionForTests } from '../../hooks/useWindowAttention'
 import {
   RESULT_READ_DWELL_MS,
   RESULT_READ_MIN_VISIBLE_PX,
+  RESULT_RETURN_DWELL_MS,
   ReadTrackingContext,
   isResultBodyVisible,
 } from './useResultVisibility'
@@ -138,4 +139,59 @@ it('UX-10: focusing the session or re-rendering the surface does not clear the b
   )
   act(() => { vi.advanceTimersByTime(RESULT_READ_DWELL_MS * 2) })
   expect(receipt()).toBe('unread')
+})
+
+// #62: lo que terminó mientras no estabas no se da por leído en medio segundo.
+function awayReceipt() {
+  useBoardAttentionStore.getState().hydrate({})
+  useBoardAttentionStore.getState().initializeSessionAttention('ses_a', [])
+  useBoardAttentionStore.getState().observeTerminal('ses_a', 't1', 'completed', 'live', 2_000, { away: true })
+}
+
+it('#62: a result that finished while away waits for activity, not 500 ms', () => {
+  awayReceipt()
+  const view = mount()
+  const body = view.getByTestId('turn-result')
+  intersect(body, { ratio: 1, height: 200, visibleHeight: 200 })
+  act(() => { vi.advanceTimersByTime(RESULT_READ_DWELL_MS * 2) })
+  expect(receipt()).toBe('unread')
+  act(() => { window.dispatchEvent(new Event('wheel')) })
+  expect(receipt()).toBe('seen')
+})
+
+it('#62: without activity it is read after a few seconds with the window attended', () => {
+  awayReceipt()
+  const view = mount()
+  intersect(view.getByTestId('turn-result'), { ratio: 1, height: 200, visibleHeight: 200 })
+  act(() => { vi.advanceTimersByTime(RESULT_RETURN_DWELL_MS - 100) })
+  expect(receipt()).toBe('unread')
+  act(() => { vi.advanceTimersByTime(200) })
+  expect(receipt()).toBe('seen')
+})
+
+it('#62: activity while the result is off screen does not count', () => {
+  awayReceipt()
+  const view = mount()
+  intersect(view.getByTestId('turn-result'), { ratio: 0, height: 200, visibleHeight: 0 })
+  act(() => { window.dispatchEvent(new Event('keydown')) })
+  expect(receipt()).toBe('unread')
+})
+
+it('#84: reading a result also reads the earlier ones of the conversation', () => {
+  useBoardAttentionStore.getState().observeTerminal('ses_a', 't0', 'completed', 'live', 500)
+  // t1 terminó después (2_000); t0 quedó arriba, fuera de la vista.
+  useBoardAttentionStore.getState().hydrate({
+    ses_a: {
+      ...useBoardAttentionStore.getState().sessions.ses_a!,
+      turns: {
+        t0: { turnId: 't0', state: 'unread', outcome: 'completed', completedAt: 500 },
+        t1: { turnId: 't1', state: 'unread', outcome: 'completed', completedAt: 2_000 },
+      },
+    },
+  })
+  const view = mount()
+  intersect(view.getByTestId('turn-result'), { ratio: 1, height: 200, visibleHeight: 200 })
+  act(() => { vi.advanceTimersByTime(RESULT_READ_DWELL_MS) })
+  expect(useBoardAttentionStore.getState().sessions.ses_a?.turns.t0?.state).toBe('seen')
+  expect(receipt()).toBe('seen')
 })

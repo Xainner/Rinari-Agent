@@ -13,6 +13,8 @@ import {
   type NotificationTarget,
 } from '../../stores/notificationCenter'
 import BoardAttentionSection, { useBoardAttentionTotal } from '../board/BoardAttentionSection'
+import { useBoardAttentionStore } from '../../stores/boardAttention'
+import { markEverythingRead } from './attentionCommands'
 
 const MODULE_TITLE: Record<NotificationModule, I18nKey> = {
   schedules: 'notifications.module.schedules',
@@ -57,6 +59,7 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
   const markRead = useNotificationCenter((state) => state.markRead)
   const dismiss = useNotificationCenter((state) => state.dismiss)
   const boardTotal = useBoardAttentionTotal()
+  const unreadResults = useBoardAttentionStore((state) => Object.values(state.sessions).some((session) => session.unreadPeerMessageIds.length > 0 || Object.values(session.turns).some((receipt) => receipt.state === 'unread')))
   const total = boardTotal + unread
 
   // Abrir la campana es verlas: al cerrarla, por la vía que sea, quedan leídas.
@@ -90,8 +93,8 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
       <PopoverContent align="end" className="notify-pop max-h-[70vh] w-96 overflow-y-auto p-2" aria-label={t('notifications.title')}>
         <div className="flex items-center gap-2 px-2 pt-1 pb-2">
           <span className="mr-auto font-display text-[15px] font-bold text-[var(--text)]">{t('notifications.title')}</span>
-          {unread > 0 && (
-            <button type="button" className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-2)] hover:underline" onClick={() => markRead()}>
+          {(unread > 0 || unreadResults) && (
+            <button type="button" className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-2)] hover:underline" onClick={() => markEverythingRead()}>
               <CheckCheck size={12} aria-hidden="true" /> {t('notifications.markAll')}
             </button>
           )}

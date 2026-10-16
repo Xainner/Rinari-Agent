@@ -104,7 +104,7 @@ it('collapses a pane into a 48px strip without its chat, and expands it back fro
   })
   expect(screen.getByRole('region', { name: 'Docs' }).dataset.status).toBe('working')
   act(() => {
-    engine.runtime.getState().dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_b' }))
+    engine.runtime.getState().dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_b', content: 'ok' }))
   })
   expect(within(screen.getByRole('region', { name: 'Docs' })).getByRole('status', { name: '1 resultados sin leer' })).toBeTruthy()
   await user.click(within(screen.getByRole('region', { name: 'Docs' })).getByRole('button', { name: 'Expandir «Docs»' }))
@@ -125,7 +125,7 @@ it('toolbar: counts by session, collapse finished, focus mode and expand all', a
   act(() => {
     engine.runtime.getState().dispatch(event('turn.started', { turn_id: 'tb', session_id: 'ses_b' }))
     engine.runtime.getState().dispatch(event('turn.started', { turn_id: 'tc', session_id: 'ses_c' }))
-    engine.runtime.getState().dispatch(event('turn.completed', { turn_id: 'tc', session_id: 'ses_c' }))
+    engine.runtime.getState().dispatch(event('turn.completed', { turn_id: 'tc', session_id: 'ses_c', content: 'ok' }))
   })
   expect(within(toolbar).getByTestId('count-working').textContent).toBe('1 trabajando')
   expect(within(toolbar).getByTestId('count-unread').textContent).toBe('1 con resultados sin leer')

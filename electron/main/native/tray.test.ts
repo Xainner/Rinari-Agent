@@ -18,7 +18,7 @@ describe('system tray menu', () => {
     const { entries } = fixture(language)
     const t = hostText(language)
     expect(entries.filter(e => !e.separator).map(e => e.label)).toEqual([
-      t.trayOpen, t.menuSettings, t.menuUpdates, t.menuReportBug, t.trayQuit,
+      t.trayOpen, t.trayMarkAllRead, t.menuSettings, t.menuUpdates, t.menuReportBug, t.trayQuit,
     ])
     expect(entries.filter(e => e.separator)).toHaveLength(2)
   })
@@ -30,6 +30,12 @@ describe('system tray menu', () => {
     entries.find(e => e.label === hostText('es')[label])!.run!()
     expect(events).toEqual(['open', action])
     expect(deps.onQuit).not.toHaveBeenCalled()
+  })
+
+  it('marks everything read without opening the window', () => {
+    const { entries, events } = fixture()
+    entries.find(e => e.label === hostText('es').trayMarkAllRead)!.run!()
+    expect(events).toEqual(['mark-all-read'])
   })
 
   it('keeps open and coordinated quit independent of the new actions', () => {

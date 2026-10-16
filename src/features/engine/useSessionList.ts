@@ -14,6 +14,7 @@ import { translate } from '../../i18n'
 import type { Language } from '../../types'
 import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
+import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { revealSessionProject } from '../projects/revealSessionProject'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
@@ -459,6 +460,7 @@ export function useSessionList(options: {
   const archiveSession = useCallback(async (id: string): Promise<boolean> => {
     try {
       await engineApi.archiveSession(id)
+      useBoardAttentionStore.getState().forgetSession(id)
       await refreshSessions()
       return true
     } catch (err) {
@@ -495,6 +497,8 @@ export function useSessionList(options: {
       try {
         const result = await engineApi.deleteSession(id, cascade)
         useActivityDisclosure.getState().forgetSession(id)
+        // Sus recibos «sin leer» ya no se podrían limpiar (#84).
+        useBoardAttentionStore.getState().forgetSession(id)
         forgetRow(id)
         await refreshSessions()
         return result

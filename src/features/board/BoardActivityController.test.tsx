@@ -52,7 +52,7 @@ it('treats finished history as baseline and only live terminals as unread', () =
   })
   expect(useBoardAttentionStore.getState().sessions.ses_a.trackedActiveTurnIds).toEqual(['t2'])
   act(() => {
-    dispatch(event('turn.completed', { turn_id: 't2', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't2', session_id: 'ses_a', content: 'ok' }))
   })
   session = useBoardAttentionStore.getState().sessions.ses_a
   expect(unreadTurnIds(session)).toEqual(['t2'])
@@ -78,7 +78,7 @@ it('does not turn live terminals seen before the history load into baseline', ()
   expect(useBoardAttentionStore.getState().sessions.ses_a).toBeUndefined()
   act(() => {
     dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   // History arrives later: t0 was already finished (baseline), t1 finished in front of us (unread).
   act(() => {
@@ -103,7 +103,7 @@ it('follows Normal chats too: a live result there counts as pending', () => {
   render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
   act(() => {
     dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   expect(useBoardAttentionStore.getState().sessions.ses_a.turns.t1.state).toBe('unread')
 })
@@ -114,7 +114,21 @@ it('never counts the past of a chat whose history is not loaded', () => {
   render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
   act(() => {
     dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   expect(useBoardAttentionStore.getState().sessions.ses_a).toBeUndefined()
+})
+
+it('#84: a turn that only compacted the context is not an unread result', () => {
+  const engine = harness(true)
+  const { dispatch } = engine.runtime.getState()
+  dispatch({ type: 'timeline/loaded', sessionId: 'ses_a', turns: [] })
+  useBoardStore.getState().addPane('ses_a')
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't_compact', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't_compact', session_id: 'ses_a', kind: 'compaction', content: '' }))
+  })
+  const receipt = useBoardAttentionStore.getState().sessions.ses_a?.turns.t_compact
+  expect(receipt?.state).toBe('seen')
 })

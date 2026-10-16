@@ -25,7 +25,12 @@ export interface AttentionSummary {
   count: number
   category: AttentionCategory
   working: number
+  /** Las conversaciones que suman al número, para nombrarlas (#84). */
+  pending?: string[]
 }
+
+/** Windows corta el texto del icono de la bandeja a 127 caracteres. */
+const TOOLTIP_MAX = 120
 
 /**
  * Número y color salen de la misma cuenta. Precedencia: algo que te necesita →
@@ -36,6 +41,7 @@ export interface AttentionSummary {
 export function summarizeAttention(sessions: SessionPending[]): AttentionSummary {
   let count = 0
   let working = 0
+  const pendingIds: string[] = []
   let needsYou = false
   let failed = false
   let done = false
@@ -44,22 +50,48 @@ export function summarizeAttention(sessions: SessionPending[]): AttentionSummary
     const pending = session.needsYou || session.unread.length > 0 || session.unreadPeers > 0
     if (!pending) continue
     count += 1
+    pendingIds.push(session.sessionId)
     if (session.needsYou) needsYou = true
     if (session.unread.includes('failed')) failed = true
     if (session.unread.includes('completed')) done = true
   }
   const category: AttentionCategory = count === 0 ? 'none' : needsYou ? 'needs_you' : failed ? 'failed' : done ? 'done' : 'other'
-  return { count, category, working }
+  return { count, category, working, pending: pendingIds }
 }
 
-export function indicatorTexts(summary: AttentionSummary, lang: Language): Pick<AttentionIndicators, 'tooltip' | 'description'> {
+export function indicatorTexts(
+  summary: AttentionSummary,
+  lang: Language,
+  titleFor: (sessionId: string) => string | null = () => null,
+): Pick<AttentionIndicators, 'tooltip' | 'description'> {
   const parts = [APP_NAME]
-  if (summary.count > 0) parts.push(translate(lang, summary.count === 1 ? 'indicators.pendingOne' : 'indicators.pendingMany', { count: summary.count }))
+  if (summary.count > 0) {
+    const label = translate(lang, summary.count === 1 ? 'indicators.pendingOne' : 'indicators.pendingMany', { count: summary.count })
+    // Cuáles: «2 chats pendientes: Título A, Título B» (#84).
+    const names = (summary.pending ?? []).map(titleFor).filter((name): name is string => Boolean(name))
+    parts.push(names.length > 0 ? `${label}: ${names.join(', ')}` : label)
+  }
   if (summary.working > 0) parts.push(translate(lang, 'indicators.working', { count: summary.working }))
   const description = summary.category === 'none'
     ? ''
     : `${translate(lang, summary.count === 1 ? 'indicators.pendingOne' : 'indicators.pendingMany', { count: summary.count })}. ${translate(lang, `indicators.category.${summary.category}`)}`
-  return { tooltip: parts.join(' · '), description }
+  const tooltip = parts.join(' · ')
+  return { tooltip: tooltip.length > TOOLTIP_MAX ? `${tooltip.slice(0, TOOLTIP_MAX - 1)}…` : tooltip, description }
+}
+
+/** Una línea para `app.log` cuando cambia el número: ids y estados, nunca contenido (#84). */
+export function describeAttention(sessions: SessionPending[]): string {
+  const parts = sessions
+    .filter((session) => session.needsYou || session.unread.length > 0 || session.unreadPeers > 0)
+    .map((session) => {
+      const states = [
+        session.needsYou ? 'needs_you' : null,
+        session.unread.length > 0 ? `unread(${session.unread.join(',')})` : null,
+        session.unreadPeers > 0 ? `peers(${session.unreadPeers})` : null,
+      ].filter(Boolean)
+      return `${session.sessionId} ${states.join(' ')}`
+    })
+  return `[rinari] attention ${parts.length}${parts.length > 0 ? `: ${parts.join('; ')}` : ''}`
 }
 
 const ACTIVE = new Set(['running', 'approval', 'cancelling'])
@@ -111,18 +143,30 @@ function nextGeneration(): number {
  */
 export function useAttentionIndicators(
   runtime: { getState(): TurnTimelineState; subscribe(listener: () => void): () => void },
-  options: { ready: boolean; lang: Language; liveSessionIds: string[] },
+  options: { ready: boolean; lang: Language; liveSessionIds: string[]; titleFor?: (sessionId: string) => string | null },
 ): AttentionSummary {
   const enabled = useIndicatorPrefs((state) => state.enabled)
-  const [summary, setSummary] = useState<AttentionSummary>({ count: 0, category: 'none', working: 0 })
+  const [summary, setSummary] = useState<AttentionSummary>({ count: 0, category: 'none', working: 0, pending: [] })
   const sent = useRef('')
+  const logged = useRef('')
+  const titleFor = useRef(options.titleFor)
+  titleFor.current = options.titleFor
   const liveKey = options.liveSessionIds.join('|')
 
   useEffect(() => {
     const compute = () => {
       const sessions = pendingBySession(runtime.getState(), useBoardAttentionStore.getState().sessions, (id) => getPendingQuestions(id).length)
       const next = summarizeAttention(sessions)
-      setSummary((current) => (current.count === next.count && current.category === next.category && current.working === next.working ? current : next))
+      const line = describeAttention(sessions)
+      if (line !== logged.current) {
+        logged.current = line
+        console.info(line)
+      }
+      setSummary((current) => (
+        current.count === next.count && current.category === next.category && current.working === next.working && (current.pending ?? []).join('|') === (next.pending ?? []).join('|')
+          ? current
+          : next
+      ))
     }
     compute()
     // Preguntas: solo de las sesiones vivas (cada suscripción consulta al Engine).
@@ -134,12 +178,12 @@ export function useAttentionIndicators(
 
   useEffect(() => {
     if (!options.ready) return
-    const shown = enabled ? summary : { count: 0, category: 'none' as const, working: 0 }
-    const texts = indicatorTexts(shown, options.lang)
+    const shown = enabled ? summary : { count: 0, category: 'none' as const, working: 0, pending: [] }
+    const texts = indicatorTexts(shown, options.lang, (id) => titleFor.current?.(id) ?? null)
     const key = JSON.stringify([shown, texts])
     if (key === sent.current) return
     sent.current = key
-    void platform().app.setIndicators({ generation: nextGeneration(), ...shown, ...texts }).catch(() => undefined)
+    void platform().app.setIndicators({ generation: nextGeneration(), count: shown.count, category: shown.category, working: shown.working, ...texts }).catch(() => undefined)
   }, [enabled, summary, options.ready, options.lang])
 
   return summary

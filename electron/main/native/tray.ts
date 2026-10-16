@@ -16,8 +16,11 @@ import type { HostText } from './hostText'
 export interface TrayDeps {
   /** Muestra y enfoca la ventana principal (o la revela si nunca se mostró). */
   onOpen(): void
-  /** Acciones existentes del renderer, después de mostrar la ventana. */
-  onAction(action: 'settings' | 'updates' | 'report-bug'): void
+  /**
+   * Acciones existentes del renderer. Las de una pantalla muestran antes la
+   * ventana; «Marcar todo como leído» no la abre (#84).
+   */
+  onAction(action: 'settings' | 'updates' | 'report-bug' | 'mark-all-read'): void
   onQuit(): void
   /** Etiquetas en el idioma actual de la interfaz. */
   text(): HostText
@@ -38,6 +41,7 @@ export function trayMenuEntries(deps: TrayDeps): TrayEntry[] {
   }
   return [
     { label: text.trayOpen, run: deps.onOpen },
+    { label: text.trayMarkAllRead, run: () => deps.onAction('mark-all-read') },
     { label: '', separator: true },
     { label: text.menuSettings, run: action('settings') },
     { label: text.menuUpdates, run: action('updates') },

@@ -7,7 +7,7 @@ import { FileViewer } from '../files/FileWorkspace'
 import BrowserSurface from '../browser/BrowserSurface'
 import TerminalPanel from '../terminal/TerminalPanel'
 import AgentsPanel from '../agents/AgentsPanel'
-import ChangesPanel from '../workspace/ChangesPanel'
+import TurnChangesView from '../workspace/TurnChangesView'
 import CheckpointsPanel from '../workspace/CheckpointsPanel'
 import ArtifactsPanel from '../workspace/ArtifactsPanel'
 import TasksPanel from '../workspace/TasksPanel'
@@ -504,9 +504,9 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
         </div>
       )
     case 'changes':
-      return path === null ? noPath : (
+      return path === null ? <TurnChangesView sessionId={sessionId} path={null} /> : (
         <div className="dock-stack">
-          <div className="dock-stack-main dock-scroll"><ChangesPanel key={path} path={path} onFiles={() => {}} /></div>
+          <div className="dock-stack-main"><TurnChangesView sessionId={sessionId} path={path} /></div>
           <DockSection sessionId={sessionId} view="changes" section="checkpoints" title={t('workspace.tab.checkpoints')}>
             <CheckpointsPanel key={path} path={path} />
           </DockSection>

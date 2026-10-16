@@ -232,6 +232,10 @@ export interface SessionDockState {
   sections: Record<string, { view: DockView; section: DockSection; at: number }>
   /** Transitorio: el botón desde el que se abrió la última vista, por sesión. */
   launches: Record<string, DockLaunch>
+  /** Transitorio: el turno (y el archivo) que la vista Cambios debe enseñar (#41). */
+  changesFocus: Record<string, { turnId: string; path?: string; at: number }>
+  /** «Revisar» de los cambios de un turno: abre Cambios en ese turno (y en ese archivo). */
+  reviewTurn: (sessionId: string, turnId: string, path?: string) => void
   /** Transitorio: el alcance de la vista Flujo de cada sesión (#43). */
   flowScope: Record<string, 'session' | 'project'>
   setFlowScope: (sessionId: string, scope: 'session' | 'project') => void
@@ -304,6 +308,12 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
     foreign: initial.foreign,
     sections: {},
     launches: {},
+    changesFocus: {},
+    reviewTurn: (sessionId, turnId, path) => {
+      if (!sessionId) return
+      set((state) => ({ changesFocus: { ...state.changesFocus, [dockNamespaceKey(state.homeId, sessionId)]: { turnId, path, at: Date.now() } } }))
+      get().openView(sessionId, 'changes')
+    },
     flowScope: {},
     setFlowScope: (sessionId, scope) => set((state) => ({ flowScope: { ...state.flowScope, [dockNamespaceKey(state.homeId, sessionId)]: scope } })),
     setHomeId: (homeId) => set((state) => {
@@ -418,5 +428,5 @@ const DEFAULT_LAYOUT = defaultDockLayout()
 
 /** Solo tests. */
 export function resetSessionDockForTests(): void {
-  useSessionDockStore.setState({ homeId: null, layouts: {}, foreign: {}, sections: {}, launches: {}, flowScope: {} })
+  useSessionDockStore.setState({ homeId: null, layouts: {}, foreign: {}, sections: {}, launches: {}, changesFocus: {}, flowScope: {} })
 }

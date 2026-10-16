@@ -4,6 +4,7 @@ import { useI18n, type I18nKey } from '../../i18n'
 import type { ChatMessage, TurnStopReason } from '../../types'
 import { terminalOutcomeOf } from '../engine/sessionSelectors'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
+import { useSessionDockStore } from '../../stores/sessionDock'
 import { useReadTracking } from '../board/useResultVisibility'
 import { cn } from '../../lib/utils'
 import { usePrepareRetry } from './usePrepareRetry'
@@ -117,7 +118,11 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
       {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (
-          <button type="button" className="turn-meta-action" onClick={onReviewChanges}>
+          <button type="button" className="turn-meta-action" onClick={() => {
+            // El mismo «Revisar» que la tarjeta: Cambios del panel lateral, en este turno (#41).
+            if (sessionId) useSessionDockStore.getState().reviewTurn(sessionId, timeline.turnId)
+            else onReviewChanges()
+          }}>
             <FileDiff size={11} aria-hidden="true" /> {t('board.result.review')}
           </button>
         )}

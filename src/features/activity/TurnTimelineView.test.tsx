@@ -115,7 +115,8 @@ describe('TurnTimelineView', () => {
       { id: 'model:m1', type: 'model', activitySeq: 1, occurredAt: 1_500, modelCallId: 'm1', status: 'completed', content: 'Listo', outputKind: 'final' },
       { id: 'changeset:c1', type: 'changeset', activitySeq: 2, occurredAt: 1_600, changesetId: 'c1', turnId: 't1', status: 'active', additions: 2, deletions: 1, undoable: true, attributionComplete: true, warnings: [], files: [{ path: 'a.ts', absolute_path: '/repo/a.ts', kind: 'modified', additions: 2, deletions: 1, ownership: 'agent', confidence: 'exact', binary: false, sensitive: false, diff: '+ok', diff_truncated: false, undoable: true }] },
     ] }, 2_000)
-    expect(screen.getByText('1 archivo(s) de este turno')).toBeTruthy()
+    expect(screen.getByText('1 archivo cambiado')).toBeTruthy()
+    expect(screen.getByText('modificado')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Revisar' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Deshacer' })).toBeTruthy()
   })

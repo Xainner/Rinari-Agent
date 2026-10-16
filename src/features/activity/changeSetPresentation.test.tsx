@@ -47,8 +47,9 @@ it('keeps real changes actionable and uses the latest nonempty set for metadata'
   const value=timeline([real,{...empty,id:'empty-newer',activitySeq:2}])
   expect(presentedChangeSets(value).latest).toBe(real)
   render(wrap(<><ChangeSetRow item={real} turnActive={false}/><TurnMeta timeline={value} actions={0} emphasis={false} onReviewChanges={review}/></>))
-  expect(screen.getByText(/Se observaron estos cambios/)).toBeTruthy()
-  expect(screen.getByText('1 archivo(s) de este turno')).toBeTruthy()
+  // La cobertura parcial es una nota discreta, no un aviso ámbar (#41).
+  expect(screen.getByText(/Puede haber otros cambios que no se registraron/)).toBeTruthy()
+  expect(screen.getByText('1 archivo cambiado')).toBeTruthy()
   await userEvent.setup().click(screen.getByRole('button',{name:'Revisar cambios'}))
   expect(review).toHaveBeenCalledOnce()
 })

@@ -1,7 +1,7 @@
-import { GitBranch, RotateCcw, ShieldAlert } from 'lucide-react'
+import { FileDiff, Info, RotateCcw, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,29 +13,43 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import { commandMessage, engineApi, type TurnChangedFile, type TurnUndoPreview } from '../../services/engine'
+import { useSessionDockStore } from '../../stores/sessionDock'
+import { useReadTracking } from '../board/useResultVisibility'
 import type { TimelineItem } from './types'
 import { changeSetPresentation, hasPartialCoverage } from './changeSetPresentation'
 
-/** Changeset confirmado de un turno: revisión de archivos y undo con vista previa. */
+/** Tono del chip de cada tipo de cambio. */
+const KIND_TONE: Record<TurnChangedFile['kind'], string | undefined> = {
+  created: 'success',
+  modified: 'accent',
+  deleted: 'danger',
+  renamed: undefined,
+}
+
+const STATUS_KEY: Partial<Record<string, I18nKey>> = {
+  undone: 'changes.card.undone',
+  partially_undone: 'changes.card.partiallyUndone',
+  conflicted: 'changes.card.conflicted',
+}
+
+/**
+ * Cambios de un turno (plan 0.4.0 #41): cuántos archivos y su `+/−`, la lista
+ * con el tipo de cada uno, y dos acciones. «Revisar» (o un archivo de la
+ * lista) abre la vista Cambios del panel lateral en este turno, con el diff a
+ * color y sin depender de git; «Deshacer» enseña antes qué se restaura.
+ */
 export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem, { type: 'changeset' }>; turnActive: boolean }) {
-  const { lang, t } = useI18n()
-  const [reviewing, setReviewing] = useState(false)
-  const [files, setFiles] = useState<TurnChangedFile[]>(item.files)
+  const { t } = useI18n()
+  const sessionId = useReadTracking()?.sessionId ?? null
+  const reviewTurn = useSessionDockStore((state) => state.reviewTurn)
   const [preview, setPreview] = useState<TurnUndoPreview | null>(null)
   const [working, setWorking] = useState(false)
   const presentation = changeSetPresentation(item)
   if (presentation === 'hidden') return null
+  const files = item.files
 
-  async function review() {
-    try {
-      const result = await engineApi.reviewTurnChanges(item.turnId)
-      setFiles(result.files)
-    } catch {
-      // The event already contains the persisted public diff; keep it available
-      // when an older bridge lacks the review command.
-      setFiles(item.files)
-    }
-    setReviewing((open) => !open)
+  function review(path?: string) {
+    if (sessionId) reviewTurn(sessionId, item.turnId, path)
   }
 
   async function prepareUndo() {
@@ -52,14 +66,8 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
   async function undo(safeOnly: boolean) {
     setWorking(true)
     try {
-      const result = await engineApi.undoTurnChanges(
-        item.turnId,
-        undefined,
-        safeOnly,
-      )
-      toast.success(lang === 'es'
-        ? `Deshacer: ${result.applied.length} archivo(s) restaurado(s)`
-        : `Undo: ${result.applied.length} file(s) restored`)
+      const result = await engineApi.undoTurnChanges(item.turnId, undefined, safeOnly)
+      toast.success(t(result.applied.length === 1 ? 'changes.undo.doneOne' : 'changes.undo.done', { n: result.applied.length }))
       window.dispatchEvent(new Event('rinari-workspace-refresh'))
       setPreview(null)
     } catch (error) {
@@ -69,45 +77,62 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
     }
   }
 
-  const status = item.status === 'undone'
-    ? (lang === 'es' ? 'Deshecho' : 'Undone')
-    : item.status === 'partially_undone'
-      ? (lang === 'es' ? 'Deshecho parcialmente' : 'Partially undone')
-      : item.status === 'conflicted'
-        ? (lang === 'es' ? 'Con conflictos' : 'Conflicted')
-        : null
+  const statusKey = STATUS_KEY[item.status]
+  const conflicts = preview?.conflicts.length ?? 0
   return (
-    <div className="my-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3 text-[12px]">
-      <div className="flex flex-wrap items-center gap-2">
-        <GitBranch size={14} className="text-[var(--accent-2)]" />
-        <span className="font-medium text-[var(--text)]">{files.length} {lang === 'es' ? 'archivo(s) de este turno' : 'file(s) from this turn'}</span>
-        <span className="font-mono text-[11px] text-[var(--success)]">+{item.additions}</span>
-        <span className="font-mono text-[11px] text-[var(--danger)]">-{item.deletions}</span>
-        {status && <span className="text-[var(--text-subtle)]">· {status}</span>}
-      </div>
+    <section className="turn-changes" data-testid="turn-changes" data-status={item.status} aria-label={t(files.length === 1 ? 'changes.card.filesOne' : 'changes.card.files', { n: files.length })}>
+      <header className="turn-changes-head">
+        <span className="turn-changes-icon" aria-hidden="true"><FileDiff size={14} /></span>
+        <span className="turn-changes-title">{t(files.length === 1 ? 'changes.card.filesOne' : 'changes.card.files', { n: files.length })}</span>
+        <span className="turn-changes-stat is-add">+{item.additions}</span>
+        <span className="turn-changes-stat is-del">−{item.deletions}</span>
+        {statusKey && <span className="r-chip turn-changes-status">{t(statusKey)}</span>}
+      </header>
+      <ul className="turn-changes-files">
+        {files.map((file) => (
+          <li key={file.absolute_path}>
+            <button type="button" className="turn-changes-file" disabled={!sessionId} onClick={() => review(file.path)} title={t('changes.card.openFile', { path: file.path })}>
+              <span className="r-chip turn-changes-kind" data-tone={KIND_TONE[file.kind]}>{t(`changes.kind.${file.kind}`)}</span>
+              <span className="turn-changes-path">{file.previous_path && file.kind === 'renamed' ? `${file.previous_path} → ${file.path}` : file.path}</span>
+              {file.sensitive && <span className="r-chip turn-changes-kind" data-tone="warning">{t('changes.card.sensitive')}</span>}
+              <span className="turn-changes-file-stat">
+                {typeof file.additions === 'number' && <span className="is-add">+{file.additions}</span>}
+                {typeof file.deletions === 'number' && <span className="is-del">−{file.deletions}</span>}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
       {hasPartialCoverage(item) && (
-        <div className="mt-2 flex gap-2 text-[var(--warning)]"><ShieldAlert size={13} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{t('changes.coverage.withFiles')}</span></div>
+        <p className="turn-changes-note"><Info size={12} aria-hidden="true" /> {t('changes.card.partial')}</p>
       )}
-      <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void review()} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)]">{lang === 'es' ? 'Revisar' : 'Review'}</button>
-        <button type="button" disabled={working || turnActive || item.status !== 'active' || files.length === 0} onClick={() => void prepareUndo()} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-40"><RotateCcw size={12} />{lang === 'es' ? 'Deshacer' : 'Undo'}</button>
+      <div className="turn-changes-actions">
+        <button type="button" className="btn btn-secondary btn-xs" disabled={!sessionId} onClick={() => review()}>
+          <FileDiff size={12} aria-hidden="true" /> {t('changes.card.review')}
+        </button>
+        <button type="button" className="btn btn-ghost btn-xs" disabled={working || turnActive || item.status !== 'active' || files.length === 0} onClick={() => void prepareUndo()}>
+          <RotateCcw size={12} aria-hidden="true" /> {t('changes.card.undo')}
+        </button>
       </div>
-      {reviewing && <div className="mt-3 space-y-2">{files.map((file) => <details key={file.absolute_path} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2"><summary className="cursor-pointer text-[var(--text-muted)]"><span className="mr-2 uppercase text-[10px] text-[var(--text-subtle)]">{file.kind}</span>{file.path}{file.sensitive && <span className="ml-2 text-[var(--warning)]">{lang === 'es' ? 'sensible' : 'sensitive'}</span>}</summary>{file.diff != null && <pre className="mt-2 max-h-64 overflow-auto whitespace-pre font-mono text-[11px] text-[var(--text-subtle)]">{file.diff}</pre>}{file.diff == null && <p className="mt-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Contenido no disponible para revisión.' : 'Content unavailable for review.'}</p>}</details>)}</div>}
       <AlertDialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{lang === 'es' ? 'Deshacer cambios de este turno' : 'Undo this turn’s changes'}</AlertDialogTitle>
-            <AlertDialogDescription>{preview?.conflicts.length
-              ? (lang === 'es' ? `${preview.conflicts.length} ruta(s) cambiaron después del turno. El undo total está bloqueado.` : `${preview.conflicts.length} path(s) changed after the turn. Full undo is blocked.`)
-              : (lang === 'es' ? 'Se restaurarán únicamente los archivos atribuidos con seguridad a este turno.' : 'Only files safely attributed to this turn will be restored.')}</AlertDialogDescription>
+            <AlertDialogTitle>{t('changes.undo.title')}</AlertDialogTitle>
+            <AlertDialogDescription>{conflicts > 0 ? t(conflicts === 1 ? 'changes.undo.conflictsOne' : 'changes.undo.conflicts', { n: conflicts }) : t('changes.undo.safe')}</AlertDialogDescription>
           </AlertDialogHeader>
-          {preview && preview.conflicts.length > 0 && <ul className="max-h-40 overflow-auto text-xs text-[var(--warning)]">{preview.conflicts.map((conflict) => <li key={conflict.absolute_path}>{conflict.path} · {conflict.reason}</li>)}</ul>}
+          {preview && conflicts > 0 && (
+            <ul className="turn-changes-conflicts">
+              {preview.conflicts.map((conflict) => <li key={conflict.absolute_path}><ShieldAlert size={12} aria-hidden="true" /> {conflict.path} · {conflict.reason}</li>)}
+            </ul>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>{lang === 'es' ? 'Cancelar' : 'Cancel'}</AlertDialogCancel>
-            <AlertDialogAction disabled={working || (preview?.operations.length ?? 0) === 0} onClick={() => void undo(Boolean(preview?.conflicts.length))}>{preview?.conflicts.length ? (lang === 'es' ? 'Deshacer solo los seguros' : 'Undo safe files only') : (lang === 'es' ? 'Deshacer' : 'Undo')}</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction disabled={working || (preview?.operations.length ?? 0) === 0} onClick={() => void undo(conflicts > 0)}>
+              {conflicts > 0 ? t('changes.undo.safeOnly') : t('changes.card.undo')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </section>
   )
 }

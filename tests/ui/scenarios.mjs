@@ -119,6 +119,19 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => startFakeModel([{ text: 'RESPUESTA UNO' }, { text: 'RESPUESTA DOS' }, { text: 'Panel' }, { text: 'Panel' }, { text: 'Panel' }]),
   },
+  'turn-changes': {
+    title: 'Cambios del turno: tarjeta nueva y revisión con colores en el panel lateral, sin git',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Ticket con QR' })),
+      main: [
+        { tool: 'fs.write', args: { path: 'src/caja/ticket.ts', content: ['import { qr } from ' + "'./qr'", '', 'export function ticket(code: string) {', '  return `Ticket ${code} ${qr(code)}`', '}', ''].join('\n') }, say: 'Cambio el ticket.' },
+        { tool: 'fs.write', args: { path: 'src/caja/qr.ts', content: ['export function qr(code: string) {', '  return `[QR:${code}]`', '}', ''].join('\n') }, say: 'Creo el QR.' },
+        { text: 'QR LISTO' },
+        { text: 'EXTRA' },
+      ],
+    }, laneOf),
+  },
   'skill-install': {
     title: 'Instalar skills: varias a la vez con casillas, progreso, chips por fila y confirmación de la que trae avisos',
     phases: ['exercise'],

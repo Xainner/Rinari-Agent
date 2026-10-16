@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { translate } from '../i18n'
 import { useUIStore } from '../stores/ui'
+import { art } from '../features/rinari/art'
 
 /**
  * Lo que se registra de un error de interfaz (plan 0.4.0 #58): el mensaje y
@@ -44,11 +45,13 @@ export class ZoneBoundary extends Component<Props, State> {
     if (this.state.error) {
       const lang = useUIStore.getState().lang
       return (
-        <div role="alert" data-testid="zone-error" data-zone={this.props.zone} className="flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-[var(--text-muted)]">
-          <p>{translate(lang, 'app.zoneFailed')}</p>
+        <div role="alert" data-testid="zone-error" data-zone={this.props.zone} className="zone-error">
+          <img src={art.chibi('oops')} alt="" aria-hidden="true" />
+          <p className="zone-error-title">{translate(lang, 'app.zoneFailed')}</p>
+          <p className="zone-error-hint">{translate(lang, 'app.zoneFailedHint')}</p>
           <button
             type="button"
-            className="btn btn-sm inline-flex items-center gap-1.5"
+            className="btn btn-secondary btn-sm"
             onClick={() => this.setState((state) => ({ error: null, attempt: state.attempt + 1 }))}
           >
             <RotateCcw size={13} aria-hidden="true" />

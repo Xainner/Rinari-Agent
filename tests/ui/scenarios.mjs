@@ -307,6 +307,25 @@ export const scenarios = {
       writeFileSync(join(data, 'nota.txt'), Array.from({ length: 150 }, (_, i) => `Línea ${i + 1}: adjunto de texto con desplazamiento interno.`).join('\n'))
     },
   },
+  'stream-reveal': {
+    title: 'Chat: el texto en streaming se revela con suavidad aunque llegue en trozos grandes (#52)',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Revelado suave' })),
+      main: [
+        {
+          text: [
+            'Revisé la caja de la tienda y el ticket no imprimía el código QR porque la función que lo arma recibía el total sin redondear y la impresora rechazaba la línea completa sin avisar a nadie. ',
+            'Corregí el redondeo en el servicio de cobros, añadí una prueba que imprime un ticket con céntimos y comprobé que la impresora acepta de nuevo la línea con el código QR al final. ',
+            'También dejé una nota en el registro para que el próximo cierre de caja avise si la impresora vuelve a rechazar una línea, así no se pierde ningún ticket en silencio. FIN DEL INFORME',
+          ].join(''),
+          streamDelayMs: 900,
+          streamChunk: 220,
+        },
+        { text: 'EXTRA' },
+      ],
+    }, laneOf),
+  },
   'chat-follow-live': {
     title: 'Chat: sigue el final mientras Rinari escribe una respuesta pesada',
     phases: ['exercise'],

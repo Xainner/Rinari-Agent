@@ -26,7 +26,8 @@ scenario(async () => {
   await wait(`document.body.innerText.includes('PROGRESO 1')`)
   assert.equal(await evaluate(`Boolean(${q(body)})`), false)
   assert.equal(await evaluate(`Boolean(${q(show)})`), false, 'running legend never folds the turn')
-  assert(await evaluate(`document.body.innerText.includes('En proceso desde hace')`))
+  // The live turn is a status card (#49): what Rinari does and, on the right, the total time.
+  assert(await evaluate(`/[0-9]+ (s|min)/.test(document.querySelector('[data-live-activity] [data-testid="turn-total-time"]')?.textContent ?? '')`), 'live status card with its total time')
   await screenshot('normal-live-visible')
   await evaluate(`${q('[data-operation-group] details > summary')}.click()`)
   await wait(`Boolean(document.querySelector('[data-operation-group] details[open]'))`)

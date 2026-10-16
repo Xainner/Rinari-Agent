@@ -5,6 +5,7 @@ import { Check, Copy, ImageOff } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { highlightToHtml } from '../lib/highlight'
 import { containsMath, escapeCurrency } from '../lib/math-detect'
+import rehypeStreamWords from '../lib/rehypeStreamWords'
 import { copyText } from '../lib/clipboard'
 
 import { ArtifactImage, FileLink, InlineMedia, PathCode, fileUrlTransform, looksLikeLocalPath } from '../features/files/FileWorkspace'
@@ -129,7 +130,12 @@ function LocalImageNotice({ src, alt }: { src: string; alt: string }) {
   )
 }
 
-function Markdown({ children: raw }: { children: string }) {
+/**
+ * `stream`: el texto llega en vivo (#52); las palabras desde `fadeFrom`
+ * entran con un fundido, las de después de `shownTo` esperan invisibles y el
+ * cursor va tras la última visible.
+ */
+function Markdown({ children: raw, stream }: { children: string; stream?: { fadeFrom: number; shownTo?: number } }) {
   const children = escapeCurrency(raw)
   // Una vez que el texto tiene matemáticas, se queda en el renderizador de
   // matemáticas: si cambiara de idea a mitad del streaming, todo el bloque se
@@ -146,15 +152,15 @@ function Markdown({ children: raw }: { children: string }) {
     )
   }
   return (
-    <div className="md-body">
-      <BaseMarkdown>{children}</BaseMarkdown>
+    <div className="md-body" data-streaming={stream ? true : undefined}>
+      <BaseMarkdown stream={stream}>{children}</BaseMarkdown>
     </div>
   )
 }
 
-function BaseMarkdown({ children }: { children: string }) {
+function BaseMarkdown({ children, stream }: { children: string; stream?: { fadeFrom: number; shownTo?: number } }) {
   return (
-    <ReactMarkdown urlTransform={fileUrlTransform} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <ReactMarkdown urlTransform={fileUrlTransform} remarkPlugins={[remarkGfm]} rehypePlugins={stream ? [[rehypeStreamWords, stream]] : undefined} components={markdownComponents}>
       {children}
     </ReactMarkdown>
   )

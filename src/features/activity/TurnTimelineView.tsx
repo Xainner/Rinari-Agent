@@ -44,6 +44,8 @@ import { ModelChangeNotice } from './ModelChangeNotice'
 import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
 import { PresentedFiles } from './PresentedFiles'
+import LiveText from './LiveText'
+import TurnStatusCard from './TurnStatusCard'
 import { SteerBubble } from './SteerBubble'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
@@ -547,7 +549,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
         <div ref={contentRef} className="space-y-2">
         {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
         <ActivityActive.Provider value={active && item.status === 'running'}>{(item.items ?? []).map(child => <InspectionItem key={child.id} id={child.id}>{child.type === 'model'
-          ? child.content ? <Markdown>{child.content}</Markdown> : null
+          ? child.content ? <LiveText id={child.id} content={child.content} streaming={child.status === 'streaming'} live={active && item.status === 'running'} /> : null
           : <ActivityRow item={child} onResolveApproval={onResolveApproval} />}</InspectionItem>)}</ActivityActive.Provider>
         {item.summary && !(item.items ?? []).some(child => child.type === 'model' && child.content === item.summary) && <Markdown>{item.summary}</Markdown>}
         {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{active && item.status === 'running' ? (lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…') : t('activity.noDetails')}</p>}
@@ -731,13 +733,8 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   return (
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
-      {active && showHeader && <div data-live-activity className="turn-head text-[13px] text-[var(--text-muted)]">
-        <RinariAvatar state={rinariStateForTurn(state.kind)} size={38} />
-        <div className="min-w-0 flex-1">
-          <div className="turn-head-name">{t('rinari.name')}</div>
-          <ActivityHeader timeline={timeline} now={now} />
-        </div>
-      </div>}
+      {/* La cabecera del turno en curso, como tarjeta de estado (#49). */}
+      {active && showHeader && <TurnStatusCard timeline={timeline} now={now} />}
       {projection.segments.map((segment, index) => {
         const previous = index < projection.segments.length - 1
         const items = renderableActivity(segment.items, technical, active)
@@ -790,7 +787,7 @@ const ActivityDetails = memo(function ActivityDetails({ items, status, onResolve
   return <div className="turn-rail space-y-2" data-live={live}>{blocks.map(block => block.type === 'text'
     ? <div key={block.id} data-activity-item={block.id} className="relative py-0.5 text-[14px] leading-relaxed text-[var(--text)]">
         <span className="turn-node" data-state="text" aria-hidden="true" style={{ top: 9, width: 6, height: 6, left: -16 }} />
-        <Markdown>{block.item.content}</Markdown>
+        <LiveText id={block.item.id} content={block.item.content} streaming={block.item.status === 'streaming'} live={live} />
         {block.item.modelChange && <ModelChangeNotice change={block.item.modelChange} />}
       </div>
     : <div key={block.id} className="relative"><span className="turn-node" data-state={nodeState(block.items, live)} aria-hidden="true" /><OperationGroup items={block.items} status={status} onResolveApproval={onResolveApproval} /></div>)}</div>

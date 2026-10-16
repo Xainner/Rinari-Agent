@@ -479,6 +479,7 @@ export const es = {
   'activity.noDetails': 'Sin detalles de actividad registrados.',
   'activity.inProgress': 'En proceso desde hace {duration}',
   'activity.inProgressUnknown': 'En proceso · duración no disponible',
+  'turn.status.step': 'Paso {n}/{total}',
   'activity.showOperations': 'Ver operaciones',
   'activity.hideOperations': 'Ocultar operaciones',
   'activity.group.image': 'Imágenes',
@@ -580,6 +581,8 @@ export const es = {
   'msg.exportResponse': 'Exportar respuesta',
   'msg.deleteFromHere': 'Eliminar desde aquí',
   'scroll.bottom': 'Ir al final',
+  'scroll.working': 'Rinari trabajando',
+  'scroll.needsYou': 'Rinari te necesita',
 
   /* Chat */
   'chat.openMenu': 'Abrir menú',
@@ -2464,6 +2467,7 @@ export const es = {
   'app.menuLabel': 'Menú de Rinari Agent',
   'app.openFile': 'Abrir archivo',
   'app.zoneFailed': "Algo falló aquí.",
+  'app.zoneFailedHint': 'El resto de Rinari sigue funcionando. «Recargar» vuelve a abrir solo esta parte.',
   'app.zoneReload': "Recargar esta vista",
   'app.openLink': 'Abrir enlace',
   'app.copyAddress': 'Copiar dirección',

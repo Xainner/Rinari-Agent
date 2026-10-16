@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { ArrowLeft, Bot, CircleAlert, LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Markdown from '../../components/Markdown'
+import LiveText from '../activity/LiveText'
 import { useOptionalRuntimeStore } from '../engine/EngineContext'
 import type { RuntimeStore } from '../engine/runtimeStore'
 import { useSessionTimelines } from '../engine/sessionSelectors'
@@ -87,7 +88,7 @@ function AgentsPanelBody({ store, sessionId }: { store: RuntimeStore; sessionId:
         </div>
         <ol className="agent-steps">
           {(selected.item.items ?? []).map((child) => {
-            if (child.type === 'model') return child.content ? <li key={child.id} className="agent-step is-text"><Markdown>{child.content}</Markdown></li> : null
+            if (child.type === 'model') return child.content ? <li key={child.id} className="agent-step is-text"><LiveText id={child.id} content={child.content} streaming={child.status === 'streaming'} live={selected.live} /></li> : null
             if (child.type === 'tool') {
               const running = selected.live && (child.status === 'running' || child.status === 'requested')
               const failed = child.status === 'failed' || child.status === 'cancelled'

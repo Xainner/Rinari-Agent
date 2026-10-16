@@ -173,6 +173,8 @@ function ChatView({
   )
   const presentation = conversationPresentation(historyPhase, stream.length)
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
+  // Una aprobación esperando se nota también en «Ir al final» (#89).
+  const waitingOnYou = Object.values(timelines).some((turn) => turn.sessionId === sessionId && turn.status === 'approval')
 
   useEffect(() => {
     if (!activeTimeline) return
@@ -544,6 +546,8 @@ function ChatView({
           </div>
           <ScrollToBottom
             visible={!atBottom && stream.length > 0}
+            working={activeTimeline}
+            needsYou={waitingOnYou}
             onClick={() => {
               setAtBottom(true)
               if (stream.length > 0) {

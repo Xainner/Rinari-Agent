@@ -560,6 +560,13 @@ export interface SkillDetail extends SkillEntry {
   previous?: { version: string | null; skill_md: string } | null
 }
 
+/** Fallback and auxiliary model ids (plan 0.4.0 #80); null = the conversation's model. */
+export interface ModelRoles {
+  fallback: string | null
+  auxiliary: string | null
+  auxiliary_compaction: boolean
+}
+
 export interface SkillCandidate {
   name: string
   description: string
@@ -963,6 +970,14 @@ export const engineApi = {
     platform().command<{ resume: SessionResume | null }>('session_resume_cancel', { sessionId }),
   resumeNow: (sessionId: string) =>
     platform().command<{ resume: SessionResume | null; continued: boolean }>('session_resume_now', { sessionId }),
+  // Modelo de respaldo y auxiliar (plan 0.4.0 #80).
+  modelRoles: () => platform().command<{ roles: ModelRoles }>('models_roles_get'),
+  setModelRoles: (changes: Partial<{ fallback: string | null; auxiliary: string | null; auxiliary_compaction: boolean }>) =>
+    platform().command<{ roles: ModelRoles }>('models_roles_set', {
+      fallback: 'fallback' in changes ? changes.fallback ?? '' : undefined,
+      auxiliary: 'auxiliary' in changes ? changes.auxiliary ?? '' : undefined,
+      auxiliary_compaction: changes.auxiliary_compaction,
+    }),
   resumeSettings: () =>
     platform().command<{ auto_resume_on_limits: 'ask' | 'always' | 'never' }>('resume_settings_get'),
   setResumeSettings: (mode: 'ask' | 'always' | 'never') =>

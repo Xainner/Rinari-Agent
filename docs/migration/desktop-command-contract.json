@@ -1495,6 +1495,60 @@
       "host_effects": []
     },
     {
+      "command": "models_roles_get",
+      "module": "sessions",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "models.roles.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "models_roles_set",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "fallback",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "auxiliary",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "auxiliary_compaction",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "models.roles.set",
+      "engine_params": [
+        {
+          "key": "fallback",
+          "from": "fallback",
+          "optional": true
+        },
+        {
+          "key": "auxiliary",
+          "from": "auxiliary",
+          "optional": true
+        },
+        {
+          "key": "auxiliary_compaction",
+          "from": "auxiliary_compaction",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "session_checklist_complete",
       "module": "sessions",
       "args": [

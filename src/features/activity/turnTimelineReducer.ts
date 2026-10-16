@@ -537,6 +537,10 @@ function mergeEventItem(
       reasons: Array.isArray(payload.reasons) ? payload.reasons.filter((item): item is string => typeof item === 'string') : undefined,
     }
   }
+  if (event === 'model.fallback') {
+    // The turn went on with the fallback model (plan 0.4.0 #80).
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'model_fallback', label: text(payload.to_model), status: text(payload.reason) }
+  }
   if (event === 'provider.reasoning.dropped') {
     // El modelo no admite el esfuerzo elegido: el turno siguió sin él.
     return { id, type: 'system', activitySeq, occurredAt, kind: 'reasoning_dropped', label: text(payload.effort) }
@@ -893,6 +897,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('memory.') ||
     event.event === 'skill.proposed' ||
     event.event === 'skill.proposal.resolved' ||
-    event.event === 'provider.reasoning.dropped'
+    event.event === 'provider.reasoning.dropped' ||
+    event.event === 'model.fallback'
   return relevant ? { type: 'engine/event', event, now } : null
 }

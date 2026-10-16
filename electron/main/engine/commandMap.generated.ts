@@ -88,6 +88,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "model_remove": {"method":"model.remove","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},
   "model_test": {"method":"model.test","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},
   "model_use": {"method":"model.use","params":[{"key":"ref","from":"reference","optional":false},{"key":"provider","from":"provider","optional":false}]},
+  "models_roles_get": {"method":"models.roles.get","params":[]},
+  "models_roles_set": {"method":"models.roles.set","params":[{"key":"fallback","from":"fallback","optional":true},{"key":"auxiliary","from":"auxiliary","optional":true},{"key":"auxiliary_compaction","from":"auxiliary_compaction","optional":true}]},
   "peer_group_get": {"method":"session.peer_group.get","params":[{"key":"group_id","from":null,"optional":true},{"key":"session_id","from":null,"optional":true},{"key":"board_id","from":null,"optional":true}],"manual":true},
   "peer_group_revoke": {"method":"session.peer_group.revoke","params":[{"key":"group_id","from":"group_id","optional":false}]},
   "peer_group_set": {"method":"session.peer_group.set","params":[{"key":"board_id","from":"board_id","optional":false},{"key":"expected_revision","from":"expected_revision","optional":false},{"key":"enabled","from":"enabled","optional":false},{"key":"members","from":"members","optional":false},{"key":"group_id","from":"group_id","optional":true}]},

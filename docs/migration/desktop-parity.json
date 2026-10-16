@@ -658,6 +658,24 @@
       "callers": []
     },
     {
+      "command": "models_roles_get",
+      "kind": "engine",
+      "method": "models.roles.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "models_roles_set",
+      "kind": "engine",
+      "method": "models.roles.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "peer_group_get",
       "kind": "engine",
       "method": "session.peer_group.get",
@@ -2030,8 +2048,8 @@
     }
   ],
   "summary": {
-    "commands": 242,
-    "engine_backed": 236,
+    "commands": 244,
+    "engine_backed": 238,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 79

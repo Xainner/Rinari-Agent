@@ -79,6 +79,8 @@ export type DesktopCommand =
   | "model_remove"
   | "model_test"
   | "model_use"
+  | "models_roles_get"
+  | "models_roles_set"
   | "peer_group_get"
   | "peer_group_revoke"
   | "peer_group_set"
@@ -323,6 +325,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "model_remove",
   "model_test",
   "model_use",
+  "models_roles_get",
+  "models_roles_set",
   "peer_group_get",
   "peer_group_revoke",
   "peer_group_set",
@@ -582,6 +586,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "model_remove",
   "model_test",
   "model_use",
+  "models_roles_get",
+  "models_roles_set",
   "peer_group_get",
   "peer_group_revoke",
   "peer_group_set",

@@ -222,3 +222,10 @@ describe('agent activity follows its own end', () => {
     expect(box.scrollTop).toBe(0)
   })
 })
+
+describe('fallback model (#80)', () => {
+  it('says the turn went on with the fallback and why', () => {
+    view({ ...base, items: [{ id: 'system:f', type: 'system', activitySeq: 1, occurredAt: 1_100, kind: 'model_fallback', label: 'backup-model', status: 'QUOTA_EXHAUSTED' }] }, 1_200)
+    expect(screen.getByTestId('model-fallback').textContent).toBe('Seguí con backup-model porque se acabaron los límites del modelo principal.')
+  })
+})

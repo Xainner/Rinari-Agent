@@ -41,6 +41,7 @@ import { SkillProposalCard } from '../skills/SkillProposalCard'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
+import { useOptionalEngineData } from '../engine/EngineContext'
 import { ImageActivity } from './ImageActivity'
 import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
@@ -98,6 +99,28 @@ const ICONS: Record<ToolCategory, typeof FileText> = {
  * mientras se mira, el check se dibuja; al volver a montarse (scroll,
  * historial) aparece quieto: la animación cuenta lo que acaba de pasar.
  */
+const FALLBACK_REASONS: Record<string, I18nKey> = {
+  SERVER_ERROR: 'activity.fallback.provider',
+  TIMEOUT: 'activity.fallback.timeout',
+  STREAM_INTERRUPTED: 'activity.fallback.provider',
+  RATE_LIMIT: 'activity.fallback.limits',
+  QUOTA_EXHAUSTED: 'activity.fallback.limits',
+  MODEL_UNAVAILABLE: 'activity.fallback.model',
+  MODEL_NOT_FOUND: 'activity.fallback.model',
+  AUTH: 'activity.fallback.auth',
+  NETWORK: 'activity.fallback.network',
+  empty_response: 'activity.fallback.empty',
+}
+
+/** «Seguí con X porque …» when the turn switched to the fallback model (#80). */
+function FallbackNotice({ item }: { item: Extract<TimelineItem, { type: 'system' }> }) {
+  const { t } = useI18n()
+  const models = useOptionalEngineData()?.models
+  const name = (item.label && models?.find((model) => model.id === item.label)?.alias) || item.label || ''
+  const why = t(FALLBACK_REASONS[item.status ?? ''] ?? 'activity.fallback.provider')
+  return <p data-testid="model-fallback" className="py-1 text-[12px] text-[var(--warning)]">{t('activity.fallback', { model: name, reason: why })}</p>
+}
+
 const VERIFICATION_TONES: Record<string, string> = {
   DONE: 'done',
   IMPLEMENTED_UNVERIFIED: 'warn',
@@ -255,6 +278,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'agent') return <AgentCard item={item} onResolveApproval={onResolveApproval} />
   if (item.type === 'changeset') return null
   if (item.type === 'question') return <InspectionDetails inspectionId="question" className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></InspectionDetails>
+  if (item.type === 'system' && item.kind === 'model_fallback') return <FallbackNotice item={item} />
   if (item.type === 'system' && item.kind === 'reasoning_dropped') {
     return <p data-testid="reasoning-dropped" className="py-1 text-[12px] text-[var(--text-subtle)]">{t('activity.reasoningDropped', { effort: item.label ?? '' })}</p>
   }

@@ -74,6 +74,9 @@ export const scenarios = {
         { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"in_progress"},{"id":"b","content":"Escribir el informe","status":"pending"},{"id":"c","content":"Revisar las cifras","status":"pending"}] }, say: 'Armo la lista.' },
         { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"completed"},{"id":"b","content":"Escribir el informe","status":"in_progress","active_form":"Escribiendo el informe"},{"id":"c","content":"Revisar las cifras","status":"pending"}] }, say: 'Avanzo.' },
         { text: 'PRIMERA PARTE' },
+        // The Engine checks a list left behind once before the answer (#59):
+        // the model says what is left and the list honestly stays open.
+        { text: 'Faltan el informe y las cifras.' },
         { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"completed"},{"id":"b","content":"Escribir el informe","status":"completed"},{"id":"c","content":"Revisar las cifras","status":"completed"}] }, say: 'Termino.' },
         { text: 'TODO LISTO' },
         { text: 'DE NADA' },

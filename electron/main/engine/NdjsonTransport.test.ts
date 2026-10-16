@@ -200,6 +200,23 @@ describe('LIFE-04 — el cleanup de una sonda no deja el Engine vivo', () => {
     await new Promise((resolve) => setTimeout(resolve, 400))
     expect(alive(pid), `el Engine ${pid} sigue vivo tras el cierre`).toBe(false)
   })
+
+  it('primero le cierra la entrada y el Engine sale solo, sin matarlo', async () => {
+    // Bajo `uv run` matar solo alcanza al wrapper: el python de debajo seguía
+    // vivo con el candado del home y el siguiente arranque fallaba.
+    const { transport, exits } = await connect()
+    await transport.shutdown()
+    expect(exits).toEqual([{ code: 0 }])
+  })
+
+  it('un Engine que no sale al cerrarle la entrada se mata igual', async () => {
+    const { transport, stderr } = await connect('stay-open')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const pid = Number(/^PID (\d+)$/.exec(stderr.find((line) => line.startsWith('PID ')) ?? '')?.[1])
+    await transport.shutdown(2_000, 200)
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(alive(pid), `el Engine ${pid} sigue vivo tras el cierre`).toBe(false)
+  })
 })
 
 describe('peticiones', () => {

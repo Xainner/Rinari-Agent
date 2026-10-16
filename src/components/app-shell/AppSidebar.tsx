@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { strongestSignal } from '../../features/notifications/attentionIndicators'
 import { toast } from 'sonner'
 import {
   Archive,
@@ -87,7 +88,8 @@ export interface AppSidebarProps {
   /** Sesiones presentes en el board (marca visual). */
   boardSessionIds?: ReadonlySet<string>
   /** Señal de atención por sesión del board (intervención › fallo › resultado sin leer). */
-  boardSignalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
+  /** Señal de cada conversación (#33): te necesita, falló o sin leer. */
+  signalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
   /** Añade la sesión al board (o la enfoca) y va a Boards. */
   onOpenInBoard?: (id: string) => void
   /** Abre Flujos con ese alcance (proyecto o conversación). */
@@ -156,7 +158,7 @@ export function AppSidebar({
   activeId,
   busySessionIds,
   boardSessionIds,
-  boardSignalBySession,
+  signalBySession,
   onOpenInBoard,
   onViewFlow,
   onSelectSession,
@@ -301,7 +303,7 @@ export function AppSidebar({
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
-    const signal = boardSignalBySession?.[session.id] ?? null
+    const signal = signalBySession?.[session.id] ?? null
     const signalLabel = signal === 'needs_you' ? t('sidebar.sessionNeedsYou') : signal === 'failed' ? t('sidebar.sessionFailed') : signal === 'unread' ? t('sidebar.sessionUnread') : null
     return (
       <li key={session.id} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
@@ -321,7 +323,8 @@ export function AppSidebar({
                 className={cn('sidebar-row-rail', active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0')}
               />
             )}
-            {working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
+            {/* «Te necesita» va en lugar del círculo de trabajando (#33). */}
+            {working && signal !== 'needs_you' ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
               <span aria-hidden="true" className="sidebar-spin" />
             </span> : <MessageSquare
               size={14}
@@ -585,11 +588,19 @@ export function AppSidebar({
                       {items.length}
                     </span>
                   )}
-                  {items.some(item => busySessionIds?.has(item.id)) && (
-                    <span role="status" aria-label={t('sidebar.projectWorking')} title={t('sidebar.projectWorking')}>
-                      <span aria-hidden="true" className="sidebar-spin" />
-                    </span>
-                  )}
+                  {(() => {
+                    // Plegado, el proyecto muestra la señal más urgente de sus conversaciones (#33).
+                    const projectSignal = projectOpen(project.id) ? null : strongestSignal(items.map(item => signalBySession?.[item.id]))
+                    if (projectSignal) {
+                      const label = projectSignal === 'needs_you' ? t('sidebar.sessionNeedsYou') : projectSignal === 'failed' ? t('sidebar.sessionFailed') : t('sidebar.sessionUnread')
+                      return <span role="status" aria-label={label} title={label} className="sidebar-signal" data-signal={projectSignal} data-testid="sidebar-project-signal" />
+                    }
+                    return items.some(item => busySessionIds?.has(item.id)) && (
+                      <span role="status" aria-label={t('sidebar.projectWorking')} title={t('sidebar.projectWorking')}>
+                        <span aria-hidden="true" className="sidebar-spin" />
+                      </span>
+                    )
+                  })()}
                 </button>
                 {onNewProjectChat && <button type="button" aria-label={t('sidebar.newSessionIn', { name: project.name || projectDisplayName(project.root) })} title={t('sidebar.newSessionInProject')} onClick={() => {
                   onNewProjectChat(project.id)

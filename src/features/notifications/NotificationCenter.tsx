@@ -12,7 +12,8 @@ import {
   type NotificationModule,
   type NotificationTarget,
 } from '../../stores/notificationCenter'
-import BoardAttentionSection, { useBoardAttentionTotal } from '../board/BoardAttentionSection'
+import BoardAttentionSection from '../board/BoardAttentionSection'
+import ConversationAttentionSection, { useConversationAttentionTotal } from './ConversationAttentionSection'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { markEverythingRead } from './attentionCommands'
 
@@ -32,6 +33,7 @@ const PER_MODULE = 8
 
 export interface NotificationCenterProps {
   labelFor: (sessionId: string) => string
+  projectFor?: (sessionId: string) => string | null
   goBoard: () => void
   onOpenTarget: (target: NotificationTarget) => void
   disabled?: boolean
@@ -51,16 +53,17 @@ function ago(at: number, lang: string): string {
  * deriva en vivo de los paneles; tareas programadas y skills se guardan aquí
  * cuando llegan, además del aviso emergente.
  */
-export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, disabled = false }: NotificationCenterProps) {
+export default function NotificationCenter({ labelFor, projectFor, goBoard, onOpenTarget, disabled = false }: NotificationCenterProps) {
   const { t, lang } = useI18n()
   const [open, setOpen] = useState(false)
   const items = useNotificationCenter((state) => state.items)
   const unread = useNotificationCenter(selectUnreadCount)
   const markRead = useNotificationCenter((state) => state.markRead)
   const dismiss = useNotificationCenter((state) => state.dismiss)
-  const boardTotal = useBoardAttentionTotal()
+  // Conversaciones que piden algo (todas, también las de Boards) + avisos sin leer.
+  const conversationsTotal = useConversationAttentionTotal()
   const unreadResults = useBoardAttentionStore((state) => Object.values(state.sessions).some((session) => session.unreadPeerMessageIds.length > 0 || Object.values(session.turns).some((receipt) => receipt.state === 'unread')))
-  const total = boardTotal + unread
+  const total = conversationsTotal + unread
 
   // Abrir la campana es verlas: al cerrarla, por la vía que sea, quedan leídas.
   const close = () => {
@@ -104,10 +107,15 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
             </button>
           )}
         </div>
-        {boardTotal === 0 && items.length === 0 && (
+        {conversationsTotal === 0 && items.length === 0 && (
           <div className="notify-empty"><img src={art.chibi('sleep')} alt="" draggable={false} /><p>{t('notifications.empty')}</p></div>
         )}
         <div className="space-y-3">
+          <ConversationAttentionSection
+            labelFor={labelFor}
+            projectFor={projectFor}
+            onOpen={(sessionId, turnId) => { close(); onOpenTarget({ kind: 'session', sessionId, turnId }) }}
+          />
           <BoardAttentionSection labelFor={labelFor} goBoard={goBoard} onNavigate={close} />
           {NOTIFICATION_MODULES.map((module) => {
             const entries = items.filter((item) => item.module === module).slice(0, PER_MODULE)

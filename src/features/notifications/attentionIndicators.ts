@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { create } from 'zustand'
 import { platform } from '../../platform'
 import type { AttentionCategory, AttentionIndicators } from '../../platform/contract'
 import { translate } from '../../i18n'
@@ -128,6 +129,51 @@ export function pendingBySession(
   }))
 }
 
+/** Señal de una conversación para la barra lateral y la campana (#33). */
+export type SessionSignal = 'needs_you' | 'failed' | 'unread'
+
+export function signalOf(session: SessionPending | undefined): SessionSignal | null {
+  if (!session) return null
+  if (session.needsYou) return 'needs_you'
+  if (session.unread.includes('failed')) return 'failed'
+  if (session.unread.length > 0 || session.unreadPeers > 0) return 'unread'
+  return null
+}
+
+const SIGNAL_RANK: Record<SessionSignal, number> = { needs_you: 3, failed: 2, unread: 1 }
+
+/** La más urgente de varias (un proyecto plegado muestra la de sus conversaciones). */
+export function strongestSignal(signals: Array<SessionSignal | null | undefined>): SessionSignal | null {
+  let best: SessionSignal | null = null
+  for (const signal of signals) if (signal && (!best || SIGNAL_RANK[signal] > SIGNAL_RANK[best])) best = signal
+  return best
+}
+
+/**
+ * Lo pendiente de cada conversación, publicado por el único cálculo
+ * (`useAttentionIndicators`): la barra lateral, la campana y los perfiles
+ * leen lo mismo que el número de la barra de tareas.
+ */
+export const useSessionPendingStore = create<{ bySession: Record<string, SessionPending> }>(() => ({ bySession: {} }))
+
+function samePending(a: SessionPending | undefined, b: SessionPending): boolean {
+  return Boolean(a) && a!.needsYou === b.needsYou && a!.unreadPeers === b.unreadPeers && a!.working === b.working && a!.unread.join() === b.unread.join()
+}
+
+function publishPending(sessions: SessionPending[]): void {
+  const current = useSessionPendingStore.getState().bySession
+  const next: Record<string, SessionPending> = {}
+  let changed = false
+  for (const session of sessions) {
+    const pending = session.needsYou || session.unread.length > 0 || session.unreadPeers > 0
+    if (!pending) continue
+    next[session.sessionId] = samePending(current[session.sessionId], session) ? current[session.sessionId] : session
+    if (next[session.sessionId] !== current[session.sessionId]) changed = true
+  }
+  if (!changed && Object.keys(current).length === Object.keys(next).length) return
+  useSessionPendingStore.setState({ bySession: next })
+}
+
 let generation = 0
 function nextGeneration(): number {
   // Creciente también entre recargas del renderer: main descarta lo más viejo.
@@ -157,6 +203,7 @@ export function useAttentionIndicators(
     const compute = () => {
       const sessions = pendingBySession(runtime.getState(), useBoardAttentionStore.getState().sessions, (id) => getPendingQuestions(id).length)
       const next = summarizeAttention(sessions)
+      publishPending(sessions)
       const line = describeAttention(sessions)
       if (line !== logged.current) {
         logged.current = line

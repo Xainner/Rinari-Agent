@@ -19,6 +19,7 @@ import { createRuntimeStore } from '../engine/runtimeStore'
 import { useBoardStore, defaultBoard } from '../../stores/board'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useUIStore } from '../../stores/ui'
+import { resetNotificationPrefsForTests, useNotificationPrefs } from '../../stores/notificationPrefs'
 import { useBoardNotifications } from './useBoardNotifications'
 import { NOTIFICATION_GROUP_WINDOW_MS } from '../../services/notificationPolicy'
 import { refreshWindowAttentionForTests } from '../../hooks/useWindowAttention'
@@ -44,6 +45,7 @@ beforeEach(() => {
   useBoardStore.getState().hydrate({ ...defaultBoard(), boardId: 'board_1' })
   useBoardAttentionStore.getState().hydrate({})
   useUIStore.setState({ view: 'chat' })
+  resetNotificationPrefsForTests()
   useBoardStore.getState().addPane('ses_a')
   useBoardStore.getState().addPane('ses_b')
   useBoardAttentionStore.getState().initializeSessionAttention('ses_a', [])
@@ -98,7 +100,7 @@ it('suppresses the toast when the user is attending that session, and respects t
     vi.advanceTimersByTime(NOTIFICATION_GROUP_WINDOW_MS + 10)
   })
   expect(toastCalls).toHaveLength(0)
-  useBoardStore.getState().setNotifications({ toasts: false })
+  useNotificationPrefs.getState().set({ toasts: false })
   act(() => {
     useBoardAttentionStore.getState().observeTerminal('ses_b', 't2', 'completed', 'live')
     vi.advanceTimersByTime(NOTIFICATION_GROUP_WINDOW_MS + 10)
@@ -106,7 +108,7 @@ it('suppresses the toast when the user is attending that session, and respects t
   expect(toastCalls).toHaveLength(0)
 })
 
-it('notifies new interventions by request id, once, and only for board members', () => {
+it('notifies new interventions by request id, once, in any conversation (#33)', () => {
   const runtime = createRuntimeStore()
   render(<I18nProvider lang="es"><Harness runtime={runtime} memberKey="a|b" /></I18nProvider>)
   act(() => {
@@ -116,10 +118,11 @@ it('notifies new interventions by request id, once, and only for board members',
     runtime.getState().dispatch(event('turn.started', { turn_id: 't9', session_id: 'ses_zzz' }))
     runtime.getState().dispatch(event('approval.requested', { turn_id: 't9', session_id: 'ses_zzz', approval_id: 'apr_9', capability: 'shell.exec', target: 'ls', risk: 'medium', description: 'run', choices: ['deny'] }))
   })
-  expect(toastCalls.map((call) => call.text)).toEqual(['«Docs» necesita tu intervención.'])
-  useBoardStore.getState().setNotifications({ needsYou: false })
+  // Fuera de Boards también avisa, con su propio texto.
+  expect(toastCalls.map((call) => call.text)).toEqual(['«Docs» necesita tu intervención.', '«Otra conversación» te necesita.'])
+  useNotificationPrefs.getState().set({ needsYou: false })
   act(() => {
     runtime.getState().dispatch(event('approval.requested', { turn_id: 't1', session_id: 'ses_b', approval_id: 'apr_2', capability: 'shell.exec', target: 'ls', risk: 'medium', description: 'run', choices: ['deny'] }))
   })
-  expect(toastCalls).toHaveLength(1)
+  expect(toastCalls).toHaveLength(2)
 })

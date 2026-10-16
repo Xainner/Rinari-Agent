@@ -5,6 +5,7 @@ import { useBoardStore } from '../../stores/board'
 import { inputClass, Row, Section } from './parts'
 import { Switch } from '../ui/switch'
 import { notificationSupport } from '../../services/notifications'
+import { useNotificationPrefs } from '../../stores/notificationPrefs'
 import BackgroundSettings from './BackgroundSettings'
 import SoundSettings from './SoundSettings'
 
@@ -29,8 +30,8 @@ export default function GeneralSettings({
   const setSoftLimit = useBoardStore((s) => s.setSoftLimit)
   const messagingEnabled = useBoardStore((s) => s.messagingEnabled)
   const setMessagingEnabled = useBoardStore((s) => s.setMessagingEnabled)
-  const notifications = useBoardStore((s) => s.notifications)
-  const setNotifications = useBoardStore((s) => s.setNotifications)
+  const notifications = useNotificationPrefs()
+  const setNotifications = useNotificationPrefs((s) => s.set)
   // El canal nativo requiere el plugin oficial (PR aparte): este build no lo incluye.
   const systemSupported = notificationSupport.canSend
 
@@ -131,26 +132,31 @@ export default function GeneralSettings({
         />
       </Section>
 
-      <Section title={t('settings.general.board.notifications')}>
+      <Section title={t('settings.notifications.title')}>
         <Row
-          title={t('settings.general.board.toasts')}
-          desc={t('settings.general.board.toastsHint')}
-          control={<Switch checked={notifications.toasts} onCheckedChange={(value) => setNotifications({ toasts: value })} aria-label={t('settings.general.board.toasts')} />}
+          title={t('settings.notifications.toasts')}
+          desc={t('settings.notifications.toastsHint')}
+          control={<Switch checked={notifications.toasts} onCheckedChange={(value) => setNotifications({ toasts: value })} aria-label={t('settings.notifications.toasts')} />}
         />
         <Row
-          title={t('settings.general.board.needsYou')}
-          desc={t('settings.general.board.needsYouHint')}
-          control={<Switch checked={notifications.needsYou} onCheckedChange={(value) => setNotifications({ needsYou: value })} aria-label={t('settings.general.board.needsYou')} />}
+          title={t('settings.notifications.needsYou')}
+          desc={t('settings.notifications.needsYouHint')}
+          control={<Switch checked={notifications.needsYou} onCheckedChange={(value) => setNotifications({ needsYou: value })} aria-label={t('settings.notifications.needsYou')} />}
         />
         <Row
-          title={t('settings.general.board.system')}
-          desc={systemSupported ? t('settings.general.board.systemHint') : t('settings.general.board.systemUnsupported')}
-          control={<Switch checked={notifications.system && systemSupported} disabled={!systemSupported} onCheckedChange={(value) => setNotifications({ system: value })} aria-label={t('settings.general.board.system')} />}
+          title={t('settings.notifications.planReady')}
+          desc={t('settings.notifications.planReadyHint')}
+          control={<Switch checked={notifications.planReady} onCheckedChange={(value) => setNotifications({ planReady: value })} aria-label={t('settings.notifications.planReady')} />}
         />
         <Row
-          title={t('settings.general.board.systemDetails')}
-          desc={t('settings.general.board.systemDetailsHint')}
-          control={<Switch checked={notifications.systemDetails} disabled={!systemSupported} onCheckedChange={(value) => setNotifications({ systemDetails: value })} aria-label={t('settings.general.board.systemDetails')} />}
+          title={t('settings.notifications.system')}
+          desc={systemSupported ? t('settings.notifications.systemHint') : t('settings.general.board.systemUnsupported')}
+          control={<Switch checked={notifications.system && systemSupported} disabled={!systemSupported} onCheckedChange={(value) => setNotifications({ system: value })} aria-label={t('settings.notifications.system')} />}
+        />
+        <Row
+          title={t('settings.notifications.showContent')}
+          desc={t('settings.notifications.showContentHint')}
+          control={<Switch checked={notifications.showContent} disabled={!systemSupported || !notifications.system} onCheckedChange={(value) => setNotifications({ showContent: value })} aria-label={t('settings.notifications.showContent')} />}
         />
       </Section>
 

@@ -11,7 +11,7 @@ import { create } from 'zustand'
 export type NotificationModule = 'schedules' | 'skills' | 'system'
 
 export type NotificationTarget =
-  | { kind: 'session'; sessionId: string }
+  | { kind: 'session'; sessionId: string; turnId?: string }
   | { kind: 'schedules' }
   | { kind: 'skills'; skill?: string }
   | { kind: 'providers' }

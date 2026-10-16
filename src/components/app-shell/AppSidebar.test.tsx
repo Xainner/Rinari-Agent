@@ -496,3 +496,19 @@ it('las filas de proyecto no llevan la rama de git', () => {
   expect(screen.queryByTestId('project-branch')).toBeNull()
   expect(screen.queryByText(/fix\/wizard/)).toBeNull()
 })
+
+describe('AppSidebar signals for every conversation (#33)', () => {
+  it('a conversation outside Boards waiting for an approval shows «needs you» instead of the working circle', () => {
+    renderSidebar({ busySessionIds: new Set(['chat']), signalBySession: { chat: 'needs_you' } })
+    const row = screen.getByText('Research').closest('button')!
+    expect(within(row).queryByLabelText('Sesión en curso')).toBeNull()
+    expect(within(row).getByTestId('sidebar-signal').getAttribute('data-signal')).toBe('needs_you')
+  })
+
+  it('a collapsed project shows the most urgent signal of its conversations', () => {
+    renderSidebar({ signalBySession: { 'project-session': 'failed' } })
+    // The project is collapsed (the active conversation is a loose chat).
+    expect(screen.queryByText('Fix governor')).toBeNull()
+    expect(screen.getByTestId('sidebar-project-signal').getAttribute('data-signal')).toBe('failed')
+  })
+})

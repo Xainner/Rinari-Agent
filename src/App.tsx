@@ -35,9 +35,11 @@ import {
   expandAllPanes,
   expandPaneShortcut,
   markAllBoardResultsRead,
+  requestTurnReveal,
   toggleFocusMode,
 } from './features/board/boardCommands'
 import { markEverythingRead } from './features/notifications/attentionCommands'
+import { signalOf, useSessionPendingStore, type SessionSignal } from './features/notifications/attentionIndicators'
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import DockViewButtons from './components/app-shell/DockViewButtons'
@@ -392,18 +394,20 @@ function App() {
   const boardFocusPane = useBoardStore((s) => s.focusPane)
   const boardSessionIds = useMemo(() => new Set(boardPanes.map((pane) => pane.sessionId)), [boardPanes])
   const boardCounts = useBoardStatusStore(selectAttentionCounts)
-  const boardStatusByPane = useBoardStatusStore((s) => s.byPane)
-  /** Señal por sesión para el sidebar: categorías distinguibles, no un punto genérico. */
-  const boardSignalBySession = useMemo(() => {
-    const out: Record<string, 'needs_you' | 'failed' | 'unread'> = {}
-    for (const status of Object.values(boardStatusByPane)) {
-      const current = out[status.sessionId]
-      if (status.kind === 'needs_you') out[status.sessionId] = 'needs_you'
-      else if (status.kind === 'failed' && current !== 'needs_you') out[status.sessionId] = 'failed'
-      else if (status.unreadResultCount > 0 && !current) out[status.sessionId] = 'unread'
+  /**
+   * Señal por sesión para el sidebar, de **todas** las conversaciones (#33):
+   * te necesita, falló o resultado sin leer. Sale de la misma cuenta que el
+   * número de la barra de tareas.
+   */
+  const pendingBySession = useSessionPendingStore((state) => state.bySession)
+  const signalBySession = useMemo(() => {
+    const out: Record<string, SessionSignal> = {}
+    for (const [id, pending] of Object.entries(pendingBySession)) {
+      const signal = signalOf(pending)
+      if (signal) out[id] = signal
     }
     return out
-  }, [boardStatusByPane])
+  }, [pendingBySession])
   const boardLabelFor = (id: string) => {
     const record = session.sessionsById[id]
     return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
@@ -662,7 +666,7 @@ function App() {
             activeId={view === 'board' ? (focusedBoardPane?.sessionId ?? '') : session.activeSession}
             busySessionIds={session.busySessionIds}
             boardSessionIds={boardSessionIds}
-            boardSignalBySession={boardSignalBySession}
+            signalBySession={signalBySession}
             onOpenInBoard={openInBoard}
             onViewFlow={(scope) => {
               // El Flujo vive en el panel lateral de la conversación (#43): se
@@ -708,10 +712,17 @@ function App() {
             attentionMenu={
               <NotificationCenter
                 labelFor={boardLabelFor}
+                projectFor={(id) => {
+                  const root = session.sessionsById[id]?.project_root
+                  return root ? projectDisplayName(root) : null
+                }}
                 goBoard={goBoard}
                 disabled={!session.ready}
                 onOpenTarget={(target) => {
-                  if (target.kind === 'session') chooseSession(target.sessionId)
+                  if (target.kind === 'session') {
+                    chooseSession(target.sessionId)
+                    if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+                  }
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
                   else if (target.kind === 'update') goSettings('about')

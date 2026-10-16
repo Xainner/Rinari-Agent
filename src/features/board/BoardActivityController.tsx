@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { useEngineData, useRuntimeStore } from '../engine/EngineContext'
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEngineData, useOptionalEngineCommands, useRuntimeStore } from '../engine/EngineContext'
+import { onNotificationActivated } from '../../services/notifications'
+import { requestTurnReveal } from './boardCommands'
 import {
   derivePaneStatus,
   samePaneStatus,
@@ -22,11 +24,18 @@ import { lookupSession } from '../notifications/sessionDirectory'
 import { useWindowTitle } from '../../hooks/useWindowTitle'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useI18n } from '../../i18n'
-import { useBoardNotifications } from './useBoardNotifications'
+import { useBoardNotifications, type ConversationTarget } from './useBoardNotifications'
 import { usePeerNotifications } from './usePeerNotifications'
 import { useCallback } from 'react'
 
 const ACTIVE = new Set(['running', 'approval', 'cancelling'])
+
+/** Sesiones con un turno vivo, como clave estable (preguntas que vigilar). */
+function activeSessionKey(timelines: Record<string, TurnTimeline>): string {
+  const ids = new Set<string>()
+  for (const turn of Object.values(timelines)) if (ACTIVE.has(turn.status)) ids.add(turn.sessionId)
+  return [...ids].sort().join('|')
+}
 
 interface SessionWatch {
   /** Último estado conocido por turno para detectar transiciones. */
@@ -203,13 +212,53 @@ export default function BoardActivityController() {
   const focusedPaneId = useBoardStore((state) => state.focusedPaneId)
   const focusedPane = members.find((pane) => pane.paneId === focusedPaneId) ?? null
   const focusedSessionId = view === 'board' && focusedPane && !focusedPane.collapsed ? focusedPane.sessionId : null
+  // Avisos de todas las conversaciones (#33): nombre de cualquiera, preguntas
+  // de las que tienen un turno vivo, y «Ir» abre la conversación en el turno.
+  const titleFor = useCallback((sessionId: string): string | null => {
+    const record = data.sessionsById[sessionId]
+    if (!record) return null
+    return record.title || (record.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
+  }, [data.sessionsById, t])
+  const projectFor = useCallback((sessionId: string): string | null => {
+    const root = data.sessionsById[sessionId]?.project_root
+    return root ? projectDisplayName(root) : null
+  }, [data.sessionsById])
+  const activeKey = useSyncExternalStore(store.subscribe, () => activeSessionKey(store.getState().timelines))
+  const watchedSessionIds = useMemo(
+    () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : []), ...(activeKey ? activeKey.split('|') : [])])],
+    [members, data.activeSession, activeKey],
+  )
+  const commands = useOptionalEngineCommands()
+  const openConversation = useCallback((target: ConversationTarget) => {
+    if (!commands) return
+    void commands.selectSession(target.sessionId).then(() => {
+      useUIStore.getState().goChat()
+      if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+    })
+  }, [commands])
   useBoardNotifications({
     runtime: store,
-    labelFor,
+    labelFor: titleFor,
+    projectFor,
     activeSessionId: data.activeSession,
-    systemPermission: 'unsupported',
-    memberKey,
+    // Electron no pide un permiso aparte: decide el soporte del sistema.
+    systemPermission: 'granted',
+    memberKey: watchedSessionIds.join('|'),
+    watchedSessionIds,
+    openConversation,
   })
+  // Clic en la notificación del sistema de un turno: abre la conversación ahí.
+  // Las de tareas programadas no llevan turno; las abre ScheduleNotifier.
+  const openRef = useRef(openConversation)
+  openRef.current = openConversation
+  useEffect(() => {
+    let stop: (() => void) | null = null
+    let disposed = false
+    void onNotificationActivated((target) => {
+      if (target.sessionId && target.turnId) openRef.current({ sessionId: target.sessionId, turnId: target.turnId })
+    }).then((unsubscribe) => { if (disposed) unsubscribe(); else stop = unsubscribe }).catch(() => undefined)
+    return () => { disposed = true; stop?.() }
+  }, [])
   usePeerNotifications({
     supported: data.status?.capabilities.session_peer_messaging_v1 === true,
     labelFor,
@@ -222,11 +271,6 @@ export default function BoardActivityController() {
     () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : [])])],
     [members, data.activeSession],
   )
-  const titleFor = useCallback((sessionId: string): string | null => {
-    const record = data.sessionsById[sessionId]
-    if (!record) return null
-    return record.title || (record.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
-  }, [data.sessionsById, t])
   const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds, titleFor })
   useWindowTitle(summary.count)
 

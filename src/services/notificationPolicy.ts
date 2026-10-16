@@ -3,11 +3,17 @@
  * de React: decide **qué canal** puede usarse para un suceso dado el estado de
  * atención, las preferencias y el soporte nativo; no envía nada.
  */
-import type { BoardNotificationPrefs } from '../stores/board'
 import { translate } from '../i18n'
 import { useUIStore } from '../stores/ui'
 
 export type BoardEventKind = 'terminal' | 'intervention' | 'peer'
+
+/** Lo que la política necesita de las preferencias (Ajustes → Notificaciones). */
+export interface ChannelPrefs {
+  toasts: boolean
+  system: boolean
+  needsYou: boolean
+}
 
 export interface NotificationDeliverySupport {
   /** El host puede mostrar una notificación del sistema. */
@@ -25,7 +31,7 @@ export interface ChannelDecision {
 
 export interface ChannelInput {
   kind: BoardEventKind
-  prefs: BoardNotificationPrefs
+  prefs: ChannelPrefs
   /** La ventana está visible y con foco. */
   windowAttended: boolean
   /** El resultado/solicitud está realmente visible (panel expandido y enfocado en Boards, o Normal con esa sesión). */

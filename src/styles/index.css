@@ -1264,11 +1264,27 @@ select { color-scheme: inherit; }
 select option,
 select optgroup { background-color: var(--bg-elevated); color: var(--text); }
 select option:disabled { color: var(--text-subtle); }
-.pane-dock-ghost { flex: 0 0 auto; min-height: 0; border-left: 1px solid var(--line-1); background: linear-gradient(180deg, #0e0b18, #09070f); animation: dock-fold 0.32s var(--ease-out) forwards; overflow: hidden; }
+.pane-dock-ghost { position: relative; flex: 0 0 auto; min-height: 0; background: transparent; animation: dock-fold 0.32s var(--ease-out) forwards; overflow: hidden; }
+/* Lo que se pliega al cerrar es la tarjeta vacía, con el mismo margen que el panel. */
+.pane-dock-ghost::before { content: ''; position: absolute; inset: 10px 10px 10px 4px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, #120e1f, #0b0913); }
+.pane-dock-ghost[data-layout='drawer']::before { inset: 8px; }
 .pane-dock-ghost[data-layout='drawer'] { position: absolute; inset: 0 0 0 auto; z-index: 20; animation-name: dock-slide-out; }
 @keyframes dock-fold { from { opacity: 1; } to { width: 0; opacity: 0; } }
 @keyframes dock-slide-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(32px); } }
 .session-dock { container-type: inline-size; }
+/* El panel lateral como ventana independiente (ronda 1434, D): sin fondo propio ni borde pegado al chat;
+   cada vista es una tarjeta redondeada con un margen alrededor y un hueco entre ellas. */
+.pane-dock.session-dock:not(.pane-dock-drawer) { padding: 10px 10px 10px 4px; border-left: 0; background: transparent; }
+.session-workspace[data-density='pane'] .pane-dock.session-dock:not(.pane-dock-drawer) { padding: 6px 6px 6px 2px; }
+.pane-dock.session-dock.pane-dock-drawer { padding: 8px; border-radius: var(--r-xl) 0 0 var(--r-xl); background: rgb(9 7 15 / 0.94); }
+.session-dock .dock-tile { border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, #120e1f, #0b0913); box-shadow: var(--sh-2), inset 0 1px 0 rgb(255 255 255 / 0.04); }
+.session-dock .dock-tile[data-drop-target] { box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 40px -10px rgb(147 88 255 / 0.45), var(--sh-2); }
+.session-dock .dock-tile-head { background: transparent; }
+/* El navegador nativo, encajado en su tarjeta como una pantalla: un poco hacia dentro y con sus propias
+   esquinas. La vista nativa no la recorta el CSS: main le pone el mismo radio (setBorderRadius). */
+.session-dock .browser-view-slot[data-mode='native'] { margin: 0 6px 6px; border-radius: 10px; }
+.session-dock .browser-view-scroll .browser-view-slot[data-mode='native'] { margin-bottom: 0; }
+.session-dock .browser-view-scroll { margin: 0 6px 6px; border-radius: 10px; }
 /* Terminal del dock: pestañas + xterm. El fondo sigue el token del tema. */
 .terminal-panel { display: flex; flex-direction: column; min-height: 0; background: var(--bg-elevated); }
 .terminal-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); }
@@ -1338,8 +1354,10 @@ select option:disabled { color: var(--text-subtle); }
 .dock-splitter[data-axis='y'] { cursor: row-resize; }
 .dock-splitter[data-axis='x'] { cursor: col-resize; }
 .dock-splitter::before { content: ''; position: absolute; background: var(--line-1); transition: background-color var(--dur-fast); }
-.dock-splitter[data-axis='y']::before { left: 0; right: 0; top: 2px; height: 1px; }
-.dock-splitter[data-axis='x']::before { top: 0; bottom: 0; left: 2px; width: 1px; }
+.dock-splitter[data-axis='y']::before { left: 0; right: 0; top: calc(50% - 0.5px); height: 1px; }
+.dock-splitter[data-axis='x']::before { top: 0; bottom: 0; left: calc(50% - 0.5px); width: 1px; }
+/* Entre tarjetas el separador es el hueco: sin línea en reposo; al pasar, la línea y su asa. */
+.session-dock .dock-splitter::before { background: transparent; }
 .dock-splitter::after { content: ''; position: absolute; top: 50%; left: 50%; border-radius: 999px; background: var(--violet-300); opacity: 0; transform: translate(-50%, -50%); transition: opacity var(--dur-fast); }
 .dock-splitter[data-axis='y']::after { width: 40px; height: 3px; }
 .dock-splitter[data-axis='x']::after { width: 3px; height: 40px; }

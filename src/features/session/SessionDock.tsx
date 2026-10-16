@@ -52,7 +52,8 @@ export interface SessionDockProps {
 }
 
 const SPLIT_STEP = 0.05
-const GAP = 5
+/** Hueco entre las vistas del mosaico: cada una es su propia tarjeta (ronda 1434, D). */
+const GAP = 10
 const STACK_MIN = 0.12
 
 /**

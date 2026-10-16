@@ -45,6 +45,8 @@ export interface SlotLayout {
   overlayDepth: number
   /** Rectángulos DOM que deben quedar por encima de la superficie nativa. */
   occlusions?: Rect[]
+  /** Radio de las esquinas del hueco (ronda 1434, D). */
+  cornerRadius?: number
 }
 
 /** Lo que main coloca de verdad. */
@@ -52,7 +54,12 @@ export interface ResolvedLayout {
   container: Rect
   page: Rect
   visible: boolean
+  /** Esquinas redondeadas del contenedor nativo, como las del hueco. */
+  cornerRadius?: number
 }
+
+/** Un radio razonable: ni negativo ni más grande que una esquina de tarjeta. */
+const MAX_CORNER_RADIUS = 32
 
 export interface SlotLease {
   slotId: string
@@ -97,6 +104,7 @@ export function resolveLayout(layout: SlotLayout): ResolvedLayout {
     // Un overlay encima esconde la superficie **antes** de que el modal sea
     // interactivo; un `z-index` del renderer no tapa una vista nativa (§8.3).
     visible: layout.shown && layout.overlayDepth === 0 && visible.width >= 64 && visible.height >= 64,
+    cornerRadius: typeof layout.cornerRadius === 'number' && Number.isFinite(layout.cornerRadius) ? Math.round(Math.max(0, Math.min(MAX_CORNER_RADIUS, layout.cornerRadius))) : 0,
   }
 }
 

@@ -768,6 +768,10 @@ export class BrowserRegistry {
       ? geometry.page
       : { x: 0, y: 0, ...DEFAULT_LOGICAL_SIZE, width: context.viewportWidth ?? DEFAULT_LOGICAL_SIZE.width }
     context.container.setBounds({ ...container })
+    // Las esquinas del hueco (ronda 1434, D): el CSS no recorta una vista
+    // nativa, así que el contenedor se redondea igual que su tarjeta.
+    const radius = presented ? geometry.cornerRadius ?? 0 : 0
+    if (typeof context.container.setBorderRadius === 'function') context.container.setBorderRadius(radius)
     // Nunca `setVisible(false)`: una vista que no se compone no maqueta, y en
     // el suelo ya no ocupa nada que se vea.
     context.container.setVisible(true)
@@ -785,7 +789,11 @@ export class BrowserRegistry {
       if (!entry) continue
       const active = targetId === context.activeTargetId
       entry.view.setVisible(active)
-      if (active) entry.view.setBounds({ ...page })
+      if (active) {
+        entry.view.setBounds({ ...page })
+        // La página también, cuando llena el contenedor (sin desplazamiento): así queda redonda aunque el contenedor no recorte a sus hijas.
+        if (typeof entry.view.setBorderRadius === 'function') entry.view.setBorderRadius(page.x === 0 && page.y === 0 ? radius : 0)
+      }
     }
     // Al pasar del suelo 1×1 a tamaño real (fin de turno, «tomar el control»)
     // la página no cambia de tamaño —el viewport lógico se conserva—, así que

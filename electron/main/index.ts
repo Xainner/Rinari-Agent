@@ -450,6 +450,7 @@ function browserServices(): HostServices['browser'] {
         layoutRevision: request.layout_revision,
         overlayDepth: request.overlay_depth,
         occlusions: request.occlusions,
+        cornerRadius: request.corner_radius,
       })
       // Una geometría rechazada —atrasada, fuera de la ventana, imposible— se
       // descarta en silencio: es una actualización perdida, no un error que

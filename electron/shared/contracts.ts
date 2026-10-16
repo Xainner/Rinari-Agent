@@ -366,6 +366,8 @@ export interface BrowserSlotLayoutRequest {
   layout_revision: number
   overlay_depth: number
   occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+  /** Radio de las esquinas del hueco, en DIP. */
+  corner_radius?: number
 }
 
 export interface BrowserSlotLease {

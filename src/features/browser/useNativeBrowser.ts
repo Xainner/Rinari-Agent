@@ -132,12 +132,15 @@ export function useNativeBrowser(
       const logicalBounds = rectOf(node)
       const visibleBounds = roundedRect(visibleRectOf(node))
       const occlusions = occlusionsRef.current.map(roundedRect)
+      // Las esquinas del hueco: main redondea la vista nativa igual (ronda 1434, D).
+      const cornerRadius = Math.round(Number.parseFloat(getComputedStyle(node).borderTopLeftRadius) || 0)
       const key = JSON.stringify({
         logicalBounds,
         visibleBounds,
         shown: shownRef.current,
         overlayDepth: overlayRef.current,
         occlusions,
+        cornerRadius,
       })
       if (lastPublished.current === key) return
       lastPublished.current = key
@@ -152,6 +155,7 @@ export function useNativeBrowser(
           layoutRevision: revision.current,
           overlayDepth: overlayRef.current,
           occlusions,
+          cornerRadius,
         })
         .catch(() => {
           // Una geometría perdida se corrige en el siguiente movimiento; no

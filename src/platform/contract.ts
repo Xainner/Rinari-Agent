@@ -431,6 +431,8 @@ export interface NativeBrowserSlotLayout {
   overlayDepth: number
   /** Regiones DOM temporales que una vista nativa no puede tapar. */
   occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+  /** Radio de las esquinas del hueco (su `border-radius`): main redondea la vista nativa igual. */
+  cornerRadius?: number
 }
 
 export type { AttentionCategory, AttentionIndicators } from '../../electron/shared/indicators'

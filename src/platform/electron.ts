@@ -76,6 +76,7 @@ interface DesktopHostApi {
       layout_revision: number
       overlay_depth: number
       occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+      corner_radius?: number
     }): Promise<void>
     detachSlot(slotId: string): Promise<void>
     selectTarget(sessionId: string, targetId: string): Promise<unknown>
@@ -312,6 +313,7 @@ export const electronBridge: DesktopBridge = {
         layout_revision: layout.layoutRevision,
         overlay_depth: layout.overlayDepth,
         occlusions: layout.occlusions,
+        corner_radius: layout.cornerRadius,
       }),
     detachSlot: (slotId) => required().browser.detachSlot(slotId),
     selectTarget: async (sessionId, targetId) => {

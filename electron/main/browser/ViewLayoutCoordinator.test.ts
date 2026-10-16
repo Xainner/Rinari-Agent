@@ -222,3 +222,16 @@ describe('leases y admisión', () => {
     expect(coordinator.update(lease.slotId, layout({ layoutRevision: 4 })).ok).toBe(true)
   })
 })
+
+// Ronda 1434 (D): el panel lateral es una ventana con esquinas; la vista
+// nativa no la recorta el CSS, así que main recibe el radio del hueco.
+describe('esquinas del hueco', () => {
+  it('pasa el radio del hueco, acotado y entero', () => {
+    expect(resolveLayout(layout({ cornerRadius: 10 })).cornerRadius).toBe(10)
+    expect(resolveLayout(layout({ cornerRadius: 9.6 })).cornerRadius).toBe(10)
+    expect(resolveLayout(layout({ cornerRadius: 400 })).cornerRadius).toBe(32)
+    expect(resolveLayout(layout({ cornerRadius: -4 })).cornerRadius).toBe(0)
+    expect(resolveLayout(layout({ cornerRadius: Number.NaN })).cornerRadius).toBe(0)
+    expect(resolveLayout(layout()).cornerRadius).toBe(0)
+  })
+})

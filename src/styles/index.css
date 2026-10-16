@@ -1573,8 +1573,10 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 .turn-status-meta { display: flex; flex-shrink: 0; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
 .turn-status-meta .turn-status-step.is-compact { display: none; }
 .turn-status-line { position: absolute; right: 14px; bottom: 0; left: 14px; height: 1px; overflow: hidden; background: rgb(167 139 250 / 0.14); }
-.turn-status[data-working] .turn-status-line::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 34%; background: linear-gradient(90deg, transparent, var(--violet-300), transparent); animation: turn-status-sweep 2.2s ease-in-out infinite; }
-@keyframes turn-status-sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+/* Trabajando, todo el borde fluye como el del composer (no solo la línea de abajo). */
+.turn-status[data-working] { isolation: isolate; border-color: transparent; }
+.turn-status[data-working]::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; background: linear-gradient(90deg, rgb(167 139 250 / 0.2) 0%, rgb(167 139 250 / 0.2) 30%, var(--violet-500) 42%, var(--magenta-400) 50%, var(--cyan-300) 58%, rgb(167 139 250 / 0.2) 70%, rgb(167 139 250 / 0.2) 100%); background-size: 300% 100%; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: rinari-flow 3.2s linear infinite; pointer-events: none; }
+.turn-status[data-working] .turn-status-line { display: none; }
 /* En Boards la cara de Rinari vive en la cabecera del panel. */
 .session-pane-body .turn-status > .rinari-avatar { display: none; }
 @container (max-width: 420px) {
@@ -1584,9 +1586,9 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
   .turn-status-meta { gap: 7px; font-size: 11px; }
   .turn-status-meta .turn-status-step.is-compact { display: inline; }
 }
-@media (prefers-reduced-motion: reduce) { .turn-status { animation: none; } .turn-status[data-working] .turn-status-line::after { animation: none; left: 33%; } }
+@media (prefers-reduced-motion: reduce) { .turn-status { animation: none; } .turn-status[data-working]::before { animation: none; background-position: 50% 0; } }
 html[data-motion='reduced'] .turn-status { animation: none; }
-html[data-motion='reduced'] .turn-status[data-working] .turn-status-line::after { animation: none; left: 33%; }
+html[data-motion='reduced'] .turn-status[data-working]::before { animation: none; background-position: 50% 0; }
 .turn-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 /* En Boards la cara de Rinari vive en la cabecera de cada panel: dentro del
  * chat del panel no se repite (ni el nombre que la acompaña). */

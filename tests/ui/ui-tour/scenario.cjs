@@ -122,6 +122,13 @@ scenario(async () => {
         await delay(450)
       })
     }
+    await step('dock-summary', async () => {
+      await click('.dock-view-bar button[data-view="summary"]')
+      await delay(900)
+      await screenshot('10-dock-summary')
+      await click('.dock-view-bar button[data-view="summary"]')
+      await delay(450)
+    })
     await step('dock-mosaic', async () => {
       for (const view of ['browser', 'terminal', 'files', 'changes']) {
         if (await evaluate(`Boolean(document.querySelector('.dock-view-bar button[data-view="${view}"]'))`)) await click(`.dock-view-bar button[data-view="${view}"]`)

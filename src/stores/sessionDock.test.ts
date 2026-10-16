@@ -165,3 +165,21 @@ describe('mosaico', () => {
     expect(mosaicShape(['browser', 'terminal', 'changes', 'files'], { width: 500, height: 900 })).toEqual([['browser', 'terminal', 'changes', 'files']])
   })
 })
+
+describe('Resumen (#82)', () => {
+  it('se muestra sin vistas, Ctrl+B lo oculta, y quitarlo sin vistas oculta el panel', () => {
+    dock().toggleSummary('ses_a')
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: true, summary: true, views: [] })
+    dock().toggleVisible('ses_a')
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, summary: true })
+    dock().toggleVisible('ses_a')
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: true, summary: true })
+    dock().toggleSummary('ses_a')
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, summary: false })
+  })
+  it('se recuerda por conversación', () => {
+    dock().toggleSummary('ses_a')
+    expect(dock().layoutFor('ses_b').summary).toBe(false)
+    expect(normalizeDockLayout(JSON.parse(JSON.stringify(dock().layoutFor('ses_a'))))).toMatchObject({ summary: true, visible: true })
+  })
+})

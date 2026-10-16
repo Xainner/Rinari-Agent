@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
+import { useBranchNoticeStore } from '../../stores/branchNotice'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -297,6 +298,7 @@ export function useSessionList(options: {
       }
       if (warning.startsWith('[git-branch]') && opened.branch_change) {
         toast.warning(branchChangeText(opened.branch_change, useUIStore.getState().lang), { id: `session-warning-${id}-${warning}` })
+        useBranchNoticeStore.getState().set(id, opened.branch_change)
         continue
       }
       toast.warning(warning, { id: `session-warning-${id}-${warning}` })

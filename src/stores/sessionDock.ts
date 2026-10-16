@@ -45,6 +45,11 @@ export interface SessionDockLayout {
   amp: DockAmp
   /** La última vista abierta: la abre el botón de un panel sin vistas, o Ctrl+B. */
   lastView: DockView | null
+  /**
+   * El Resumen (#82) a la vista en lugar del mosaico: o está el resumen, o las
+   * vistas. Abrir una vista lo cierra; volver a pulsarlo trae el mosaico de antes.
+   */
+  summary: boolean
 }
 
 export type DockAmp = DockView | 'all' | null
@@ -67,7 +72,7 @@ const DEFAULT_SPLIT: DockSplit = { col: 0.5, left: 0.5, right: 0.5 }
 const DEFAULT_HOME = 'default'
 
 export function defaultDockLayout(): SessionDockLayout {
-  return { schemaVersion: SESSION_DOCK_SCHEMA_VERSION, visible: false, views: [], widthPx: DOCK_DEFAULT_WIDTH, split: { ...DEFAULT_SPLIT }, stack: [], amp: null, lastView: null }
+  return { schemaVersion: SESSION_DOCK_SCHEMA_VERSION, visible: false, views: [], widthPx: DOCK_DEFAULT_WIDTH, split: { ...DEFAULT_SPLIT }, stack: [], amp: null, lastView: null, summary: false }
 }
 
 const clampFraction = (value: unknown, fallback: number) =>
@@ -109,15 +114,17 @@ export function normalizeDockLayout(raw: unknown): SessionDockLayout | null {
   }
   const views = (Array.isArray(item.views) ? item.views : []).filter(isView).filter((view, index, list) => list.indexOf(view) === index).slice(0, MAX_VIEWS)
   const split = (item.split && typeof item.split === 'object' ? item.split : {}) as Partial<DockSplit>
+  const summary = item.summary === true
   return {
     schemaVersion: SESSION_DOCK_SCHEMA_VERSION,
-    visible: views.length > 0 && item.visible !== false,
+    visible: (views.length > 0 || summary) && item.visible !== false,
     views,
     widthPx: clampWidth(item.widthPx, base.widthPx),
     split: { col: clampFraction(split.col, DEFAULT_SPLIT.col), left: clampFraction(split.left, DEFAULT_SPLIT.left), right: clampFraction(split.right, DEFAULT_SPLIT.right) },
     stack: fitStack(item.stack, views.length),
     amp: item.amp === 'all' && views.length > 0 ? 'all' : isView(item.amp) && views.includes(item.amp) ? item.amp : null,
     lastView: isView(item.lastView) ? item.lastView : item.lastView === null ? null : views.at(-1) ?? null,
+    summary,
   }
 }
 
@@ -250,6 +257,8 @@ export interface SessionDockState {
   swapViews: (sessionId: string, a: DockView, b: DockView) => void
   /** Ctrl+B: oculta o vuelve a mostrar el panel con la misma disposición; sin vistas, abre la última. */
   toggleVisible: (sessionId: string) => void
+  /** El botón «Resumen»: lo muestra en lugar de las vistas, o lo quita y vuelve el mosaico. */
+  toggleSummary: (sessionId: string) => void
   setVisible: (sessionId: string, visible: boolean) => void
   setWidth: (sessionId: string, widthPx: number) => void
   setSplit: (sessionId: string, patch: Partial<DockSplit>) => void
@@ -287,7 +296,7 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
   })
   /** La vista nueva ocupa el siguiente lugar; la que reemplaza, el sitio de la reemplazada. */
   const withView = (current: SessionDockLayout, view: DockView, replace?: DockView): SessionDockLayout => {
-    if (current.views.includes(view)) return { ...current, visible: true, lastView: view, amp: current.amp && current.amp !== view ? null : current.amp }
+    if (current.views.includes(view)) return { ...current, visible: true, summary: false, lastView: view, amp: current.amp && current.amp !== view ? null : current.amp }
     let views = [...current.views]
     let stack = [...current.stack]
     if (views.length >= MAX_VIEWS) {
@@ -300,7 +309,7 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
       views = [...views, view]
       stack.push(share)
     }
-    return { ...current, visible: true, views, stack, amp: null, lastView: view }
+    return { ...current, visible: true, summary: false, views, stack, amp: null, lastView: view }
   }
   return {
     homeId: null,
@@ -341,6 +350,11 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
     toggleView: (sessionId, view, launch) => {
       const current = get().layoutFor(sessionId)
       if (current.views.includes(view)) {
+        if (current.visible && current.summary) {
+          // Con el Resumen a la vista, el botón de una vista abierta vuelve al mosaico.
+          change(sessionId, (layout) => ({ ...layout, summary: false, lastView: view }))
+          return 'shown'
+        }
         if (current.visible) {
           get().closeView(sessionId, view)
           return 'closed'
@@ -364,7 +378,7 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
       if (index < 0) return layout
       const views = layout.views.filter((item) => item !== view)
       const stack = layout.stack.filter((_, position) => position !== index)
-      return { ...layout, views, stack, visible: views.length > 0 && layout.visible, amp: layout.amp === view ? null : layout.amp, lastView: view }
+      return { ...layout, views, stack, visible: (views.length > 0 || layout.summary) && layout.visible, amp: layout.amp === view ? null : layout.amp, lastView: view }
     }),
     swapViews: (sessionId, a, b) => change(sessionId, (layout) => {
       const from = layout.views.indexOf(a)
@@ -377,15 +391,19 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
     }),
     toggleVisible: (sessionId) => {
       const current = get().layoutFor(sessionId)
-      if (current.views.length === 0) {
+      if (current.views.length === 0 && !current.summary) {
         get().openView(sessionId, current.lastView ?? 'browser')
         return
       }
       change(sessionId, (layout) => ({ ...layout, visible: !layout.visible }))
     },
+    toggleSummary: (sessionId) => change(sessionId, (layout) => {
+      if (layout.visible && layout.summary) return { ...layout, summary: false, visible: layout.views.length > 0 }
+      return { ...layout, summary: true, visible: true }
+    }),
     setVisible: (sessionId, visible) => {
       const current = get().layoutFor(sessionId)
-      if (visible && current.views.length === 0) {
+      if (visible && current.views.length === 0 && !current.summary) {
         get().openView(sessionId, current.lastView ?? 'browser')
         return
       }

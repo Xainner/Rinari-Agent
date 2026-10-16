@@ -73,11 +73,34 @@ it('en una ventana estrecha quedan las vistas abiertas o con aviso, y el resto p
     useDockSignalsStore.getState().publish('ses_a', { agents: 1 })
     mount()
     const bar = screen.getByRole('toolbar', { name: 'Vistas del panel lateral' })
-    expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('data-view') ?? button.getAttribute('aria-label'))).toEqual(['changes', 'agents', 'Más vistas'])
+    expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('data-view') ?? button.getAttribute('aria-label'))).toEqual(['summary', 'changes', 'agents', 'Más vistas'])
     await userEvent.click(screen.getByRole('button', { name: 'Más vistas' }))
     expect(await screen.findByRole('menuitemcheckbox', { name: /Navegador/ })).toBeTruthy()
     expect(screen.getByRole('menuitemcheckbox', { name: /Insight/ })).toBeTruthy()
   } finally {
     window.matchMedia = original
   }
+})
+
+// #82: el Resumen es el primero del grupo; o está el resumen, o las vistas.
+it('«Resumen» se muestra en lugar de las vistas y vuelve el mosaico al quitarlo', async () => {
+  mount()
+  await userEvent.click(screen.getByRole('button', { name: 'Navegador' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Resumen' }))
+  expect(layout()).toMatchObject({ visible: true, summary: true, views: ['browser'] })
+  expect(screen.getByRole('button', { name: 'Navegador' }).getAttribute('aria-pressed')).toBe('false')
+  // Abrir otra vista cierra el resumen y guarda el mosaico.
+  await userEvent.click(screen.getByRole('button', { name: 'Terminal' }))
+  expect(layout()).toMatchObject({ summary: false, views: ['browser', 'terminal'] })
+  await userEvent.click(screen.getByRole('button', { name: 'Resumen' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Resumen' }))
+  expect(layout()).toMatchObject({ visible: true, summary: false, views: ['browser', 'terminal'] })
+})
+
+it('un cambio de rama enciende el Resumen y lo dice en su nombre', async () => {
+  const { useBranchNoticeStore } = await import('../../stores/branchNotice')
+  useBranchNoticeStore.getState().set('ses_a', { from: 'main', to: 'fix/x', reference: 'last_work', since: null } as never)
+  mount()
+  expect(screen.getByRole('button', { name: 'Resumen · la rama cambió' })).toBeTruthy()
+  useBranchNoticeStore.getState().clear('ses_a')
 })

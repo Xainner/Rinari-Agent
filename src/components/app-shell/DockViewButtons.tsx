@@ -1,4 +1,4 @@
-import { Ellipsis } from 'lucide-react'
+import { ClipboardList, Ellipsis } from 'lucide-react'
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -11,6 +11,7 @@ import {
   type DockView,
 } from '../../stores/sessionDock'
 import { selectDockSignals, useDockSignalsStore, type DockSignals } from '../../stores/dockSignals'
+import { useBranchNoticeStore } from '../../stores/branchNotice'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover'
 
@@ -39,7 +40,11 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   const [replace, setReplace] = useState<{ view: DockView; rect: DOMRect | undefined } | null>(null)
   const group = useRef<HTMLDivElement>(null)
   const available = PRIMARY_VIEWS.filter((view) => view !== 'terminal' || terminalEnabled)
-  const shown = (view: DockView) => layout.visible && layout.views.includes(view)
+  const shown = (view: DockView) => layout.visible && !layout.summary && layout.views.includes(view)
+  const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
+  const summaryOpen = layout.visible && layout.summary
+  // El Resumen avisa cuando algo pide atención: por ahora, que la rama cambió desde el último trabajo.
+  const branchChanged = useBranchNoticeStore((state) => Boolean(state.bySession[sessionId]))
   // En una ventana estrecha los botones no le quitan el sitio al título: quedan
   // los de las vistas abiertas o con algo que avisar, y el resto va en «Más».
   const compact = useSyncExternalStore(subscribeCompact, isCompact, () => false)
@@ -57,6 +62,19 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
     <Popover open={replace !== null} onOpenChange={(open) => { if (!open) setReplace(null) }}>
       <PopoverAnchor asChild>
         <div ref={group} className="dock-view-bar" role="toolbar" aria-label={t('dock.views')} data-session-id={sessionId}>
+          <button
+            type="button"
+            className="app-topbar-icon dock-view-button dock-summary-button"
+            data-view="summary"
+            aria-label={branchChanged ? `${t('dock.summary')} · ${t('dock.signal.branchChanged')}` : t('dock.summary')}
+            title={branchChanged ? `${t('dock.summary')} · ${t('dock.signal.branchChanged')}` : t('dock.summary')}
+            aria-pressed={summaryOpen}
+            onClick={() => toggleSummary(sessionId)}
+          >
+            <ClipboardList size={16} aria-hidden="true" />
+            {branchChanged && <span className="dock-view-dot" data-tone="warning" aria-hidden="true" />}
+          </button>
+          <span className="dock-view-sep" aria-hidden="true" />
           {primary.map((view) => {
             const Icon = DOCK_VIEW_ICONS[view]
             const label = t(DOCK_VIEW_LABELS[view])

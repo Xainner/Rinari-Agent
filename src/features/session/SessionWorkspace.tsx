@@ -24,8 +24,12 @@ import { sessionAgents } from '../agents/AgentsPanel'
 import { presentedChangeSets } from '../activity/changeSetPresentation'
 import { useAgentRunningCount } from '../terminal/agentTab'
 import SessionDock from './SessionDock'
+import SummaryPanel from '../summary/SummaryPanel'
+import { cn } from '../../lib/utils'
 
 const HANDLE_WIDTH = 6
+/** El Resumen es un mini panel angosto: el chat casi no se encoge (#82). */
+export const SUMMARY_WIDTH = 320
 
 /** Acción tipada: alternar/abrir el panel lateral de **una** sesión (nunca de todos los providers montados). */
 export const DOCK_TOGGLE_EVENT = 'rinari:dock-toggle'
@@ -72,6 +76,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
   const toggleVisible = useSessionDockStore((state) => state.toggleVisible)
+  const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
   const setWidth = useSessionDockStore((state) => state.setWidth)
   const setAmp = useSessionDockStore((state) => state.setAmp)
   const reveal = useSessionDockStore((state) => state.reveal)
@@ -90,25 +95,28 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     return () => observer.disconnect()
   }, [])
   const room = innerWidth === null ? null : innerWidth - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH
-  const placement: 'docked' | 'drawer' = room === null || room >= DOCK_MIN_WIDTH ? 'docked' : 'drawer'
+  const summary = layout.summary
+  const placement: 'docked' | 'drawer' = room === null || room >= (summary ? SUMMARY_WIDTH : DOCK_MIN_WIDTH) ? 'docked' : 'drawer'
 
   const [liveWidth, setLiveWidth] = useState(layout.widthPx)
   useEffect(() => {
     setLiveWidth(layout.widthPx)
   }, [layout.widthPx])
-  const amplified = layout.amp !== null && layout.visible && placement === 'docked'
-  const shownWidth = room === null ? liveWidth : amplified ? room : Math.max(DOCK_MIN_WIDTH, Math.min(liveWidth, room))
+  const amplified = layout.amp !== null && layout.visible && !summary && placement === 'docked'
+  const shownWidth = summary ? SUMMARY_WIDTH : room === null ? liveWidth : amplified ? room : Math.max(DOCK_MIN_WIDTH, Math.min(liveWidth, room))
 
   // «Ampliar» y volver: el ancho se anima en lugar de saltar (termina también sin pintar).
   const [animateWidth, setAnimateWidth] = useState(false)
-  const shownAmp = useRef(layout.amp)
+  // También al pasar entre el Resumen y las vistas, que tienen otro ancho.
+  const widthKey = `${layout.amp}|${summary}`
+  const shownAmp = useRef(widthKey)
   useEffect(() => {
-    if (shownAmp.current === layout.amp) return
-    shownAmp.current = layout.amp
+    if (shownAmp.current === widthKey) return
+    shownAmp.current = widthKey
     setAnimateWidth(true)
     const timer = window.setTimeout(() => setAnimateWidth(false), 420)
     return () => window.clearTimeout(timer)
-  }, [layout.amp])
+  }, [widthKey])
   // Esc devuelve el panel ampliado a su ancho, si nada encima la quiere.
   useEffect(() => {
     if (!amplified || !focused) return
@@ -248,7 +256,22 @@ export default function SessionWorkspace({ sessionId, record, children, density,
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
         <div className="session-workspace-chat">{children}</div>
         {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
-        {layout.visible && (
+        {layout.visible && summary && (
+          <aside
+            aria-label={t('summary.title')}
+            data-testid="summary-dock"
+            data-session-id={sessionId}
+            data-layout={placement}
+            className={cn('pane-dock summary-dock', placement === 'drawer' && 'pane-dock-drawer')}
+            data-entering={entering || undefined}
+            data-animate-width={animateWidth || undefined}
+            style={placement === 'docked' ? { width: SUMMARY_WIDTH } : undefined}
+            onKeyDown={(event) => { if (event.key === 'Escape' && placement === 'drawer') setVisible(sessionId, false) }}
+          >
+            <SummaryPanel sessionId={sessionId} record={record} onClose={() => toggleSummary(sessionId)} />
+          </aside>
+        )}
+        {layout.visible && !summary && (
           <>
             {placement === 'docked' && (
               <ResizeHandle

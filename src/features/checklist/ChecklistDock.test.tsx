@@ -47,6 +47,16 @@ describe('checklist store', () => {
 })
 
 describe('ChecklistDock', () => {
+  it('#6: one step left is singular, two are plural, also when interrupted', async () => {
+    mount()
+    act(() => applyChecklistEvent({ session_id: 's1', checklist: list('open', steps('completed', 'pending')) }))
+    expect((await screen.findByTestId('checklist-dock')).textContent).toContain('Queda 1 paso')
+    act(() => applyChecklistEvent({ session_id: 's1', checklist: list('open', steps('pending', 'pending'), 2) }))
+    await waitFor(() => expect(screen.getByTestId('checklist-dock').textContent).toContain('Quedan 2 pasos'))
+    act(() => applyChecklistEvent({ session_id: 's1', checklist: list('interrupted', steps('completed', 'pending'), 3) }))
+    await waitFor(() => expect(screen.getByTestId('checklist-dock').textContent).toContain('Interrumpida: quedó 1 paso'))
+  })
+
   it('shows nothing for a conversation without a list', async () => {
     mount()
     await waitFor(() => expect(engineApi.sessionChecklist).toHaveBeenCalledWith('s1'))

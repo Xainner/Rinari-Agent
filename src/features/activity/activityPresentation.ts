@@ -35,6 +35,11 @@ function approvalStates(items: TimelineItem[]) {
 }
 
 /** Presentation only. The original timeline, identities and runtime stay untouched. */
+/** `checklist.update`: bookkeeping of the list, not an action of the turn (#30). */
+export function isChecklistCall(item: { tool?: string }): boolean {
+  return item.tool === 'checklist.update'
+}
+
 export function projectActivity(timeline: TurnTimeline) {
   const active = turnIsActive(timeline.status)
   const final = [...timeline.items].reverse().find((i): i is ModelTimelineItem => i.type === 'model' && i.outputKind === 'final' && Boolean(i.content))
@@ -87,7 +92,7 @@ export function projectActivity(timeline: TurnTimeline) {
     }
     if (item.type === 'changeset' || item.type === 'system' || (item.type === 'model' && !item.content)) return null
     if (item.type === 'vision' && item.route === 'conversation') return null
-    if (['tool', 'context', 'verification', 'vision'].includes(item.type)) {
+    if (['tool', 'context', 'verification', 'vision'].includes(item.type) && !(item.type === 'tool' && isChecklistCall(item))) {
       // A visual analysis with a toolCallId is the presentation of that tool, not another call.
       const identity = (item.type === 'tool' || item.type === 'vision') && item.toolCallId ? `tool:${item.toolCallId}` : item.id
       actions.add(`${owner}/${identity}`)

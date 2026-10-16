@@ -2503,6 +2503,8 @@ export const es = {
   'checklist.working': "Trabajando en la lista",
   'checklist.open': "Quedan {n} pasos",
   'checklist.interrupted': "Interrumpida: quedaron {n} pasos",
+  'checklist.openOne': "Queda 1 paso",
+  'checklist.interruptedOne': "Interrumpida: quedó 1 paso",
   'checklist.done': "Todo hecho",
   'checklist.dismiss': "Quitar la lista",
   'checklist.completeAll': "Marcar todo como hecho",

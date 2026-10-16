@@ -47,12 +47,13 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
   const current = checklist.items.find((item) => item.status === 'in_progress')
     ?? (working ? checklist.items.find((item) => item.status === 'pending') : undefined)
   const left = counts.total - counts.completed
+  // Con su plural: «Queda 1 paso», no «Quedan 1 pasos» (#6).
   const headline = state === 'interrupted'
-    ? t('checklist.interrupted', { n: left })
+    ? t(left === 1 ? 'checklist.interruptedOne' : 'checklist.interrupted', { n: left })
     : state === 'completed'
       ? t('checklist.done')
       : state === 'open'
-        ? t('checklist.open', { n: left })
+        ? t(left === 1 ? 'checklist.openOne' : 'checklist.open', { n: left })
         : current ? (current.active_form || current.content) : t('checklist.working')
 
   // Una lista que quedó abierta en un turno ya terminado: el dueño la cierra

@@ -20,6 +20,7 @@ import { FOCUS_COMPOSER_EVENT } from '../../components/composer/focusComposer'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
 import DraftPane from './DraftPane'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 export interface SessionPaneProps {
   pane: BoardPane
@@ -276,6 +277,10 @@ function LiveSessionPane({
         >
           <ReadTrackingContext.Provider value={readTracking}>
           <div className="session-pane-chat">
+            {/* Si el chat del panel falla, el panel sigue con su cabecera (#58).
+                Dentro del panel: un envoltorio alrededor del panel rompía la
+                medición del tablero. */}
+            <ZoneBoundary zone="board-pane">
             <ChatView
               processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
               homeContext={{
@@ -329,6 +334,7 @@ function LiveSessionPane({
               mentionTargets={mentionTargets}
               onSendToTarget={peerMessaging ? sendToTarget : undefined}
             />
+            </ZoneBoundary>
             <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} showInput={!steering} />
           </div>
           </ReadTrackingContext.Provider>

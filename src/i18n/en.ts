@@ -2485,6 +2485,8 @@ export const en: Record<I18nKey, string> = {
   'checklist.working': "Working through the list",
   'checklist.open': "{n} steps left",
   'checklist.interrupted': "Interrupted: {n} steps left",
+  'checklist.openOne': "1 step left",
+  'checklist.interruptedOne': "Interrupted: 1 step left",
   'checklist.done': "All done",
   'checklist.dismiss': "Remove the list",
   'checklist.completeAll': "Mark everything done",

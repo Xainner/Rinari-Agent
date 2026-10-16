@@ -269,3 +269,26 @@ it('file.presented shows its card outside the folded activity and speech.setup_n
   expect(card.querySelector('[data-present-kind="audio"] a')?.getAttribute('data-file-path')).toBe('C:/out/cancion.mp3')
   expect(screen.getByTestId('speech-setup').textContent).toContain('Instalarlo en Ajustes → Dictado')
 })
+
+it('#30: checklist.update rows only show with technical names', async () => {
+  const { useUIStore } = await import('../../stores/ui')
+  const timeline: TurnTimeline = {
+    turnId: 't9', sessionId: 's1', status: 'running', startedAt: 1_000, userMessage: 'haz tres cosas',
+    items: [
+      { id: 'tool:c1', type: 'tool', activitySeq: 1, occurredAt: 1_100, toolCallId: 'c1', tool: 'checklist.update', status: 'completed' },
+      { id: 'tool:c2', type: 'tool', activitySeq: 2, occurredAt: 1_200, toolCallId: 'c2', tool: 'fs.read', status: 'completed', args: { path: 'a.txt' } },
+    ],
+  } as TurnTimeline
+  const draw = () => render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={3_000} onResolveApproval={vi.fn()} /></I18nProvider>)
+  useUIStore.setState({ showTechnicalActivityNames: false })
+  const plain = draw()
+  // Without technical names only the read counts: the list is in its dock.
+  expect(plain.container.textContent).not.toContain('· 2')
+  expect(plain.container.textContent).not.toContain('Herramientas')
+  plain.unmount()
+  useUIStore.setState({ showTechnicalActivityNames: true })
+  const technical = draw()
+  expect(technical.container.textContent).toContain('Herramientas · Lecturas · 2')
+  technical.unmount()
+  useUIStore.setState({ showTechnicalActivityNames: false })
+})

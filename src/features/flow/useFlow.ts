@@ -19,6 +19,8 @@ export const FLOW_REFRESH_EVENTS: ReadonlySet<string> = new Set([
   'agent.started',
   'turn.changes.completed',
   'verification.completed',
+  // La lista de pasos es el progreso del BUILD sin grafo de tareas (#7).
+  'checklist.updated',
   'approval.requested',
   'approval.resolved',
   'approval.expired',

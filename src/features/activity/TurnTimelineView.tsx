@@ -52,7 +52,7 @@ import { useOptionalEngineData } from '../engine/EngineContext'
 import { ImageActivity } from './ImageActivity'
 import type { ContextTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
-import { activityBlocks, activityState, operationIsActive, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
+import { activityBlocks, activityState, isChecklistCall, operationIsActive, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
 import { ActivityMotion, ActivityText } from './ActivityText'
 import { ActivityDisclosure, InspectionDetails, InspectionItem, InspectionScope, childInspectionKey } from './ActivityDisclosure'
 import { ActivityTransition } from './ActivityTransition'
@@ -774,7 +774,12 @@ function activityIssues(items: TimelineItem[], active: boolean): number {
 }
 
 function renderableActivity(items: TimelineItem[], technical: boolean, active: boolean) {
-  return items.filter(item => item.type !== 'vision' || technical || ['partial', 'failed', 'cancelled'].includes(item.status) || (!active && visualPending(item)))
+  return items.filter(item => {
+    // La lista de pasos ya enseña su avance en el dock: sus llamadas solo con
+    // «Mostrar nombres técnicos» (#30), salvo si fallaron.
+    if (item.type === 'tool' && isChecklistCall(item) && !technical) return item.status === 'failed'
+    return item.type !== 'vision' || technical || ['partial', 'failed', 'cancelled'].includes(item.status) || (!active && visualPending(item))
+  })
 }
 
 const ActivityDetails = memo(function ActivityDetails({ items, status, onResolveApproval }: {

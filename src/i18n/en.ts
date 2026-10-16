@@ -2803,6 +2803,7 @@ export const en: Record<I18nKey, string> = {
   'audio.position': '{current} of {total}',
   'audio.mute': 'Mute',
   'audio.unmute': 'Unmute',
+  'audio.volume': 'Volume',
   'audio.speed': 'Speed {rate}×',
   'files.playAudio': 'Play {name}',
   'files.playVideo': 'Watch {name}',

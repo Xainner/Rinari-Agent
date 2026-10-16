@@ -138,22 +138,26 @@ scenario(async () => {
   await key('Escape')
   await wait(`!document.querySelector('[role="dialog"][aria-label^="Vista previa"]')`)
 
-  // The audio plays in the card.
-  await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-play').scrollIntoView({ block: 'center' })`)
+  // The audio plays in the card. Near the view it already has its player and its duration (metadata only), before any play.
+  const AUDIO = `${CARD} [data-present-kind="audio"]`
+  await evaluate(`document.querySelector('${AUDIO}').scrollIntoView({ block: 'center' })`)
+  await wait(`Boolean(document.querySelector('${AUDIO} .audio-player'))`)
+  await wait(`/\\d:\\d\\d$/.test(document.querySelector('${AUDIO} .audio-time')?.textContent ?? '')`)
+  assert.equal(await evaluate(`document.querySelector('${AUDIO} audio').paused`), true, 'nothing plays by itself')
+  assert.equal(await evaluate(`document.querySelector('${AUDIO} .audio-player').dataset.wave`), 'decorative', 'the real waveform waits for the first play')
   await settleAnimations()
-  const idleHeight = await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-player').getBoundingClientRect().height`)
-  await click(`${CARD} [data-present-kind="audio"] .present-play`)
-  await wait(`Boolean(document.querySelector('${CARD} [data-present-kind="audio"] audio'))`)
+  const idleHeight = await evaluate(`document.querySelector('${AUDIO} .present-player').getBoundingClientRect().height`)
+  await click(`${AUDIO} .audio-play`)
   // Pulsar ▶ no cambia la altura: con la conversación pegada al final, crecer
   // subiría lo de encima y el siguiente clic caería en otro sitio.
   await settleAnimations()
-  const playingHeight = await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-player').getBoundingClientRect().height`)
+  const playingHeight = await evaluate(`document.querySelector('${AUDIO} .present-player').getBoundingClientRect().height`)
   assert.ok(Math.abs(playingHeight - idleHeight) <= 1, `audio row ${idleHeight}px idle vs ${playingHeight}px playing`)
-  // Rinari's own player (F): no Chromium controls, the real waveform (decoded once) as the progress bar.
-  const AUDIO = `${CARD} [data-present-kind="audio"]`
+  // Rinari's own player (F): no Chromium controls, the real waveform (decoded once) as the progress bar, and its volume.
   assert.equal(await evaluate(`document.querySelector('${AUDIO} audio').controls`), false, 'no native audio controls')
   await wait(`document.querySelector('${AUDIO} .audio-player')?.dataset.wave === 'real'`, 15_000)
   await wait(`document.querySelectorAll('${AUDIO} .audio-wave i[data-played]').length > 0 || document.querySelector('${AUDIO} audio').ended`, 15_000)
+  assert.ok(await evaluate(`Boolean(document.querySelector('${AUDIO} input[type="range"][aria-label="Volumen"]'))`), 'volume slider next to the speaker')
   await screenshot('audio-player')
 
   // The CSV opens in «Archivos».

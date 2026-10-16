@@ -29,7 +29,13 @@ function takeTurn(element: HTMLMediaElement) {
  * ofrece abrirlo con la aplicación del sistema. El audio usa el reproductor
  * propio de Rinari (con su onda); el vídeo, los controles de Chromium.
  */
-export function MediaPlayer({ media, autoPlay = false, onOpenExternal }: { media: WorkspaceMedia; autoPlay?: boolean; onOpenExternal?: () => void }) {
+export function MediaPlayer({ media, autoPlay = false, onOpenExternal, audio }: {
+  media: WorkspaceMedia
+  autoPlay?: boolean
+  onOpenExternal?: () => void
+  /** Solo audio: la onda al primer ▶ y una duración mientras llegan los metadatos. */
+  audio?: { lazyWave?: boolean; durationHint?: number | null }
+}) {
   const { t } = useI18n()
   const [failed, setFailed] = useState(false)
   const playable = media.url && (media.kind === 'audio' || media.kind === 'video') && !failed
@@ -55,6 +61,6 @@ export function MediaPlayer({ media, autoPlay = false, onOpenExternal }: { media
     onError: () => setFailed(true),
   }
   return media.kind === 'audio'
-    ? <AudioPlayer media={media} autoPlay={autoPlay} onPlay={takeTurn} onError={() => setFailed(true)} />
+    ? <AudioPlayer media={media} autoPlay={autoPlay} lazyWave={audio?.lazyWave} durationHint={audio?.durationHint} onPlay={takeTurn} onError={() => setFailed(true)} />
     : <video {...common} className="media-player-video block max-h-80 w-full max-w-xl rounded-lg bg-black" />
 }

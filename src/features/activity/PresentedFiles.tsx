@@ -7,6 +7,7 @@ import { platform, type WorkspaceMedia } from '../../platform'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { FileLink, FileTurnContext, useFileWorkspace, type FileWorkspaceController } from '../files/FileWorkspace'
 import { MediaPlayer } from '../files/MediaPlayer'
+import { durationFromText } from '../files/AudioPlayer'
 import { useArtifactImage } from '../files/artifactImage'
 import { attachmentImageUrl } from '../../components/image-viewer/attachmentImages'
 import { useImageInspector } from './ImageActivity'
@@ -319,17 +320,28 @@ function WebThumb(context: TileContext) {
 }
 
 /**
- * Audio and video play right in the card; nothing loads until «Reproducir»,
- * so a history with many deliveries downloads none of them for being in view.
+ * Audio and video play right in the card; a video loads nothing until
+ * «Reproducir». An audio near the view asks for its player at once (only the
+ * metadata: its duration shows from the start) and downloads the whole file
+ * only when played; until then the duration written in its caption, if any.
  */
-function MediaThumb({ file, files, turnId, setDetail }: TileContext) {
+function MediaThumb({ file, files, turnId, setDetail, near }: TileContext) {
   const { t } = useI18n()
-  const [state, setState] = useState<{ media?: WorkspaceMedia; loading?: boolean; error?: string }>({})
+  const [state, setState] = useState<{ media?: WorkspaceMedia; loading?: boolean; error?: string; play?: boolean }>({})
   const path = file.uri ?? file.path
+  const audio = file.kind === 'audio'
+  const hint = audio ? durationFromText(file.caption) : null
+  useEffect(() => {
+    if (!audio || !near || !files || !path || state.media || state.loading || state.error) return
+    setState((current) => ({ ...current, loading: true }))
+    files.media(path, turnId)
+      .then((media) => setState((current) => ({ media, play: current.play })))
+      .catch((error) => setState({ error: commandMessage(error) }))
+  }, [audio, near, files, path, turnId, state.media, state.loading, state.error])
   if (state.media && files && path) {
     return (
       <div className="present-player" data-thumb={file.kind}>
-        <MediaPlayer media={state.media} autoPlay onOpenExternal={() => files.openExternal(path, turnId)} />
+        <MediaPlayer media={state.media} autoPlay={!audio || state.play} audio={{ lazyWave: true, durationHint: hint }} onOpenExternal={() => files.openExternal(path, turnId)} />
       </div>
     )
   }
@@ -341,18 +353,21 @@ function MediaThumb({ file, files, turnId, setDetail }: TileContext) {
         className="present-play"
         aria-label={label}
         title={label}
-        disabled={!files || !path || state.loading}
+        disabled={!files || !path || (state.loading && !audio)}
         onClick={() => {
           if (!files || !path) return
-          setState({ loading: true })
+          // El audio ya se está pidiendo: que suene en cuanto llegue.
+          if (audio && state.loading) { setState((current) => ({ ...current, play: true })); return }
+          setState({ loading: true, play: true })
           files.media(path, turnId)
-            .then((media) => { setState({ media }); setDetail(null) })
+            .then((media) => { setState({ media, play: true }); setDetail(null) })
             .catch((error) => setState({ error: commandMessage(error) }))
         }}
       >
         <Play size={file.kind === 'video' ? 18 : 14} aria-hidden="true" />
       </button>
-      {file.kind === 'audio' && <span className="present-wave" aria-hidden="true">{Array.from({ length: 28 }, (_, index) => <i key={index} style={{ '--h': `${30 + ((index * 37) % 61)}%` } as CSSProperties} />)}</span>}
+      {audio && <span className="present-wave" aria-hidden="true">{Array.from({ length: 28 }, (_, index) => <i key={index} style={{ '--h': `${30 + ((index * 37) % 61)}%` } as CSSProperties} />)}</span>}
+      {audio && hint !== null && <span className="audio-time present-duration">{`${Math.floor(hint / 60)}:${String(hint % 60).padStart(2, '0')}`}</span>}
       {state.error && <span role="alert" className="present-error">{state.error}</span>}
     </div>
   )

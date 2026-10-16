@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Plan 0.4.0 #35 y la tabla del 35b: cada entrega se ve por lo que es y se
 // abre donde corresponde; el audio suena en la tarjeta.
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
@@ -80,13 +80,21 @@ it('una imagen que no se puede servir queda con su icono', async () => {
   await waitFor(() => expect(screen.getByTestId('presented-files').querySelector('[data-thumb="icon"]')).toBeTruthy())
 })
 
-it('el audio no carga nada hasta «Reproducir» y luego suena en la tarjeta', async () => {
+it('el audio cerca de la vista pide su reproductor (solo metadatos: la duración desde el principio) y no descarga la onda hasta sonar', async () => {
   bridge.mediaKinds['C:/p/tono.mp3'] = 'audio'
   const media = vi.spyOn(bridge.files, 'media')
-  mount([{ kind: 'audio', name: 'tono.mp3', path: 'C:/p/tono.mp3' }])
-  expect(media).not.toHaveBeenCalled()
-  fireEvent.click(screen.getByRole('button', { name: /tono\.mp3/ }))
+  const fetchSpy = vi.spyOn(globalThis, 'fetch')
+  mount([{ kind: 'audio', name: 'tono.mp3', path: 'C:/p/tono.mp3', caption: 'Voz de prueba · 3:11' }])
   await waitFor(() => expect(screen.getByTestId('presented-files').querySelector('audio')).toBeTruthy())
+  expect(media).toHaveBeenCalledTimes(1)
+  const audio = screen.getByTestId('presented-files').querySelector('audio')!
+  expect(audio.getAttribute('preload')).toBe('metadata')
+  expect(audio.autoplay).toBe(false)
+  // Mientras llegan los metadatos, la duración de la descripción; y sin onda real todavía.
+  expect(screen.getByTestId('presented-files').querySelector('.audio-time')?.textContent).toContain('3:11')
+  expect(screen.getByTestId('presented-files').querySelector('.audio-player')?.getAttribute('data-wave')).toBe('decorative')
+  expect(fetchSpy).not.toHaveBeenCalled()
+  fetchSpy.mockRestore()
 })
 
 it('pulsar una imagen entregada abre el visor grande, no Archivos', async () => {

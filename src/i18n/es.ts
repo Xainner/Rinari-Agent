@@ -2821,6 +2821,7 @@ export const es = {
   'audio.position': '{current} de {total}',
   'audio.mute': 'Silenciar',
   'audio.unmute': 'Activar el sonido',
+  'audio.volume': 'Volumen',
   'audio.speed': 'Velocidad {rate}×',
   'files.playAudio': 'Reproducir {name}',
   'files.playVideo': 'Ver {name}',

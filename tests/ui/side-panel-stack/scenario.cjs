@@ -51,7 +51,16 @@ scenario(async () => {
   assert.equal(await evaluate(`Boolean(document.querySelector('${BAR}'))`), false, 'no view buttons without a conversation')
   await send('Hola', 'RESPUESTA UNO')
   await wait(`Boolean(document.querySelector('${BAR}'))`)
+  // Flujos ya no es un modo de arriba: es una vista del panel lateral (#43).
+  assert.equal(await evaluate(`[...document.querySelectorAll('.view-switcher button')].some(b => /Flujo/.test(b.textContent))`), false, 'no Flujos in the top switcher')
   await screenshot('title-bar-buttons')
+  await click(button('Flujo'))
+  await wait(`Boolean(document.querySelector('${DOCK} [data-testid="flow-view"][data-embedded]'))`)
+  await wait(`Boolean(document.querySelector('${DOCK} [role="radiogroup"][aria-label="Alcance del flujo"]'))`)
+  await settleAnimations()
+  await screenshot('flow-in-panel')
+  await click(button('Flujo'))
+  await wait(`!document.querySelector('${DOCK}')`)
 
   // 2. Browser, then Terminal: they stack, and the new one travels from its button.
   await click(button('Navegador'))

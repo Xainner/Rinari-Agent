@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
 import { useI18n } from '../../i18n'
@@ -16,7 +16,8 @@ import { useDockSignalsStore } from '../../stores/dockSignals'
 import { automaticBrowserUiEnabled } from '../browser/automaticBrowserUi'
 import { useBrowserFrame } from '../browser/useBrowserFrame'
 import { FileWorkspaceProvider } from '../files/FileWorkspace'
-import { useOptionalRuntimeStore } from '../engine/EngineContext'
+import { useOptionalEngineData, useOptionalRuntimeStore } from '../engine/EngineContext'
+import { useFlow } from '../flow/useFlow'
 import type { RuntimeStore } from '../engine/runtimeStore'
 import { useSessionTimelines } from '../engine/sessionSelectors'
 import { sessionAgents } from '../agents/AgentsPanel'
@@ -237,10 +238,13 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   useEffect(() => { publish(sessionId, { browser: browserSignal, terminal: agentRunning }) }, [publish, sessionId, browserSignal, agentRunning])
   useEffect(() => () => clearSignals(sessionId), [clearSignals, sessionId])
   const runtime = useOptionalRuntimeStore()
+  const flowSupported = useOptionalEngineData()?.status?.capabilities?.project_flow_v1 === true
 
   return (
     <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
       {runtime && <TimelineSignals store={runtime} sessionId={sessionId} />}
+      {/* Solo la sesión destino de la barra de título pide su flujo. */}
+      {focused && flowSupported && <FlowSignals sessionId={sessionId} />}
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
         <div className="session-workspace-chat">{children}</div>
         {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
@@ -273,6 +277,19 @@ export default function SessionWorkspace({ sessionId, record, children, density,
       </div>
     </FileWorkspaceProvider>
   )
+}
+
+/** Una etapa del Flujo que te necesita enciende el botón Flujo en ámbar (#43). */
+function FlowSignals({ sessionId }: { sessionId: string }) {
+  const scope = useMemo(() => ({ kind: 'session' as const, id: sessionId }), [sessionId])
+  const flow = useFlow(scope)
+  const publish = useDockSignalsStore((state) => state.publish)
+  const needsYou = (flow.data?.stages ?? []).some((stage) => stage.status === 'needs_you')
+  useEffect(() => {
+    publish(sessionId, { flowNeedsYou: needsYou })
+    return () => publish(sessionId, { flowNeedsYou: false })
+  }, [publish, sessionId, needsYou])
+  return null
 }
 
 /** Agentes trabajando y archivos cambiados en el último turno con cambios, para sus botones. */

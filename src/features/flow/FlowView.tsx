@@ -4,6 +4,7 @@ import { AlertTriangle, Archive, Folder, GitBranch, MessageSquare, RefreshCw, Wo
 import { useI18n } from '../../i18n'
 import type { FlowStage } from '../../services/engine'
 import { useBoardStore } from '../../stores/board'
+import { dockNamespaceKey, useSessionDockStore } from '../../stores/sessionDock'
 import { useUIStore, type FlowScope } from '../../stores/ui'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { requestTurnReveal, revealBoardAttention } from '../board/boardCommands'
@@ -42,7 +43,16 @@ export default function FlowView({ sessionId, embedded = false }: {
   // los eventos del Engine (useFlow), sin selector ni recarga manual.
   const wanted = sessionId ?? data.activeSession
   const activeSession = data.sessionsById[wanted] ? wanted : ''
-  const scope = useMemo<FlowScope | null>(() => (activeSession ? { kind: 'session', id: activeSession } : null), [activeSession])
+  // En el panel lateral (#43) se elige «Esta conversación · Proyecto»; el
+  // proyecto es el de la conversación, y sin proyecto no se ofrece.
+  const projectId = data.sessionsById[activeSession]?.project_id ?? null
+  const scopeKind = useSessionDockStore((state) => (embedded && activeSession ? state.flowScope[dockNamespaceKey(state.homeId, activeSession)] : undefined)) ?? 'session'
+  const setScopeKind = useSessionDockStore((state) => state.setFlowScope)
+  const projectScope = embedded && scopeKind === 'project' && projectId !== null
+  const scope = useMemo<FlowScope | null>(
+    () => (!activeSession ? null : projectScope && projectId ? { kind: 'project', id: projectId } : { kind: 'session', id: activeSession }),
+    [activeSession, projectScope, projectId],
+  )
 
   // Tres estados, no dos: mientras el Engine no está `ready` no se sabe si
   // ofrece flujos. Darlo por soportado era adivinar, y adivinar bien la mayoría
@@ -142,6 +152,29 @@ export default function FlowView({ sessionId, embedded = false }: {
   return (
     <div className="flow-view" data-testid="flow-view" data-embedded={embedded || undefined}>
       <header className="flow-header">
+        {embedded && activeSession && (
+          <div className="seg-tabs flow-scope" role="radiogroup" aria-label={t('flow.scopeLabel')}>
+            {(['session', 'project'] as const).map((kind) => {
+              const on = (kind === 'project') === projectScope
+              const disabled = kind === 'project' && projectId === null
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={disabled}
+                  title={disabled ? t('flow.scopeNoProject') : undefined}
+                  className="seg-tab"
+                  onClick={() => { setSelectedStageId(null); setScopeKind(activeSession, kind) }}
+                >
+                  {on && <span className="seg-tab-pill" aria-hidden="true" />}
+                  <span className="relative">{t(kind === 'project' ? 'flow.scopeProject' : 'flow.scopeSession')}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
         {scope && (
           <div className="flow-summary" aria-live="polite">
             <div className="flow-summary-title">
@@ -204,7 +237,8 @@ export default function FlowView({ sessionId, embedded = false }: {
         )}
       </header>
       <div className={cn('flow-body', selected && 'has-detail')}>
-        <div className="flow-canvas" role="list" aria-label={t('flow.stages')} aria-busy={flow.loading || undefined}>
+        {/* En el panel lateral, el detalle de una etapa ocupa el sitio de la lista. */}
+        <div className="flow-canvas" hidden={embedded && selected !== null} role="list" aria-label={t('flow.stages')} aria-busy={flow.loading || undefined}>
           {support === 'checking' && (
             <div className="flow-empty" role="status" data-testid="flow-checking">
               <RefreshCw size={22} className="motion-safe:animate-spin" aria-hidden="true" />

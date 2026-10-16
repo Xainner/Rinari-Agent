@@ -513,7 +513,7 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
         </div>
       )
     case 'flow':
-      return <div className="dock-scroll"><FlowView sessionId={sessionId} embedded /></div>
+      return <FlowView sessionId={sessionId} embedded />
     case 'tasks':
       return path === null ? noPath : <div className="dock-scroll"><TasksPanel key={path} path={path} /></div>
     case 'verification':

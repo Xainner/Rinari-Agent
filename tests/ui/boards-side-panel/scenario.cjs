@@ -74,6 +74,11 @@ async function exercise() {
   assert.equal((await command('session_get', { reference: a.id })).session.state, 'active')
   // Los botones de la barra de título actúan sobre el panel enfocado.
   await click('.dock-view-bar button[data-view="browser"]'); await state(a.id, true)
+  // El Flujo también se abre en el panel lateral del panel enfocado (#43).
+  await click('.dock-view-bar button[data-view="flow"]')
+  await wait(`Boolean(document.querySelector(${JSON.stringify(pa + ' [data-testid="flow-view"][data-embedded]')}))`)
+  await click('.dock-view-bar button[data-view="flow"]')
+  await wait(`!document.querySelector(${JSON.stringify(pa + ' [data-testid="flow-view"]')})`)
   passed.push('Header and topbar target the focused session; closing keeps the conversation and other layouts')
   await click(pa + ' button[aria-label="Opciones del panel"]')
   await clickText('Quitar del board', '[role="menuitem"]')

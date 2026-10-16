@@ -119,8 +119,10 @@ scenario(async () => {
   await click('[data-pane-id="pane_0"] button[aria-label="Colapsar panel"]')
   await wait(`Boolean(document.querySelector('.pane-strip [data-provider-brand="ollama"]'))`)
   await healthy(); await screenshot('collapsed-board')
-  await click('.view-switcher button[aria-label^="Flujos"]')
-  await wait(`Boolean(document.querySelector('.flow-stage [data-provider-brand="ollama"]'))`)
+  // El Flujo vive en el panel lateral de la conversación (#43).
+  await click('.view-switcher button[aria-label="Normal"]')
+  await click('.dock-view-bar button[data-view="flow"]')
+  await wait(`Boolean(document.querySelector('[data-testid="flow-view"][data-embedded] .flow-stage [data-provider-brand]'))`)
   await healthy(); await screenshot('flows')
   report({ engine: require('../../../engine-manifest.json').engine_git_sha, catalog:catalog.map(p=>p.id), passed:[`${catalog.length} real catalog products`,'all images loaded offline','dark/light at 26/14/12px','900px window at 125%','failed image fallback','wizard and custom alias form','provider cards and models','composer and picker','real local turn','Boards and collapsed strip','Flows'] })
   await command('model_use',{reference:modelIds.custom,provider:'Cuenta custom'})

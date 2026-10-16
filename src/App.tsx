@@ -62,7 +62,6 @@ import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
 import { useCreateProjectStore } from './features/projects/createProjectStore'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
-const FlowView = lazy(() => import('./features/flow/FlowView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
 
 // De package.json al compilar: fija en el código se quedó en 0.2.0 tras publicar
@@ -82,7 +81,6 @@ function App() {
   const goChat = useUIStore((s) => s.goChat)
   const goNormal = useUIStore((s) => s.goNormal)
   const goBoard = useUIStore((s) => s.goBoard)
-  const goFlows = useUIStore((s) => s.goFlows)
   const toggleBoards = useUIStore((s) => s.toggleBoards)
   const goEngine = useUIStore((s) => s.goEngine)
   const goSchedules = useUIStore((s) => s.goSchedules)
@@ -380,7 +378,7 @@ function App() {
     if (action === 'sidebar') toggleSidebarCollapsed()
     if (action === 'sidePanel') toggleDock()
     if (action === 'boards') toggleBoards()
-    if (action === 'flows') goFlows()
+    if (action === 'flows') openFlow()
     if (action === 'newChat') dispatchAction('new-chat')
     // Colapso/expansión solo actúan en Boards; en otras vistas no hacen nada.
     if (action === 'collapsePane') dispatchAction('collapse-pane')
@@ -436,6 +434,17 @@ function App() {
     },
     [dockTargetSessionId],
   )
+  /**
+   * El Flujo es una vista del panel lateral (#43): el atajo, el menú y «Ver
+   * flujo» la abren en la sesión destino (o en la que se indica), sin cerrarla
+   * si ya está abierta. Desde una pantalla sin sesión se vuelve a Normal.
+   */
+  const openFlow = useCallback((sessionId?: string) => {
+    const target = sessionId ?? dockTargetSessionId
+    if (!target) return
+    if (view !== 'chat' && view !== 'board') goNormal()
+    useSessionDockStore.getState().openView(target, 'flow')
+  }, [dockTargetSessionId, goNormal, view])
   /** Ctrl+B: oculta o vuelve a mostrar el panel lateral sin cerrar sus vistas. */
   const toggleDock = useCallback(() => {
     if (dockTargetSessionId) requestDockToggle({ sessionId: dockTargetSessionId })
@@ -479,7 +488,7 @@ function App() {
         }
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break
-        case 'view-flows': goFlows(); break
+        case 'view-flows': openFlow(); break
         case 'toggle-boards': toggleBoards(); break
         case 'collapse-pane': if (view === 'board') collapseFocusedPane(); break
         case 'expand-pane': if (view === 'board') expandPaneShortcut(); break
@@ -657,9 +666,10 @@ function App() {
             boardSignalBySession={boardSignalBySession}
             onOpenInBoard={openInBoard}
             onViewFlow={(scope) => {
-              // Flujos muestra la conversación activa: se abre esa y se va allí.
+              // El Flujo vive en el panel lateral de la conversación (#43): se
+              // abre esa conversación y su vista Flujo.
               void session.selectSession(scope.id)
-              goFlows()
+              openFlow(scope.id)
             }}
             onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
@@ -709,12 +719,12 @@ function App() {
                       : null
                   }
                 />
-              ) : view !== 'chat' && view !== 'board' && view !== 'flows' ? (
+              ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null
             }
-            selectedView={view === 'chat' || view === 'board' || view === 'flows' ? view : null}
-            onSelectView={(next) => (next === 'board' ? goBoard() : next === 'flows' ? goFlows() : goNormal())}
+            selectedView={view === 'chat' || view === 'board' ? view : null}
+            onSelectView={(next) => (next === 'board' ? goBoard() : goNormal())}
             toggleShortcut={shortcutBindings.boards}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
@@ -747,11 +757,6 @@ function App() {
         {view === 'board' && (
           <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
             <BoardView actionsRef={boardActionsRef} />
-          </Suspense>
-        )}
-        {view === 'flows' && (
-          <Suspense fallback={<div className="flow-view" aria-busy="true" />}>
-            <FlowView />
           </Suspense>
         )}
         {view === 'engine' && <EngineConsole session={session} />}

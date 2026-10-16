@@ -59,7 +59,7 @@ beforeEach(() => {
   sessionList.mockReset()
   sessionList.mockResolvedValue({ sessions: [{ id: 'ses_a' }, { id: 'ses_b' }, { id: 'ses_c' }] })
   useBoardStore.getState().hydrate(defaultBoard())
-  useUIStore.setState({ view: 'flows', flowScope: { kind: 'project', id: 'proj_a' } })
+  useUIStore.setState({ view: 'chat', flowScope: { kind: 'project', id: 'proj_a' } })
 })
 afterEach(cleanup)
 
@@ -389,4 +389,41 @@ it('reduced motion: the app preference counts, not only the OS one', async () =>
   // vez de aparecer en opacidad 0 a la espera de que corra la animación.
   expect(stages[0]!.style.opacity === '' || stages[0]!.style.opacity === '1').toBe(true)
   useUIStore.setState({ reduceMotion: false })
+})
+
+// #43: el Flujo vive en el panel lateral de la conversación, en vertical.
+function mountEmbedded(sessionId: string) {
+  const engine = engineFixture({ sessions, projects, activeSession: 'ses_a', status })
+  return render(<BoardHarness engine={engine}><FlowView sessionId={sessionId} embedded /></BoardHarness>)
+}
+
+it('#43: en el panel lateral elige «Esta conversación · Proyecto», con el proyecto de la conversación', async () => {
+  mountEmbedded('ses_b')
+  expect(await screen.findAllByTestId('flow-stage')).not.toHaveLength(0)
+  expect(flowGet).toHaveBeenLastCalledWith({ session_id: 'ses_b' })
+  expect(screen.getByTestId('flow-view').dataset.embedded).toBe('true')
+  const scope = screen.getByRole('radiogroup', { name: 'Alcance del flujo' })
+  expect(within(scope).getByRole('radio', { name: 'Esta conversación' }).getAttribute('aria-checked')).toBe('true')
+  await userEvent.click(within(scope).getByRole('radio', { name: 'Proyecto' }))
+  await waitFor(() => expect(flowGet).toHaveBeenLastCalledWith({ project_id: 'proj_a' }))
+  expect(within(scope).getByRole('radio', { name: 'Proyecto' }).getAttribute('aria-checked')).toBe('true')
+})
+
+it('#43: una conversación sin proyecto no ofrece el alcance de proyecto', async () => {
+  mountEmbedded('ses_chat')
+  const project = await screen.findByRole('radio', { name: 'Proyecto' })
+  expect((project as HTMLButtonElement).disabled).toBe(true)
+  expect(project.title).toBe('Esta conversación no tiene proyecto')
+})
+
+it('#43: el detalle de una etapa ocupa el sitio de la lista dentro del panel', async () => {
+  mountEmbedded('ses_a')
+  const user = userEvent.setup()
+  const stages = await screen.findAllByTestId('flow-stage')
+  await user.click(within(stages[1]!).getByRole('button', { name: 'implementa las rutas' }))
+  expect(screen.getByRole('complementary', { name: 'Detalle de la etapa implementa las rutas' })).toBeTruthy()
+  expect((document.querySelector('.flow-canvas') as HTMLElement).hidden).toBe(true)
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('complementary')).toBeNull())
+  expect((screen.getByRole('list', { name: 'Etapas del flujo' }) as HTMLElement).hidden).toBe(false)
 })

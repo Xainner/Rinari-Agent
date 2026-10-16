@@ -16,9 +16,10 @@ import type { Language } from '../types'
  * Ambas son presentaciones del mismo Engine: cambiar de una a otra nunca
  * altera turnos, permisos, modelos ni borradores.
  */
-export type View = 'chat' | 'board' | 'flows' | 'settings' | 'engine' | 'workspace' | 'project' | 'schedules'
+export type View = 'chat' | 'board' | 'settings' | 'engine' | 'workspace' | 'project' | 'schedules'
 /** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
-export type WorkspaceView = Extract<View, 'chat' | 'board' | 'flows'>
+/** Flujos dejó de ser un modo de arriba: vive en el panel lateral (#43). */
+export type WorkspaceView = Extract<View, 'chat' | 'board'>
 export type ProviderTab = 'connection' | 'models' | 'usage' | 'diagnostics'
 /**
  * Proveedor que Ajustes > Proveedores debe abrir al entrar, y en qué pestaña.
@@ -196,7 +197,6 @@ interface UIState {
   /** `explicit: false` para el alcance que resuelve la propia vista al abrirse. */
   setFlowScope: (scope: FlowScope | null, explicit?: boolean) => void
   setFlowHomeId: (homeId: string | null) => void
-  goFlows: (scope?: FlowScope) => void
   /** Última vista de trabajo (Normal, Boards o Flujos); en memoria, no persistida. */
   lastWorkspaceView: WorkspaceView
   settingsSection: SettingsSection
@@ -318,14 +318,8 @@ export const useUIStore = create<UIState>((set) => ({
     // El alcance del home nuevo viene del disco, no de una elección de ahora.
     return { flowHomeId: next, flowScopes: scopes, flowScope: scopes[next] ?? null, flowScopeExplicit: false }
   }),
-  goFlows: (scope) => set((s) => {
-    if (!scope) return { view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null }
-    const scopes = { ...s.flowScopes, [s.flowHomeId]: scope }
-    writeFlowScopes(scopes)
-    return { view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null, flowScope: scope, flowScopes: scopes, flowScopeExplicit: true }
-  }),
   toggleBoards: () => set((s) => {
-    const current = s.view === 'chat' || s.view === 'board' || s.view === 'flows' ? s.view : s.lastWorkspaceView
+    const current = s.view === 'chat' || s.view === 'board' ? s.view : s.lastWorkspaceView
     const next: WorkspaceView = current === 'board' ? 'chat' : 'board'
     return { view: next, lastWorkspaceView: next, sidebarOpen: false, projectRoot: null }
   }),

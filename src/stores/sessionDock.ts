@@ -232,6 +232,9 @@ export interface SessionDockState {
   sections: Record<string, { view: DockView; section: DockSection; at: number }>
   /** Transitorio: el botón desde el que se abrió la última vista, por sesión. */
   launches: Record<string, DockLaunch>
+  /** Transitorio: el alcance de la vista Flujo de cada sesión (#43). */
+  flowScope: Record<string, 'session' | 'project'>
+  setFlowScope: (sessionId: string, scope: 'session' | 'project') => void
   setHomeId: (homeId: string | null) => void
   layoutFor: (sessionId: string) => SessionDockLayout
   /** Botón de una vista: abierta y a la vista → la cierra; oculta → muestra el panel; cerrada → la abre (o dice que no cabe). */
@@ -301,6 +304,8 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
     foreign: initial.foreign,
     sections: {},
     launches: {},
+    flowScope: {},
+    setFlowScope: (sessionId, scope) => set((state) => ({ flowScope: { ...state.flowScope, [dockNamespaceKey(state.homeId, sessionId)]: scope } })),
     setHomeId: (homeId) => set((state) => {
       const next = homeId || null
       if (state.homeId === next) return state
@@ -413,5 +418,5 @@ const DEFAULT_LAYOUT = defaultDockLayout()
 
 /** Solo tests. */
 export function resetSessionDockForTests(): void {
-  useSessionDockStore.setState({ homeId: null, layouts: {}, foreign: {}, sections: {}, launches: {} })
+  useSessionDockStore.setState({ homeId: null, layouts: {}, foreign: {}, sections: {}, launches: {}, flowScope: {} })
 }

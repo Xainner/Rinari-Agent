@@ -153,14 +153,17 @@ scenario(async () => {
       await delay(300)
     })
   })
-  await step('flows', async () => {
-    await evaluate(`[...document.querySelectorAll('.view-switcher button')].find(b=>/Flujo/i.test(b.getAttribute('aria-label')||b.textContent))?.click()`)
-    await delay(1300)
-    await screenshot('12-flows')
-  })
   await step('back-normal', async () => {
     await click('.view-switcher button[aria-label="Normal"]')
     await delay(700)
+  })
+  // El Flujo es una vista del panel lateral (#43), ya no un modo de arriba.
+  await step('flows', async () => {
+    await click('.dock-view-bar button[data-view="flow"]')
+    await delay(1300)
+    await screenshot('12-flows')
+    await click('.dock-view-bar button[data-view="flow"]')
+    await delay(450)
   })
   await popoversIn('header', '13-header')
   await popoversIn('footer', '14-statusbar')

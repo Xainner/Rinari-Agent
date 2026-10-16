@@ -1,4 +1,4 @@
-import { Columns3, MessageSquare, Workflow } from 'lucide-react'
+import { Columns3, MessageSquare } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { WorkspaceView } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -33,7 +33,6 @@ export default function WorkspaceViewSwitcher({
   const options: Array<{ view: WorkspaceView; label: string; icon: typeof MessageSquare }> = [
     { view: 'chat', label: t('nav.normal'), icon: MessageSquare },
     { view: 'board', label: t('nav.boards'), icon: Columns3 },
-    { view: 'flows', label: t('nav.flows'), icon: Workflow },
   ]
   return (
     <div role="group" aria-label={t('topbar.workspaceView')} className="view-switcher">

@@ -198,8 +198,14 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   // si el usuario lo cerró después, es su decisión. Con el panel abierto en
   // otra vista (Resumen, Archivos…) el Navegador se apila con ella; antes no
   // se mostraba y parecía que Rinari no había abierto nada.
-  const nativeState = useRef<string | null>(null)
-  const [nativeLive, setNativeLive] = useState<'agent' | 'live' | null>(null)
+  //
+  // Estado **por conversación**: en la vista Normal este componente sigue
+  // montado al cambiar de conversación. Con un solo valor, la conversación
+  // nueva heredaba el «listo» de la anterior (y no se revelaba al abrir
+  // Rinari una página) y su botón Navegador salía en vivo sin haberlo usado.
+  const nativeStates = useRef(new Map<string, string>())
+  const [nativeLiveBySession, setNativeLive] = useState<{ sessionId: string; live: 'agent' | 'live' | null } | null>(null)
+  const nativeLive = nativeLiveBySession?.sessionId === sessionId ? nativeLiveBySession.live : null
   const focusedRef = useRef(focused)
   focusedRef.current = focused
   useEffect(() => {
@@ -209,13 +215,18 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     void platform()
       .browser.onContextChanged((view) => {
         if (!alive || view.session_id !== sessionId) return
-        const previous = nativeState.current
-        nativeState.current = view.context_state
-        setNativeLive(view.context_state === 'ready' ? (view.control_state === 'agent' ? 'agent' : 'live') : null)
-        if (view.backend !== 'electron-native' || view.context_state !== 'ready') return
-        if (previous === 'ready' || !automaticBrowserUiEnabled()) return
+        const previous = nativeStates.current.get(sessionId) ?? null
+        nativeStates.current.set(sessionId, view.context_state)
+        setNativeLive({ sessionId, live: view.context_state === 'ready' ? (view.control_state === 'agent' ? 'agent' : 'live') : null })
+        if (view.backend !== 'electron-native' || view.context_state !== 'ready' || previous === 'ready') return
+        // Una línea en el registro de la app por cada contexto que pasa a
+        // listo: si el panel no aparece, dice por qué.
+        const skip = !automaticBrowserUiEnabled() ? 'automatic UI off' : !focusedRef.current ? 'not focused' : null
         const current = useSessionDockStore.getState().layoutFor(sessionId)
-        if (focusedRef.current && (!current.visible || !current.views.includes('browser'))) reveal(sessionId, 'browser')
+        const shown = current.visible && current.views.includes('browser')
+        console.info(`[rinari] browser ready: ${sessionId} ${skip ? `not revealed (${skip})` : shown ? 'already shown' : 'revealed'}`)
+        if (skip || shown) return
+        reveal(sessionId, 'browser')
       })
       .then((stop) => {
         if (alive) unsubscribe = stop

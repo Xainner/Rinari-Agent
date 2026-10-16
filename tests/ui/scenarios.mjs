@@ -65,6 +65,29 @@ export const scenarios = {
     },
     model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'DICTADO RECIBIDO' }))),
   },
+  'browser-agent-reveal': {
+    title: 'Navegador: Rinari abre una página y el panel la muestra; la conversación siguiente no hereda su estado',
+    phases: ['exercise'],
+    model: async () => {
+      const site = createServer((req, res) => { res.setHeader('content-type', 'text/html'); res.end('<!doctype html><title>Sitio</title><h1>Sitio de prueba</h1>') })
+      await new Promise((resolve) => site.listen(0, '127.0.0.1', resolve))
+      const url = `http://127.0.0.1:${site.address().port}/`
+      const model = await startRoutedModel({
+        title: Array.from({ length: 6 }, () => ({ text: 'Web' })),
+        main: [
+          { tool: 'capability.search', args: { query: '+browser.navigate +browser.open', limit: 3, load: true }, say: 'Busco el navegador.' },
+          { tool: 'browser.navigate', args: { url, target_id: '' }, say: 'Entro.' },
+          { tool: 'browser.open', args: { url }, say: 'Abro una pestaña.' },
+          { text: 'PAGINA ABIERTA' },
+          { tool: 'capability.search', args: { query: '+browser.open', limit: 2, load: true }, say: 'Busco el navegador.' },
+          { tool: 'browser.open', args: { url }, say: 'Abro otra.' },
+          { text: 'SEGUNDA ABIERTA' },
+          { text: 'OTRA' },
+        ],
+      }, laneOf)
+      return { ...model, close: async () => { site.close(); await model.close?.() } }
+    },
+  },
   'checklist-dock': {
     title: 'Lista de tareas en vivo: sobre el composer, pendiente, recarga, completa y retirada; nunca en una charla simple',
     phases: ['exercise'],

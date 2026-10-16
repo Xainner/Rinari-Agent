@@ -111,6 +111,13 @@
       ]
     },
     {
+      "command": "browser_external_open",
+      "kind": "engine",
+      "method": "browser.external.open",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "browser_view_get",
       "kind": "engine",
       "method": "browser.view.get",
@@ -1970,7 +1977,9 @@
       "kind": "engine",
       "method": "vision.model.reset",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "vision_settings_get",
@@ -2094,8 +2103,8 @@
     }
   ],
   "summary": {
-    "commands": 250,
-    "engine_backed": 244,
+    "commands": 251,
+    "engine_backed": 245,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 83

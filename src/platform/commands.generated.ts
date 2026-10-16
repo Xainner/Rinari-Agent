@@ -14,6 +14,7 @@ export type DesktopCommand =
   | "attachment_prepare_get"
   | "attachment_prepare_start"
   | "attachment_preview"
+  | "browser_external_open"
   | "browser_view_get"
   | "bundle_activate"
   | "bundle_active"
@@ -266,6 +267,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "attachment_prepare_get",
   "attachment_prepare_start",
   "attachment_preview",
+  "browser_external_open",
   "browser_view_get",
   "bundle_activate",
   "bundle_active",
@@ -538,6 +540,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "attachment_prepare_get",
   "attachment_prepare_start",
   "attachment_preview",
+  "browser_external_open",
   "browser_view_get",
   "bundle_activate",
   "bundle_active",

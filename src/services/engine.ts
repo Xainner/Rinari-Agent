@@ -1318,6 +1318,8 @@ export const engineApi = {
   contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
   visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
   /** «Volver a activar la visión»: olvida lo que Rinari aprendió de ese modelo (#14). */
+  /** El sitio pide una verificación humana: la sesión sigue en un Chrome/Edge de verdad (plan 0.4.0 #45). */
+  browserExternalOpen: (session_id: string, url: string) => platform().command<{ session_id: string; state: string }>('browser_external_open', { session_id, url }),
   visionModelReset: (modelId: string) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_model_reset', { model_id: modelId }),
   sessionImageSupport: (session_id: string | null, model_id?: string) => platform().command<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),
   attachmentPrepareStart: (session_id: string, attachments: AttachmentInput[]) =>

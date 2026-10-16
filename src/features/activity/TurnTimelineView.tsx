@@ -29,6 +29,7 @@ import {
   Mic,
 } from 'lucide-react'
 import { VisionWithheldNotice } from './VisionWithheldNotice'
+import { HumanCheckCard, humanCheckOf, type HumanCheck } from '../browser/HumanCheckCard'
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -203,6 +204,11 @@ function VerificationRow({ item, active }: { item: Extract<TimelineItem, { type:
   )
 }
 
+/** La tarjeta de verificación humana con la sesión del turno (#45). */
+function HumanCheckNotice({ check }: { check: HumanCheck }) {
+  return <HumanCheckCard sessionId={useContext(TurnSessionContext)} check={check} />
+}
+
 function ToolTile({ tone, Icon }: { tone: string; Icon: typeof FileText }) {
   const wasRunning = useRef(tone === 'running')
   const celebrate = tone === 'done' && wasRunning.current
@@ -262,7 +268,9 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     const exited = failed && !item.error && !item.presentation?.error && typeof exitCode === 'number' && exitCode !== 0
     const instruction = agentInstruction(item)
     const tone = running ? 'running' : exited ? 'warn' : failed ? 'failed' : item.status === 'completed' ? 'done' : 'idle'
+    const humanCheck = humanCheckOf(item)
     return (
+      <>
       <InspectionDetails inspectionId="tool" className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone={tone}>
         <summary>
           <ToolTile tone={tone} Icon={Icon} />
@@ -281,6 +289,8 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-inset)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}
       </InspectionDetails>
+      {humanCheck && <HumanCheckNotice check={humanCheck} />}
+      </>
     )
   }
   if (item.type === 'approval') {

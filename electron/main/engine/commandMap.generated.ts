@@ -28,6 +28,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "attachment_prepare_get": {"method":"attachment.prepare.get","params":[{"key":"job_id","from":"job_id","optional":false}]},
   "attachment_prepare_start": {"method":"attachment.prepare.start","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"attachments","from":"attachments","optional":false}]},
   "attachment_preview": {"method":"attachment.preview","params":[{"key":"uri","from":"uri","optional":false},{"key":"max_dimension","from":null,"optional":true},{"key":"max_bytes","from":"max_bytes","optional":true}],"manual":true},
+  "browser_external_open": {"method":"browser.external.open","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"url","from":"url","optional":false}]},
   "browser_view_get": {"method":"browser.view.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"target_id","from":"target_id","optional":false}]},
   "bundle_activate": {"method":"profile_bundle.activate","params":[{"key":"id","from":"id","optional":false}]},
   "bundle_active": {"method":"profile_bundle.active","params":[]},

@@ -38,7 +38,9 @@ function run(command, commandArgs, options = {}) {
   const result = spawnSync(command, commandArgs, {
     cwd: options.cwd ?? ROOT,
     env: { ...process.env, ...options.env },
-    stdio: options.capture ? ['ignore', 'pipe', 'inherit'] : 'inherit',
+    // Sin stdin: corrido desde un shell en segundo plano, PowerShell espera
+    // la entrada al terminar y no sale nunca.
+    stdio: ['ignore', options.capture ? 'pipe' : 'inherit', 'inherit'],
     // npm y npx son .cmd en Windows; el resto se lanza sin shell para que
     // argumentos como el JSON de Tauri lleguen intactos.
     shell: process.platform === 'win32' && (command === 'npm' || command === 'npx'),

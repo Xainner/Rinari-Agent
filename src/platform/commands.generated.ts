@@ -237,6 +237,7 @@ export type DesktopCommand =
   | "usage_get"
   | "verification_latest"
   | "verification_plan"
+  | "vision_model_reset"
   | "vision_settings_get"
   | "vision_settings_set"
   | "workspace_file_open"
@@ -488,6 +489,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "usage_get",
   "verification_latest",
   "verification_plan",
+  "vision_model_reset",
   "vision_settings_get",
   "vision_settings_set",
   "workspace_file_open",
@@ -754,6 +756,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "usage_get",
   "verification_latest",
   "verification_plan",
+  "vision_model_reset",
   "vision_settings_get",
   "vision_settings_set",
   "workspace_file_read",

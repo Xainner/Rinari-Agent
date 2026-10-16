@@ -11,8 +11,8 @@ import { AttachmentPlayer, isPlayableAttachment } from '../AttachmentMedia'
 import { cn } from '../../lib/utils'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from '../AttachmentReading'
 
-type ImageReadMode = 'image' | 'text' | 'both'
 import { selectDraft, useComposerStore } from '../../stores/composer'
+import { readModeFields, readModeOf, useImageReadPrefs, type ImageReadMode } from '../../stores/imageReadPrefs'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
@@ -604,26 +604,40 @@ export default function Composer({
       return
     }
     setAttachmentNotice(undefined)
+    // «Cómo enviar imágenes por defecto» (Ajustes → Visión, #77).
+    const image = item.kind === 'image' || item.mime_type?.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(item.name)
+    const defaultMode = useImageReadPrefs.getState().mode
+    const chosen = image && item.ocr === undefined && defaultMode !== 'image' ? { ...item, ...readModeFields(defaultMode) } : item
     const pending = onPrepareAttachments
-      ? { ...item, status: 'preparing' as const, error: undefined }
-      : item
+      ? { ...chosen, status: 'preparing' as const, error: undefined }
+      : chosen
     addAttachmentFor(draftKey, pending)
     if (onPrepareAttachments) void prepareOne(pending)
   }
 
-  /** Cómo leer las imágenes: píxeles (visión), texto (OCR) o ambos. */
-  const imageReadMode: ImageReadMode | undefined = (() => {
-    const modes = new Set(imageAttachments.map(file => !file.ocr ? 'image' : file.keepImage ? 'both' : 'text'))
-    return modes.size === 1 ? [...modes][0] as ImageReadMode : undefined
-  })()
-  function setImageReadMode(mode: ImageReadMode) {
-    const ocr = mode !== 'image'
-    const keepImage = mode === 'both'
-    for (const file of imageAttachments) {
-      if (Boolean(file.ocr) === ocr && Boolean(file.keepImage) === keepImage) continue
-      void prepareOne({ ...file, ocr, keepImage: keepImage || undefined, derivedUri: ocr ? file.derivedUri : undefined })
-    }
+  /** Cómo va una imagen, elegido desde su chip (#77): ya no lo cambia el composer. */
+  function setImageReadMode(file: AttachmentRef, mode: ImageReadMode) {
+    const fields = readModeFields(mode)
+    void prepareOne({ ...file, ...fields, ocrAuto: undefined, readChosen: true, derivedUri: fields.ocr ? file.derivedUri : undefined })
   }
+
+  // Sin visión, la imagen va como texto reconocido sin preguntar, y el chip
+  // lo marca; con un modelo que ve, vuelve a ir como imagen (#77). Lo que el
+  // dueño eligió en el chip se respeta.
+  const visionKnown = visionRoute?.key === visionRouteKey ? visionRoute.available : undefined
+  useEffect(() => {
+    if (visionKnown === undefined) return
+    for (const file of imageAttachments) {
+      if (file.readChosen || file.status === 'preparing') continue
+      if (!visionKnown && !file.ocr) {
+        void prepareOne({ ...file, ocr: true, keepImage: undefined, ocrAuto: true })
+      } else if (visionKnown && file.ocrAuto) {
+        void prepareOne({ ...file, ...readModeFields(useImageReadPrefs.getState().mode), ocrAuto: undefined, derivedUri: undefined })
+      }
+    }
+    // Solo cuando cambia lo que se sabe del modelo o llegan imágenes nuevas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visionKnown, imageAttachments.map((file) => `${file.id}:${file.ocr ? 1 : 0}:${file.status ?? ''}`).join('|')])
 
   async function cancelAttachment(file: AttachmentRef) {
     // Invalidate local ownership before awaiting the engine so a completion
@@ -760,7 +774,13 @@ export default function Composer({
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
-              <span key={`${file.path}:${file.name}`} className="inline-flex max-w-[320px] items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)]">
+              <span
+                key={`${file.path}:${file.name}`}
+                // La ruta de visión, en el tooltip del chip en vez de una línea aparte (#77).
+                title={visualAttachments.includes(file) && visionRoute?.key === visionRouteKey && visionRoute.available ? t('attach.visionRoute', { destination: visionRoute.destination }) : undefined}
+                data-vision-route={visualAttachments.includes(file) && visionRoute?.key === visionRouteKey && visionRoute.available ? visionRoute.destination : undefined}
+                className="inline-flex max-w-[320px] items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)]"
+              >
                 {isPlayableAttachment(file) ? (
                   <button type="button" disabled={!sessionId || !file.uri} onClick={() => setPlayingId((current) => (current === file.id ? null : file.id))} className="attach-chip-play" aria-pressed={playingId === file.id} aria-label={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })} title={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })}>
                     <span className="attach-chip-play-icon" aria-hidden="true">{playingId === file.id ? <Pause size={10} /> : <Play size={10} />}</span>
@@ -774,6 +794,35 @@ export default function Composer({
                   </button>
                 )}
                 <ReadingBadges attachment={file} />
+                {imageAttachments.includes(file) && (
+                  // Cómo va esta imagen (#77): el menú del chip sustituye a la barra «Leer imágenes como».
+                  <details className="relative" data-testid="attach-read-menu">
+                    <summary
+                      className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]"
+                      aria-label={t('attach.read.menu', { name: file.name })}
+                      title={t('attach.read.menu', { name: file.name })}
+                    >⋯</summary>
+                    <div role="menu" className="absolute top-full right-0 z-40 mt-1 w-48 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-1 shadow-xl">
+                      {(['image', 'text', 'both'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={readModeOf(file) === mode}
+                          title={t(`attach.read.${mode}Hint`)}
+                          disabled={file.status === 'preparing'}
+                          onClick={(event) => {
+                            (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open')
+                            if (readModeOf(file) !== mode || file.ocrAuto) setImageReadMode(file, mode)
+                          }}
+                          className={cn('block w-full rounded px-2 py-1 text-left text-[11px] disabled:opacity-50', readModeOf(file) === mode ? 'bg-[var(--accent-2)]/10 text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]')}
+                        >
+                          {t(`attach.read.as.${mode}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                )}
                 {file.warning && <span title={file.warning} className="text-[var(--warning)]">⚠</span>}
                 {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfPages')}<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfVisualPages')}<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">{t('attach.pdfPrepareAgain')}</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={t('attach.cancelPrepare', { name: file.name })} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
@@ -786,26 +835,6 @@ export default function Composer({
         {playing && sessionId && <div className="mb-2 px-1"><AttachmentPlayer key={playing.id} sessionId={sessionId} attachment={playing} onClose={() => setPlayingId(null)} /></div>}
         {attachmentNotice && <div className="mb-2 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-2 text-[11px] text-[var(--danger)]">{attachmentNotice}</div>}
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-[var(--warning)]/30 p-2 text-xs">{visionRoute?.reason}</div>}
-        {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">{t('attach.visionRoute', { destination: visionRoute.destination })}</p>}
-        {imageAttachments.length > 0 && onPrepareAttachments && (
-          <div role="radiogroup" aria-label={t('attach.read.label')} className="mb-2 flex flex-wrap items-center gap-1 px-1 text-[11px]">
-            <span className="mr-1 text-[var(--text-subtle)]">{t('attach.read.label')}</span>
-            {(['image', 'text', 'both'] as const).map(mode => (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={imageReadMode === mode}
-                title={t(`attach.read.${mode}Hint`)}
-                disabled={imageAttachments.some(file => file.status === 'preparing')}
-                onClick={() => setImageReadMode(mode)}
-                className={cn('rounded-md border px-2 py-0.5 transition-colors disabled:opacity-50', imageReadMode === mode ? 'border-[var(--accent-2)]/50 bg-[var(--accent-2)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]')}
-              >
-                {t(`attach.read.${mode}`)}
-              </button>
-            ))}
-          </div>
-        )}
         {paneMention && (
           <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--accent-2)]" data-testid="pane-mention-chip">
             <MessageSquareShare size={12} aria-hidden="true" />

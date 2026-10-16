@@ -361,6 +361,7 @@ function mergeEventItem(
       question: text(payload.question) || prior?.question || '', analysis: text(payload.analysis) || prior?.analysis || '',
       error: errorMessage(payload.error), cached: payload.cached === true,
       fallback: text(payload.fallback) || prior?.fallback,
+      markedBy: text(payload.marked_by) || prior?.markedBy,
       images: Array.isArray(payload.images) ? payload.images.flatMap(image => {
         const parsed = presentation({ kind: 'image', image })?.image
         return parsed ? [parsed] : []

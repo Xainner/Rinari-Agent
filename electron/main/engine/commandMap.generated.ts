@@ -246,6 +246,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "usage_get": {"method":"usage.get","params":[{"key":"ref","from":"reference","optional":true}]},
   "verification_latest": {"method":"verification.latest","params":[{"key":"path","from":"path","optional":false},{"key":"kinds","from":"kinds","optional":true},{"key":"limit","from":"limit","optional":true}]},
   "verification_plan": {"method":"verification.plan","params":[{"key":"path","from":"path","optional":false},{"key":"changed_files","from":"changed_files","optional":false}]},
+  "vision_model_reset": {"method":"vision.model.reset","params":[{"key":"model_id","from":"model_id","optional":false}]},
   "vision_settings_get": {"method":"vision.settings.get","params":[]},
   "vision_settings_set": {"method":"vision.settings.set","params":[],"passthrough":"settings"},
   "workspace_file_read": {"method":"workspace.file.read","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"path","from":"path","optional":false},{"key":"turn_id","from":"turn_id","optional":false}]},

@@ -28,6 +28,7 @@ import {
   LifeBuoy,
   Mic,
 } from 'lucide-react'
+import { VisionWithheldNotice } from './VisionWithheldNotice'
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -229,7 +230,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.fallback === 'without_images') {
-    return <ActivityNotice testId="vision-without-images" tone="warning" icon={<ImageOff size={12} />}>{t('vision.withoutImages')}</ActivityNotice>
+    return <ActivityNotice testId="vision-without-images" tone="warning" icon={<ImageOff size={12} />}><VisionWithheldNotice modelId={item.modelId} markedBy={item.markedBy} /></ActivityNotice>
   }
   if (item.type === 'vision' && item.route === 'conversation') return null
   if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">

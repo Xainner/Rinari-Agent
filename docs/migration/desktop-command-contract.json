@@ -3124,6 +3124,29 @@
       "host_effects": []
     },
     {
+      "command": "vision_model_reset",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "model_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "vision.model.reset",
+      "engine_params": [
+        {
+          "key": "model_id",
+          "from": "model_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "attachment_prepare_start",
       "module": "workspace",
       "args": [

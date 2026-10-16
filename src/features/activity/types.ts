@@ -181,6 +181,8 @@ export interface VisionTimelineItem extends TimelineItemBase {
   error?: string
   /** `without_images`: el modelo no ve imágenes y el turno siguió sin ellas. */
   fallback?: string
+  /** Quién lo decidió (#14): `auto` (Rinari), `turn` (solo este turno), `owner`, `endpoint`. */
+  markedBy?: string
   images: import('../../types/protocol.generated').ViewedImage[]
   cached: boolean
 }

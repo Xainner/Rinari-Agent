@@ -1966,6 +1966,13 @@
       ]
     },
     {
+      "command": "vision_model_reset",
+      "kind": "engine",
+      "method": "vision.model.reset",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "vision_settings_get",
       "kind": "engine",
       "method": "vision.settings.get",
@@ -2087,10 +2094,10 @@
     }
   ],
   "summary": {
-    "commands": 249,
-    "engine_backed": 243,
+    "commands": 250,
+    "engine_backed": 244,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 82
+    "without_callers": 83
   }
 }

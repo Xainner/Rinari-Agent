@@ -48,7 +48,8 @@ it('blocks only when the engine reports no visual route', async () => {
 
 it('sends visual content without confirmation when the engine selects a route for a text model', async () => {
   const send = mount(undefined, { id: 'pdf', path: '/doc.pdf', name: 'doc.pdf', source: 'workspace', kind: 'pdf', status: 'ready', visualPages: [1] }, false)
-  await screen.findByText('Visión: test / visual')
+  // La ruta va en el tooltip del chip (#77), no en una línea aparte.
+  await waitFor(() => expect(document.querySelector('[data-vision-route]')?.getAttribute('title')).toBe('Visión: test / visual'))
   expect(screen.queryByText(/Confirmar envío visual/)).toBeNull()
   await userEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }))
   expect(send).toHaveBeenCalledOnce()

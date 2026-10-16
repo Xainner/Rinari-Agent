@@ -1317,6 +1317,8 @@ export const engineApi = {
     platform().command<{ models: import('../features/context/contextStatus').ModelContext[] }>('context_models', { refresh }),
   contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
   visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
+  /** «Volver a activar la visión»: olvida lo que Rinari aprendió de ese modelo (#14). */
+  visionModelReset: (modelId: string) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_model_reset', { model_id: modelId }),
   sessionImageSupport: (session_id: string | null, model_id?: string) => platform().command<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),
   attachmentPrepareStart: (session_id: string, attachments: AttachmentInput[]) =>
     platform().command<Record<string, unknown>>('attachment_prepare_start', { session_id, attachments }),

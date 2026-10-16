@@ -71,6 +71,10 @@ export interface AttachmentRef {
   ocr?: boolean
   /** «Texto e imagen»: el OCR y los píxeles de la misma imagen van al modelo. */
   keepImage?: boolean
+  /** Texto (OCR) puesto por el composer porque el modelo no ve imágenes (#77). */
+  ocrAuto?: boolean
+  /** El dueño eligió cómo va esta imagen desde su chip: el composer no lo cambia (#77). */
+  readChosen?: boolean
   /** Lo que el Engine leyó de un PDF, página a página. */
   coverage?: ReadingCoverage
   pageRange?: string

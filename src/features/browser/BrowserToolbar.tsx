@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, ExternalLink, Globe, Lock, RotateCw, Star } from 'lucide-react'
+import { AppWindow, ArrowLeft, ArrowRight, ExternalLink, Globe, Hand, Lock, RotateCw, Star } from 'lucide-react'
 
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
@@ -33,6 +33,11 @@ export interface BrowserToolbarProps {
    * ofrece nada que no funcione.
    */
   sizeControl?: ReactNode
+  /**
+   * Se ve la página de inicio: su pie ya dice el estado, y «Preparando…» aquí
+   * contradiría a «Lista para navegar» (no hay nada que preparar hasta abrir algo).
+   */
+  home?: boolean
 }
 
 /** Separa el dominio del resto de la dirección para leerla como en un navegador. */
@@ -69,6 +74,7 @@ export default function BrowserToolbar({
   pinned = false,
   onTogglePin,
   sizeControl,
+  home = false,
 }: BrowserToolbarProps) {
   const { t } = useI18n()
   const [draft, setDraft] = useState(url)
@@ -87,6 +93,23 @@ export default function BrowserToolbar({
   const preparing = state === 'creating' || state === 'absent'
   const parts = splitUrl(url)
   const navDisabled = !native || !onHistory
+  const agentUsing = native && busy && !userHasControl && !uncertain && !waiting && !external
+  // La línea de estado es un chip canónico: su tono dice de quién es la página.
+  const status: { text: string; tone?: 'accent' | 'success' | 'warning' | 'danger'; icon?: ReactNode } = preparing
+    ? { text: t('browser.nativePreparing') }
+    : !connected
+      ? { text: t('browser.disconnected'), tone: 'danger' }
+      : !native
+        ? { text: t('browser.live'), tone: 'success' }
+        : external
+          ? { text: t('browser.external'), tone: 'accent', icon: <AppWindow size={11} aria-hidden="true" /> }
+          : uncertain
+            ? { text: t('browser.controlUncertain'), tone: 'warning' }
+            : waiting
+              ? { text: t('browser.agentWaiting'), tone: 'warning', icon: <Hand size={11} aria-hidden="true" /> }
+              : busy && !userHasControl
+                ? { text: t('browser.agentUsing'), tone: 'accent' }
+                : { text: t('browser.ready'), tone: 'success' }
 
   return (
     <header className="browser-toolbar">
@@ -180,34 +203,21 @@ export default function BrowserToolbar({
         </div>
       )}
 
-      {(preparing || (busy && !userHasControl && connected)) && <div className="browser-progress" aria-hidden="true"><i /></div>}
+      {!home && (preparing || (busy && !userHasControl && connected)) && <div className="browser-progress" aria-hidden="true"><i /></div>}
 
-      <div
+      {!home && <div
         className="browser-control"
         data-control={native ? (control ?? 'agent') : 'viewer'}
         data-waiting={waiting || undefined}
       >
-        {native && busy && !userHasControl && !uncertain && <RinariAvatar state="working" size={22} />}
+        {agentUsing && <RinariAvatar state="working" size={20} />}
         {/* Un contexto que se está preparando no está desconectado, y decirlo
             así hace pensar que algo se rompió. */}
-        <span role="status" className="browser-toolbar-state" data-connected={connected || undefined}>
-          {preparing
-            ? t('browser.nativePreparing')
-            : !connected
-              ? t('browser.disconnected')
-              : !native
-                ? t('browser.live')
-                : external
-                  ? t('browser.external')
-                  : uncertain
-                    ? t('browser.controlUncertain')
-                    : waiting
-                      ? t('browser.agentWaiting')
-                      : busy && !userHasControl
-                        ? t('browser.agentUsing')
-                        : t('browser.ready')}
+        <span role="status" className="browser-toolbar-state r-chip" data-tone={status.tone} data-connected={connected || undefined}>
+          {status.icon}
+          {status.text}
         </span>
-      </div>
+      </div>}
       {openError && (
         <span role="alert" className="px-3 pb-2 text-xs text-[var(--warning)]">
           {openError}

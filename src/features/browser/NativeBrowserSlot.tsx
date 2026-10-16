@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
 
 import { useI18n } from '../../i18n'
 import type { NativeBrowserContext } from '../../platform/contract'
@@ -53,7 +53,7 @@ export default function NativeBrowserSlot({ context, slotRef, onPrepare, home, p
         node.current = element
         slotRef(element)
       }}
-      style={pageWidth ? { width: pageWidth, minWidth: pageWidth, flex: '0 0 auto' } : undefined}
+      style={pageWidth ? ({ '--page-width': `${pageWidth}px` } as CSSProperties) : undefined}
       data-page-width={pageWidth ?? undefined}
       className="browser-view-slot"
       data-testid="browser-view-slot"
@@ -80,7 +80,7 @@ export default function NativeBrowserSlot({ context, slotRef, onPrepare, home, p
 
   if (!pageWidth) return slot
   return (
-    <div className="browser-view-scroll" data-testid="browser-view-scroll" style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
+    <div className="browser-view-scroll" data-testid="browser-view-scroll">
       {slot}
     </div>
   )

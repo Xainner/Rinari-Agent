@@ -65,24 +65,36 @@ export function rippleBounds(point: Point, page: Point): { x: number; y: number;
   }
 }
 
+// La flecha lleva el degradado de la marca, un contorno claro sobre otro
+// oscuro (se lee en páginas claras y oscuras) y el punto magenta de Rinari.
+// La onda son dos anillos que se abren desde el punto del clic; al escribir,
+// una píldora con tres puntos que laten. Sin movimiento con «Reducir animaciones».
 const PAGE = `<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:100%;height:100%}
-svg{position:absolute;left:0;top:0;filter:drop-shadow(0 1px 2px rgba(10,6,20,.55))}
-.ripple{display:none;position:absolute;inset:6px;border-radius:50%;border:2px solid #b794ff;
-  box-shadow:0 0 12px rgba(147,88,255,.55);animation:ripple ${RIPPLE_MS}ms ease-out forwards}
-.typing{display:none;position:absolute;left:12px;top:17px;padding:1px 3px;border-radius:5px;
-  background:#9358ff;color:#fff;font:700 8px/1 system-ui,sans-serif;letter-spacing:1px}
+svg{position:absolute;left:0;top:0;filter:drop-shadow(0 2px 3px rgba(10,6,20,.45))}
+.ripple{display:none;position:absolute;inset:0}
+.ripple i{position:absolute;inset:4px;border-radius:50%;border:2px solid #c4a8ff;
+  background:radial-gradient(circle,rgba(183,148,255,.3),rgba(183,148,255,0) 62%);
+  box-shadow:0 0 14px rgba(147,88,255,.5);animation:ripple ${RIPPLE_MS}ms cubic-bezier(.22,1,.36,1) forwards}
+.ripple i+i{background:none;border-color:#e879f9;box-shadow:none;animation-delay:70ms;opacity:0}
+.typing{display:none;position:absolute;left:11px;top:16px;gap:2px;align-items:center;padding:2px 4px;border-radius:999px;
+  background:linear-gradient(135deg,#9358ff,#c026d3);box-shadow:0 0 0 1px rgba(246,242,255,.9),0 2px 4px rgba(10,6,20,.4)}
+.typing b{width:3px;height:3px;border-radius:50%;background:#fff;animation:dot 900ms ease-in-out infinite}
+.typing b:nth-child(2){animation-delay:150ms}.typing b:nth-child(3){animation-delay:300ms}
 body[data-mode=ripple] svg{display:none}
 body[data-mode=ripple] .ripple{display:block}
-body[data-mode=typing] .typing{display:block}
-@keyframes ripple{from{transform:scale(.35);opacity:1}to{transform:scale(1);opacity:0}}
-@media (prefers-reduced-motion: reduce){.ripple{animation:none;opacity:.8}}
+body[data-mode=typing] .typing{display:flex}
+@keyframes ripple{from{transform:scale(.3);opacity:1}to{transform:scale(1);opacity:0}}
+@keyframes dot{0%,100%{opacity:.45;transform:translateY(0)}50%{opacity:1;transform:translateY(-1px)}}
+@media (prefers-reduced-motion: reduce){.ripple i{animation:none;opacity:.8}.ripple i+i{display:none}.typing b{animation:none;opacity:1}}
 </style></head><body data-mode="arrow">
 <svg width="${ARROW.width}" height="${ARROW.height}" viewBox="0 0 26 30" aria-hidden="true">
-<path d="M1 1 L1 22 L7 16.5 L11 26 L15 24.3 L11 15 L19 15 Z" fill="#9358ff" stroke="#f6f2ff" stroke-width="1.6" stroke-linejoin="round"/>
-<circle cx="20.5" cy="24.5" r="3.2" fill="#e879f9" stroke="#f6f2ff" stroke-width="1"/>
-</svg><div class="ripple"></div><div class="typing">···</div>
-<script>window.__cursorMode=function(m){document.body.dataset.mode=m}</script>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b794ff"/><stop offset=".55" stop-color="#9358ff"/><stop offset="1" stop-color="#c026d3"/></linearGradient></defs>
+<path d="M1 1 L1 22 L7 16.5 L11 26 L15 24.3 L11 15 L19 15 Z" fill="none" stroke="rgba(16,10,30,.6)" stroke-width="3.4" stroke-linejoin="round"/>
+<path d="M1 1 L1 22 L7 16.5 L11 26 L15 24.3 L11 15 L19 15 Z" fill="url(#g)" stroke="#f6f2ff" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="20.5" cy="24.5" r="3.2" fill="#e879f9" stroke="#f6f2ff" stroke-width="1.2"/>
+</svg><div class="ripple"><i></i><i></i></div><div class="typing"><b></b><b></b><b></b></div>
+<script>window.__cursorMode=function(m){var b=document.body;if(m==='ripple'&&b.dataset.mode==='ripple'){var r=b.querySelector('.ripple');r.style.display='none';void r.offsetWidth;r.style.display=''}b.dataset.mode=m}</script>
 </body></html>`
 
 export class AgentCursor {

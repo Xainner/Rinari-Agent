@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ExternalLink, ShieldQuestion } from 'lucide-react'
+import { AppWindow, Check, ExternalLink, Globe, LoaderCircle, ShieldQuestion } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useI18n } from '../../i18n'
@@ -54,43 +54,55 @@ export function HumanCheckCard({ sessionId, check }: { sessionId: string | null;
     }
   }
 
+  const opened = external?.state === 'open'
   return (
-    <div className="human-check-card my-2 rounded-xl border border-[var(--warning)]/35 bg-[var(--warning)]/5 p-3 text-[13px]" data-testid="human-check-card" data-check={check.check}>
-      <div className="human-check-head flex items-center gap-2 font-semibold text-[var(--text)]">
-        <ShieldQuestion size={15} aria-hidden="true" />
-        <span>{t('browser.humanCheck.title')}</span>
+    // De la familia de las tarjetas que esperan a la persona (como un permiso):
+    // tu turno mientras no lo abras; después queda en calma.
+    <div className="approval-card human-check-card my-2 text-[13px]" data-testid="human-check-card" data-check={check.check} data-state={opened ? 'settled' : 'open'}>
+      <div className="flex items-start gap-3 text-[var(--text)]">
+        <span className="approval-icon"><ShieldQuestion size={17} aria-hidden="true" /></span>
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-[15px] font-bold tracking-[-0.01em]">{t('browser.humanCheck.title')}</div>
+          {!opened && <p className="human-check-body mt-0.5 text-[13px] leading-relaxed text-[var(--text-muted)]">{t('browser.humanCheck.body')}</p>}
+        </div>
+        {!opened && <span className="approval-badge">{t('browser.humanCheck.badge')}</span>}
       </div>
-      <p className="human-check-body mt-1 text-[12px] text-[var(--text-muted)]">{t('browser.humanCheck.body')}</p>
-      {check.url && <p className="human-check-url mt-1 truncate font-mono text-[11px] text-[var(--text-subtle)]" title={check.url}>{check.url}</p>}
+      {(check.url || check.check) && (
+        <div className="human-check-url mt-2 flex min-w-0 items-center gap-2 text-[12px] text-[var(--text-subtle)]">
+          {check.url && <><Globe size={12} aria-hidden="true" className="shrink-0" /><span className="min-w-0 truncate font-mono text-[11px]" title={check.url}>{check.url}</span></>}
+          {check.check && <span className="r-chip shrink-0">{check.check}</span>}
+        </div>
+      )}
       {web && (
-        <div className="human-check-actions mt-2.5 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-secondary btn-xs"
-            data-testid="human-check-open-mine"
-            onClick={() => void platform().opener.openUrl(check.url).catch((error) => toast.error(String(error)))}
-          >
-            <ExternalLink size={13} aria-hidden="true" />
-            {t('browser.humanCheck.openMine')}
-          </button>
+        <div className="human-check-actions mt-3.5 flex flex-wrap gap-2">
           {sessionId && (
             <button
               type="button"
-              className="btn btn-secondary btn-xs"
+              className={opened ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
               data-testid="human-check-open-chrome"
-              disabled={opening || external?.state === 'open'}
+              disabled={opening || opened}
               onClick={() => void openInRinariChrome()}
             >
+              {opening ? <LoaderCircle size={13} className="animate-spin" aria-hidden="true" /> : opened ? <Check size={13} aria-hidden="true" /> : <AppWindow size={13} aria-hidden="true" />}
               {opening
                 ? t('browser.humanCheck.opening')
-                : external?.state === 'open'
+                : opened
                   ? t('browser.humanCheck.opened')
                   : t('browser.humanCheck.openChrome')}
             </button>
           )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            data-testid="human-check-open-mine"
+            onClick={() => void platform().opener.openUrl(check.url).catch((error) => toast.error(commandMessage(error)))}
+          >
+            <ExternalLink size={13} aria-hidden="true" />
+            {t('browser.humanCheck.openMine')}
+          </button>
         </div>
       )}
-      {external?.state === 'open' && <p className="human-check-note mt-2 text-[12px] text-[var(--text-muted)]">{t('browser.humanCheck.openedNote')}</p>}
+      {opened && <p className="human-check-note act-notice mt-2.5"><span className="act-notice-icon"><Check size={12} aria-hidden="true" /></span><span className="min-w-0">{t('browser.humanCheck.openedNote')}</span></p>}
     </div>
   )
 }

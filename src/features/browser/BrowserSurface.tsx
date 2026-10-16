@@ -165,6 +165,7 @@ export default function BrowserSurface({
         pinned={Boolean(url && (pinnedUrls ?? []).some((place) => place.url === url))}
         onTogglePin={useNative && rememberable(url) ? () => togglePin(projectKey, { url, title: activeTitle }) : undefined}
         sizeControl={sizeControl}
+        home={home}
       />
 
       {problem && <p role="alert" className="browser-problem">{problem}</p>}

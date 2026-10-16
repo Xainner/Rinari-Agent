@@ -292,7 +292,8 @@ describe('tamaño de la página (#44b)', () => {
     await userEvent.selectOptions(size, '1280')
     const slot = screen.getByTestId('browser-view-slot')
     expect(slot.getAttribute('data-page-width')).toBe('1280')
-    expect(slot.style.width).toBe('1280px')
+    // El ancho llega por variable; el CSS lo aplica al hueco.
+    expect(slot.style.getPropertyValue('--page-width')).toBe('1280px')
     expect(screen.getByTestId('browser-view-scroll')).toBeTruthy()
     await userEvent.selectOptions(size, 'fit')
     expect(screen.queryByTestId('browser-view-scroll')).toBeNull()

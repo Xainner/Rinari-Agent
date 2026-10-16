@@ -1382,13 +1382,42 @@ html[data-motion='reduced'] .dock-view-button[data-ring='agent']::before, html[d
 .browser-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; }
 .browser-progress i { display: block; width: 40%; height: 100%; background: linear-gradient(90deg, transparent, var(--violet-300), var(--magenta-400)); animation: browser-load 1.4s ease-in-out infinite; }
 @keyframes browser-load { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
-.browser-control { display: flex; align-items: center; gap: 8px; margin: 0 8px 8px; padding: 6px 8px 6px 10px; border-radius: var(--r-md); border: 1px solid var(--line-1); background: rgb(16 12 27 / 0.6); }
-.browser-control[data-control='agent'] { border-color: rgb(130 244 239 / 0.3); background: rgb(130 244 239 / 0.05); color: #cff9f7; }
-.browser-control[data-control='user'] { border-color: rgb(91 224 165 / 0.3); background: rgb(91 224 165 / 0.05); }
-.browser-control[data-control='uncertain'], .browser-control[data-control='taking-user-control'] { border-color: rgb(246 197 109 / 0.35); background: rgb(246 197 109 / 0.06); color: var(--warning); }
-.browser-toolbar-state { font-weight: 600; }
+/* Línea de estado bajo la dirección (#46): de quién es la página, en un chip; la Rinari pequeña cuando la usa. */
+.browser-control { display: flex; min-height: 24px; align-items: center; gap: 6px; padding: 0 12px 8px; }
+.browser-toolbar-state { max-width: 100%; overflow: hidden; text-overflow: ellipsis; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.browser-toolbar-state svg { flex-shrink: 0; }
+/* Tamaño de la página (#44b): el selector y, con un ancho fijo, «1280 × alto». */
+.browser-size { display: flex; flex-shrink: 0; align-items: center; gap: 6px; margin-left: 2px; }
+.browser-size .browser-toolbar-select { height: 30px; padding: 0 6px; font-size: 12px; }
+.browser-size-value { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .browser-problem { padding: 8px 12px; font-size: 12px; color: var(--warning); }
 .browser-view-slot { flex: 1 1 auto; min-height: 0; overflow: auto; background: #0a0812; }
+/* Con un ancho fijo la página no se encoge: el hueco se desplaza en horizontal y lo de fuera queda en pauta. */
+.browser-view-scroll { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; overflow-x: auto; overflow-y: hidden; background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.018) 0 8px, transparent 8px 16px), #07060c; }
+.browser-view-slot[data-page-width] { width: var(--page-width); min-width: var(--page-width); flex: 0 0 auto; border-right: 1px solid var(--line-1); }
+
+/* Página de inicio del navegador (#46): búsqueda, lo que está en marcha, lo fijado y lo reciente del proyecto. */
+.browser-view-slot[data-home] { overflow-y: auto; background: radial-gradient(120% 60% at 50% 0%, rgb(147 88 255 / 0.08), transparent 60%), var(--bg-app); }
+.browser-home { display: flex; min-height: 100%; max-width: 760px; flex-direction: column; gap: 22px; margin: 0 auto; padding: clamp(20px, 7vh, 64px) 20px 16px; animation: rinari-fade-in var(--dur-slow) var(--ease-out) both; }
+.browser-home-search { display: flex; height: 44px; flex-shrink: 0; align-items: center; gap: 10px; padding: 0 16px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--text-subtle); background: var(--bg-elevated); box-shadow: var(--sh-1); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.browser-home-search:focus-within { border-color: var(--violet-400); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.2), var(--sh-1); }
+.browser-home-search input { min-width: 0; flex: 1; border: 0; outline: none; background: transparent; font-size: 14px; color: var(--text); }
+.browser-home-search input::placeholder { color: var(--text-subtle); }
+.browser-home-section h3 { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle); }
+.browser-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.browser-home-tile { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); text-align: left; background: var(--bg-subtle); transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.browser-home-tile:hover { border-color: rgb(167 139 250 / 0.45); background: rgb(147 88 255 / 0.06); }
+.browser-home-tile-icon { position: relative; display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border: 1px solid rgb(167 139 250 / 0.25); border-radius: 9px; font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--accent-2); background: rgb(147 88 255 / 0.14); }
+.browser-home-tile-icon[data-live] { border-color: rgb(130 244 239 / 0.3); color: var(--agent); background: rgb(130 244 239 / 0.1); }
+.browser-home-tile-icon[data-live]::after { content: ''; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 999px; background: var(--success); box-shadow: 0 0 0 2px var(--bg-subtle); }
+.browser-home-tile-text { display: flex; min-width: 0; flex-direction: column; }
+.browser-home-tile-title, .browser-home-tile-host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-home-tile-title { font-size: 12.5px; color: var(--text); }
+.browser-home-tile-host { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
+.browser-home-empty { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: var(--r-md); font-size: 12px; color: var(--text-muted); }
+.browser-home-status { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; font-size: 12px; color: var(--text-muted); }
+@media (prefers-reduced-motion: reduce) { .browser-home, .browser-toolbar-state { animation: none; } }
+html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-toolbar-state { animation: none; }
 .browser-footer { padding: 7px 12px; border-top: 1px solid var(--line-1); font-size: 11px; line-height: 1.45; color: var(--text-subtle); }
 .workspace-tabs-compact::-webkit-scrollbar { height: 4px; }
 .add-pane-heading { padding: 8px 12px 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-subtle); }

@@ -93,7 +93,8 @@ export default function SettingsView({
       {section === 'terminal' && <TerminalView />}
       {section === 'advanced' && <AdvancedSettings models={models} providers={providers} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
-      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
+      {/* Solo lo que aún no tiene página: Dictado, Notificaciones y Navegador ya la tienen. */}
+      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'about'].includes(section) && (
         <SoonSettings />
       )}
       </ZoneBoundary>

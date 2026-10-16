@@ -169,7 +169,9 @@ it('keeps large closed activity unmounted and exposes incidents without declarin
   const rendered = render(view({ ...base, status: 'completed', completedAt: 5000, items }))
   expect(rendered.container.querySelectorAll('*').length).toBeLessThan(70)
   expect(screen.getByText('Ha trabajado durante 4s')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: /incidencia/ }))
+  // Las incidencias van dentro de la tarjeta del turno terminado: en un chip y en la descripción de su botón.
+  expect(screen.getByText('1 incidencia', { selector: '.turn-done-issues' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno', description: '1 incidencia' }))
   expect(rendered.container.querySelectorAll('pre').length).toBe(0)
   fireEvent.click(screen.getByRole('button', { name: 'Ver operaciones' }))
   expect(rendered.container.querySelectorAll('details').length).toBe(500)

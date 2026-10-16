@@ -510,6 +510,7 @@ export const es = {
   'activity.hide': 'Ocultar actividad del turno',
   'activity.previous': 'Actividad anterior',
   'activity.incidents': '{n} incidencias',
+  'activity.incidentsOne': '1 incidencia',
   'activity.partialText': 'Respuesta incompleta',
   'activity.durationUnknown': 'Duración no disponible',
   'activity.parallelAgents': '{n} subagentes activos',

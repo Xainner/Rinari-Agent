@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { TriangleAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { RinariAvatar } from '../rinari/RinariAvatar'
 import { rinariStateForTurn } from '../rinari/turnState'
 import { useChecklistStore } from '../checklist/checklistStore'
 import { activityState, turnDuration } from './activityPresentation'
 import { ActivityText } from './ActivityText'
-import { liveActionLabel } from './ActivityHeader'
+import { ActivityHeader, liveActionLabel } from './ActivityHeader'
 import TokenUsage from './TokenUsageIndicator'
 import type { TimelineItem, TurnTimeline } from './types'
 
@@ -24,6 +25,29 @@ export function shortElapsed(ms: number): string {
  */
 const entered = new Set<string>()
 const ENTERED_KEEP = 200
+
+/**
+ * La cabecera de un turno terminado (#E de la ronda 1434), con el diseño de
+ * la tarjeta de trabajando: la cara de Rinari al acabar, «Ha trabajado
+ * durante…» y, a la derecha, las incidencias en un chip ámbar. Va dentro del
+ * botón que despliega la actividad, sin borde vivo: el turno ya no trabaja.
+ * Mide lo mismo que la de trabajando, así el cambio al terminar no salta.
+ */
+export function TurnDoneHeader({ timeline, now, issues }: { timeline: TurnTimeline; now: number; issues: number }) {
+  const { t } = useI18n()
+  return (
+    <span className="turn-done">
+      <RinariAvatar state={rinariStateForTurn(timeline.status)} size={38} />
+      <span className="turn-done-title"><ActivityHeader timeline={timeline} now={now} /></span>
+      {issues > 0 && (
+        <span className="r-chip turn-done-issues" data-tone="warning">
+          <TriangleAlert size={11} aria-hidden="true" />
+          {t(issues === 1 ? 'activity.incidentsOne' : 'activity.incidents', { n: issues })}
+        </span>
+      )}
+    </span>
+  )
+}
 
 /** Desde cuándo dura lo que hace ahora: la acción en curso o la última llamada al modelo. */
 function actionSince(timeline: TurnTimeline): number {

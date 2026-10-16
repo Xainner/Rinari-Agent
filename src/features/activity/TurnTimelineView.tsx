@@ -48,7 +48,7 @@ import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
 import { PresentedFiles } from './PresentedFiles'
 import LiveText from './LiveText'
-import TurnStatusCard from './TurnStatusCard'
+import TurnStatusCard, { TurnDoneHeader } from './TurnStatusCard'
 import { SteerBubble } from './SteerBubble'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
@@ -63,10 +63,8 @@ import { ActivityDisclosure, InspectionDetails, InspectionItem, InspectionScope,
 import { ActivityTransition } from './ActivityTransition'
 import { ActivityHeader } from './ActivityHeader'
 import { activityKey, useActivityDisclosure } from '../../stores/activityDisclosure'
-import { RinariAvatar } from '../rinari/RinariAvatar'
 import { useAgentFocusStore } from '../../stores/agentFocus'
 import { useSessionDockStore } from '../../stores/sessionDock'
-import { rinariStateForTurn } from '../rinari/turnState'
 import { useReducedMotion } from 'framer-motion'
 
 interface Props {
@@ -779,8 +777,10 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
           {segment.steer && <SteerBubble item={segment.steer} sessionId={timeline.sessionId} />}
           {active ? content : (content || !previous) && <ActivityDisclosure
             stateKey={childInspectionKey(stateKey, 'summary')}
-            header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <span className="turn-head"><RinariAvatar state={rinariStateForTurn(timeline.status)} size={30} /><ActivityHeader timeline={timeline} now={now} /></span>}
-            inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
+            header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <TurnDoneHeader timeline={timeline} now={now} issues={issues} />}
+            inspectLabel={issues ? t(issues === 1 ? 'activity.incidentsOne' : 'activity.incidents', { n: issues }) : undefined}
+            card={!previous}
+            tone={previous ? undefined : timeline.status === 'failed' ? 'danger' : timeline.status === 'completed' ? undefined : 'muted'}
           >{content}</ActivityDisclosure>}
         </div></InspectionScope.Provider>
       })}
@@ -857,7 +857,7 @@ function OperationGroup({ items, status, onResolveApproval }: {
   return <div data-operation-group={items[0].id}>
     {items.length === 1 || images.length === items.length ? content : <ActivityDisclosure stateKey={key} operations defaultOpen={firstOpen}
       header={<ActivityText active={active && items.some(operationIsActive)}>{label} · {items.length}</ActivityText>}
-      inspectLabel={issues ? t('activity.incidents', { n: issues }) : undefined}
+      inspectLabel={issues ? t(issues === 1 ? 'activity.incidentsOne' : 'activity.incidents', { n: issues }) : undefined}
     >{content}</ActivityDisclosure>}
   </div>
 }

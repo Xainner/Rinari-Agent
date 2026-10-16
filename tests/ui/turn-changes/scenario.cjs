@@ -37,6 +37,11 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('card')
 
+  // The finished turn wears the working card's frame: same height, Rinari's face, chevron on the right.
+  const done = await evaluate(`(() => { const card = document.querySelector('.disclosure-button.is-turn-card'); if (!card) return null; const r = card.getBoundingClientRect(); const face = card.querySelector('.rinari-avatar')?.getBoundingClientRect(); const chevron = card.querySelector('.turn-done-chevron')?.getBoundingClientRect(); const turn = card.closest('[data-activity-turn]').getBoundingClientRect(); return { h: Math.round(r.height), full: Math.round(turn.width - r.width), face: face ? Math.round(face.width) : 0, chevronRight: chevron ? Math.round(r.right - chevron.right) : -1, text: card.innerText } })()`)
+  assert.ok(done && done.h >= 62 && done.h <= 68 && done.full <= 1, 'finished turn card has the working card size: ' + JSON.stringify(done))
+  assert.ok(done.face >= 36 && done.chevronRight >= 0 && done.chevronRight < 24 && /Ha trabajado durante/.test(done.text), 'finished card: face, title and chevron on the right: ' + JSON.stringify(done))
+
   // 2. «Revisar»: the turn in the side panel, with the coloured diff, without git.
   await clickText('Revisar', `${CARD} button`)
   await wait(`document.querySelector('${DOCK}')?.dataset.views?.includes('changes')`)

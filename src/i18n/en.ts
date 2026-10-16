@@ -507,6 +507,7 @@ export const en: Record<I18nKey, string> = {
   'activity.hide': 'Hide turn activity',
   'activity.previous': 'Previous activity',
   'activity.incidents': '{n} issues',
+  'activity.incidentsOne': '1 issue',
   'activity.partialText': 'Incomplete response',
   'activity.durationUnknown': 'Duration unavailable',
   'activity.parallelAgents': '{n} active subagents',

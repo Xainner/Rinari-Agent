@@ -1561,7 +1561,7 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 /* -- Conversación: turno de Rinari con riel y nodos -------------------------- */
 /* El turno en curso como tarjeta de estado (#49): qué hace, el paso, su tiempo y una línea viva. */
 .turn-status-wrap { container-type: inline-size; }
-.turn-status { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 10px 14px 12px 10px; overflow: hidden; border: 1px solid rgb(167 139 250 / 0.22); border-radius: var(--r-lg); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
+.turn-status { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 64px; padding: 10px 14px 12px 10px; overflow: hidden; border: 1px solid rgb(167 139 250 / 0.22); border-radius: var(--r-lg); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
 /* Entrada (una vez por turno): el hueco crece desde 0 (también el espacio con lo de arriba, por eso el
    margen negativo) y el chat baja con él en lugar de saltar; la tarjeta sube y aparece un poco después,
    y el borde vivo se enciende al final, para no arrancar a plena intensidad. */
@@ -1587,7 +1587,7 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 /* En Boards la cara de Rinari vive en la cabecera del panel. */
 .session-pane-body .turn-status > .rinari-avatar { display: none; }
 @container (max-width: 420px) {
-  .turn-status { gap: 8px; padding: 7px 10px 8px; }
+  .turn-status { gap: 8px; min-height: 0; padding: 7px 10px 8px; }
   .turn-status-detail { display: none; }
   .turn-status-title { font-size: 13px; }
   .turn-status-meta { gap: 7px; font-size: 11px; }
@@ -1650,6 +1650,19 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .disclosure-button:hover { color: var(--text); background: var(--bg-hover); }
 .disclosure-button.is-turn { border: 1px solid var(--line-1); background: rgb(16 12 27 / 0.5); }
 .disclosure-button.is-turn:hover { border-color: var(--line-2); }
+/* El turno terminado con el marco de la tarjeta de trabajando (TurnStatusCard): mismo alto, sin borde vivo. */
+.disclosure-button.is-turn-card { width: 100%; gap: 12px; min-height: 64px; padding: 10px 12px 12px 10px; border: 1px solid rgb(167 139 250 / 0.22); border-radius: var(--r-lg); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); color: var(--text); }
+.disclosure-button.is-turn-card:hover { border-color: rgb(167 139 250 / 0.38); background: linear-gradient(160deg, rgb(147 88 255 / 0.11), transparent 60%), rgb(20 15 34 / 0.6); }
+.disclosure-button.is-turn-card[data-tone='danger'] { border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+.disclosure-button.is-turn-card[data-tone='muted'] { border-color: var(--line-2); background: rgb(16 12 27 / 0.5); }
+.disclosure-button.is-turn-card.is-static:hover { border-color: rgb(167 139 250 / 0.22); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
+.turn-done { display: flex; min-width: 0; align-items: center; gap: 12px; }
+.turn-done-title { min-width: 0; flex: 1 1 auto; font-size: 14px; font-weight: 600; color: var(--text); }
+.turn-done-issues { flex-shrink: 0; }
+.turn-done-chevron { color: var(--text-subtle); }
+.disclosure-button.is-turn-card:hover .turn-done-chevron { color: var(--text-muted); }
+.session-pane-body .turn-done > .rinari-avatar { display: none; }
+.session-pane-body .disclosure-button.is-turn-card { min-height: 0; padding: 8px 10px; }
 .disclosure-button.is-operations { padding: 6px 8px; min-height: 38px; border: 1px solid var(--line-1); background: rgb(16 12 27 / 0.4); }
 
 /* -- Botones canónicos (también los usa <Button>) ---------------------------- */

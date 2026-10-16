@@ -22,6 +22,7 @@ import AdvancedSettings from '../../components/settings/AdvancedSettings'
 import ShortcutsSettings from '../../components/settings/ShortcutsSettings'
 import MemorySettings from '../memory/MemorySettings'
 import DictationSettings from '../dictation/DictationSettings'
+import NotificationSettings from '../../components/settings/NotificationSettings'
 import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 /** Vista de ajustes: shell + sección activa. Terminal llega en Fase 10. */
@@ -61,6 +62,7 @@ export default function SettingsView({
       {section === 'context' && <ContextSettings models={models} providers={providers} />}
       {section === 'memory' && <MemorySettings />}
       {section === 'dictation' && <DictationSettings />}
+      {section === 'notifications' && <NotificationSettings />}
       {section === 'models' && (
         <ModelsView
           providers={providers}

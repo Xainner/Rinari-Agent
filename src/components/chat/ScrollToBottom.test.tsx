@@ -44,3 +44,13 @@ it('no se pinta si ya estás al final', () => {
   mount({ visible: false, working: true })
   expect(screen.queryByRole('button')).toBeNull()
 })
+
+it('#62: con un resultado sin leer más abajo es «↓ Nuevo resultado» y sigue llamándose «Ir al final»', async () => {
+  const onClick = mount({ newResult: true, working: true })
+  const button = screen.getByRole('button', { name: 'Ir al final' })
+  expect(button.dataset.new).toBe('true')
+  expect(button.dataset.working).toBeUndefined()
+  expect(button.querySelector('.scroll-bottom-label')?.textContent).toBe('Nuevo resultado')
+  await userEvent.click(button)
+  expect(onClick).toHaveBeenCalledTimes(1)
+})

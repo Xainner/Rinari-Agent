@@ -115,7 +115,8 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
       {filesChanged !== null && <>{(hasPrefix || timeline.usage || actions > 0) && <span aria-hidden="true">·</span>}<span>{t('board.result.files', { n: filesChanged })}</span></>}
       {executor && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null) && <span aria-hidden="true">·</span>}<span>{t('board.result.model', { model: executor })}</span></>}
       {outcome === 'stopped' && timeline.stopReason && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null || executor) && <span aria-hidden="true">·</span>}<span title={timeline.stopReason.loop || timeline.stopReason.budget || timeline.stopReason.code === 'empty_response' ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
-      {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
+      {/* Si terminó mientras no estabas, «Nuevo» ya lo dice la marca de arriba del resultado (#62). */}
+      {unread && !receipt?.away && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (
           <button type="button" className="turn-meta-action" onClick={() => {

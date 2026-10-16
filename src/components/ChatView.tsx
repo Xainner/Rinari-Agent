@@ -23,6 +23,7 @@ import MessageBubble from './MessageBubble'
 import { REVEAL_TURN_EVENT, takeQueuedTurnReveal } from '../features/board/boardCommands'
 import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../features/engine/scrollAnchors'
 import ScrollToBottom from './chat/ScrollToBottom'
+import { unreadResultCount, useBoardAttentionStore } from '../stores/boardAttention'
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
 import { GoalDock } from '../features/goal/GoalDock'
@@ -175,6 +176,8 @@ function ChatView({
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
   // Una aprobación esperando se nota también en «Ir al final» (#89).
   const waitingOnYou = Object.values(timelines).some((turn) => turn.sessionId === sessionId && turn.status === 'approval')
+  // Un resultado sin leer más abajo convierte «Ir al final» en «↓ Nuevo resultado» (#62).
+  const unreadResults = useBoardAttentionStore((state) => unreadResultCount(state.sessions[sessionId]))
 
   useEffect(() => {
     if (!activeTimeline) return
@@ -548,6 +551,7 @@ function ChatView({
             visible={!atBottom && stream.length > 0}
             working={activeTimeline}
             needsYou={waitingOnYou}
+            newResult={unreadResults > 0}
             onClick={() => {
               setAtBottom(true)
               if (stream.length > 0) {

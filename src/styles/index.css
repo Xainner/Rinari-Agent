@@ -1001,10 +1001,14 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
    una barra inferior, para que se lea también sin percepción de color. */
 .app-topbar-attention { position: relative; }
 .app-topbar-attention-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--warning); color: #1a1226; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
-.sidebar-signal { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; }
-.sidebar-signal[data-signal="needs_you"] { background: var(--warning); }
-.sidebar-signal[data-signal="failed"] { background: var(--danger, #ef5f6a); }
-.sidebar-signal[data-signal="unread"] { background: var(--success, #3fbf7f); }
+/* Señales de la barra lateral (#33): rojo si falló, acento si hay un resultado sin leer y, «Te necesita», una insignia ámbar en lugar del círculo de trabajando. */
+.sidebar-signal { flex-shrink: 0; width: 7px; height: 7px; border-radius: 999px; }
+.sidebar-signal[data-signal="failed"] { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
+.sidebar-signal[data-signal="unread"] { background: var(--accent-2); box-shadow: 0 0 6px rgb(167 139 250 / 0.6); }
+.sidebar-signal[data-signal="needs_you"] { display: grid; width: 16px; height: 16px; place-items: center; color: #2b1d00; background: var(--warning); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 20%, transparent); animation: sidebar-needs 1.8s ease-in-out 3; }
+@keyframes sidebar-needs { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--warning) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .sidebar-signal[data-signal="needs_you"] { animation: none; } }
+html[data-motion='reduced'] .sidebar-signal[data-signal="needs_you"] { animation: none; }
 .result-card { margin-top: 4px; padding: 10px 12px; border-left: 3px solid var(--border-strong); border-radius: var(--radius-surface); background: var(--bg-elevated); color: var(--text); }
 .result-card.is-completed { border-left-color: var(--success, #3fbf7f); }
 .result-card.is-failed { border-left-color: var(--danger, #ef5f6a); }
@@ -1857,7 +1861,6 @@ html[data-motion='reduced'] .skill-row { animation: none; }
 .sidebar-row-rail { position: absolute; top: 8px; bottom: 8px; left: 0; width: 3px; border-radius: 3px; background: linear-gradient(var(--violet-300), var(--violet-500)); transform-origin: center; transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base); }
 .sidebar-traveler { background: linear-gradient(var(--violet-300), var(--violet-500)); }
 .sidebar-spin { display: block; width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%; border: 2px solid rgb(167 139 250 / 0.25); border-top-color: var(--violet-300); animation: rinari-orbit 0.9s linear infinite; }
-.sidebar-signal[data-signal='needs_you'] { box-shadow: 0 0 0 3px rgb(246 197 109 / 0.18); animation: rinari-pulse 1.4s infinite; }
 .sidebar-footer { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--line-1); padding: 8px 0 10px; }
 .menu-danger { color: var(--danger) !important; }
 .menu-danger svg { color: var(--danger) !important; }
@@ -2038,8 +2041,47 @@ html[data-motion='reduced'] .resume-card-track > span { transition: none; }
 .zone-error .btn { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .zone-error img { animation: none; } }
 html[data-motion='reduced'] .zone-error img { animation: none; }
+/* Pendientes en otros perfiles (#34): un punto con número en el avatar, que entra con un pulso suave una sola vez; ámbar si algo te necesita. */
+.profile-pending-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; color: #170d2b; background: var(--accent-2); box-shadow: 0 0 0 2px var(--bg-sidebar); animation: profile-badge-in 0.9s var(--ease-out) both; }
+.profile-pending-badge[data-needs-you] { color: #2b1d00; background: var(--warning); }
+@keyframes profile-badge-in { 0% { transform: scale(0.4); opacity: 0; } 35% { transform: scale(1.12); opacity: 1; box-shadow: 0 0 0 2px var(--bg-sidebar), 0 0 0 2px rgb(167 139 250 / 0.6); } 100% { transform: none; box-shadow: 0 0 0 2px var(--bg-sidebar), 0 0 0 9px rgb(167 139 250 / 0); } }
+.profile-pending-count { height: 18px; flex-shrink: 0; padding: 0 7px; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .profile-pending-badge { animation: none; } }
+html[data-motion='reduced'] .profile-pending-badge { animation: none; }
+
+/* Al volver (#62): un resultado que terminó mientras no estabas lleva borde con brillo y «Nuevo · terminó hace…» hasta leerse; luego se apaga. */
+.turn-result { position: relative; }
+.turn-result[data-return] { isolation: isolate; }
+.turn-result[data-return]::before { content: ''; position: absolute; inset: -10px -12px; z-index: -1; border: 1px solid rgb(167 139 250 / 0.5); border-radius: var(--r-lg); background: rgb(147 88 255 / 0.05); box-shadow: 0 0 22px rgb(147 88 255 / 0.22); pointer-events: none; opacity: 1; transition: opacity 2.2s var(--ease-out); animation: turn-return-glow 2.4s ease-in-out 2; }
+.turn-result[data-return='fading']::before { opacity: 0; animation: none; }
+.turn-result[data-return='fading'] .turn-return-pill { opacity: 0; transition: opacity 1.6s var(--ease-out) 0.6s; }
+@keyframes turn-return-glow { 50% { box-shadow: 0 0 34px rgb(147 88 255 / 0.4); } }
+.turn-return-pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 7px; border-radius: 999px; font-size: 11.5px; color: var(--text-muted); background: rgb(147 88 255 / 0.12); box-shadow: inset 0 0 0 1px rgb(167 139 250 / 0.35); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.turn-return-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--accent-2); box-shadow: 0 0 6px rgb(167 139 250 / 0.8); }
+.turn-return-label { font-weight: 600; color: var(--accent-2); }
+.turn-return-ago::before { content: '·'; margin-right: 6px; color: var(--text-subtle); }
+.turn-return-pill[data-tone='danger'] { background: color-mix(in srgb, var(--danger) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 35%, transparent); }
+.turn-return-pill[data-tone='danger'] .turn-return-dot { background: var(--danger); box-shadow: none; }
+.turn-return-pill[data-tone='danger'] .turn-return-label { color: var(--danger); }
+.turn-return-pill[data-tone='warning'] { background: color-mix(in srgb, var(--warning) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 35%, transparent); }
+.turn-return-pill[data-tone='warning'] .turn-return-dot { background: var(--warning); box-shadow: none; }
+.turn-return-pill[data-tone='warning'] .turn-return-label { color: var(--warning); }
+.turn-result[data-status='failed'][data-return]::before { border-color: color-mix(in srgb, var(--danger) 45%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--danger) 18%, transparent); }
+@media (prefers-reduced-motion: reduce) { .turn-result[data-return]::before { animation: none; box-shadow: none; transition: none; } .turn-return-pill { animation: none; } }
+html[data-motion='reduced'] .turn-result[data-return]::before { animation: none; box-shadow: none; transition: none; }
+html[data-motion='reduced'] .turn-return-pill { animation: none; }
+
+/* Ajustes → Notificaciones: cómo se lee la notificación del sistema con la privacidad elegida. */
+.notify-preview { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.notify-preview-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-subtle); }
+.notify-preview-card { display: flex; max-width: 360px; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: rgb(30 28 38 / 0.92); box-shadow: var(--sh-2); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.notify-preview-icon { width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; object-fit: contain; }
+.notify-preview-app { font-size: 11px; color: var(--text-subtle); }
+.notify-preview-title { margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--text); }
+.notify-preview-body { margin-top: 1px; overflow: hidden; font-size: 12.5px; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
 /* «Ir al final» (#89): vidrio sobre el composer; tres puntos en ola mientras Rinari trabaja. */
-.scroll-bottom { position: absolute; bottom: 8px; left: 50%; z-index: 10; display: grid; width: 36px; height: 36px; margin-left: -18px; place-items: center; border: 1px solid rgb(167 139 250 / 0.28); border-radius: 999px; background: rgb(22 16 38 / 0.74); color: var(--text-muted); box-shadow: var(--sh-2), var(--inset-hi); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: scroll-bottom-in var(--dur-base) var(--ease-out) both; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+.scroll-bottom { position: absolute; bottom: 8px; left: 50%; z-index: 10; display: grid; width: 36px; height: 36px; translate: -50% 0; place-items: center; border: 1px solid rgb(167 139 250 / 0.28); border-radius: 999px; background: rgb(22 16 38 / 0.74); color: var(--text-muted); box-shadow: var(--sh-2), var(--inset-hi); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: scroll-bottom-in var(--dur-base) var(--ease-out) both; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
 .scroll-bottom:hover { color: var(--text); border-color: var(--line-3); }
 .scroll-bottom-arrow, .scroll-bottom-dots { grid-area: 1 / 1; display: flex; align-items: center; justify-content: center; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
 .scroll-bottom-dots { gap: 3px; opacity: 0; transform: scale(0.6); }
@@ -2051,6 +2093,11 @@ html[data-motion='reduced'] .zone-error img { animation: none; }
 .scroll-bottom[data-working] .scroll-bottom-dots i:nth-child(2) { animation-delay: 0.15s; }
 .scroll-bottom[data-working] .scroll-bottom-dots i:nth-child(3) { animation-delay: 0.3s; }
 .scroll-bottom-flag { position: absolute; top: 0; right: 0; width: 9px; height: 9px; border-radius: 999px; background: var(--warning); box-shadow: 0 0 0 2px var(--bg-app); }
+/* Con un resultado sin leer más abajo (#62): la píldora «↓ Nuevo resultado». */
+.scroll-bottom[data-new] { display: flex; width: auto; gap: 6px; padding: 0 13px 0 10px; color: var(--text); border-color: rgb(167 139 250 / 0.55); background: linear-gradient(135deg, rgb(124 58 237 / 0.55), rgb(91 33 182 / 0.5)); box-shadow: var(--sh-2), 0 0 18px rgb(147 88 255 / 0.35); }
+.scroll-bottom[data-new] .scroll-bottom-arrow { grid-area: auto; }
+.scroll-bottom[data-new] .scroll-bottom-dots { display: none; }
+.scroll-bottom-label { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 @keyframes scroll-bottom-in { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .scroll-bottom { animation: none; } .scroll-bottom[data-working] .scroll-bottom-dots i { animation: none; opacity: 0.8; } .scroll-bottom-arrow, .scroll-bottom-dots { transition: none; } }
 html[data-motion='reduced'] .scroll-bottom { animation: none; }
@@ -2397,6 +2444,13 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .notify-item[data-unread] { background: rgb(147 88 255 / 0.06); }
 .notify-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px 18px; text-align: center; font-size: 12.5px; color: var(--text-muted); }
 .notify-empty img { width: 96px; height: 96px; object-fit: contain; }
+/* «Conversaciones» de la campana (#33): la misma señal que la barra lateral, su chip y «Ir». */
+.notify-conv-row { display: flex; width: 100%; align-items: center; gap: 9px; padding: 7px 8px; border-radius: var(--r-sm); text-align: left; transition: background-color var(--dur-fast); }
+.notify-conv-row:hover { background: var(--bg-hover); }
+.notify-conv-chip { height: 18px; flex-shrink: 0; gap: 4px; padding: 0 7px; font-size: 10.5px; }
+.notify-conv-go { display: inline-flex; flex-shrink: 0; align-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--accent-2); opacity: 0; transform: translateX(-3px); transition: opacity var(--dur-fast), transform var(--dur-fast); }
+.notify-conv-row:hover .notify-conv-go, .notify-conv-row:focus-visible .notify-conv-go { opacity: 1; transform: none; }
+@media (hover: none) { .notify-conv-go { opacity: 1; transform: none; } }
 .app-topbar-attention-badge { background: var(--warning); box-shadow: 0 0 0 2px var(--bg-subtle); animation: rinari-pop-in var(--dur-base) var(--ease-spring); }
 
 /* -- Ajustes ---------------------------------------------------------------- */

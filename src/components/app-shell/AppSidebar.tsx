@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
   Plus,
   GitFork,
+  Hand,
   Pencil,
   Pin,
   PinOff,
@@ -323,8 +324,10 @@ export function AppSidebar({
                 className={cn('sidebar-row-rail', active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0')}
               />
             )}
-            {/* «Te necesita» va en lugar del círculo de trabajando (#33). */}
-            {working && signal !== 'needs_you' ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
+            {/* «Te necesita» va en lugar del círculo de trabajando (#33), con más presencia que un punto. */}
+            {signal === 'needs_you' && signalLabel ? <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal="needs_you" data-testid="sidebar-signal">
+              <Hand size={10} aria-hidden="true" />
+            </span> : working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
               <span aria-hidden="true" className="sidebar-spin" />
             </span> : <MessageSquare
               size={14}
@@ -354,7 +357,7 @@ export function AppSidebar({
               />
             )}
             {!working && <ResumeChip sessionId={session.id} compact />}
-            {signal && signalLabel && (
+            {signal && signal !== 'needs_you' && signalLabel && (
               <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal={signal} data-testid="sidebar-signal" />
             )}
             {onBoard && <span role="img" aria-label={t('sidebar.onBoard')} title={t('sidebar.onBoard')} className="shrink-0 text-[var(--text-subtle)]"><Columns3 size={12} aria-hidden="true" /></span>}
@@ -593,7 +596,7 @@ export function AppSidebar({
                     const projectSignal = projectOpen(project.id) ? null : strongestSignal(items.map(item => signalBySession?.[item.id]))
                     if (projectSignal) {
                       const label = projectSignal === 'needs_you' ? t('sidebar.sessionNeedsYou') : projectSignal === 'failed' ? t('sidebar.sessionFailed') : t('sidebar.sessionUnread')
-                      return <span role="status" aria-label={label} title={label} className="sidebar-signal" data-signal={projectSignal} data-testid="sidebar-project-signal" />
+                      return <span role="status" aria-label={label} title={label} className="sidebar-signal" data-signal={projectSignal} data-testid="sidebar-project-signal">{projectSignal === 'needs_you' && <Hand size={10} aria-hidden="true" />}</span>
                     }
                     return items.some(item => busySessionIds?.has(item.id)) && (
                       <span role="status" aria-label={t('sidebar.projectWorking')} title={t('sidebar.projectWorking')}>

@@ -75,8 +75,7 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
             <RinariAvatar state={state} size={34} />
             {pending.others.count > 0 && (
               <span
-                className="profile-pending-badge absolute -top-1 -right-1 min-w-4 rounded-full px-1 text-center text-[10px] font-bold leading-4 text-[var(--bg)] motion-safe:animate-[pulse_1.2s_ease-out_1]"
-                style={{ background: pending.others.needsYou ? 'var(--warning)' : 'var(--accent)' }}
+                className="profile-pending-badge"
                 data-needs-you={pending.others.needsYou || undefined}
                 data-testid="profile-pending-badge"
                 role="status"
@@ -111,8 +110,8 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
               </span>
               {!current && (pending.byProfile[profile.id]?.count ?? 0) > 0 && (
                 <span
-                  className="rounded-full px-1.5 text-[10px] font-bold"
-                  style={{ color: pending.byProfile[profile.id].needsYou ? 'var(--warning)' : 'var(--accent-2)' }}
+                  className="r-chip profile-pending-count"
+                  data-tone={pending.byProfile[profile.id].needsYou ? 'warning' : 'accent'}
                   data-needs-you={pending.byProfile[profile.id].needsYou || undefined}
                   data-testid="profile-pending-count"
                   title={t(pending.byProfile[profile.id].needsYou ? 'profiles.pendingNeedsYou' : 'profiles.pendingOther', { n: pending.byProfile[profile.id].count })}

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { CircleAlert, MessagesSquare, ShieldAlert } from 'lucide-react'
+import { ArrowRight, CircleAlert, Hand, MessagesSquare, ShieldAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useBoardStore } from '../../stores/board'
 import { unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
@@ -58,27 +58,26 @@ export default function ConversationAttentionSection({ labelFor, projectFor, onO
           const project = projectFor?.(row.sessionId) ?? null
           const label = labelFor(row.sessionId)
           return (
-            <li key={row.sessionId}>
+            <li key={row.sessionId} className="notify-item notify-conv">
               <button
                 type="button"
                 onClick={() => onOpen(row.sessionId, row.turnId)}
-                className="flex w-full items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 text-left text-xs hover:bg-[var(--bg-hover)]"
+                className="notify-conv-row"
                 data-signal={row.signal}
               >
+                <span className="sidebar-signal" data-signal={row.signal} aria-hidden="true">{row.signal === 'needs_you' && <Hand size={10} />}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[var(--text)]">{label}</span>
+                  <span className="block truncate text-xs text-[var(--text)]">{label}</span>
                   {project && project !== label && <span className="block truncate text-[11px] text-[var(--text-muted)]">{project}</span>}
                 </span>
                 {row.signal === 'needs_you' && (
-                  <span className="inline-flex items-center gap-1 text-[var(--warning)]">
-                    <ShieldAlert size={12} aria-hidden="true" />
-                    {t('notifications.conversation.needsYou')}
-                  </span>
+                  <span className="r-chip notify-conv-chip" data-tone="warning"><ShieldAlert size={11} aria-hidden="true" />{t('notifications.conversation.needsYou')}</span>
                 )}
                 {row.signal === 'failed' && (
-                  <span className="inline-flex items-center gap-1 text-[var(--danger)]"><CircleAlert size={12} aria-hidden="true" />{t('notifications.conversation.failed')}</span>
+                  <span className="r-chip notify-conv-chip" data-tone="danger"><CircleAlert size={11} aria-hidden="true" />{t('notifications.conversation.failed')}</span>
                 )}
-                {row.signal === 'unread' && <span className="text-[11px] text-[var(--accent-2)]">{t('notifications.conversation.unread')}</span>}
+                {row.signal === 'unread' && <span className="r-chip notify-conv-chip" data-tone="accent">{t('notifications.conversation.unread')}</span>}
+                <span className="notify-conv-go" aria-hidden="true">{t('notify.go')}<ArrowRight size={11} /></span>
               </button>
             </li>
           )

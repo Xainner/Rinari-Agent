@@ -14,6 +14,8 @@ import { ModelChangeNotice } from './ModelChangeNotice'
 import { failureTab, turnFailure, type TurnFailure } from './turnFailure'
 import { AutoResume } from '../resume/AutoResume'
 import { useOptionalEngineCommands } from '../engine/EngineContext'
+import { useCalmMotion } from '../../lib/motion'
+import { ReturnPill, useReturnMark } from './ReturnMark'
 
 export interface TurnResultProps {
   timeline: TurnTimeline
@@ -44,10 +46,14 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
   const { changes: changeSets } = presentedChangeSets(timeline)
   const terminal = TERMINAL.has(timeline.status)
   const ref = useResultVisibility(timeline.turnId, terminal)
+  // Terminó mientras no estabas (#62): borde con brillo y «Nuevo · terminó hace…» hasta que se lee.
+  const calm = useCalmMotion()
+  const back = useReturnMark(timeline.turnId, calm)
   const failed = timeline.status === 'failed'
   if (!final && changeSets.length === 0 && !failed) return null
   return (
-    <div ref={ref} data-testid="turn-result" data-turn-id={timeline.turnId} data-status={timeline.status} className="space-y-3">
+    <div ref={ref} data-testid="turn-result" data-turn-id={timeline.turnId} data-status={timeline.status} data-return={back.state ?? undefined} className="turn-result space-y-3">
+      {back.state && <ReturnPill outcome={back.outcome} completedAt={back.completedAt} />}
       {provisional && terminal && <p className="text-xs text-[var(--warning)]">{t('activity.partialText')}</p>}
       {final?.type === 'model' && (timeline.mode === 'plan' && !provisional
         ? (

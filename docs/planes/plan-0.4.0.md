@@ -89,7 +89,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | **96 primero (prioridad alta)**; 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 17 | Estilo nuevo pendiente | **96 primero (prioridad alta)**; 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos), 98 (árbol de Archivos) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque y rendimiento | 70, 91 | Saludo, reintento e historial por páginas; base para equipos lentos. |
@@ -351,6 +351,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 95 | Rinari habla de sí misma en tercera persona («veré dónde guarda Rinari sus sesiones») en vez de «veré dónde guardo mis sesiones» (dueño) | CLI | Propuesto (causa verificada) |
 | 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido · prioridad alta |
 | 97 | Activar y desactivar proveedores (desactivado: sus modelos no salen en el composer ni en ningún selector), y rediseño de Ajustes → Proveedores y del diálogo «Agregar proveedor» (dueño) | CLI + Agent | Decidido |
+| 98 | Vista Archivos con árbol de archivos, como en Claude Code (dueño) | CLI + Agent | Decidido |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -2983,6 +2984,25 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 ---
 
+## 98. Vista Archivos con árbol de archivos, como en Claude Code
+
+**Qué se pidió** (dueño, 2026-10-16, con una captura del panel de Claude Code). Que la vista Archivos del panel lateral tenga el árbol del proyecto, como Claude Code. Aprobado para la tanda del bloque 17.
+
+**Qué hay hoy (verificado por la sesión de pulido).**
+- No hay árbol: la vista Archivos muestra las pestañas de los archivos abiertos desde el chat, su contenido y Artefactos al pie.
+- El Engine lee, busca y vigila archivos y da el estado git, pero no lista una carpeta.
+
+**Propuesta.**
+- **CLI:** método `workspace.dir.list` (una carpeta por llamada). Respeta `.gitignore`, ignora `node_modules` y similares y pone un tope por carpeta. Unas 3–4 h.
+- **App** (1,5–2 jornadas, por la sesión de pulido):
+  - **El árbol:** guías de sangría, iconos por tipo, color y letra del estado git, carpetas compactas, lista virtual y cada carpeta cargada al desplegarla.
+  - **Plegar y desplegar:** recordado por conversación.
+  - **Acciones:** revelar el archivo activo; menú contextual sin renombrar ni borrar; arrastrar al composer.
+  - **Cabecera en una fila:** «Buscar archivos…» a todo el ancho con la lupa dentro, y a la derecha «Revelar el archivo activo» y «Plegar todo».
+  - **Lo que no lleva:** conmutador lista/árbol ni el modo «?» de buscar en el contenido.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -3061,6 +3081,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 94 | El protocolo nativo de Google entra en 0.4.0 (adaptador nuevo), además del catálogo al día, el aprendizaje del protocolo y «Probar» de verdad. |
 | 96 | Avanzado: el máximo de salida pasa a Modelos y lo de cada proveedor a Proveedores → «Conexión»; Avanzado queda con Estado, Conexiones, Límites del turno, Red (entra en 0.4.0), Diagnóstico, Almacenamiento, Procesos, Motor, Actualizaciones y Restablecer; los ajustes que no hacen nada salen del esquema. |
 | 97 | Activar/desactivar proveedores es global; desactivado, sus modelos salen de todos los selectores, no se le llama y la clave se conserva; pantalla de Proveedores y «Agregar proveedor» rediseñadas juntas (el diálogo usa el asistente inicial). |
+| 98 | Árbol de Archivos al estilo Claude Code, en la tanda del bloque 17: `workspace.dir.list` en el CLI y el árbol en la app; cabecera con un solo buscador de archivos. |
 | 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

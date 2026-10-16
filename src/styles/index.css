@@ -2302,7 +2302,7 @@ html[data-motion='reduced'] .provider-card-chevron, html[data-motion='reduced'] 
 .present-kicker { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-subtle); }
 .present-count { height: 18px; margin-left: auto; padding: 0 7px; font-size: 10.5px; }
 .present-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); grid-auto-flow: row dense; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.present-grid[data-single] { grid-template-columns: minmax(0, 30rem); }
+.present-grid[data-single] { grid-template-columns: minmax(0, 30rem); justify-content: center; }
 .present-tile { position: relative; display: flex; min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(9 7 16 / 0.5); transition: border-color var(--dur-fast) var(--ease-out); }
 .present-tile[data-wide] { grid-column: 1 / -1; }
 .present-tile:hover, .present-tile:focus-within { border-color: var(--line-3); }
@@ -2315,6 +2315,9 @@ html[data-motion='reduced'] .provider-card-chevron, html[data-motion='reduced'] 
 @keyframes present-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 .present-thumb[data-thumb='image'] { background: repeating-conic-gradient(rgb(255 255 255 / 0.025) 0 25%, transparent 0 50%) 0 0 / 14px 14px, var(--bg-inset); }
 .present-grid[data-single] .present-thumb[data-thumb='image'] { height: 220px; }
+/* La imagen entera, centrada y escalada a su hueco: en una pista de grid de alto automático el max-height en % no
+   se resuelve y se veía a tamaño real, recortada. */
+.present-thumb[data-thumb='image'] img { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); max-width: none; max-height: none; object-fit: contain; }
 .present-thumb[data-thumb='page'] { height: 168px; padding: 10px; background: radial-gradient(120% 90% at 50% 0%, rgb(147 88 255 / 0.1), transparent 70%), var(--bg-inset); }
 .present-thumb[data-thumb='page'] img { border-radius: 3px; box-shadow: 0 6px 18px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.06); }
 .present-thumb[data-thumb='sheet'], .present-thumb[data-thumb='text'], .present-thumb[data-thumb='entries'] { height: auto; min-height: 64px; max-height: 136px; place-items: start stretch; }

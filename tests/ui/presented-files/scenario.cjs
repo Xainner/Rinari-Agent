@@ -8,7 +8,7 @@ const assert = require('node:assert/strict')
 const { mkdirSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const zlib = require('node:zlib')
-const { ui, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
+const { ui, click, clickText, command, evaluate, input, key, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait, wheel } = require('../harness.cjs')
 
 const CARD = '[data-testid="presented-files"]'
 
@@ -87,7 +87,7 @@ scenario(async () => {
   await useLocalModel()
   const root = join(ui.data, 'Entregas')
   mkdirSync(join(root, 'out', 'sitio', 'assets'), { recursive: true })
-  writeFileSync(join(root, 'out', 'portada.png'), png(320, 200))
+  writeFileSync(join(root, 'out', 'portada.png'), png(512, 512))
   writeFileSync(join(root, 'out', 'ventas.csv'), 'mes,unidades,total\nenero,12,"1,200"\nfebrero,9,900\nmarzo,15,1500\n')
   writeFileSync(join(root, 'out', 'notas.md'), '# Notas de la entrega\n\n- Portada en violeta\n- Ventas del trimestre\n')
   writeFileSync(join(root, 'out', 'informe.pdf'), pdf())
@@ -120,6 +120,23 @@ scenario(async () => {
   await wait(`['ready', 'empty'].includes(document.querySelector('${CARD} [data-present-kind="pdf"] .present-thumb')?.dataset.state)`, 60_000)
   await settleAnimations()
   await screenshot('card')
+
+  // La imagen se ve entera en su miniatura (escalada, sin recorte) y pulsarla abre el visor grande.
+  const fit = await evaluate(`(() => {const t=document.querySelector('${CARD} [data-thumb="image"]').getBoundingClientRect();const i=document.querySelector('${CARD} [data-thumb="image"] img');const r=i.getBoundingClientRect();const scale=Math.min(r.width/i.naturalWidth,r.height/i.naturalHeight);return {inside:r.left>=t.left-0.5&&r.right<=t.right+0.5&&r.top>=t.top-0.5&&r.bottom<=t.bottom+0.5,shownW:i.naturalWidth*scale,shownH:i.naturalHeight*scale,thumbW:t.width,thumbH:t.height}})()`)
+  assert.ok(fit.inside && fit.shownW <= fit.thumbW + 0.5 && fit.shownH <= fit.thumbH + 0.5, 'the image fits in its preview: ' + JSON.stringify(fit))
+  // Con la rueda, como una persona: un desplazamiento por código no suelta el seguimiento del final del turno.
+  const imageTop = () => evaluate(`document.querySelector('${CARD} [data-thumb="image"]').getBoundingClientRect().top`)
+  for (let i = 0; i < 12 && (await imageTop()) < 80; i++) await wheel(700, 400, 240)
+  await settleAnimations()
+  await screenshot('image-in-card')
+  await click(`${CARD} [data-thumb="image"]`)
+  await wait(`Boolean(document.querySelector('[role="dialog"][aria-label="Vista previa de portada.png"]'))`)
+  await wait(`document.querySelector('[role="dialog"][aria-label="Vista previa de portada.png"] .image-viewer-img')?.naturalWidth > 0`)
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="session-dock"]'))`), false, 'the viewer opens without opening Archivos')
+  await settleAnimations()
+  await screenshot('image-viewer')
+  await key('Escape')
+  await wait(`!document.querySelector('[role="dialog"][aria-label^="Vista previa"]')`)
 
   // The audio plays in the card.
   await evaluate(`document.querySelector('${CARD} [data-present-kind="audio"] .present-play').scrollIntoView({ block: 'center' })`)

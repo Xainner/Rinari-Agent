@@ -1,5 +1,5 @@
 import { Archive, ExternalLink, File, FileSpreadsheet, FileText, Film, Folder, FolderOpen, Globe, Image, MonitorPlay, Music, PackageCheck, PanelRightOpen, Play, Presentation } from 'lucide-react'
-import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage } from '../../services/engine'
@@ -8,6 +8,8 @@ import { useSessionDockStore } from '../../stores/sessionDock'
 import { FileLink, FileTurnContext, useFileWorkspace, type FileWorkspaceController } from '../files/FileWorkspace'
 import { MediaPlayer } from '../files/MediaPlayer'
 import { useArtifactImage } from '../files/artifactImage'
+import { attachmentImageUrl } from '../../components/image-viewer/attachmentImages'
+import { useImageInspector } from './ImageActivity'
 import { parseDelimited, useFirstPage, useNearView, useTextHead } from './presentedPreview'
 import type { PresentTimelineItem, PresentedFile } from './types'
 
@@ -156,7 +158,7 @@ function Thumb(context: TileContext) {
 }
 
 /** The tile's picture area: pressing it opens the delivery. */
-function ThumbButton({ open, label, kind, state, children }: { open: () => void; label: string; kind: string; state?: 'loading' | 'ready' | 'empty'; children: ReactNode }) {
+function ThumbButton({ open, label, kind, state, children }: { open: (event: ReactMouseEvent<HTMLButtonElement>) => void; label: string; kind: string; state?: 'loading' | 'ready' | 'empty'; children: ReactNode }) {
   return (
     <button type="button" className="present-thumb" data-thumb={kind} data-state={state} aria-label={label} title={label} onClick={open}>
       {children}
@@ -195,11 +197,29 @@ function ImageThumb(context: TileContext) {
   const url = file.uri ? artifact.url : local.url
   const failed = file.uri ? artifact.failed : local.failed
   const [loaded, setLoaded] = useState(false)
+  const { show, viewer } = useImageInspector()
   if (failed) return <IconThumb {...context} />
+  const path = file.uri ?? file.path
+  const outside = file.path && !file.uri ? file.path : null
+  // Pulsar la imagen la abre en el visor grande; Archivos queda como acción del visor.
+  const inspect = (from: Element) => show([{
+    key: path ?? file.name,
+    name: file.name,
+    src: file.uri ? undefined : url,
+    load: file.uri ? () => attachmentImageUrl(file.uri!) : undefined,
+    detail: file.caption,
+    onOpenInFiles: path && files ? open : undefined,
+    onReveal: outside && files ? () => files.reveal(outside, turnId) : undefined,
+    onOpenExternal: outside && files ? () => files.openExternal(outside, turnId) : undefined,
+    file: path && files ? { session_id: files.sessionId, path, turn_id: turnId } : undefined,
+  }], 0, from)
   return (
-    <ThumbButton open={open} label={t('present.open', { name: file.name })} kind="image" state={loaded ? 'ready' : 'loading'}>
-      {url && <img src={url} alt="" decoding="async" draggable={false} onLoad={() => setLoaded(true)} onError={() => setLocal({ failed: true })} />}
-    </ThumbButton>
+    <>
+      <ThumbButton open={(event) => inspect(event.currentTarget)} label={t('activity.enlargeImage', { name: file.name })} kind="image" state={loaded ? 'ready' : 'loading'}>
+        {url && <img src={url} alt="" decoding="async" draggable={false} onLoad={() => setLoaded(true)} onError={() => setLocal({ failed: true })} />}
+      </ThumbButton>
+      {viewer}
+    </>
   )
 }
 

@@ -9,8 +9,9 @@ import type { ToolPresentation } from './types'
 
 type ActivityImage = NonNullable<ToolPresentation['image']>
 
-/** Abre el visor con unas imágenes de la actividad, desde la miniatura pulsada. */
-const ImageInspection = createContext<((images: ActivityImage[], index: number, from: Element | null) => void) | null>(null)
+/** Abre el visor compartido con unas imágenes, desde la miniatura pulsada. */
+type ShowImages = (images: ViewerImage[], index: number, from: Element | null) => void
+const ImageInspection = createContext<ShowImages | null>(null)
 
 /** Lo que el Engine devuelve de una imagen de la actividad, en JPEG. */
 async function activityImageUrl(uri: string, maxDimension: number): Promise<string> {
@@ -61,27 +62,34 @@ function viewerImages(images: ActivityImage[], files: FileWorkspaceController | 
  * una imagen abierta. Es el mismo visor grande del resto de la app (#77).
  */
 export function ActivityImageProvider({ children }: { children: ReactNode }) {
-  const files = useFileWorkspace()
   const viewer = useImageViewer()
-  const inspect = useCallback((images: ActivityImage[], index: number, from: Element | null) => {
-    viewer.show(viewerImages(images, files), index, from)
-  }, [files, viewer])
-  return <ImageInspection.Provider value={inspect}>
+  const show = useCallback<ShowImages>((images, index, from) => viewer.show(images, index, from), [viewer])
+  return <ImageInspection.Provider value={show}>
     {children}
     <ImageViewer {...viewer.props} />
   </ImageInspection.Provider>
 }
 
-/** Sin proveedor (una tarjeta fuera del chat): un visor propio. */
-function useInspect() {
+/**
+ * El visor grande para cualquier imagen de la actividad: el compartido del
+ * chat si lo hay; si no (una tarjeta fuera del chat), uno propio que hay que
+ * pintar (`viewer`).
+ */
+export function useImageInspector() {
   const shared = useContext(ImageInspection)
-  const files = useFileWorkspace()
   const local = useImageViewer()
-  const inspect = useCallback((images: ActivityImage[], index: number, from: Element | null) => {
+  const show = useCallback<ShowImages>((images, index, from) => {
     if (shared) shared(images, index, from)
-    else local.show(viewerImages(images, files), index, from)
-  }, [shared, local, files])
-  return { inspect, viewer: shared ? null : <ImageViewer {...local.props} /> }
+    else local.show(images, index, from)
+  }, [shared, local])
+  return { show, viewer: shared ? null : <ImageViewer {...local.props} /> }
+}
+
+function useInspect() {
+  const files = useFileWorkspace()
+  const { show, viewer } = useImageInspector()
+  const inspect = useCallback((images: ActivityImage[], index: number, from: Element | null) => show(viewerImages(images, files), index, from), [show, files])
+  return { inspect, viewer }
 }
 
 /**

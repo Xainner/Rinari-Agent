@@ -88,3 +88,16 @@ it('el audio no carga nada hasta «Reproducir» y luego suena en la tarjeta', as
   fireEvent.click(screen.getByRole('button', { name: /tono\.mp3/ }))
   await waitFor(() => expect(screen.getByTestId('presented-files').querySelector('audio')).toBeTruthy())
 })
+
+it('pulsar una imagen entregada abre el visor grande, no Archivos', async () => {
+  bridge.mediaKinds['C:/p/portada.png'] = 'image'
+  mount([{ kind: 'image', name: 'portada.png', path: 'C:/p/portada.png' }])
+  const thumb = await screen.findByRole('button', { name: 'Ampliar imagen: portada.png' })
+  await waitFor(() => expect(thumb.querySelector('img')?.getAttribute('src')).toBe('app://rinari/__media/test-portada.png'))
+  await userEvent.click(thumb)
+  const viewer = await screen.findByRole('dialog')
+  expect(viewer.getAttribute('aria-label')).toBe('Vista previa de portada.png')
+  expect(bridge.openedFiles).toEqual([])
+  // Archivos sigue a un clic, desde el visor.
+  expect(within(viewer).getByRole('button', { name: 'Abrir en Archivos' })).toBeTruthy()
+})

@@ -146,8 +146,11 @@ export interface ContextTimelineItem extends TimelineItemBase {
 export interface VerificationTimelineItem extends TimelineItemBase {
   type: 'verification'
   status: 'running' | 'completed' | 'failed'
+  /** DONE | IMPLEMENTED_UNVERIFIED | PARTIAL | BLOCKED | FAILED (compuerta del Engine). */
   outcome?: string
   detail?: string
+  /** Por qué la compuerta decidió eso: se ven al abrir la fila. */
+  reasons?: string[]
 }
 
 export interface SystemTimelineItem extends TimelineItemBase {

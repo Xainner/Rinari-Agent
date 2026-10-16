@@ -534,6 +534,7 @@ function mergeEventItem(
       status: event.endsWith('completed') ? 'completed' : event.endsWith('failed') ? 'failed' : 'running',
       outcome: text(payload.outcome) || undefined,
       detail: errorMessage(payload.error),
+      reasons: Array.isArray(payload.reasons) ? payload.reasons.filter((item): item is string => typeof item === 'string') : undefined,
     }
   }
   if (event === 'provider.reasoning.dropped') {

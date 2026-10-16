@@ -2,7 +2,7 @@ import {
   AppWindow,
   Bot,
   Brain,
-  Check,
+  ShieldCheck,
   ClipboardCheck,
   Code,
   Copy,
@@ -98,6 +98,50 @@ const ICONS: Record<ToolCategory, typeof FileText> = {
  * mientras se mira, el check se dibuja; al volver a montarse (scroll,
  * historial) aparece quieto: la animación cuenta lo que acaba de pasar.
  */
+const VERIFICATION_TONES: Record<string, string> = {
+  DONE: 'done',
+  IMPLEMENTED_UNVERIFIED: 'warn',
+  PARTIAL: 'warn',
+  BLOCKED: 'failed',
+  FAILED: 'failed',
+}
+
+/**
+ * La compuerta de verificación dice su resultado real (plan 0.4.0 #66c):
+ * «Verificado», «Sin evidencia», «Parcial», «Bloqueado» o «Falló», con su
+ * color, y al abrirla los motivos. Antes decía «Verificación completada» para
+ * cualquier resultado.
+ */
+function VerificationRow({ item, active }: { item: Extract<TimelineItem, { type: 'verification' }>; active: boolean }) {
+  const { t } = useI18n()
+  const running = item.status === 'running' && active
+  const interrupted = item.status === 'running' && !active
+  const outcome = item.outcome && item.outcome in VERIFICATION_TONES ? item.outcome : null
+  const tone = running ? 'running' : item.status === 'failed' ? 'failed' : outcome ? VERIFICATION_TONES[outcome] : 'idle'
+  const label = running
+    ? t('verification.running')
+    : interrupted
+      ? t('activity.interrupted')
+      : item.status === 'failed'
+        ? t('verification.unavailable')
+        : t(`verification.outcome.${outcome ?? 'other'}` as I18nKey)
+  const reasons = item.reasons?.length ? item.reasons : item.detail ? [item.detail] : []
+  return (
+    <InspectionDetails inspectionId="verification" data-testid="verification-row" data-outcome={outcome ?? undefined} className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone={tone}>
+      <summary>
+        <ToolTile tone={tone} Icon={ShieldCheck} />
+        <ActivityText active={running} className="act-label">{label}</ActivityText>
+        {reasons.length > 0 && <span className="act-meta"><ChevronDown size={13} className="transition-transform group-open/activity:rotate-180" /></span>}
+      </summary>
+      {reasons.length > 0 && (
+        <ul className="mt-1.5 space-y-1 pl-1 text-[12px] text-[var(--text-subtle)]">
+          {reasons.map((reason, index) => <li key={index} className="flex gap-1.5"><span aria-hidden="true">•</span><span className="min-w-0 break-words">{reason}</span></li>)}
+        </ul>
+      )}
+    </InspectionDetails>
+  )
+}
+
 function ToolTile({ tone, Icon }: { tone: string; Icon: typeof FileText }) {
   const wasRunning = useRef(tone === 'running')
   const celebrate = tone === 'done' && wasRunning.current
@@ -214,11 +258,10 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     return <p data-testid="reasoning-dropped" className="py-1 text-[12px] text-[var(--text-subtle)]">{t('activity.reasoningDropped', { effort: item.label ?? '' })}</p>
   }
   if (item.type === 'system') return null
+  if (item.type === 'verification') return <VerificationRow item={item} active={active} />
   const labels = !active && 'status' in item && item.status === 'running' ? t('activity.interrupted') : item.type === 'context'
       ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
-      : item.type === 'verification'
-        ? (item.status === 'running' ? (lang === 'es' ? 'Verificando…' : 'Verifying…') : item.status === 'failed' ? (lang === 'es' ? 'La verificación falló' : 'Verification failed') : (lang === 'es' ? 'Verificación completada' : 'Verification completed'))
-        : ''
+      : ''
   if (!labels) return null
   if (item.type === 'context') return <div className="py-1 text-[13px] text-[var(--text-muted)]">
     <div className="flex items-center gap-2">{active && item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}<ActivityText active={active && item.status === 'running'}>{active && item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}</ActivityText>
@@ -230,7 +273,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     </div>
     {(item.error || item.contextDetails) && <InspectionDetails inspectionId="context" className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<CompactionDetails details={item.contextDetails} /></InspectionDetails>}
   </div>
-  const Icon = item.type === 'verification' ? Check : Sparkles
+  const Icon = Sparkles
   return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" /><ActivityText active={active && operationIsActive(item)}>{labels}</ActivityText></div>
 }
 

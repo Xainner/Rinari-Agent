@@ -20,6 +20,20 @@ function view(timeline: TurnTimeline, now: number, resolve = vi.fn()) {
 }
 
 describe('TurnTimelineView', () => {
+  it('says the verification outcome it got, with its reasons (#66c)', async () => {
+    const verification = (id: string, outcome: string, reasons: string[]) => ({ id, type: 'verification' as const, activitySeq: 1, occurredAt: 1_500, status: 'completed' as const, outcome, reasons })
+    view({ ...base, items: [verification('verification:a', 'IMPLEMENTED_UNVERIFIED', ['no validation evidence recorded'])] }, 2_000)
+    const row = screen.getByTestId('verification-row')
+    expect(row.getAttribute('data-tone')).toBe('warn')
+    expect(screen.getByText('Sin evidencia de que funcione')).toBeTruthy()
+    expect(screen.queryByText('Verificación completada')).toBeNull()
+    await userEvent.click(screen.getByText('Sin evidencia de que funcione'))
+    expect(screen.getByText('no validation evidence recorded')).toBeTruthy()
+    cleanup()
+    view({ ...base, items: [verification('verification:b', 'DONE', [])] }, 2_000)
+    expect(screen.getByText('Verificado')).toBeTruthy()
+    expect(screen.getByTestId('verification-row').getAttribute('data-tone')).toBe('done')
+  })
   it('presents a completed plan in its own card', () => {
     view({ ...base, mode: 'plan', status: 'completed', completedAt: 2_000, items: [{ id: 'model:p', type: 'model', activitySeq: 1, occurredAt: 2_000, modelCallId: 'p', status: 'completed', content: '1. Revisar requisitos\n2. Implementar', outputKind: 'final' }] }, 2_000)
     expect(screen.getByRole('region', { name: 'Plan propuesto' })).toBeTruthy()

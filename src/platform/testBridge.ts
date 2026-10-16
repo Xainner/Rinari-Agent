@@ -77,6 +77,8 @@ export interface TestBridge extends DesktopBridge {
   indicators: AttentionIndicators[]
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
+  /** Ruta real que `files.pathFor` da a cada `File` (#57); sin entrada, `null`. */
+  readonly filePaths: Map<File, string>
   /** JSON guardados con `dialog.saveJson`, en orden. */
   readonly savedJsonFiles: SaveJsonRequest[]
   /** `false`: la persona cancela el próximo diálogo de guardar. */
@@ -196,6 +198,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     notificationSupport: { canSend: true, canActivateTarget: true },
     openedUrls: [],
     nextFileSelection: null,
+    filePaths: new Map(),
     savedJsonFiles: [],
     nextJsonSave: true,
     nextJsonFile: null,
@@ -249,6 +252,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     },
 
     files: {
+      pathFor(file: File) {
+        return bridge.filePaths.get(file) ?? null
+      },
       async openExternal(input) {
         bridge.openedFiles.push(input)
       },
@@ -501,6 +507,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       notificationListeners.clear()
       bridge.openedUrls.length = 0
       bridge.nextFileSelection = null
+      bridge.filePaths.clear()
       bridge.savedJsonFiles.length = 0
       bridge.nextJsonSave = true
       bridge.nextJsonFile = null

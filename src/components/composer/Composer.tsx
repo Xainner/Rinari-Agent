@@ -31,6 +31,7 @@ import type { SlashCommand } from '../../services/engine'
 import type { SendOptions } from '../../features/engine/useEngineSession'
 import type { I18nKey } from '../../i18n'
 import { FullAccessDialog } from '../../features/permissions/FullAccessDialog'
+import { INLINE_MAX_BYTES, attachmentCategory, attachmentKind, contentKey, formatMiB, maxBytes, newAttachmentId } from './attachmentRules'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -575,7 +576,17 @@ export default function Composer({
 
   function addAttachment(item: AttachmentRef) {
     const currentAttachments = useComposerStore.getState().getDraft(draftKey).attachments
-    if (currentAttachments.some(current => current.path === item.path && current.name === item.name)) return
+    // Lo pegado sin ruta se compara por nombre **y** contenido: dos capturas
+    // distintas se llaman las dos `image.png` (#18). Lo que tiene ruta, por
+    // su ruta.
+    const key = item.data_url ? contentKey(item.data_url) : null
+    const duplicate = currentAttachments.some(current => key
+      ? current.name === item.name && current.data_url !== undefined && contentKey(current.data_url) === key
+      : !current.data_url && current.path === item.path)
+    if (duplicate) {
+      setAttachmentNotice(t('attach.duplicate', { name: item.name }))
+      return
+    }
     if (currentAttachments.length >= 8) {
       setAttachmentNotice(t('attach.limitCount'))
       return
@@ -632,26 +643,52 @@ export default function Composer({
     }
   }
 
+  /** Lo que el Engine no aceptará se dice aquí, antes de enviar (#57). */
+  function admissible(name: string, size: number, mime?: string) {
+    const category = attachmentCategory(name, mime)
+    if (!category) {
+      setAttachmentNotice(t('attach.unsupported', { name }))
+      return null
+    }
+    if (size > maxBytes(category)) {
+      setAttachmentNotice(t('attach.tooLarge', { name, limit: formatMiB(maxBytes(category)) }))
+      return null
+    }
+    return category
+  }
+
   function addBrowserFile(file: File) {
-    if (file.size > 25 * 1024 * 1024) {
-      setAttachmentNotice(t('attach.limitSize', { name: file.name }))
+    const category = admissible(file.name, file.size, file.type || undefined)
+    if (!category) return
+    const isImage = category === 'image'
+    // Arrastrado desde el equipo: viaja por su ruta, no entero dentro del
+    // mensaje, y el límite de 8 MiB por comando deja de importar (#57).
+    const realPath = platform().files.pathFor(file)
+    if (!realPath && file.size > INLINE_MAX_BYTES) {
+      setAttachmentNotice(t('attach.inlineTooLarge', { name: file.name, limit: formatMiB(INLINE_MAX_BYTES) }))
+      return
+    }
+    const base: AttachmentRef = {
+      id: newAttachmentId(),
+      path: realPath ?? file.name,
+      name: file.name,
+      mime_type: file.type || undefined,
+      size: file.size,
+      source: 'native',
+      kind: attachmentKind(category),
+      status: 'ready',
+    }
+    if (realPath && !isImage) {
+      addAttachment(base)
       return
     }
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
-      addAttachment({
-        id: `att_${Date.now().toString(36)}_${file.name}`,
-        path: file.name,
-        name: file.name,
-        mime_type: file.type || undefined,
-        size: file.size,
-        source: 'native',
-        kind: file.type.startsWith('image/') ? 'image' : undefined,
-        data_url: reader.result,
-        previewUrl: file.type.startsWith('image/') ? reader.result : undefined,
-        status: 'ready',
-      })
+      // Con ruta, el data URL de una imagen solo sirve de miniatura.
+      addAttachment(realPath
+        ? { ...base, previewUrl: reader.result }
+        : { ...base, data_url: reader.result, previewUrl: isImage ? reader.result : undefined })
     }
     reader.readAsDataURL(file)
   }
@@ -665,12 +702,18 @@ export default function Composer({
   async function chooseFiles() {
     const paths = (await platform().dialog.openFiles({ multiple: true, directory: false, title: t('attach.attachFiles') })) ?? []
     for (const path of paths) {
+      const name = path.split(/[/\\]/).pop() ?? path
+      const category = attachmentCategory(name)
+      if (!category) {
+        setAttachmentNotice(t('attach.unsupported', { name }))
+        continue
+      }
       addAttachment({
-        id: `att_${Date.now().toString(36)}_${path}`,
+        id: newAttachmentId(),
         path,
-        name: path.split(/[/\\]/).pop() ?? path,
+        name,
         source: 'native',
-        kind: /\.(png|jpe?g|webp)$/i.test(path) ? 'image' : undefined,
+        kind: attachmentKind(category),
         status: 'ready',
       })
     }
@@ -694,7 +737,7 @@ export default function Composer({
   }
 
   function chooseWorkspaceFile(file: { path: string; relative_path: string; name: string }) {
-    addAttachment({ id: `att_${Date.now().toString(36)}_${file.path}`, path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
+    addAttachment({ id: newAttachmentId(), path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
     setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
     setFileMatches([])
   }

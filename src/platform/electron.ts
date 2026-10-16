@@ -121,6 +121,7 @@ interface DesktopHostApi {
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
   files: {
+    pathFor(file: File): string | null
     openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
     revealInFolder(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
     media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
@@ -244,6 +245,7 @@ export const electronBridge: DesktopBridge = {
   },
 
   files: {
+    pathFor: (file) => required().files.pathFor(file),
     openExternal: (input) => required().files.openExternal(input),
     revealInFolder: (input) => required().files.revealInFolder(input),
     media: (input) => required().files.media(input),

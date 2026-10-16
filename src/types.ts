@@ -63,7 +63,7 @@ export interface AttachmentRef {
   previewUrl?: string
   uri?: string
   sha256?: string
-  kind?: 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx'
+  kind?: 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'audio' | 'video'
   derivedUri?: string
   images?: Array<{ uri: string; sha256?: string }>
   ocr?: boolean

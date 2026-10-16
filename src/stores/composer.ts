@@ -162,7 +162,9 @@ export const useComposerStore = create<ComposerState>((set, get) => ({
   }),
   addAttachmentFor: (sessionKey, attachment) => set((state) => {
     const draft = draftOf(state, sessionKey)
-    if (draft.attachments.some((item) => item.path === attachment.path && item.name === attachment.name)) return state
+    // Same id only: two pasted `image.png` with different content are two
+    // attachments (#18); the composer decides what is a real duplicate.
+    if (draft.attachments.some((item) => item.id === attachment.id)) return state
     const attachments = [...draft.attachments, attachment].slice(0, MAX_ATTACHMENTS)
     return updateSessionDraft(state, sessionKey, { text: draft.text, attachments })
   }),

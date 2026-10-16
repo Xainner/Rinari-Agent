@@ -142,6 +142,12 @@ export interface DesktopBridge {
 
   files: {
     /**
+     * Ruta real de un archivo arrastrado o elegido en la página (plan 0.4.0
+     * #57): así viaja por ruta y no entero dentro del mensaje. `null` si no
+     * tiene (una captura pegada del portapapeles).
+     */
+    pathFor(file: File): string | null
+    /**
      * Abre un archivo del workspace con la aplicación del sistema. La ruta la
      * valida el Engine (raíz y procedencia del turno) **antes** de abrirla:
      * no se abre lo que diga el renderer sin pasar por ahí.

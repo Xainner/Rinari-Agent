@@ -177,3 +177,45 @@ it('does not advertise or consume files when the chat has no composer', () => {
   view.rerender(ui(<ChatFileDropZone draftKey="a" enabled={false}><div>Error</div></ChatFileDropZone>))
   expect(highlighted()).toBe(false)
 })
+
+it('two different screenshots pasted as image.png both enter; the same one twice is announced (#18)', async () => {
+  render(ui(pane('a')))
+  const textarea = screen.getByRole('textbox', { name: 'Mensaje' })
+  const shot = (body: string) => new File([body], 'image.png', { type: 'image/png' })
+  fireEvent.paste(textarea, { clipboardData: { files: [shot('uno')] } })
+  await waitFor(() => expect(useComposerStore.getState().getDraft('a').attachments).toHaveLength(1))
+  fireEvent.paste(textarea, { clipboardData: { files: [shot('dos')] } })
+  await waitFor(() => expect(useComposerStore.getState().getDraft('a').attachments).toHaveLength(2))
+  const [first, second] = useComposerStore.getState().getDraft('a').attachments
+  expect(first.id).not.toBe(second.id)
+  fireEvent.paste(textarea, { clipboardData: { files: [shot('uno')] } })
+  await waitFor(() => expect(screen.getByText('image.png ya está adjunto.')).toBeTruthy())
+  expect(useComposerStore.getState().getDraft('a').attachments).toHaveLength(2)
+})
+
+it('a dragged file with a real path travels by path, even a large video (#57)', async () => {
+  const { platform } = await import('../../platform')
+  render(ui(pane('a')))
+  const video = new File(['x'], 'clip.mp4', { type: 'video/mp4' })
+  Object.defineProperty(video, 'size', { value: 300 * 1024 * 1024 })
+  const read = vi.spyOn(FileReader.prototype, 'readAsDataURL')
+  const pathFor = vi.spyOn(platform().files, 'pathFor').mockReturnValue('C:/videos/clip.mp4')
+  drop(surface(), [video])
+  await waitFor(() => expect(useComposerStore.getState().getDraft('a').attachments).toHaveLength(1))
+  const [attached] = useComposerStore.getState().getDraft('a').attachments
+  expect(attached).toMatchObject({ path: 'C:/videos/clip.mp4', name: 'clip.mp4', kind: 'video' })
+  expect(attached.data_url).toBeUndefined()
+  expect(read).not.toHaveBeenCalled()
+  pathFor.mockRestore()
+})
+
+it('says before sending what cannot be attached (#57)', async () => {
+  render(ui(pane('a')))
+  drop(surface(), [new File(['x'], 'setup.exe', { type: 'application/x-msdownload' })])
+  await waitFor(() => expect(screen.getByText('setup.exe: Rinari todavía no puede adjuntar este tipo de archivo.')).toBeTruthy())
+  const pasted = new File(['x'], 'grabacion.mp3', { type: 'audio/mpeg' })
+  Object.defineProperty(pasted, 'size', { value: 7 * 1024 * 1024 })
+  drop(surface(), [pasted])
+  await waitFor(() => expect(screen.getByText(/grabacion\.mp3 no tiene ruta en el equipo y pasa de 6 MiB/)).toBeTruthy())
+  expect(useComposerStore.getState().getDraft('a').attachments).toHaveLength(0)
+})

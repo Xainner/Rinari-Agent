@@ -19,7 +19,7 @@
  */
 
 import type { AttentionIndicators } from '../shared/indicators'
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 
 import {
   CHANNEL,
@@ -139,6 +139,14 @@ const api = {
   },
 
   files: {
+    /** Ruta real de un `File` de la página (arrastrado o elegido); `null` sin ruta (#57). */
+    pathFor: (file: File): string | null => {
+      try {
+        return webUtils.getPathForFile(file) || null
+      } catch {
+        return null
+      }
+    },
     /** El Engine valida raíz y procedencia; el host solo abre lo que aprobó. */
     openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
     revealInFolder: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesRevealInFolder, request),

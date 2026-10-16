@@ -15,7 +15,7 @@ Una rama `next` (en esta versión, la propia `0.4.0`) que es un main adelantado:
 
 ## Lo que implica compartir `~/.rinari`
 
-- **Las migraciones son de ida.** La 0.4.0 trae `0050`–`0052`. Al abrir la Nightly, el Engine las aplica a `state.db`, y desde ese momento **la versión normal no abre**: `storage/migrations/runner.py:135-141` rechaza una base «más nueva que la soportada». La normal vuelve a funcionar al actualizarse a 0.4.0.
+- **Las migraciones son de ida.** La 0.4.0 trae `0050`–`0053`. Al abrir la Nightly, el Engine las aplica a `state.db`, y desde ese momento **la versión normal no abre**: `storage/migrations/runner.py:135-141` rechaza una base «más nueva que la soportada». La normal vuelve a funcionar al actualizarse a 0.4.0.
 - **Dos Engines sobre la misma base a la vez** duplicarían lo que corre solo: tareas programadas (`ScheduleRunner`), reanudaciones (#24), goals (#23), y pisarían archivos como `policies/approval_grants.json`.
 
 **Salvaguardas propuestas** (para que compartir sea seguro):

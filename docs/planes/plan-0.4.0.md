@@ -8,6 +8,7 @@ Estado: **en curso** (el dueño dio inicio el 2026-10-15). Se trabaja por bloque
 |---|---|
 | 1. Robustez del Engine | Hecho (CLI 34612a3, 53895e9, 0c627b3; Agent ffd288b, af2164e), con la batería del CLI y de la app en verde. Pendiente: los botones «Abrir el archivo» / «Abrir la salida completa» del timeline (#76.8) y el pulido del diálogo de skills, en la sesión de pulido de UI. Ajustes respecto al plan: el tope de descargas queda fijo en 1 GiB hasta la tarjeta de Red del #96; las salidas guardadas no se borran solas a los 7 días (decisión del #91: la limpieza es manual); `fs.read` paginado devuelve el texto tal cual, sin número por línea (así se puede citar en `fs.patch`; `fs.read_lines` sí los lleva); un `fs.write` sobre un archivo que cambió desde la última lectura se rechaza hasta releerlo (`fs.patch` con texto exacto no lo necesita). El recordatorio de la lista de pasos del 48 va con el bloque 5. |
 | 2. Verificación y objetivos | Hecho: 61c (CLI 6ab7371), 66c (Agent 64e90ac), 59 (CLI 1e435ff, Agent b058199) y 23 `/goal` (CLI 86422ba, Agent a7b3fb7), con la migración `0050`. Ajustes: la confirmación al reemplazar un objetivo es un `confirm` del sistema hasta que la sesión de pulido ponga el diálogo canónico; «Ponerle tope» ofrece turnos y minutos (los tokens, por el protocolo); el tiempo que el turno espera una aprobación todavía cuenta. La interfaz (dock del objetivo, separador, fila de verificación) está en la sesión de pulido. |
+| 11. Límites y proveedores | Hecho: 3 (CLI f00009f), 19 (CLI 1de1124, Agent 667ac79), 27 (CLI 6e7ebbf, Agent 0311fa8), 13 (CLI bc86034, Agent 104e2a9), 24 (CLI 96d1e8f, Agent a426740, migración `0051`), 80 (CLI b55ab1c, Agent 7970b87), 94 (CLI 22b1b7a y f02128f, Agent 99a9119) y 97 (CLI 92d5b97, Agent cd583e2, migración `0052`). Ajustes: del #94 queda pendiente el punto 2 (cada protocolo de OpenCode por su dirección nueva, con respaldo a la antigua); el aprendizaje del protocolo (punto 4) cubre el caso mientras tanto. Del #97, el diálogo de desactivar mueve a un reemplazo el modelo activo, el respaldo, el auxiliar y los agentes; las tareas programadas que usen el proveedor no se pausan solas (fallan con «desactivado» al correr). El linaje de sesiones del #40 pasa a la migración `0053`. El rediseño de Proveedores y de «Agregar proveedor» (#97 B y C) y el pulido de lo visual del bloque están en la sesión de pulido. |
 
 - Ramas `0.4.0` en Rinari-Agent y Rinari-CLI, creadas desde `main` el 2026-10-10 (se llamaban `0.3.2`; renombradas en local el 2026-10-14, el remoto `origin/0.3.2` se reemplaza al subir). En `main` están la 0.3.1 (tag `v0.3.1` en 5d4fab5) y el Engine 2a94168.
 - Lo urgente no pasa por aquí: va en una rama `hotfix/…` creada desde `main`.
@@ -51,7 +52,7 @@ Lo que en este plan dependía de ellos se hace sin ellos: las tareas programadas
 
 ## Orden de entrega
 
-1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93, 94, 95, 96 y 97 (migraciones `0050` goals, `0051` resumes y `0052` linaje de sesiones). Se fusiona primero.
+1. Un PR de CLI `0.4.0 → main` con los cambios del motor: 3, 4, 5, 7, 11, 13, 14, 19, 23, 24, 25, 27, 29, 31, 32, 35, 36, 38, 40, 44, 45, 46, 48, 50, 53, 54, 55, 56, 57, 59, 60, 61, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 81, 82, 86, 87, 90, 91, 93, 94, 95, 96 y 97 (migraciones `0050` goals, `0051` resumes, `0052` proveedor activado y `0053` linaje de sesiones). Se fusiona primero.
 2. Un PR de Agent `0.4.0 → main` con el arreglo del CI y los cambios de la app: 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 96 y 97, y el Engine fijado al merge del CLI en `engine-manifest.json`. Por su tamaño, puede partirse en dos PR: los arreglos (6–22, 25–30, 37, 38, 41, 45, 51–54, 56–59, 61, 62, 65, 66, 88 y 93) y las funciones (23–24, 31–36, 40, 42–44, 46, 47, 49, 55, 60, 63 y 64).
 3. Validación local antes de cada push:
    - CLI: pytest completo y ruff.
@@ -1257,7 +1258,7 @@ En el panel lateral → Agentes, **ningún subagente muestra esos mensajes**.
 - la barra lateral (`AppSidebar.tsx`) no anida sesiones.
 
 **Propuesta (solo A1).**
-- **Motor, migración `0052_session_lineage.sql`:** columnas `parent_session_id`, `lineage_kind` (`note | fork | schedule`; `delegated` queda reservado para A2) y `brief_json` (título y encargo).
+- **Motor, migración `0053_session_lineage.sql`:** columnas `parent_session_id`, `lineage_kind` (`note | fork | schedule`; `delegated` queda reservado para A2) y `brief_json` (título y encargo).
   - Al aceptar una nota, al bifurcar y al correr una tarea programada se llenan.
   - Las sesiones viejas se completan desde `forked_from` y `accepted_session_id`.
   - `session.list` y `session.get` devuelven el linaje.

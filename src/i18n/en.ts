@@ -967,6 +967,7 @@ export const en: Record<I18nKey, string> = {
   'providers.delete': 'Delete',
   'providers.confirmDelete': 'Permanently delete “{name}” with its models.',
   'providers.switchTo': 'Move active state to',
+  'providers.lastOne': 'It is the only one: Rinari will have no provider and the assistant opens to add another.',
   'providers.use': 'Use',
   'providers.active': 'Active',
   'providers.test': 'Test',

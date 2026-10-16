@@ -985,6 +985,7 @@ export const es = {
   'providers.delete': 'Eliminar',
   'providers.confirmDelete': 'Eliminar “{name}” de forma permanente con sus modelos.',
   'providers.switchTo': 'Mover sesiones activas a',
+  'providers.lastOne': 'Es el único: Rinari quedará sin proveedor y se abrirá el asistente para añadir otro.',
   'providers.use': 'Usar',
   'providers.active': 'Activo',
   'providers.test': 'Probar',

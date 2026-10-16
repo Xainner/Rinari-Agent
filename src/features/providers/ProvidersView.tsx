@@ -392,6 +392,8 @@ export default function ProvidersView({
             <AlertDialogTitle>{t('providers.delete')}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleting && t('providers.confirmDelete', { name: deleting.alias })}
+              {/* El único proveedor también se puede quitar (plan 0.4.0 #19). */}
+              {deleting && others.length === 0 && <> {t('providers.lastOne')}</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleting?.active && others.length > 0 && (

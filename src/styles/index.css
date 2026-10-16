@@ -1979,6 +1979,17 @@ html[data-motion='reduced'] .resume-card-clock { animation: none; }
 /* Proveedores (#97): estado en chips; un proveedor desactivado se atenúa, pero no su interruptor. */
 .provider-chip { height: 18px; flex-shrink: 0; padding: 0 7px; font-size: 10.5px; font-family: var(--font-sans); }
 .settings-card.provider-off > :not(h2), .settings-card.provider-off h2 button { opacity: 0.6; }
+.summary-sync { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.summary-prs li { display: flex; align-items: center; gap: 6px; }
+.summary-prs .summary-link { display: inline-flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 5px; }
+.summary-pr-state { height: 16px; flex-shrink: 0; padding: 0 6px; font-size: 10px; }
+.summary-pr-create { align-self: flex-start; margin-left: -2px; }
+.summary-list li[data-off]::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 999px; background: var(--line-3); vertical-align: middle; }
+.summary-list li.is-mono { font-family: var(--font-mono); font-size: 11px; }
+.create-pr-form { display: flex; flex-direction: column; }
+.create-pr-form .field-label:first-child { margin-top: 0; }
+.create-pr-body { resize: vertical; min-height: 96px; }
+.create-pr-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 /* Cambios de un turno (#41): la tarjeta del chat, en la familia de las filas de actividad, y la vista Cambios del panel lateral. */
 .turn-changes { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; padding: 10px 10px 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.62); font-size: 12px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .turn-changes-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Bot, ChevronDown, Ellipsis, FileStack, FileDiff, FolderOpen, Gauge, GitBranch, ListChecks, Server, SquareTerminal, TriangleAlert, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bot, ChevronDown, Ellipsis, FileStack, FileDiff, FolderOpen, Gauge, GitBranch, GitPullRequest, GitPullRequestCreate, Globe, ListChecks, Plug, Server, SquareTerminal, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -19,9 +19,12 @@ import { useFileWorkspace } from '../files/FileWorkspace'
 import { branchChangeText } from '../engine/useSessionList'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import type { TurnTimeline } from '../activity/types'
+import { compareUrl, useConversationSummary, useRepoStatus } from './summaryData'
+import CreatePrDialog from './CreatePrDialog'
+import { platform } from '../../platform'
 
-export type SummaryCardId = 'env' | 'context' | 'plan' | 'changes' | 'results' | 'agents' | 'background'
-export const SUMMARY_CARDS: readonly SummaryCardId[] = ['env', 'context', 'plan', 'changes', 'results', 'agents', 'background']
+export type SummaryCardId = 'env' | 'context' | 'plan' | 'changes' | 'results' | 'sources' | 'connectors' | 'agents' | 'background'
+export const SUMMARY_CARDS: readonly SummaryCardId[] = ['env', 'context', 'plan', 'changes', 'results', 'sources', 'connectors', 'agents', 'background']
 const PREFS_KEY = 'rinari.summary.cards.v1'
 
 interface SummaryPrefs { order: SummaryCardId[]; hidden: SummaryCardId[]; collapsed: SummaryCardId[] }
@@ -93,6 +96,15 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
   const [artifacts, setArtifacts] = useState<ArtifactSummary[]>([])
   const [schedules, setSchedules] = useState<ScheduledTask[]>([])
   const schedulesEnabled = data?.status?.capabilities?.scheduled_tasks_v1 === true
+  // Lo que junta el Engine (#82): fuentes, resultados, conectores, trabajo de fondo y el repo con sus PR.
+  const summary = useConversationSummary(sessionId, data?.status?.capabilities?.session_summary_v1 === true)
+  const { status: repo } = useRepoStatus(sessionId, data?.status?.capabilities?.repo_status_v1 === true && Boolean(root))
+  const [prOpen, setPrOpen] = useState(false)
+  const [allSources, setAllSources] = useState(false)
+  const openInPanel = (url: string) => {
+    openView(sessionId, 'browser')
+    void platform().browser.navigate(sessionId, url).catch(() => platform().opener.openUrl(url))
+  }
   // Se vuelve a leer al terminar cada turno: lo que cambia lo cambia un turno.
   useEffect(() => {
     if (busy) return
@@ -113,7 +125,7 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
       onOpen={root ? () => goProject(root) : undefined} openLabel={t('summary.env.openProject')} prefs={prefs} onPrefs={update}>
       <dl className="summary-facts">
         {folder && <div><dt>{t('summary.env.folder')}</dt><dd className="is-mono" title={folder}>{folder}</dd></div>}
-        <div><dt>{t('summary.env.branch')}</dt><dd>{git?.branch ? <><GitBranch size={11} aria-hidden="true" /> <span className="is-mono">{git.branch}</span>{git.dirty ? ` · ${t('summary.env.dirty', { n: git.files.length })}` : ''}</> : gitStatus?.status && !gitStatus.status.available ? t('summary.env.noGit') : '—'}</dd></div>
+        <div><dt>{t('summary.env.branch')}</dt><dd>{(repo?.branch ?? git?.branch) ? <><GitBranch size={11} aria-hidden="true" /> <span className="is-mono">{repo?.branch ?? git?.branch}</span>{repo && (repo.ahead || repo.behind) ? <span className="summary-sync"> ↑{repo.ahead ?? 0} ↓{repo.behind ?? 0}</span> : null}{(repo?.dirty ?? git?.dirty) ? ` · ${t('summary.env.dirty', { n: repo?.changed ?? git?.files.length ?? 0 })}` : ''}</> : (repo && !repo.available) || (gitStatus?.status && !gitStatus.status.available) ? t('summary.env.noGit') : '—'}</dd></div>
         {model && <div><dt>{t('summary.env.model')}</dt><dd>{model}</dd></div>}
         {record && <div><dt>{t('summary.env.permission')}</dt><dd>{t(`summary.permission.${record.effective_permission_profile}`)}</dd></div>}
       </dl>
@@ -153,7 +165,10 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
       </SummaryCard>
     )
   }
-  if (lastChanges?.set || (git && git.files.length > 0)) {
+  const prs = repo?.prs ?? []
+  const github = Boolean(repo?.github)
+  const canPr = github && Boolean(repo?.branch) && prs.every((pr) => pr.state !== 'open')
+  if (lastChanges?.set || (git && git.files.length > 0) || prs.length > 0 || canPr) {
     const set = lastChanges?.set
     cards.changes = (
       <SummaryCard id="changes" icon={<FileDiff size={14} />} title={t('summary.changes.title')}
@@ -161,10 +176,40 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
         onOpen={() => (lastChanges ? reviewTurn(sessionId, lastChanges.turn.turnId) : openView(sessionId, 'changes'))} openLabel={t('summary.changes.open')} prefs={prefs} onPrefs={update}>
         {set && <p className="summary-line">{t(set.files.length === 1 ? 'summary.changes.turnOne' : 'summary.changes.turn', { n: set.files.length })}</p>}
         {git && git.files.length > 0 && <p className="summary-line">{t('summary.changes.repo', { n: git.files.length })}</p>}
+        {prs.length > 0 && (
+          <ul className="summary-list summary-prs">
+            {prs.map((pr) => (
+              <li key={pr.url}>
+                <button type="button" className="summary-link" onClick={() => openInPanel(pr.url)}><GitPullRequest size={11} aria-hidden="true" /> #{pr.number} {pr.title}</button>
+                <span className="r-chip summary-pr-state" data-tone={pr.state === 'merged' ? 'accent' : pr.state === 'open' ? 'success' : undefined}>{t(`summary.pr.state.${pr.state === 'merged' || pr.state === 'closed' ? pr.state : 'open'}`)}</span>
+                {pr.checks && <span className="r-chip summary-pr-state" data-tone={pr.checks === 'success' ? 'success' : pr.checks === 'failure' ? 'danger' : 'warning'}>{t(`summary.pr.checks.${pr.checks}`)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {canPr && repo && (
+          repo.gh === 'ready'
+            ? <button type="button" className="btn btn-secondary btn-xs summary-pr-create" onClick={() => setPrOpen(true)}><GitPullRequestCreate size={12} aria-hidden="true" /> {t('summary.pr.create')}</button>
+            : compareUrl(repo) && <button type="button" className="btn btn-ghost btn-xs summary-pr-create" title={t('summary.pr.noGh')} onClick={() => void platform().opener.openUrl(compareUrl(repo)!)}><GitPullRequestCreate size={12} aria-hidden="true" /> {t('summary.pr.createOnGithub')}</button>
+        )}
       </SummaryCard>
     )
   }
-  if (artifacts.length > 0) {
+  const results = summary?.results.filter((item) => item.exists) ?? []
+  if (results.length > 0) {
+    cards.results = (
+      <SummaryCard id="results" icon={<FileStack size={14} />} title={t('summary.results.title')} meta={String(results.length)}
+        onOpen={() => openView(sessionId, 'files')} openLabel={t('summary.results.open')} prefs={prefs} onPrefs={update}>
+        <ul className="summary-list">
+          {results.slice(0, 5).map((item) => (
+            <li key={item.path}>
+              <button type="button" className="summary-link" disabled={!files} title={item.path} onClick={() => files?.open(item.path)}>{item.name}</button>
+            </li>
+          ))}
+        </ul>
+      </SummaryCard>
+    )
+  } else if (artifacts.length > 0) {
     cards.results = (
       <SummaryCard id="results" icon={<FileStack size={14} />} title={t('summary.results.title')} meta={String(artifacts.length)}
         onOpen={() => useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'artifacts' })} openLabel={t('summary.results.open')} prefs={prefs} onPrefs={update}>
@@ -175,6 +220,37 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
             </li>
           ))}
         </ul>
+      </SummaryCard>
+    )
+  }
+  if (summary && summary.sourcesTotal > 0) {
+    const pages = allSources ? summary.pages : summary.pages.slice(0, 4)
+    const searches = allSources ? summary.searches : summary.searches.slice(0, 2)
+    const more = summary.pages.length + summary.searches.length - pages.length - searches.length
+    cards.sources = (
+      <SummaryCard id="sources" icon={<Globe size={14} />} title={t('summary.sources.title')} meta={String(summary.sourcesTotal)} prefs={prefs} onPrefs={update}>
+        <ul className="summary-list">
+          {pages.map((page) => (
+            <li key={page.url}><button type="button" className="summary-link" title={page.url} onClick={() => openInPanel(page.url)}>{page.title || hostOf(page.url)}</button></li>
+          ))}
+          {searches.map((search) => <li key={search.query}>{t('summary.sources.search', { query: search.query })}</li>)}
+          {summary.mcp.map((entry) => <li key={entry.connector}>{t('summary.sources.mcp', { connector: entry.connector, n: entry.calls })}</li>)}
+        </ul>
+        {(more > 0 || allSources) && (
+          <button type="button" className="summary-link" onClick={() => setAllSources((value) => !value)}>{allSources ? t('summary.sources.less') : t('summary.sources.all', { n: more })}</button>
+        )}
+      </SummaryCard>
+    )
+  }
+  if (summary && (summary.mcpServers.length > 0 || summary.skills.length > 0)) {
+    cards.connectors = (
+      <SummaryCard id="connectors" icon={<Plug size={14} />} title={t('summary.connectors.title')} meta={String(summary.mcpServers.length + summary.skills.length)} prefs={prefs} onPrefs={update}>
+        {summary.mcpServers.length > 0 && (
+          <ul className="summary-list">
+            {summary.mcpServers.map((server) => <li key={server.name} data-live={server.connected || undefined} data-off={!server.connected || undefined}>{server.name}</li>)}
+          </ul>
+        )}
+        {summary.skills.length > 0 && <p className="summary-line">{t('summary.connectors.skills', { names: summary.skills.map((skill) => skill.name).join(', ') })}</p>}
       </SummaryCard>
     )
   }
@@ -189,11 +265,16 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
       </SummaryCard>
     )
   }
-  if (running > 0 || schedules.length > 0) {
+  const processes = summary ? summary.processes.length : running
+  const scheduledCount = summary ? summary.scheduled.filter((task) => task.enabled).length : schedules.length
+  if (processes > 0 || scheduledCount > 0) {
     cards.background = (
       <SummaryCard id="background" icon={<Server size={14} />} title={t('summary.background.title')} meta={null} prefs={prefs} onPrefs={update}>
-        {running > 0 && <button type="button" className="summary-link" onClick={() => openView(sessionId, 'terminal')}>{t('terminal.agentRunning', { n: running })}</button>}
-        {schedules.length > 0 && <button type="button" className="summary-link" onClick={() => goSchedules()}>{t(schedules.length === 1 ? 'summary.background.scheduleOne' : 'summary.background.schedules', { n: schedules.length })}</button>}
+        {processes > 0 && <button type="button" className="summary-link" onClick={() => openView(sessionId, 'terminal')}>{t('terminal.agentRunning', { n: processes })}</button>}
+        {summary && summary.processes.length > 0 && (
+          <ul className="summary-list">{summary.processes.slice(0, 3).map((process) => <li key={process.id} className="is-mono" data-live>{process.command}</li>)}</ul>
+        )}
+        {scheduledCount > 0 && <button type="button" className="summary-link" onClick={() => goSchedules()}>{t(scheduledCount === 1 ? 'summary.background.scheduleOne' : 'summary.background.schedules', { n: scheduledCount })}</button>}
       </SummaryCard>
     )
   }
@@ -208,6 +289,16 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
         <SummaryMenu prefs={prefs} onPrefs={update} />
         <button type="button" className="pane-header-icon" aria-label={t('summary.close')} title={t('summary.close')} onClick={onClose}><X size={14} /></button>
       </header>
+      {repo?.branch && prOpen && (
+        <CreatePrDialog
+          open={prOpen}
+          onClose={() => setPrOpen(false)}
+          sessionId={sessionId}
+          branch={repo.branch}
+          defaultTitle={record?.title ?? repo.branch}
+          defaultBase={repo.upstream && !repo.upstream.endsWith(`/${repo.branch}`) ? repo.upstream.replace(/^[^/]+\//, '') : 'main'}
+        />
+      )}
       <div className="summary-cards">
         {shown.map((id) => <div key={id} className="summary-slot">{cards[id]}</div>)}
         {shown.length === 0 && <p className="summary-empty">{t('summary.empty')}</p>}
@@ -215,6 +306,8 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
     </div>
   )
 }
+
+const hostOf = (url: string) => { try { return new URL(url).host } catch { return url } }
 
 function SummaryCard({ id, icon, title, meta, onOpen, openLabel, prefs, onPrefs, children }: {
   id: SummaryCardId

@@ -139,6 +139,8 @@ export const scenarios = {
       title: Array.from({ length: 4 }, () => ({ text: 'Plan de tarjetas' })),
       main: [
         { text: ['# Tarjetas regalo: venta en caja', '', 'Vender tarjetas desde la caja y guardar el saldo.', '', '## Pasos', '1. Crear el modelo GiftCard.', '2. Añadir POST /api/tarjetas.', '3. Pantalla de venta.', '', '## Pruebas', '- Saldo inicial correcto.'].join('\n') },
+        { text: ['# Tarjetas regalo: venta en caja', '', 'Con la tabla existente.', '', '## Pasos', '1. Crear el modelo GiftCard.', '2. Usar la tabla existente.', '3. Pantalla de venta.'].join('\n') },
+        { text: 'IMPLEMENTADO' },
         { text: 'EXTRA' },
       ],
     }, laneOf),

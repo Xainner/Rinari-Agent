@@ -52,7 +52,7 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
       {final?.type === 'model' && (timeline.mode === 'plan' && !provisional
         ? (
           // El plan, como tarjeta compacta; entero en la vista «Plan» del panel lateral (#55).
-          <PlanCard content={final.content} actions={planActions}>
+          <PlanCard content={final.content} turnId={timeline.turnId} actions={planActions}>
             {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
           </PlanCard>
         )

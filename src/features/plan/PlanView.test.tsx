@@ -2,7 +2,7 @@
 // Plan 0.4.0 #55: los planes de la conversación y su vista en el panel lateral.
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { TurnTimeline } from '../activity/types'
 import { parsePlan, sessionPlans } from './planModel'
@@ -100,4 +100,35 @@ it('la tarjeta del chat es compacta: título, pasos a la vista y «Ver plan» ab
   expect(within(card).getByText('y 2 pasos más')).toBeTruthy()
   await userEvent.click(within(card).getByRole('button', { name: 'Ver plan' }))
   expect(useSessionDockStore.getState().layoutFor('s1').views).toEqual(['plan'])
+})
+
+it('un ajuste es la versión siguiente de su plan, y la vista resalta lo que cambió', async () => {
+  const v1 = plan('t1', 1000)
+  const v2: TurnTimeline = {
+    ...plan('t2', 2000, ['# Tarjetas regalo: venta en caja', '', '1. Crear el modelo GiftCard.', '2. Usar la tabla existente.', '3. Pantalla de venta.'].join('\n')),
+    origin: { kind: 'user', source: 'plan_adjust', plan_turn_id: 't1', comment: 'usa la tabla existente' },
+  }
+  const plans = sessionPlans({ t1: v1, t2: v2 })
+  expect(plans.map((entry) => [entry.turnId, entry.version])).toEqual([['t2', 2], ['t1', 1]])
+  expect(plans[0]!.comment).toBe('usa la tabla existente')
+})
+
+it('«Ajustar» abre un campo en la tarjeta y arranca el turno por su origen, sin burbuja', async () => {
+  const { engineApi } = await import('../../services/engine')
+  const start = vi.spyOn(engineApi, 'startPlanTurn').mockResolvedValue({ status: 'started', turn_id: 't9', session_id: 's1' })
+  const { default: PlanAdjust } = await import('./PlanAdjust')
+  render(<I18nProvider lang="es"><PlanAdjust sessionId="s1" planTurnId="t1" /></I18nProvider>)
+  await userEvent.click(screen.getByRole('button', { name: 'Ajustar' }))
+  await userEvent.type(screen.getByRole('textbox', { name: 'Qué cambiar del plan' }), 'quita la migración{Enter}')
+  expect(start).toHaveBeenCalledWith('s1', { kind: 'user', source: 'plan_adjust', plan_turn_id: 't1', comment: 'quita la migración' })
+  start.mockRestore()
+})
+
+it('implementar o ajustar un plan se ve como separador, no como un mensaje del dueño', async () => {
+  const { default: MessageBubble } = await import('../../components/MessageBubble')
+  const { rerender } = render(<I18nProvider lang="es"><MessageBubble message={{ id: 'm1', role: 'user', createdAt: 0, content: '', origin: { kind: 'user', source: 'plan_implement', plan_turn_id: 't1', plan_title: 'Tarjetas regalo' } }} /></I18nProvider>)
+  expect(screen.getByTestId('plan-separator').textContent).toBe('Implementando el plan · Tarjetas regalo')
+  rerender(<I18nProvider lang="es"><MessageBubble message={{ id: 'm2', role: 'user', createdAt: 0, content: '', origin: { kind: 'user', source: 'plan_adjust', plan_turn_id: 't1', comment: 'usa la tabla' } }} /></I18nProvider>)
+  expect(screen.getByTestId('plan-separator').textContent).toBe('Ajuste del plan: usa la tabla')
+  expect(screen.queryByTestId('user-message-bubble')).toBeNull()
 })

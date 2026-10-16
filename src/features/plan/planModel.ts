@@ -3,6 +3,11 @@ import type { TurnTimeline } from '../activity/types'
 /** Un plan de la conversación: el resultado final de un turno PLAN terminado (plan 0.4.0 #55). */
 export interface PlanEntry {
   turnId: string
+  /** 1 para un plan nuevo; un ajuste es la versión siguiente de su plan (#55). */
+  version: number
+  /** El plan que este ajustó, y el comentario del ajuste. */
+  parentId: string | null
+  comment: string | null
   startedAt: number
   content: string
   title: string
@@ -20,7 +25,7 @@ const BULLET = /^\s{0,3}[-*+]\s+(.+)$/
 const plain = (text: string) => text.replace(/\*\*|__|`/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim()
 
 /** Título, pasos, resumen y secciones de un plan en Markdown, sin inventar lo que no dice. */
-export function parsePlan(content: string): Omit<PlanEntry, 'turnId' | 'startedAt' | 'content'> {
+export function parsePlan(content: string): Omit<PlanEntry, 'turnId' | 'startedAt' | 'content' | 'version' | 'parentId' | 'comment'> {
   const lines = content.split('\n')
   const heading = lines.map((line) => HEADING.exec(line)).find(Boolean)
   const firstLine = lines.find((line) => line.trim())?.trim() ?? ''
@@ -63,7 +68,24 @@ export function sessionPlans(timelines: Record<string, TurnTimeline>): PlanEntry
     if (timeline.mode !== 'plan' || timeline.status !== 'completed') continue
     const final = [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
     if (!final || final.type !== 'model' || !final.content) continue
-    plans.push({ turnId: timeline.turnId, startedAt: timeline.startedAt, content: final.content, ...parsePlan(final.content) })
+    const adjust = timeline.origin?.source === 'plan_adjust' ? timeline.origin : null
+    plans.push({
+      turnId: timeline.turnId,
+      startedAt: timeline.startedAt,
+      content: final.content,
+      version: 1,
+      parentId: adjust?.plan_turn_id ?? null,
+      comment: adjust?.comment ?? null,
+      ...parsePlan(final.content),
+    })
   }
+  const byId = new Map(plans.map((plan) => [plan.turnId, plan]))
+  const versionOf = (plan: PlanEntry, seen = new Set<string>()): number => {
+    const parent = plan.parentId ? byId.get(plan.parentId) : undefined
+    if (!parent || seen.has(parent.turnId)) return 1
+    seen.add(plan.turnId)
+    return versionOf(parent, seen) + 1
+  }
+  for (const plan of plans) plan.version = versionOf(plan)
   return plans.sort((a, b) => b.startedAt - a.startedAt)
 }

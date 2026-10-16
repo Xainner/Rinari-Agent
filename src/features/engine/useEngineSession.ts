@@ -12,7 +12,8 @@ import { useProjectPromotionReveal } from '../projects/useProjectPromotionReveal
 import { useProjectRootWatch } from '../projects/useProjectRootWatch'
 import { useSessionList } from './useSessionList'
 import { useTurnRuntime } from './useTurnRuntime'
-import { selectSessionModel } from './sessionSelectors'
+import { selectSessionModel, selectSessionTimelines } from './sessionSelectors'
+import { sessionPlans } from '../plan/planModel'
 import { useSessionUiStore } from '../../stores/sessionUi'
 import { sessionForDraft, useConversationDraftStore, type ConversationDraft } from '../../stores/conversationDraft'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
@@ -305,9 +306,16 @@ export function useEngineSession() {
 
   // -- plan --------------------------------------------------------------------
 
-  const implementPlanFor = useCallback(async (sessionId: string): Promise<boolean> => {
+  const implementPlanFor = useCallback(async (sessionId: string, planTurnId?: string): Promise<boolean> => {
     if (!sessionId || runtime.store.getState().busySessions.has(sessionId)) return false
     try {
+      // El turno arranca por su origen (#55): sin burbuja del usuario; el Engine
+      // pasa a BUILD, escribe la instrucción y siembra los pasos del plan.
+      const plan = planTurnId ?? sessionPlans(selectSessionTimelines(runtime.store.getState(), sessionId))[0]?.turnId
+      if (plan) {
+        await engineApi.startPlanTurn(sessionId, { kind: 'user', source: 'plan_implement', plan_turn_id: plan })
+        return true
+      }
       const ok = await sessions.setModeFor(sessionId, 'build')
       if (!ok) return false
       // En el idioma de la interfaz: es un mensaje de la app enviado como del usuario.

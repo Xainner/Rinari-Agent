@@ -1925,6 +1925,17 @@ html[data-motion='reduced'] .summary-slot { animation: none; }
 .plan-card-more { list-style: none; margin-left: -20px; font-size: 12px; color: var(--text-subtle); }
 .plan-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line-1); }
 .plan-card-question { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--text-muted); text-align: right; }
+.plan-card-version { height: 18px; font-size: 10.5px; font-family: var(--font-mono); }
+.plan-card-head .plan-card-version + .plan-card-count, .plan-card-head .plan-card-version { margin-left: auto; }
+.plan-card-head .plan-card-version + .plan-card-count { margin-left: 0; }
+.plan-adjust { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 6px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.plan-adjust .field-input { flex: 1 1 14rem; width: auto; padding: 6px 10px; font-size: 12.5px; }
+.plan-separator .plan-separator-text { max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-view-title .plan-card-version { margin-left: 8px; vertical-align: 3px; }
+.plan-view-changed { margin: -6px 0 12px; font-size: 12px; color: var(--accent-2); }
+.plan-view-steps li[data-new] { color: var(--success); }
+.plan-step-new { height: 16px; margin-left: 6px; padding: 0 6px; font-size: 10px; vertical-align: 1px; }
+.plan-view-removed { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-subtle); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--danger) 60%, transparent); }
 /* Vista «Plan» del panel lateral (#55): el plan completo, con las acciones arriba y fijas. */
 .plan-view { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 .plan-view-bar { position: sticky; top: 0; z-index: 1; display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line-1); background: color-mix(in srgb, var(--bg-elevated) 70%, transparent); }

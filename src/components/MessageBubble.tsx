@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Flag, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, FileText, Flag, Hammer, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
@@ -87,6 +87,11 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
 
   if (message.role === 'user' && message.origin?.kind === 'peer') {
     return <PeerBubble message={message} />
+  }
+
+  // Implementar o ajustar un plan tampoco es algo que el dueño escribió (#55).
+  if (message.role === 'user' && (message.origin?.source === 'plan_implement' || message.origin?.source === 'plan_adjust')) {
+    return <PlanSeparator kind={message.origin.source === 'plan_adjust' ? 'adjust' : 'implement'} title={message.origin.plan_title ?? null} comment={message.origin.comment ?? null} />
   }
 
   // A turn the goal started is not something the owner wrote: a separator.
@@ -247,6 +252,18 @@ function ForwardedBadge({ sessionId }: { sessionId: string }) {
       <MessageSquareShare size={11} aria-hidden="true" />
       {t('board.peers.forwardedFrom', { label })}
     </span>
+  )
+}
+
+function PlanSeparator({ kind, title, comment }: { kind: 'implement' | 'adjust'; title: string | null; comment: string | null }) {
+  const { t } = useI18n()
+  const text = kind === 'adjust'
+    ? (comment ? t('plan.separator.adjust', { comment }) : t('plan.separator.adjustPlain'))
+    : (title ? t('plan.separator.implement', { title }) : t('plan.separator.implementPlain'))
+  return (
+    <div data-testid="plan-separator" data-kind={kind} className="goal-separator plan-separator" role="separator">
+      <span title={text}>{kind === 'adjust' ? <PencilLine size={11} aria-hidden="true" /> : <Hammer size={11} aria-hidden="true" />}<span className="plan-separator-text">{text}</span></span>
+    </div>
   )
 }
 

@@ -7,6 +7,7 @@ import type { RuntimeStore } from '../engine/runtimeStore'
 import { useSessionTimelines } from '../engine/sessionSelectors'
 import type { TurnTimeline } from '../activity/types'
 import { sessionPlans, type PlanEntry } from './planModel'
+import PlanAdjust from './PlanAdjust'
 
 /**
  * La vista «Plan» del panel lateral (plan 0.4.0 #55): el plan completo bien
@@ -45,6 +46,9 @@ function Body({ sessionId, timelines }: { sessionId: string; timelines: Record<s
 
   if (!plan) return <p className="plan-view-empty"><NotebookText size={16} aria-hidden="true" /> {t('plan.view.none')}</p>
   const latest = plan.turnId === latestId
+  // Lo que cambió respecto de la versión anterior del mismo plan.
+  const parent = plan.parentId ? plans.find((entry) => entry.turnId === plan.parentId) ?? null : null
+  const removed = parent ? parent.steps.filter((step) => !plan.steps.includes(step)) : []
   return (
     <div className="plan-view" data-testid="plan-view" data-turn-id={plan.turnId}>
       <div className="plan-view-bar">
@@ -52,12 +56,13 @@ function Body({ sessionId, timelines }: { sessionId: string; timelines: Record<s
           <select className="changes-turn-select" aria-label={t('plan.view.pick')} value={plan.turnId} onChange={(event) => setSelectedId(event.target.value)}>
             {plans.map((entry, index) => (
               <option key={entry.turnId} value={entry.turnId}>
-                {index === 0 ? t('plan.view.latest', { time: clock(entry.startedAt) }) : t('plan.view.at', { time: clock(entry.startedAt) })}
+                {`${index === 0 ? t('plan.view.latest', { time: clock(entry.startedAt) }) : t('plan.view.at', { time: clock(entry.startedAt) })}${entry.version > 1 ? ` · ${t('plan.view.version', { n: entry.version })}` : ''}`}
               </option>
             ))}
           </select>
         ) : <span className="plan-view-when">{t('plan.view.at', { time: clock(plan.startedAt) })}</span>}
         <span className="flex-1" />
+        {latest && <PlanAdjust sessionId={sessionId} planTurnId={plan.turnId} disabled={busy} />}
         {latest && commands && (
           <button
             type="button"
@@ -73,11 +78,23 @@ function Body({ sessionId, timelines }: { sessionId: string; timelines: Record<s
         )}
       </div>
       <div className="plan-view-body">
-        <h2 className="plan-view-title">{plan.title || t('plan.view.untitled')}</h2>
+        <h2 className="plan-view-title">
+          {plan.title || t('plan.view.untitled')}
+          {plan.version > 1 && <span className="r-chip plan-card-version" data-tone="accent">{t('plan.view.version', { n: plan.version })}</span>}
+        </h2>
+        {parent && <p className="plan-view-changed">{t('plan.view.changed', { n: parent.version })}{plan.comment ? ` · «${plan.comment}»` : ''}</p>}
         {plan.steps.length > 0 && (
           <section className="plan-view-steps" aria-label={t('plan.view.steps', { n: plan.steps.length })}>
             <p className="plan-view-label"><ListOrdered size={12} aria-hidden="true" /> {t('plan.view.steps', { n: plan.steps.length })}</p>
-            <ol>{plan.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+            <ol>
+              {plan.steps.map((step, index) => {
+                const fresh = parent !== null && !parent.steps.includes(step)
+                return <li key={index} data-new={fresh || undefined}>{step}{fresh && <span className="r-chip plan-step-new" data-tone="success">{t('plan.view.newStep')}</span>}</li>
+              })}
+            </ol>
+            {removed.length > 0 && (
+              <ul className="plan-view-removed">{removed.map((step) => <li key={step}>{t('plan.view.removed', { step })}</li>)}</ul>
+            )}
           </section>
         )}
         {plan.sections.map((section, index) => section.title ? (

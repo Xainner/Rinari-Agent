@@ -6,7 +6,7 @@ Estado: **en curso** (el dueño dio inicio el 2026-10-15). Se trabaja por bloque
 
 | Bloque | Estado |
 |---|---|
-| 1. Robustez del Engine | En curso: hechos 61a, 61b, 66e, 66a, títulos (48.7 + 61e) y del 48 la descarga por partes, nombres tolerantes, salidas MCP fuera de su esquema, progreso MCP y el detector de bucles con resultados que cambian; faltan 76 y 53. El recordatorio de la lista de pasos del 48 va con el bloque 5. |
+| 1. Robustez del Engine | Hecho (CLI 34612a3, 53895e9, 0c627b3; Agent ffd288b, af2164e), con la batería del CLI y de la app en verde. Pendiente: los botones «Abrir el archivo» / «Abrir la salida completa» del timeline (#76.8) y el pulido del diálogo de skills, en la sesión de pulido de UI. Ajustes respecto al plan: el tope de descargas queda fijo en 1 GiB hasta la tarjeta de Red del #96; las salidas guardadas no se borran solas a los 7 días (decisión del #91: la limpieza es manual); `fs.read` paginado devuelve el texto tal cual, sin número por línea (así se puede citar en `fs.patch`; `fs.read_lines` sí los lleva); un `fs.write` sobre un archivo que cambió desde la última lectura se rechaza hasta releerlo (`fs.patch` con texto exacto no lo necesita). El recordatorio de la lista de pasos del 48 va con el bloque 5. |
 
 - Ramas `0.4.0` en Rinari-Agent y Rinari-CLI, creadas desde `main` el 2026-10-10 (se llamaban `0.3.2`; renombradas en local el 2026-10-14, el remoto `origin/0.3.2` se reemplaza al subir). En `main` están la 0.3.1 (tag `v0.3.1` en 5d4fab5) y el Engine 2a94168.
 - Lo urgente no pasa por aquí: va en una rama `hotfix/…` creada desde `main`.

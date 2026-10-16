@@ -142,6 +142,8 @@ export type DesktopCommand =
   | "queue_clear"
   | "queue_list"
   | "queue_resume"
+  | "repo_pr_create"
+  | "repo_status"
   | "resume_settings_get"
   | "resume_settings_set"
   | "schedule_create"
@@ -185,6 +187,7 @@ export type DesktopCommand =
   | "session_resume_cancel"
   | "session_resume_get"
   | "session_resume_now"
+  | "session_summary"
   | "session_timeline"
   | "skill_disable"
   | "skill_duplicates_dismiss"
@@ -388,6 +391,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "repo_pr_create",
+  "repo_status",
   "resume_settings_get",
   "resume_settings_set",
   "schedule_create",
@@ -431,6 +436,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_resume_cancel",
   "session_resume_get",
   "session_resume_now",
+  "session_summary",
   "session_timeline",
   "skill_disable",
   "skill_duplicates_dismiss",
@@ -649,6 +655,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "repo_pr_create",
+  "repo_status",
   "resume_settings_get",
   "resume_settings_set",
   "schedule_create",
@@ -692,6 +700,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_resume_cancel",
   "session_resume_get",
   "session_resume_now",
+  "session_summary",
   "session_timeline",
   "skill_disable",
   "skill_duplicates_dismiss",

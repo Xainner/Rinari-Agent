@@ -2409,6 +2409,7 @@ export const es = {
   'git.branchChanged.lastWork': 'Cambió la rama desde el último trabajo aquí ({when}): {from} → {to}.',
   'git.branchChanged.firstSeen': 'Cambió la rama desde que Rinari vio este checkout ({when}): {from} → {to}.',
   'turn.stoppedFallback': 'Turno detenido.',
+  'turn.emptyResponse': 'El modelo terminó sin responder.',
   'turn.loop.same-tool-args': 'Detenido: repetía la misma llamada a una herramienta.',
   'turn.loop.two-action-oscillation': 'Detenido: alternaba entre las mismas dos acciones.',
   'turn.loop.repeated-rewrites': 'Detenido: deshacía y rehacía el mismo cambio en un archivo.',

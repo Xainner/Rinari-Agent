@@ -154,6 +154,8 @@ const LOOP_KINDS = ['same-tool-args', 'two-action-oscillation', 'repeated-rewrit
 
 /** Un corte por bucle se dice en el idioma de la app; el texto técnico del Engine queda en el título. */
 export function stopText(reason: TurnStopReason, t: (key: I18nKey, vars?: Record<string, string | number>) => string): string {
+  // Dos respuestas vacías seguidas (#66a): el texto del Engine es técnico y en inglés.
+  if (reason.code === 'empty_response') return t('turn.emptyResponse')
   if (reason.loop) return t(`turn.loop.${LOOP_KINDS.includes(reason.loop) ? reason.loop : 'other'}` as I18nKey)
   if (reason.budget) {
     const key = BUDGET_KINDS.includes(reason.budget) && reason.limit !== undefined ? reason.budget : 'other'

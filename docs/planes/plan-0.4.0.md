@@ -1,6 +1,12 @@
 # Plan 0.4.0
 
-Estado: **en revisión, con las decisiones tomadas**. No se implementa nada hasta que el dueño diga «iniciamos».
+Estado: **en curso** (el dueño dio inicio el 2026-10-15). Se trabaja por bloques en las ramas `0.4.0`, con commits locales; la Nightly (`npm run nightly`) instala lo que va entrando.
+
+## Avance
+
+| Bloque | Estado |
+|---|---|
+| 1. Robustez del Engine | En curso: hechos 61a, 61b, 66e, 66a, títulos (48.7 + 61e) y del 48 la descarga por partes, nombres tolerantes, salidas MCP fuera de su esquema, progreso MCP y el detector de bucles con resultados que cambian; faltan 76 y 53. El recordatorio de la lista de pasos del 48 va con el bloque 5. |
 
 - Ramas `0.4.0` en Rinari-Agent y Rinari-CLI, creadas desde `main` el 2026-10-10 (se llamaban `0.3.2`; renombradas en local el 2026-10-14, el remoto `origin/0.3.2` se reemplaza al subir). En `main` están la 0.3.1 (tag `v0.3.1` en 5d4fab5) y el Engine 2a94168.
 - Lo urgente no pasa por aquí: va en una rama `hotfix/…` creada desde `main`.

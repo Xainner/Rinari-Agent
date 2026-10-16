@@ -2391,6 +2391,7 @@ export const en: Record<I18nKey, string> = {
   'git.branchChanged.lastWork': 'The branch changed since the last work here ({when}): {from} → {to}.',
   'git.branchChanged.firstSeen': 'The branch changed since Rinari first saw this checkout ({when}): {from} → {to}.',
   'turn.stoppedFallback': 'Turn stopped.',
+  'turn.emptyResponse': 'The model ended without replying.',
   'turn.loop.same-tool-args': 'Stopped: it kept repeating the same tool call.',
   'turn.loop.two-action-oscillation': 'Stopped: it kept alternating between the same two actions.',
   'turn.loop.repeated-rewrites': 'Stopped: it kept undoing and redoing the same change to a file.',

@@ -132,6 +132,26 @@ export const scenarios = {
       ],
     }, laneOf),
   },
+  'presented-files': {
+    title: 'Entregas: cada archivo de file.present por lo que es, el audio suena en la tarjeta y el CSV abre Archivos',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Entrega del trimestre' })),
+      main: [
+        { tool: 'file.present', args: { items: [
+          { path: 'out/portada.png', caption: 'Portada en violeta' },
+          { path: 'out/ventas.csv' },
+          { path: 'out/notas.md' },
+          { path: 'out/informe.pdf' },
+          { path: 'out/tono.wav', caption: 'Tono de prueba' },
+          { path: 'out/sitio' },
+          { url: 'https://example.com/docs/entrega' },
+        ] }, say: 'Te lo entrego.' },
+        { text: 'ENTREGADO' },
+        { text: 'EXTRA' },
+      ],
+    }, laneOf),
+  },
   'plan-panel': {
     title: 'Plan: al terminar un turno PLAN la vista Plan del panel lateral se abre sola, con su botón',
     phases: ['exercise'],

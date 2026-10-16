@@ -127,11 +127,6 @@ function FallbackNotice({ item }: { item: Extract<TimelineItem, { type: 'system'
   return <ActivityNotice testId="model-fallback" tone="warning" icon={<LifeBuoy size={12} />}>{t('activity.fallback', { model: name, reason: why })}</ActivityNotice>
 }
 
-/**
- * Un aviso del turno que no es una acción: el modelo de respaldo, un protocolo
- * aprendido, un razonamiento que el modelo no admite, imágenes que no se
- * leyeron. Una sola fila con icono y tono, en la familia del timeline.
- */
 /** Rinari quiso escuchar un audio y falta el motor del dictado (#36): el camino para instalarlo. */
 function SpeechSetupNotice({ file }: { file: string }) {
   const { t } = useI18n()
@@ -139,11 +134,16 @@ function SpeechSetupNotice({ file }: { file: string }) {
   return (
     <ActivityNotice testId="speech-setup" tone="warning" icon={<Mic size={12} />}>
       {t('activity.speechSetup', { file })}{' '}
-      <button type="button" className="underline underline-offset-2" onClick={() => goSettings('dictation')}>{t('activity.speechSetupAction')}</button>
+      <button type="button" className="act-notice-action" onClick={() => goSettings('dictation')}>{t('activity.speechSetupAction')}</button>
     </ActivityNotice>
   )
 }
 
+/**
+ * Un aviso del turno que no es una acción: el modelo de respaldo, un protocolo
+ * aprendido, un razonamiento que el modelo no admite, imágenes que no se
+ * leyeron. Una sola fila con icono y tono, en la familia del timeline.
+ */
 function ActivityNotice({ testId, tone, icon, children }: { testId: string; tone: 'warning' | 'info'; icon: ReactNode; children: ReactNode }) {
   return (
     <p data-testid={testId} className="act-notice" data-tone={tone}>

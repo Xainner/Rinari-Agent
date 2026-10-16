@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, Mic, Trash2, X } from 'lucide-react'
+import { Download, Mic, Trash2, X, Ear } from 'lucide-react'
 import { toast } from 'sonner'
 import { Switch } from '../../components/ui/switch'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -120,6 +120,12 @@ export default function DictationSettings() {
         </h2>
         <p className="mt-1 text-sm text-[var(--text-muted)]">{t('dictation.desc')}</p>
       </div>
+
+      {/* #36: el mismo motor es el «oído» de Rinari para revisar audios. */}
+      <p className="dictation-ears" data-testid="dictation-ears">
+        <span className="dictation-ears-icon" aria-hidden="true"><Ear size={14} /></span>
+        <span>{status.model && status.models.some((model) => model.id === status.model && model.installed) ? t('dictation.ears', { model: status.model }) : t('dictation.earsNoModel')}</span>
+      </p>
 
       {!status.binary_found && <p role="status" className="text-sm text-[var(--warning)]">{t('dictation.noBinary')}</p>}
 

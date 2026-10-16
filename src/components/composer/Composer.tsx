@@ -3,10 +3,11 @@ import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Check, Columns3, FileText, Film, Image as ImageIcon, LoaderCircle, MessageSquareShare, Music, Pause, Play, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
+import { AttachmentPlayer, isPlayableAttachment } from '../AttachmentMedia'
 import { cn } from '../../lib/utils'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from '../AttachmentReading'
 
@@ -230,6 +231,8 @@ export default function Composer({
   // «Acceso completo» se confirma en un diálogo antes de pedirlo.
   const [confirmFullAccess, setConfirmFullAccess] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
+  // El audio o video adjunto que suena bajo los chips (#57), uno a la vez.
+  const [playingId, setPlayingId] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -239,6 +242,7 @@ export default function Composer({
     if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
   const attachments = draft.attachments
+  const playing = sessionId && playingId ? attachments.find((file) => file.id === playingId && file.uri) : undefined
   const addAttachmentFor = useComposerStore((s) => s.addAttachmentFor)
   const updateAttachmentFor = useComposerStore((s) => s.updateAttachmentFor)
   const removeAttachmentFor = useComposerStore((s) => s.removeAttachmentFor)
@@ -757,10 +761,18 @@ export default function Composer({
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
               <span key={`${file.path}:${file.name}`} className="inline-flex max-w-[320px] items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)]">
-                <button type="button" onClick={() => void openAttachmentPreview(file)} className="inline-flex min-w-0 items-center gap-1.5 rounded px-0.5 text-left hover:text-[var(--text)]" title={t('attach.openPreview')}>
-                  {file.previewUrl ? <img src={file.previewUrl} alt="" className="size-7 rounded object-cover" /> : file.kind === 'image' ? <ImageIcon size={12} className="shrink-0" /> : <FileText size={12} className="shrink-0" />}
-                  <span className="truncate">{file.name}</span>
-                </button>
+                {isPlayableAttachment(file) ? (
+                  <button type="button" disabled={!sessionId || !file.uri} onClick={() => setPlayingId((current) => (current === file.id ? null : file.id))} className="attach-chip-play" aria-pressed={playingId === file.id} aria-label={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })} title={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })}>
+                    <span className="attach-chip-play-icon" aria-hidden="true">{playingId === file.id ? <Pause size={10} /> : <Play size={10} />}</span>
+                    {file.kind === 'audio' ? <Music size={12} className="shrink-0" aria-hidden="true" /> : <Film size={12} className="shrink-0" aria-hidden="true" />}
+                    <span className="truncate">{file.name}</span>
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => void openAttachmentPreview(file)} className="inline-flex min-w-0 items-center gap-1.5 rounded px-0.5 text-left hover:text-[var(--text)]" title={t('attach.openPreview')}>
+                    {file.previewUrl ? <img src={file.previewUrl} alt="" className="size-7 rounded object-cover" /> : file.kind === 'image' ? <ImageIcon size={12} className="shrink-0" /> : <FileText size={12} className="shrink-0" />}
+                    <span className="truncate">{file.name}</span>
+                  </button>
+                )}
                 <ReadingBadges attachment={file} />
                 {file.warning && <span title={file.warning} className="text-[var(--warning)]">⚠</span>}
                 {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfPages')}<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfVisualPages')}<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">{t('attach.pdfPrepareAgain')}</button></div></details>}
@@ -771,6 +783,7 @@ export default function Composer({
             ))}
           </div>
         )}
+        {playing && sessionId && <div className="mb-2 px-1"><AttachmentPlayer key={playing.id} sessionId={sessionId} attachment={playing} onClose={() => setPlayingId(null)} /></div>}
         {attachmentNotice && <div className="mb-2 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-2 text-[11px] text-[var(--danger)]">{attachmentNotice}</div>}
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-[var(--warning)]/30 p-2 text-xs">{visionRoute?.reason}</div>}
         {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">{t('attach.visionRoute', { destination: visionRoute.destination })}</p>}

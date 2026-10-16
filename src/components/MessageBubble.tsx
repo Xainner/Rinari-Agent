@@ -1,16 +1,39 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Flag, Hammer, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
 import { AttachmentPreview } from './AttachmentPreview'
+import { AttachmentPlayer, isPlayableAttachment } from './AttachmentMedia'
+import { useFileWorkspace } from '../features/files/FileWorkspace'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from './AttachmentReading'
 import Markdown from './Markdown'
 import { RinariAvatar } from '../features/rinari/RinariAvatar'
 
+/** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
+function PlayableAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
+  const { t } = useI18n()
+  const sessionId = useFileWorkspace()?.sessionId
+  const [open, setOpen] = useState(false)
+  if (open && sessionId) return <div className="w-full min-w-[16rem]"><AttachmentPlayer sessionId={sessionId} attachment={attachment} onClose={() => setOpen(false)} /></div>
+  const label = t('attach.play', { name: attachment.name })
+  return (
+    <button type="button" disabled={!sessionId || !attachment.uri} onClick={() => setOpen(true)} className="attach-chip-play is-history" aria-label={label} title={label}>
+      <span className="attach-chip-play-icon" aria-hidden="true"><Play size={10} /></span>
+      {attachment.kind === 'audio' ? <Music size={13} aria-hidden="true" /> : <Film size={13} aria-hidden="true" />}
+      <span className="truncate">{attachment.name}</span>
+    </button>
+  )
+}
+
 function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
+  if (isPlayableAttachment(attachment)) return <PlayableAttachment attachment={attachment} />
+  return <PreviewAttachment attachment={attachment} />
+}
+
+function PreviewAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
   const { t } = useI18n()
   const [previewUrl, setPreviewUrl] = useState(attachment.previewUrl)
   const [previewText, setPreviewText] = useState<string>()

@@ -94,6 +94,23 @@ export const scenarios = {
       ],
     }, laneOf),
   },
+  'goal-dock': {
+    title: 'Objetivo: /goal pone el dock, sigue solo con separador, se bloquea con pista y tope, y se logra con evidencia',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Parser' })),
+      main: [
+        { tool: 'goal.update', args: { status: 'progress', summary: 'Arreglé el lexer.', remaining: 'Faltan dos pruebas.' }, say: 'Arreglo el lexer.' },
+        { text: 'AVANCE UNO' },
+        { tool: 'goal.update', args: { status: 'blocked', summary: 'Las pruebas de red no arrancan.', remaining: 'Necesito saber en qué puerto corre el servidor de pruebas.' }, say: 'Me falta un dato.' },
+        { text: 'NECESITO EL PUERTO' },
+        { tool: 'goal.update', args: { status: 'achieved', summary: 'Las pruebas pasan.', evidence: '42 pruebas pasan en tests/parser' }, say: 'Listo.' },
+        { text: 'OBJETIVO LISTO' },
+        { text: 'EXTRA UNO' },
+        { text: 'EXTRA DOS' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'skill-install': {
     title: 'Instalar skills: varias a la vez con casillas, progreso, chips por fila y confirmación de la que trae avisos',
     phases: ['exercise'],

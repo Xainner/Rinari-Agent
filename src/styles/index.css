@@ -438,6 +438,12 @@ html[data-theme='light'] body::after {
 .r-checkbox:checked::after { clip-path: inset(0); }
 .r-checkbox:indeterminate::after { width: 8px; height: 2px; border-radius: 1px; -webkit-mask: none; mask: none; clip-path: inset(0); }
 .r-checkbox:disabled { cursor: default; opacity: 0.4; }
+/* Chip de estado canónico: el tono lo da data-tone (accent, success, warning, danger; sin tono, neutro). */
+.r-chip { --tone: var(--text-muted); display: inline-flex; height: 20px; align-items: center; gap: 5px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1; white-space: nowrap; color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 30%, transparent); transition: color var(--dur-base), background-color var(--dur-base), box-shadow var(--dur-base); }
+.r-chip[data-tone='accent'] { --tone: var(--accent-2); }
+.r-chip[data-tone='success'] { --tone: var(--success); }
+.r-chip[data-tone='warning'] { --tone: var(--warning); }
+.r-chip[data-tone='danger'] { --tone: var(--danger); }
 :root { --r-checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.2 4.2L19 7'/%3E%3C/svg%3E"); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -806,6 +812,64 @@ input[type='password']::-ms-clear {
 .checklist-mark-bang { stroke: var(--warning); stroke-width: 1.8; }
 @keyframes checklist-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @container (max-width: 420px) { .checklist-count { display: none; } .checklist-items { padding-inline: 4px; } }
+.checklist-complete:hover { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+
+/* Objetivo de la conversación (plan 0.4.0 #23): misma familia que la lista. */
+.goal-dock { container-type: inline-size; display: flex; flex-direction: column; flex-shrink: 0; gap: 6px; margin-bottom: 8px; padding: 6px 6px 6px 7px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: linear-gradient(180deg, rgb(147 88 255 / 0.07), transparent 70%), var(--bg-subtle); box-shadow: var(--inset-hi); transition: border-color var(--dur-slow); }
+.goal-dock[data-enter] { animation: goal-dock-in var(--dur-slow) var(--ease-out) both; }
+.goal-dock[data-tone='success'] { border-color: color-mix(in srgb, var(--success) 34%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--success) 7%, transparent), transparent 70%), var(--bg-subtle); }
+.goal-dock[data-tone='warning'] { border-color: color-mix(in srgb, var(--warning) 38%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 6%, transparent), transparent 70%), var(--bg-subtle); }
+.goal-dock.just-achieved { animation: goal-achieved 0.9s 0.1s var(--ease-out) both; }
+@keyframes goal-dock-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } }
+@keyframes goal-achieved { 0% { box-shadow: var(--inset-hi), 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); } 60% { box-shadow: var(--inset-hi), 0 0 0 8px transparent; } 100% { box-shadow: var(--inset-hi); } }
+.goal-bar { display: flex; min-width: 0; align-items: center; gap: 9px; }
+.goal-mark { position: relative; display: grid; width: 28px; height: 28px; flex-shrink: 0; place-items: center; border-radius: var(--r-sm); color: var(--violet-300); background: rgb(147 88 255 / 0.12); box-shadow: inset 0 0 0 1px rgb(167 139 250 / 0.3); transition: color var(--dur-base), background-color var(--dur-base), box-shadow var(--dur-base); }
+.goal-dock[data-tone='success'] .goal-mark { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 32%, transparent); }
+.goal-dock[data-tone='warning'] .goal-mark { color: var(--warning); background: color-mix(in srgb, var(--warning) 11%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 32%, transparent); }
+.goal-dock[data-tone='neutral'] .goal-mark { color: var(--text-muted); background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--line-2); }
+/* Mientras persigue, un arco de luz recorre el borde de la bandera: el bucle significa «sigue trabajando». */
+@property --goal-orbit { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.goal-mark-orbit { position: absolute; inset: -1px; padding: 1px; border-radius: inherit; background: conic-gradient(from var(--goal-orbit), transparent 0 62%, color-mix(in srgb, var(--violet-200) 85%, transparent) 86%, transparent 100%); -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: goal-orbit 2.6s linear infinite, rinari-fade-in var(--dur-slow) var(--ease-out) both; pointer-events: none; }
+@keyframes goal-orbit { to { --goal-orbit: 360deg; } }
+.goal-text { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: 3px; }
+.goal-objective { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.goal-meta { display: flex; min-width: 0; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-subtle); }
+.goal-chip { height: 18px; flex-shrink: 0; padding: 0 7px; font-size: 10.5px; }
+.goal-actions { display: flex; flex-shrink: 0; align-items: center; gap: 2px; }
+.goal-action { position: relative; }
+.goal-dock .btn[aria-expanded='true'] { color: var(--text); background: var(--bg-active); }
+.goal-action-icon { display: inline-flex; }
+@container (max-width: 560px) {
+  .goal-action { width: 26px; padding: 0; }
+  .goal-action-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.goal-detail { display: flex; margin: 0; padding-left: 37px; font-size: 11.5px; line-height: 1.45; color: var(--text-muted); overflow-wrap: anywhere; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.goal-dock[data-tone='warning'] .goal-detail { color: color-mix(in srgb, var(--warning) 78%, var(--text)); }
+.goal-detail.is-evidence { color: color-mix(in srgb, var(--success) 72%, var(--text)); }
+.goal-owner { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 37px; }
+.goal-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 0 2px 37px; font-size: 11.5px; color: var(--text-muted); animation: goal-form-in var(--dur-base) var(--ease-out) both; }
+@keyframes goal-form-in { from { opacity: 0; transform: translateY(-3px); } }
+.goal-form .field-input { width: auto; height: 28px; min-width: 0; padding: 0 9px; font-size: 12px; }
+.goal-form .btn { min-height: 28px; }
+.goal-form input[type='number'] { appearance: textfield; font-variant-numeric: tabular-nums; }
+.goal-form input[type='number']::-webkit-inner-spin-button, .goal-form input[type='number']::-webkit-outer-spin-button { margin: 0; appearance: none; }
+.goal-form input[name='hint'] { flex: 1 1 14rem; }
+.goal-cap-field { display: inline-flex; align-items: center; gap: 6px; }
+.goal-cap-field .field-input { width: 5.5rem; }
+@media (prefers-reduced-motion: reduce) { .goal-mark-orbit { display: none; } }
+html[data-motion='reduced'] .goal-mark-orbit { display: none; }
+/* Los turnos que sigue el objetivo solos se separan con una etiqueta, no con un mensaje del dueño. */
+.goal-separator { display: flex; width: 100%; align-items: center; gap: 10px; margin: 10px 0; font-size: 11px; font-weight: 600; color: var(--violet-200); }
+.goal-separator::before, .goal-separator::after { content: ''; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, transparent, rgb(167 139 250 / 0.32)); }
+.goal-separator::after { background: linear-gradient(90deg, rgb(167 139 250 / 0.32), transparent); }
+.goal-separator > span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: rgb(147 88 255 / 0.08); box-shadow: inset 0 0 0 1px rgb(167 139 250 / 0.22); font-variant-numeric: tabular-nums; }
+/* Motivos de la verificación: el punto lleva el tono del resultado. */
+.verification-reasons { display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--text-subtle); }
+.verification-reasons li { display: flex; min-width: 0; gap: 8px; overflow-wrap: anywhere; }
+.verification-reasons li::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; margin-top: 7px; border-radius: 999px; background: var(--line-3); }
+.act-row[data-tone='warn'] .verification-reasons li::before { background: var(--warning); }
+.act-row[data-tone='failed'] .verification-reasons li::before { background: var(--danger); }
+.act-row > summary[data-static] { cursor: default; }
 .processes-dock { container-type: inline-size; position: static; margin-bottom: 8px; max-height: 460px; max-height: min(460px, 48dvh); overflow-y: auto; overscroll-behavior: contain; }
 .conversation-composer-slot .processes-dock { flex-shrink: 0; }
 /* Fundido de salida del teardown final: la raíz persiste ~260ms tras
@@ -1613,11 +1677,7 @@ select option:disabled { color: var(--text-subtle); }
 .skill-row-detail { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 3px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .skill-row-problem { flex-flow: row wrap; align-items: center; }
 .skill-row-problem p { min-width: 0; font-size: 12px; color: var(--danger); overflow-wrap: anywhere; }
-.skill-status { --tone: var(--text-muted); display: inline-flex; height: 22px; align-items: center; gap: 5px; padding: 0 9px 0 7px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent); transition: color var(--dur-base), background-color var(--dur-base), box-shadow var(--dur-base); animation: rinari-fade-in var(--dur-fast) var(--ease-out) both; }
-.skill-status[data-state='installing'] { --tone: var(--accent-2); }
-.skill-status[data-state='installed'] { --tone: var(--success); }
-.skill-status[data-state='confirm'], .skill-status[data-state='large'] { --tone: var(--warning); }
-.skill-status[data-state='error'] { --tone: var(--danger); }
+.skill-status { height: 22px; padding: 0 9px 0 7px; animation: rinari-fade-in var(--dur-fast) var(--ease-out) both; }
 .skill-status.is-fresh { animation: skill-status-ring 0.9s 0.1s var(--ease-out) both; }
 @keyframes skill-status-ring { from { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent), 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent); } to { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent), 0 0 0 7px transparent; } }
 .install-skill-error { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-sm); font-size: 12px; color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 30%, transparent); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }

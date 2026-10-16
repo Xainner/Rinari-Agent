@@ -11,6 +11,8 @@ export interface UiCommandDeps {
   reveal: (sessionId: string, surface: DockSurface, options?: { workspaceTab?: WorkspaceTab }) => void
   fork: (sessionId: string) => Promise<unknown>
   rename: (sessionId: string, title: string) => Promise<void>
+  /** Confirmación con el estilo de la app (`useConfirm().ask`); sin ella, la nativa. */
+  confirm?: (options: { title: string; body?: string; confirmLabel: string; cancelLabel: string }) => Promise<boolean>
 }
 
 /**
@@ -21,7 +23,7 @@ export interface UiCommandDeps {
  * `/goal <objetivo>` lo crea (o reemplaza) y arranca; `/goal pause | resume |
  * clear` lo maneja; `/goal` solo dice cómo va (plan 0.4.0 #23).
  */
-async function goal(sessionId: string, text: string): Promise<boolean> {
+async function goal(sessionId: string, text: string, confirm?: UiCommandDeps['confirm']): Promise<boolean> {
   const lang = useUIStore.getState().lang
   const store = useGoalStore.getState()
   const word = text.trim().toLowerCase()
@@ -37,8 +39,16 @@ async function goal(sessionId: string, text: string): Promise<boolean> {
   else if (word === 'clear') apply(await engineApi.goalClear(sessionId))
   else {
     const current = store.bySession[sessionId]?.goal
-    if (current && current.state !== 'achieved' && !window.confirm(translate(lang, 'goal.replaceConfirm', { objective: current.objective }))) {
-      return true
+    if (current && current.state !== 'achieved') {
+      const replace = confirm
+        ? await confirm({
+          title: translate(lang, 'goal.replaceTitle'),
+          body: translate(lang, 'goal.replaceBody', { objective: current.objective }),
+          confirmLabel: translate(lang, 'goal.replace'),
+          cancelLabel: translate(lang, 'common.cancel'),
+        })
+        : window.confirm(translate(lang, 'goal.replaceConfirm', { objective: current.objective }))
+      if (!replace) return true
     }
     apply(await engineApi.goalSet(sessionId, text.trim()))
   }
@@ -75,7 +85,7 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         await deps.rename(deps.sessionId, text)
         return true
       case 'goal':
-        return await goal(deps.sessionId, text)
+        return await goal(deps.sessionId, text, deps.confirm)
       default:
         return false
     }

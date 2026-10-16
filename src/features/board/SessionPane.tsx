@@ -1,4 +1,5 @@
 import { runUiCommand } from '../engine/slashUi'
+import { useConfirm } from '../../components/ui/useConfirm'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
@@ -68,6 +69,7 @@ function LiveSessionPane({
   const { t } = useI18n()
   const commands = useEngineCommands()
   const data = useEngineData()
+  const { ask: confirm, dialog: confirmDialog } = useConfirm()
   const steering = data.status?.capabilities.turn_steering_v1 === true
   const session = usePaneSession(pane.sessionId)
   const dockVisible = useSessionDockStore((state) => state.layoutFor(pane.sessionId).visible)
@@ -291,6 +293,7 @@ function LiveSessionPane({
                 reveal: revealDock,
                 fork: commands.forkSession,
                 rename: commands.renameSession,
+                confirm,
               })}
               onPrepareAttachments={session.prepareAttachments}
               onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
@@ -331,6 +334,7 @@ function LiveSessionPane({
           </ReadTrackingContext.Provider>
         </SessionWorkspace>
       </div>
+      {confirmDialog}
     </section>
   )
 }

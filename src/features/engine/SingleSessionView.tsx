@@ -10,6 +10,7 @@ import { useSessionDockStore } from '../../stores/sessionDock'
 import type { ReasoningEffort } from '../../lib/reasoning'
 import type { ModelSummary } from '../../services/engine'
 import { runUiCommand } from './slashUi'
+import { useConfirm } from '../../components/ui/useConfirm'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
 
 /**
@@ -29,6 +30,7 @@ export default function SingleSessionView({
   const commands = useEngineCommands()
   const data = useEngineData()
   const store = useRuntimeStore()
+  const { ask: confirm, dialog: confirmDialog } = useConfirm()
   const sessionId = data.activeSession
   const record = data.sessionsById[sessionId] ?? null
   // Sin sesión activa, la vista es el borrador de una conversación nueva.
@@ -84,6 +86,7 @@ export default function SingleSessionView({
           reveal: revealDock,
           fork: commands.forkSession,
           rename: commands.renameSession,
+          confirm,
         })}
         onPrepareAttachments={sessionId ? commands.prepareAttachments : undefined}
         onCancelAttachmentPreparation={commands.cancelAttachmentPreparation}
@@ -117,6 +120,7 @@ export default function SingleSessionView({
         onReviewChanges={sessionId ? reviewChanges : undefined}
       />
     </SessionWorkspace>
+    {confirmDialog}
     </ReadTrackingContext.Provider>
   )
 }

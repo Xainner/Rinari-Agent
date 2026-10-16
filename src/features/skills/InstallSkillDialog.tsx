@@ -426,6 +426,15 @@ export default function InstallSkillDialog({
   )
 }
 
+const ROW_TONES: Record<RowState['state'], string | undefined> = {
+  reviewing: undefined,
+  installing: 'accent',
+  installed: 'success',
+  confirm: 'warning',
+  large: 'warning',
+  error: 'danger',
+}
+
 /**
  * Chip de estado de una fila. El check de «Instalada» se dibuja solo si esta
  * fila se vio instalándose; al volver a montarse aparece quieto (§5).
@@ -440,7 +449,7 @@ function RowStatus({ row }: { row: RowState }) {
       : row.state === 'installed' ? t('skills.rowInstalled')
         : t(`skills.status.${row.state}`)
   return (
-    <span className={cn('skill-status', celebrate && 'is-fresh')} data-state={row.state}>
+    <span className={cn('r-chip skill-status', celebrate && 'is-fresh')} data-state={row.state} data-tone={ROW_TONES[row.state]}>
       {row.state === 'reviewing' || row.state === 'installing'
         ? <LoaderCircle size={12} className="r-spin" aria-hidden="true" />
         : row.state === 'installed'

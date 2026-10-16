@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, FileText, Flag, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
@@ -254,7 +254,7 @@ function GoalSeparator({ iteration }: { iteration: number | null }) {
   const { t } = useI18n()
   return (
     <div data-testid="goal-separator" className="goal-separator" role="separator">
-      <span>{iteration ? t('goal.separator', { n: iteration }) : t('goal.separatorPlain')}</span>
+      <span><Flag size={11} aria-hidden="true" />{iteration === 1 ? t('goal.separatorStart') : iteration ? t('goal.separator', { n: iteration }) : t('goal.separatorPlain')}</span>
     </div>
   )
 }

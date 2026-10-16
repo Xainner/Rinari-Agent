@@ -120,4 +120,13 @@ describe('goal turns in the conversation', () => {
     expect(screen.getByTestId('goal-separator').textContent).toBe('Continuando el objetivo · 2')
     expect(screen.queryByTestId('user-message-bubble')).toBeNull()
   })
+
+  it('the first goal turn says it is starting', () => {
+    render(
+      <I18nProvider lang="es">
+        <MessageBubble message={{ id: 'm1', role: 'user', createdAt: 0, content: 'Runtime: goal, iteration 1…', origin: { kind: 'user', source: 'goal', goal_id: 'goal_1', iteration: 1 } }} />
+      </I18nProvider>,
+    )
+    expect(screen.getByTestId('goal-separator').textContent).toBe('Empezando el objetivo')
+  })
 })

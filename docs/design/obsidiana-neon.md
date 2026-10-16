@@ -51,6 +51,7 @@ Antes de escribir estilos, usa lo que ya existe:
 - Botones: clases `.btn` + `btn-primary | btn-secondary | btn-ghost | btn-quiet | btn-danger` y tamaños `btn-sm | btn-xs | btn-lg | btn-icon` (también vía `<Button>`).
 - Campos: `.field-input`, `.field-label`, `.field-hint`.
 - Casillas: `<input type="checkbox" className="r-checkbox">` (dibuja su check al marcarse y una raya con `indeterminate`); nada de `accent-color` sobre la casilla del sistema.
+- Chips de estado: `.r-chip` con `data-tone` (`accent`, `success`, `warning`, `danger`; sin tono, neutro). Una superficie solo ajusta tamaño (`.skill-status`, `.goal-chip`), no colores.
 - Pestañas y segmentados: `.seg-tabs` / `.seg-tab` con la píldora `.seg-tab-pill` (framer-motion `layoutId`); navegación por flechas.
 - Overlays: `Dialog`, `AlertDialog`, `DropdownMenu`, `Popover`, `Tooltip` de `src/components/ui` (clases `.r-overlay`, `.r-dialog`, `.r-pop`, `.r-tip` con entrada y salida).
 - Tarjetas de ajustes: `Section` (`.settings-card`). Tostadas: Sonner con `.rinari-toast`.

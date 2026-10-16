@@ -145,6 +145,17 @@ function main() {
     throw new Error('Rinari Agent Nightly está abierta: ciérrala (también desde la bandeja) y vuelve a correr npm run nightly.')
   }
   run(setup, ['--silent-install', INSTALL_DIR])
+  // La instalación silenciosa no crea accesos directos; se crean con el mismo
+  // nombre que usa el instalador, así que desinstalar también los quita.
+  const shortcuts = [
+    `[Environment]::GetFolderPath('Programs')`,
+    `[Environment]::GetFolderPath('Desktop')`,
+  ].map((folder) => `$l = $s.CreateShortcut((Join-Path (${folder}) 'Rinari Agent Nightly.lnk')); $l.TargetPath = $exe; $l.WorkingDirectory = $dir; $l.Save()`)
+  run('powershell.exe', [
+    '-NoProfile',
+    '-Command',
+    `$dir = '${INSTALL_DIR}'; $exe = Join-Path $dir 'rinari-agent-nightly.exe'; $s = New-Object -ComObject WScript.Shell; ${shortcuts.join('; ')}`,
+  ])
   console.log(`\nRinari Agent Nightly ${version} instalada en ${INSTALL_DIR}`)
   console.log(`Engine: CLI ${cliBranch} ${cliSha.slice(0, 7)}. Comparte ~/.rinari con la normal: abre solo una a la vez.`)
 }

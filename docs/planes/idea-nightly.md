@@ -35,7 +35,7 @@ Una rama `next` (en esta versión, la propia `0.4.0`) que es un main adelantado:
 
 ## Cómo quedó (implementado, 2026-10-15)
 
-**Uso:** desde la worktree de Agent (rama `0.4.0`), `npm run nightly`. Corre las pruebas rápidas (CLI: ruff y pytest; Agent: tsc, typecheck:electron y vitest), empaqueta el Engine de la punta de la rama del CLI (`../v032-cli`, o `--cli <ruta>`), arma la app y el instalador, y la instala en `%LOCALAPPDATA%\Programs\Rinari Agent Nightly`. Opciones: `--skip-tests`, `--no-install` (deja el instalador en `release/nightly/`) y `--allow-dirty` (CLI con cambios sin commit). La versión es `0.4.0-nightly.<AAAAMMDD>.<HHMM>`.
+**Uso:** desde la worktree de Agent (rama `0.4.0`), `npm run nightly`. Corre las pruebas rápidas (CLI: ruff y pytest; Agent: tsc, typecheck:electron y vitest), empaqueta el Engine de la punta de la rama del CLI (`../v032-cli`, o `--cli <ruta>`), arma la app y el instalador, y la instala en `%LOCALAPPDATA%\Programs\Rinari Agent Nightly`, con accesos directos «Rinari Agent Nightly» en Inicio y en el escritorio. Opciones: `--skip-tests`, `--no-install` (deja el instalador en `release/nightly/`) y `--allow-dirty` (CLI con cambios sin commit). La versión es `0.4.0-nightly.<AAAAMMDD>.<HHMM>`.
 
 **Identidad propia** (para convivir con la normal):
 - app: `electron/main/channel.ts` (lo fija `RINARI_BUILD_CHANNEL` al construir): nombre «Rinari Agent Nightly», AppUserModelID `com.rinari.agent.nightly`, datos de la app en `%APPDATA%\rinari-agent-nightly` (ventana, registros, candado de instancia única), sin buscar actualizaciones de la normal; el renderer usa `src/lib/channel.ts` (título, barra de tareas, avisos, Acerca de con el commit real del Engine);

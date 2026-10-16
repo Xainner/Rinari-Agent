@@ -41,6 +41,7 @@
     "release:bump": "node scripts/bump-version.mjs",
     "updater:e2e": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1",
     "package:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1",
+    "nightly": "node scripts/nightly.mjs",
     "package:win:staged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1 -SkipEngine"
   },
   "dependencies": {

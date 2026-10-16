@@ -1,12 +1,14 @@
 #Requires -Version 5.1
-param([string] $Version = '0.3.1')
+param([string] $Version = '0.3.1', [switch] $Nightly)
 $ErrorActionPreference = 'Stop'
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $source = Join-Path $root 'installer\setup\src-tauri\target\release\Rinari-Setup.exe'
-$output = Join-Path $root 'release\installer'
+# La Nightly sale aparte: nunca se confunde con un instalador de la normal.
+$output = Join-Path $root $(if ($Nightly) { 'release\nightly' } else { 'release\installer' })
 if (-not (Test-Path -LiteralPath $source)) { throw "Setup executable missing: $source" }
 New-Item -ItemType Directory -Force -Path $output | Out-Null
-$destination = Join-Path $output "Rinari-Agent-Setup-$Version-x64.exe"
+$name = if ($Nightly) { "Rinari-Agent-Nightly-Setup-$Version-x64.exe" } else { "Rinari-Agent-Setup-$Version-x64.exe" }
+$destination = Join-Path $output $name
 Copy-Item -LiteralPath $source -Destination $destination -Force
 $stream = [System.IO.File]::OpenRead($destination)
 try {

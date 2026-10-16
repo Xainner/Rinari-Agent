@@ -10,6 +10,7 @@ import { join } from 'node:path'
 
 import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
 
+import { PRODUCT_NAME } from '../channel'
 import type { HostText } from './hostText'
 
 export interface TrayDeps {
@@ -53,7 +54,7 @@ export function createTrayController(deps: TrayDeps) {
   // Indicador de atención vigente: se recuerda aunque la bandeja no exista,
   // para que aparezca al día cuando se active (o termine de cargar).
   let face: NativeImage | null = null
-  let tooltip = 'Rinari Agent'
+  let tooltip = PRODUCT_NAME
   const paint = () => {
     if (!tray) return
     tray.setImage(face ?? base ?? nativeImage.createEmpty())
@@ -110,7 +111,7 @@ export function createTrayController(deps: TrayDeps) {
     /** Marca de atención y texto; `null` vuelve a la cara de siempre. */
     setIndicator(image: NativeImage | null, text: string): void {
       face = image
-      tooltip = text || 'Rinari Agent'
+      tooltip = text || PRODUCT_NAME
       paint()
     },
 

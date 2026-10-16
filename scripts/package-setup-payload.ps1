@@ -1,9 +1,14 @@
 #Requires -Version 5.1
 param(
-  [string] $SourceDir = (Join-Path $PSScriptRoot '..\release\electron\win-unpacked'),
+  [string] $SourceDir,
   [string] $OutputDir = (Join-Path $PSScriptRoot '..\installer\setup\src-tauri\resources\payload'),
-  [string] $Version = '0.3.1'
+  [string] $Version = '0.3.1',
+  # Rinari Agent Nightly: sale de su propia carpeta y con su propia identidad.
+  [switch] $Nightly
 )
+$unpacked = if ($Nightly) { 'release\electron-nightly\win-unpacked' } else { 'release\electron\win-unpacked' }
+$executable = if ($Nightly) { 'rinari-agent-nightly.exe' } else { 'rinari-agent.exe' }
+if (-not $SourceDir) { $SourceDir = Join-Path $PSScriptRoot "..\$unpacked" }
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -11,12 +16,12 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repo = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $source = [System.IO.Path]::GetFullPath($SourceDir)
 $output = [System.IO.Path]::GetFullPath($OutputDir)
-$allowedSource = [System.IO.Path]::GetFullPath((Join-Path $repo 'release\electron\win-unpacked'))
+$allowedSource = [System.IO.Path]::GetFullPath((Join-Path $repo $unpacked))
 $allowedOutput = [System.IO.Path]::GetFullPath((Join-Path $repo 'installer\setup\src-tauri\resources\payload'))
 if ($source -ne $allowedSource -or $output -ne $allowedOutput) {
   throw 'Payload paths must remain inside the fixed package staging locations.'
 }
-if (-not (Test-Path -LiteralPath (Join-Path $source 'rinari-agent.exe'))) {
+if (-not (Test-Path -LiteralPath (Join-Path $source $executable))) {
   throw "Packaged application missing at $source"
 }
 if (-not (Test-Path -LiteralPath (Join-Path $source 'resources\engine-dist\python.exe'))) {
@@ -56,8 +61,8 @@ Get-ChildItem -LiteralPath $stage -Recurse -File | Sort-Object FullName | ForEac
 }
 $manifest = [ordered]@{
   schema = 1
-  product = 'Rinari Agent'
-  app_id = 'com.rinari.agent'
+  product = if ($Nightly) { 'Rinari Agent Nightly' } else { 'Rinari Agent' }
+  app_id = if ($Nightly) { 'com.rinari.agent.nightly' } else { 'com.rinari.agent' }
   version = $Version
   architecture = 'x64'
   files = $files

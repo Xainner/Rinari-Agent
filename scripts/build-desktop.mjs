@@ -19,16 +19,22 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = join(ROOT, 'dist-electron')
 const WATCH = process.argv.includes('--watch')
 const UPDATE_E2E = process.env.RINARI_BUILD_UPDATE_E2E === '1'
-const UPDATE_E2E_TOKEN = 'process.env.RINARI_BUILD_UPDATE_E2E'
+// Canal de la build: `nightly` arma Rinari Agent Nightly, que convive con la
+// normal (otra identidad y otros datos de la app; ver electron/main/channel.ts).
+const CHANNEL = process.env.RINARI_BUILD_CHANNEL === 'nightly' ? 'nightly' : undefined
+
+/** Valores fijados al construir: el código del release no lee estas variables. */
+const COMPILE_TIME = {
+  'process.env.RINARI_BUILD_UPDATE_E2E': UPDATE_E2E ? JSON.stringify('1') : 'undefined',
+  'process.env.RINARI_BUILD_CHANNEL': CHANNEL ? JSON.stringify(CHANNEL) : 'undefined',
+}
 
 const compileTimeFlags = {
   name: 'rinari-compile-time-flags',
   transform(code) {
-    if (!code.includes(UPDATE_E2E_TOKEN)) return null
-    return {
-      code: code.replaceAll(UPDATE_E2E_TOKEN, UPDATE_E2E ? JSON.stringify('1') : 'undefined'),
-      map: null,
-    }
+    let next = code
+    for (const [token, value] of Object.entries(COMPILE_TIME)) next = next.replaceAll(token, value)
+    return next === code ? null : { code: next, map: null }
   },
 }
 

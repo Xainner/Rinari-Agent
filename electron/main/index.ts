@@ -12,6 +12,8 @@ import { release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
+import { APP_USER_MODEL_ID, IS_NIGHTLY, NIGHTLY_USER_DATA_DIR, PRODUCT_NAME } from './channel'
+import { OTHER_EXECUTABLE, isImageRunning } from './otherChannel'
 import { BrowserRegistry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
 import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
@@ -55,6 +57,13 @@ if (app.isPackaged) {
 }
 const updateE2EProfile = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_PROFILE : undefined
 if (updateE2EProfile) app.setPath('userData', updateE2EProfile)
+// La Nightly guarda sus datos de la app (ventana, registros, ajustes de
+// escritorio, candado de instancia única) aparte de la normal, antes de que
+// nada los lea. `~/.rinari` sigue siendo el mismo.
+else if (IS_NIGHTLY) {
+  app.setName(PRODUCT_NAME)
+  app.setPath('userData', join(app.getPath('appData'), NIGHTLY_USER_DATA_DIR))
+}
 
 // Registros persistentes y volcados de fallo, solo en este equipo: «Exportar
 // diagnóstico» los empaqueta si la persona lo pide. Nada se sube.
@@ -84,7 +93,7 @@ function rendererRoot(): string {
 // `Electron.lnk` para el `electron.exe` con la identidad que reciba, y si fuese
 // la de la app instalada, la barra mostraría el icono de Electron para ambas.
 if (process.platform === 'win32') {
-  app.setAppUserModelId(app.isPackaged ? 'com.rinari.agent' : 'com.rinari.agent.dev')
+  app.setAppUserModelId(app.isPackaged ? APP_USER_MODEL_ID : 'com.rinari.agent.dev')
 }
 
 // El esquema propio debe declararse antes de que la app esté lista.
@@ -1062,6 +1071,32 @@ function attachSmoke(window: BrowserWindow): void {
   })
 }
 
+/**
+ * Espera a que la otra (normal o Nightly) esté cerrada antes de arrancar el
+ * Engine sobre el mismo `~/.rinari`. `false` si la persona prefiere salir.
+ */
+async function otherChannelClosed(): Promise<boolean> {
+  while (await isImageRunning(OTHER_EXECUTABLE)) {
+    const text = currentHostText()
+    const { response } = await dialog.showMessageBox({
+      type: 'warning',
+      title: PRODUCT_NAME,
+      message: text.otherChannelTitle,
+      detail: text.otherChannelBody,
+      buttons: [text.otherChannelRetry, text.trayQuit],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    // Nada arrancó todavía: se sale sin pasar por la confirmación de cierre.
+    if (response === 1) {
+      app.exit(0)
+      return false
+    }
+  }
+  return true
+}
+
 // Una sola instancia: la segunda entrega su handoff y enfoca a la primera.
 // La segunda lo manda ya leído: el argv que recibe `second-instance` llega
 // reordenado por Chromium (ver `openRequestFromData`).
@@ -1078,13 +1113,14 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
     if (updateRequestFromData(additionalData)) void runRequestedUpdate(updates)
   })
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     const updateE2EResult = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_RESULT : undefined
     if (updateE2EResult) {
       void runUpdateE2E(updateE2EResult)
       return
     }
     registerAppScheme(isDev ? null : rendererRoot())
+    if (app.isPackaged && !(await otherChannelClosed())) return
     background = createBackground({
       settingsPath: join(app.getPath('userData'), 'desktop-settings.json'),
       // En desarrollo se registraría el electron.exe de la worktree.

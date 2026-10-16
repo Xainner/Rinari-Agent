@@ -11,6 +11,7 @@ import { useUIStore } from '../../stores/ui'
 import type { RuntimeStore } from '../engine/runtimeStore'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 import { revealBoardAttention } from './boardCommands'
+import { APP_NAME } from '../../lib/channel'
 
 interface PendingTerminal {
   sessionId: string
@@ -71,7 +72,7 @@ export function useBoardNotifications(options: UseBoardNotificationsOptions): vo
       })
       if (decision.system) {
         const native: NativeNotification = {
-          title: 'Rinari Agent',
+          title: APP_NAME,
           body: nativeBody(kind, { label: latest.current.labelFor(sessionId) }, prefs.systemDetails),
         }
         void sendSystemNotification(native).catch(() => undefined)

@@ -11,6 +11,7 @@ import { useConfirm } from '../ui/useConfirm'
 import { Row, Section } from './parts'
 import engineManifest from '../../../engine-manifest.json'
 import { art } from '../../features/rinari/art'
+import { APP_NAME, ENGINE_SHA_OVERRIDE } from '../../lib/channel'
 
 const ENGINE_REPOSITORY = `https://github.com/${engineManifest.engine_repository}`
 
@@ -141,7 +142,7 @@ export default function AboutSettings({ version }: { version: string }) {
   const working = busy || phase === 'checking' || phase === 'downloading' || phase === 'applying'
   const UpdateIcon = updateButton.icon
 
-  const engineSha = engineManifest.engine_git_sha
+  const engineSha = ENGINE_SHA_OVERRIDE ?? engineManifest.engine_git_sha
 
   return (
     <div className="space-y-6">
@@ -216,7 +217,7 @@ export default function AboutSettings({ version }: { version: string }) {
         <summary className="cursor-pointer font-display text-[15px] font-bold text-[var(--text)]">{t('settings.about.technical')}</summary>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {[
-            { label: 'Rinari Agent', value: version, hint: t('settings.about.desktop') },
+            { label: APP_NAME, value: version, hint: t('settings.about.desktop') },
             { label: t('settings.about.core'), value: status?.engine_version ?? '—', hint: t('settings.about.engineCommit', { sha: engineSha.slice(0, 7) }) },
             { label: t('settings.about.protocolLabel'), value: status?.protocol_version ?? '—', hint: t('settings.about.protocol') },
             { label: t('settings.about.soul'), value: SOUL_VERSION, hint: 'rinari-default' },

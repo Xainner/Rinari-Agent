@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { detectLocale, progressText, translator, type MessageKey } from './i18n'
 import type { InstallOptions, Screen, SetupOperation, SetupPlan, SetupProgress, SetupStatus } from './types'
+import { PRODUCT } from './product'
 
 const MOCK_STATUS: SetupStatus = {
   installed: false,
@@ -16,7 +17,7 @@ const MOCK_STATUS: SetupStatus = {
   version: null,
   available_version: '0.2.0',
   update_available: false,
-  install_dir: 'C:\\Users\\You\\AppData\\Local\\Programs\\Rinari Agent',
+  install_dir: `C:\\Users\\You\\AppData\\Local\\Programs\\${PRODUCT}`,
   scope: 'user', start_menu: true, desktop: true, cli_path: false,
   required_bytes: 412_090_368, available_bytes: 58_411_155_456, conflicting_cli: null,
 }
@@ -41,7 +42,7 @@ function Titlebar({ locale, setLocale, onClose }: { locale: 'es' | 'en'; setLoca
   return <header className="titlebar" data-tauri-drag-region>
     <div className="brand" data-tauri-drag-region>
       <img src="/assets/rinari-icon.png" alt="" />
-      <strong>Rinari Agent</strong><span>{t('installer')}</span>
+      <strong>{PRODUCT}</strong><span>{t('installer')}</span>
     </div>
     <div className="title-actions">
       <button className="locale" onClick={() => setLocale(locale === 'es' ? 'en' : 'es')} aria-label={t('changeLanguage')}>{locale.toUpperCase()}</button>
@@ -120,7 +121,7 @@ function Configure({ status, options, setOptions, modifying, onBack, onSubmit, l
     {status.legacy_install && <div className="warning migration"><ShieldCheck /> <span><strong>Rinari Code → Rinari Agent</strong><small>{t('legacyInstall')}</small></span></div>}
     <div className="scope-row">
       <button disabled={locationLocked} className={options.scope === 'user' ? 'selected' : ''} onClick={() => patch({ scope: 'user', install_dir: status.install_dir })}>{t('user')}</button>
-      <button disabled={locationLocked} className={options.scope === 'machine' ? 'selected' : ''} onClick={() => patch({ scope: 'machine', install_dir: 'C:\\Program Files\\Rinari Agent' })}>{t('machine')}<small>{t('uac')}</small></button>
+      <button disabled={locationLocked} className={options.scope === 'machine' ? 'selected' : ''} onClick={() => patch({ scope: 'machine', install_dir: `C:\\Program Files\\${PRODUCT}` })}>{t('machine')}<small>{t('uac')}</small></button>
     </div>
     <label className="field-label">{t('folder')}</label>
     <div className="path-field"><input disabled={locationLocked} value={options.install_dir} onChange={(event) => patch({ install_dir: event.target.value })} /><button disabled={locationLocked} onClick={choose}>{t('browse')}</button></div>
@@ -189,7 +190,7 @@ function Ready({ status, onClose, t }: { status: SetupStatus; onClose: () => Pro
 
   return <div className="panel-inner centered ready-screen scrollable">
     <p className="eyebrow">{t('readyEyebrow')}</p><h1>{t('readyTitle')}</h1><p className="lead">{t('readyBody')}</p>
-    <div className="success-card"><span><Check /></span><div><strong>Rinari Agent {status.available_version}</strong><small>{status.install_dir}</small></div></div>
+    <div className="success-card"><span><Check /></span><div><strong>{PRODUCT} {status.available_version}</strong><small>{status.install_dir}</small></div></div>
     <div className="button-grid"><button className="secondary" onClick={() => command('open_install_directory')}><FolderOpen />{t('openFolder')}</button><button className="secondary" onClick={() => command('open_install_log')}>{t('viewLog')}</button></div>
     {error && <div className="warning ready-error" role="alert"><AlertTriangle /><span><strong>{t(error.key)}</strong>{error.detail && <small>{error.detail}</small>}</span></div>}
     {previewComplete && <p role="status" className="lead">{t('launchPreview')}</p>}
@@ -237,7 +238,7 @@ function Uninstall({ options, setOptions, onBack, onConfirm, t }: {
 function Goodbye({ onReinstall, onClose, t }: { onReinstall: () => void; onClose: () => void; t: ReturnType<typeof translator> }) {
   return <div className="panel-inner centered goodbye-screen">
     <p className="eyebrow">{t('goodbyeEyebrow')}</p><h1>{t('goodbyeTitle')}</h1><p className="lead">{t('goodbyeBody')}</p>
-    <div className="success-card"><span><Check /></span><div><strong>{t('uninstallComplete')}</strong><small>Rinari Agent</small></div></div>
+    <div className="success-card"><span><Check /></span><div><strong>{t('uninstallComplete')}</strong><small>{PRODUCT}</small></div></div>
     <div className="preserved"><p><FolderOpen /><span><strong>{t('projectsSafe')}</strong></span></p><p><Settings2 /><span><strong>{t('settingsSafe')}</strong></span></p></div>
     <button className="primary" onClick={onClose}>{t('close')}</button><button className="secondary" onClick={onReinstall}>{t('reinstall')}</button>
   </div>

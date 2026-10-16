@@ -1,5 +1,6 @@
 import type { EngineStatus } from './engine'
 import engineManifest from '../../engine-manifest.json'
+import { ENGINE_SHA_OVERRIDE } from '../lib/channel'
 
 export const APP_REPOSITORY = 'https://github.com/Xainner/Rinari-Agent'
 export const SOUL_VERSION = '4.0'
@@ -8,7 +9,7 @@ export const SOUL_VERSION = '4.0'
 export function diagnostics(version: string, status: EngineStatus | null): string {
   return [
     `Rinari Agent: ${version}`,
-    `Rinari Engine: ${status?.engine_version ?? 'unknown'} (${engineManifest.engine_git_sha.slice(0, 7)})`,
+    `Rinari Engine: ${status?.engine_version ?? 'unknown'} (${(ENGINE_SHA_OVERRIDE ?? engineManifest.engine_git_sha).slice(0, 7)})`,
     `Engine Protocol: ${status?.protocol_version ?? 'unknown'}`,
     `Engine state: ${status?.state ?? 'unknown'}`,
     `Soul: rinari-default ${SOUL_VERSION}`,

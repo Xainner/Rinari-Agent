@@ -7,6 +7,7 @@ import type { TurnTimelineState } from '../activity/types'
 import { useBoardAttentionStore, type SessionAttention, type TerminalOutcome } from '../../stores/boardAttention'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 import { useIndicatorPrefs } from '../../stores/indicatorPrefs'
+import { APP_NAME } from '../../lib/channel'
 
 /** Lo que pesa de una sesión para los indicadores fuera de la ventana. */
 export interface SessionPending {
@@ -52,7 +53,7 @@ export function summarizeAttention(sessions: SessionPending[]): AttentionSummary
 }
 
 export function indicatorTexts(summary: AttentionSummary, lang: Language): Pick<AttentionIndicators, 'tooltip' | 'description'> {
-  const parts = ['Rinari Agent']
+  const parts = [APP_NAME]
   if (summary.count > 0) parts.push(translate(lang, summary.count === 1 ? 'indicators.pendingOne' : 'indicators.pendingMany', { count: summary.count }))
   if (summary.working > 0) parts.push(translate(lang, 'indicators.working', { count: summary.working }))
   const description = summary.category === 'none'

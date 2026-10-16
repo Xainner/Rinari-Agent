@@ -66,7 +66,9 @@ foreach ($name in $characters) {
 # El icono del chrome del instalador sale de la **misma** fuente canónica que
 # `build/icon.ico`, no de la ilustración de marca del renderer: los dos son
 # identidad de aplicación y tienen que cambiar juntos.
-Copy-Item -LiteralPath (Join-Path $repo 'build\icon-source.png') -Destination (Join-Path $output 'rinari-icon.png') -Force
+# La Nightly lleva su icono con la luna (scripts/nightly-icons.py).
+$iconSource = if ($env:VITE_RINARI_SETUP_NIGHTLY) { 'build\nightly\icon-source.png' } else { 'build\icon-source.png' }
+Copy-Item -LiteralPath (Join-Path $repo $iconSource) -Destination (Join-Path $output 'rinari-icon.png') -Force
 
 $assetNames = @($characters) + @('rinari-icon.png', 'studio-master.png')
 foreach ($name in ($assetNames | Sort-Object)) {

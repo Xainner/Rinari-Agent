@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
+import { IS_NIGHTLY } from '../channel'
 import { UpdateService, type UpdateText } from './UpdateService'
 import type { UpdateState } from '../../shared/contracts'
 
@@ -19,7 +20,9 @@ export interface CreateUpdatesOptions {
 /** Canal separado del `latest.json` de Tauri 0.1.x. */
 export function createUpdates(options: CreateUpdatesOptions): UpdateService {
   const testFeed = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_FEED_URL?.trim() : undefined
-  const enabled = app.isPackaged || Boolean(testFeed)
+  // La Nightly local se actualiza volviendo a correr `npm run nightly`: el
+  // feed de las versiones normales la cambiaría por la estable.
+  const enabled = (app.isPackaged && !IS_NIGHTLY) || Boolean(testFeed)
   autoUpdater.setFeedURL(
     testFeed
       ? { provider: 'generic', url: testFeed }

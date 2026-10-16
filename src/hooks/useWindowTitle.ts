@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
+import { APP_NAME } from '../lib/channel'
 
-export const BASE_WINDOW_TITLE = 'Rinari Agent'
+export const BASE_WINDOW_TITLE = APP_NAME
 
 /** Único escritor del título nativo; serializa las escrituras para que una
  * resolución tardía no restaure un contador viejo. */

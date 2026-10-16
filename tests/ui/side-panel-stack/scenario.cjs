@@ -63,8 +63,27 @@ scenario(async () => {
   await wait(`!document.querySelector('${DOCK}')`)
 
   // 2. Browser, then Terminal: they stack, and the new one travels from its button.
+  // Con una sola vista, el realce que viaja desde el botón (si lo hay) acaba en toda la vista, no en un alto
+  // provisional: el efecto de la vista medía antes que el panel y se quedaba a media altura.
+  if (!reduced) await evaluate(`(() => {
+      window.__ghost = []
+      const tick = () => {
+        const ghost = document.querySelector('.dock-launch-ghost')
+        if (ghost) { const r = ghost.getBoundingClientRect(); window.__ghost.push({ x: r.x, y: r.y, w: r.width, h: r.height }) }
+        if (window.__ghost.length < 40 && performance.now() - start < 900) requestAnimationFrame(tick)
+      }
+      const start = performance.now()
+      requestAnimationFrame(tick)
+    })()`)
   await click(button('Navegador'))
   await wait(`document.querySelector('${DOCK}')?.dataset.views === 'browser'`)
+  await delay(700)
+  if (!reduced) {
+    const alone = await evaluate('window.__ghost')
+    const tile = await rect(`${DOCK} [data-dock-view="browser"]`)
+    const last = alone.at(-1)
+    assert.ok(!last || Math.abs(last.h - tile.h) <= 2, `a lone view's highlight covers the whole view (${last && Math.round(last.h)} vs ${Math.round(tile.h)})`)
+  }
   await settleAnimations()
   if (!reduced) {
     await evaluate(`(() => {
@@ -87,6 +106,9 @@ scenario(async () => {
     const tops = ghost.map((frame) => frame.y)
     const monotonic = tops.every((top, i) => i === 0 || top >= tops[i - 1] - 0.5)
     assert.ok(monotonic, `the ghost moves one way, without overshoot (${tops.map(Math.round)})`)
+    const terminal = await rect(`${DOCK} [data-dock-view="terminal"]`)
+    const end = ghost.at(-1)
+    assert.ok(Math.abs(end.h - terminal.h) <= 2 && Math.abs(end.y - terminal.y) <= 2, `the ghost lands on the new view (${JSON.stringify(end)} vs ${JSON.stringify(terminal)})`)
   } else {
     assert.equal(await evaluate(`Boolean(document.querySelector('.dock-launch-ghost'))`), false, 'no ghost with reduced motion')
   }

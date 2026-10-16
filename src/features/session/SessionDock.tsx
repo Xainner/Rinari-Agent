@@ -398,25 +398,35 @@ function DockTile({ sessionId, view, box, amplified, dropTarget, lifted, onHeade
       delete launches[key]
       return { launches }
     })
-    // Con el panel recién abierto, su despliegue ya es el movimiento de entrada.
-    if (calm || tile.closest('[data-entering]')) return
-    const target = tile.getBoundingClientRect()
-    const ghost = document.createElement('div')
-    ghost.className = 'dock-launch-ghost'
-    ghost.setAttribute('aria-hidden', 'true')
-    document.body.appendChild(ghost)
-    setArriving(true)
-    const from = launch.rect
-    const animation = ghost.animate?.([
-      { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px`, opacity: 0.5 },
-      { left: `${target.left}px`, top: `${target.top}px`, width: `${target.width}px`, height: `${target.height}px`, opacity: 1 },
-    ], { duration: 330, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' })
-    // Termina también con un temporizador: si la ventana no pinta, la animación no avanza (§5).
-    const finish = () => { ghost.remove(); setArriving(false) }
-    const timer = window.setTimeout(finish, 420)
-    if (animation) animation.onfinish = finish
-    else finish()
-    return () => { window.clearTimeout(timer); ghost.remove() }
+    if (calm) return
+    // La caja se mide dos cuadros después: el efecto de la vista corre antes
+    // que el del panel que mide el mosaico, y hasta entonces la caja usa un
+    // alto provisional (con una sola vista el realce acababa a media altura).
+    let ghost: HTMLDivElement | null = null
+    let timer = 0
+    let frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => {
+        // Con el panel recién abierto, su despliegue ya es el movimiento de entrada.
+        if (!tile.isConnected || tile.closest('[data-entering]')) return
+        const target = tile.getBoundingClientRect()
+        ghost = document.createElement('div')
+        ghost.className = 'dock-launch-ghost'
+        ghost.setAttribute('aria-hidden', 'true')
+        document.body.appendChild(ghost)
+        setArriving(true)
+        const from = launch.rect
+        const animation = ghost.animate?.([
+          { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px`, opacity: 0.5 },
+          { left: `${target.left}px`, top: `${target.top}px`, width: `${target.width}px`, height: `${target.height}px`, opacity: 1 },
+        ], { duration: 330, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' })
+        // Termina también con un temporizador: si la ventana no pinta, la animación no avanza (§5).
+        const finish = () => { ghost?.remove(); setArriving(false) }
+        timer = window.setTimeout(finish, 420)
+        if (animation) animation.onfinish = finish
+        else finish()
+      })
+    })
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); ghost?.remove() }
     // Solo al montarse la vista (abierta desde su botón), no al moverse su caja.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calm, sessionId, view])

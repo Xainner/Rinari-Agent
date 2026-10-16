@@ -2569,7 +2569,9 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
    - **Modelos por agente:** principal, explorador, revisor… con su proveedor. Cada agente **hereda la asignación general** salvo que el perfil lo cambie (así funciona hoy: `agent_runtime.py:1305-1324` parte de la general y solo reemplaza lo que el perfil define). La tarjeta lo distingue: «como el general» o el modelo propio del perfil, y en el formulario cada agente tiene «Volver al general»;
    - **Trabajo:** cuántos proyectos y conversaciones tiene, con «Ver en la barra lateral»;
    - acciones: **«Usar este perfil»** (en vez de «Aplicar»), «Editar», «Duplicar» y «Eliminar» (que explica: «sus proyectos y conversaciones pasan a Default»).
-2. **Crear y editar con un formulario de verdad**, no campos de texto: nombre y descripción; el **id** se genera del nombre; **selector de alma** (con «Rinari» elegida por defecto); **modelos por agente** con el selector de modelos de la app.
+2. **Crear y editar con un formulario de verdad**, no campos de texto: nombre y descripción; **selector de alma** (con «Rinari» elegida por defecto); **modelos por agente** con el selector de modelos de la app.
+   - **No se pide id** (dueño, 2026-10-15): el id es **interno y lo genera el Engine** al crear (a partir del nombre, con sufijo si ya existe: `trabajo`, `trabajo-2`; si el nombre no deja nada usable, uno aleatorio corto). No sale en el formulario ni en la tarjeta (solo en «Detalles» o el diagnóstico), y **renombrar no lo cambia**, porque proyectos y conversaciones lo guardan en `rinari_profile_id` y es el nombre del archivo del perfil.
+   - El protocolo acepta crear sin `id` y devuelve el generado; la CLI (`rinari bundles create`) hace lo mismo y deja `--id` solo como opción avanzada. Los perfiles que ya existen conservan su id.
 3. **El alma por defecto es la de Rinari:** un perfil nuevo nace con `soul_id = rinari-default` explícito (y se ve), y el dueño la cambia si quiere.
 4. **Se quita el modo del perfil** (decisión del dueño): no aporta hoy (la app siempre elige el modo de cada conversación). Sale de la pantalla, del formulario y del archivo del perfil (el Engine ignora el campo en perfiles viejos); se puede retomar más adelante con una idea mejor. La descripción del perfil queda para contar para qué se usa.
 5. **«Usar este perfil» no toca la configuración global:** los modelos por agente se aplican por perfil (ya se leen así, `agent_runtime.py:1327-1335`); se quita la escritura global de `server.py:3313-3327`.
@@ -2577,7 +2579,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 **Decisión del dueño (2026-10-15).** Se **quita** el modo del perfil por ahora.
 
-**Pruebas.** CLI: crear un perfil sin alma le pone `rinari-default`; un perfil viejo con `mode` se carga sin error y el campo se ignora; «usar este perfil» no cambia la configuración global de agentes. App: la tarjeta con alma, modelos y trabajo; el formulario con selectores, sin modo.
+**Pruebas.** CLI: crear un perfil sin id genera uno válido a partir del nombre (y con sufijo si choca, o aleatorio si el nombre no sirve); renombrar conserva el id; crear un perfil sin alma le pone `rinari-default`; un perfil viejo con `mode` se carga sin error y el campo se ignora; «usar este perfil» no cambia la configuración global de agentes. App: la tarjeta con alma, modelos y trabajo; el formulario con selectores, sin modo ni id.
 
 ---
 
@@ -3036,7 +3038,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 81 | `/init` en la app: exploración en solo lectura y propuesta de `RINARI.md` con Guardar / Editar / Descartar; reutiliza `AGENTS.md`/`CLAUDE.md`; `verify.plan` toma de ahí los comandos. |
 | 82 | «Resumen» como mini panel lateral excluyente con las vistas (#47): entorno, contexto, plan y pasos, cambios con repo/rama/PR y «Crear PR» (confirmado, con `gh`; sin `gh`, la página de GitHub), resultados, fuentes (web y MCP), conectores, agentes y procesos; no se abre solo y se recuerda por conversación. |
 | 83 | La rama sale de la barra lateral, de la barra de título y de la cabecera de los paneles; vive en Resumen → Entorno y en el chip de proyecto de una conversación nueva; la barra de título queda solo con el título de la conversación (sin chip de proyecto ni de modo); el aviso de cambio de rama se mantiene y enciende el Resumen; sin marca de rama en la barra lateral, tampoco con worktree. |
-| 86 | Perfiles: tarjeta con alma, modelos por agente y trabajo; formulario con selectores; alma de Rinari por defecto; se quita el modo del perfil; «Usar este perfil» no toca la configuración global. |
+| 86 | Perfiles: tarjeta con alma, modelos por agente y trabajo; formulario con selectores; alma de Rinari por defecto; se quita el modo del perfil; «Usar este perfil» no toca la configuración global; el id no se pide: es interno, lo genera el Engine y no cambia al renombrar. |
 | 87 | Niveles de personalidad con reglas concretas y ejemplos, al final del prompt, **sin kaomoji** en ningún nivel; pantalla nueva con vista previa por nivel y galería de almas. |
 | 90 | Al cerrar Rinari del todo se detienen los procesos que dejó el modelo (salvo `persist: true`, que se pregunta al cerrar). Minimizar a la bandeja no detiene nada. |
 | 91 | La limpieza de `~/.rinari` es manual (Ajustes → Almacenamiento) con una sugerencia al pasar de un tamaño; nada se borra solo. |

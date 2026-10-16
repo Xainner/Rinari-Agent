@@ -190,9 +190,8 @@ export default function BrowserSurface({
         <ScreenshotBrowserFallback frame={frame} connected={Boolean(connected)} />
       )}
 
-      <footer className="browser-footer">
-        {useNative ? t('browser.nativeNote') : t('browser.fallbackNote')}
-      </footer>
+      {/* La vista con capturas avisa de que no se puede usar aquí; el navegador nativo no necesita nota. */}
+      {!useNative && <footer className="browser-footer">{t('browser.fallbackNote')}</footer>}
     </section>
   )
 }

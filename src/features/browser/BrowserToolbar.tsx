@@ -95,7 +95,10 @@ export default function BrowserToolbar({
   const navDisabled = !native || !onHistory
   const agentUsing = native && busy && !userHasControl && !uncertain && !waiting && !external
   // La línea de estado es un chip canónico: su tono dice de quién es la página.
-  const status: { text: string; tone?: 'accent' | 'success' | 'warning' | 'danger'; icon?: ReactNode } = preparing
+  // En reposo («lista para navegar») no hay nada que decir y no se muestra:
+  // solo quedan los avisos de verdad (preparando, desconectado, externo,
+  // control dudoso, Rinari esperando o usándola).
+  const status: { text: string; tone?: 'accent' | 'success' | 'warning' | 'danger'; icon?: ReactNode } | null = preparing
     ? { text: t('browser.nativePreparing') }
     : !connected
       ? { text: t('browser.disconnected'), tone: 'danger' }
@@ -109,7 +112,7 @@ export default function BrowserToolbar({
               ? { text: t('browser.agentWaiting'), tone: 'warning', icon: <Hand size={11} aria-hidden="true" /> }
               : busy && !userHasControl
                 ? { text: t('browser.agentUsing'), tone: 'accent' }
-                : { text: t('browser.ready'), tone: 'success' }
+                : null
 
   return (
     <header className="browser-toolbar">
@@ -205,7 +208,7 @@ export default function BrowserToolbar({
 
       {!home && (preparing || (busy && !userHasControl && connected)) && <div className="browser-progress" aria-hidden="true"><i /></div>}
 
-      {!home && <div
+      {!home && status && <div
         className="browser-control"
         data-control={native ? (control ?? 'agent') : 'viewer'}
         data-waiting={waiting || undefined}

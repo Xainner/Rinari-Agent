@@ -2056,7 +2056,6 @@ export const es = {
   'browser.noFrame': 'Conectado: aún no llega ninguna captura.',
   'browser.idleHint': 'Rinari no ha abierto un navegador en esta conversación.',
   'browser.url': 'Dirección',
-  'browser.nativeNote': 'Ves en vivo lo que hace Rinari en la página. Si la usas tú, Rinari espera a que termines y sigue después.',
   'browser.nativeIdle': 'Esta sesión todavía no tiene navegador.',
   'browser.nativePreparing': 'Preparando el navegador…',
   'browser.nativeDisconnected': 'El navegador del escritorio no está disponible. Sus páginas se fueron con él; volver a abrirlo empieza uno nuevo.',

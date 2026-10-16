@@ -2039,7 +2039,6 @@ export const en: Record<I18nKey, string> = {
   'browser.noFrame': 'Connected: no frame received yet.',
   'browser.idleHint': 'Rinari hasn\'t opened a browser in this conversation.',
   'browser.url': 'Address',
-  'browser.nativeNote': 'You see live what Rinari does on the page. If you use it, Rinari waits until you are done and then carries on.',
   'browser.nativeIdle': 'No browser for this session yet.',
   'browser.nativePreparing': 'Preparing the browser…',
   'browser.nativeDisconnected': 'The desktop browser is unavailable. Its pages are gone; reopening starts a new one.',

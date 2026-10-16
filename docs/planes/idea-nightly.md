@@ -1,6 +1,6 @@
 # Rinari Agent Nightly
 
-Estado: **idea analizada** (2026-10-13). Se decide si entra cuando el dueño lo diga.
+Estado: **decidido, entra en la 0.4.0** (dueño, 2026-10-14). Las decisiones están abajo.
 
 ## La idea
 

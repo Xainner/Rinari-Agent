@@ -1,6 +1,6 @@
 # Rinari Gateway: al día con el Engine, conexión remota y web nueva
 
-Estado: **borrador** (2026-10-12). Lo pidió el dueño al diseñar [Rinari Agency](idea-rinari-agency.md): la Agency necesita poder correr 24/7, y la web del Gateway también hay que cambiarla. Repo: `Documents/DEV/Apps/Rinari-Gateway`.
+Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño lo tenga listo. Las preguntas quedaron respondidas abajo. Antes: **borrador** (2026-10-12). Lo pidió el dueño al diseñar [Rinari Agency](idea-rinari-agency.md): la Agency necesita poder correr 24/7, y la web del Gateway también hay que cambiarla. Repo: `Documents/DEV/Apps/Rinari-Gateway`.
 
 ## Qué hay hoy (verificado)
 
@@ -27,7 +27,7 @@ Estado: **borrador** (2026-10-12). Lo pidió el dueño al diseñar [Rinari Agenc
 | G3 | La Agency 24/7 en el servidor |
 | G4 | Web nueva |
 
-## Preguntas para el dueño
-1. ¿Qué cambios quieres en la web del Gateway: solo el estilo, o también lo que muestra (la Agency, los recados)?
-2. ¿La app de escritorio debe poder trabajar con **los dos** Engines a la vez (el local y el del servidor), o con uno a la vez?
-3. ¿El pin del Gateway se sube junto con el del Agent en cada versión, o con su propio ritmo?
+## Preguntas para el dueño (respondidas, 2026-10-15)
+1. ¿Qué cambios quieres en la web del Gateway: solo el estilo, o también lo que muestra (la Agency, los recados)? → **Las dos cosas**: estilo nuevo, y además la Agency y los recados.
+2. ¿La app de escritorio debe poder trabajar con **los dos** Engines a la vez (el local y el del servidor), o con uno a la vez? → **Uno a la vez**, con un cambio rápido entre ellos.
+3. ¿El pin del Gateway se sube junto con el del Agent en cada versión, o con su propio ritmo? → **Junto con el del Agent**, como el pin del Engine.

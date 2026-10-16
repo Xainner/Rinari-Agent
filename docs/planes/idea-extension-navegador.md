@@ -1,6 +1,6 @@
 # Rinari en tu navegador: una extensión para Chrome y Edge
 
-Estado: **idea aprobada para después de 0.4.0** (dueño, 2026-10-12). Todavía no es un plan.
+Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño lo tenga listo. Las preguntas quedaron respondidas abajo. Antes: idea aprobada (2026-10-12).
 
 ## De dónde sale
 
@@ -26,12 +26,12 @@ Una extensión para Chrome y Edge que conecta el navegador del dueño con el Eng
 - **Indicador siempre visible** de que Rinari está usando el navegador, y un botón para detenerlo al instante.
 - **Las reglas de siempre siguen:** lo que viene de la web es dato, no instrucción (la guardia de contenido externo); lo irreversible (enviar, comprar, publicar, borrar) pide aprobación; las contraseñas y los datos de pago nunca los escribe el agente; las verificaciones humanas las resuelve el dueño.
 
-## Preguntas abiertas
+## Preguntas (respondidas, 2026-10-15)
 
-1. ¿Se publica en la Chrome Web Store y en la tienda de Edge (pasan revisión, se actualizan solas) o se instala en modo desarrollador al principio?
-2. ¿Qué API usa la extensión para manejar la pestaña: `chrome.debugger` (como CDP, más potente, muestra el aviso «una extensión está depurando este navegador») o scripts de contenido (más limitados)?
-3. ¿Cómo se ve la pestaña en el panel lateral de Rinari: capturas periódicas o solo un resumen con «Ir a la pestaña»?
-4. ¿Firefox también, más adelante (su API de extensiones es parecida)?
+1. ¿Se publica en la Chrome Web Store y en la tienda de Edge (pasan revisión, se actualizan solas) o se instala en modo desarrollador al principio? → **Modo desarrollador primero**; las tiendas cuando esté estable.
+2. ¿Qué API usa la extensión para manejar la pestaña: `chrome.debugger` (como CDP, más potente, muestra el aviso «una extensión está depurando este navegador») o scripts de contenido (más limitados)? → **`chrome.debugger`**, lo mismo que el navegador integrado.
+3. ¿Cómo se ve la pestaña en el panel lateral de Rinari: capturas periódicas o solo un resumen con «Ir a la pestaña»? → **Una captura cada vez que cambia**, más «Ir a la pestaña».
+4. ¿Firefox también, más adelante (su API de extensiones es parecida)? → **No por ahora.**
 
 ## Siguiente paso propuesto
 

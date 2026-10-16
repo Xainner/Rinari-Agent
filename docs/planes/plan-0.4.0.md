@@ -19,12 +19,16 @@ Decisión del dueño (2026-10-14): la versión que se planeaba como 0.3.2 pasa a
 | [plan-permisos-v4.md](plan-permisos-v4.md) | Tres modos, interruptor de destinos nuevos, lista catastrófica | Decidido |
 | [idea-multimedia.md](idea-multimedia.md) | Imágenes completas (fase 1); audio y video después | Decisiones tomadas |
 | [idea-nightly.md](idea-nightly.md) | Nightly local y por GitHub, compartiendo `~/.rinari` con salvaguardas | Decidido |
-| [plan-gateway.md](plan-gateway.md) | G0–G4 | Borrador, 3 preguntas abiertas |
-| [idea-rinari-agency.md](idea-rinari-agency.md) | Rinari Agency (A1–A5) | Idea, 3 preguntas abiertas |
-| [idea-extension-navegador.md](idea-extension-navegador.md) | Extensión de Chrome/Edge | Idea, 4 preguntas abiertas |
-| [idea-app-movil.md](idea-app-movil.md) | App iOS y Android | Idea, 3 preguntas abiertas |
+**Fuera de la 0.4.0** (dueño, 2026-10-15): cuatro productos grandes quedan aparcados hasta que el dueño los tenga listos. Sus preguntas ya están respondidas en cada documento, para retomarlos sin empezar de cero.
 
-Los cuatro últimos son productos o piezas grandes con preguntas abiertas: se cierran sus preguntas antes de «iniciamos».
+| Documento | Qué es | Estado |
+|---|---|---|
+| [plan-gateway.md](plan-gateway.md) | Gateway G0–G4 | Aparcado, preguntas respondidas |
+| [idea-rinari-agency.md](idea-rinari-agency.md) | Rinari Agency (A1–A5) | Aparcado, preguntas respondidas |
+| [idea-extension-navegador.md](idea-extension-navegador.md) | Extensión de Chrome/Edge | Aparcado, preguntas respondidas |
+| [idea-app-movil.md](idea-app-movil.md) | App iOS y Android | Aparcado, preguntas respondidas |
+
+Lo que en este plan dependía de ellos se hace sin ellos: las tareas programadas del #50 corren en la PC (bandeja o programador del sistema); la opción «en el servidor 24/7» llega con el Gateway.
 
 ## Resumen
 
@@ -1583,7 +1587,7 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 3. **Que corra aunque Rinari esté cerrado.** Tres niveles, de menos a más:
    - **Bandeja e inicio con el sistema:** la opción que **ya existe** de iniciar Rinari con Windows en la bandeja deja el Engine vivo mientras la PC esté encendida. Las tareas programadas la usan tal cual. Cubre la mayoría de los casos.
    - **El programador del sistema:** por tarea, «Ejecutar aunque Rinari esté cerrado» la registra en el Programador de tareas de Windows (o `launchd` / `systemd --user`) para correr la CLI sin ventana (`rinari schedule run <id>`). Con la opción «Despertar el equipo», funciona incluso con la PC suspendida.
-   - **En el servidor (24/7):** cuando la app pueda conectarse al Engine del Gateway, la tarea se crea allí ([plan-gateway.md](plan-gateway.md)).
+   - **En el servidor (24/7):** cuando la app pueda conectarse al Engine del Gateway, la tarea se crea allí ([plan-gateway.md](plan-gateway.md)). **No entra en 0.4.0**: el Gateway quedó aparcado (2026-10-15).
 4. **Riesgo a validar:** que la app y una ejecución de la CLI sin ventana no escriban a la vez la misma base de datos sin coordinación. El Engine ya usa candados por sesión y SQLite, pero hay que comprobar el caso de dos procesos.
 5. **Permisos:** la tarea guarda lo que se le aprobó al crearla (como hoy) y sigue el modo elegido ([plan-permisos-v4.md](plan-permisos-v4.md)); un comando programado muestra el comando exacto al crearlo y al editarlo.
 

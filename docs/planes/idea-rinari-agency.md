@@ -1,6 +1,6 @@
 # Rinari Agency: equipos de agentes que viven y trabajan juntos
 
-Estado: **v2, en diseño con el dueño** (2026-10-12). Pasa de idea a plan: las decisiones de abajo ya están tomadas; lo que sigue abierto está en «Preguntas abiertas».
+Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño lo tenga listo. Las preguntas quedaron respondidas abajo. Antes: **v2, en diseño con el dueño** (2026-10-12). Pasa de idea a plan: las decisiones de abajo ya están tomadas; lo que sigue abierto está en «Preguntas abiertas».
 
 Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-boards.md)): la comunicación entre agentes se piensa aquí, desde cero. Los permisos de toda la app se rehacen en su propio plan ([plan-permisos-v4.md](plan-permisos-v4.md)), y el Gateway tiene el suyo ([plan-gateway.md](plan-gateway.md)).
 
@@ -265,9 +265,10 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 
 ## 11. Preguntas abiertas
 
-1. ¿Un agente sin equipo puede tener reglas y disparadores propios (por ejemplo, el agente *Emails* con su regla de reenvío), o eso siempre vive en un equipo? Recomendado: sí, también solo.
-2. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta?
-3. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan?
+Respondidas por el dueño (2026-10-15):
+1. ¿Un agente sin equipo puede tener reglas y disparadores propios (por ejemplo, el agente *Emails* con su regla de reenvío), o eso siempre vive en un equipo? → **Sí**, también solo.
+2. ¿La vista Agencia se puede ver también desde el teléfono (app móvil) en una versión compacta? → **Sí, como en la maqueta**.
+3. ¿Qué pasa con un puesto cuando el agente se borra o sale de un equipo: sus recados abiertos se reasignan o se cancelan? → **Se reasignan al jefe del equipo**; si no hay equipo, se cancelan con aviso.
 
 ## 12. Fases propuestas
 

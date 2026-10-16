@@ -430,6 +430,15 @@ html[data-theme='light'] body::after {
 .r-spin { animation: rinari-orbit 0.9s linear infinite; }
 .r-check path { stroke-dasharray: 24; animation: rinari-draw 0.5s 0.15s var(--ease-out) both; }
 .r-check-pop { animation: rinari-check-pop 0.45s 0.1s var(--ease-spring) both; }
+/* Casilla canónica: al marcarse dibuja su check de izquierda a derecha; a medias, una raya. */
+.r-checkbox { appearance: none; position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; flex-shrink: 0; margin: 0; border-radius: 5px; background: var(--bg-inset); box-shadow: inset 0 0 0 1px var(--line-2); cursor: pointer; transition: background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.r-checkbox:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--line-3); }
+.r-checkbox::after { content: ''; width: 12px; height: 12px; background: white; -webkit-mask: var(--r-checkbox-mark) center / contain no-repeat; mask: var(--r-checkbox-mark) center / contain no-repeat; clip-path: inset(0 100% 0 0); transition: clip-path var(--dur-base) var(--ease-out); }
+.r-checkbox:checked, .r-checkbox:indeterminate { background: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, white), 0 0 12px -4px var(--accent); }
+.r-checkbox:checked::after { clip-path: inset(0); }
+.r-checkbox:indeterminate::after { width: 8px; height: 2px; border-radius: 1px; -webkit-mask: none; mask: none; clip-path: inset(0); }
+.r-checkbox:disabled { cursor: default; opacity: 0.4; }
+:root { --r-checkbox-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.2 4.2L19 7'/%3E%3C/svg%3E"); }
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1577,6 +1586,46 @@ select option:disabled { color: var(--text-subtle); }
 .create-project-summary { display: flex; align-items: center; gap: 9px; border-radius: var(--r-md); border: 1px solid rgb(196 181 253 / 0.22); background: linear-gradient(90deg, rgb(147 88 255 / 0.12), rgb(147 88 255 / 0.02)); padding: 9px 12px; font-size: 12.5px; color: var(--text); }
 .create-project-summary svg { flex-shrink: 0; color: var(--violet-300); }
 @media (max-width: 640px) { .create-project-grid { grid-template-columns: 1fr; } .create-project-trust span { display: none; } }
+
+/* Instalar skills: lista con casillas, barra de progreso sin ocupar sitio y un chip de estado por fila. */
+.install-skill-source { display: flex; min-width: 0; flex-direction: column; gap: 10px; }
+.install-skill-note { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.45; color: var(--text-subtle); }
+.install-skill-list { display: flex; min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-inset); }
+.install-skill-bar { position: relative; display: flex; min-height: 46px; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid var(--line-1); background: color-mix(in srgb, var(--bg-elevated) 70%, transparent); }
+.install-skill-all { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none; }
+.install-skill-progress-label { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-subtle); white-space: nowrap; }
+.install-skill-progress { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; overflow: hidden; background: color-mix(in srgb, var(--accent) 16%, transparent); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.install-skill-progress::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-2) 55%, transparent), transparent); animation: install-skill-sheen 1.4s linear infinite; }
+.install-skill-progress-fill { position: relative; z-index: 1; display: block; height: 100%; border-radius: 0 2px 2px 0; background: var(--grad-brand); transition: width var(--dur-slow) var(--ease-out); }
+@keyframes install-skill-sheen { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.install-skill-rows { max-height: 50vh; overflow-x: hidden; overflow-y: auto; }
+.skill-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 11px; padding: 11px 12px; border-top: 1px solid var(--line-1); transition: background-color var(--dur-base); animation: rinari-rise var(--dur-base) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 28ms); }
+.skill-row:first-child { border-top: 0; }
+.skill-row[data-selected] { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.skill-row[data-state='installed'] { background: color-mix(in srgb, var(--success) 5%, transparent); }
+.skill-row-check { margin-top: 2px; }
+.skill-row-body { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.skill-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.skill-row-name { font-size: 13px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.skill-tag { padding: 1px 6px; border: 1px solid var(--line-2); border-radius: var(--r-xs); font-family: var(--font-mono); font-size: 10px; line-height: 1.5; color: var(--text-subtle); }
+.skill-row-desc { font-size: 12px; line-height: 1.45; color: var(--text-subtle); overflow-wrap: anywhere; }
+.skill-row-desc.is-error { color: var(--warning); }
+.skill-row-detail { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 3px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.skill-row-problem { flex-flow: row wrap; align-items: center; }
+.skill-row-problem p { min-width: 0; font-size: 12px; color: var(--danger); overflow-wrap: anywhere; }
+.skill-status { --tone: var(--text-muted); display: inline-flex; height: 22px; align-items: center; gap: 5px; padding: 0 9px 0 7px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent); transition: color var(--dur-base), background-color var(--dur-base), box-shadow var(--dur-base); animation: rinari-fade-in var(--dur-fast) var(--ease-out) both; }
+.skill-status[data-state='installing'] { --tone: var(--accent-2); }
+.skill-status[data-state='installed'] { --tone: var(--success); }
+.skill-status[data-state='confirm'], .skill-status[data-state='large'] { --tone: var(--warning); }
+.skill-status[data-state='error'] { --tone: var(--danger); }
+.skill-status.is-fresh { animation: skill-status-ring 0.9s 0.1s var(--ease-out) both; }
+@keyframes skill-status-ring { from { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent), 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent); } to { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent), 0 0 0 7px transparent; } }
+.install-skill-error { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-sm); font-size: 12px; color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 30%, transparent); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.install-skill-error svg { flex-shrink: 0; }
+.install-skill-error p { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* Con movimiento reducido las filas aparecen ya en su sitio (el retraso escalonado no se acorta solo). */
+@media (prefers-reduced-motion: reduce) { .skill-row { animation: none; } }
+html[data-motion='reduced'] .skill-row { animation: none; }
 /* Perfil vacío: Rinari saluda y ofrece por dónde empezar. */
 .profile-empty { display: grid; justify-items: center; gap: 6px; margin: 4px 2px 8px; border: 1px dashed var(--line-2); border-radius: var(--r-lg); padding: 16px 12px 14px; text-align: center; background: radial-gradient(120% 80% at 50% 0%, rgb(147 88 255 / 0.10), transparent 70%); }
 .profile-empty-art { width: 72px; height: 72px; object-fit: contain; animation: rinari-rise var(--dur-slow) var(--ease-out) both; }

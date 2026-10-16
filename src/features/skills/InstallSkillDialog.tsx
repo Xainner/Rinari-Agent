@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { CircleAlert, FileArchive, FolderOpen, LoaderCircle, PackageCheck, RotateCcw, Search, ShieldAlert, Square, TriangleAlert } from 'lucide-react'
 import { commandMessage, engineApi, type SkillCandidate, type SkillDetail, type SkillReview } from '../../services/engine'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
-import { inputClass } from '../../components/settings/parts'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { cn } from '../../lib/utils'
+import { duration, ease, instant, useCalmMotion } from '../../lib/motion'
 import ReviewFindings from './ReviewFindings'
 import { runSkillJob, type SkillJobOutcome } from './skillJobs'
 import { confirmedHash, importKindKey, needsConfirmation } from './skillsModel'
 
 type Tab = 'source' | 'import'
+const TABS: readonly Tab[] = ['source', 'import']
 
 /** Cómo va cada skill elegida: revisándose, instalándose, lista o qué le falta. */
 type RowState =
@@ -22,10 +25,6 @@ type RowState =
   | { state: 'error'; message: string }
 
 type Inspected = { source: string; candidates: SkillCandidate[]; partial?: boolean }
-
-const buttonClass =
-  'rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40'
-const primaryClass = 'rounded-lg bg-[var(--accent)] px-2.5 py-1 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-40'
 
 const failed = (err: unknown) => ({ ok: false as const, error: { code: 'COMMAND', message: commandMessage(err), details: {} as Record<string, unknown> } })
 
@@ -46,6 +45,7 @@ export default function InstallSkillDialog({
   onInstalled: () => void
 }) {
   const { t } = useI18n()
+  const calm = useCalmMotion()
   const [tab, setTab] = useState<Tab>('source')
   const [source, setSource] = useState('')
   const [inspecting, setInspecting] = useState(false)
@@ -54,8 +54,10 @@ export default function InstallSkillDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [rows, setRows] = useState<Record<string, RowState>>({})
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const stopRef = useRef(false)
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) {
@@ -65,6 +67,7 @@ export default function InstallSkillDialog({
       setSelected(new Set())
       setRows({})
       setProgress(null)
+      setStopping(false)
       setError(null)
       setTab('source')
     }
@@ -167,6 +170,7 @@ export default function InstallSkillDialog({
     const chosen = list.filter((candidate) => selected.has(keyOf(candidate)) && selectable(candidate))
     if (chosen.length === 0) return
     stopRef.current = false
+    setStopping(false)
     setError(null)
     let installed = 0
     for (const [index, candidate] of chosen.entries()) {
@@ -175,6 +179,7 @@ export default function InstallSkillDialog({
       if (await process(candidate)) installed += 1
     }
     setProgress(null)
+    setStopping(false)
     setSelected(new Set())
     if (installed > 0) {
       onInstalled()
@@ -202,99 +207,137 @@ export default function InstallSkillDialog({
     })
   }
 
+  function switchTab(next: Tab) {
+    setTab(next)
+    setError(null)
+    setSelected(new Set())
+  }
+
   const ready = list.filter(selectable)
   const allSelected = ready.length > 0 && ready.every((candidate) => selected.has(keyOf(candidate)))
   const count = list.filter((candidate) => selected.has(keyOf(candidate)) && selectable(candidate)).length
+  // «Seleccionar todas» a medias se dibuja con una raya, no vacía ni marcada.
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = count > 0 && !allSelected
+  }, [count, allSelected])
 
-  function statusLine(candidate: SkillCandidate) {
-    const row = rows[keyOf(candidate)]
+  function rowDetail(candidate: SkillCandidate, row: RowState | undefined) {
     if (!row) return null
-    if (row.state === 'reviewing') return <p className="text-xs text-[var(--text-subtle)]">{t('skills.reviewing')}</p>
-    if (row.state === 'installing') return <p className="text-xs text-[var(--text-subtle)]">{t('skills.installing')}</p>
-    if (row.state === 'installed') return <p className="text-xs text-[var(--success)]">{t('skills.rowInstalled')}</p>
     if (row.state === 'confirm') {
       return (
-        <div className="space-y-2">
+        <div className="skill-row-detail">
           <ReviewFindings review={row.review} compact />
-          <button type="button" disabled={busy} onClick={() => void single(candidate, { confirm: row.review })} className="rounded-lg border border-red-500/60 px-2.5 py-1 text-xs font-semibold text-[var(--danger)] hover:bg-red-500/10 disabled:opacity-40">
-            {t('skills.installAnyway')}
+          <button type="button" disabled={busy} onClick={() => void single(candidate, { confirm: row.review })} className="btn btn-danger btn-xs">
+            <ShieldAlert size={12} aria-hidden="true" /> {t('skills.installAnyway')}
           </button>
         </div>
       )
     }
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        <p role="alert" className="text-xs text-[var(--danger)]">{row.message}</p>
-        {row.state === 'large'
-          ? <button type="button" disabled={busy} onClick={() => void single({ ...candidate, review: null }, { allowLarge: true })} className={buttonClass}>{t('skills.installLarge')}</button>
-          : <button type="button" disabled={busy} onClick={() => void single(candidate, {})} className={buttonClass}>{t('skills.retry')}</button>}
-      </div>
-    )
+    if (row.state === 'large' || row.state === 'error') {
+      return (
+        <div className="skill-row-detail skill-row-problem">
+          <p role="alert">{row.message}</p>
+          {row.state === 'large'
+            ? <button type="button" disabled={busy} onClick={() => void single({ ...candidate, review: null }, { allowLarge: true })} className="btn btn-secondary btn-xs">
+                <PackageCheck size={12} aria-hidden="true" /> {t('skills.installLarge')}
+              </button>
+            : <button type="button" disabled={busy} onClick={() => void single(candidate, {})} className="btn btn-ghost btn-xs">
+                <RotateCcw size={12} aria-hidden="true" /> {t('skills.retry')}
+              </button>}
+        </div>
+      )
+    }
+    return null
   }
 
-  function candidateRow(candidate: SkillCandidate) {
+  function candidateRow(candidate: SkillCandidate, index: number) {
     const key = keyOf(candidate)
     const kinds = candidate.kinds ?? (candidate.kind ? [candidate.kind] : [])
     const enabled = selectable(candidate)
+    const row = rows[key]
+    const checked = enabled && selected.has(key)
     return (
-      <li key={key} className="space-y-2 py-3" data-testid="skill-candidate">
-        <div className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            aria-label={t('skills.select', { name: candidate.name })}
-            className="mt-1 accent-[var(--accent)]"
-            checked={enabled && selected.has(key)}
-            disabled={!enabled || busy}
-            onChange={() => toggle(candidate)}
-          />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-[var(--text)]">
-              {candidate.name}
-              {kinds.map((kind) => {
-                const label = importKindKey(kind)
-                return <span key={kind} className="rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">{label ? t(label) : kind}</span>
-              })}
-              {candidate.format === 'standard' && <span className="rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">{t('skills.format.standard')}</span>}
-            </p>
-            <p className="text-xs text-[var(--text-subtle)]">{candidate.error ? candidate.error.message : candidate.description}</p>
-            {candidate.installed && (
-              <p className="text-xs text-[var(--text-subtle)]">{t('skills.alreadyInstalled', { origin: t(`skills.origin.${candidate.installed.origin}`) })}</p>
-            )}
-            {candidate.review && !rows[key] && <ReviewFindings review={candidate.review} compact />}
-            {statusLine(candidate)}
-          </div>
+      <li
+        key={key}
+        className="skill-row"
+        data-testid="skill-candidate"
+        data-state={row?.state}
+        data-selected={checked || undefined}
+        style={{ '--i': Math.min(index, 8) } as CSSProperties}
+      >
+        <input
+          type="checkbox"
+          aria-label={t('skills.select', { name: candidate.name })}
+          className="r-checkbox skill-row-check"
+          checked={checked}
+          disabled={!enabled || busy}
+          onChange={() => toggle(candidate)}
+        />
+        <div className="skill-row-body">
+          <p className="skill-row-head">
+            <span className="skill-row-name">{candidate.name}</span>
+            {kinds.map((kind) => {
+              const label = importKindKey(kind)
+              return <span key={kind} className="skill-tag">{label ? t(label) : kind}</span>
+            })}
+            {candidate.format === 'standard' && <span className="skill-tag">{t('skills.format.standard')}</span>}
+          </p>
+          <p className={cn('skill-row-desc', candidate.error && 'is-error')}>{candidate.error ? candidate.error.message : candidate.description}</p>
+          {candidate.installed && (
+            <p className="skill-row-desc">{t('skills.alreadyInstalled', { origin: t(`skills.origin.${candidate.installed.origin}`) })}</p>
+          )}
+          {candidate.review && !row && <ReviewFindings review={candidate.review} compact />}
+          {rowDetail(candidate, row)}
         </div>
+        {row && <RowStatus row={row} />}
       </li>
     )
   }
 
   const verb = tab === 'import' ? 'skills.importSelected' : 'skills.installSelected'
+  const fraction = progress ? progress.done / progress.total : 0
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="install-skill-dialog max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('skills.install')}</DialogTitle>
           <DialogDescription>{t('skills.installDesc')}</DialogDescription>
         </DialogHeader>
-        <div role="tablist" className="flex gap-1">
-          {(['source', 'import'] as const).map((option) => (
+        <div
+          role="tablist"
+          className="seg-tabs w-fit"
+          onKeyDown={(event) => {
+            // Flechas, Inicio y Fin recorren las pestañas (patrón WAI-ARIA tabs).
+            const index = TABS.indexOf(tab)
+            const next = event.key === 'ArrowRight' ? (index + 1) % TABS.length
+              : event.key === 'ArrowLeft' ? (index - 1 + TABS.length) % TABS.length
+                : event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : -1
+            if (next < 0 || busy) return
+            event.preventDefault()
+            switchTab(TABS[next])
+            event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
+          }}
+        >
+          {TABS.map((option) => (
             <button
               key={option}
               type="button"
               role="tab"
               aria-selected={tab === option}
+              tabIndex={tab === option ? 0 : -1}
               disabled={busy}
-              onClick={() => { setTab(option); setError(null); setSelected(new Set()) }}
-              className={cn(buttonClass, tab === option && 'border-[var(--accent)] bg-[var(--bg-active)] font-semibold')}
+              onClick={() => switchTab(option)}
+              className="seg-tab"
             >
-              {t(`skills.tab.${option}`)}
+              {tab === option && <motion.span layoutId="install-skill-tab" className="seg-tab-pill" transition={calm ? instant : { duration: duration.base, ease: ease.out }} aria-hidden="true" />}
+              <span className="relative">{t(`skills.tab.${option}`)}</span>
             </button>
           ))}
         </div>
 
         {tab === 'source' && (
-          <div className="space-y-3">
+          <div className="install-skill-source">
             <div className="flex gap-2">
               <input
                 aria-label={t('skills.sourceLabel')}
@@ -302,59 +345,110 @@ export default function InstallSkillDialog({
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
                 onKeyDown={(event) => { if (event.key === 'Enter') void inspect() }}
-                className={`${inputClass} font-mono`}
+                className="field-input font-mono"
                 spellCheck={false}
               />
-              <button type="button" disabled={inspecting || busy || !source.trim()} onClick={() => void inspect()} className={buttonClass}>
+              <button type="button" disabled={inspecting || busy || !source.trim()} onClick={() => void inspect()} className="btn btn-secondary shrink-0">
+                {inspecting ? <LoaderCircle size={14} className="r-spin" aria-hidden="true" /> : <Search size={14} aria-hidden="true" />}
                 {inspecting ? t('skills.reviewing') : t('skills.review')}
               </button>
             </div>
-            <div className="flex gap-2">
-              <button type="button" disabled={busy} onClick={() => void pick(true)} className={buttonClass}>{t('skills.pickFolder')}</button>
-              <button type="button" disabled={busy} onClick={() => void pick(false)} className={buttonClass}>{t('skills.pickZip')}</button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy || inspecting} onClick={() => void pick(true)} className="btn btn-ghost btn-sm">
+                <FolderOpen size={13} aria-hidden="true" /> {t('skills.pickFolder')}
+              </button>
+              <button type="button" disabled={busy || inspecting} onClick={() => void pick(false)} className="btn btn-ghost btn-sm">
+                <FileArchive size={13} aria-hidden="true" /> {t('skills.pickZip')}
+              </button>
             </div>
-            {inspected?.candidates.length === 0 && <p className="text-sm text-[var(--text-subtle)]">{t('skills.noneFound')}</p>}
-            {inspected?.partial && <p className="text-xs text-[var(--text-subtle)]">{t('skills.partialList')}</p>}
+            {inspected?.candidates.length === 0 && <p className="install-skill-note">{t('skills.noneFound')}</p>}
+            {inspected?.partial && <p className="install-skill-note">{t('skills.partialList')}</p>}
           </div>
         )}
-        {tab === 'import' && imports === null && !error && <p className="text-sm text-[var(--text-subtle)]">{t('skills.loading')}</p>}
-        {tab === 'import' && imports?.length === 0 && <p className="text-sm text-[var(--text-subtle)]">{t('skills.nothingToImport')}</p>}
+        {tab === 'import' && imports === null && !error && (
+          <p className="install-skill-note"><LoaderCircle size={13} className="r-spin" aria-hidden="true" /> {t('skills.loading')}</p>
+        )}
+        {tab === 'import' && imports?.length === 0 && <p className="install-skill-note">{t('skills.nothingToImport')}</p>}
 
         {list.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-2 text-xs text-[var(--text-subtle)]">
+          <div className="install-skill-list">
+            <div className="install-skill-bar" data-busy={busy || undefined}>
+              <label className="install-skill-all">
                 <input
+                  ref={selectAllRef}
                   type="checkbox"
-                  className="accent-[var(--accent)]"
+                  className="r-checkbox"
                   checked={allSelected}
                   disabled={ready.length === 0 || busy}
                   onChange={() => setSelected(allSelected ? new Set() : new Set(ready.map(keyOf)))}
                 />
                 {t('skills.selectAll')}
               </label>
-              <span className="ml-auto text-xs text-[var(--text-subtle)]" aria-live="polite">
+              <span className="install-skill-progress-label" aria-live="polite">
                 {progress ? t('skills.progress', { done: progress.done + 1, total: progress.total }) : null}
               </span>
               {busy && progress && progress.total > 1 && (
-                <button type="button" onClick={() => { stopRef.current = true }} className={buttonClass}>{t('skills.stop')}</button>
+                <button
+                  type="button"
+                  disabled={stopping}
+                  onClick={() => { stopRef.current = true; setStopping(true) }}
+                  className="btn btn-quiet btn-xs"
+                >
+                  <Square size={10} aria-hidden="true" /> {stopping ? t('skills.stopping') : t('skills.stop')}
+                </button>
               )}
-              <button type="button" disabled={count === 0 || busy} onClick={() => void installSelected()} className={primaryClass}>
+              <button type="button" disabled={count === 0 || busy} onClick={() => void installSelected()} className="btn btn-primary btn-sm">
                 {t(verb, { n: count })}
               </button>
+              {/* La barra no ocupa sitio: va sobre la línea inferior y no mueve la lista. */}
+              {progress && progress.total > 1 && (
+                <span className="install-skill-progress" aria-hidden="true">
+                  <span className="install-skill-progress-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
+                </span>
+              )}
             </div>
-            <ul className="max-h-[50vh] divide-y divide-[var(--border)] overflow-y-auto">
+            <ul className="install-skill-rows">
               {list.map(candidateRow)}
             </ul>
           </div>
         )}
         {error && (
-          <div className="flex items-center gap-2">
-            <p role="alert" className="text-xs text-[var(--danger)]">{error}</p>
-            <button type="button" onClick={() => { setError(null); if (tab === 'import') setImports(null); else void inspect() }} className={buttonClass}>{t('skills.retry')}</button>
+          <div className="install-skill-error">
+            <CircleAlert size={14} aria-hidden="true" />
+            <p role="alert">{error}</p>
+            <button type="button" onClick={() => { setError(null); if (tab === 'import') setImports(null); else void inspect() }} className="btn btn-ghost btn-xs">
+              <RotateCcw size={12} aria-hidden="true" /> {t('skills.retry')}
+            </button>
           </div>
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Chip de estado de una fila. El check de «Instalada» se dibuja solo si esta
+ * fila se vio instalándose; al volver a montarse aparece quieto (§5).
+ */
+function RowStatus({ row }: { row: RowState }) {
+  const { t } = useI18n()
+  const sawInstalling = useRef(row.state === 'installing')
+  useEffect(() => { if (row.state === 'installing') sawInstalling.current = true }, [row.state])
+  const celebrate = row.state === 'installed' && sawInstalling.current
+  const label = row.state === 'reviewing' ? t('skills.reviewing')
+    : row.state === 'installing' ? t('skills.installing')
+      : row.state === 'installed' ? t('skills.rowInstalled')
+        : t(`skills.status.${row.state}`)
+  return (
+    <span className={cn('skill-status', celebrate && 'is-fresh')} data-state={row.state}>
+      {row.state === 'reviewing' || row.state === 'installing'
+        ? <LoaderCircle size={12} className="r-spin" aria-hidden="true" />
+        : row.state === 'installed'
+          ? <svg className={cn(celebrate && 'r-check r-check-pop')} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+          : row.state === 'error'
+            ? <CircleAlert size={12} aria-hidden="true" />
+            : <TriangleAlert size={12} aria-hidden="true" />}
+      {label}
+    </span>
   )
 }

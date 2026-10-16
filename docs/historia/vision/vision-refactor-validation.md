@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Cómo funciona hoy: [vision.md](../../vision.md). Índice: [historia/README.md](../README.md).
+
 > Documento histórico. La política vigente y su validación están en [vision-hermes-refactor.md](vision-hermes-refactor.md).
 
 # Validación de visión unificada

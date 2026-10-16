@@ -2,6 +2,7 @@
   "name": "rinari-agent",
   "private": true,
   "version": "0.3.1",
+  "license": "MIT",
   "description": "Native desktop workspace for the Rinari Engine",
   "author": "Xainner",
   "homepage": "https://github.com/Xainner/Rinari-Agent",

@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Índice: [historia/README.md](README.md).
+
 # Revisión UX del motor (2026-09-08) — PENDIENTE DE REVISIÓN DEL USUARIO
 
 > Registro histórico anterior al cutover Electron. Las menciones al puente

@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Cómo funciona hoy: [vision.md](../../vision.md). Índice: [historia/README.md](../README.md).
+
 # Visión por mensaje: implementación de referencia Hermes
 
 Estado: implementado localmente; sin commit, push ni publicación. Fecha: 2026-09-12.
@@ -94,7 +96,7 @@ Se eliminó el máximo auxiliar de 2048 tokens y se habilitó concurrencia por d
 La política inicial general es 8 llamadas por destino, configurable en Visión e imágenes,
 con Heredar por proveedor y salida por modelo. No representa slots del servidor.
 Implementación, límites reales de cancelación y pruebas:
-[Ejecución de visión](../../../Rinari-CLI/docs/vision-execution.md).
+[Ejecución de visión](https://github.com/Xainner/Rinari-CLI/blob/main/docs/vision-execution.md).
 
 
 ## Presentación agrupada del análisis auxiliar

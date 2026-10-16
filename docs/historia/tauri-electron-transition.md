@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Índice: [historia/README.md](README.md).
+
 # Transición Tauri 0.1.3 → Electron 0.2.x
 
 La primera transición es manual y guiada. Tauri 0.1.3 conserva su canal

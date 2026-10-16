@@ -400,7 +400,7 @@ invalidación, revisión y desactualizado, separadas de las visuales),
 `electron/main/ipc/security.test.ts` (`assertFlowScope`: exactamente un id,
 cadena vacía rechazada, claves ajenas rechazadas, cotas), y en el Engine
 `tests/unit/test_engine_flow.py`. Evidencia real en
-`docs/evidence/flows-2026-09-22/` (la de `flows-2026-09-18/` es anterior a la
+`docs/historia/evidencias/flows-2026-09-22/` (la de `flows-2026-09-18/` es anterior a la
 revisión M02 y queda como registro histórico).
 
 # Proveedores servidos por un CLI externo (`provider_external_cli_v1`)

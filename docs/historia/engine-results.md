@@ -1,3 +1,5 @@
+> **Archivado el 2026-10-12.** Documento histórico: lo que describe ya se entregó o se retiró, y no es una regla ni una tarea pendiente. Índice: [historia/README.md](README.md).
+
 # Resultados del motor y ejecución automática
 
 Agent requiere `recoverable_tool_results_v1`. El Engine controla presupuestos,

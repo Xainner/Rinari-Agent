@@ -110,14 +110,21 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   // «Ampliar» y volver: el ancho se anima en lugar de saltar (termina también sin pintar).
   const [animateWidth, setAnimateWidth] = useState(false)
   const widthKey = `${layout.amp}`
-  const shownAmp = useRef(widthKey)
+  // En Normal este componente sigue montado al cambiar de conversación: lo
+  // que cambia con la conversación (ampliado, abierto) no se anima.
+  const shownAmp = useRef({ sessionId, widthKey })
   useEffect(() => {
-    if (shownAmp.current === widthKey) return
-    shownAmp.current = widthKey
+    const previous = shownAmp.current
+    shownAmp.current = { sessionId, widthKey }
+    if (previous.sessionId !== sessionId) {
+      setAnimateWidth(false)
+      return
+    }
+    if (previous.widthKey === widthKey) return
     setAnimateWidth(true)
     const timer = window.setTimeout(() => setAnimateWidth(false), 420)
     return () => window.clearTimeout(timer)
-  }, [widthKey])
+  }, [sessionId, widthKey])
   // Esc devuelve el panel ampliado a su ancho, si nada encima la quiere.
   useEffect(() => {
     if (!amplified || !focused) return
@@ -131,14 +138,21 @@ export default function SessionWorkspace({ sessionId, record, children, density,
 
   // Al cerrarse, un fantasma sin contenido con el ancho que tenía se pliega:
   // la salida se ve sin retener el panel real ni su navegador nativo.
-  // Al abrirse (por el usuario, no al montar la vista) el panel crece desde 0
-  // y el chat se encoge con él: la misma animación que el cierre, al revés.
+  // Al abrirse (por el usuario, no al montar la vista ni al cambiar de
+  // conversación) el panel crece desde 0 y el chat se encoge con él: la misma
+  // animación que el cierre, al revés.
   const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer' } | null>(null)
   const [entering, setEntering] = useState(false)
-  const shown = useRef({ visible: layout.visible, width: shownWidth, placement })
+  const shown = useRef({ sessionId, visible: layout.visible, width: shownWidth, placement })
   useEffect(() => {
     const previous = shown.current
-    shown.current = { visible: layout.visible, width: shownWidth, placement }
+    shown.current = { sessionId, visible: layout.visible, width: shownWidth, placement }
+    if (previous.sessionId !== sessionId) {
+      // Otra conversación, con su propio panel: se ve tal cual, sin entrar ni plegarse.
+      setEntering(false)
+      setLeaving(null)
+      return
+    }
     if (layout.visible) {
       setLeaving(null)
       if (previous.visible) return
@@ -152,7 +166,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     setLeaving({ width: previous.width, placement: previous.placement })
     const timer = window.setTimeout(() => setLeaving(null), 360)
     return () => window.clearTimeout(timer)
-  }, [layout.visible, shownWidth, placement])
+  }, [sessionId, layout.visible, shownWidth, placement])
   const { handleProps } = useDragResize({
     value: shownWidth,
     min: DOCK_MIN_WIDTH,
@@ -276,7 +290,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
         <div ref={chatRef} className="session-workspace-chat">
           {children}
-          <FloatingSummary sessionId={sessionId} record={record} open={summaryOpen} focused={focused} column={chatRef} onClose={closeSummary} />
+          <FloatingSummary key={sessionId} sessionId={sessionId} record={record} open={summaryOpen} focused={focused} column={chatRef} onClose={closeSummary} />
         </div>
         {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
         {layout.visible && (
@@ -328,7 +342,10 @@ function FloatingSummary({ sessionId, record, open, focused, column, onClose }: 
   onClose: () => void
 }) {
   const { t } = useI18n()
-  // Al cerrarse se queda un momento para irse con su animación.
+  // Al cerrarse se queda un momento para irse con su animación. Montado ya
+  // abierto (otra conversación con su Resumen abierto, o al cargar) aparece
+  // quieto: solo entra con movimiento cuando lo abres.
+  const [still] = useState(open)
   const [rendered, setRendered] = useState(open)
   const [leaving, setLeaving] = useState(false)
   useEffect(() => {
@@ -387,6 +404,7 @@ function FloatingSummary({ sessionId, record, open, focused, column, onClose }: 
       data-testid="summary-dock"
       data-session-id={sessionId}
       className="summary-float"
+      data-still={(still && !leaving) || undefined}
       data-leaving={leaving || undefined}
       style={{ '--summary-bottom': `${bottom}px` } as CSSProperties}
     >

@@ -142,6 +142,25 @@ it('#82: el Resumen flota sobre el chat; no abre el panel, no cambia sus vistas 
   expect(workspaceEl.getAttribute('data-dock')).toBe('hidden')
 })
 
+it('al cambiar de conversación en el mismo espacio, el panel y el Resumen no animan su entrada ni su salida', () => {
+  useSessionDockStore.getState().reveal('ses_a', 'files')
+  useSessionDockStore.getState().toggleSummary('ses_b')
+  const view = render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  expect(screen.getByTestId('session-dock').hasAttribute('data-entering')).toBe(false)
+  // ses_b: sin panel y con su Resumen abierto. El panel de ses_a no se pliega con un fantasma.
+  view.rerender(<I18nProvider lang="es">{workspace('ses_b')}</I18nProvider>)
+  expect(screen.queryByTestId('session-dock')).toBeNull()
+  expect(document.querySelector('.pane-dock-ghost')).toBeNull()
+  expect(screen.getByTestId('summary-dock').hasAttribute('data-still')).toBe(true)
+  // De vuelta a ses_a: su panel aparece tal cual y el Resumen de ses_b no se queda saliendo.
+  view.rerender(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  expect(screen.getByTestId('session-dock').hasAttribute('data-entering')).toBe(false)
+  expect(screen.queryByTestId('summary-dock')).toBeNull()
+  // Abrirlo uno mismo sí entra con movimiento.
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  expect(screen.getByTestId('summary-dock').hasAttribute('data-still')).toBe(false)
+})
+
 it('UX-09: a typed dock action names its session and never opens the dock of the others', () => {
   render(<I18nProvider lang="es">{workspace('ses_a')}{workspace('ses_b', { focused: false })}</I18nProvider>)
   act(() => requestDockToggle({ sessionId: 'ses_b', surface: 'files' }))

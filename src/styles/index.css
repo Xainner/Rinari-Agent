@@ -1614,6 +1614,13 @@ html[data-motion='reduced'] .dock-view-button[data-ring='agent']::before, html[d
 @keyframes rinari-send { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
 .user-bubble { border-radius: 18px 18px 6px 18px; background: linear-gradient(135deg, rgb(124 58 237 / 0.4), rgb(91 33 182 / 0.34)); border: 1px solid rgb(196 181 253 / 0.2); box-shadow: var(--inset-hi); }
 .user-bubble.is-fresh { animation: rinari-send 0.5s var(--ease-out) both; }
+/* Mensaje durante el turno (#54): mientras Rinari no lo lea, se edita en su sitio o se borra. */
+.steer-actions { display: flex; flex-shrink: 0; gap: 2px; padding-top: 4px; opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+.steer-row:hover .steer-actions, .steer-row:focus-within .steer-actions { opacity: 1; }
+@media (hover: none) { .steer-actions { opacity: 1; } }
+.steer-delete:hover:not(:disabled) { color: var(--danger); }
+.steer-edit { width: min(85%, 36rem); min-height: 38px; resize: none; padding: 8px 14px; border: 1px solid rgb(167 139 250 / 0.5); border-radius: 16px 16px 6px 16px; background: rgb(124 58 237 / 0.16); color: var(--text); font: inherit; font-size: 14px; line-height: 1.6; outline: none; box-shadow: 0 0 0 3px rgb(147 88 255 / 0.14); animation: rinari-fade-in var(--dur-fast) var(--ease-out) both; }
+.steer-edit:disabled { opacity: 0.6; }
 
 /* -- Esfuerzo: deslizador con brillo por nivel ------------------------------- */
 .effort-chip.is-xhigh { color: var(--violet-200); border-color: rgb(167 139 250 / 0.45); }

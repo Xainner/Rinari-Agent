@@ -44,12 +44,13 @@ import { ModelChangeNotice } from './ModelChangeNotice'
 import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
 import { PresentedFiles } from './PresentedFiles'
+import { SteerBubble } from './SteerBubble'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { useOptionalEngineData } from '../engine/EngineContext'
 import { ImageActivity } from './ImageActivity'
-import type { ContextTimelineItem, SteerTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
+import type { ContextTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
 import { activityBlocks, activityState, operationIsActive, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
 import { ActivityMotion, ActivityText } from './ActivityText'
@@ -702,20 +703,6 @@ export default function TurnTimelineView(props: Props) {
 /** La subida del mensaje recién enviado (`.user-bubble.is-fresh`, `rinari-send 0.5s`). */
 const SEND_ARRIVAL_MS = 500
 
-function SteerBubble({ item }: { item: SteerTimelineItem }) {
-  const { t } = useI18n()
-  return (
-    <div data-testid="steer-message" data-status={item.status} className="flex w-full min-w-0 flex-col items-end gap-0.5 py-1.5">
-      <div className="w-fit min-w-0 max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)]/15 px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]">
-        {item.content}
-      </div>
-      <span className="text-[10px] text-[var(--text-subtle)]">
-        {t(item.status === 'pending' ? 'steer.pending' : 'steer.applied')}
-      </span>
-    </div>
-  )
-}
-
 function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges, surface = 'chat' }: Props) {
   const { t } = useI18n()
   const home = useUIStore(s => s.flowHomeId)
@@ -758,7 +745,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
         const stateKey = activityKey(home, timeline.sessionId, timeline.turnId, segment.id)
         const content = items.length ? <ActivityDetails items={items} status={timeline.status} onResolveApproval={onResolveApproval} /> : undefined
         return <InspectionScope.Provider key={segment.id} value={stateKey}><div className="space-y-2">
-          {segment.steer && <SteerBubble item={segment.steer} />}
+          {segment.steer && <SteerBubble item={segment.steer} sessionId={timeline.sessionId} />}
           {active ? content : (content || !previous) && <ActivityDisclosure
             stateKey={childInspectionKey(stateKey, 'summary')}
             header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <span className="turn-head"><RinariAvatar state={rinariStateForTurn(timeline.status)} size={30} /><ActivityHeader timeline={timeline} now={now} /></span>}

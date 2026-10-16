@@ -229,3 +229,10 @@ describe('fallback model (#80)', () => {
     expect(screen.getByTestId('model-fallback').textContent).toBe('Seguí con backup-model porque se acabaron los límites del modelo principal.')
   })
 })
+
+describe('learned protocol (#94)', () => {
+  it('says the model uses another protocol and the turn went on', () => {
+    view({ ...base, items: [{ id: 'system:p', type: 'system', activitySeq: 1, occurredAt: 1_100, kind: 'protocol_learned', label: 'gemini-4-argon-contributor', status: 'google' }] }, 1_200)
+    expect(screen.getByTestId('protocol-learned').textContent).toBe('gemini-4-argon-contributor usa el protocolo de Google; Rinari lo cambió y siguió.')
+  })
+})

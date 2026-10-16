@@ -537,6 +537,10 @@ function mergeEventItem(
       reasons: Array.isArray(payload.reasons) ? payload.reasons.filter((item): item is string => typeof item === 'string') : undefined,
     }
   }
+  if (event === 'provider.protocol.learned') {
+    // The endpoint refused the protocol; Rinari found the right one (#94).
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'protocol_learned', label: text(payload.model), status: text(payload.transport) }
+  }
   if (event === 'model.fallback') {
     // The turn went on with the fallback model (plan 0.4.0 #80).
     return { id, type: 'system', activitySeq, occurredAt, kind: 'model_fallback', label: text(payload.to_model), status: text(payload.reason) }
@@ -898,6 +902,7 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event === 'skill.proposed' ||
     event.event === 'skill.proposal.resolved' ||
     event.event === 'provider.reasoning.dropped' ||
-    event.event === 'model.fallback'
+    event.event === 'model.fallback' ||
+    event.event === 'provider.protocol.learned'
   return relevant ? { type: 'engine/event', event, now } : null
 }

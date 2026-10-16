@@ -74,7 +74,7 @@ export function projectActivity(timeline: TurnTimeline) {
     }
     if (item.type === 'question' && item.request.status === 'pending') return ownerActive ? null : { ...item, request: { ...item.request, status: 'expired' } }
     // El modelo ignoró el razonamiento elegido o no ve imágenes: aviso siempre visible.
-    if ((item.type === 'system' && (item.kind === 'reasoning_dropped' || item.kind === 'model_fallback')) || (item.type === 'vision' && item.fallback === 'without_images')) {
+    if ((item.type === 'system' && (item.kind === 'reasoning_dropped' || item.kind === 'model_fallback' || item.kind === 'protocol_learned')) || (item.type === 'vision' && item.fallback === 'without_images')) {
       const key = (notice: TimelineItem) => `${notice.type}:${notice.type === 'system' ? notice.kind : ''}`
       if (!notices.some((notice) => key(notice) === key(item))) notices.push(item)
       return null

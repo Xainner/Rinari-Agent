@@ -155,7 +155,7 @@ export interface VerificationTimelineItem extends TimelineItemBase {
 
 export interface SystemTimelineItem extends TimelineItemBase {
   type: 'system'
-  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped' | 'model_fallback'
+  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped' | 'model_fallback' | 'protocol_learned'
   status?: string
   label?: string
 }

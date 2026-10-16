@@ -86,3 +86,20 @@ it('puts a provider\'s free models in their own group, named in each language (#
     cleanup()
   }
 })
+
+it('lists a model Rinari cannot speak to yet, without letting it be chosen (#94)', async () => {
+  const onUseModel = vi.fn()
+  const mixed = [
+    { id: 'm1', alias: 'glm', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'glm-5.3', saved: true, capabilities: {} },
+    { id: 'm2', alias: 'exotic', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'exotic-1', saved: true, capabilities: { route_supported: false } },
+  ] as never
+  render(
+    <I18nProvider lang="es">
+      <ModelPicker models={mixed} activeAlias="glm" onUseModel={onUseModel} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} />
+    </I18nProvider>,
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'glm' }))
+  const exotic = screen.getByRole('button', { name: /exotic/ }) as HTMLButtonElement
+  expect(exotic.disabled).toBe(true)
+  expect(exotic.textContent).toContain('No compatible todavía')
+})

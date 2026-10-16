@@ -42,7 +42,8 @@ describe('AutoResume (plan 0.4.0 #24)', () => {
     const offer = await screen.findByRole('button', { name: /Continuar automáticamente cuando se restablezca \(≈/ })
     await userEvent.click(offer)
     expect(arm).toHaveBeenCalledWith('s1', resetsAt)
-    expect(await screen.findByText(/Continuará sola a las/)).toBeTruthy()
+    expect(await screen.findByText(/Armado: continuará sola a las/)).toBeTruthy()
+    expect(screen.getByRole('timer').getAttribute('aria-label')).toMatch(/^Faltan /)
     expect(screen.getByText('Rinari debe seguir abierta (puede estar en la bandeja).')).toBeTruthy()
   })
 
@@ -60,7 +61,7 @@ describe('AutoResume (plan 0.4.0 #24)', () => {
   it('a credit-only provider waits for balance', async () => {
     vi.mocked(engineApi.sessionResume).mockResolvedValue({ resume: resume({ mode: 'poll' }) })
     mount()
-    expect(await screen.findByText('Continuará sola cuando vuelva a haber saldo')).toBeTruthy()
+    expect(await screen.findByText('Armado: continuará sola cuando vuelva a haber saldo')).toBeTruthy()
   })
 
   it('an older failure does not offer again once a resume ran after it', async () => {

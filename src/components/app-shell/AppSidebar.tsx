@@ -57,6 +57,7 @@ import { art } from '../../features/rinari/art'
 import { inProfile, useProfileStore } from '../../features/profiles/profileStore'
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
 import { TitleSwap } from '../TitleSwap'
+import { ResumeChip } from '../../features/resume/ResumeChip'
 
 export interface AppSidebarProps {
   collapsed: boolean
@@ -349,6 +350,7 @@ export function AppSidebar({
                 className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]"
               />
             )}
+            {!working && <ResumeChip sessionId={session.id} compact />}
             {signal && signalLabel && (
               <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal={signal} data-testid="sidebar-signal" />
             )}

@@ -1,9 +1,10 @@
 import { TitleSwap } from '../TitleSwap'
+import { ResumeChip } from '../../features/resume/ResumeChip'
 
 interface ChatHeaderProps {
   /** null = sin sesión activa. */
   title: string | null
-  /** La conversación del título: un cambio a otra no se anima. */
+  /** La conversación del título: un cambio a otra no se anima; también da el «Reanuda 17:40» (#24). */
   sessionId?: string | null
 }
 
@@ -22,8 +23,10 @@ export default function ChatHeader({ title, sessionId = null }: ChatHeaderProps)
         as="p"
         sessionId={sessionId}
         text={title}
-        className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text)]"
+        className="min-w-0 truncate text-sm font-semibold text-[var(--text)]"
       />
+      <ResumeChip sessionId={sessionId} />
+      <span className="flex-1" />
     </div>
   )
 }

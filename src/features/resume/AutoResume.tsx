@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Clock, Play, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { SessionResume } from '../../types/protocol.generated'
 import { useResumeStore } from './resumeStore'
+import { clockTime, formatLeft, useCountdown } from './ResumeChip'
 
 const WAITING_STATES = new Set(['waiting'])
 
@@ -18,7 +19,6 @@ export function AutoResume({ sessionId, resetsAt, failedAt }: { sessionId: strin
   const { t, lang } = useI18n()
   const resume = useResumeStore((state) => state.bySession[sessionId])
   const apply = useResumeStore((state) => state.apply)
-  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (resume !== undefined) return
@@ -31,11 +31,7 @@ export function AutoResume({ sessionId, resetsAt, failedAt }: { sessionId: strin
   }, [sessionId, resume, apply])
 
   const waiting = resume && WAITING_STATES.has(resume.state)
-  useEffect(() => {
-    if (!waiting) return
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000)
-    return () => window.clearInterval(timer)
-  }, [waiting])
+  const left = useCountdown(waiting && resume?.mode === 'at' ? resume.resume_at : null)
 
   const run = async (action: () => Promise<{ resume: SessionResume | null }>) => {
     try {
@@ -46,17 +42,26 @@ export function AutoResume({ sessionId, resetsAt, failedAt }: { sessionId: strin
     }
   }
 
-  const time = (iso: string) => new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
+  const time = (iso: string) => clockTime(iso, lang)
   if (waiting && resume) {
-    const minutes = Math.max(0, Math.round((Date.parse(resume.resume_at) - now) / 60_000))
+    // Armed: the bar fills from when it was armed until the reset.
+    const armedAt = Date.parse(resume.updated_at)
+    const span = Date.parse(resume.resume_at) - armedAt
+    const progress = left !== null && span > 0 ? Math.min(1, Math.max(0, 1 - left / span)) : null
     return (
       <div data-testid="auto-resume" data-state="waiting" className="resume-card">
         <p className="resume-card-line">
           <span className="resume-card-clock" aria-hidden="true"><Clock size={12} /></span>
-          {resume.mode === 'poll'
-            ? t('resume.waitingBalance')
-            : t('resume.waitingAt', { time: time(resume.resume_at), minutes })}
+          <span className="min-w-0 flex-1">
+            {resume.mode === 'poll'
+              ? t('resume.waitingBalance')
+              : t('resume.waitingAt', { time: time(resume.resume_at) })}
+          </span>
+          {left !== null && <span className="resume-card-left" role="timer" aria-label={t('resume.left', { left: formatLeft(left) })}>{formatLeft(left)}</span>}
         </p>
+        {progress !== null && (
+          <div className="resume-card-track" aria-hidden="true"><span style={{ transform: `scaleX(${progress})` }} /></div>
+        )}
         <div className="resume-card-actions">
           <button type="button" className="btn btn-secondary btn-xs" onClick={() => void run(() => engineApi.resumeNow(sessionId))}>
             <Play size={11} aria-hidden="true" />{t('resume.now')}

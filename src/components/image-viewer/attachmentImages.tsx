@@ -45,6 +45,7 @@ export function attachmentViewerImages(attachments: AttachmentRef[], files: File
       detail: attachment.mime_type,
       recognized: attachment.ocr && attachment.derivedUri ? <RecognizedText derivedUri={attachment.derivedUri} /> : undefined,
       onOpenInFiles: files && uri ? () => files.open(uri) : undefined,
+      file: files && uri ? { session_id: files.sessionId, path: uri } : undefined,
     }
   })
 }

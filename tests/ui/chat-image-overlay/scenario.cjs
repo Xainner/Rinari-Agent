@@ -2,9 +2,9 @@
 // bloquea el desplazamiento del fondo y conserva el foco, en Normal y Boards,
 // para adjuntos del historial y del composer. Los textos largos se desplazan
 // dentro del visor.
-const { dialog } = require('electron')
+const { clipboard, dialog, nativeImage } = require('electron')
 const assert = require('node:assert/strict')
-const { writeFileSync } = require('node:fs')
+const { readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { ui, click, clickAt, clickText, command, evaluate, input, key, panesFor, q, reload, report, scenario, screenshot, seedBoard, size, until, useLocalModel, wait, wheel, delay } = require('../harness.cjs')
 
@@ -129,6 +129,26 @@ scenario(async () => {
   await screenshot('viewer-zoomed')
   await evaluate(`${q(preview + ' .image-viewer-stage')}.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,clientX:${stage.x},clientY:${stage.y}}))`)
   await wait(`${q(preview + ' button[aria-pressed="true"]')}?.textContent.includes('Ajustar')`)
+  // «Copiar» deja la imagen entera en el portapapeles y «Descargar» guarda el archivo donde se elige.
+  const copies = []
+  const nativeWrite = clipboard.write
+  clipboard.write = async (items) => { copies.push(items) }
+  const nativeSave = dialog.showSaveDialog
+  const savedTo = join(ui.data, 'guardada.png')
+  dialog.showSaveDialog = async () => ({ canceled: false, filePath: savedTo })
+  try {
+    await click(preview + ' button[aria-label="Copiar imagen"]')
+    await wait(`Boolean(${q(preview + ' button[aria-label="Imagen copiada"]')})`)
+    const blob = await copies[0][0].getType('image/png')
+    const copied = nativeImage.createFromBuffer(Buffer.from(await blob.arrayBuffer())).getSize()
+    assert.deepEqual(copied, { width: 900, height: 500 }, 'the full image is copied, not the thumbnail')
+    await click(preview + ' button[aria-label="Descargar"]')
+    await until(() => { try { return readFileSync(savedTo).length > 0 } catch { return false } })
+    assert.deepEqual(nativeImage.createFromPath(savedTo).getSize(), { width: 900, height: 500 })
+  } finally {
+    clipboard.write = nativeWrite
+    dialog.showSaveDialog = nativeSave
+  }
   await click(preview + ' button[aria-label="Cerrar"]'); await wait(`!${q(preview)}`)
   await openFromHistory(); await clickAt(25, 200); await wait(`!${q(preview)}`)
 
@@ -162,5 +182,5 @@ scenario(async () => {
   await openFromHistory()
   await wait(`${q(preview + ' img')}?.naturalWidth>0`)
   await screenshot('ready-for-review')
-  report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'wheel zoom and double click back to fit', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })
+  report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'wheel zoom and double click back to fit', 'copy and download the full image', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })
 })

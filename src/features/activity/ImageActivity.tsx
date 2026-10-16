@@ -50,6 +50,7 @@ function viewerImages(images: ActivityImage[], files: FileWorkspaceController | 
     load: () => activityImageUrl(image.uri, 2048),
     detail: [image.width && image.height ? `${image.width} × ${image.height}` : null, image.path].filter(Boolean).join(' · '),
     onOpenInFiles: files ? () => files.open(image.uri) : undefined,
+    file: files ? { session_id: files.sessionId, path: image.uri } : undefined,
     onReveal: files && image.path && !image.path.startsWith('artifact:') ? () => files.reveal(image.path) : undefined,
     onOpenExternal: files && image.path && !image.path.startsWith('artifact:') ? () => files.openExternal(image.path) : undefined,
   }))

@@ -28,6 +28,9 @@ export const CHANNEL = {
   filesRevealInFolder: 'rinari:files.revealInFolder',
   filesMedia: 'rinari:files.media',
   clipboardWriteText: 'rinari:clipboard.writeText',
+  /** «Copiar» y «Descargar» del visor: la imagen que resolvió el Engine. */
+  imagesCopy: 'rinari:images.copy',
+  imagesSave: 'rinari:images.save',
   /** «Exportar diagnóstico»: qué incluiría el paquete y guardarlo donde diga la persona. */
   diagnosticsPreview: 'rinari:diagnostics.preview',
   diagnosticsExport: 'rinari:diagnostics.export',

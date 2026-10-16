@@ -107,6 +107,10 @@ export interface HostServices {
     media(request: OpenExternalFileRequest): Promise<WorkspaceMedia>
   }
   clipboard: { writeText(text: string): void | Promise<void> }
+  images: {
+    copy(request: OpenExternalFileRequest): Promise<void>
+    save(request: OpenExternalFileRequest): Promise<{ saved: boolean }>
+  }
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
@@ -448,6 +452,14 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.clipboardWriteText,
       guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
+    ],
+    [
+      CHANNEL.imagesCopy,
+      guarded(registry, (_event, request) => services.images.copy(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.imagesSave,
+      guarded(registry, (_event, request) => services.images.save(assertOpenExternal(request))),
     ],
     [CHANNEL.diagnosticsPreview, guarded(registry, () => services.diagnostics.preview())],
     [

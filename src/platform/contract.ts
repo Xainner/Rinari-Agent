@@ -183,6 +183,18 @@ export interface DesktopBridge {
   }
 
   /**
+   * «Copiar» y «Descargar» del visor de imágenes (#77). `path` es un
+   * `artifact://` o una ruta del workspace: el Engine la resuelve y valida
+   * antes de que el host lea nada.
+   */
+  images: {
+    /** La imagen entera al portapapeles del sistema. */
+    copy(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    /** Diálogo de guardar; `saved: false` si la persona cancela. */
+    save(input: { session_id: string; path: string; turn_id?: string }): Promise<{ saved: boolean }>
+  }
+
+  /**
    * «Exportar diagnóstico»: registros del host, volcados de fallo y un resumen
    * del Engine (tamaños y estado, nunca contenido) en un ZIP que la persona
    * guarda donde quiera. Nada se envía desde aquí.

@@ -129,6 +129,10 @@ interface DesktopHostApi {
     media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
   }
   clipboard: { writeText(text: string): Promise<void> }
+  images: {
+    copy(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    save(input: { session_id: string; path: string; turn_id?: string }): Promise<{ saved: boolean }>
+  }
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
@@ -255,6 +259,11 @@ export const electronBridge: DesktopBridge = {
 
   clipboard: {
     writeText: (text) => required().clipboard.writeText(text),
+  },
+
+  images: {
+    copy: (input) => required().images.copy(input),
+    save: (input) => required().images.save(input),
   },
 
   diagnostics: {

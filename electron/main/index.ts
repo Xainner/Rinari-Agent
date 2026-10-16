@@ -6,8 +6,8 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, clipboard, crashReporter, dialog, shell } from 'electron'
-import { readFile, writeFile } from 'node:fs/promises'
+import { app, protocol, BrowserWindow, ClipboardItem, Menu, clipboard, crashReporter, dialog, nativeImage, shell } from 'electron'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
 import { release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
@@ -37,6 +37,7 @@ import { createContextMenu, createDialogs, createOpener } from './native/service
 import { createTrayController } from './native/tray'
 import { createIndicators, indicatorsDir } from './native/indicators'
 import { hostLanguageFromLocale, hostText, type HostText } from './native/hostText'
+import { createImages } from './native/images'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
@@ -620,6 +621,19 @@ function buildServices(): HostServices {
     clipboard: {
       writeText: (text) => clipboard.writeText(text),
     },
+    images: createImages({
+      resolve: resolveWorkspaceFile,
+      imageFromPath: (path) => nativeImage.createFromPath(path),
+      writePng: (png) => clipboard.write([new ClipboardItem({ 'image/png': new Blob([png], { type: 'image/png' }) })]),
+      showSaveDialog: (options) => {
+        const window = getWindow()
+        return window ? dialog.showSaveDialog(window, options) : dialog.showSaveDialog(options)
+      },
+      copyFile: (from, to) => copyFile(from, to),
+      downloadsDir: () => app.getPath('downloads'),
+      saveTitle: () => currentHostText().imageSaveTitle,
+      join,
+    }),
     diagnostics: {
       preview: () => diagnostics.preview(),
       /** La persona elige dónde guardarlo; después se muestra en su carpeta. */

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronLeft, ChevronRight, ExternalLink, FolderOpen, LoaderCircle, Maximize, Minus, PanelRightOpen, Plus, RotateCcw } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FolderOpen, LoaderCircle, Maximize, Minus, PanelRightOpen, Plus, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
+import { platform } from '../../platform'
+import { commandMessage } from '../../services/engine'
 import { useCalmMotion } from '../../lib/motion'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
 
@@ -20,6 +23,11 @@ export interface ViewerImage {
   onReveal?: () => void
   /** «Abrir fuera». */
   onOpenExternal?: () => void
+  /**
+   * El archivo de la imagen (`artifact://` o ruta del workspace): con él,
+   * «Copiar» y «Descargar» la piden entera al host, que la resuelve con el Engine.
+   */
+  file?: { session_id: string; path: string; turn_id?: string }
 }
 
 const MIN_SCALE = 0.05
@@ -154,6 +162,31 @@ export default function ImageViewer({
   }, [open, calm, origin, natural, stage])
   useEffect(() => { if (!open) entered.current = false }, [open])
 
+  // «Copiar» confirma en el propio botón; un error o «Descargar» van al aviso.
+  const [copied, setCopied] = useState<string | null>(null)
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(null), 1600)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+  const copyImage = async (target: ViewerImage) => {
+    if (!target.file) return
+    try {
+      await platform().images.copy(target.file)
+      setCopied(target.key)
+    } catch (error) {
+      toast.error((error as { code?: string } | null)?.code === 'UNSUPPORTED_IMAGE' ? t('viewer.copyUnsupported') : commandMessage(error))
+    }
+  }
+  const saveImage = async (target: ViewerImage) => {
+    if (!target.file) return
+    try {
+      if ((await platform().images.save(target.file)).saved) toast.success(t('viewer.saved', { name: target.name }))
+    } catch (error) {
+      toast.error(commandMessage(error))
+    }
+  }
+
   const go = useCallback((step: number) => {
     if (images.length < 2) return
     onIndexChange((index + step + images.length) % images.length)
@@ -214,6 +247,8 @@ export default function ImageViewer({
             </div>
           )}
           <div className="image-viewer-actions">
+            {image.file && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={copied === image.key ? t('viewer.copied') : t('viewer.copy')} title={t('viewer.copy')} data-state={copied === image.key ? 'done' : undefined} onClick={() => void copyImage(image)}>{copied === image.key ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}</button>}
+            {image.file && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('viewer.download')} title={t('viewer.download')} onClick={() => void saveImage(image)}><Download size={14} aria-hidden="true" /></button>}
             {image.onOpenInFiles && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('viewer.openInFiles')} title={t('viewer.openInFiles')} onClick={() => { image.onOpenInFiles?.(); onClose() }}><PanelRightOpen size={14} aria-hidden="true" /></button>}
             {image.onReveal && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('files.revealInFolder')} title={t('files.revealInFolder')} onClick={image.onReveal}><FolderOpen size={14} aria-hidden="true" /></button>}
             {image.onOpenExternal && <button type="button" className="btn btn-quiet btn-icon btn-sm" aria-label={t('files.openExternally')} title={t('files.openExternally')} onClick={image.onOpenExternal}><ExternalLink size={14} aria-hidden="true" /></button>}

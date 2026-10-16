@@ -69,6 +69,8 @@ export interface TestBridge extends DesktopBridge {
   readonly mediaKinds: Record<string, WorkspaceMedia['kind']>
   /** Textos que el host de prueba confirmó en el portapapeles. */
   readonly copiedTexts: string[]
+  readonly copiedImages: Array<{ session_id: string; path: string; turn_id?: string }>
+  readonly savedImages: Array<{ session_id: string; path: string; turn_id?: string }>
   /** Paquete de diagnóstico que devolvería el host y exportaciones pedidas. */
   diagnosticsState: { preview: DiagnosticsPreview; exports: number; saved: boolean }
   /** Ajustes de segundo plano del host de prueba. */
@@ -188,6 +190,8 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     revealedFiles: [],
     mediaKinds: {},
     copiedTexts: [],
+    copiedImages: [],
+    savedImages: [],
     diagnosticsState: {
       preview: { files: [{ name: 'summary.json', bytes: null }, { name: 'logs/app.log', bytes: 2048 }], totalBytes: 2048 },
       exports: 0,
@@ -281,6 +285,16 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     clipboard: {
       async writeText(text) {
         bridge.copiedTexts.push(text)
+      },
+    },
+
+    images: {
+      async copy(input) {
+        bridge.copiedImages.push(input)
+      },
+      async save(input) {
+        bridge.savedImages.push(input)
+        return { saved: true }
       },
     },
 
@@ -509,6 +523,8 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       bridge.revealedFiles.length = 0
       for (const key of Object.keys(bridge.mediaKinds)) delete bridge.mediaKinds[key]
       bridge.copiedTexts.length = 0
+      bridge.copiedImages.length = 0
+      bridge.savedImages.length = 0
       bridge.hostLanguage = null
       bridge.indicators = []
       bridge.menus.length = 0

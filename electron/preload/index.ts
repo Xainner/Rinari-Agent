@@ -193,6 +193,12 @@ const api = {
     writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
   },
 
+  /** La imagen la resuelve el Engine; el host copia o guarda ese archivo. */
+  images: {
+    copy: (request: OpenExternalFileRequest) => call<void>(CHANNEL.imagesCopy, request),
+    save: (request: OpenExternalFileRequest) => call<{ saved: boolean }>(CHANNEL.imagesSave, request),
+  },
+
   diagnostics: {
     preview: () => call<DiagnosticsPreview>(CHANNEL.diagnosticsPreview),
     export: () => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExport),

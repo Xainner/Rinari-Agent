@@ -9,7 +9,12 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import ImageViewer, { type ViewerImage } from './ImageViewer'
 
-afterEach(() => cleanup())
+const host = vi.hoisted(() => ({ copy: vi.fn(async () => {}), save: vi.fn(async () => ({ saved: true })) }))
+vi.mock('../../platform', () => ({ platform: () => ({ images: host }) }))
+const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
+vi.mock('sonner', () => ({ toast: toasts }))
+
+afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/0d6NQAAAABJRU5ErkJggg=='
 
@@ -85,4 +90,30 @@ it('«Abrir en Archivos» abre y cierra el visor', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Abrir en Archivos' }))
   expect(openInFiles).toHaveBeenCalled()
   expect(onClose).toHaveBeenCalled()
+})
+
+it('«Copiar» y «Descargar» piden la imagen entera al host por su archivo', async () => {
+  const file = { session_id: 's1', path: 'artifact://s1/media/captura.png' }
+  render(<Harness images={images(1, { file })} />)
+  await userEvent.click(screen.getByRole('button', { name: 'Copiar imagen' }))
+  expect(host.copy).toHaveBeenCalledWith(file)
+  // El propio botón confirma, sin aviso.
+  expect(await screen.findByRole('button', { name: 'Imagen copiada' })).toBeTruthy()
+  expect(toasts.success).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Descargar' }))
+  expect(host.save).toHaveBeenCalledWith(file)
+  await waitFor(() => expect(toasts.success).toHaveBeenCalledWith('Guardada: foto-1.png'))
+})
+
+it('un formato que no se puede copiar lo dice y sugiere descargar', async () => {
+  host.copy.mockRejectedValueOnce(Object.assign(new Error('unsupported'), { code: 'UNSUPPORTED_IMAGE' }))
+  render(<Harness images={images(1, { file: { session_id: 's1', path: 'artifact://s1/media/x.avif' } })} />)
+  await userEvent.click(screen.getByRole('button', { name: 'Copiar imagen' }))
+  await waitFor(() => expect(toasts.error).toHaveBeenCalledWith('Este formato no se puede copiar; usa «Descargar»'))
+})
+
+it('sin archivo no ofrece copiar ni descargar', () => {
+  render(<Harness images={images(1)} />)
+  expect(screen.queryByRole('button', { name: 'Copiar imagen' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Descargar' })).toBeNull()
 })

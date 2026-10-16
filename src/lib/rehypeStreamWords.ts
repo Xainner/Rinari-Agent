@@ -6,7 +6,7 @@
  * - desde `fadeFrom` hasta `shownTo`: `<span class="sw">`, que entra con un
  *   fundido corto al pasar de esperar a visible;
  * - después de `shownTo`: `<span class="sw sw-wait">`, invisible;
- * - la última palabra visible lleva `sw-edge`, donde va el cursor.
+ * - la última palabra visible lleva `sw-edge` (el borde de lo revelado; no pinta cursor).
  * Las palabras conservan su nodo mientras el texto crece al final, así que no
  * se vuelven a animar. Offsets del Markdown de origen. El código y las
  * fórmulas no se tocan.

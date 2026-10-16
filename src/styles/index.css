@@ -1553,12 +1553,10 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 /* El texto que llega: cada bloque nuevo entra con un fundido corto mientras el turno está vivo. */
 .turn-rail[data-live='true'] .md-body > * { animation: stream-in 0.36s var(--ease-out) both; }
 @keyframes stream-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
-/* Dentro del bloque (#52): las palabras que llegan entran con un fundido corto y el cursor va al final. */
+/* Dentro del bloque (#52): las palabras que llegan entran con un fundido corto. Sin cursor al final (lo pidió el dueño). */
 .md-body[data-streaming] .sw { animation: stream-word 160ms var(--ease-out) both; }
 .md-body[data-streaming] .sw-wait { opacity: 0; animation: none; }
 @keyframes stream-word { from { opacity: 0; } to { opacity: 1; } }
-.md-body[data-streaming] .sw-edge::after { content: ''; display: inline-block; width: 2px; height: 1.05em; margin-left: 3px; vertical-align: -0.17em; border-radius: 1px; background: var(--violet-300); box-shadow: 0 0 6px rgb(167 139 250 / 0.6); animation: stream-caret 1.05s steps(1) infinite; }
-@keyframes stream-caret { 50% { opacity: 0; } }
 
 /* -- Conversación: turno de Rinari con riel y nodos -------------------------- */
 /* El turno en curso como tarjeta de estado (#49): qué hace, el paso, su tiempo y una línea viva. */

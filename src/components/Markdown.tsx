@@ -132,8 +132,7 @@ function LocalImageNotice({ src, alt }: { src: string; alt: string }) {
 
 /**
  * `stream`: el texto llega en vivo (#52); las palabras desde `fadeFrom`
- * entran con un fundido, las de después de `shownTo` esperan invisibles y el
- * cursor va tras la última visible.
+ * entran con un fundido y las de después de `shownTo` esperan invisibles.
  */
 function Markdown({ children: raw, stream }: { children: string; stream?: { fadeFrom: number; shownTo?: number } }) {
   const children = escapeCurrency(raw)

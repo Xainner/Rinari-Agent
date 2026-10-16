@@ -1,8 +1,8 @@
 // Plan 0.4.0 #52: el modelo falso manda la respuesta en tres trozos grandes
 // (una oración larga cada uno). Se muestrea cada cuadro la longitud visible
 // del texto vivo: crece de forma gradual, ningún cuadro salta un trozo
-// entero y el cursor va al final mientras llega. Al terminar se ve todo. Con
-// RINARI_UI_REDUCED_MOTION=1 el texto sale tal como llega, sin cursor.
+// entero, y no hay cursor parpadeante al final (lo quitó el dueño). Al terminar
+// se ve todo. Con RINARI_UI_REDUCED_MOTION=1 el texto sale tal como llega.
 const assert = require('node:assert/strict')
 const { click, clickText, command, evaluate, input, reload, report, scenario, screenshot, useLocalModel, wait } = require('../harness.cjs')
 
@@ -18,7 +18,7 @@ scenario(async () => {
   await input('.composer-surface textarea', 'Cuéntame qué pasó con la caja.')
   await click('.composer-surface button[aria-label="Enviar mensaje"]')
   await evaluate(`(() => {
-    const state = window.__reveal = { lengths: [], caretFrames: 0, frames: 0, done: false }
+    const state = window.__reveal = { lengths: [], revealFrames: 0, caretFrames: 0, frames: 0, done: false }
     const tick = () => {
       const live = document.querySelector('.turn-rail[data-live="true"] .md-body')
       if (live) {
@@ -27,7 +27,10 @@ scenario(async () => {
         const waiting = [...live.querySelectorAll('.sw-wait')].reduce((n, word) => n + word.textContent.length, 0)
         const length = live.textContent.length - waiting
         if (state.lengths.at(-1) !== length) state.lengths.push(length)
-        if (live.hasAttribute('data-streaming')) state.caretFrames += 1
+        if (live.hasAttribute('data-streaming')) state.revealFrames += 1
+        // Ningún cursor pintado tras la última palabra visible.
+        const edge = live.querySelector('.sw-edge')
+        if (edge && getComputedStyle(edge, '::after').content !== 'none') state.caretFrames += 1
       }
       if (!state.done) requestAnimationFrame(tick)
     }
@@ -40,17 +43,18 @@ scenario(async () => {
   }
   await wait(`document.body.innerText.includes('FIN DEL INFORME')`, 60_000)
   await wait(`!document.querySelector('button[aria-label="Detener generación"]')`, 60_000)
-  const result = await evaluate(`(() => { const s = window.__reveal; s.done = true; const jumps = s.lengths.map((l, i) => i ? l - s.lengths[i - 1] : l); return { frames: s.frames, steps: s.lengths.length, maxJump: Math.max(0, ...jumps), caretFrames: s.caretFrames } })()`)
+  const result = await evaluate(`(() => { const s = window.__reveal; s.done = true; const jumps = s.lengths.map((l, i) => i ? l - s.lengths[i - 1] : l); return { frames: s.frames, steps: s.lengths.length, maxJump: Math.max(0, ...jumps), revealFrames: s.revealFrames, caretFrames: s.caretFrames } })()`)
+  assert.equal(result.caretFrames, 0, `no blinking cursor after the text: ${JSON.stringify(result)}`)
   if (reduced) {
-    assert.equal(result.caretFrames, 0, `no cursor with reduced motion: ${JSON.stringify(result)}`)
+    assert.equal(result.revealFrames, 0, `reduced motion: no reveal: ${JSON.stringify(result)}`)
   } else {
     assert(result.steps >= 12, `the text should grow over many frames: ${JSON.stringify(result)}`)
     assert(result.maxJump < CHUNK * 0.6, `no frame shows a whole chunk at once: ${JSON.stringify(result)}`)
-    assert(result.caretFrames > 10, `the cursor follows the text while it arrives: ${JSON.stringify(result)}`)
+    assert(result.revealFrames > 10, `the text reveals word by word while it arrives: ${JSON.stringify(result)}`)
   }
   const final = await evaluate(`document.querySelector('[data-testid="turn-result"]').innerText`)
   assert.match(final, /FIN DEL INFORME/)
-  assert.equal(await evaluate(`Boolean(document.querySelector('.md-body[data-streaming]'))`), false, 'no cursor once the turn ends')
+  assert.equal(await evaluate(`Boolean(document.querySelector('.md-body[data-streaming]'))`), false, 'no reveal left once the turn ends')
   await screenshot('done')
-  report({ passed: [reduced ? 'reduced motion: the text arrives as is, without cursor' : 'three big chunks reveal gradually with the cursor at the end', 'the whole answer is there at the end'], metrics: result })
+  report({ passed: [reduced ? 'reduced motion: the text arrives as is' : 'three big chunks reveal gradually', 'no blinking cursor after the text', 'the whole answer is there at the end'], metrics: result })
 }, { width: 1300, height: 820 })

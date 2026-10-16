@@ -7,6 +7,7 @@ import {
   MORE_VIEWS,
   PRIMARY_VIEWS,
   selectDockLayout,
+  selectSummaryOpen,
   useSessionDockStore,
   type DockView,
 } from '../../stores/sessionDock'
@@ -44,9 +45,10 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   const picked = useRef<DockView | null>(null)
   // «Plan» se suma a los botones solo cuando la conversación tiene un plan (#55).
   const available = [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : [])].filter((view) => view !== 'terminal' || terminalEnabled)
-  const shown = (view: DockView) => layout.visible && !layout.summary && layout.views.includes(view)
+  const shown = (view: DockView) => layout.visible && layout.views.includes(view)
   const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
-  const summaryOpen = layout.visible && layout.summary
+  // El Resumen flota sobre el chat, aparte del panel: su botón no toca las vistas.
+  const summaryOpen = useSessionDockStore(selectSummaryOpen(sessionId))
   // El Resumen avisa cuando algo pide atención: por ahora, que la rama cambió desde el último trabajo.
   const branchChanged = useBranchNoticeStore((state) => Boolean(state.bySession[sessionId]))
   // En una ventana estrecha los botones no le quitan el sitio al título: quedan

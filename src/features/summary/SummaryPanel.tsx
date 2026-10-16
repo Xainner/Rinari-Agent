@@ -69,11 +69,19 @@ function WithTimelines({ store, sessionId, record, onClose }: { store: RuntimeSt
 function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; record: SessionSummary | null; timelines: Record<string, TurnTimeline>; onClose: () => void }) {
   const { t, lang } = useI18n()
   const data = useOptionalEngineData()
-  const openView = useSessionDockStore((state) => state.openView)
-  const reviewTurn = useSessionDockStore((state) => state.reviewTurn)
-  const goProject = useUIStore((state) => state.goProject)
-  const goSchedules = useUIStore((state) => state.goSchedules)
-  const files = useFileWorkspace()
+  const dockOpenView = useSessionDockStore((state) => state.openView)
+  const dockReviewTurn = useSessionDockStore((state) => state.reviewTurn)
+  const uiGoProject = useUIStore((state) => state.goProject)
+  const uiGoSchedules = useUIStore((state) => state.goSchedules)
+  const workspace = useFileWorkspace()
+  // El Resumen flota sobre el chat: lo que lleva a otra vista o pantalla lo cierra al llevarte.
+  const leaving = <A extends unknown[]>(go: (...args: A) => void) => (...args: A) => { go(...args); onClose() }
+  const openView = leaving(dockOpenView)
+  const reviewTurn = leaving(dockReviewTurn)
+  const goProject = leaving(uiGoProject)
+  const goSchedules = leaving(uiGoSchedules)
+  const revealArtifacts = leaving(() => useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'artifacts' }))
+  const files = workspace && { reveal: leaving(workspace.reveal), open: leaving(workspace.open) }
   const [prefs, setPrefs] = useState<SummaryPrefs>(() => readSummaryPrefs())
   const update = (next: SummaryPrefs) => { setPrefs(next); writeSummaryPrefs(next) }
 
@@ -212,7 +220,7 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
   } else if (artifacts.length > 0) {
     cards.results = (
       <SummaryCard id="results" icon={<FileStack size={14} />} title={t('summary.results.title')} meta={String(artifacts.length)}
-        onOpen={() => useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'artifacts' })} openLabel={t('summary.results.open')} prefs={prefs} onPrefs={update}>
+        onOpen={revealArtifacts} openLabel={t('summary.results.open')} prefs={prefs} onPrefs={update}>
         <ul className="summary-list">
           {artifacts.slice(0, 5).map((artifact) => (
             <li key={artifact.uri}>

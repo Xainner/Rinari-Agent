@@ -58,10 +58,31 @@ scenario(async () => {
   await wait(`document.querySelector('${DOCK}')?.dataset.views?.includes('files')`)
   await settleAnimations()
   await screenshot('open-in-files')
-  // #82: el Resumen sustituye a las vistas; «Cambios» abre la vista y lo cierra; volver a él.
-  await click('.dock-view-bar button[data-view="summary"]')
+  // #82: el Resumen flota sobre el chat: no toca las vistas del panel ni el ancho del chat, entra
+  // con movimiento (muestreado cuadro a cuadro) y no baja hasta el composer. «Cambios» abre la vista y lo cierra.
+  const before = await evaluate(`({ chat: Math.round(document.querySelector('.session-workspace-chat').getBoundingClientRect().width), views: document.querySelector('${DOCK}')?.dataset.views })`)
+  const frames = await evaluate(`new Promise((resolve) => {
+    document.querySelector('.dock-view-bar button[data-view="summary"]').click()
+    const out = []
+    const start = performance.now()
+    const tick = () => {
+      const summary = document.querySelector('[data-testid="summary-dock"]')
+      out.push({ opacity: summary ? Number(getComputedStyle(summary).opacity) : null, chat: Math.round(document.querySelector('.session-workspace-chat').getBoundingClientRect().width) })
+      if (performance.now() - start < 600) requestAnimationFrame(tick)
+      else resolve(out)
+    }
+    requestAnimationFrame(tick)
+  })`)
+  assert.ok(frames.every((frame) => frame.chat === before.chat), 'the chat keeps its width while the summary opens: ' + JSON.stringify(frames.map((frame) => frame.chat)))
+  if (!(await evaluate(`matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduced'`))) {
+    assert.ok(frames.some((frame) => frame.opacity !== null && frame.opacity > 0.02 && frame.opacity < 0.98), 'the summary fades in over several frames: ' + JSON.stringify(frames.map((frame) => frame.opacity)))
+  }
+  assert.equal(frames.at(-1).opacity, 1, 'the summary ends fully visible')
   await wait(`Boolean(document.querySelector('[data-testid="summary-panel"]'))`)
-  assert.equal(await evaluate(`Boolean(document.querySelector('${DOCK}'))`), false, 'summary and views are exclusive')
+  assert.equal(await evaluate(`document.querySelector('${DOCK}')?.dataset.views`), before.views, 'the side panel keeps its views under the summary')
+  const fit = await evaluate(`(() => { const s = document.querySelector('[data-testid="summary-dock"]').getBoundingClientRect(); const chat = document.querySelector('.session-workspace-chat').getBoundingClientRect(); const slot = document.querySelector('.session-workspace-chat .conversation-composer-slot').getBoundingClientRect(); return { inside: s.left >= chat.left && s.right <= chat.right + 0.5, bottom: Math.round(s.bottom), composer: Math.round(slot.top) } })()`)
+  assert.ok(fit.inside, 'the summary floats inside the chat column, not over the side panel')
+  assert.ok(fit.bottom <= fit.composer, `the summary stays above the composer (${fit.bottom} > ${fit.composer})`)
   await wait(`document.querySelector('[data-testid="summary-panel"] [data-card="env"]')?.innerText.includes('Caja') || document.querySelector('[data-testid="summary-panel"] [data-card="env"]')?.innerText.includes('sin git')`)
   await wait(`Boolean(document.querySelector('[data-testid="summary-panel"] [data-card="changes"]'))`)
   await settleAnimations()
@@ -71,7 +92,8 @@ scenario(async () => {
   await click('.dock-view-bar button[data-view="summary"]')
   await wait(`Boolean(document.querySelector('[data-testid="summary-panel"]'))`)
   await click('.dock-view-bar button[data-view="summary"]')
-  await wait(`Boolean(document.querySelector('${DOCK}')) && !document.querySelector('[data-testid="summary-panel"]')`)
+  await wait(`!document.querySelector('[data-testid="summary-panel"]')`)
+  assert.ok(await evaluate(`document.querySelector('${DOCK}')?.dataset.views?.includes('changes')`), 'closing the summary leaves the side panel as it was')
 
   // #83: la barra de título solo lleva el título; nada se monta encima del selector, ni a 900 px.
   assert.equal(await evaluate(`Boolean(document.querySelector('.app-topbar-context button'))`), false, 'no project or mode chip in the title bar')
@@ -81,5 +103,5 @@ scenario(async () => {
   assert.ok(overlap && overlap.width > 40, `the title is still visible at 900 px (${JSON.stringify(overlap)})`)
   assert.ok(overlap.right <= 0, `the title never runs under the view switcher (${JSON.stringify(overlap)})`)
   await screenshot('title-bar-900')
-  report({ passed: ['summary replaces the views, its Changes card opens the view', 'card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
+  report({ passed: ['summary floats over the chat without touching the side panel, its Changes card opens the view', 'card with plural, kinds and +/-', 'title bar only the title, no overlap at 900 px', 'review opens the turn diff in the panel without git', 'a file of the card opens on that file', 'footer review goes to the same view', 'open file goes to Files'] })
 }, { width: 1500, height: 900 })

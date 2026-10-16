@@ -11,6 +11,7 @@ import {
   mosaicShape,
   normalizeDockLayout,
   resetSessionDockForTests,
+  selectSummaryOpen,
   useSessionDockStore,
   viewForSurface,
 } from './sessionDock'
@@ -170,19 +171,25 @@ describe('mosaico', () => {
 })
 
 describe('Resumen (#82)', () => {
-  it('se muestra sin vistas, Ctrl+B lo oculta, y quitarlo sin vistas oculta el panel', () => {
+  const summaryOpen = (sessionId = 'ses_a') => selectSummaryOpen(sessionId)(dock())
+  it('flota aparte del panel: abrirlo no lo abre ni cambia sus vistas, y Ctrl+B no lo toca', () => {
     dock().toggleSummary('ses_a')
-    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: true, summary: true, views: [] })
+    expect(summaryOpen()).toBe(true)
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, views: [] })
+    dock().openView('ses_a', 'browser')
+    expect(summaryOpen()).toBe(true)
     dock().toggleVisible('ses_a')
-    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, summary: true })
-    dock().toggleVisible('ses_a')
-    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: true, summary: true })
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, views: ['browser'] })
+    expect(summaryOpen()).toBe(true)
     dock().toggleSummary('ses_a')
-    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, summary: false })
+    expect(summaryOpen()).toBe(false)
+    expect(dock().layoutFor('ses_a')).toMatchObject({ visible: false, views: ['browser'] })
   })
-  it('se recuerda por conversación', () => {
+  it('es por conversación y no se guarda; un Resumen guardado por versiones anteriores ya no abre el panel', () => {
     dock().toggleSummary('ses_a')
-    expect(dock().layoutFor('ses_b').summary).toBe(false)
-    expect(normalizeDockLayout(JSON.parse(JSON.stringify(dock().layoutFor('ses_a'))))).toMatchObject({ summary: true, visible: true })
+    expect(summaryOpen('ses_b')).toBe(false)
+    expect(JSON.stringify(dock().layoutFor('ses_a'))).not.toContain('summary')
+    expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: [], summary: true })).toMatchObject({ visible: false, views: [] })
+    expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['files'], summary: true })).toMatchObject({ visible: true, views: ['files'] })
   })
 })

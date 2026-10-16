@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
 import { useI18n } from '../../i18n'
@@ -8,6 +8,7 @@ import {
   CHAT_MIN_DOCKED_WIDTH,
   DOCK_MIN_WIDTH,
   selectDockLayout,
+  selectSummaryOpen,
   useSessionDockStore,
   type DockSurface,
 } from '../../stores/sessionDock'
@@ -26,12 +27,11 @@ import { sessionPlans } from '../plan/planModel'
 import { useAgentRunningCount } from '../terminal/agentTab'
 import SessionDock from './SessionDock'
 import SummaryPanel from '../summary/SummaryPanel'
-import { cn } from '../../lib/utils'
 import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 const HANDLE_WIDTH = 6
-/** El Resumen es un mini panel angosto: el chat casi no se encoge (#82). */
-export const SUMMARY_WIDTH = 320
+/** Lo que tarda en irse el Resumen flotante (`summary-float-out`). */
+const SUMMARY_LEAVE_MS = 180
 
 /** Acción tipada: alternar/abrir el panel lateral de **una** sesión (nunca de todos los providers montados). */
 export const DOCK_TOGGLE_EVENT = 'rinari:dock-toggle'
@@ -78,7 +78,8 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
   const toggleVisible = useSessionDockStore((state) => state.toggleVisible)
-  const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
+  const summaryOpen = useSessionDockStore(selectSummaryOpen(sessionId))
+  const setSummary = useSessionDockStore((state) => state.setSummary)
   const setWidth = useSessionDockStore((state) => state.setWidth)
   const setAmp = useSessionDockStore((state) => state.setAmp)
   const reveal = useSessionDockStore((state) => state.reveal)
@@ -97,20 +98,18 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     return () => observer.disconnect()
   }, [])
   const room = innerWidth === null ? null : innerWidth - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH
-  const summary = layout.summary
-  const placement: 'docked' | 'drawer' = room === null || room >= (summary ? SUMMARY_WIDTH : DOCK_MIN_WIDTH) ? 'docked' : 'drawer'
+  const placement: 'docked' | 'drawer' = room === null || room >= DOCK_MIN_WIDTH ? 'docked' : 'drawer'
 
   const [liveWidth, setLiveWidth] = useState(layout.widthPx)
   useEffect(() => {
     setLiveWidth(layout.widthPx)
   }, [layout.widthPx])
-  const amplified = layout.amp !== null && layout.visible && !summary && placement === 'docked'
-  const shownWidth = summary ? SUMMARY_WIDTH : room === null ? liveWidth : amplified ? room : Math.max(DOCK_MIN_WIDTH, Math.min(liveWidth, room))
+  const amplified = layout.amp !== null && layout.visible && placement === 'docked'
+  const shownWidth = room === null ? liveWidth : amplified ? room : Math.max(DOCK_MIN_WIDTH, Math.min(liveWidth, room))
 
   // «Ampliar» y volver: el ancho se anima en lugar de saltar (termina también sin pintar).
   const [animateWidth, setAnimateWidth] = useState(false)
-  // También al pasar entre el Resumen y las vistas, que tienen otro ancho.
-  const widthKey = `${layout.amp}|${summary}`
+  const widthKey = `${layout.amp}`
   const shownAmp = useRef(widthKey)
   useEffect(() => {
     if (shownAmp.current === widthKey) return
@@ -134,12 +133,12 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   // la salida se ve sin retener el panel real ni su navegador nativo.
   // Al abrirse (por el usuario, no al montar la vista) el panel crece desde 0
   // y el chat se encoge con él: la misma animación que el cierre, al revés.
-  const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer'; summary: boolean } | null>(null)
+  const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer' } | null>(null)
   const [entering, setEntering] = useState(false)
-  const shown = useRef({ visible: layout.visible, width: shownWidth, placement, summary })
+  const shown = useRef({ visible: layout.visible, width: shownWidth, placement })
   useEffect(() => {
     const previous = shown.current
-    shown.current = { visible: layout.visible, width: shownWidth, placement, summary }
+    shown.current = { visible: layout.visible, width: shownWidth, placement }
     if (layout.visible) {
       setLeaving(null)
       if (previous.visible) return
@@ -150,10 +149,10 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     }
     setEntering(false)
     if (!previous.visible) return
-    setLeaving({ width: previous.width, placement: previous.placement, summary: previous.summary })
+    setLeaving({ width: previous.width, placement: previous.placement })
     const timer = window.setTimeout(() => setLeaving(null), 360)
     return () => window.clearTimeout(timer)
-  }, [layout.visible, shownWidth, placement, summary])
+  }, [layout.visible, shownWidth, placement])
   const { handleProps } = useDragResize({
     value: shownWidth,
     min: DOCK_MIN_WIDTH,
@@ -250,6 +249,8 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   useEffect(() => { publish(sessionId, { browser: browserSignal, terminal: agentRunning }) }, [publish, sessionId, browserSignal, agentRunning])
   useEffect(() => () => clearSignals(sessionId), [clearSignals, sessionId])
   const runtime = useOptionalRuntimeStore()
+  const chatRef = useRef<HTMLDivElement>(null)
+  const closeSummary = useCallback(() => setSummary(sessionId, false), [setSummary, sessionId])
   const flowSupported = useOptionalEngineData()?.status?.capabilities?.project_flow_v1 === true
 
   return (
@@ -258,24 +259,12 @@ export default function SessionWorkspace({ sessionId, record, children, density,
       {/* Solo la sesión destino de la barra de título pide su flujo. */}
       {focused && flowSupported && <FlowSignals sessionId={sessionId} />}
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
-        <div className="session-workspace-chat">{children}</div>
-        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} data-summary={leaving.summary || undefined} style={{ width: leaving.width }} aria-hidden="true" />}
-        {layout.visible && summary && (
-          <aside
-            aria-label={t('summary.title')}
-            data-testid="summary-dock"
-            data-session-id={sessionId}
-            data-layout={placement}
-            className={cn('pane-dock summary-dock', placement === 'drawer' && 'pane-dock-drawer')}
-            data-entering={entering || undefined}
-            data-animate-width={animateWidth || undefined}
-            style={placement === 'docked' ? { width: SUMMARY_WIDTH } : undefined}
-            onKeyDown={(event) => { if (event.key === 'Escape' && placement === 'drawer') setVisible(sessionId, false) }}
-          >
-            <SummaryPanel sessionId={sessionId} record={record} onClose={() => toggleSummary(sessionId)} />
-          </aside>
-        )}
-        {layout.visible && !summary && (
+        <div ref={chatRef} className="session-workspace-chat">
+          {children}
+          <FloatingSummary sessionId={sessionId} record={record} open={summaryOpen} focused={focused} column={chatRef} onClose={closeSummary} />
+        </div>
+        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
+        {layout.visible && (
           <>
             {placement === 'docked' && (
               <ResizeHandle
@@ -305,6 +294,89 @@ export default function SessionWorkspace({ sessionId, record, children, density,
         )}
       </div>
     </FileWorkspaceProvider>
+  )
+}
+
+/**
+ * El Resumen (#82) flota sobre el chat, arriba a la derecha: no es parte del
+ * panel lateral, así que abrirlo no lo abre, no cambia sus vistas (el
+ * navegador nativo sigue donde estaba) ni el ancho del chat. No tapa el
+ * composer: su borde de abajo se queda encima de él. Esc o la X lo cierran;
+ * lo que lleva a otra vista también.
+ */
+function FloatingSummary({ sessionId, record, open, focused, column, onClose }: {
+  sessionId: string
+  record: SessionSummary | null
+  open: boolean
+  focused: boolean
+  column: RefObject<HTMLDivElement | null>
+  onClose: () => void
+}) {
+  const { t } = useI18n()
+  // Al cerrarse se queda un momento para irse con su animación.
+  const [rendered, setRendered] = useState(open)
+  const [leaving, setLeaving] = useState(false)
+  useEffect(() => {
+    if (open) {
+      setRendered(true)
+      setLeaving(false)
+      return
+    }
+    if (!rendered) return
+    setLeaving(true)
+    const timer = window.setTimeout(() => {
+      setRendered(false)
+      setLeaving(false)
+    }, SUMMARY_LEAVE_MS)
+    return () => window.clearTimeout(timer)
+  }, [open, rendered])
+
+  // Hasta dónde puede bajar: encima del composer (y de lo que va con él).
+  const [bottom, setBottom] = useState(10)
+  useLayoutEffect(() => {
+    const chat = column.current
+    if (!rendered || !chat) return
+    const update = () => {
+      const slot = chat.querySelector('.conversation-composer-slot')
+      setBottom(slot ? Math.max(10, Math.round(chat.getBoundingClientRect().bottom - slot.getBoundingClientRect().top) + 10) : 10)
+    }
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(update)
+    observer.observe(chat)
+    const slot = chat.querySelector('.conversation-composer-slot')
+    if (slot) observer.observe(slot)
+    return () => observer.disconnect()
+  }, [column, rendered])
+
+  // Esc lo cierra si nada encima lo quiere y no estás escribiendo en otro sitio.
+  const self = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!open || !focused) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || selectOverlayDepth(useOverlayStore.getState()) > 0) return
+      const active = document.activeElement as HTMLElement | null
+      const inside = Boolean(active && self.current?.contains(active))
+      if (!inside && active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return
+      onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, focused, onClose])
+
+  if (!rendered) return null
+  return (
+    <aside
+      ref={self}
+      aria-label={t('summary.title')}
+      data-testid="summary-dock"
+      data-session-id={sessionId}
+      className="summary-float"
+      data-leaving={leaving || undefined}
+      style={{ '--summary-bottom': `${bottom}px` } as CSSProperties}
+    >
+      <SummaryPanel sessionId={sessionId} record={record} onClose={onClose} />
+    </aside>
   )
 }
 

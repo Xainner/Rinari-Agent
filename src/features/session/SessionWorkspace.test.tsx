@@ -19,6 +19,7 @@ vi.mock('../workspace/ChangesPanel', () => ({ default: ({ path }: { path: string
 vi.mock('../workspace/CheckpointsPanel', () => ({ default: () => <div data-testid="checkpoints" /> }))
 vi.mock('../workspace/InsightPanel', () => ({ default: ({ sessionId }: { sessionId: string }) => <div data-testid={`insight-${sessionId}`} /> }))
 vi.mock('../workspace/ArtifactsPanel', () => ({ default: () => <div data-testid="artifacts" /> }))
+vi.mock('../summary/SummaryPanel', () => ({ default: () => <div data-testid="summary-panel" /> }))
 
 vi.mock('../terminal/TerminalPanel', () => ({
   default: ({ sessionId }: { sessionId: string }) => <div data-testid={`terminal-${sessionId}`} />,
@@ -117,6 +118,28 @@ it('stacks views in the mosaic, amplifies one and Escape gives the width back', 
   expect(screen.getByTestId('session-dock').closest('.session-workspace')?.getAttribute('data-amp')).toBe('true')
   fireEvent.keyDown(window, { key: 'Escape' })
   await waitFor(() => expect(screen.getByTestId('session-dock').dataset.views).toBe('files changes'))
+})
+
+it('#82: el Resumen flota sobre el chat; no abre el panel, no cambia sus vistas y Esc lo cierra', async () => {
+  useSessionDockStore.getState().reveal('ses_a', 'files')
+  render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  const workspaceEl = screen.getByTestId('session-dock').closest('.session-workspace')!
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  const summary = screen.getByTestId('summary-dock')
+  // Dentro de la columna del chat, encima; el panel sigue igual, con sus vistas.
+  expect(summary.closest('.session-workspace-chat')).toBeTruthy()
+  expect(summary.className).toBe('summary-float')
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
+  expect(workspaceEl.getAttribute('data-dock')).toBe('docked')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByTestId('summary-dock')).toBeNull())
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
+  // Sin vistas, abrirlo no muestra el panel.
+  act(() => useSessionDockStore.getState().closeView('ses_a', 'files'))
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  expect(screen.getByTestId('summary-dock')).toBeTruthy()
+  expect(screen.queryByTestId('session-dock')).toBeNull()
+  expect(workspaceEl.getAttribute('data-dock')).toBe('hidden')
 })
 
 it('UX-09: a typed dock action names its session and never opens the dock of the others', () => {

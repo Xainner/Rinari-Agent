@@ -97,19 +97,22 @@ it('en una ventana estrecha quedan las vistas abiertas o con aviso, y el resto p
   }
 })
 
-// #82: el Resumen es el primero del grupo; o está el resumen, o las vistas.
-it('«Resumen» se muestra en lugar de las vistas y vuelve el mosaico al quitarlo', async () => {
+// #82: el Resumen es el primero del grupo y flota aparte: no toca las vistas del panel.
+it('«Resumen» se abre y se cierra sin cambiar las vistas del panel', async () => {
   mount()
   await userEvent.click(screen.getByRole('button', { name: 'Navegador' }))
-  await userEvent.click(screen.getByRole('button', { name: 'Resumen' }))
-  expect(layout()).toMatchObject({ visible: true, summary: true, views: ['browser'] })
-  expect(screen.getByRole('button', { name: 'Navegador' }).getAttribute('aria-pressed')).toBe('false')
-  // Abrir otra vista cierra el resumen y guarda el mosaico.
+  const summary = screen.getByRole('button', { name: 'Resumen' })
+  await userEvent.click(summary)
+  expect(summary.getAttribute('aria-pressed')).toBe('true')
+  expect(layout()).toMatchObject({ visible: true, views: ['browser'] })
+  expect(screen.getByRole('button', { name: 'Navegador' }).getAttribute('aria-pressed')).toBe('true')
+  // Abrir otra vista no cierra el resumen.
   await userEvent.click(screen.getByRole('button', { name: 'Terminal' }))
-  expect(layout()).toMatchObject({ summary: false, views: ['browser', 'terminal'] })
-  await userEvent.click(screen.getByRole('button', { name: 'Resumen' }))
-  await userEvent.click(screen.getByRole('button', { name: 'Resumen' }))
-  expect(layout()).toMatchObject({ visible: true, summary: false, views: ['browser', 'terminal'] })
+  expect(layout()).toMatchObject({ visible: true, views: ['browser', 'terminal'] })
+  expect(summary.getAttribute('aria-pressed')).toBe('true')
+  await userEvent.click(summary)
+  expect(summary.getAttribute('aria-pressed')).toBe('false')
+  expect(layout()).toMatchObject({ visible: true, views: ['browser', 'terminal'] })
 })
 
 it('un cambio de rama enciende el Resumen y lo dice en su nombre', async () => {

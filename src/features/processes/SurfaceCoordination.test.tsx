@@ -8,6 +8,7 @@ import { I18nProvider } from '../../i18n'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
 import ProcessesDock from './ProcessesDock'
 import SessionWorkspace from '../session/SessionWorkspace'
+import { useDockSignalsStore } from '../../stores/dockSignals'
 import { resetSessionDockForTests, useSessionDockStore } from '../../stores/sessionDock'
 
 vi.mock('../workspace/WorkspaceView', () => ({ default: () => <div data-testid="workspace-view" /> }))
@@ -97,13 +98,13 @@ it('T-16: un browser nuevo del Engine se revela en el dock de la sesión enfocad
   vi.mocked(invoke).mockImplementation(async (command) => (command === 'browser_view_get' ? CONNECTED : { items: [], processes: [] }))
   workspace(true)
   const dock = await screen.findByTestId('session-dock')
-  expect(dock.dataset.surface).toBe('browser')
+  expect(dock.dataset.views).toBe('browser')
   expect(dock.dataset.layout).toBe('docked')
   expect(screen.getByText(/Vista en vivo/)).toBeTruthy()
   // El dock ocupa espacio real dentro del workspace de la sesión: nada fijo ni flotante.
   expect(dock.closest('.session-workspace')).toBeTruthy()
   expect(document.querySelector('[class*="fixed"]')).toBeNull()
-  expect(useSessionDockStore.getState().layoutFor('s1')).toMatchObject({ visible: true, activeSurface: 'browser' })
+  expect(useSessionDockStore.getState().layoutFor('s1')).toMatchObject({ visible: true, views: ['browser'] })
 })
 
 it('un browser nuevo no roba el dock de una sesión sin foco ni reemplaza lo que el usuario lee', async () => {
@@ -122,16 +123,16 @@ it('un browser nuevo no roba el dock de una sesión sin foco ni reemplaza lo que
   workspace(true)
   await waitFor(() => expect(invoke).toHaveBeenCalledWith('browser_view_get', expect.anything()))
   await new Promise((resolve) => setTimeout(resolve, 50))
-  expect(screen.getByTestId('session-dock').dataset.surface).toBe('files')
-  // El indicador del navegador sí aparece en su pestaña.
-  expect(screen.getByRole('tab', { name: /Navegador/ }).querySelector('.pane-dock-dot')).toBeTruthy()
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
+  // El indicador del navegador sí se enciende, para su botón de la barra de título (#47).
+  await waitFor(() => expect(useDockSignalsStore.getState().bySession.s1?.browser).toBe('live'))
 })
 
 it('cerrar el dock no cierra el navegador del Engine, y el inspector de procesos no lo esconde', async () => {
   vi.mocked(invoke).mockImplementation(async (command) => (command === 'browser_view_get' ? CONNECTED : { items: [], processes: [] }))
   workspace(true)
   const dock = await screen.findByTestId('session-dock')
-  fireEvent.click(screen.getByLabelText('Cerrar panel lateral'))
+  fireEvent.click(screen.getByLabelText('Cerrar Navegador'))
   await waitFor(() => expect(screen.queryByTestId('session-dock')).toBeNull())
   // El recurso sigue consultándose en segundo plano (indicador), no se cierra nada.
   const calls = vi.mocked(invoke).mock.calls.filter(([command]) => command === 'browser_view_get').length
@@ -140,5 +141,5 @@ it('cerrar el dock no cierra el navegador del Engine, y el inspector de procesos
   // Volver a abrir el dock muestra el navegador donde estaba.
   fireEvent.click(screen.getByTestId('chat'))
   useSessionDockStore.getState().setVisible('s1', true)
-  expect((await screen.findByTestId('session-dock')).dataset.surface).toBe('browser')
+  expect((await screen.findByTestId('session-dock')).dataset.views).toBe('browser')
 })

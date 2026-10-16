@@ -10,7 +10,7 @@ export function ResizeHandle({
   label,
   className,
   ...props
-}: ResizeHandleProps & { label: string; className?: string }) {
+}: ResizeHandleProps & { label: string; className?: string; onDoubleClick?: () => void }) {
   return (
     <div
       {...props}

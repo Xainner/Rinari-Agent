@@ -110,35 +110,27 @@ scenario(async () => {
   await step('sidebar-context', () => rightClick(`[...document.querySelectorAll('aside button')].find(b=>b.textContent.includes('Recorrido visual'))`, '08-sidebar-context-menu'))
   await step('message-context', () => rightClick(`[...document.querySelectorAll('[data-testid="turn-result"], .markdown')].pop()`, '08b-message-context-menu'))
   await popoversIn('aside', '09-sidebar')
+  // Panel lateral (#47): una captura por vista, abierta desde su botón de la barra de título, y el mosaico.
   await step('dock', async () => {
-    await click('button[aria-label="Panel lateral"]')
-    await delay(700)
-    const tabSel = '.pane-dock-tabs [role="tab"]'
-    const tabs = await evaluate(`[...document.querySelectorAll(${JSON.stringify(tabSel)})].map(b=>b.textContent.trim())`)
-    for (const [i, label] of tabs.entries()) {
-      await step(`dock-${label}`, async () => {
-        await evaluate(`document.querySelectorAll(${JSON.stringify(tabSel)})[${i}].click()`)
+    const views = await evaluate(`[...document.querySelectorAll('.dock-view-bar > button[data-view]')].map(b=>b.dataset.view)`)
+    for (const [i, view] of views.entries()) {
+      await step(`dock-${view}`, async () => {
+        await click(`.dock-view-bar button[data-view="${view}"]`)
         await delay(900)
-        await screenshot(`10-dock-${i}-${slug(label)}`)
-        const innerSel = `[...document.querySelectorAll('[data-testid="session-dock"] [role="tab"]')].filter(b=>!b.closest('.pane-dock-tabs'))`
-        const inner = await evaluate(`${innerSel}.map(b=>b.textContent.trim())`)
-        for (const [j, sub] of inner.entries()) {
-          await evaluate(`${innerSel}[${j}]?.click()`)
-          await delay(700)
-          await screenshot(`10-dock-${i}-${j}-${slug(sub)}`)
-        }
+        await screenshot(`10-dock-${i}-${view}`)
+        await click(`.dock-view-bar button[data-view="${view}"]`)
+        await delay(450)
       })
     }
-    // La píldora de las pestañas no debe rebotar al cambiar el ancho: se
-    // muestrea cuadro a cuadro y se registra cuánto se separa de la pestaña activa.
-    await step('dock-pill-resize', async () => {
-      const drift = []
-      for (const [w, h] of [[1100, 900], [1500, 900], [1250, 900]]) {
-        await size(w, h)
-        drift.push(await evaluate(`new Promise(done => { let worst = 0, n = 0; const tick = () => { const pill = document.querySelector('.pane-dock-pill'); const tab = document.querySelector('.pane-dock-tabs [role="tab"][aria-selected="true"]'); if (pill && tab) worst = Math.max(worst, Math.abs(pill.getBoundingClientRect().left - tab.getBoundingClientRect().left)); if (++n < 30) requestAnimationFrame(tick); else done(Math.round(worst)) }; requestAnimationFrame(tick) })`))
+    await step('dock-mosaic', async () => {
+      for (const view of ['browser', 'terminal', 'files', 'changes']) {
+        if (await evaluate(`Boolean(document.querySelector('.dock-view-bar button[data-view="${view}"]'))`)) await click(`.dock-view-bar button[data-view="${view}"]`)
       }
-      steps.push({ name: 'dock-pill-drift-px', ok: drift.every((d) => d <= 1), detail: drift })
-      await size(1500, 900)
+      await delay(900)
+      await screenshot('10-dock-mosaic')
+      await click('.composer-surface textarea')
+      await key('B', ['control'])
+      await delay(500)
     })
   })
   await step('boards', async () => {

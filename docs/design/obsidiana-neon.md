@@ -54,6 +54,7 @@ Antes de escribir estilos, usa lo que ya existe:
 - Chips de estado: `.r-chip` con `data-tone` (`accent`, `success`, `warning`, `danger`; sin tono, neutro). Una superficie solo ajusta tamaño (`.skill-status`, `.goal-chip`), no colores.
 - Pestañas y segmentados: `.seg-tabs` / `.seg-tab` con la píldora `.seg-tab-pill` (framer-motion `layoutId`); navegación por flechas.
 - Overlays: `Dialog`, `AlertDialog`, `DropdownMenu`, `Popover`, `Tooltip` de `src/components/ui` (clases `.r-overlay`, `.r-dialog`, `.r-pop`, `.r-tip` con entrada y salida).
+- Panel lateral (#47): un botón por vista en la barra de título (`DockViewButtons`, con su indicador vivo) y hasta cuatro vistas en mosaico (`SessionDock`). Una vista nueva del panel se añade a `DockView` en `stores/sessionDock.ts`, con su icono y nombre en `features/session/dockViews.tsx`; no se crea otra barra de pestañas.
 - Tarjetas de ajustes: `Section` (`.settings-card`). Tostadas: Sonner con `.rinari-toast`.
 - Estados vacíos: un chibi de Rinari + título en display + una frase útil (`.dock-empty`, `.mcp-empty`, `.notify-empty`).
 - Rinari: `<RinariAvatar state=…>` (`src/features/rinari`). Estados: `idle`, `listening`, `thinking`, `working`, `streaming`, `waiting`, `done`, `error`, `offline`.
@@ -71,6 +72,7 @@ No crees una segunda familia de botones, badges o puntos de estado.
 - **Una animación nunca es necesaria para llegar al estado final.** Si no avanza (ventana sin pintar, CI, equipo lento), el elemento tiene que quedar en su tamaño y estado finales igual: termina también con un temporizador, no solo con `animationend`.
 - **Animar cambios, no montajes.** Plegar, desplegar o cerrar un panel se anima cuando el usuario lo cambia, no cada vez que la vista se monta. Para animar una salida sin retener el contenido real (y su navegador nativo), deja un fantasma vacío del mismo tamaño que se pliega.
 - **El foco lo dibuja el anillo global.** No añadas `outline` propio en `:focus-visible` de botones: hay un anillo neutro común y una prueba lo vigila.
+- **Reorganizar no vuelve a montar.** Las vistas del mosaico del panel lateral se colocan con posición absoluta y en un orden fijo del DOM: abrir otra, cambiarlas de sitio o ampliar una solo mueve su caja (con transición), nunca recrea su terminal ni su navegador. Los arrastres se siguen en la ventana, no solo con la captura del puntero: una vista nativa que se mueve puede quitársela.
 - **Nada de `transform` ni `filter` en contenedores que tengan dentro el navegador nativo** durante su vida: mueven el rectángulo de la `WebContentsView`. Las vistas entran solo con opacidad; el panel lateral puede deslizarse porque `useNativeBrowser` vuelve a medir en `animationend`/`transitionend`.
 
 ## 6. Arte de Rinari

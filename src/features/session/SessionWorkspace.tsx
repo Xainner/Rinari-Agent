@@ -6,24 +6,31 @@ import { platform } from '../../platform'
 import type { SessionSummary } from '../../services/engine'
 import {
   CHAT_MIN_DOCKED_WIDTH,
-  DOCK_MAX_WIDTH,
   DOCK_MIN_WIDTH,
   selectDockLayout,
   useSessionDockStore,
   type DockSurface,
 } from '../../stores/sessionDock'
+import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
+import { useDockSignalsStore } from '../../stores/dockSignals'
 import { automaticBrowserUiEnabled } from '../browser/automaticBrowserUi'
 import { useBrowserFrame } from '../browser/useBrowserFrame'
 import { FileWorkspaceProvider } from '../files/FileWorkspace'
+import { useOptionalRuntimeStore } from '../engine/EngineContext'
+import type { RuntimeStore } from '../engine/runtimeStore'
+import { useSessionTimelines } from '../engine/sessionSelectors'
+import { sessionAgents } from '../agents/AgentsPanel'
+import { presentedChangeSets } from '../activity/changeSetPresentation'
+import { useAgentRunningCount } from '../terminal/agentTab'
 import SessionDock from './SessionDock'
 
 const HANDLE_WIDTH = 6
 
-/** Acción tipada: alternar/abrir el dock de **una** sesión (nunca de todos los providers montados). */
+/** Acción tipada: alternar/abrir el panel lateral de **una** sesión (nunca de todos los providers montados). */
 export const DOCK_TOGGLE_EVENT = 'rinari:dock-toggle'
 export interface DockToggleDetail {
   sessionId: string
-  /** Sin superficie: alterna visibilidad. Con superficie: la revela. */
+  /** Sin vista: oculta o muestra el panel (Ctrl+B). Con vista: la revela. */
   surface?: DockSurface
 }
 export function requestDockToggle(detail: DockToggleDetail): void {
@@ -42,7 +49,7 @@ export interface SessionWorkspaceProps {
   sharedRoot?: boolean
   /** El Engine anuncia `browser_view_v1`; sin capability no se consulta. */
   browserEnabled?: boolean
-  /** El Engine anuncia `desktop_terminal_v1`: el dock suma la pestaña Terminal. */
+  /** El Engine anuncia `desktop_terminal_v1`: el panel suma la vista Terminal. */
   terminalEnabled?: boolean
   /** Generación del Engine: al cambiar, el visor vuelve a inscribir sus watches. */
   engineGeneration?: number
@@ -52,23 +59,23 @@ export interface SessionWorkspaceProps {
 
 /**
  * Composición de una sesión compartida por Normal (`SingleSessionView`) y por
- * cada panel del board (`SessionPane`): conversación + dock con Archivos,
- * Navegador, Workspace y Terminal. Una sola implementación del visor de archivos y del
- * browser; el layout del dock es por sesión (`sessionDock`). El dock ocupa
- * ancho real dentro de la sesión y, cuando no caben chat y dock, pasa a un
- * drawer dentro de este contenedor: no reaparece ninguna superficie flotante
- * global.
+ * cada panel del board (`SessionPane`): conversación + panel lateral con sus
+ * vistas en mosaico (#47). Una sola implementación del visor de archivos y del
+ * browser; la disposición es por sesión (`sessionDock`). El panel ocupa ancho
+ * real dentro de la sesión, sin tope (#44a): lo limita el chat, que no baja de
+ * 300 px; si ni así caben, pasa a un cajón encima del chat. «Ampliar» lo lleva
+ * a toda la conversación y deja el chat en una columna.
  */
 export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, terminalEnabled = false, busy = false, engineGeneration }: SessionWorkspaceProps) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
-  const setActiveSurface = useSessionDockStore((state) => state.setActiveSurface)
+  const toggleVisible = useSessionDockStore((state) => state.toggleVisible)
   const setWidth = useSessionDockStore((state) => state.setWidth)
-  const setWorkspaceTab = useSessionDockStore((state) => state.setWorkspaceTab)
+  const setAmp = useSessionDockStore((state) => state.setAmp)
   const reveal = useSessionDockStore((state) => state.reveal)
 
-  // Geometría real del contenedor: decide si el dock cabe al lado o va en drawer.
+  // Geometría real del contenedor: decide si el panel cabe al lado o va en cajón.
   const bodyRef = useRef<HTMLDivElement>(null)
   const [innerWidth, setInnerWidth] = useState<number | null>(null)
   useEffect(() => {
@@ -81,24 +88,47 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
-  const canDock = innerWidth === null || innerWidth >= CHAT_MIN_DOCKED_WIDTH + layout.widthPx + HANDLE_WIDTH
-  const dockLayout: 'docked' | 'drawer' = canDock ? 'docked' : 'drawer'
+  const room = innerWidth === null ? null : innerWidth - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH
+  const placement: 'docked' | 'drawer' = room === null || room >= DOCK_MIN_WIDTH ? 'docked' : 'drawer'
 
   const [liveWidth, setLiveWidth] = useState(layout.widthPx)
   useEffect(() => {
     setLiveWidth(layout.widthPx)
   }, [layout.widthPx])
+  const amplified = layout.amp !== null && layout.visible && placement === 'docked'
+  const shownWidth = room === null ? liveWidth : amplified ? room : Math.max(DOCK_MIN_WIDTH, Math.min(liveWidth, room))
+
+  // «Ampliar» y volver: el ancho se anima en lugar de saltar (termina también sin pintar).
+  const [animateWidth, setAnimateWidth] = useState(false)
+  const shownAmp = useRef(layout.amp)
+  useEffect(() => {
+    if (shownAmp.current === layout.amp) return
+    shownAmp.current = layout.amp
+    setAnimateWidth(true)
+    const timer = window.setTimeout(() => setAnimateWidth(false), 420)
+    return () => window.clearTimeout(timer)
+  }, [layout.amp])
+  // Esc devuelve el panel ampliado a su ancho, si nada encima la quiere.
+  useEffect(() => {
+    if (!amplified || !focused) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || selectOverlayDepth(useOverlayStore.getState()) > 0) return
+      setAmp(sessionId, null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [amplified, focused, sessionId, setAmp])
 
   // Al cerrarse, un fantasma sin contenido con el ancho que tenía se pliega:
   // la salida se ve sin retener el panel real ni su navegador nativo.
   // Al abrirse (por el usuario, no al montar la vista) el panel crece desde 0
   // y el chat se encoge con él: la misma animación que el cierre, al revés.
-  const [leaving, setLeaving] = useState<{ width: number; layout: 'docked' | 'drawer' } | null>(null)
+  const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer' } | null>(null)
   const [entering, setEntering] = useState(false)
-  const shown = useRef({ visible: layout.visible, width: liveWidth, layout: dockLayout })
+  const shown = useRef({ visible: layout.visible, width: shownWidth, placement })
   useEffect(() => {
     const previous = shown.current
-    shown.current = { visible: layout.visible, width: liveWidth, layout: dockLayout }
+    shown.current = { visible: layout.visible, width: shownWidth, placement }
     if (layout.visible) {
       setLeaving(null)
       if (previous.visible) return
@@ -109,39 +139,41 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     }
     setEntering(false)
     if (!previous.visible) return
-    setLeaving({ width: previous.width, layout: previous.layout })
+    setLeaving({ width: previous.width, placement: previous.placement })
     const timer = window.setTimeout(() => setLeaving(null), 360)
     return () => window.clearTimeout(timer)
-  }, [layout.visible, liveWidth, dockLayout])
+  }, [layout.visible, shownWidth, placement])
   const { handleProps } = useDragResize({
-    value: liveWidth,
+    value: shownWidth,
     min: DOCK_MIN_WIDTH,
-    max: () => Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, (innerWidth ?? DOCK_MAX_WIDTH) - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH)),
+    max: () => Math.max(DOCK_MIN_WIDTH, room ?? DOCK_MIN_WIDTH),
     direction: 'left',
-    onChange: setLiveWidth,
+    onChange: (next) => {
+      if (layout.amp) setAmp(sessionId, null)
+      setLiveWidth(next)
+    },
     onCommit: (final) => setWidth(sessionId, final),
-    disabled: dockLayout === 'drawer',
+    disabled: placement === 'drawer',
   })
 
-  // Enlaces de archivo del transcript: revelan Archivos en este mismo dock.
+  // Enlaces de archivo del transcript: revelan Archivos en este mismo panel.
   const revealFile = useCallback(() => reveal(sessionId, 'files'), [reveal, sessionId])
 
-  // Acción tipada con destinatario explícito (atajo «archivos», paleta…).
+  // Acción tipada con destinatario explícito (atajos, paleta…).
   useEffect(() => {
     function onToggle(event: Event) {
       const detail = (event as CustomEvent<DockToggleDetail>).detail
       if (!detail || detail.sessionId !== sessionId) return
       if (detail.surface) reveal(sessionId, detail.surface)
-      else setVisible(sessionId, !useSessionDockStore.getState().layoutFor(sessionId).visible)
+      else toggleVisible(sessionId)
     }
     window.addEventListener(DOCK_TOGGLE_EVENT, onToggle)
     return () => window.removeEventListener(DOCK_TOGGLE_EVENT, onToggle)
-  }, [sessionId, reveal, setVisible])
+  }, [sessionId, reveal, toggleVisible])
 
   // Navegador del Engine: se consulta a la cadencia de capturas solo con la
-  // superficie a la vista. Un browser aparece por actividad del agente, así
-  // que fuera de esa superficie basta una sonda al montar y otra al terminar
-  // un turno: oculto no genera poll de capturas.
+  // vista a la vista. Un browser aparece por actividad del agente, así que
+  // fuera de ella basta una sonda al montar y otra al terminar un turno.
   const [targetId, setTargetId] = useState('')
   const [browserProbe, setBrowserProbe] = useState(0)
   const wasBusy = useRef(false)
@@ -149,21 +181,13 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     if (wasBusy.current && !busy) setBrowserProbe((value) => value + 1)
     wasBusy.current = busy
   }, [busy])
-  const browserActive = layout.visible && layout.activeSurface === 'browser'
+  const browserActive = layout.visible && layout.views.includes('browser')
   const browser = useBrowserFrame(sessionId, { active: browserActive, targetId, enabled: browserEnabled, probe: browserProbe })
   // Browser nativo: el panel se revela cuando el contexto pasa a estar listo,
-  // que es cuando el agente empieza a usarlo de verdad. Antes había que abrirlo
-  // a mano y no había forma de saber que hacía falta.
-  //
-  // Se revela **una vez por contexto**, no en cada aviso: si el usuario lo
-  // cierra, esa es su decisión y no se le vuelve a abrir hasta que haya un
-  // browser nuevo. Y sólo si el dock está cerrado: con el dock abierto en otra
-  // superficie, quitarle lo que está mirando sería peor. Presentarlo no es
-  // requisito para que las herramientas funcionen —la vista maqueta igual—,
-  // así que esto es comodidad, no corrección.
+  // que es cuando el agente empieza a usarlo de verdad. Una vez por contexto,
+  // y sólo con el panel oculto: si el usuario lo cerró, es su decisión.
   const nativeState = useRef<string | null>(null)
-  // El foco se lee por referencia: cambia a menudo y no puede resuscribir el
-  // aviso cada vez, que es justo cuando se pierde el que importa.
+  const [nativeLive, setNativeLive] = useState<'agent' | 'live' | null>(null)
   const focusedRef = useRef(focused)
   focusedRef.current = focused
   useEffect(() => {
@@ -175,6 +199,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
         if (!alive || view.session_id !== sessionId) return
         const previous = nativeState.current
         nativeState.current = view.context_state
+        setNativeLive(view.context_state === 'ready' ? (view.control_state === 'agent' ? 'agent' : 'live') : null)
         if (view.backend !== 'electron-native' || view.context_state !== 'ready') return
         if (previous === 'ready' || !automaticBrowserUiEnabled()) return
         const current = useSessionDockStore.getState().layoutFor(sessionId)
@@ -198,33 +223,47 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     const instance = browser.connectedInstance
     if (!instance || revealedInstance.current === instance) return
     revealedInstance.current = instance
-    // Un browser nuevo no roba foco a otro panel, no cambia Normal/Boards y no
-    // reemplaza un archivo que el usuario esté leyendo: solo se revela con el
-    // dock cerrado y la sesión enfocada; en otro caso queda el indicador.
+    // Un browser nuevo no roba foco a otro panel ni reemplaza lo que el
+    // usuario mira: solo se revela con el panel oculto y la sesión enfocada.
     const current = useSessionDockStore.getState().layoutFor(sessionId)
     if (focused && !current.visible) reveal(sessionId, 'browser')
   }, [browser.connectedInstance, focused, reveal, sessionId])
 
+  // Indicadores de los botones de la barra de título (#47).
+  const publish = useDockSignalsStore((state) => state.publish)
+  const clearSignals = useDockSignalsStore((state) => state.clear)
+  const agentRunning = useAgentRunningCount(terminalEnabled ? sessionId : '')
+  const browserSignal = nativeLive ?? (browser.frame?.state === 'connected' ? (busy ? 'agent' : 'live') : null)
+  useEffect(() => { publish(sessionId, { browser: browserSignal, terminal: agentRunning }) }, [publish, sessionId, browserSignal, agentRunning])
+  useEffect(() => () => clearSignals(sessionId), [clearSignals, sessionId])
+  const runtime = useOptionalRuntimeStore()
+
   return (
     <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
-      <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? dockLayout : 'hidden'}>
+      {runtime && <TimelineSignals store={runtime} sessionId={sessionId} />}
+      <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
         <div className="session-workspace-chat">{children}</div>
-        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.layout} style={{ width: leaving.width }} aria-hidden="true" />}
+        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
         {layout.visible && (
           <>
-            {dockLayout === 'docked' && <ResizeHandle {...handleProps} label={t('board.resize.workspace')} />}
+            {placement === 'docked' && (
+              <ResizeHandle
+                {...handleProps}
+                label={t('board.resize.workspace')}
+                // Doble clic en el borde: amplía todo el panel, o lo devuelve.
+                onDoubleClick={() => setAmp(sessionId, layout.amp ? null : 'all')}
+              />
+            )}
             <SessionDock
               sessionId={sessionId}
               session={record}
-              surface={layout.activeSurface === 'terminal' && !terminalEnabled ? 'workspace' : layout.activeSurface}
-              onSurfaceChange={(surface) => setActiveSurface(sessionId, surface)}
-              workspaceTab={layout.workspaceTab}
-              onWorkspaceTabChange={(tab) => setWorkspaceTab(sessionId, tab)}
+              layout={layout}
               sharedRoot={sharedRoot}
-              layout={dockLayout}
-              width={liveWidth}
+              placement={placement}
+              width={shownWidth}
               entering={entering}
-              onClose={() => setVisible(sessionId, false)}
+              animateWidth={animateWidth}
+              onHide={() => setVisible(sessionId, false)}
               browser={{ frame: browser.frame, error: browser.error, targetId, onTargetChange: setTargetId }}
               terminalEnabled={terminalEnabled}
               busy={busy}
@@ -234,4 +273,22 @@ export default function SessionWorkspace({ sessionId, record, children, density,
       </div>
     </FileWorkspaceProvider>
   )
+}
+
+/** Agentes trabajando y archivos cambiados en el último turno con cambios, para sus botones. */
+function TimelineSignals({ store, sessionId }: { store: RuntimeStore; sessionId: string }) {
+  const timelines = useSessionTimelines(store, sessionId)
+  const publish = useDockSignalsStore((state) => state.publish)
+  const agents = sessionAgents(timelines).filter((entry) => entry.live).length
+  let changes = 0
+  let latestAt = -Infinity
+  for (const timeline of Object.values(timelines)) {
+    const { latest } = presentedChangeSets(timeline)
+    if (latest && timeline.startedAt > latestAt) {
+      latestAt = timeline.startedAt
+      changes = latest.files.length
+    }
+  }
+  useEffect(() => { publish(sessionId, { agents, changes }) }, [publish, sessionId, agents, changes])
+  return null
 }

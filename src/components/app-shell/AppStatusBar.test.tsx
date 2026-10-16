@@ -99,40 +99,18 @@ it('por debajo del ancho de escritorio el mismo botón abre el cajón', () => {
   expect(screen.queryByRole('button', { name: /barra/ })).toBeNull()
 })
 
-// El panel lateral tiene sus propias pestañas; en la barra basta un botón.
-it('un solo botón para el panel lateral, sin accesos por superficie', () => {
-  const onToggleDock = vi.fn()
+// #47: los botones de las vistas los pone la app solo con una conversación; sin ellos no queda un botón genérico.
+it('sin conversación no hay botones del panel lateral, ni el genérico de antes', () => {
   const { rerender } = render(
     <I18nProvider lang="es">
-      <AppStatusBar {...base} dockTargetAvailable dockOpen={false} onToggleDock={onToggleDock} />
+      <AppStatusBar {...base} />
     </I18nProvider>,
   )
-  for (const name of ['Archivos', 'Navegador', 'Panel de Workspace']) {
-    expect(screen.queryByRole('button', { name })).toBeNull()
-  }
-  const panel = screen.getByRole('button', { name: 'Panel lateral' })
-  expect(panel.getAttribute('aria-pressed')).toBe('false')
-  panel.click()
-  expect(onToggleDock).toHaveBeenCalledOnce()
-
+  expect(screen.queryByRole('button', { name: 'Panel lateral' })).toBeNull()
   rerender(
     <I18nProvider lang="es">
-      <AppStatusBar {...base} dockTargetAvailable dockOpen onToggleDock={onToggleDock} />
+      <AppStatusBar {...base} dockViews={<div role="toolbar" aria-label="Vistas del panel lateral" />} />
     </I18nProvider>,
   )
-  const open = screen.getByRole('button', { name: 'Panel lateral' })
-  expect(open.getAttribute('aria-pressed')).toBe('true')
-  // El estado activo no depende sólo del color: el marcador está en el DOM.
-  expect(open.getAttribute('data-active')).toBe('true')
-})
-
-it('sin sesión destino el panel lateral está deshabilitado y dice por qué', () => {
-  render(
-    <I18nProvider lang="es">
-      <AppStatusBar {...base} dockTargetAvailable={false} />
-    </I18nProvider>,
-  )
-  const panel = screen.getByRole('button', { name: 'Panel lateral' }) as HTMLButtonElement
-  expect(panel.disabled).toBe(true)
-  expect(panel.title).toBe('Necesitas una sesión activa')
+  expect(screen.getByRole('toolbar', { name: 'Vistas del panel lateral' })).toBeTruthy()
 })

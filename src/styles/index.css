@@ -591,6 +591,13 @@ input[type='password']::-ms-clear {
   .composer-model-controls { grid-column: 1 / -1; grid-row: 2; }
   .composer-model-controls > button:first-child { margin-right: auto; max-width: 55%; }
 }
+/* La columna del chat con el panel lateral ampliado (300 px, #44a): los botones de icono no se aplastan. */
+.composer-tools > button:not(.composer-chip), .composer-tools > span { flex-shrink: 0; }
+@container (max-width: 380px) {
+  .composer-toolbar { grid-template-columns: 1fr; row-gap: 8px; }
+  .composer-modes { grid-column: 1; grid-row: 2; justify-self: start; }
+  .composer-model-controls { grid-row: 3; }
+}
 .conversation-shell {
   height: 100%;
   min-height: 0;
@@ -984,13 +991,8 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .app-topbar-summary { overflow: hidden; text-overflow: ellipsis; }
 .app-topbar-icon { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); padding: 7px; color: var(--text-muted); transition: background-color 120ms, color 120ms; }
 .app-topbar-icon:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
-.app-topbar-dock { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; padding: 0 4px; }
-.app-topbar-dock-button { position: relative; }
-.app-topbar-dock-button:disabled { opacity: .38; cursor: default; }
 /* El estado activo no se distingue sólo por color: el botón gana fondo **y**
    una barra inferior, para que se lea también sin percepción de color. */
-.app-topbar-dock-button[data-active] { background: var(--bg-hover); color: var(--text); }
-.app-topbar-dock-button[data-active]::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 2px; height: 2px; border-radius: 999px; background: var(--accent); }
 .app-topbar-attention { position: relative; }
 .app-topbar-attention-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--warning); color: #1a1226; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
 .sidebar-signal { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; }
@@ -1249,29 +1251,11 @@ select { color-scheme: inherit; }
 select option,
 select optgroup { background-color: var(--bg-elevated); color: var(--text); }
 select option:disabled { color: var(--text-subtle); }
-.pane-dock-tabs { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 8px; border-bottom: 1px solid var(--line-1); background: rgb(10 8 18 / 0.6); }
-.pane-dock-seg { position: relative; display: flex; min-width: 0; gap: 2px; padding: 3px; border-radius: 999px; border: 1px solid var(--line-1); background: rgb(6 5 11 / 0.7); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03); }
 .pane-dock-ghost { flex: 0 0 auto; min-height: 0; border-left: 1px solid var(--line-1); background: linear-gradient(180deg, #0e0b18, #09070f); animation: dock-fold 0.32s var(--ease-out) forwards; overflow: hidden; }
 .pane-dock-ghost[data-layout='drawer'] { position: absolute; inset: 0 0 0 auto; z-index: 20; animation-name: dock-slide-out; }
 @keyframes dock-fold { from { opacity: 1; } to { width: 0; opacity: 0; } }
 @keyframes dock-slide-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(32px); } }
-/* Cuatro superficies no caben con nombre en un dock estrecho: las inactivas
- * quedan solo con su icono (el nombre sigue en aria-label y en el tooltip). */
 .session-dock { container-type: inline-size; }
-@container (max-width: 440px) { .pane-dock-tab:not(.is-active) .pane-dock-tab-label { display: none; } }
-.pane-dock-tab { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--text-subtle); white-space: nowrap; transition: color var(--dur-fast); }
-.pane-dock-tab:hover { color: var(--text); }
-.pane-dock-tab.is-active { color: #fff; }
-.pane-dock-tab.is-active svg { color: #fff; }
-.pane-dock-pill { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 999px; background: linear-gradient(135deg, var(--violet-500), var(--violet-600)); box-shadow: 0 6px 18px -8px rgb(147 88 255 / 0.9), var(--inset-hi); }
-.pane-dock-pill { z-index: 0; pointer-events: none; }
-.pane-dock-pill[data-glide] { transition: transform 0.26s var(--ease-out), width 0.26s var(--ease-out); }
-.pane-dock-tab > :not(.pane-dock-pill) { position: relative; z-index: 1; }
-.pane-dock-count { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: rgb(147 88 255 / 0.2); color: var(--violet-200); font-family: var(--font-mono); font-size: 10px; }
-.pane-dock-count.is-live { background: rgb(130 244 239 / 0.14); color: var(--cyan-300); }
-.pane-dock-body { animation: rinari-view-in var(--dur-base) var(--ease-out); }
-.pane-dock-body { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; flex-direction: column; overflow: hidden; }
-.pane-dock-body > * { flex: 1 1 auto; min-height: 0; }
 /* Terminal del dock: pestañas + xterm. El fondo sigue el token del tema. */
 .terminal-panel { display: flex; flex-direction: column; min-height: 0; background: var(--bg-elevated); }
 .terminal-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); }
@@ -1299,11 +1283,74 @@ select option:disabled { color: var(--text-subtle); }
 .terminal-start:hover { background: var(--bg-hover); }
 /* Workspace de sesión (Normal y panel): conversación + dock con ancho real.
  * min-width/min-height 0 evitan que el dock empuje el chat fuera de su celda. */
+/* Panel lateral nuevo (plan 0.4.0 #47): botones por vista en la barra de título y mosaico de hasta cuatro vistas. */
+.dock-view-bar { display: flex; align-items: center; gap: 2px; padding: 0 2px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.dock-view-button { position: relative; }
+.dock-view-button[aria-pressed='true'] { background: var(--bg-active); color: var(--text); }
+.dock-view-button[aria-pressed='true']::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 1px; height: 2px; border-radius: 999px; background: var(--accent); animation: rinari-fade-in var(--dur-fast) var(--ease-out) both; }
+.dock-view-count { position: absolute; top: 1px; right: 0; display: inline-flex; min-width: 15px; height: 15px; align-items: center; justify-content: center; padding: 0 4px; border-radius: 999px; font-size: 9.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; color: var(--violet-100, #ede7ff); background: var(--accent); box-shadow: 0 0 0 2px var(--bg-subtle); animation: rinari-check-pop var(--dur-slow) var(--ease-spring) both; }
+.dock-view-count[data-tone='live'] { color: var(--bg-app); background: var(--cyan-300, var(--agent)); }
+.dock-view-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 999px; background: var(--success); box-shadow: 0 0 0 2px var(--bg-subtle); }
+.dock-view-dot[data-tone='live'] { animation: dock-dot-live 1.6s ease-in-out infinite; }
+.dock-view-dot[data-tone='warning'] { background: var(--warning); }
+.dock-view-dot[data-tone='accent'] { background: var(--accent-2); }
+@keyframes dock-dot-live { 50% { box-shadow: 0 0 0 2px var(--bg-subtle), 0 0 0 5px color-mix(in srgb, var(--success) 30%, transparent); } }
+/* El anillo del navegador: verde con una página abierta, violeta y girando si Rinari la usa. */
+.dock-view-button.has-ring::before { content: ''; position: absolute; inset: 3px; border-radius: 999px; padding: 1.5px; background: var(--success); -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+.dock-view-button[data-ring='agent']::before { background: conic-gradient(from var(--dock-ring, 0deg), var(--violet-300) 0 30%, color-mix(in srgb, var(--accent) 35%, transparent) 55% 100%); animation: dock-ring 1.8s linear infinite; }
+@property --dock-ring { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes dock-ring { to { --dock-ring: 360deg; } }
+.dock-replace { width: 250px; padding: 12px; }
+.dock-replace-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.dock-replace-hint { margin-top: 2px; font-size: 11.5px; line-height: 1.4; color: var(--text-subtle); }
+.dock-replace-list { display: grid; gap: 4px; margin-top: 10px; }
+.dock-replace-option { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--text-muted); box-shadow: inset 0 0 0 1px var(--line-1); transition: background-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast); }
+.dock-replace-option:hover { color: var(--text); background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--line-3); }
+
+.pane-dock[data-animate-width] { transition: width 0.32s var(--ease-out); }
+.dock-mosaic { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.dock-tile { position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; transition: box-shadow var(--dur-fast); }
+.dock-tile[data-hidden] { visibility: hidden; pointer-events: none; }
+.dock-mosaic[data-animating]:not([data-dragging]) .dock-tile, .dock-mosaic[data-animating]:not([data-dragging]) .dock-splitter { transition: left var(--dur-base) var(--ease-out), top var(--dur-base) var(--ease-out), width var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out), box-shadow var(--dur-fast); }
+.dock-tile[data-drop-target] { box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 40px -10px rgb(147 88 255 / 0.45); }
+.dock-tile[data-lifted] { opacity: 0.55; }
+.dock-tile-head { display: flex; flex-shrink: 0; align-items: center; gap: 7px; min-height: 36px; padding: 0 4px 0 11px; border-bottom: 1px solid var(--line-1); background: color-mix(in srgb, var(--bg-elevated) 55%, transparent); cursor: grab; user-select: none; touch-action: none; }
+.dock-tile-head:active { cursor: grabbing; }
+.dock-tile-icon { flex-shrink: 0; color: var(--accent-2); }
+.dock-tile-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.dock-tile-body { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.dock-tile-body > * { flex: 1 1 auto; min-height: 0; }
+.dock-tile[data-arriving] .dock-tile-body, .dock-tile[data-arriving] .dock-tile-head { animation: rinari-fade-in 0.22s 0.2s var(--ease-out) both; }
+.dock-splitter { position: absolute; z-index: 2; touch-action: none; outline: none; }
+.dock-splitter[data-axis='y'] { cursor: row-resize; }
+.dock-splitter[data-axis='x'] { cursor: col-resize; }
+.dock-splitter::before { content: ''; position: absolute; background: var(--line-1); transition: background-color var(--dur-fast); }
+.dock-splitter[data-axis='y']::before { left: 0; right: 0; top: 2px; height: 1px; }
+.dock-splitter[data-axis='x']::before { top: 0; bottom: 0; left: 2px; width: 1px; }
+.dock-splitter::after { content: ''; position: absolute; top: 50%; left: 50%; border-radius: 999px; background: var(--violet-300); opacity: 0; transform: translate(-50%, -50%); transition: opacity var(--dur-fast); }
+.dock-splitter[data-axis='y']::after { width: 40px; height: 3px; }
+.dock-splitter[data-axis='x']::after { width: 3px; height: 40px; }
+.dock-splitter:hover::before, .dock-splitter:focus-visible::before { background: var(--accent); }
+.dock-splitter:hover::after, .dock-splitter:focus-visible::after { opacity: 1; }
+/* Lo que viaja desde el botón de la barra de título: solo un marco vacío, nunca la vista real (§5). */
+.dock-launch-ghost { position: fixed; z-index: 60; border-radius: var(--r-md); border: 1px solid rgb(167 139 250 / 0.55); background: linear-gradient(180deg, rgb(147 88 255 / 0.16), rgb(14 11 24 / 0.6)); box-shadow: 0 18px 40px -18px rgb(147 88 255 / 0.65); pointer-events: none; }
+.dock-move-ghost { position: fixed; top: 0; left: 0; z-index: 60; padding: 5px 10px; border-radius: var(--r-sm); font-size: 12px; font-weight: 600; color: var(--text); background: var(--glass-2, var(--bg-elevated)); box-shadow: var(--sh-pop), inset 0 0 0 1px var(--line-3); pointer-events: none; }
+.dock-stack { display: flex; flex-direction: column; min-height: 0; }
+.dock-stack-main { flex: 1 1 auto; min-height: 0; }
+.dock-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 10px 12px 24px; }
+.dock-empty-line { padding: 16px 14px; font-size: 12.5px; color: var(--text-subtle); }
+.dock-section { flex-shrink: 0; max-height: 45%; overflow-y: auto; border-top: 1px solid var(--line-1); }
+.dock-section-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--text-muted); background: color-mix(in srgb, var(--bg-elevated) 85%, transparent); cursor: pointer; list-style: none; }
+.dock-section-head::-webkit-details-marker { display: none; }
+.dock-section-head::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform var(--dur-fast); }
+.dock-section[open] > .dock-section-head::before { transform: rotate(45deg); }
+.dock-section-body { padding: 4px 12px 14px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .dock-view-button[data-ring='agent']::before, .dock-view-dot[data-tone='live'] { animation: none; } }
+html[data-motion='reduced'] .dock-view-button[data-ring='agent']::before, html[data-motion='reduced'] .dock-view-dot[data-tone='live'] { animation: none; }
 .session-workspace { position: relative; display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; height: 100%; }
 .session-workspace-chat { display: flex; flex: 1 1 0; min-width: 0; min-height: 0; flex-direction: column; }
 .session-workspace-chat > * { flex: 1 1 auto; min-height: 0; }
 .session-workspace[data-density="normal"] .pane-dock-drawer { width: min(92%, 520px); }
-.pane-dock-dot { display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: var(--success, #3fbf7f); }
 /* -- Navegador: barra como la de un navegador y franja de quién manda --------- */
 .browser-toolbar { position: relative; display: flex; flex-direction: column; border-bottom: 1px solid var(--line-1); background: rgb(10 8 18 / 0.7); font-size: 12px; color: var(--text-muted); }
 .browser-chrome { display: flex; align-items: center; gap: 4px; padding: 8px 8px 6px; }

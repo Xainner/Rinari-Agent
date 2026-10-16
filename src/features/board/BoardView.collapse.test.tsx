@@ -77,7 +77,7 @@ it('removes every pane after the app confirmation while preserving running sessi
   expect(engine.setActiveSession).not.toHaveBeenCalled()
   expect(engine.runtime.getState()).toBe(runtime)
   expect(useComposerStore.getState().getDraft('ses_a').text).toBe('borrador pendiente')
-  expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ visible: true, activeSurface: 'files' })
+  expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ visible: true, views: ['files'] })
   await userEvent.click(screen.getByRole('button', { name: 'Añadir conversación actual' }))
   expect(screen.getByRole('region', { name: 'Backend API' })).toBeTruthy()
   expect(screen.getByRole('textbox', { name: 'Mensaje' })).toHaveProperty('value', 'borrador pendiente')

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, ExternalLink, Globe, Lock, RotateCw } from 'lucide-react'
 
 import { useI18n } from '../../i18n'
@@ -25,6 +25,13 @@ export interface BrowserToolbarProps {
   onHistory?: (action: 'back' | 'forward' | 'reload') => void
   onTakeControl?: () => void
   onReturnControl?: () => void
+  /**
+   * El sitio del selector de tamaño de página (Ajustar · 390 · 768 · 1280 ·
+   * 1920), junto a la dirección (decisión del dueño, #47). Lo llena el #44b
+   * cuando el navegador nativo sepa cambiar su viewport; hasta entonces no se
+   * ofrece nada que no funcione.
+   */
+  sizeControl?: ReactNode
 }
 
 /** Separa el dominio del resto de la dirección para leerla como en un navegador. */
@@ -60,6 +67,7 @@ export default function BrowserToolbar({
   onHistory,
   onTakeControl,
   onReturnControl,
+  sizeControl,
 }: BrowserToolbarProps) {
   const { t } = useI18n()
   const [draft, setDraft] = useState(url)
@@ -138,6 +146,7 @@ export default function BrowserToolbar({
             <ExternalLink size={14} />
           </button>
         )}
+        {sizeControl}
       </div>
 
       {targets.length > 1 && (

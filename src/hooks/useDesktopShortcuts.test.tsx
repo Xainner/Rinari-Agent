@@ -22,7 +22,10 @@ it('fires one action per key press and ignores repeats and IME composition', () 
   press({ key: 'B', ctrlKey: true, shiftKey: true, isComposing: true })
   expect(onAction).toHaveBeenCalledTimes(1)
   expect(onAction).toHaveBeenCalledWith('boards')
+  // Ctrl+B es el panel lateral (#47); la barra lateral pasó a Ctrl+Alt+B.
   press({ key: 'b', ctrlKey: true })
+  expect(onAction).toHaveBeenLastCalledWith('sidePanel')
+  press({ key: 'b', ctrlKey: true, altKey: true })
   expect(onAction).toHaveBeenLastCalledWith('sidebar')
 })
 

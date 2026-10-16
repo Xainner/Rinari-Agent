@@ -59,14 +59,23 @@ export type SettingsSection =
   | 'advanced'
   | 'about'
 
-export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards' | 'flows' | 'collapsePane' | 'expandPane'
+export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'sidePanel' | 'boards' | 'flows' | 'collapsePane' | 'expandPane'
 export type ShortcutBindings = Record<ShortcutAction, string>
+
+/**
+ * Ctrl+B oculta y vuelve a mostrar el panel lateral (decisión del dueño, #47);
+ * la barra lateral pasa a Ctrl+Alt+B (Ctrl+Shift+B es Boards). Cambiarlos es
+ * cambiar estas dos líneas (y el acelerador del menú nativo, `native/menu.ts`).
+ */
+export const SIDE_PANEL_SHORTCUT = 'Ctrl+B'
+export const SIDEBAR_SHORTCUT = 'Ctrl+Alt+B'
 
 export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
   newChat: 'Ctrl+N',
   palette: 'Ctrl+K',
   settings: 'Ctrl+,',
-  sidebar: 'Ctrl+B',
+  sidebar: SIDEBAR_SHORTCUT,
+  sidePanel: SIDE_PANEL_SHORTCUT,
   boards: 'Ctrl+Shift+B',
   flows: 'Ctrl+Shift+L',
   // Colapso/expansión del panel enfocado en Boards; sin acelerador nativo.
@@ -149,6 +158,9 @@ function writeFlowScopes(scopes: FlowScopeByHome): void {
 function readShortcutBindings(): ShortcutBindings {
   try {
     const stored = JSON.parse(localStorage.getItem('rinari.shortcutBindings') ?? '{}') as Partial<ShortcutBindings>
+    // Guardados antes de que existiera el atajo del panel lateral: la barra
+    // lateral dejó Ctrl+B, así que no se queda con el atajo del panel.
+    if (stored.sidePanel === undefined && stored.sidebar?.toUpperCase() === SIDE_PANEL_SHORTCUT.toUpperCase()) delete stored.sidebar
     return { ...DEFAULT_SHORTCUT_BINDINGS, ...stored }
   } catch {
     return DEFAULT_SHORTCUT_BINDINGS

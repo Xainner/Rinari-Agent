@@ -9,6 +9,8 @@ export type DesktopAction =
   | 'report-bug'
   | 'about'
   | 'sidebar'
+  /** Oculta o vuelve a mostrar el panel lateral de la sesión destino (#47). */
+  | 'side-panel'
   | 'files'
   /** Abre el dock de la sesión en la superficie de navegador (doc 03 §1). */
   | 'browser'

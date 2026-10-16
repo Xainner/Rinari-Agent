@@ -114,6 +114,11 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'side-panel-stack': {
+    title: 'Panel lateral: botones por vista, mosaico de hasta 4, separadores, reemplazar, arrastrar, ampliar y Ctrl+B',
+    phases: ['exercise'],
+    model: () => startFakeModel([{ text: 'RESPUESTA UNO' }, { text: 'RESPUESTA DOS' }, { text: 'Panel' }, { text: 'Panel' }, { text: 'Panel' }]),
+  },
   'skill-install': {
     title: 'Instalar skills: varias a la vez con casillas, progreso, chips por fila y confirmación de la que trae avisos',
     phases: ['exercise'],

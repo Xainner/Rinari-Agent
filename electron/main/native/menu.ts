@@ -98,7 +98,9 @@ export function buildApplicationMenu(deps: MenuDeps): Menu {
         item('view-boards', text.menuBoards),
         item('view-flows', text.menuFlows),
         { type: 'separator' },
-        item('sidebar', text.menuSidebar, 'CmdOrCtrl+B'),
+        item('sidebar', text.menuSidebar, 'CmdOrCtrl+Alt+B'),
+        // Oculta y vuelve a mostrar el panel lateral sin cerrar sus vistas (#47).
+        item('side-panel', text.menuSidePanel, 'CmdOrCtrl+B'),
         item('files', text.menuFiles, 'CmdOrCtrl+Shift+E'),
         // El navegador vive en el mismo dock que los archivos, así que se abre
         // igual. Sin esta entrada sólo se llegaba abriendo Archivos y cambiando

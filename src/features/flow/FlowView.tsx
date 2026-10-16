@@ -20,7 +20,12 @@ import { useFlow } from './useFlow'
  * píxeles, como Boards. Los datos son del Engine (`flow.get`):
  * la vista no estima nada y rotula lo que falta.
  */
-export default function FlowView() {
+export default function FlowView({ sessionId, embedded = false }: {
+  /** La conversación del panel lateral; sin ella, la activa. */
+  sessionId?: string
+  /** Dentro del panel lateral (#43). */
+  embedded?: boolean
+} = {}) {
   const { t, lang } = useI18n()
   const reduced = useFlowReducedMotion()
   const data = useEngineData()
@@ -35,7 +40,8 @@ export default function FlowView() {
   const projects = useMemo(() => data.projects.filter((project) => !project.archived), [data.projects])
   // El flujo es el de la conversación en la que estás; se actualiza solo con
   // los eventos del Engine (useFlow), sin selector ni recarga manual.
-  const activeSession = data.sessionsById[data.activeSession] ? data.activeSession : ''
+  const wanted = sessionId ?? data.activeSession
+  const activeSession = data.sessionsById[wanted] ? wanted : ''
   const scope = useMemo<FlowScope | null>(() => (activeSession ? { kind: 'session', id: activeSession } : null), [activeSession])
 
   // Tres estados, no dos: mientras el Engine no está `ready` no se sabe si
@@ -134,7 +140,7 @@ export default function FlowView() {
     : data.sessionsById[scope?.id ?? '']?.title ?? '')
 
   return (
-    <div className="flow-view" data-testid="flow-view">
+    <div className="flow-view" data-testid="flow-view" data-embedded={embedded || undefined}>
       <header className="flow-header">
         {scope && (
           <div className="flow-summary" aria-live="polite">

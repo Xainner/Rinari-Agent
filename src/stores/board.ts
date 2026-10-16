@@ -449,7 +449,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
     }
     // Sin preferencias, el lateral empieza cerrado. Una sesión con layout
     // propio (Normal o un panel anterior) lo conserva, abierto o cerrado.
-    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false })
     return insertPane(pane, options)
   },
 
@@ -489,7 +489,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       get().focusPane(existing.paneId)
       return
     }
-    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false })
     set({
       panes: state.panes.map((item) => {
         if (item.paneId !== paneId) return item

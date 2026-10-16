@@ -1359,6 +1359,142 @@
       "host_effects": []
     },
     {
+      "command": "session_resume_get",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_arm",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "resets_at",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.arm",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "resets_at",
+          "from": "resets_at",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_cancel",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.cancel",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_now",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.now",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "resume_settings_get",
+      "module": "sessions",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "resume.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "resume_settings_set",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "auto_resume_on_limits",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "resume.settings.set",
+      "engine_params": [
+        {
+          "key": "auto_resume_on_limits",
+          "from": "auto_resume_on_limits",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "session_checklist_complete",
       "module": "sessions",
       "args": [

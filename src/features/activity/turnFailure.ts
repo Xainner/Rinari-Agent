@@ -14,6 +14,8 @@ export interface TurnFailure {
   providerAlias?: string
   model?: string
   retryAfterS?: number
+  /** Cuándo se restablece el límite, si el proveedor lo dijo (plan 0.4.0 #24). */
+  resetsAt?: string
   httpStatus?: number
   providerCode?: string
   requestId?: string
@@ -48,6 +50,7 @@ export function turnFailure(details: Record<string, unknown> | undefined): TurnF
     providerAlias: text(details.provider_alias) ?? text(details.provider),
     model: text(details.model),
     retryAfterS: num(details.retry_after_s),
+    resetsAt: text(details.resets_at),
     httpStatus: status,
     providerCode: text(details.provider_response_code),
     requestId: text(details.request_id),

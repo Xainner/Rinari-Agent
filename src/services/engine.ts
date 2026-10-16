@@ -17,7 +17,7 @@ import type {
   PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck } from '../types/protocol.generated'
+import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, SessionResume } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -954,6 +954,19 @@ export const engineApi = {
     platform().command<{ goal: Goal | null }>('session_goal_clear', { sessionId }),
   goalBudget: (sessionId: string, budget: GoalBudget) =>
     platform().command<{ goal: Goal | null }>('session_goal_budget', { sessionId, budget }),
+  // Continuar sola cuando se restablezca el límite del proveedor (plan 0.4.0 #24).
+  sessionResume: (sessionId: string) =>
+    platform().command<{ resume: SessionResume | null }>('session_resume_get', { sessionId }),
+  resumeArm: (sessionId: string, resetsAt?: string) =>
+    platform().command<{ resume: SessionResume | null }>('session_resume_arm', { sessionId, resets_at: resetsAt ?? null }),
+  resumeCancel: (sessionId: string) =>
+    platform().command<{ resume: SessionResume | null }>('session_resume_cancel', { sessionId }),
+  resumeNow: (sessionId: string) =>
+    platform().command<{ resume: SessionResume | null; continued: boolean }>('session_resume_now', { sessionId }),
+  resumeSettings: () =>
+    platform().command<{ auto_resume_on_limits: 'ask' | 'always' | 'never' }>('resume_settings_get'),
+  setResumeSettings: (mode: 'ask' | 'always' | 'never') =>
+    platform().command<{ auto_resume_on_limits: 'ask' | 'always' | 'never' }>('resume_settings_set', { auto_resume_on_limits: mode }),
   turnChanges: (turnId: string) =>
     platform().command<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
   reviewTurnChanges: (turnId: string, path?: string) =>

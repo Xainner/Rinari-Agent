@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **236**
-- Respaldados por Engine: **230**
+- Comandos: **242**
+- Respaldados por Engine: **236**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -152,6 +152,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `queue_clear` | engine | `session.queue.clear` | **ninguno** |
 | `queue_list` | engine | `session.queue.list` | **ninguno** |
 | `queue_resume` | engine | `session.queue.resume` | **ninguno** |
+| `resume_settings_get` | engine | `resume.settings.get` | `src/services/engine.ts` |
+| `resume_settings_set` | engine | `resume.settings.set` | `src/services/engine.ts` |
 | `schedule_create` | engine | `schedule.create` | `src/services/engine.ts` |
 | `schedule_delete` | engine | `schedule.delete` | `src/services/engine.ts` |
 | `schedule_get` | engine | `schedule.get` | **ninguno** |
@@ -189,6 +191,10 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `session_pin` | engine | `session.pin` | `src/services/engine.ts` |
 | `session_rename` | engine | `session.rename` | `src/services/engine.ts` |
 | `session_restore` | engine | `session.restore` | `src/services/engine.ts` |
+| `session_resume_arm` | engine | `session.resume.arm` | `src/services/engine.ts` |
+| `session_resume_cancel` | engine | `session.resume.cancel` | `src/services/engine.ts` |
+| `session_resume_get` | engine | `session.resume.get` | `src/services/engine.ts` |
+| `session_resume_now` | engine | `session.resume.now` | **ninguno** |
 | `session_timeline` | engine | `session.timeline` | **ninguno** |
 | `skill_disable` | engine | `skill.disable` | **ninguno** |
 | `skill_duplicates_dismiss` | engine | `skill.duplicates.dismiss` | `src/services/engine.ts` |

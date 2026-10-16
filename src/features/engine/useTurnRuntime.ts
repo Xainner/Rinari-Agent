@@ -10,6 +10,7 @@ import { createRuntimeStore, type RuntimeStore } from './runtimeStore'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { applyChecklistEvent } from '../checklist/checklistStore'
 import { applyGoalEvent } from '../goal/goalStore'
+import { applyResumeEvent } from '../resume/resumeStore'
 import { markRenamedFromEvent } from '../../stores/titleMotion'
 import { onProfileEvent } from '../profiles/profileStore'
 import { applyFollowupEvent } from '../followups/followupStore'
@@ -61,6 +62,10 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       onProfileEvent(event.event)
       if (event.event === 'checklist.updated') applyChecklistEvent(event.payload)
       if (event.event === 'goal.updated') applyGoalEvent(event.payload)
+      if (event.event === 'session.resume.updated') {
+        const applied = applyResumeEvent(event.payload)
+        if (applied?.continued) toast(translate(useUIStore.getState().lang, 'resume.continued'))
+      }
       applyFollowupEvent(event.event, event.payload)
       if (event.event === 'session.renamed') markRenamedFromEvent(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()

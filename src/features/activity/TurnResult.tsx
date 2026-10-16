@@ -12,6 +12,7 @@ import type { TurnTimeline, ModelTimelineItem } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { failureTab, turnFailure, type TurnFailure } from './turnFailure'
+import { AutoResume } from '../resume/AutoResume'
 
 export interface TurnResultProps {
   timeline: TurnTimeline
@@ -82,6 +83,8 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
  */
 /** Causas que no se arreglan reintentando con el mismo modelo: se ofrece otro. */
 const SWITCHABLE = new Set(['quota', 'rate', 'limit', 'auth', 'access', 'model'])
+/** A provider limit: the conversation can continue by itself when it resets (#24). */
+const LIMITS = new Set(['quota', 'rate', 'limit'])
 
 function FailureCause({ timeline }: { timeline: TurnTimeline }) {
   const { t, lang } = useI18n()
@@ -141,6 +144,9 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
           )}
           {tab && !cause.providerId && !cause.providerAlias && <span className="text-[11px] text-[var(--text-subtle)]">{t('failure.providerUnknown')}</span>}
         </div>
+      )}
+      {LIMITS.has(cause.kind) && timeline.sessionId && (
+        <AutoResume sessionId={timeline.sessionId} resetsAt={cause.resetsAt} failedAt={timeline.completedAt} />
       )}
     </div>
   )

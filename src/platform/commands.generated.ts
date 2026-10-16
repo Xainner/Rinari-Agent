@@ -140,6 +140,8 @@ export type DesktopCommand =
   | "queue_clear"
   | "queue_list"
   | "queue_resume"
+  | "resume_settings_get"
+  | "resume_settings_set"
   | "schedule_create"
   | "schedule_delete"
   | "schedule_get"
@@ -177,6 +179,10 @@ export type DesktopCommand =
   | "session_pin"
   | "session_rename"
   | "session_restore"
+  | "session_resume_arm"
+  | "session_resume_cancel"
+  | "session_resume_get"
+  | "session_resume_now"
   | "session_timeline"
   | "skill_disable"
   | "skill_duplicates_dismiss"
@@ -378,6 +384,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "resume_settings_get",
+  "resume_settings_set",
   "schedule_create",
   "schedule_delete",
   "schedule_get",
@@ -415,6 +423,10 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_pin",
   "session_rename",
   "session_restore",
+  "session_resume_arm",
+  "session_resume_cancel",
+  "session_resume_get",
+  "session_resume_now",
   "session_timeline",
   "skill_disable",
   "skill_duplicates_dismiss",
@@ -631,6 +643,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "resume_settings_get",
+  "resume_settings_set",
   "schedule_create",
   "schedule_delete",
   "schedule_get",
@@ -668,6 +682,10 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_pin",
   "session_rename",
   "session_restore",
+  "session_resume_arm",
+  "session_resume_cancel",
+  "session_resume_get",
+  "session_resume_now",
   "session_timeline",
   "skill_disable",
   "skill_duplicates_dismiss",

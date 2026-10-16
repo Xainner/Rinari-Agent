@@ -1155,6 +1155,24 @@
       "callers": []
     },
     {
+      "command": "resume_settings_get",
+      "kind": "engine",
+      "method": "resume.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "resume_settings_set",
+      "kind": "engine",
+      "method": "resume.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "schedule_create",
       "kind": "engine",
       "method": "schedule.create",
@@ -1464,6 +1482,40 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "session_resume_arm",
+      "kind": "engine",
+      "method": "session.resume.arm",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_resume_cancel",
+      "kind": "engine",
+      "method": "session.resume.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_resume_get",
+      "kind": "engine",
+      "method": "session.resume.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_resume_now",
+      "kind": "engine",
+      "method": "session.resume.now",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "session_timeline",
@@ -1978,10 +2030,10 @@
     }
   ],
   "summary": {
-    "commands": 236,
-    "engine_backed": 230,
+    "commands": 242,
+    "engine_backed": 236,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 78
+    "without_callers": 79
   }
 }

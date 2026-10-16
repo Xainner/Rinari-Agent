@@ -20,6 +20,7 @@ import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 import { artifactImageUrl, isArtifactImage, rememberArtifactImageSize, useArtifactImage } from './artifactImage'
 import { MediaPlayer, mediaCandidate } from './MediaPlayer'
+import ImageViewer, { useImageViewer } from '../../components/image-viewer/ImageViewer'
 
 import { platform, type ContextMenuItem, type WorkspaceMedia } from '../../platform'
 import { translate, useI18n } from '../../i18n'
@@ -732,7 +733,7 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
             ) : selected.media ? (
               <MediaView media={selected.media} onOpenExternally={() => openExternal(selected.target.startsWith('artifact:') ? selected.target : selected.media!.path, selected.turnId)} onReveal={selected.target.startsWith('artifact:') ? undefined : () => reveal(selected.media!.path, selected.turnId)} />
             ) : selected.image ? (
-              <img src={selected.image} alt={selected.file?.name ?? ''} className="artifact-image mx-auto" />
+              <ZoomableImage src={selected.image} name={selected.file?.name ?? ''} onOpenExternal={() => openExternal(selected.target, selected.turnId)} />
             ) : selected.file &&
               ['html', 'htm'].includes(selected.file.language) &&
               selected.file.provenance !== 'turn_changeset' &&
@@ -789,6 +790,18 @@ function formatBytes(size: number, lang: string): string {
   return `${value.toLocaleString(lang, { maximumFractionDigits: unit === 0 ? 0 : 1 })} ${units[unit]}`
 }
 
+/** Una imagen en «Archivos»: pulsarla la abre en el visor grande (#77). */
+function ZoomableImage({ src, name, detail, onReveal, onOpenExternal, onError }: { src: string; name: string; detail?: string; onReveal?: () => void; onOpenExternal?: () => void; onError?: () => void }) {
+  const { t } = useI18n()
+  const viewer = useImageViewer()
+  return <>
+    <button type="button" className="artifact-image-open mx-auto block" title={t('activity.enlargeImage', { name })} aria-label={t('activity.enlargeImage', { name })} onClick={(event) => viewer.show([{ key: src, name, src, detail, onReveal, onOpenExternal }], 0, event.currentTarget)}>
+      <img src={src} alt={name} className="artifact-image mx-auto" onError={onError} />
+    </button>
+    <ImageViewer {...viewer.props} />
+  </>
+}
+
 /**
  * Imagen, video o audio del workspace, servidos por la app a partir de la ruta
  * que aprobó el Engine. El resto (PDF, binarios, textos enormes) no se lee: se
@@ -799,7 +812,7 @@ function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedi
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [media.url])
   if (media.url && !failed) {
-    if (media.kind === 'image') return <img src={media.url} alt={media.name} className="artifact-image mx-auto" onError={() => setFailed(true)} />
+    if (media.kind === 'image') return <ZoomableImage src={media.url} name={media.name} detail={media.mime} onReveal={onReveal} onOpenExternal={onOpenExternally} onError={() => setFailed(true)} />
     if (media.kind === 'video') {
       return <video key={media.url} src={media.url} controls preload="metadata" className="mx-auto max-h-full max-w-full" aria-label={media.name} onError={() => setFailed(true)} />
     }

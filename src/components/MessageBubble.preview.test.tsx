@@ -58,7 +58,8 @@ it('an OCR image keeps its label after sending and shows the recognized text', a
   const opener = screen.getByRole('button', { name: /captura.png/ })
   expect(opener.textContent).toContain('OCR + imagen')
   await userEvent.click(opener)
-  expect(screen.getByRole('tab', { name: 'Original' }).getAttribute('aria-selected')).toBe('true')
+  // El visor grande (#77): la imagen primero y su texto en otra pestaña.
+  expect((await screen.findByRole('tab', { name: 'Imagen' })).getAttribute('aria-selected')).toBe('true')
   await userEvent.click(screen.getByRole('tab', { name: 'Texto reconocido' }))
   expect(await screen.findByText('Error 404: not found')).toBeTruthy()
   expect(preview).toHaveBeenCalledWith('artifact://s/derived/ocr.txt', 512 * 1024)

@@ -27,6 +27,7 @@ import {
   Languages,
   LifeBuoy,
   Mic,
+  ScanEye,
 } from 'lucide-react'
 import { VisionWithheldNotice } from './VisionWithheldNotice'
 import { HumanCheckCard, humanCheckOf, type HumanCheck } from '../browser/HumanCheckCard'
@@ -53,7 +54,7 @@ import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
 import { copyText } from '../../lib/clipboard'
 import { useOptionalEngineData } from '../engine/EngineContext'
-import { ImageActivity } from './ImageActivity'
+import { ImageActivity, ImageThumb } from './ImageActivity'
 import type { ContextTimelineItem, TimelineItem, TurnTimeline, VisionTimelineItem } from './types'
 import { approvalCopy } from './approvalCopy'
 import { activityBlocks, activityState, isChecklistCall, operationIsActive, projectActivity, turnDuration, turnIsActive } from './activityPresentation'
@@ -239,22 +240,45 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
     return <ActivityNotice testId="vision-without-images" tone="warning" icon={<ImageOff size={12} />}><VisionWithheldNotice modelId={item.modelId} markedBy={item.markedBy} /></ActivityNotice>
   }
   if (item.type === 'vision' && item.route === 'conversation') return null
-  if (item.type === 'vision') return <InspectionDetails inspectionId="vision" className="my-2 rounded-xl border border-[var(--border)] p-3 text-xs">
-    <summary className="cursor-pointer"><ActivityText active={active && visualPending(item)}>{!active && visualPending(item) ? t('activity.interrupted') : item.status === 'queued' ? (lang === 'es' ? 'Análisis visual en espera' : 'Visual analysis queued') : item.status === 'preparing' ? (lang === 'es' ? 'Preparando imágenes…' : 'Preparing images…') : item.status === 'partial' ? (lang === 'es' ? 'Análisis visual parcial · límite de salida' : 'Partial visual analysis · output limit') : item.status === 'running' ? (lang === 'es' ? 'Analizando imágenes…' : 'Analyzing images…') : item.status === 'cancelled' ? (lang === 'es' ? 'Análisis visual cancelado' : 'Visual analysis cancelled') : item.status === 'failed' ? (lang === 'es' ? 'Falló el análisis visual' : 'Visual analysis failed') : (lang === 'es' ? 'Análisis visual' : 'Visual analysis')}</ActivityText></summary>
-    {technical && <InspectionDetails inspectionId="vision-technical"><summary>{lang === 'es' ? 'Detalles técnicos' : 'Technical details'}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</InspectionDetails>}
-    <div className="flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
-    {item.analysis && <p className="whitespace-pre-wrap">{item.analysis}</p>}
-    {item.error && <p role="alert" className="text-[var(--danger)]">{item.error}</p>}
-  </InspectionDetails>
+  if (item.type === 'vision') {
+    // El análisis visual en la familia de las acciones (#15): su fila, sus miniaturas y, abierta, el análisis.
+    const pending = visualPending(item)
+    const visionTone = active && pending ? 'running' : item.status === 'failed' ? 'failed' : item.status === 'partial' || item.status === 'cancelled' || (!active && pending) ? 'warn' : 'done'
+    const label = !active && pending ? t('activity.interrupted') : t(`activity.vision.${item.status === 'completed' ? 'done' : item.status}` as I18nKey)
+    return <InspectionDetails inspectionId="vision" data-testid="vision-row" className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone={visionTone}>
+      <summary>
+        <ToolTile tone={visionTone} Icon={ScanEye} />
+        <ActivityText active={active && pending} className="act-label">{label}</ActivityText>
+        {item.images.slice(0, 3).map((image, index) => <ImageThumb key={image.uri} image={image} group={item.images} index={index} />)}
+        {item.images.length > 3 && <span className="act-thumb-more">+{item.images.length - 3}</span>}
+        <span className="act-meta"><ChevronDown size={13} className="transition-transform group-open/activity:rotate-180" /></span>
+      </summary>
+      <div className="act-images">{item.images.map((image, index) => <ImageActivity key={image.uri} image={image} group={item.images} index={index} />)}</div>
+      {item.analysis && <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-[var(--text)]">{item.analysis}</p>}
+      {item.error && <p role="alert" className="act-notice mt-2" data-tone="warning"><span className="min-w-0">{item.error}</span></p>}
+      {technical && <InspectionDetails inspectionId="vision-technical" className="mt-2 text-[11.5px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{t('activity.technicalDetails')}</summary><p>{item.providerName} / {item.modelName || item.modelId}</p><p>{item.question}</p>{item.generation && <pre>{JSON.stringify(item.generation, null, 2)}</pre>}</InspectionDetails>}
+    </InspectionDetails>
+  }
   if (item.type === 'tool') {
     const category = toolCategory(item.tool)
     const Icon = ICONS[category]
     const running = active && (item.status === 'requested' || item.status === 'running')
     const failed = item.status === 'failed' || item.status === 'cancelled'
     if (item.presentation?.kind === 'image' && item.presentation.image && item.status === 'completed') {
-      return <InspectionDetails inspectionId="tool" className="py-1 text-[13px] text-[var(--text-muted)]">
-        <summary className="flex cursor-pointer items-center gap-2"><ImageIcon size={13} /><span>{formatTool(item, lang)}</span>{shownDuration(item.durationMs) && <span className="text-[10px] text-[var(--text-subtle)]">{elapsed(item.durationMs)}</span>}</summary>
-        <ImageActivity key={item.presentation.image.uri} image={item.presentation.image} />
+      // «Cargó una imagen» como el resto de acciones (#15): cerrada, la miniatura junto a la etiqueta.
+      const image = item.presentation.image
+      return <InspectionDetails inspectionId="tool" data-testid="image-row" className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone="done">
+        <summary>
+          <ToolTile tone="done" Icon={ImageIcon} />
+          <ActivityText active={false} className="act-label">{formatTool(item, lang)}</ActivityText>
+          <ImageThumb image={image} />
+          <span className="act-meta">
+            {technical && <span className="font-mono text-[10px]">{item.tool}</span>}
+            {shownDuration(item.durationMs) && <span className="tabular-nums">{elapsed(item.durationMs)}</span>}
+            <ChevronDown size={13} className="transition-transform group-open/activity:rotate-180" />
+          </span>
+        </summary>
+        <div className="act-images"><ImageActivity key={image.uri} image={image} /></div>
       </InspectionDetails>
     }
     let outputPath: string | undefined = item.status === 'completed' ? item.filePath : undefined
@@ -666,9 +690,8 @@ const visualPending = (item: VisionTimelineItem) => ['queued', 'preparing', 'run
 function VisualProgress({ items, status, onResolveApproval, showProgress = true }: {
   items: VisionTimelineItem[]; status: TurnTimeline['status']; onResolveApproval: Props['onResolveApproval']; showProgress?: boolean
 }) {
-  const { lang } = useI18n()
+  const { t } = useI18n()
   const technical = useUIStore(state => state.showTechnicalActivityNames)
-  const es = lang === 'es'
   const active = ['running', 'approval', 'cancelling'].includes(status)
   const pending = items.filter(visualPending)
   const issues = items.filter(item => ['partial', 'failed', 'cancelled'].includes(item.status) || (!active && visualPending(item)))
@@ -677,18 +700,18 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
   return <>
     {showProgress && active && pending.length > 0 && <div role="status" aria-live="polite" className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]">
       <LoaderCircle size={13} className="animate-spin text-[var(--accent-2)] motion-reduce:animate-none" />
-      <ActivityText active={active}>{status === 'cancelling' ? (es ? 'Cancelando análisis' : 'Cancelling analysis') : (es ? 'Analizando imágenes' : 'Analyzing images')} · {finished} {es ? 'de' : 'of'} {total}</ActivityText>
+      <ActivityText active={active}>{t(status === 'cancelling' ? 'activity.vision.cancelling' : 'activity.vision.analyzing')} · {t('activity.vision.progress', { n: finished, total })}</ActivityText>
     </div>}
     {issues.length > 0 && <InspectionDetails inspectionId="vision-issues" data-activity-item="vision-issues" className="py-1 text-xs text-[var(--warning)]">
-      <summary className="cursor-pointer">{es ? 'Revisión de imágenes con incidencias' : 'Image review issues'} · {issues.length}</summary>
+      <summary className="cursor-pointer">{t('activity.vision.issues')} · {issues.length}</summary>
       <div className="mt-2 space-y-3">{issues.map(item => <div key={item.id}>
-        <p>{item.status === 'partial' ? (es ? 'Análisis parcial · límite de salida' : 'Partial analysis · output limit') : item.status === 'cancelled' ? (es ? 'Análisis cancelado' : 'Analysis cancelled') : item.status === 'failed' ? (es ? 'No se pudo analizar la imagen' : 'Image analysis failed') : (es ? 'Análisis interrumpido' : 'Analysis interrupted')}</p>
-        <div className="mt-1 flex flex-wrap gap-2">{item.images.map(image => <ImageActivity key={image.uri} image={image} />)}</div>
-        {!item.images.length && <p className="text-[var(--text-muted)]">{es ? 'Referencia de imagen no disponible' : 'Image reference unavailable'}</p>}
+        <p>{t(item.status === 'partial' ? 'activity.vision.issue.partial' : item.status === 'cancelled' ? 'activity.vision.issue.cancelled' : item.status === 'failed' ? 'activity.vision.issue.failed' : 'activity.vision.issue.interrupted')}</p>
+        <div className="act-images">{item.images.map((image, index) => <ImageActivity key={image.uri} image={image} group={item.images} index={index} />)}</div>
+        {!item.images.length && <p className="text-[var(--text-muted)]">{t('activity.vision.noReference')}</p>}
       </div>)}</div>
     </InspectionDetails>}
     {technical && items.length > 0 && <InspectionDetails inspectionId="vision-all" data-activity-item="vision-technical" className="py-1 text-xs text-[var(--text-subtle)]">
-      <summary className="cursor-pointer">{es ? 'Detalles técnicos de visión' : 'Vision technical details'} · {items.length}</summary>
+      <summary className="cursor-pointer">{t('activity.vision.technical')} · {items.length}</summary>
       {items.map(item => <InspectionItem key={item.id} id={item.id}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionItem>)}
     </InspectionDetails>}
   </>

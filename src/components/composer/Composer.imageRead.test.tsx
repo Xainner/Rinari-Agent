@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 // #77: sin la barra «Leer imágenes como»; sin visión, la imagen va como texto
 // y el chip lo dice; el menú del chip cambia el modo de esa imagen.
+import userEvent from '@testing-library/user-event'
 import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi } from '../../services/engine'
@@ -53,7 +54,9 @@ it('with a model that cannot see, the image goes as text by itself and the chip 
   const badge = await screen.findByTestId('attach-read-badge')
   expect(badge.textContent).toBe('Texto')
   // El dueño lo cambia desde el chip, y el composer ya no lo toca.
-  fireEvent.click(screen.getByRole('menuitemradio', { name: 'Enviar como imagen' }))
+  // El menú canónico del chip (#77): se abre y se elige.
+  await userEvent.click(screen.getByTestId('attach-read-menu'))
+  await userEvent.click(await screen.findByRole('menuitemradio', { name: /Enviar como imagen/ }))
   await waitFor(() => expect(attachment().ocr).toBe(false))
   expect(attachment().readChosen).toBe(true)
   expect(attachment().ocrAuto).toBeUndefined()

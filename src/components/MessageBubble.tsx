@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
@@ -10,6 +10,8 @@ import { AttachmentPlayer, isPlayableAttachment } from './AttachmentMedia'
 import { useFileWorkspace } from '../features/files/FileWorkspace'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from './AttachmentReading'
 import Markdown from './Markdown'
+import ImageViewer, { useImageViewer } from './image-viewer/ImageViewer'
+import { attachmentViewerImages, isImageAttachment } from './image-viewer/attachmentImages'
 import { RinariAvatar } from '../features/rinari/RinariAvatar'
 
 /** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
@@ -28,12 +30,20 @@ function PlayableAttachment({ attachment }: { attachment: NonNullable<ChatMessag
   )
 }
 
-function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
-  if (isPlayableAttachment(attachment)) return <PlayableAttachment attachment={attachment} />
-  return <PreviewAttachment attachment={attachment} />
+/** Los adjuntos del mensaje: las imágenes se recorren juntas en el visor grande (#77). */
+function MessageAttachments({ attachments }: { attachments: NonNullable<ChatMessage['attachments']> }) {
+  const files = useFileWorkspace()
+  const viewer = useImageViewer()
+  const images = useMemo(() => attachmentViewerImages(attachments, files), [attachments, files])
+  return <>
+    {attachments.map((attachment) => isPlayableAttachment(attachment)
+      ? <PlayableAttachment key={attachment.id} attachment={attachment} />
+      : <PreviewAttachment key={attachment.id} attachment={attachment} onView={isImageAttachment(attachment) ? (from) => viewer.show(images, Math.max(0, images.findIndex((image) => image.key === attachment.id)), from) : undefined} />)}
+    <ImageViewer {...viewer.props} />
+  </>
 }
 
-function PreviewAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
+function PreviewAttachment({ attachment, onView }: { attachment: NonNullable<ChatMessage['attachments']>[number]; onView?: (from: HTMLElement) => void }) {
   const { t } = useI18n()
   const [previewUrl, setPreviewUrl] = useState(attachment.previewUrl)
   const [previewText, setPreviewText] = useState<string>()
@@ -72,7 +82,7 @@ function PreviewAttachment({ attachment }: { attachment: NonNullable<ChatMessage
   }
 
   return <>
-    <button type="button" onClick={() => void showPreview()} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title={t('attach.openPreview')}>
+    <button type="button" onClick={(event) => (onView ? onView(event.currentTarget) : void showPreview())} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title={t('attach.openPreview')}>
       {previewUrl ? <img src={previewUrl} alt={attachment.name} className="size-8 rounded object-cover" /> : attachment.kind === 'image' ? <ImageIcon size={13} /> : <FileText size={13} />}
       <span className="truncate">{attachment.name}</span>
       <ReadingBadges attachment={attachment} />
@@ -137,7 +147,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         <div className="flex w-full min-w-0 justify-end">
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
-            {message.attachments.map((attachment) => <HistoricalAttachment key={attachment.id} attachment={attachment} />)}
+            <MessageAttachments attachments={message.attachments} />
           </div>}
           {command && <><CommandChip name={command} kind={message.origin?.command_kind ?? 'command'} />{text && <br />}</>}
           {text}

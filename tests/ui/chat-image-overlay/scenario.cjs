@@ -120,6 +120,15 @@ scenario(async () => {
   await openFromHistory()
   await verify('', 'normal-history')
   await openFromHistory()
+  // #77: el visor grande acerca con la rueda y el doble clic vuelve a ajustar.
+  await wait(`${q(preview + ' img')}?.naturalWidth>0`)
+  const stage = await evaluate(`(()=>{const r=${q(preview + ' .image-viewer-stage')}.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`)
+  // En sendInputEvent un deltaY positivo es rueda hacia arriba: acerca.
+  await wheel(stage.x, stage.y, 600)
+  await wait(`parseInt(${q(preview + ' .image-viewer-percent')}.textContent) > 100`)
+  await screenshot('viewer-zoomed')
+  await evaluate(`${q(preview + ' .image-viewer-stage')}.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,clientX:${stage.x},clientY:${stage.y}}))`)
+  await wait(`${q(preview + ' button[aria-pressed="true"]')}?.textContent.includes('Ajustar')`)
   await click(preview + ' button[aria-label="Cerrar"]'); await wait(`!${q(preview)}`)
   await openFromHistory(); await clickAt(25, 200); await wait(`!${q(preview)}`)
 
@@ -153,5 +162,5 @@ scenario(async () => {
   await openFromHistory()
   await wait(`${q(preview + ' img')}?.naturalWidth>0`)
   await screenshot('ready-for-review')
-  report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })
+  report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'wheel zoom and double click back to fit', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })
 })

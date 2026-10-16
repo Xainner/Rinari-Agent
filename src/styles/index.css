@@ -2041,6 +2041,56 @@ html[data-motion='reduced'] .resume-card-track > span { transition: none; }
 .zone-error .btn { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .zone-error img { animation: none; } }
 html[data-motion='reduced'] .zone-error img { animation: none; }
+/* Imágenes en la actividad (#15): una miniatura de 28 px en la fila cerrada y, abierta, la tarjeta con su esqueleto mientras carga. */
+.act-thumb { display: grid; width: 28px; height: 28px; flex-shrink: 0; place-items: center; overflow: hidden; border: 1px solid var(--line-2); border-radius: 7px; color: var(--text-subtle); background: var(--bg-inset); transition: border-color var(--dur-fast), transform var(--dur-fast); }
+.act-thumb:hover { border-color: rgb(167 139 250 / 0.55); transform: scale(1.06); }
+.act-thumb img { width: 100%; height: 100%; object-fit: cover; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.act-thumb[data-state='loading'] { background: linear-gradient(100deg, var(--bg-inset) 30%, rgb(167 139 250 / 0.12) 50%, var(--bg-inset) 70%) 0 0 / 220% 100%; animation: present-shimmer 1.4s linear infinite; }
+.act-thumb-more { flex-shrink: 0; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
+.act-images { display: flex; flex-wrap: wrap; gap: 8px; }
+.img-activity { display: flex; max-width: 22rem; align-items: center; gap: 12px; padding: 6px 12px 6px 6px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-inset); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.img-activity:hover { border-color: rgb(167 139 250 / 0.45); background: rgb(147 88 255 / 0.06); }
+.img-activity-frame { position: relative; display: grid; width: 88px; height: 64px; flex-shrink: 0; place-items: center; overflow: hidden; border-radius: 8px; color: var(--text-subtle); background: repeating-conic-gradient(rgb(255 255 255 / 0.03) 0 25%, transparent 0 50%) 0 0 / 12px 12px, rgb(9 7 16 / 0.6); }
+.img-activity-frame img { width: 100%; height: 100%; object-fit: contain; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.img-activity[data-state='loading'] .img-activity-frame::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgb(167 139 250 / 0.1) 50%, transparent 70%) 0 0 / 220% 100%; animation: present-shimmer 1.4s linear infinite; }
+.img-activity-name { display: block; overflow: hidden; font-size: 12.5px; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.img-activity-size { display: block; margin-top: 1px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
+.img-activity-error { margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) { .act-thumb[data-state='loading'], .img-activity[data-state='loading'] .img-activity-frame::after { animation: none; } .act-thumb:hover { transform: none; } }
+html[data-motion='reduced'] .act-thumb[data-state='loading'], html[data-motion='reduced'] .img-activity[data-state='loading'] .img-activity-frame::after { animation: none; }
+html[data-motion='reduced'] .act-thumb:hover { transform: none; }
+
+/* «Enviar como…» en el chip de una imagen (#77): el menú canónico, también con clic derecho. */
+.attach-read-trigger { display: grid; width: 18px; height: 18px; place-items: center; border-radius: var(--r-xs); color: var(--text-subtle); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.attach-read-trigger:hover, .attach-read-trigger[data-state='open'] { color: var(--text); background: var(--bg-hover); }
+
+/* Visor de imágenes (#77): uno solo, casi toda la ventana. El margen deja ver el fondo para cerrar con un clic. */
+.r-dialog.image-viewer { display: flex; width: calc(100vw - 96px); max-width: none; height: calc(100vh - 72px); max-height: none; flex-direction: column; gap: 0; overflow: hidden; padding: 0; border-radius: var(--r-xl); }
+.image-viewer-bar { display: flex; min-width: 0; flex-shrink: 0; align-items: center; gap: 12px; padding: 10px 52px 10px 18px; border-bottom: 1px solid var(--line-1); }
+.image-viewer-title { overflow: hidden; font-family: var(--font-sans); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.image-viewer-detail { overflow: hidden; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); text-overflow: ellipsis; white-space: nowrap; }
+.image-viewer-zoom { display: flex; flex-shrink: 0; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-inset); }
+.image-viewer-zoom .btn[aria-pressed='true'] { color: var(--text); background: var(--bg-active); }
+.image-viewer-percent { min-width: 46px; font-family: var(--font-mono); font-size: 11px; text-align: center; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.image-viewer-actions { display: flex; flex-shrink: 0; gap: 2px; }
+.image-viewer-stage { position: relative; min-height: 0; flex: 1 1 auto; overflow: hidden; background: repeating-conic-gradient(rgb(255 255 255 / 0.025) 0 25%, transparent 0 50%) 0 0 / 18px 18px, var(--bg-inset); cursor: zoom-in; touch-action: none; user-select: none; }
+.image-viewer-stage[data-zoomed] { cursor: grab; }
+.image-viewer-stage[data-zoomed]:active { cursor: grabbing; }
+.image-viewer-frame { position: absolute; inset: 0; }
+.image-viewer-img { position: absolute; top: 50%; left: 50%; max-width: none; transform-origin: center; opacity: 0; box-shadow: 0 18px 50px rgb(0 0 0 / 0.5); transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out); }
+.image-viewer-img[data-ready] { opacity: 1; }
+.image-viewer-stage[data-dragging] .image-viewer-img { transition: opacity var(--dur-base) var(--ease-out); }
+.image-viewer-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+.image-viewer-error { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; font-size: 13px; text-align: center; color: var(--danger); }
+.image-viewer-nav { position: absolute; top: 50%; display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgb(167 139 250 / 0.3); border-radius: 999px; color: var(--text); background: rgb(16 12 27 / 0.72); box-shadow: var(--sh-2); translate: 0 -50%; opacity: 0.75; transition: opacity var(--dur-fast), background var(--dur-fast); }
+.image-viewer-nav:hover { opacity: 1; background: rgb(147 88 255 / 0.3); }
+.image-viewer-nav.is-prev { left: 16px; }
+.image-viewer-nav.is-next { right: 16px; }
+.image-viewer-text { min-height: 0; flex: 1 1 auto; overflow: auto; padding: 18px 22px; }
+@media (max-width: 720px) { .r-dialog.image-viewer { width: calc(100vw - 32px); height: calc(100vh - 48px); } .image-viewer-bar { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .image-viewer-img { transition: none; } }
+html[data-motion='reduced'] .image-viewer-img { transition: none; }
+
 /* Pendientes en otros perfiles (#34): un punto con número en el avatar, que entra con un pulso suave una sola vez; ámbar si algo te necesita. */
 .profile-pending-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; color: #170d2b; background: var(--accent-2); box-shadow: 0 0 0 2px var(--bg-sidebar); animation: profile-badge-in 0.9s var(--ease-out) both; }
 .profile-pending-badge[data-needs-you] { color: #2b1d00; background: var(--warning); }

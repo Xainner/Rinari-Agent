@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
 import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Check, Columns3, FileText, Film, Image as ImageIcon, LoaderCircle, MessageSquareShare, Music, Pause, Play, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Check, Columns3, FileText, Film, Image as ImageIcon, LoaderCircle, MessageSquareShare, MoreHorizontal, Music, Pause, Play, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
 import { AttachmentPlayer, isPlayableAttachment } from '../AttachmentMedia'
-import { cn } from '../../lib/utils'
+import ImageViewer, { useImageViewer } from '../image-viewer/ImageViewer'
+import { attachmentViewerImages, isImageAttachment } from '../image-viewer/attachmentImages'
+import { useFileWorkspace } from '../../features/files/FileWorkspace'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from '../AttachmentReading'
 
 import { selectDraft, useComposerStore } from '../../stores/composer'
@@ -233,6 +236,11 @@ export default function Composer({
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
   // El audio o video adjunto que suena bajo los chips (#57), uno a la vez.
   const [playingId, setPlayingId] = useState<string | null>(null)
+  // El menú «Enviar como…» abierto, por chip (también con clic derecho, #77).
+  const [readMenuId, setReadMenuId] = useState<string | null>(null)
+  // Un solo visor grande para las imágenes del composer (#77).
+  const viewer = useImageViewer()
+  const fileWorkspace = useFileWorkspace()
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -242,6 +250,7 @@ export default function Composer({
     if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
   const attachments = draft.attachments
+  const viewerImages = useMemo(() => attachmentViewerImages(attachments, fileWorkspace), [attachments, fileWorkspace])
   const playing = sessionId && playingId ? attachments.find((file) => file.id === playingId && file.uri) : undefined
   const addAttachmentFor = useComposerStore((s) => s.addAttachmentFor)
   const updateAttachmentFor = useComposerStore((s) => s.updateAttachmentFor)
@@ -780,6 +789,7 @@ export default function Composer({
                 title={visualAttachments.includes(file) && visionRoute?.key === visionRouteKey && visionRoute.available ? t('attach.visionRoute', { destination: visionRoute.destination }) : undefined}
                 data-vision-route={visualAttachments.includes(file) && visionRoute?.key === visionRouteKey && visionRoute.available ? visionRoute.destination : undefined}
                 className="inline-flex max-w-[320px] items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)]"
+                onContextMenu={imageAttachments.includes(file) ? (event) => { event.preventDefault(); setReadMenuId(file.id) } : undefined}
               >
                 {isPlayableAttachment(file) ? (
                   <button type="button" disabled={!sessionId || !file.uri} onClick={() => setPlayingId((current) => (current === file.id ? null : file.id))} className="attach-chip-play" aria-pressed={playingId === file.id} aria-label={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })} title={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })}>
@@ -788,7 +798,7 @@ export default function Composer({
                     <span className="truncate">{file.name}</span>
                   </button>
                 ) : (
-                  <button type="button" onClick={() => void openAttachmentPreview(file)} className="inline-flex min-w-0 items-center gap-1.5 rounded px-0.5 text-left hover:text-[var(--text)]" title={t('attach.openPreview')}>
+                  <button type="button" onClick={(event) => (isImageAttachment(file) ? viewer.show(viewerImages, Math.max(0, viewerImages.findIndex((image) => image.key === file.id)), event.currentTarget) : void openAttachmentPreview(file))} className="inline-flex min-w-0 items-center gap-1.5 rounded px-0.5 text-left hover:text-[var(--text)]" title={t('attach.openPreview')}>
                     {file.previewUrl ? <img src={file.previewUrl} alt="" className="size-7 rounded object-cover" /> : file.kind === 'image' ? <ImageIcon size={12} className="shrink-0" /> : <FileText size={12} className="shrink-0" />}
                     <span className="truncate">{file.name}</span>
                   </button>
@@ -796,32 +806,32 @@ export default function Composer({
                 <ReadingBadges attachment={file} />
                 {imageAttachments.includes(file) && (
                   // Cómo va esta imagen (#77): el menú del chip sustituye a la barra «Leer imágenes como».
-                  <details className="relative" data-testid="attach-read-menu">
-                    <summary
-                      className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]"
+                  <DropdownMenu open={readMenuId === file.id} onOpenChange={(open) => setReadMenuId(open ? file.id : null)}>
+                    <DropdownMenuTrigger
+                      className="attach-read-trigger"
+                      data-testid="attach-read-menu"
                       aria-label={t('attach.read.menu', { name: file.name })}
                       title={t('attach.read.menu', { name: file.name })}
-                    >⋯</summary>
-                    <div role="menu" className="absolute top-full right-0 z-40 mt-1 w-48 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-1 shadow-xl">
-                      {(['image', 'text', 'both'] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={readModeOf(file) === mode}
-                          title={t(`attach.read.${mode}Hint`)}
-                          disabled={file.status === 'preparing'}
-                          onClick={(event) => {
-                            (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open')
-                            if (readModeOf(file) !== mode || file.ocrAuto) setImageReadMode(file, mode)
-                          }}
-                          className={cn('block w-full rounded px-2 py-1 text-left text-[11px] disabled:opacity-50', readModeOf(file) === mode ? 'bg-[var(--accent-2)]/10 text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]')}
-                        >
-                          {t(`attach.read.as.${mode}`)}
-                        </button>
-                      ))}
-                    </div>
-                  </details>
+                    >
+                      <MoreHorizontal size={12} aria-hidden="true" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-56">
+                      <DropdownMenuLabel>{t('attach.read.label')}</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup value={readModeOf(file)} onValueChange={(value) => {
+                        const mode = value as 'image' | 'text' | 'both'
+                        if (readModeOf(file) !== mode || file.ocrAuto) setImageReadMode(file, mode)
+                      }}>
+                        {(['image', 'text', 'both'] as const).map((mode) => (
+                          <DropdownMenuRadioItem key={mode} value={mode} disabled={file.status === 'preparing'} title={t(`attach.read.${mode}Hint`)}>
+                            <span className="flex flex-col">
+                              <span>{t(`attach.read.as.${mode}`)}</span>
+                              <span className="text-[11px] text-[var(--text-subtle)]">{t(`attach.read.${mode}Hint`)}</span>
+                            </span>
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
                 {file.warning && <span title={file.warning} className="text-[var(--warning)]">⚠</span>}
                 {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfPages')}<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfVisualPages')}<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">{t('attach.pdfPrepareAgain')}</button></div></details>}
@@ -1076,6 +1086,7 @@ export default function Composer({
       <p className="mt-1.5 px-1 text-center text-[11px] text-[var(--text-subtle)]">
         {canSteer ? t(onQueue ? 'composer.steerHint' : 'composer.steerHintNow') : t('composer.hint')}
       </p>
+      <ImageViewer {...viewer.props} />
       {previewAttachment && (
         <AttachmentPreview name={previewAttachment.name} open onOpenChange={(open) => { if (!open) setPreviewAttachment(null) }}>
           {previewLoading && <div className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--text-muted)]"><LoaderCircle size={16} className="animate-spin" /> {t('attach.previewLoading')}</div>}

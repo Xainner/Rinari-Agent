@@ -122,6 +122,26 @@ scenario(async () => {
   const top = await rect(`${DOCK} [data-dock-view="browser"]`)
   const splitter = await rect(`${DOCK} .dock-splitter[data-axis="y"]`)
   const grab = { x: Math.round(splitter.x + splitter.w / 2), y: Math.round(splitter.y + splitter.h / 2) }
+  // Handles are hidden at rest and show up when the pointer comes near (the panel edge and the mosaic splitter).
+  const look = (selector) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); const line = getComputedStyle(el, '::before').backgroundColor; return { pill: Number(getComputedStyle(el, '::after').opacity), line: line === 'transparent' || line === 'rgba(0, 0, 0, 0)' ? 'none' : line, width: Math.round(el.getBoundingClientRect().width) } })()`)
+  const EDGE = '.session-workspace [role="separator"][aria-orientation="vertical"]'
+  const SPLIT = `${DOCK} .dock-splitter[data-axis="y"]`
+  ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 450 })
+  await delay(300)
+  for (const selector of [EDGE, SPLIT]) {
+    const rest = await look(selector)
+    assert.ok(rest.pill === 0 && rest.line === 'none', `${selector} is hidden at rest: ${JSON.stringify(rest)}`)
+  }
+  assert.ok((await look(EDGE)).width >= 14, 'the panel edge keeps a comfortable grab zone')
+  const edgeBox = await rect(EDGE)
+  ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(edgeBox.x + edgeBox.w / 2), y: Math.round(edgeBox.y + edgeBox.h / 2) })
+  await delay(300)
+  const near = await look(EDGE)
+  assert.ok(near.pill > 0.9 && near.line !== 'none', 'the panel edge shows up with the pointer near: ' + JSON.stringify(near))
+  ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: grab.x, y: grab.y })
+  await delay(300)
+  const nearSplit = await look(SPLIT)
+  assert.ok(nearSplit.pill > 0.9 && nearSplit.line !== 'none', 'the mosaic splitter shows up with the pointer near: ' + JSON.stringify(nearSplit))
   await drag(grab, { x: grab.x, y: grab.y + 60 })
   const after = await rect(`${DOCK} [data-dock-view="browser"]`)
   assert.ok(Math.abs(after.h - top.h - 60) <= 2, `separator moved 60 px (${Math.round(after.h - top.h)})`)
@@ -189,5 +209,5 @@ scenario(async () => {
   assert.equal(await evaluate(`Boolean(document.querySelector('${DOCK}'))`), false, 'the other conversation has its own (empty) layout')
   await clickText('Panel A', 'aside li button', { includes: true })
   await wait(`document.querySelector('${DOCK}')?.dataset.views === 'browser changes agents terminal'`)
-  report({ session: a, passed: ['no buttons without a conversation', 'views stack and travel from their button', 'separator follows the pointer', '2×2 and replace', 'drag a view by its header', 'amplify and Esc', 'Ctrl+B', 'narrow single column', 'layout per conversation'] })
+  report({ session: a, passed: ['no buttons without a conversation', 'views stack and travel from their button', 'handles hidden at rest, shown near the pointer', 'separator follows the pointer', '2×2 and replace', 'drag a view by its header', 'amplify and Esc', 'Ctrl+B', 'narrow single column', 'layout per conversation'] })
 }, { width: 1500, height: 900 })

@@ -1353,16 +1353,15 @@ select option:disabled { color: var(--text-subtle); }
 .dock-splitter { position: absolute; z-index: 2; touch-action: none; outline: none; }
 .dock-splitter[data-axis='y'] { cursor: row-resize; }
 .dock-splitter[data-axis='x'] { cursor: col-resize; }
-.dock-splitter::before { content: ''; position: absolute; background: var(--line-1); transition: background-color var(--dur-fast); }
+/* En reposo no se ven: la línea y su asa aparecen al acercar el ratón, con el foco o al arrastrar. */
+.dock-splitter::before { content: ''; position: absolute; background: transparent; transition: background-color var(--dur-fast); }
 .dock-splitter[data-axis='y']::before { left: 0; right: 0; top: calc(50% - 0.5px); height: 1px; }
 .dock-splitter[data-axis='x']::before { top: 0; bottom: 0; left: calc(50% - 0.5px); width: 1px; }
-/* Entre tarjetas el separador es el hueco: sin línea en reposo; al pasar, la línea y su asa. */
-.session-dock .dock-splitter::before { background: transparent; }
 .dock-splitter::after { content: ''; position: absolute; top: 50%; left: 50%; border-radius: 999px; background: var(--violet-300); opacity: 0; transform: translate(-50%, -50%); transition: opacity var(--dur-fast); }
 .dock-splitter[data-axis='y']::after { width: 40px; height: 3px; }
 .dock-splitter[data-axis='x']::after { width: 3px; height: 40px; }
-.dock-splitter:hover::before, .dock-splitter:focus-visible::before { background: var(--accent); }
-.dock-splitter:hover::after, .dock-splitter:focus-visible::after { opacity: 1; }
+.dock-splitter:hover::before, .dock-splitter:focus-visible::before, .dock-splitter[data-dragging]::before { background: var(--accent); }
+.dock-splitter:hover::after, .dock-splitter:focus-visible::after, .dock-splitter[data-dragging]::after { opacity: 1; }
 /* Lo que viaja desde el botón de la barra de título: solo un marco vacío, nunca la vista real (§5). */
 .dock-launch-ghost { position: fixed; z-index: 60; border-radius: var(--r-md); border: 1px solid rgb(167 139 250 / 0.55); background: linear-gradient(180deg, rgb(147 88 255 / 0.16), rgb(14 11 24 / 0.6)); box-shadow: 0 18px 40px -18px rgb(147 88 255 / 0.65); pointer-events: none; }
 .dock-move-ghost { position: fixed; top: 0; left: 0; z-index: 60; padding: 5px 10px; border-radius: var(--r-sm); font-size: 12px; font-weight: 600; color: var(--text); background: var(--glass-2, var(--bg-elevated)); box-shadow: var(--sh-pop), inset 0 0 0 1px var(--line-3); pointer-events: none; }

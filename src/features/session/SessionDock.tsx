@@ -160,6 +160,9 @@ export default function SessionDock({
     // navegador nativo durante el arrastre la captura puede perderse.
     const pointerId = event.pointerId
     useDockDragStore.getState().begin()
+    // El separador que se arrastra se ve hasta soltarlo, aunque el puntero se salga de él.
+    const handle = event.currentTarget
+    handle.dataset.dragging = 'true'
     const rect = container.getBoundingClientRect()
     const startStack = [...stack]
     let latest: { split?: DockSplit; stack?: number[] } = {}
@@ -189,6 +192,7 @@ export default function SessionDock({
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', cancel)
       useDockDragStore.getState().end()
+      delete handle.dataset.dragging
       if (commit && latest.split) setSplit(sessionId, latest.split)
       if (commit && latest.stack) setStack(sessionId, latest.stack)
       setDraft(null)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 
 export interface DragResizeOptions {
   value: number
@@ -24,6 +24,7 @@ export interface ResizeHandleProps {
   'aria-valuemin': number
   'aria-valuemax': number
   'aria-disabled'?: boolean
+  'data-dragging'?: boolean
   tabIndex: number
   onPointerDown: (event: PointerEvent<HTMLElement>) => void
   onPointerMove: (event: PointerEvent<HTMLElement>) => void
@@ -45,6 +46,7 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
   const { value, min, direction, onChange, onCommit, step = 20, disabled = false } = options
   const maxValue = typeof options.max === 'function' ? options.max() : options.max
   const dragging = useRef<{ pointerId: number; startX: number; startValue: number } | null>(null)
+  const [active, setActive] = useState(false)
   const latest = useRef(value)
   latest.current = value
 
@@ -59,6 +61,7 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
   const finish = useCallback((commit: boolean) => {
     if (!dragging.current) return
     dragging.current = null
+    setActive(false)
     detach.current?.()
     detach.current = null
     if (commit) onCommit?.(latest.current)
@@ -85,6 +88,7 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
     event.currentTarget.setPointerCapture?.(event.pointerId)
     const pointerId = event.pointerId
     dragging.current = { pointerId, startX: event.clientX, startValue: latest.current }
+    setActive(true)
     const up = (upEvent: globalThis.PointerEvent) => { if (upEvent.pointerId === pointerId) finish(true) }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -132,6 +136,8 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
       'aria-valuemin': min,
       'aria-valuemax': maxValue,
       'aria-disabled': disabled || undefined,
+      // Mientras se arrastra, el asa se ve aunque el puntero se salga de ella.
+      'data-dragging': active || undefined,
       tabIndex: disabled ? -1 : 0,
       onPointerDown,
       onPointerMove,

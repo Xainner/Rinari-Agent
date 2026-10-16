@@ -31,10 +31,19 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('plan-view')
 
+  // The chat shows a compact card; «Ver plan» opens the view again after closing it.
+  const card = await evaluate(`document.querySelector('[data-testid="plan-card"]')?.innerText ?? ''`)
+  assert.match(card, /Tarjetas regalo: venta en caja/)
+  assert.match(card, /Implementar plan/)
+  await click(`${DOCK} button[aria-label="Cerrar Plan"]`)
+  await wait(`!document.querySelector('${DOCK}')`)
+  await clickText('Ver plan', '[data-testid="plan-card"] button', { includes: true })
+  await wait(`Boolean(document.querySelector('${DOCK} [data-testid="plan-view"]'))`)
+
   // 3. From the Summary, «Plan y pasos» opens the plan.
   await click('.dock-view-bar button[data-view="summary"]')
   await wait(`Boolean(document.querySelector('[data-testid="summary-panel"] [data-card="plan"]'))`)
   await click('[data-testid="summary-panel"] [data-card="plan"] .summary-card-open')
   await wait(`Boolean(document.querySelector('${DOCK} [data-testid="plan-view"]'))`)
-  report({ session: session.id, passed: ['no plan button without a plan', 'plan view opens by itself when a plan finishes', 'title, steps and implement on top', 'summary opens the plan'] })
+  report({ session: session.id, passed: ['compact plan card in the chat opens the view', 'no plan button without a plan', 'plan view opens by itself when a plan finishes', 'title, steps and implement on top', 'summary opens the plan'] })
 }, { width: 1500, height: 900 })

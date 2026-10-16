@@ -78,3 +78,26 @@ it('sin planes lo dice', () => {
   render(<I18nProvider lang="es"><PlanView sessionId="s1" /></I18nProvider>)
   expect(screen.getByText('Esta conversación todavía no tiene un plan.')).toBeTruthy()
 })
+
+it('la tarjeta del chat es compacta: título, pasos a la vista y «Ver plan» abre el panel', async () => {
+  const { default: PlanCard } = await import('./PlanCard')
+  const { ReadTrackingContext } = await import('../board/useResultVisibility')
+  const { resetSessionDockForTests, useSessionDockStore } = await import('../../stores/sessionDock')
+  resetSessionDockForTests()
+  const long = ['# Migración', '', '1. Uno', '2. Dos', '3. Tres', '4. Cuatro', '5. Cinco', '6. Seis'].join('\n')
+  render(
+    <I18nProvider lang="es">
+      <ReadTrackingContext.Provider value={{ sessionId: 's1', visible: true }}>
+        <PlanCard content={long} actions={<button type="button">Implementar plan</button>} />
+      </ReadTrackingContext.Provider>
+    </I18nProvider>,
+  )
+  const card = screen.getByRole('region', { name: 'Plan propuesto' })
+  expect(within(card).getByRole('heading', { name: 'Migración' })).toBeTruthy()
+  expect(within(card).getByText('6 pasos')).toBeTruthy()
+  expect(within(card).getByText('Cuatro')).toBeTruthy()
+  expect(within(card).queryByText('Cinco')).toBeNull()
+  expect(within(card).getByText('y 2 pasos más')).toBeTruthy()
+  await userEvent.click(within(card).getByRole('button', { name: 'Ver plan' }))
+  expect(useSessionDockStore.getState().layoutFor('s1').views).toEqual(['plan'])
+})

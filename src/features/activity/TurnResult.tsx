@@ -1,10 +1,10 @@
-import { CircleAlert, ListTree } from 'lucide-react'
+import { CircleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { memo, type ReactNode } from 'react'
 import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi } from '../../services/engine'
 import { useUIStore } from '../../stores/ui'
-import Markdown from '../../components/Markdown'
+import PlanCard from '../plan/PlanCard'
 import MessageBubble from '../../components/MessageBubble'
 import { useResultVisibility } from '../board/useResultVisibility'
 import { ChangeSetRow } from './ChangeSetRow'
@@ -51,12 +51,10 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
       {provisional && terminal && <p className="text-xs text-[var(--warning)]">{t('activity.partialText')}</p>}
       {final?.type === 'model' && (timeline.mode === 'plan' && !provisional
         ? (
-          <section aria-label={lang === 'es' ? 'Plan propuesto' : 'Proposed plan'} className="space-y-3 settings-card p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold"><ListTree size={16} />{lang === 'es' ? 'Plan propuesto' : 'Proposed plan'}</div>
-            <Markdown>{final.content}</Markdown>
+          // El plan, como tarjeta compacta; entero en la vista «Plan» del panel lateral (#55).
+          <PlanCard content={final.content} actions={planActions}>
             {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
-            {planActions}
-          </section>
+          </PlanCard>
         )
         : <>
           <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />

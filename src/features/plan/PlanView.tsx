@@ -81,7 +81,8 @@ function Body({ sessionId, timelines }: { sessionId: string; timelines: Record<s
           </section>
         )}
         {plan.sections.map((section, index) => section.title ? (
-          <details key={index} className="plan-view-section" open>
+          // La sección de pasos repite la lista de arriba: empieza plegada.
+          <details key={index} className="plan-view-section" open={!(plan.steps.length > 0 && /^(pasos|steps)/i.test(section.title))}>
             <summary>{section.title}</summary>
             <div className="plan-view-md"><Markdown>{section.body}</Markdown></div>
           </details>

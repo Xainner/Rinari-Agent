@@ -2222,6 +2222,8 @@ export const en: Record<I18nKey, string> = {
   'notify.open': 'Open',
   'notify.reviewPlan': 'Review plan',
   'notify.replyPlaceholder': 'Reply to Rinari',
+  'profiles.pendingOther': 'Pending in other profiles: {n}',
+  'profiles.pendingNeedsYou': 'Pending in other profiles: {n}. Something needs you',
   'notify.grouped': '{n} conversations finished.',
   'notify.groupedTitle': 'Rinari finished several things',
   'notifications.module.conversations': 'Conversations',

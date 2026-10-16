@@ -9,7 +9,7 @@ import { warnUntrusted } from './features/projects/trustWarning'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
-import { engineApi, type TrustState } from './services/engine'
+import { commandMessage, engineApi, type TrustState } from './services/engine'
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
@@ -59,7 +59,7 @@ import ProjectHome from './features/projects/ProjectHome'
 import ProviderWizard from './features/providers/ProviderWizard'
 import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
-import { useProfileWorkspace } from './features/profiles/useProfileWorkspace'
+import { switchToProfileOf, useProfileWorkspace } from './features/profiles/useProfileWorkspace'
 import { useProfileMoves } from './features/profiles/useProfileMoves'
 import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
 import { useCreateProjectStore } from './features/projects/createProjectStore'
@@ -720,8 +720,11 @@ function App() {
                 disabled={!session.ready}
                 onOpenTarget={(target) => {
                   if (target.kind === 'session') {
-                    chooseSession(target.sessionId)
-                    if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+                    // De otro perfil: primero ese perfil (#34).
+                    void switchToProfileOf(session.sessionsById[target.sessionId]?.rinari_profile_id).then(() => {
+                      chooseSession(target.sessionId)
+                      if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+                    }).catch((error) => toast.error(commandMessage(error)))
                   }
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')

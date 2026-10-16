@@ -21,6 +21,7 @@ import { useUIStore } from '../../stores/ui'
 import { getWindowAttention, useWindowAttention } from '../../hooks/useWindowAttention'
 import { hasResultBlock } from '../activity/resultBlock'
 import { lookupSession } from '../notifications/sessionDirectory'
+import { switchToProfileOf } from '../profiles/useProfileWorkspace'
 import { useWindowTitle } from '../../hooks/useWindowTitle'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useI18n } from '../../i18n'
@@ -231,11 +232,13 @@ export default function BoardActivityController() {
   const commands = useOptionalEngineCommands()
   const openConversation = useCallback((target: ConversationTarget) => {
     if (!commands) return
-    void commands.selectSession(target.sessionId).then(() => {
+    // Un aviso de otro perfil cambia antes a ese perfil (#34).
+    const profile = data.sessionsById[target.sessionId]?.rinari_profile_id
+    void switchToProfileOf(profile).then(() => commands.selectSession(target.sessionId)).then(() => {
       useUIStore.getState().goChat()
       if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
     })
-  }, [commands])
+  }, [commands, data.sessionsById])
   useBoardNotifications({
     runtime: store,
     labelFor: titleFor,
@@ -284,7 +287,11 @@ export default function BoardActivityController() {
     () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : [])])],
     [members, data.activeSession],
   )
-  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds, titleFor })
+  const profileFor = useCallback((sessionId: string): string | null => {
+    const record = data.sessionsById[sessionId]
+    return record ? record.rinari_profile_id ?? 'default' : null
+  }, [data.sessionsById])
+  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds, titleFor, profileFor })
   useWindowTitle(summary.count)
 
   // Mensajes de pares: se reconocen al atender el panel (expandido, enfocado,

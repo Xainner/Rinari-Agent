@@ -2239,6 +2239,8 @@ export const es = {
   'notify.open': 'Abrir',
   'notify.reviewPlan': 'Revisar plan',
   'notify.replyPlaceholder': 'Responder a Rinari',
+  'profiles.pendingOther': 'Pendientes en otros perfiles: {n}',
+  'profiles.pendingNeedsYou': 'Pendientes en otros perfiles: {n}. Algo te necesita',
   'notify.grouped': '{n} conversaciones terminaron.',
   'notify.groupedTitle': 'Rinari terminó varias cosas',
   'notifications.module.conversations': 'Conversaciones',

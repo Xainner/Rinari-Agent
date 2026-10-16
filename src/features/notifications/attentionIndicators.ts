@@ -19,6 +19,8 @@ export interface SessionPending {
   unread: TerminalOutcome[]
   unreadPeers: number
   working: boolean
+  /** Perfil de Rinari de la conversación, si se conoce (#34). */
+  profileId?: string | null
 }
 
 export interface AttentionSummary {
@@ -157,7 +159,7 @@ export function strongestSignal(signals: Array<SessionSignal | null | undefined>
 export const useSessionPendingStore = create<{ bySession: Record<string, SessionPending> }>(() => ({ bySession: {} }))
 
 function samePending(a: SessionPending | undefined, b: SessionPending): boolean {
-  return Boolean(a) && a!.needsYou === b.needsYou && a!.unreadPeers === b.unreadPeers && a!.working === b.working && a!.unread.join() === b.unread.join()
+  return Boolean(a) && a!.needsYou === b.needsYou && a!.unreadPeers === b.unreadPeers && a!.working === b.working && a!.unread.join() === b.unread.join() && a!.profileId === b.profileId
 }
 
 function publishPending(sessions: SessionPending[]): void {
@@ -189,7 +191,14 @@ function nextGeneration(): number {
  */
 export function useAttentionIndicators(
   runtime: { getState(): TurnTimelineState; subscribe(listener: () => void): () => void },
-  options: { ready: boolean; lang: Language; liveSessionIds: string[]; titleFor?: (sessionId: string) => string | null },
+  options: {
+    ready: boolean
+    lang: Language
+    liveSessionIds: string[]
+    titleFor?: (sessionId: string) => string | null
+    /** Perfil de cada conversación, para los pendientes de otros perfiles (#34). */
+    profileFor?: (sessionId: string) => string | null
+  },
 ): AttentionSummary {
   const enabled = useIndicatorPrefs((state) => state.enabled)
   const [summary, setSummary] = useState<AttentionSummary>({ count: 0, category: 'none', working: 0, pending: [] })
@@ -197,11 +206,15 @@ export function useAttentionIndicators(
   const logged = useRef('')
   const titleFor = useRef(options.titleFor)
   titleFor.current = options.titleFor
+  const profileFor = useRef(options.profileFor)
+  profileFor.current = options.profileFor
+  const profileKey = options.profileFor
   const liveKey = options.liveSessionIds.join('|')
 
   useEffect(() => {
     const compute = () => {
       const sessions = pendingBySession(runtime.getState(), useBoardAttentionStore.getState().sessions, (id) => getPendingQuestions(id).length)
+        .map((session) => ({ ...session, profileId: profileFor.current?.(session.sessionId) ?? null }))
       const next = summarizeAttention(sessions)
       publishPending(sessions)
       const line = describeAttention(sessions)
@@ -221,7 +234,8 @@ export function useAttentionIndicators(
     for (const timeline of Object.values(runtime.getState().timelines)) if (ACTIVE.has(timeline.status)) live.add(timeline.sessionId)
     const stops = [runtime.subscribe(compute), useBoardAttentionStore.subscribe(compute), ...[...live].map((id) => subscribePendingQuestions(id, compute))]
     return () => { for (const stop of stops) stop() }
-  }, [runtime, liveKey])
+    // `profileKey`: cambia cuando llegan las sesiones y se sabe su perfil.
+  }, [runtime, liveKey, profileKey])
 
   useEffect(() => {
     if (!options.ready) return

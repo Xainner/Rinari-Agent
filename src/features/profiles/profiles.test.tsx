@@ -8,6 +8,9 @@ import { AppSidebar, type AppSidebarProps } from '../../components/app-shell/App
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import { inProfile, onProfileEvent, useProfileStore } from './profileStore'
 import { useProfileMoves } from './useProfileMoves'
+import { profilePending } from './profilePending'
+import { switchToProfileOf, useProfileWorkspace } from './useProfileWorkspace'
+import { useSessionPendingStore } from '../notifications/attentionIndicators'
 
 const now = '2026-10-10T00:00:00Z'
 
@@ -124,5 +127,51 @@ describe('moving between profiles', () => {
     await userEvent.click(screen.getByRole('button', { name: /Mover el proyecto entero/ }))
     expect(move).toHaveBeenCalledWith('ps', 'trabajo', 'move_project')
     await waitFor(() => expect(screen.queryByTestId('profile-move-dialog')).toBeNull())
+  })
+})
+
+describe('pending in other profiles (#34)', () => {
+  const pending = (sessionId: string, profileId: string, needsYou = false) => ({ sessionId, profileId, needsYou, unread: needsYou ? [] : ['completed' as const], unreadPeers: 0, working: false })
+
+  it('counts per profile, and the active one does not add to the others', () => {
+    const result = profilePending({
+      a: pending('a', 'default'),
+      b: pending('b', 'trabajo'),
+      c: pending('c', 'trabajo', true),
+      d: { ...pending('d', 'x'), profileId: null },
+    }, 'default')
+    expect(result.byProfile).toEqual({ default: { count: 1, needsYou: false }, trabajo: { count: 2, needsYou: true } })
+    expect(result.others).toEqual({ count: 2, needsYou: true })
+  })
+
+  it('the switcher shows a dot with the number, and the menu shows each other profile with its own', async () => {
+    useSessionPendingStore.setState({ bySession: { a: pending('a', 'default'), b: pending('b', 'trabajo', true) } })
+    sidebar()
+    const badge = screen.getByTestId('profile-pending-badge')
+    expect(badge.textContent).toBe('1')
+    expect(badge.getAttribute('data-needs-you')).toBe('true')
+    await userEvent.click(screen.getByTestId('profile-switcher'))
+    const counts = await screen.findAllByTestId('profile-pending-count')
+    expect(counts.map((item) => item.textContent)).toEqual(['1'])
+    expect((await screen.findByRole('menuitem', { name: /Trabajo/ })).contains(counts[0])).toBe(true)
+    useSessionPendingStore.setState({ bySession: {} })
+  })
+
+  it('opening a notice from another profile switches profile without leaving a new draft behind', async () => {
+    const activate = vi.spyOn(engineApi, 'bundleActivate').mockResolvedValue({ active_id: 'trabajo', previous_id: 'default', profile: profiles[1] })
+    const openDraft = vi.fn()
+    function Probe({ record }: { record: { id: string; rinari_profile_id: string } }) {
+      useProfileWorkspace({ ready: false, activeRecord: record, refreshSessions: vi.fn(), refreshProjects: vi.fn(), openDraft })
+      return null
+    }
+    const view = render(<Probe record={{ id: 'chat', rinari_profile_id: 'default' }} />)
+    await act(async () => { await switchToProfileOf('trabajo') })
+    expect(activate).toHaveBeenCalledWith('trabajo')
+    view.rerender(<Probe record={{ id: 'chat', rinari_profile_id: 'default' }} />)
+    expect(openDraft).not.toHaveBeenCalled()
+    // Lo mismo sin pasar por un aviso: el perfil cambió y la conversación quedó en otro.
+    act(() => useProfileStore.setState({ activeId: 'default' }))
+    view.rerender(<Probe record={{ id: 'other', rinari_profile_id: 'trabajo' }} />)
+    expect(openDraft).toHaveBeenCalledTimes(1)
   })
 })

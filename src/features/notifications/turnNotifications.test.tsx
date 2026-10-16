@@ -26,6 +26,7 @@ import { NOTIFICATION_GROUP_WINDOW_MS } from '../../services/notificationPolicy'
 import { notificationSupport } from '../../services/notifications'
 import { refreshWindowAttentionForTests } from '../../hooks/useWindowAttention'
 import { APP_NAME } from '../../lib/channel'
+import { applyResumeEvent } from '../resume/resumeStore'
 
 const NOW = 1_700_000_000_000
 const event = (name: string, payload: Record<string, unknown>) => engineEventAction({ type: 'event', event: name, payload }, NOW)!
@@ -122,4 +123,22 @@ it('#64: with the window in the background, the system notification carries the 
   finish(runtime, 't2', 'Secreto')
   await act(async () => { await Promise.resolve() })
   expect(platform.bridge.sentNotifications.at(-1)).toMatchObject({ title: APP_NAME, body: '«Logo nuevo» terminó.' })
+})
+
+it('#24: when Rinari picks a conversation back up by itself, the notice names it; not while you look at it', () => {
+  const runtime = createRuntimeStore()
+  render(<I18nProvider lang="es"><Harness runtime={runtime} /></I18nProvider>)
+  const resumed = (sessionId: string, revision: number) => applyResumeEvent({
+    session_id: sessionId,
+    continued: true,
+    resume: { session_id: sessionId, state: 'resuming', mode: 'at', attempts: 1, revision },
+  })
+  act(() => { resumed('ses_n', 1) })
+  expect(toastCalls.map((call) => call.text)).toEqual(['Rinari retomó «Logo nuevo».'])
+  const action = toastCalls[0].options?.action as { onClick: () => void }
+  action.onClick()
+  expect(opened).toEqual([{ sessionId: 'ses_n', turnId: undefined }])
+  // La conversación abierta en Normal es «ses_other»: ahí no hace falta avisar.
+  act(() => { resumed('ses_other', 1) })
+  expect(toastCalls).toHaveLength(1)
 })

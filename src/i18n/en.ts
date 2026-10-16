@@ -2214,6 +2214,7 @@ export const en: Record<I18nKey, string> = {
   'notify.private.stopped': '"{name}" stopped.',
   'notify.private.plan': 'The plan for "{name}" is ready to review.',
   'notify.private.needsYou': '"{name}" needs you.',
+  'notify.private.resumed': 'Rinari picked "{name}" back up.',
   'notify.body.failed': 'Failed: {detail}',
   'notify.body.stopped': 'Stopped: {detail}',
   'notify.body.plan': 'The plan is ready: {detail}',

@@ -2231,6 +2231,7 @@ export const es = {
   'notify.private.stopped': '«{name}» se detuvo.',
   'notify.private.plan': 'El plan de «{name}» está listo para revisar.',
   'notify.private.needsYou': '«{name}» te necesita.',
+  'notify.private.resumed': 'Rinari retomó «{name}».',
   'notify.body.failed': 'Falló: {detail}',
   'notify.body.stopped': 'Se detuvo: {detail}',
   'notify.body.plan': 'El plan está listo: {detail}',

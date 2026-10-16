@@ -63,10 +63,8 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       onProfileEvent(event.event)
       if (event.event === 'checklist.updated') applyChecklistEvent(event.payload)
       if (event.event === 'goal.updated') applyGoalEvent(event.payload)
-      if (event.event === 'session.resume.updated') {
-        const applied = applyResumeEvent(event.payload)
-        if (applied?.continued) toast(translate(useUIStore.getState().lang, 'resume.continued'))
-      }
+      // El aviso de «Rinari retomó…» lo da el notificador, con las reglas de los demás (#24).
+      if (event.event === 'session.resume.updated') applyResumeEvent(event.payload)
       applyFollowupEvent(event.event, event.payload)
       if (event.event === 'session.renamed') markRenamedFromEvent(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()

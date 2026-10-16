@@ -15,6 +15,7 @@ import type { TurnTimeline } from '../activity/types'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 import { parsePlan } from '../plan/planModel'
 import { revealBoardAttention } from './boardCommands'
+import { onResumed } from '../resume/resumeStore'
 
 interface PendingTerminal {
   sessionId: string
@@ -119,7 +120,7 @@ export function useBoardNotifications(options: UseBoardNotificationsOptions): vo
       }
       if (decision.toast) {
         const plan = outcome === 'plan'
-        const inBoard = boardMember(sessionId)
+        const inBoard = boardMember(sessionId) && outcome !== 'resumed'
         const key: I18nKey = inBoard && !plan
           ? (outcome === 'failed' ? 'board.toast.failed' : outcome === 'stopped' ? 'board.toast.stopped' : outcome === 'needsYou' ? 'board.toast.needsYou' : 'board.toast.done')
           : (`notify.private.${outcome}` as I18nKey)
@@ -226,6 +227,8 @@ export function useBoardNotifications(options: UseBoardNotificationsOptions): vo
     scanReceipts()
     scanInterventions()
     const stops = [
+      // Rinari continuó sola al restablecerse el límite (#24): mismo aviso, mismas reglas.
+      onResumed((sessionId) => notify('terminal', sessionId, 'resumed', t('resume.continued'))),
       useBoardAttentionStore.subscribe(scanReceipts),
       runtime.subscribe(scanInterventions),
       useBoardStore.subscribe(() => { scanReceipts(); scanInterventions() }),

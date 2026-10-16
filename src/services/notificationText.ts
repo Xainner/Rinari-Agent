@@ -7,7 +7,7 @@ import { APP_NAME } from '../lib/channel'
  * el nombre de la conversación y las primeras líneas de la respuesta. Con
  * «Mostrar el contenido» apagado, solo dice qué conversación terminó.
  */
-export type NotifyOutcome = 'done' | 'failed' | 'stopped' | 'plan' | 'needsYou'
+export type NotifyOutcome = 'done' | 'failed' | 'stopped' | 'plan' | 'needsYou' | 'resumed'
 
 export interface NotifyContent {
   outcome: NotifyOutcome
@@ -43,7 +43,7 @@ export function notificationText(content: NotifyContent, lang: Language, showCon
   const title = content.project && content.project !== name ? `${name} · ${content.project}` : name
   const detail = content.detail ? plainExcerpt(content.detail) : ''
   const body = (() => {
-    if (content.outcome === 'done') return detail || translate(lang, 'notify.private.done', { name })
+    if (content.outcome === 'done' || content.outcome === 'resumed') return detail || translate(lang, `notify.private.${content.outcome}`, { name })
     return detail
       ? translate(lang, `notify.body.${content.outcome}`, { detail })
       : translate(lang, `notify.private.${content.outcome}`, { name })

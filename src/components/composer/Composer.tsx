@@ -124,6 +124,7 @@ const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
   model: 'slash.model',
   diff: 'slash.diff',
   tasks: 'slash.tasks',
+  goal: 'slash.goal',
   fork: 'slash.fork',
   rename: 'slash.rename',
 }

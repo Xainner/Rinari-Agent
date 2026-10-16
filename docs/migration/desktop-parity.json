@@ -1307,6 +1307,56 @@
       ]
     },
     {
+      "command": "session_goal_budget",
+      "kind": "engine",
+      "method": "session.goal.budget",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_clear",
+      "kind": "engine",
+      "method": "session.goal.clear",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_get",
+      "kind": "engine",
+      "method": "session.goal.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_pause",
+      "kind": "engine",
+      "method": "session.goal.pause",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_resume",
+      "kind": "engine",
+      "method": "session.goal.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_goal_set",
+      "kind": "engine",
+      "method": "session.goal.set",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "session_history",
       "kind": "engine",
       "method": "session.history",
@@ -1928,10 +1978,10 @@
     }
   ],
   "summary": {
-    "commands": 230,
-    "engine_backed": 224,
+    "commands": 236,
+    "engine_backed": 230,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 76
+    "without_callers": 78
   }
 }

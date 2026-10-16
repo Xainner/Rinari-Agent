@@ -89,6 +89,11 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return <PeerBubble message={message} />
   }
 
+  // A turn the goal started is not something the owner wrote: a separator.
+  if (message.role === 'user' && message.origin?.source === 'goal') {
+    return <GoalSeparator iteration={message.origin.iteration ?? null} />
+  }
+
   if (message.role === 'user') {
     // Solo el mensaje recién enviado entra con la transición de envío; el
     // historial (scroll, recarga) aparece en su sitio.
@@ -242,5 +247,14 @@ function ForwardedBadge({ sessionId }: { sessionId: string }) {
       <MessageSquareShare size={11} aria-hidden="true" />
       {t('board.peers.forwardedFrom', { label })}
     </span>
+  )
+}
+
+function GoalSeparator({ iteration }: { iteration: number | null }) {
+  const { t } = useI18n()
+  return (
+    <div data-testid="goal-separator" className="goal-separator" role="separator">
+      <span>{iteration ? t('goal.separator', { n: iteration }) : t('goal.separatorPlain')}</span>
+    </div>
   )
 }

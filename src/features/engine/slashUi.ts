@@ -2,6 +2,8 @@ import { toast } from 'sonner'
 import { commandMessage, engineApi } from '../../services/engine'
 import { dispatchAction } from '../../services/actions'
 import { useUIStore } from '../../stores/ui'
+import { translate } from '../../i18n'
+import { useGoalStore } from '../goal/goalStore'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 
 export interface UiCommandDeps {
@@ -15,6 +17,34 @@ export interface UiCommandDeps {
  * Comandos `/` de interfaz: lo que el escritorio hace por sí mismo, sin turno.
  * Devuelve `false` si no lo reconoce o le falta texto, y el borrador vuelve.
  */
+/**
+ * `/goal <objetivo>` lo crea (o reemplaza) y arranca; `/goal pause | resume |
+ * clear` lo maneja; `/goal` solo dice cómo va (plan 0.4.0 #23).
+ */
+async function goal(sessionId: string, text: string): Promise<boolean> {
+  const lang = useUIStore.getState().lang
+  const store = useGoalStore.getState()
+  const word = text.trim().toLowerCase()
+  const apply = (result: { goal: Parameters<typeof store.apply>[1] }) => store.apply(sessionId, result.goal)
+  if (!word) {
+    const current = (await engineApi.sessionGoal(sessionId)).goal
+    store.apply(sessionId, current)
+    if (!current) toast(translate(lang, 'goal.none'))
+    return true
+  }
+  if (word === 'pause') apply(await engineApi.goalPause(sessionId))
+  else if (word === 'resume') apply(await engineApi.goalResume(sessionId))
+  else if (word === 'clear') apply(await engineApi.goalClear(sessionId))
+  else {
+    const current = store.bySession[sessionId]?.goal
+    if (current && current.state !== 'achieved' && !window.confirm(translate(lang, 'goal.replaceConfirm', { objective: current.objective }))) {
+      return true
+    }
+    apply(await engineApi.goalSet(sessionId, text.trim()))
+  }
+  return true
+}
+
 export async function runUiCommand(name: string, text: string, deps: UiCommandDeps): Promise<boolean> {
   const workspace = (tab: WorkspaceTab) => {
     deps.reveal(deps.sessionId, 'workspace', { workspaceTab: tab })
@@ -44,6 +74,8 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         if (!text) return false
         await deps.rename(deps.sessionId, text)
         return true
+      case 'goal':
+        return await goal(deps.sessionId, text)
       default:
         return false
     }

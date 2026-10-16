@@ -1171,6 +1171,194 @@
       "host_effects": []
     },
     {
+      "command": "session_goal_get",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_set",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "objective",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "budget",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "start",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.set",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "objective",
+          "from": "objective",
+          "optional": true
+        },
+        {
+          "key": "budget",
+          "from": "budget",
+          "optional": true
+        },
+        {
+          "key": "start",
+          "from": "start",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_pause",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.pause",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_resume",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "start",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.resume",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "start",
+          "from": "start",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_clear",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.clear",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_budget",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "budget",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.budget",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "budget",
+          "from": "budget",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "session_checklist_complete",
       "module": "sessions",
       "args": [

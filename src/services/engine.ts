@@ -17,7 +17,7 @@ import type {
   PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist, FollowupSuggestion, ProjectFolderCheck } from '../types/protocol.generated'
+import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck } from '../types/protocol.generated'
 import type { AttachmentRef } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -936,6 +936,24 @@ export const engineApi = {
   /** El dueño marca como hecha una lista que quedó abierta (plan 0.4.0 #59). */
   completeSessionChecklist: (sessionId: string) =>
     platform().command<{ checklist: Checklist | null }>('session_checklist_complete', { sessionId }),
+  // El objetivo de la conversación (plan 0.4.0 #23).
+  sessionGoal: (sessionId: string) =>
+    platform().command<{ goal: Goal | null }>('session_goal_get', { sessionId }),
+  goalSet: (sessionId: string, objective: string, options: { budget?: GoalBudget; start?: boolean } = {}) =>
+    platform().command<{ goal: Goal | null; turn?: { turn_id: string } }>('session_goal_set', {
+      sessionId,
+      objective,
+      budget: options.budget ?? null,
+      start: options.start ?? null,
+    }),
+  goalPause: (sessionId: string) =>
+    platform().command<{ goal: Goal | null }>('session_goal_pause', { sessionId }),
+  goalResume: (sessionId: string, options: { start?: boolean } = {}) =>
+    platform().command<{ goal: Goal | null; turn?: { turn_id: string } }>('session_goal_resume', { sessionId, start: options.start ?? null }),
+  goalClear: (sessionId: string) =>
+    platform().command<{ goal: Goal | null }>('session_goal_clear', { sessionId }),
+  goalBudget: (sessionId: string, budget: GoalBudget) =>
+    platform().command<{ goal: Goal | null }>('session_goal_budget', { sessionId, budget }),
   turnChanges: (turnId: string) =>
     platform().command<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
   reviewTurnChanges: (turnId: string, path?: string) =>

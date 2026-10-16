@@ -158,6 +158,12 @@ export type DesktopCommand =
   | "session_events"
   | "session_fork"
   | "session_get"
+  | "session_goal_budget"
+  | "session_goal_clear"
+  | "session_goal_get"
+  | "session_goal_pause"
+  | "session_goal_resume"
+  | "session_goal_set"
   | "session_history"
   | "session_image_support"
   | "session_list"
@@ -390,6 +396,12 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_events",
   "session_fork",
   "session_get",
+  "session_goal_budget",
+  "session_goal_clear",
+  "session_goal_get",
+  "session_goal_pause",
+  "session_goal_resume",
+  "session_goal_set",
   "session_history",
   "session_image_support",
   "session_list",
@@ -637,6 +649,12 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_events",
   "session_fork",
   "session_get",
+  "session_goal_budget",
+  "session_goal_clear",
+  "session_goal_get",
+  "session_goal_pause",
+  "session_goal_resume",
+  "session_goal_set",
   "session_history",
   "session_image_support",
   "session_list",

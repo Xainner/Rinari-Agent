@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **230**
-- Respaldados por Engine: **224**
+- Comandos: **236**
+- Respaldados por Engine: **230**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -170,6 +170,12 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `session_events` | engine | `session.events` | **ninguno** |
 | `session_fork` | engine | `session.fork` | `src/services/engine.ts` |
 | `session_get` | engine | `session.get` | `src/services/engine.ts` |
+| `session_goal_budget` | engine | `session.goal.budget` | `src/services/engine.ts` |
+| `session_goal_clear` | engine | `session.goal.clear` | `src/services/engine.ts` |
+| `session_goal_get` | engine | `session.goal.get` | `src/services/engine.ts` |
+| `session_goal_pause` | engine | `session.goal.pause` | `src/services/engine.ts` |
+| `session_goal_resume` | engine | `session.goal.resume` | **ninguno** |
+| `session_goal_set` | engine | `session.goal.set` | **ninguno** |
 | `session_history` | engine | `session.history` | **ninguno** |
 | `session_image_support` | engine | `session.image_support` | `src/services/engine.ts` |
 | `session_list` | engine | `session.list` | `src/services/engine.ts` |

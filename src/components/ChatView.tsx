@@ -25,6 +25,7 @@ import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../featur
 import ScrollToBottom from './chat/ScrollToBottom'
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
+import { GoalDock } from '../features/goal/GoalDock'
 import { StickyNote } from '../features/followups/StickyNote'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
@@ -519,6 +520,7 @@ function ChatView({
       )}
       {(presentation === 'empty' || presentation === 'conversation') && (
         <>
+          {sessionId !== '' && <GoalDock key={`goal:${sessionId}`} sessionId={sessionId} onHint={(text) => void onSend(text)} />}
           {sessionId !== '' && <ChecklistDock key={`checklist:${sessionId}`} sessionId={sessionId} />}
           <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
           {queue}

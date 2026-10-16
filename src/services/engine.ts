@@ -567,10 +567,17 @@ export interface SkillCandidate {
   format: string | null
   path: string
   error: SkillIssue | null
-  review: SkillReview
+  /**
+   * `null` cuando aún no se revisó: la lista rápida de importar y los repos
+   * con muchas skills grandes (solo trajeron su SKILL.md). Se revisa al elegirla.
+   */
+  review: SkillReview | null
   installed: { origin: SkillOrigin; source: string | null } | null
   /** Solo en la importación: claude | codex | agents. */
   kind?: string
+  /** Solo en la importación: todos los lugares donde está la misma skill. */
+  kinds?: string[]
+  paths?: string[]
 }
 
 export interface SkillPage {
@@ -1137,6 +1144,8 @@ export const engineApi = {
     name?: string
     expectedHash?: string
     force?: boolean
+    /** «Instalar igual» una skill que pasa de los topes. */
+    allowLarge?: boolean
   }) =>
     platform().command<{ job_id: string; action: SkillJobAction; status: string }>('skill_job_start', {
       action: input.action,
@@ -1144,6 +1153,7 @@ export const engineApi = {
       name: input.name ?? null,
       expected_hash: input.expectedHash ?? null,
       force: input.force ?? null,
+      allow_large: input.allowLarge ?? null,
     }),
   skillJobGet: (jobId: string) =>
     platform().command<{ job: { job_id: string; status: string; result?: unknown; error?: SkillJobError } }>(

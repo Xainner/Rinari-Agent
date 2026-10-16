@@ -187,7 +187,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "skill_get": {"method":"skill.get","params":[{"key":"name","from":"name","optional":false},{"key":"project_root","from":"project_root","optional":true}]},
   "skill_import_scan": {"method":"skill.import.scan","params":[]},
   "skill_job_get": {"method":"skill.job.get","params":[{"key":"job_id","from":"job_id","optional":false}]},
-  "skill_job_start": {"method":"skill.job.start","params":[{"key":"action","from":"action","optional":false},{"key":"source","from":"source","optional":true},{"key":"name","from":"name","optional":true},{"key":"expected_hash","from":"expected_hash","optional":true},{"key":"force","from":"force","optional":true}]},
+  "skill_job_start": {"method":"skill.job.start","params":[{"key":"action","from":"action","optional":false},{"key":"source","from":"source","optional":true},{"key":"name","from":"name","optional":true},{"key":"expected_hash","from":"expected_hash","optional":true},{"key":"force","from":"force","optional":true},{"key":"allow_large","from":"allow_large","optional":true}]},
   "skill_list": {"method":"skill.list","params":[{"key":"project_root","from":"project_root","optional":true}]},
   "skill_pending_approve": {"method":"skill.pending.approve","params":[{"key":"name","from":"name","optional":false}]},
   "skill_pending_list": {"method":"skill.pending.list","params":[]},

@@ -3851,6 +3851,11 @@
           "name": "force",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "allow_large",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -3880,6 +3885,11 @@
         {
           "key": "force",
           "from": "force",
+          "optional": true
+        },
+        {
+          "key": "allow_large",
+          "from": "allow_large",
           "optional": true
         }
       ],

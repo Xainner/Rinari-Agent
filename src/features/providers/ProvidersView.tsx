@@ -35,6 +35,8 @@ import ModelCatalog from './ModelCatalog'
 import ExperimentalProvidersSetting from './ExperimentalProvidersSetting'
 import ResumeSetting from '../resume/ResumeSetting'
 import ModelRolesSetting from './ModelRolesSetting'
+import DisableProviderDialog from './DisableProviderDialog'
+import { Switch } from '../../components/ui/switch'
 import { useUIStore, type ProviderTab } from '../../stores/ui'
 
 /** Ajustes > Proveedores: tarjetas con estado, probar, usar, editar y eliminar. */
@@ -59,6 +61,7 @@ export default function ProvidersView({
   const [testing, setTesting] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ProviderSummary | null>(null)
+  const [disabling, setDisabling] = useState<ProviderSummary | null>(null)
   // «Revisar uso y límites» desde un error: abre esa tarjeta en esa pestaña.
   const focus = useUIStore((s) => s.providerFocus)
   const clearFocus = useUIStore((s) => s.clearProviderFocus)
@@ -223,7 +226,19 @@ export default function ProvidersView({
     }
   }
 
+  async function enableProvider(alias: string) {
+    try {
+      await engineApi.providerUpdate(alias, { enabled: true })
+      toast.success(t('providers.enabledToast', { name: alias }))
+      onChanged()
+    } catch (err) {
+      toast.error(commandMessage(err))
+    }
+  }
+
   const others = deleting ? providers.filter((p) => p.alias !== deleting.alias) : []
+  // Desactivados al final (#97), sin cambiar el orden de los demás.
+  const ordered = [...providers.filter((p) => p.enabled !== false), ...providers.filter((p) => p.enabled === false)]
 
   return (
     <div className="space-y-4">
@@ -252,15 +267,19 @@ export default function ProvidersView({
         </Section>
       )}
 
-      {providers.map((provider) => {
+      {ordered.map((provider) => {
         const h = health[provider.alias]
         const isOpen = expanded === provider.alias
+        const off = provider.enabled === false
         return (
           <Section
             key={provider.id}
             anchor={`provider:${provider.id}`}
+            className={off ? 'opacity-60' : undefined}
             title={
               // The whole title opens the card: only the small «details» button did.
+              // The on/off switch sits beside it (#97): a switch cannot live inside a button.
+              <div className="flex items-center gap-3">
               <button
                 type="button"
                 aria-expanded={isOpen}
@@ -268,9 +287,19 @@ export default function ProvidersView({
                 className="flex w-full items-center gap-2.5 text-left"
               >
                 <ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={22} />
-                <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
+                <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}${off ? ` · ${t('providers.disabled')}` : ''}`}</span>
                 <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>
+              <Switch
+                data-testid="provider-enabled"
+                checked={!off}
+                aria-label={t('providers.enabledToggle', { name: provider.alias })}
+                onCheckedChange={(checked) => {
+                  if (checked) void enableProvider(provider.alias)
+                  else setDisabling(provider)
+                }}
+              />
+              </div>
             }
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-subtle)]">
@@ -297,9 +326,9 @@ export default function ProvidersView({
                   : t('providers.healthFail', { detail: h.detail })}
               </p>
             )}
-            {!isOpen && engineCapabilities?.provider_usage_v1 && <ProviderUsagePanel key={`${provider.id}:${provider.updated_at}`} providerAlias={provider.alias} compact />}
+            {!isOpen && !off && engineCapabilities?.provider_usage_v1 && <ProviderUsagePanel key={`${provider.id}:${provider.updated_at}`} providerAlias={provider.alias} compact />}
             <div className="flex flex-wrap gap-2">
-              {!provider.active && (
+              {!provider.active && !off && (
                 <button
                   type="button"
                   onClick={() => void useProvider(provider.alias)}
@@ -311,7 +340,7 @@ export default function ProvidersView({
               <button
                 type="button"
                 onClick={() => void testProvider(provider.alias)}
-                disabled={testing !== null}
+                disabled={testing !== null || off}
                 className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
               >
                 {testing === provider.alias ? t('providers.testing') : t('providers.test')}
@@ -389,6 +418,8 @@ export default function ProvidersView({
           </div>
         </DialogContent>
       </Dialog>
+
+      <DisableProviderDialog provider={disabling} onClose={() => setDisabling(null)} onChanged={onChanged} />
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>

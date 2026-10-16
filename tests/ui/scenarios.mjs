@@ -331,6 +331,10 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => startFakeModel([{ httpError: { status: 429, body: { error: { message: 'You exceeded your current quota, please check your plan and billing details.', type: 'insufficient_quota', code: 'insufficient_quota' } } } }]),
   },
+  'provider-toggle': {
+    title: 'Proveedores: desactivar con dependencias y reemplazo, y la tarjeta al enviar con uno apagado',
+    phases: ['exercise'],
+  },
   'project-reveal': {
     title: 'Barra lateral: desplegar el proyecto al crear',
     phases: ['exercise', 'restart'],

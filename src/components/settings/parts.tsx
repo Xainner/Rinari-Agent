@@ -9,6 +9,7 @@ export function Section({
   desc,
   children,
   anchor,
+  className,
 }: {
   /** Acepta nodos para poder anteponer el logo del proveedor al título. */
   title: ReactNode
@@ -16,9 +17,10 @@ export function Section({
   children: ReactNode
   /** `data-anchor` para llevar la vista a esta sección. */
   anchor?: string
+  className?: string
 }) {
   return (
-    <section data-anchor={anchor} className="settings-card">
+    <section data-anchor={anchor} className={className ? `settings-card ${className}` : 'settings-card'}>
       <h2 className="font-display text-[16px] font-bold text-[var(--text)]">{title}</h2>
       {desc && <p className="mt-1 mb-4 text-sm text-[var(--text-muted)]">{desc}</p>}
       {!desc && <div className="mb-4" />}

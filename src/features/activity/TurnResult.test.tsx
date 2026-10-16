@@ -267,3 +267,28 @@ it('a credits or access failure offers to switch the model for that session', as
   const upstream = terminal('failed', { error: '500', errorDetails: { provider_error_code: 'SERVER_ERROR' } })
   expect(upstream.queryByTestId('failure-switch-model')).toBeNull()
 })
+
+it('a turned-off provider offers another model or turning it back on (#97)', async () => {
+  const { setPlatformForTests } = await import('../../platform')
+  const { createTestBridge } = await import('../../platform/testBridge')
+  const bridge = createTestBridge()
+  const restore = setPlatformForTests(bridge)
+  const updates: unknown[] = []
+  bridge.mockCommand('provider_update', (args: unknown) => {
+    updates.push(args)
+    return { provider: {} }
+  })
+  try {
+    const view = terminal('failed', {
+      error: "The provider 'go' is turned off",
+      errorCode: 'PROVIDER_DISABLED',
+      errorDetails: { provider_id: 'prv_go', provider_alias: 'go', model: 'deepseek-v4-pro' },
+    })
+    expect(view.getByRole('alert').getAttribute('data-failure')).toBe('disabled')
+    expect(view.getByTestId('failure-switch-model')).toBeTruthy()
+    await userEvent.click(view.getByTestId('failure-enable-provider'))
+    expect(updates).toEqual([expect.objectContaining({ reference: 'go', enabled: true })])
+  } finally {
+    restore()
+  }
+})

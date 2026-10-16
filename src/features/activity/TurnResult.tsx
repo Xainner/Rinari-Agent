@@ -13,6 +13,7 @@ import { presentedChangeSets } from './changeSetPresentation'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { failureTab, turnFailure, type TurnFailure } from './turnFailure'
 import { AutoResume } from '../resume/AutoResume'
+import { useOptionalEngineCommands } from '../engine/EngineContext'
 
 export interface TurnResultProps {
   timeline: TurnTimeline
@@ -82,7 +83,7 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
  * seleccionado ahora). El mensaje del proveedor sigue debajo, tal cual.
  */
 /** Causas que no se arreglan reintentando con el mismo modelo: se ofrece otro. */
-const SWITCHABLE = new Set(['quota', 'rate', 'limit', 'auth', 'access', 'model'])
+const SWITCHABLE = new Set(['quota', 'rate', 'limit', 'auth', 'access', 'model', 'disabled'])
 /** A provider limit: the conversation can continue by itself when it resets (#24). */
 const LIMITS = new Set(['quota', 'rate', 'limit'])
 
@@ -90,7 +91,8 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
   const { t, lang } = useI18n()
   const openProvider = useUIStore((s) => s.openProvider)
   const requestModelPicker = useUIStore((s) => s.requestModelPicker)
-  const cause = turnFailure(timeline.errorDetails)
+  const cause = turnFailure(timeline.errorDetails, timeline.errorCode)
+  const commands = useOptionalEngineCommands()
   const raw = timeline.error || (lang === 'es' ? 'El turno falló' : 'Turn failed')
   if (!cause) {
     return (
@@ -111,8 +113,9 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
           {cause.retryAfterS !== undefined && <> {t('failure.retryAfter', { seconds: Math.ceil(cause.retryAfterS) })}</>}
         </span>
       </div>
-      <p className="pl-[22px] text-xs break-words text-[var(--text-muted)]">{raw}</p>
-      {(tab || cause.kind === 'context') && (
+      {/* «Desactivado» es un mensaje de Rinari, no del proveedor: la frase de arriba ya lo dice (#97). */}
+      {cause.kind !== 'disabled' && <p className="pl-[22px] text-xs break-words text-[var(--text-muted)]">{raw}</p>}
+      {(tab || cause.kind === 'context' || cause.kind === 'disabled') && (
         <div className="flex flex-wrap items-center gap-2 pl-[22px]">
           {SWITCHABLE.has(cause.kind) && timeline.sessionId && (
             <button
@@ -131,6 +134,24 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
               className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
             >
               {t(`failure.action.${tab}` as I18nKey)}
+            </button>
+          )}
+          {cause.kind === 'disabled' && cause.providerAlias && (
+            <button
+              type="button"
+              data-testid="failure-enable-provider"
+              onClick={() => {
+                const alias = cause.providerAlias!
+                void engineApi.providerUpdate(alias, { enabled: true })
+                  .then(() => {
+                    toast.success(t('providers.enabledToast', { name: alias }))
+                    return commands?.refreshCatalog(false)
+                  })
+                  .catch((error) => toast.error(commandMessage(error)))
+              }}
+              className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg-hover)]"
+            >
+              {t('failure.action.enableProvider', { provider })}
             </button>
           )}
           {cause.kind === 'context' && (

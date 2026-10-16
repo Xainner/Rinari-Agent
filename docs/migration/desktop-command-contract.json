@@ -5518,6 +5518,11 @@
           "name": "settings",
           "type": "Option<serde_json::Value>",
           "optional": true
+        },
+        {
+          "name": "enabled",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -5556,6 +5561,11 @@
         },
         {
           "key": "settings",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "enabled",
           "from": null,
           "optional": true
         }
@@ -5672,6 +5682,11 @@
           "name": "provider",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "include_disabled",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -5682,6 +5697,11 @@
           "key": "provider",
           "from": "provider",
           "optional": false
+        },
+        {
+          "key": "include_disabled",
+          "from": "include_disabled",
+          "optional": true
         }
       ],
       "passthrough": null,

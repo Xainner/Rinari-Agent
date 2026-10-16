@@ -100,6 +100,13 @@ describe('TR-04 — provider_update manda solo el patch', () => {
     expect(call.params).toEqual({ ref: 'p1', secret: 's', settings: { protocol: 'openai-compatible' } })
   })
 
+  it('activar o desactivar viaja solo (plan 0.4.0 #97)', () => {
+    expect(translateCommand('provider_update', { reference: 'p1', enabled: false })).toEqual({
+      method: 'provider.update',
+      params: { ref: 'p1', enabled: false },
+    })
+  })
+
   it('no manda nulos por los campos que no se tocan', () => {
     const params = translateCommand('provider_update', { reference: 'p1', alias: 'x' }).params!
     for (const key of ['endpoint', 'account_hint', 'secret', 'secret_env', 'settings']) {

@@ -70,7 +70,7 @@ export const COMMAND_ADAPTERS: Record<string, (args: Args) => EngineCall> = {
   /** Patch parcial: solo lo presente, y `ref` siempre. */
   provider_update: (args) => {
     const params: Args = { ref: args.reference }
-    for (const key of ['alias', 'endpoint', 'account_hint', 'secret', 'secret_env', 'settings']) {
+    for (const key of ['alias', 'endpoint', 'account_hint', 'secret', 'secret_env', 'settings', 'enabled']) {
       put(params, args, key)
     }
     return { method: 'provider.update', params }

@@ -39,7 +39,7 @@ export default function ModelCatalog({
     try {
       const [found, listed] = await Promise.all([
         engineApi.modelDiscover(providerAlias),
-        engineApi.modelList(providerAlias),
+        engineApi.modelList(providerAlias, true),
       ])
       const items = found.providers[providerAlias] ?? []
       setDiscovered(items)

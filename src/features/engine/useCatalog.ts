@@ -83,7 +83,8 @@ export function useCatalog() {
       setModels(m.models.map((model) => ({ ...model, saved: true })))
       setCatalogError(null)
       if (discover) {
-        for (const provider of p.providers) {
+        // A turned-off provider gets no call at all (#97).
+        for (const provider of p.providers.filter((item) => item.enabled !== false)) {
           void engineApi.modelDiscoveryStart(provider.alias).then((job) => {
             if (job.providers) mergeDiscovered(job.providers)
           }).catch((err: unknown) => setCatalogError(commandMessage(err)))

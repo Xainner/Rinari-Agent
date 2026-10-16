@@ -209,6 +209,8 @@ export interface ProviderSummary extends Partial<ProviderIdentity> {
   last_used_model_id: string | null;
   active: boolean;
   has_credential: boolean;
+  /** Off: its models leave every picker and nothing calls it (plan 0.4.0 #97). */
+  enabled?: boolean;
 }
 
 export interface ModelSummary {
@@ -1561,6 +1563,7 @@ export const engineApi = {
       account_hint?: string;
       secret?: string;
       secret_env?: string;
+      enabled?: boolean;
     },
   ) =>
     platform().command<{ provider: ProviderSummary }>("provider_update", {
@@ -1583,9 +1586,11 @@ export const engineApi = {
       { reference },
     ),
 
-  modelList: (provider?: string) =>
+  /** Without `includeDisabled`, a turned-off provider's models are left out (#97). */
+  modelList: (provider?: string, includeDisabled?: boolean) =>
     platform().command<{ models: ModelSummary[] }>("model_list", {
       provider: provider ?? null,
+      include_disabled: includeDisabled ?? null,
     }),
   modelGet: (reference: string, provider?: string) =>
     platform().command<{ model: ModelSummary }>("model_get", {

@@ -63,6 +63,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |
 | [provider-limit](provider-limit/README.md) | Cuota agotada: la razón real y «Revisar uso y límites» del proveedor que falló |
+| [provider-toggle](provider-toggle/README.md) | Desactivar un proveedor: dependencias, reemplazo, «Desactivado» y «Activar» desde la tarjeta de error |
 | [session-menu-id](session-menu-id/README.md) | ID de sesión en una sola línea |
 | [session-title](session-title/README.md) | Título que resume el primer mensaje, en vivo |
 | [project-create](project-create/scenario.cjs) | «Nuevo proyecto» abre una ventana: carpetas del selector (la primera principal), una que ya es de otro proyecto se explica y no deja crear, confiar en todas, resumen y crear deja el proyecto con dos carpetas de confianza y su primera conversación |

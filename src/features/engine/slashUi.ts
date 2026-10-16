@@ -72,8 +72,6 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         return workspace('insight')
       case 'diff':
         return workspace('changes')
-      case 'tasks':
-        return workspace('tasks')
       case 'skills':
         useUIStore.getState().goSettings('skills')
         return true

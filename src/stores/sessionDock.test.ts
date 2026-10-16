@@ -48,7 +48,10 @@ describe('session dock layout', () => {
   })
 
   it('converts schema 1 layouts and keeps entries of a future schema untouched', () => {
-    expect(normalizeDockLayout({ schemaVersion: 1, visible: true, activeSurface: 'workspace', widthPx: 300, workspaceTab: 'tasks' })).toMatchObject({ visible: true, views: ['tasks'], widthPx: 300 })
+    expect(normalizeDockLayout({ schemaVersion: 1, visible: true, activeSurface: 'workspace', widthPx: 300, workspaceTab: 'insight' })).toMatchObject({ visible: true, views: ['insight'], widthPx: 300 })
+    // Tareas y Verificación ya no son vistas del panel: lo guardado con ellas cae en Cambios.
+    expect(normalizeDockLayout({ schemaVersion: 1, visible: true, activeSurface: 'workspace', widthPx: 300, workspaceTab: 'tasks' })).toMatchObject({ views: ['changes'] })
+    expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['tasks', 'verification', 'files'], widthPx: 400 })).toMatchObject({ views: ['files'] })
     expect(normalizeDockLayout({ schemaVersion: 1, visible: true, activeSurface: 'workspace', widthPx: 300, workspaceTab: 'checkpoints' })).toMatchObject({ views: ['changes'] })
     expect(normalizeDockLayout({ schemaVersion: 1, visible: false, activeSurface: 'browser' })).toMatchObject({ visible: false, views: [], lastView: 'browser' })
     expect(normalizeDockLayout({ schemaVersion: 2, visible: 'yes', views: ['nope', 'files', 'files', 'browser', 'agents', 'changes', 'flow'], widthPx: 'x' })).toMatchObject({ visible: true, views: ['files', 'browser', 'agents', 'changes'] })
@@ -64,13 +67,13 @@ describe('session dock layout', () => {
     dock().reveal('ses_a', 'files')
     dock().reveal('ses_b', 'browser')
     useSessionDockStore.setState({
-      layouts: { ...dock().layouts, 'home_1::ses_b': normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['tasks'], widthPx: 500 })! },
+      layouts: { ...dock().layouts, 'home_1::ses_b': normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['insight'], widthPx: 500 })! },
     })
     dock().setHomeId('home_1')
     const layouts = dock().layouts
     expect(Object.keys(layouts).filter((key) => key.startsWith('default::'))).toEqual([])
     expect(layouts['home_1::ses_a']).toMatchObject({ visible: true, views: ['files'] })
-    expect(layouts['home_1::ses_b']).toMatchObject({ widthPx: 500, views: ['tasks'] })
+    expect(layouts['home_1::ses_b']).toMatchObject({ widthPx: 500, views: ['insight'] })
   })
 
   it('adoptIfAbsent never overrides a layout the user already has; forget removes it', () => {
@@ -98,15 +101,15 @@ describe('las vistas del panel lateral (#47)', () => {
   })
 
   it('hasta cuatro, también las de «Más»; la quinta pide reemplazar y ocupa el sitio de la elegida', () => {
-    for (const view of ['browser', 'terminal', 'tasks', 'changes'] as const) dock().toggleView('ses_a', view)
+    for (const view of ['browser', 'terminal', 'insight', 'changes'] as const) dock().toggleView('ses_a', view)
     expect(views()).toHaveLength(MAX_VIEWS)
     expect(dock().toggleView('ses_a', 'agents')).toBe('full')
-    expect(views()).toEqual(['browser', 'terminal', 'tasks', 'changes'])
+    expect(views()).toEqual(['browser', 'terminal', 'insight', 'changes'])
     dock().openView('ses_a', 'agents', { replace: 'terminal' })
-    expect(views()).toEqual(['browser', 'agents', 'tasks', 'changes'])
+    expect(views()).toEqual(['browser', 'agents', 'insight', 'changes'])
     // Sin decir cuál (un enlace, un atajo), ocupa el último sitio.
     dock().openView('ses_a', 'files')
-    expect(views()).toEqual(['browser', 'agents', 'tasks', 'files'])
+    expect(views()).toEqual(['browser', 'agents', 'insight', 'files'])
   })
 
   it('Ctrl+B oculta y vuelve a mostrar el panel con la misma disposición; sin vistas abre la última', () => {

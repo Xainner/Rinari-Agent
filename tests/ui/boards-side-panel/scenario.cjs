@@ -4,7 +4,7 @@
 const assert = require('node:assert/strict')
 const { readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
-const { ui, click, clickText, command, evaluate, input, key, reload, report, scenario, screenshot, useLocalModel, wait, delay } = require('../harness.cjs')
+const { ui, click, clickText, command, evaluate, input, key, reload, report, scenario, screenshot, toggleDockView, useLocalModel, wait, delay } = require('../harness.cjs')
 
 const layouts = () => evaluate(`JSON.parse(localStorage.getItem('rinari.sessionDock.v1') || '{}')`)
 const board = () => evaluate(`JSON.parse(localStorage.getItem('rinari.board.v1') || '{}')`)
@@ -75,9 +75,9 @@ async function exercise() {
   // Los botones de la barra de título actúan sobre el panel enfocado.
   await click('.dock-view-bar button[data-view="browser"]'); await state(a.id, true)
   // El Flujo también se abre en el panel lateral del panel enfocado (#43).
-  await click('.dock-view-bar button[data-view="flow"]')
+  await toggleDockView('flow')
   await wait(`Boolean(document.querySelector(${JSON.stringify(pa + ' [data-testid="flow-view"][data-embedded]')}))`)
-  await click('.dock-view-bar button[data-view="flow"]')
+  await toggleDockView('flow')
   await wait(`!document.querySelector(${JSON.stringify(pa + ' [data-testid="flow-view"]')})`)
   passed.push('Header and topbar target the focused session; closing keeps the conversation and other layouts')
   await click(pa + ' button[aria-label="Opciones del panel"]')

@@ -1,4 +1,4 @@
-import { ClipboardList, Ellipsis } from 'lucide-react'
+import { ClipboardList, EllipsisVertical } from 'lucide-react'
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -26,7 +26,8 @@ const isCompact = () => typeof window.matchMedia === 'function' && window.matchM
 
 /**
  * Un botón por vista del panel lateral en la barra de título (plan 0.4.0 #47),
- * con su indicador vivo, y «Más» para Tareas, Verificación e Insight. Actúan
+ * con su indicador vivo, y el menú «⋮» para Agentes, Flujos e Insight (si una
+ * de ellas avisa, el botón del menú lleva su punto). Actúan
  * sobre la sesión destino: la abierta en Normal, el panel enfocado en Boards.
  * Sin conversación no aparecen. Con cuatro vistas abiertas, abrir otra
  * pregunta cuál reemplazar.
@@ -39,6 +40,8 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   const openView = useSessionDockStore((state) => state.openView)
   const [replace, setReplace] = useState<{ view: DockView; rect: DOMRect | undefined } | null>(null)
   const group = useRef<HTMLDivElement>(null)
+  // La vista elegida en el menú «⋮», que se abre al cerrarse el menú.
+  const picked = useRef<DockView | null>(null)
   // «Plan» se suma a los botones solo cuando la conversación tiene un plan (#55).
   const available = [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : [])].filter((view) => view !== 'terminal' || terminalEnabled)
   const shown = (view: DockView) => layout.visible && !layout.summary && layout.views.includes(view)
@@ -59,6 +62,10 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   }, [sessionId, toggleView])
 
   const moreOpen = overflow.filter(shown)
+  // Lo que avisa dentro del menú se ve en su botón: un subagente trabajando, un Flujo que te necesita.
+  const moreSignals = overflow.map((view) => indicatorFor(view, signals, t)).filter((indicator): indicator is Indicator => indicator !== null)
+  const moreTone = moreSignals.find((indicator) => indicator.tone === 'warning')?.tone ?? moreSignals[0]?.tone ?? (moreSignals.length ? 'live' : undefined)
+  const moreLabel = moreSignals.length ? `${t('dock.more')} · ${moreSignals.map((indicator) => indicator.label).join(' · ')}` : t('dock.more')
   return (
     <Popover open={replace !== null} onOpenChange={(open) => { if (!open) setReplace(null) }}>
       <PopoverAnchor asChild>
@@ -100,24 +107,35 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
           })}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" className="app-topbar-icon dock-view-button" aria-label={t('dock.more')} title={t('dock.more')} aria-pressed={moreOpen.length > 0}>
-                <Ellipsis size={16} aria-hidden="true" />
+              <button type="button" className="app-topbar-icon dock-view-button" data-view="more" aria-label={moreLabel} title={moreLabel} aria-pressed={moreOpen.length > 0}>
+                <EllipsisVertical size={16} aria-hidden="true" />
+                {moreTone && <span className="dock-view-dot" data-tone={moreTone} aria-hidden="true" />}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              // La vista elegida se abre cuando el menú ya se cerró: si el foco volviera al
+              // botón «⋮» después, cerraría la pregunta de cuál reemplazar recién abierta.
+              onCloseAutoFocus={(event) => {
+                const view = picked.current
+                if (!view) return
+                picked.current = null
+                event.preventDefault()
+                press(view, group.current?.querySelector<HTMLElement>('[data-view="more"]') ?? null)
+              }}
+            >
               {overflow.map((view) => {
                 const Icon = DOCK_VIEW_ICONS[view]
+                const indicator = indicatorFor(view, signals, t)
                 return (
                   <DropdownMenuCheckboxItem
                     key={view}
+                    data-view={view}
                     checked={shown(view)}
-                    onSelect={() => {
-                      const anchor = group.current?.querySelector<HTMLElement>('[aria-label="' + t('dock.more') + '"]') ?? null
-                      // Después de que el menú se cierre, para medir el botón ya en su sitio.
-                      window.setTimeout(() => press(view, anchor), 0)
-                    }}
+                    onSelect={() => { picked.current = view }}
                   >
                     <Icon size={14} aria-hidden="true" /> {t(DOCK_VIEW_LABELS[view])}
+                    {indicator?.label && <span className="dock-more-signal" data-tone={indicator.tone}>{indicator.count ?? '●'}</span>}
                   </DropdownMenuCheckboxItem>
                 )
               })}

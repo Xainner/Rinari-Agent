@@ -10,8 +10,6 @@ import AgentsPanel from '../agents/AgentsPanel'
 import TurnChangesView from '../workspace/TurnChangesView'
 import CheckpointsPanel from '../workspace/CheckpointsPanel'
 import ArtifactsPanel from '../workspace/ArtifactsPanel'
-import TasksPanel from '../workspace/TasksPanel'
-import VerificationPanel from '../workspace/VerificationPanel'
 import InsightPanel from '../workspace/InsightPanel'
 import FlowView from '../flow/FlowView'
 import PlanView from '../plan/PlanView'
@@ -484,7 +482,6 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
   const overlayDepth = useOverlayStore(selectOverlayDepth)
   const dragging = useDockDragStore((state) => state.active)
   const path = session?.project_root ?? session?.current_cwd ?? null
-  const noPath = <p className="dock-empty-line">{t('workspace.noSession')}</p>
   switch (view) {
     case 'browser':
       return (
@@ -528,10 +525,6 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
       return <FlowView sessionId={sessionId} embedded />
     case 'plan':
       return <PlanView sessionId={sessionId} />
-    case 'tasks':
-      return path === null ? noPath : <div className="dock-scroll"><TasksPanel key={path} path={path} /></div>
-    case 'verification':
-      return path === null ? noPath : <div className="dock-scroll"><VerificationPanel key={path} path={path} changedFiles={[]} /></div>
     case 'insight':
       return <div className="dock-scroll"><InsightPanel key={sessionId} sessionId={sessionId} /></div>
   }

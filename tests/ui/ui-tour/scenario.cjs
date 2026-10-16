@@ -2,7 +2,7 @@
 // actividad y subagente, composer y sus menús, panel lateral, Boards, Flujos,
 // Ajustes, notificaciones) para revisar el diseño antes y después de cambiarlo.
 // No afirma comportamiento: cada paso opcional se registra y el recorrido sigue.
-const { click, clickText, command, evaluate, input, key, menuShortcut, report, scenario, screenshot, until, wait, delay, size, useLocalModel, reload, ui } = require('../harness.cjs')
+const { click, clickText, command, evaluate, input, key, menuShortcut, report, scenario, screenshot, toggleDockView, until, wait, delay, size, useLocalModel, reload, ui } = require('../harness.cjs')
 
 const steps = []
 async function step(name, body) {
@@ -112,16 +112,25 @@ scenario(async () => {
   await popoversIn('aside', '09-sidebar')
   // Panel lateral (#47): una captura por vista, abierta desde su botón de la barra de título, y el mosaico.
   await step('dock', async () => {
-    const views = await evaluate(`[...document.querySelectorAll('.dock-view-bar > button[data-view]')].map(b=>b.dataset.view)`)
+    // Las de la barra y, desde el menú «⋮», Agentes y Flujos.
+    const bar = await evaluate(`[...document.querySelectorAll('.dock-view-bar > button[data-view]')].map(b=>b.dataset.view).filter(v=>v!=='summary'&&v!=='more')`)
+    const views = [...bar, 'agents', 'flow']
     for (const [i, view] of views.entries()) {
       await step(`dock-${view}`, async () => {
-        await click(`.dock-view-bar button[data-view="${view}"]`)
+        await toggleDockView(view)
         await delay(900)
-        await screenshot(`10-dock-${i}-${view}`)
-        await click(`.dock-view-bar button[data-view="${view}"]`)
+        await screenshot(`10-dock-${i + 1}-${view}`)
+        await toggleDockView(view)
         await delay(450)
       })
     }
+    await step('dock-more-menu', async () => {
+      await click('.dock-view-bar button[data-view="more"]')
+      await delay(500)
+      await screenshot('10-dock-more-menu')
+      await key('Escape')
+      await delay(300)
+    })
     await step('dock-summary', async () => {
       await click('.dock-view-bar button[data-view="summary"]')
       await delay(900)
@@ -166,10 +175,10 @@ scenario(async () => {
   })
   // El Flujo es una vista del panel lateral (#43), ya no un modo de arriba.
   await step('flows', async () => {
-    await click('.dock-view-bar button[data-view="flow"]')
+    await toggleDockView('flow')
     await delay(1300)
     await screenshot('12-flows')
-    await click('.dock-view-bar button[data-view="flow"]')
+    await toggleDockView('flow')
     await delay(450)
   })
   await popoversIn('header', '13-header')

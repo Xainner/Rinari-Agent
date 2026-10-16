@@ -105,6 +105,21 @@ async function click(selector, button = 'left') {
   const point = await center(selector)
   await clickAt(point.x, point.y, button)
 }
+/**
+ * Abre o cierra una vista del panel lateral como lo haría una persona: con su
+ * botón de la barra de título o, si va en el menú «⋮» (Agentes, Flujos,
+ * Insight, o lo que no cabe en una ventana estrecha), desde ese menú.
+ */
+async function toggleDockView(view) {
+  const button = `.dock-view-bar button[data-view="${view}"]`
+  if (await evaluate(`Boolean(${q(button)})`)) return click(button)
+  await click('.dock-view-bar button[data-view="more"]')
+  const item = `[role="menuitemcheckbox"][data-view="${view}"]`
+  await wait(`Boolean(${q(item)})`)
+  await click(item)
+  await wait(`!${q(item)}`)
+  await delay(150)
+}
 /** `click()` del DOM: para menús y filas cuya posición no se prueba. */
 async function domClick(selector) {
   await wait(`Boolean(${q(selector)})`)
@@ -275,7 +290,7 @@ function scenario(body, { width = 1500, height = 900, timeout = 300_000 } = {}) 
 }
 
 module.exports = {
-  ui, delay, evaluate, settleAnimations, q, until, wait, center, clickAt, click, domClick, clickText, key, menuShortcut, wheel, input,
+  ui, delay, evaluate, settleAnimations, q, until, wait, center, clickAt, click, toggleDockView, domClick, clickText, key, menuShortcut, wheel, input,
   command, stored, screenshot, ready, reload, size, language, useLocalModel, seedBoard, panesFor,
   report, scenario, DEAD_MODEL,
 }

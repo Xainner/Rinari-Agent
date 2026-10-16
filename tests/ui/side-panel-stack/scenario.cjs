@@ -8,7 +8,7 @@
 // 7. Ctrl+B oculta y vuelve a mostrar el panel con la misma disposición.
 // 8. Un panel angosto pone las vistas en una sola columna; y cada conversación recuerda la suya.
 const assert = require('node:assert/strict')
-const { click, clickText, command, delay, evaluate, input, key, reload, report, scenario, screenshot, settleAnimations, size, ui, useLocalModel, wait } = require('../harness.cjs')
+const { click, clickText, command, delay, evaluate, input, key, reload, report, scenario, screenshot, settleAnimations, size, toggleDockView, ui, useLocalModel, wait } = require('../harness.cjs')
 
 const DOCK = '[data-testid="session-dock"]'
 const BAR = '.dock-view-bar'
@@ -54,12 +54,14 @@ scenario(async () => {
   // Flujos ya no es un modo de arriba: es una vista del panel lateral (#43).
   assert.equal(await evaluate(`[...document.querySelectorAll('.view-switcher button')].some(b => /Flujo/.test(b.textContent))`), false, 'no Flujos in the top switcher')
   await screenshot('title-bar-buttons')
-  await click(button('Flujo'))
+  // Flujos y Agentes van en el menú «⋮» (de puntos en vertical).
+  assert.equal(await evaluate(`Boolean(document.querySelector('${BAR} button[data-view="flow"]'))`), false, 'Flujos is not a title-bar button')
+  await toggleDockView('flow')
   await wait(`Boolean(document.querySelector('${DOCK} [data-testid="flow-view"][data-embedded]'))`)
   await wait(`Boolean(document.querySelector('${DOCK} [role="radiogroup"][aria-label="Alcance del flujo"]'))`)
   await settleAnimations()
   await screenshot('flow-in-panel')
-  await click(button('Flujo'))
+  await toggleDockView('flow')
   await wait(`!document.querySelector('${DOCK}')`)
 
   // 2. Browser, then Terminal: they stack, and the new one travels from its button.
@@ -140,7 +142,7 @@ scenario(async () => {
   await settleAnimations()
   assert.equal(await evaluate(`document.querySelector('${DOCK} .dock-mosaic').dataset.shape`), '22', 'four views in a 2×2 grid')
   await screenshot('four-views')
-  await click(button('Agentes'))
+  await toggleDockView('agents')
   await wait(`Boolean(document.querySelector('.dock-replace'))`)
   await screenshot('replace-prompt')
   await clickText('Archivos', '.dock-replace-option', { includes: true })

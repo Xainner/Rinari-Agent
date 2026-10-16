@@ -11,11 +11,11 @@ import { create } from 'zustand'
  * `webContentsId`, grants, `busy`, handles CDP ni generaciones: nada de eso
  * es autoridad recuperable.
  */
-export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan' | 'tasks' | 'verification' | 'insight'
+export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan' | 'insight'
 /** Las vistas con botón propio en la barra de título, en su orden. */
-export const PRIMARY_VIEWS: readonly DockView[] = ['browser', 'terminal', 'files', 'changes', 'agents', 'flow']
-/** Las que van en «Más»; cuentan para el límite como las demás. */
-export const MORE_VIEWS: readonly DockView[] = ['tasks', 'verification', 'insight']
+export const PRIMARY_VIEWS: readonly DockView[] = ['browser', 'terminal', 'files', 'changes']
+/** Las que van en el menú «⋮» (Agentes y Flujos desde el 0.4.0); cuentan para el límite como las demás. */
+export const MORE_VIEWS: readonly DockView[] = ['agents', 'flow', 'insight']
 /** La vista «Plan» (#55) tiene botón solo cuando la conversación tiene un plan. */
 export const DOCK_VIEWS: readonly DockView[] = [...PRIMARY_VIEWS, 'plan', ...MORE_VIEWS]
 export const MAX_VIEWS = 4
@@ -23,8 +23,8 @@ export const MAX_VIEWS = 4
 /** Nombres de antes (una superficie a la vez, Workspace con pestañas): se aceptan al revelar. */
 export type LegacySurface = 'workspace'
 export type DockSurface = DockView | LegacySurface
-export type WorkspaceTab = 'changes' | 'tasks' | 'verification' | 'checkpoints' | 'artifacts' | 'insight'
-export const WORKSPACE_TABS: readonly WorkspaceTab[] = ['changes', 'tasks', 'verification', 'checkpoints', 'artifacts', 'insight']
+export type WorkspaceTab = 'changes' | 'checkpoints' | 'artifacts' | 'insight'
+export const WORKSPACE_TABS: readonly WorkspaceTab[] = ['changes', 'checkpoints', 'artifacts', 'insight']
 
 /** Proporciones del mosaico: ancho de la columna izquierda y alto de la vista de arriba en cada columna. */
 export interface DockSplit { col: number; left: number; right: number }
@@ -90,7 +90,7 @@ export function viewForSurface(surface: DockSurface, workspaceTab?: WorkspaceTab
   if (surface !== 'workspace') return { view: surface }
   if (workspaceTab === 'checkpoints') return { view: 'changes', section: 'checkpoints' }
   if (workspaceTab === 'artifacts') return { view: 'files', section: 'artifacts' }
-  if (workspaceTab === 'tasks' || workspaceTab === 'verification' || workspaceTab === 'insight') return { view: workspaceTab }
+  if (workspaceTab === 'insight') return { view: workspaceTab }
   return { view: 'changes' }
 }
 

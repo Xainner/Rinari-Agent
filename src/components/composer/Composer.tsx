@@ -112,6 +112,8 @@ const MODES = ['plan', 'build', 'review'] as const
 
 /** Comandos `/` de interfaz que resuelve el propio compositor. */
 const LOCAL_SLASH = new Set(['help', 'model'])
+/** Comandos de interfaz del Engine que el escritorio ya no ofrece: su vista se quitó del panel (0.4.0). */
+const DROPPED_SLASH = new Set(['tasks'])
 
 /** Descripción localizada de los comandos integrados; el resto usa la del Engine. */
 const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
@@ -128,7 +130,6 @@ const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
   context: 'slash.context',
   model: 'slash.model',
   diff: 'slash.diff',
-  tasks: 'slash.tasks',
   goal: 'slash.goal',
   fork: 'slash.fork',
   rename: 'slash.rename',
@@ -279,7 +280,7 @@ export default function Composer({
   useEffect(() => {
     if (wantsCommands) loadCommands()
   }, [wantsCommands, loadCommands])
-  const slashCommands = engineCommands.filter((command) => command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand))
+  const slashCommands = engineCommands.filter((command) => !(command.kind === 'ui' && DROPPED_SLASH.has(command.name)) && (command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand)))
   const slashQ = slashQuery(text)
   // Sin tope: con solo «/» también deben verse las skills (van tras los comandos).
   const slashMatches = slashQ !== null ? groupSlashCommands(matchSlashCommands(slashQ, slashCommands, Number.POSITIVE_INFINITY)) : []

@@ -22,9 +22,13 @@ afterEach(cleanup)
 it('un botón por vista; un clic la abre y otro la cierra, y el pulsado lo dice', async () => {
   mount()
   const bar = screen.getByRole('toolbar', { name: 'Vistas del panel lateral' })
-  for (const name of ['Navegador', 'Terminal', 'Archivos', 'Cambios', 'Agentes', 'Flujo', 'Más vistas']) {
+  for (const name of ['Navegador', 'Terminal', 'Archivos', 'Cambios', 'Más vistas']) {
     expect(within(bar).getByRole('button', { name })).toBeTruthy()
   }
+  // Agentes y Flujos van en el menú «⋮», de puntos en vertical.
+  expect(within(bar).queryByRole('button', { name: 'Agentes' })).toBeNull()
+  expect(within(bar).queryByRole('button', { name: 'Flujo' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Más vistas' }).querySelector('svg')?.getAttribute('class')).toContain('ellipsis-vertical')
   await userEvent.click(screen.getByRole('button', { name: 'Navegador' }))
   expect(layout()).toMatchObject({ visible: true, views: ['browser'] })
   expect(screen.getByRole('button', { name: 'Navegador' }).getAttribute('aria-pressed')).toBe('true')
@@ -37,18 +41,26 @@ it('sin terminal del Engine no hay botón Terminal', () => {
   expect(screen.queryByRole('button', { name: 'Terminal' })).toBeNull()
 })
 
-it('«Más» abre Tareas, Verificación e Insight como vistas del mosaico', async () => {
+it('el menú «⋮» abre Agentes, Flujos e Insight como vistas del mosaico; Tareas y Verificación ya no están', async () => {
   mount()
+  expect(screen.queryByRole('button', { name: 'Agentes' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Flujo' })).toBeNull()
   await userEvent.click(screen.getByRole('button', { name: 'Más vistas' }))
-  await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Verificación/ }))
+  expect(screen.queryByRole('menuitemcheckbox', { name: /Verificación|Tareas/ })).toBeNull()
+  await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Agentes/ }))
   await new Promise((resolve) => setTimeout(resolve, 10))
-  expect(layout().views).toEqual(['verification'])
+  expect(layout().views).toEqual(['agents'])
+  await userEvent.click(screen.getByRole('button', { name: 'Más vistas' }))
+  await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Flujo/ }))
+  await new Promise((resolve) => setTimeout(resolve, 10))
+  expect(layout().views).toEqual(['agents', 'flow'])
 })
 
 it('con cuatro abiertas, una quinta pregunta cuál reemplazar y ocupa su sitio', async () => {
   mount()
   for (const name of ['Navegador', 'Terminal', 'Archivos', 'Cambios']) await userEvent.click(screen.getByRole('button', { name }))
-  await userEvent.click(screen.getByRole('button', { name: 'Agentes' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Más vistas' }))
+  await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Agentes/ }))
   const prompt = (await screen.findByText('Ya hay cuatro vistas abiertas')).closest('.dock-replace') as HTMLElement
   expect(layout().views).toEqual(['browser', 'terminal', 'files', 'changes'])
   await userEvent.click(within(prompt).getByRole('button', { name: 'Terminal' }))
@@ -61,8 +73,10 @@ it('los indicadores vivos se dicen también en el nombre del botón', () => {
   expect(screen.getByRole('button', { name: 'Navegador · Rinari está usando la página' }).dataset.ring).toBe('agent')
   expect(screen.getByRole('button', { name: /^Terminal · / })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Cambios · 3 archivos cambiados' }).textContent).toContain('3')
-  expect(screen.getByRole('button', { name: /^Agentes · / }).textContent).toContain('2')
-  expect(screen.getByRole('button', { name: 'Flujo · una etapa te necesita' })).toBeTruthy()
+  // Agentes y Flujos avisan desde el botón del menú: su punto (ámbar si algo te necesita) y su nombre.
+  const more = screen.getByRole('button', { name: /^Más vistas · / })
+  expect(more.getAttribute('aria-label')).toContain('una etapa te necesita')
+  expect(more.querySelector('.dock-view-dot')?.getAttribute('data-tone')).toBe('warning')
 })
 
 it('en una ventana estrecha quedan las vistas abiertas o con aviso, y el resto pasa a «Más»', async () => {
@@ -73,9 +87,10 @@ it('en una ventana estrecha quedan las vistas abiertas o con aviso, y el resto p
     useDockSignalsStore.getState().publish('ses_a', { agents: 1 })
     mount()
     const bar = screen.getByRole('toolbar', { name: 'Vistas del panel lateral' })
-    expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('data-view') ?? button.getAttribute('aria-label'))).toEqual(['summary', 'changes', 'agents', 'Más vistas'])
-    await userEvent.click(screen.getByRole('button', { name: 'Más vistas' }))
+    expect(within(bar).getAllByRole('button').map((button) => button.getAttribute('data-view'))).toEqual(['summary', 'changes', 'more'])
+    await userEvent.click(screen.getByRole('button', { name: /^Más vistas/ }))
     expect(await screen.findByRole('menuitemcheckbox', { name: /Navegador/ })).toBeTruthy()
+    expect(screen.getByRole('menuitemcheckbox', { name: /Agentes/ })).toBeTruthy()
     expect(screen.getByRole('menuitemcheckbox', { name: /Insight/ })).toBeTruthy()
   } finally {
     window.matchMedia = original

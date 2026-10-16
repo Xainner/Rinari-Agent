@@ -1942,7 +1942,14 @@ button.agent-entry:hover { border-color: var(--line-3); background: rgb(20 15 34
 /* -- Cambios y diff ------------------------------------------------------------- */
 /* Resumen (#82): un mini panel de tarjetas apiladas, excluyente con las vistas. */
 .dock-view-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--line-2); }
-.summary-dock { min-width: 0; }
+/* Resumen: una tarjeta que flota junto al chat, no el panel lateral. Ocupa su sitio (el chat se
+   aparta igual), pero con margen, borde entero, esquinas y sombra, y solo la altura de lo que enseña. */
+.summary-dock { min-width: 0; align-self: flex-start; max-height: calc(100% - 20px); margin: 10px 10px 10px 2px; overflow: hidden; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, rgb(30 22 48 / 0.96), rgb(15 11 25 / 0.97)); box-shadow: var(--sh-3), inset 0 1px 0 rgb(255 255 255 / 0.05); }
+.summary-dock.pane-dock-drawer { inset: 10px 10px auto auto; max-height: calc(100% - 20px); margin: 0; box-shadow: var(--sh-pop, var(--sh-3)); }
+.summary-dock .summary-head { border-bottom-color: var(--line-1); background: transparent; }
+.summary-dock .summary-panel { height: auto; max-height: 100%; }
+.summary-dock .summary-cards { padding-bottom: 10px; }
+.pane-dock-ghost[data-summary] { border-left: 0; background: none; }
 .summary-panel { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 .summary-head { display: flex; flex-shrink: 0; align-items: center; gap: 7px; min-height: 36px; padding: 0 4px 0 11px; border-bottom: 1px solid var(--line-1); background: color-mix(in srgb, var(--bg-elevated) 55%, transparent); }
 .summary-head h2 { font-size: 12.5px; font-weight: 600; color: var(--text); }

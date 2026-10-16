@@ -134,12 +134,12 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   // la salida se ve sin retener el panel real ni su navegador nativo.
   // Al abrirse (por el usuario, no al montar la vista) el panel crece desde 0
   // y el chat se encoge con él: la misma animación que el cierre, al revés.
-  const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer' } | null>(null)
+  const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer'; summary: boolean } | null>(null)
   const [entering, setEntering] = useState(false)
-  const shown = useRef({ visible: layout.visible, width: shownWidth, placement })
+  const shown = useRef({ visible: layout.visible, width: shownWidth, placement, summary })
   useEffect(() => {
     const previous = shown.current
-    shown.current = { visible: layout.visible, width: shownWidth, placement }
+    shown.current = { visible: layout.visible, width: shownWidth, placement, summary }
     if (layout.visible) {
       setLeaving(null)
       if (previous.visible) return
@@ -150,10 +150,10 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     }
     setEntering(false)
     if (!previous.visible) return
-    setLeaving({ width: previous.width, placement: previous.placement })
+    setLeaving({ width: previous.width, placement: previous.placement, summary: previous.summary })
     const timer = window.setTimeout(() => setLeaving(null), 360)
     return () => window.clearTimeout(timer)
-  }, [layout.visible, shownWidth, placement])
+  }, [layout.visible, shownWidth, placement, summary])
   const { handleProps } = useDragResize({
     value: shownWidth,
     min: DOCK_MIN_WIDTH,
@@ -259,7 +259,7 @@ export default function SessionWorkspace({ sessionId, record, children, density,
       {focused && flowSupported && <FlowSignals sessionId={sessionId} />}
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
         <div className="session-workspace-chat">{children}</div>
-        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
+        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} data-summary={leaving.summary || undefined} style={{ width: leaving.width }} aria-hidden="true" />}
         {layout.visible && summary && (
           <aside
             aria-label={t('summary.title')}

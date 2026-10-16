@@ -128,14 +128,15 @@ function VerificationRow({ item, active }: { item: Extract<TimelineItem, { type:
   const reasons = item.reasons?.length ? item.reasons : item.detail ? [item.detail] : []
   return (
     <InspectionDetails inspectionId="verification" data-testid="verification-row" data-outcome={outcome ?? undefined} className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone={tone}>
-      <summary>
+      {/* Sin motivos no hay nada que desplegar: la fila no se abre ni parece un botón. */}
+      <summary data-static={reasons.length === 0 || undefined} tabIndex={reasons.length === 0 ? -1 : undefined} onClick={reasons.length === 0 ? (event) => { event.preventDefault(); event.stopPropagation() } : undefined}>
         <ToolTile tone={tone} Icon={ShieldCheck} />
         <ActivityText active={running} className="act-label">{label}</ActivityText>
         {reasons.length > 0 && <span className="act-meta"><ChevronDown size={13} className="transition-transform group-open/activity:rotate-180" /></span>}
       </summary>
       {reasons.length > 0 && (
-        <ul className="mt-1.5 space-y-1 pl-1 text-[12px] text-[var(--text-subtle)]">
-          {reasons.map((reason, index) => <li key={index} className="flex gap-1.5"><span aria-hidden="true">•</span><span className="min-w-0 break-words">{reason}</span></li>)}
+        <ul className="verification-reasons">
+          {reasons.map((reason, index) => <li key={index}><span className="min-w-0">{reason}</span></li>)}
         </ul>
       )}
     </InspectionDetails>

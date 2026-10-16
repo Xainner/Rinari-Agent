@@ -33,6 +33,10 @@ describe('TurnTimelineView', () => {
     view({ ...base, items: [verification('verification:b', 'DONE', [])] }, 2_000)
     expect(screen.getByText('Verificado')).toBeTruthy()
     expect(screen.getByTestId('verification-row').getAttribute('data-tone')).toBe('done')
+    // Without reasons there is nothing to unfold: the row does not open.
+    await userEvent.click(screen.getByText('Verificado'))
+    expect(screen.getByTestId('verification-row').hasAttribute('open')).toBe(false)
+    expect(screen.getByTestId('verification-row').querySelector('[data-activity-body]')).toBeNull()
   })
   it('presents a completed plan in its own card', () => {
     view({ ...base, mode: 'plan', status: 'completed', completedAt: 2_000, items: [{ id: 'model:p', type: 'model', activitySeq: 1, occurredAt: 2_000, modelCallId: 'p', status: 'completed', content: '1. Revisar requisitos\n2. Implementar', outputKind: 'final' }] }, 2_000)

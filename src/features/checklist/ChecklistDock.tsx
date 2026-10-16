@@ -94,7 +94,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
           <ChevronUp size={14} aria-hidden="true" className="checklist-chevron" />
         </button>
         {(state === 'open' || state === 'interrupted') && (
-          <button type="button" className="checklist-dismiss" onClick={() => void completeAll()} aria-label={t('checklist.completeAll')} title={t('checklist.completeAll')}>
+          <button type="button" className="checklist-dismiss checklist-complete" onClick={() => void completeAll()} aria-label={t('checklist.completeAll')} title={t('checklist.completeAll')}>
             <CheckCheck size={13} aria-hidden="true" />
           </button>
         )}

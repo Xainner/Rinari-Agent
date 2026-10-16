@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { ChevronUp, X } from 'lucide-react'
+import { CheckCheck, ChevronUp, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { engineApi } from '../../services/engine'
@@ -55,6 +55,15 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
         ? t('checklist.open', { n: left })
         : current ? (current.active_form || current.content) : t('checklist.working')
 
+  // Una lista que quedó abierta en un turno ya terminado: el dueño la cierra
+  // como hecha sin pedírselo a Rinari (plan 0.4.0 #59).
+  async function completeAll() {
+    try {
+      const result = await engineApi.completeSessionChecklist(sessionId)
+      apply(sessionId, result.checklist ?? null, true)
+    } catch { /* the turn may have started again; the list stays */ }
+  }
+
   async function dismiss() {
     try {
       const result = await engineApi.clearSessionChecklist(sessionId)
@@ -84,6 +93,11 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
           <span key={headline} className="checklist-headline" role={working ? 'status' : undefined}>{headline}</span>
           <ChevronUp size={14} aria-hidden="true" className="checklist-chevron" />
         </button>
+        {(state === 'open' || state === 'interrupted') && (
+          <button type="button" className="checklist-dismiss" onClick={() => void completeAll()} aria-label={t('checklist.completeAll')} title={t('checklist.completeAll')}>
+            <CheckCheck size={13} aria-hidden="true" />
+          </button>
+        )}
         {!working && (
           <button type="button" className="checklist-dismiss" onClick={() => void dismiss()} aria-label={t('checklist.dismiss')} title={t('checklist.dismiss')}>
             <X size={13} aria-hidden="true" />

@@ -82,6 +82,18 @@ describe('ChecklistDock', () => {
     await waitFor(() => expect(screen.queryByTestId('checklist-dock')).toBeNull())
   })
 
+  it('a list left open can be marked done by the owner (#59)', async () => {
+    const complete = vi.spyOn(engineApi, 'completeSessionChecklist').mockResolvedValue({ checklist: list('completed', steps('completed', 'completed', 'completed'), 3) })
+    vi.mocked(engineApi.sessionChecklist).mockResolvedValue({ checklist: list('open', steps('completed', 'in_progress', 'pending'), 2) })
+    mount()
+    const dock = await screen.findByTestId('checklist-dock')
+    expect(dock.textContent).toContain('2')
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar todo como hecho' }))
+    expect(complete).toHaveBeenCalledWith('s1')
+    await waitFor(() => expect(screen.getByTestId('checklist-dock').getAttribute('data-state')).toBe('completed'))
+    expect(screen.queryByRole('button', { name: 'Marcar todo como hecho' })).toBeNull()
+  })
+
   it('animates only what it sees change, not a list already there', async () => {
     vi.mocked(engineApi.sessionChecklist).mockResolvedValue({ checklist: list('active', steps('in_progress', 'pending'), 1) })
     mount()

@@ -1239,6 +1239,15 @@
       ]
     },
     {
+      "command": "session_checklist_complete",
+      "kind": "engine",
+      "method": "session.checklist.complete",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "session_checklist_get",
       "kind": "engine",
       "method": "session.checklist.get",
@@ -1919,8 +1928,8 @@
     }
   ],
   "summary": {
-    "commands": 229,
-    "engine_backed": 223,
+    "commands": 230,
+    "engine_backed": 224,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 76

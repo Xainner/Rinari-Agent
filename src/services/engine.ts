@@ -933,6 +933,9 @@ export const engineApi = {
   /** The user dismisses a finished or interrupted list. */
   clearSessionChecklist: (sessionId: string) =>
     platform().command<{ checklist: Checklist | null }>('session_checklist_clear', { sessionId }),
+  /** El dueño marca como hecha una lista que quedó abierta (plan 0.4.0 #59). */
+  completeSessionChecklist: (sessionId: string) =>
+    platform().command<{ checklist: Checklist | null }>('session_checklist_complete', { sessionId }),
   turnChanges: (turnId: string) =>
     platform().command<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
   reviewTurnChanges: (turnId: string, path?: string) =>

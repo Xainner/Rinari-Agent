@@ -150,6 +150,7 @@ export type DesktopCommand =
   | "schedule_update"
   | "session_archive"
   | "session_checklist_clear"
+  | "session_checklist_complete"
   | "session_checklist_get"
   | "session_close"
   | "session_create"
@@ -381,6 +382,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "schedule_update",
   "session_archive",
   "session_checklist_clear",
+  "session_checklist_complete",
   "session_checklist_get",
   "session_close",
   "session_create",
@@ -627,6 +629,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "schedule_update",
   "session_archive",
   "session_checklist_clear",
+  "session_checklist_complete",
   "session_checklist_get",
   "session_close",
   "session_create",

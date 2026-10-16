@@ -2246,6 +2246,7 @@ export const es = {
   'checklist.interrupted': "Interrumpida: quedaron {n} pasos",
   'checklist.done': "Todo hecho",
   'checklist.dismiss': "Quitar la lista",
+  'checklist.completeAll': "Marcar todo como hecho",
   'checklist.status.pending': "Pendiente",
   'checklist.status.in_progress': "En curso",
   'checklist.status.completed': "Hecho",

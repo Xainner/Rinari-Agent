@@ -159,6 +159,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "schedule_update": {"method":"schedule.update","params":[{"key":"task_id","from":"task_id","optional":false},{"key":"patch","from":"patch","optional":false}]},
   "session_archive": {"method":"session.archive","params":[{"key":"ref","from":"reference","optional":false}]},
   "session_checklist_clear": {"method":"session.checklist.clear","params":[{"key":"session_id","from":"sessionId","optional":false}]},
+  "session_checklist_complete": {"method":"session.checklist.complete","params":[{"key":"session_id","from":"sessionId","optional":false}]},
   "session_checklist_get": {"method":"session.checklist.get","params":[{"key":"session_id","from":"sessionId","optional":false}]},
   "session_close": {"method":"session.close","params":[{"key":"ref","from":"reference","optional":false}]},
   "session_create": {"method":"session.create","params":[{"key":"cwd","from":"cwd","optional":true},{"key":"chat","from":"chat","optional":false,"fallback":false},{"key":"title","from":"title","optional":true},{"key":"mode","from":"mode","optional":true},{"key":"permission_profile","from":null,"optional":true}],"manual":true},

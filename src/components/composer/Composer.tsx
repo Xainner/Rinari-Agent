@@ -819,6 +819,7 @@ export default function Composer({
           event.preventDefault()
           setTreeDrag(false)
           // Un archivo arrastrado desde el árbol de Archivos (#98): como elegirlo con «@».
+          if (!Array.from(event.dataTransfer.types ?? []).includes(TREE_FILE_MIME)) return
           const raw = event.dataTransfer.getData(TREE_FILE_MIME)
           if (raw) { try { mentionTreeFile(JSON.parse(raw) as TreeFileRef) } catch { /* not ours */ } }
         }}

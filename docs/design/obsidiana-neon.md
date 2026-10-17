@@ -86,6 +86,7 @@ para la app), `sheet.py` (hoja de revisión), `collect.py` (recoge lo que gener�
 Codex).
 
 - Expresiones `exp-<nombre>` (bustos cuadrados con el mismo encuadre) y chibis `chibi-<pose>` en `src/assets/rinari/*.webp`; se consumen con `art.expression()` / `art.chibi()` (`src/features/rinari/art.ts`), que cae en una pieza aprobada si falta una.
+- Rinari de pie `vn-<pose>` (medio cuerpo largo 2:3, fondo transparente: `hello`, `think`, `wait`, `happy`, `wink`) y su cuarto `room`, traídos de la bienvenida del prototipo móvil (`Documents/Proyectos/rinari-mobile-proto/assets/vn/`); se consumen con `art.standing()` / `art.room()`. Hoy los usa la bienvenida de primer uso: una pose por paso, montadas todas y cruzadas por opacidad.
 - Arte del instalador: `build/installer/source/rinari-*.png` (medio cuerpo 2:3, mismo encuadre) y `studio-generated.png`; `npm run installer:art` los verifica y copia.
 - Generar: Codex CLI con la skill `imagegen` (guía en `~/.claude/skills/promo-video/references/codex-imagegen.md`), máximo 5 referencias por trabajo, invariantes repetidas en el prompt, fondo transparente real, sin texto.
 - Revisar siempre a mano (identidad, accesorios del lado correcto, manos, alfa) con `sheet.py` antes de exportar. Codex dice «revisado» aunque falle.

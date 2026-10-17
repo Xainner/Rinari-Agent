@@ -11,7 +11,7 @@ vi.mock('../../services/engine', () => ({
   engineApi: { aboutSet: (about: unknown) => aboutSet(about), aboutGet: vi.fn(async () => ({ name: 'Xai', uses: ['code', 'Videos'], preferences: 'Corto', updated_at: 'x' })) },
   commandMessage: String,
 }))
-vi.mock('../rinari/art', () => ({ art: { chibi: () => '' } }))
+vi.mock('../rinari/art', () => ({ art: { standing: (pose: string) => `vn-${pose}.webp`, room: () => 'room.webp' } }))
 
 import WelcomeDialog from './WelcomeDialog'
 
@@ -46,4 +46,17 @@ it('repeating it starts from what was told', async () => {
   await userEvent.click(screen.getByTestId('welcome-next'))
   expect(screen.getByRole('button', { name: /Programar/ }).getAttribute('aria-pressed')).toBe('true')
   expect((screen.getByLabelText('Otro') as HTMLInputElement).value).toBe('Videos')
+})
+
+it('Rinari changes pose with each step and greets by name', async () => {
+  render(<I18nProvider lang="es"><WelcomeDialog open onClose={() => {}} /></I18nProvider>)
+  const pose = () => document.querySelector('.welcome-figure img[data-on]')?.getAttribute('src')
+  expect(pose()).toBe('vn-hello.webp')
+  await userEvent.type(screen.getByRole('textbox', { name: '¿Cómo te llamo?' }), 'Xai')
+  await userEvent.click(screen.getByTestId('welcome-next'))
+  expect(pose()).toBe('vn-think.webp')
+  expect(screen.getByText('¡Encantada, Xai!')).toBeTruthy()
+  await userEvent.click(screen.getByTestId('welcome-next'))
+  expect(pose()).toBe('vn-wait.webp')
+  expect(document.querySelectorAll('.welcome-figure img[data-on]')).toHaveLength(1)
 })

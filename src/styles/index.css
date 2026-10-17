@@ -3126,3 +3126,90 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .file-tree-empty, .file-tree-error { padding: 6px 8px; font-size: 12px; color: var(--text-subtle); }
 .file-tree-error { color: var(--danger); }
 @media (prefers-reduced-motion: reduce) { .file-tree-chevron { transition: none; } }
+
+/* Bienvenida de primer uso (#71): Rinari de pie en su cuarto, como en el móvil, y el formulario al lado.
+   La pose cambia con el paso (se cruzan, no aparecen); la explicación es su línea en el cuadro de diálogo. */
+.r-dialog.welcome-dialog { display: grid; grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); grid-template-rows: minmax(0, 1fr); width: min(900px, calc(100vw - 48px)); max-width: none; height: min(560px, calc(100vh - 48px)); max-height: none; gap: 0; padding: 0; overflow: hidden; }
+.welcome-hero { position: relative; isolation: isolate; overflow: hidden; border-right: 1px solid var(--line-1); background: var(--ink-1); }
+.welcome-room { position: absolute; inset: -3%; z-index: -1; background-position: 50% 30%; background-size: cover; filter: saturate(1.05) brightness(0.78); animation: welcome-room-in 1600ms var(--ease-out) both; }
+.welcome-room::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(6 5 11 / 0.3), transparent 24%, transparent 52%, rgb(6 5 11 / 0.9) 86%); }
+.welcome-figure { position: absolute; top: 20px; left: -2%; width: 104%; aspect-ratio: 2 / 3; pointer-events: none; animation: rinari-rise 640ms var(--ease-out) both; }
+.welcome-figure img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center top; opacity: 0; transform: translateY(6px); filter: drop-shadow(0 0 22px rgb(147 88 255 / 0.3)); transition: opacity 420ms var(--ease-out), transform 520ms var(--ease-out); user-select: none; }
+.welcome-figure img[data-on] { opacity: 1; transform: none; }
+.welcome-say { position: absolute; right: 14px; bottom: 14px; left: 14px; z-index: 2; min-height: 92px; padding: 22px 16px 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, rgb(26 19 44 / 0.84), rgb(14 10 24 / 0.94)); box-shadow: var(--sh-2), var(--inset-hi), 0 -20px 60px -30px rgb(147 88 255 / 0.5); backdrop-filter: blur(14px); }
+.welcome-say-name { position: absolute; top: -13px; left: 14px; display: flex; height: 26px; align-items: center; padding: 0 12px; border: 1px solid var(--line-3); border-radius: var(--r-pill); background: var(--ink-3); box-shadow: var(--glow-1); font: 700 13px/1 var(--font-display); letter-spacing: 0.01em; color: var(--violet-200); }
+.welcome-copy { font-size: 14px; line-height: 1.55; color: var(--text); text-wrap: pretty; animation: welcome-line-in 360ms var(--ease-out) both; }
+.welcome-greeting { font-weight: 650; color: var(--violet-200); }
+.welcome-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow-y: auto; padding: 26px 28px 20px; background: radial-gradient(120% 70% at 100% 0%, rgb(147 88 255 / 0.1), transparent 60%); }
+.welcome-head { display: flex; align-items: center; gap: 10px; padding-right: 30px; }
+.welcome-progress { display: flex; flex: 1; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.welcome-progress li { position: relative; flex: 1; height: 3px; overflow: hidden; border-radius: 2px; background: rgb(255 255 255 / 0.12); }
+.welcome-progress li::after { content: ''; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
+.welcome-progress li[data-state='done']::after, .welcome-progress li[data-state='active']::after { transform: scaleX(1); }
+.welcome-progress li[data-state='active'] { box-shadow: 0 0 10px rgb(147 88 255 / 0.55); }
+.welcome-count { font: 500 11px/1 var(--font-mono); color: var(--text-subtle); }
+.welcome-title { margin-top: 28px; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; font-size: 26px; line-height: 1.18; letter-spacing: -0.01em; color: transparent; text-wrap: balance; animation: welcome-line-in 360ms var(--ease-out) both; }
+.welcome-field { margin-top: 22px; animation: welcome-line-in 420ms var(--ease-out) 60ms both; }
+.welcome-input { width: 100%; padding: 11px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); outline: none; background: rgb(8 6 15 / 0.7); font-size: 14px; color: var(--text); transition: border-color var(--dur-fast), box-shadow var(--dur-base); }
+.welcome-input::placeholder { color: var(--text-subtle); }
+.welcome-input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.2), 0 0 24px -8px rgb(147 88 255 / 0.7); }
+.welcome-input-name { padding: 14px 16px; font: 600 22px/1.2 var(--font-display); }
+.welcome-textarea { min-height: 132px; resize: none; line-height: 1.55; }
+.welcome-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.welcome-chip { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 9px 12px 9px 9px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: rgb(14 10 24 / 0.6); text-align: left; font-size: 13px; font-weight: 600; color: var(--text-muted); transition: border-color var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-base), transform var(--dur-fast); }
+.welcome-chip:hover { border-color: var(--line-3); color: var(--text); }
+.welcome-chip:active { transform: scale(0.98); }
+.welcome-chip[aria-pressed='true'] { border-color: rgb(167 139 250 / 0.6); background: linear-gradient(135deg, rgb(147 88 255 / 0.22), rgb(124 58 237 / 0.1)); color: #fff; box-shadow: 0 6px 20px -10px rgb(147 88 255 / 0.8), var(--inset-hi); }
+.welcome-chip-icon { display: flex; width: 26px; height: 26px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 8px; background: rgb(167 139 250 / 0.1); color: var(--violet-300); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.welcome-chip[aria-pressed='true'] .welcome-chip-icon { background: var(--grad-brand); color: #fff; }
+.welcome-chip[aria-pressed='true'] .welcome-chip-icon svg { animation: rinari-check-pop 260ms var(--ease-out); }
+.welcome-other { grid-column: 1 / -1; animation: rinari-pop-in var(--dur-base) var(--ease-out); }
+.welcome-note { display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 18px; font-size: 12px; color: var(--text-subtle); }
+.welcome-note svg { flex-shrink: 0; color: var(--violet-400); }
+.welcome-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-1); }
+@keyframes welcome-room-in { from { transform: scale(1.06); } to { transform: none; } }
+@keyframes welcome-line-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 720px) {
+  .r-dialog.welcome-dialog { grid-template-columns: minmax(0, 1fr); grid-template-rows: 240px minmax(0, 1fr); height: min(660px, calc(100vh - 32px)); width: calc(100vw - 32px); }
+  .welcome-hero { border-right: 0; border-bottom: 1px solid var(--line-1); }
+  .welcome-figure { top: 6px; left: 19%; width: 62%; }
+  .welcome-say { min-height: 0; padding: 18px 14px 12px; }
+  .welcome-panel { padding: 20px 20px 16px; }
+  .welcome-title { margin-top: 18px; font-size: 22px; }
+}
+
+/* «Sobre ti» en Ajustes → Memoria: la cara de Rinari y lo que le contaste, como ficha. */
+.memory-about { display: flex; align-items: flex-start; gap: 14px; padding: 14px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: radial-gradient(90% 120% at 0% 0%, rgb(147 88 255 / 0.12), transparent 60%), rgb(10 8 18 / 0.5); }
+.memory-about-face { width: 56px; height: 56px; flex-shrink: 0; border: 1px solid var(--line-2); border-radius: 16px; background: var(--ink-3); object-fit: cover; box-shadow: var(--glow-1); }
+.memory-about[data-empty] .memory-about-face { opacity: 0.8; }
+.memory-about-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0; }
+.memory-about-facts > div { display: contents; }
+.memory-about-facts dt { padding-top: 2px; font-size: 12px; color: var(--text-subtle); }
+.memory-about-facts dd { margin: 0; min-width: 0; font-size: 13px; color: var(--text); }
+.memory-about-name { font: 600 15px/1.3 var(--font-display); }
+.memory-about-uses { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Memoria por lugares (#75): el conteo en cada pestaña, filas que se marcan, el lugar como chip con su icono
+   y la barra de selección flotando sobre la lista (aparecer no empuja ninguna fila). */
+.seg-tab-count { display: inline-flex; min-width: 18px; height: 16px; align-items: center; justify-content: center; padding: 0 5px; border-radius: var(--r-pill); background: rgb(255 255 255 / 0.08); font: 600 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-subtle); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.seg-tab[aria-selected='true'] .seg-tab-count { background: rgb(255 255 255 / 0.2); color: #fff; }
+.seg-tab-count[data-zero] { opacity: 0.55; }
+.memory-records { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.memory-records[data-selecting] { padding-bottom: 62px; }
+.memory-record { padding: 10px; border: 1px solid transparent; border-radius: var(--r-md); transition: background-color var(--dur-fast), border-color var(--dur-fast); }
+.memory-record:hover { background: rgb(255 255 255 / 0.025); }
+.memory-record[data-selected] { border-color: rgb(167 139 250 / 0.3); background: rgb(147 88 255 / 0.1); }
+.memory-record-check { margin-top: 3px; opacity: 0.5; transition: opacity var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.memory-record:hover .memory-record-check, .memory-records[data-selecting] .memory-record-check, .memory-record-check:checked, .memory-record-check:focus-visible { opacity: 1; }
+.memory-place-chip { display: inline-flex; max-width: 260px; height: 18px; align-items: center; gap: 4px; padding: 0 7px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: rgb(255 255 255 / 0.03); font-size: 10.5px; font-weight: 600; color: var(--text-muted); }
+.memory-place-chip > svg { flex-shrink: 0; }
+.memory-place-chip[data-place='profile'] { border-color: rgb(196 181 253 / 0.3); background: rgb(167 139 250 / 0.08); color: var(--violet-300); }
+.memory-place-chip[data-place='project'] { border-color: rgb(130 244 239 / 0.28); background: rgb(130 244 239 / 0.06); color: var(--cyan-300); }
+.memory-place-chip[data-place='chat'] { border-color: color-mix(in srgb, var(--info) 30%, transparent); background: color-mix(in srgb, var(--info) 8%, transparent); color: var(--info); }
+.memory-bulk-dock { position: sticky; bottom: 16px; z-index: 5; height: 0; }
+.memory-bulk { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 8px; padding: 7px 7px 7px 13px; border: 1px solid rgb(167 139 250 / 0.4); border-radius: var(--r-lg); background: linear-gradient(180deg, rgb(32 24 52 / 0.95), rgb(18 13 31 / 0.97)); box-shadow: var(--sh-2), 0 10px 40px -12px rgb(147 88 255 / 0.55), var(--inset-hi); backdrop-filter: blur(14px); font-size: 12.5px; animation: rinari-pop-in var(--dur-base) var(--ease-out); }
+.memory-bulk-count { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+.memory-bulk-forget:hover:not(:disabled) { color: var(--danger); }
+.memory-candidate-where { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 5px 5px 5px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(255 255 255 / 0.03); font-size: 12px; color: var(--text-muted); }
+.memory-candidate-where-label { display: inline-flex; flex: 1; align-items: center; gap: 6px; }
+.memory-candidate-where-label > svg { color: var(--violet-400); }

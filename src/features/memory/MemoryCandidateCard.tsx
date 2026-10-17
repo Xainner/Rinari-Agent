@@ -1,11 +1,12 @@
 import { useId, useState } from 'react'
-import { Brain, Check, LoaderCircle, ShieldAlert, X } from 'lucide-react'
+import { Brain, Check, LoaderCircle, MapPin, ShieldAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { Select } from '../../components/ui/select'
 import { inputClass } from '../../lib/ui'
 import { Button } from '../../components/ui/button'
 import { resolveCandidate } from './memoryStore'
+import { PlaceIcon } from './placeIcon'
 import { candidateReason, kindLabel, memoryErrorMessage } from './memoryCopy'
 import type { CandidateDecision, CandidateStatus } from './types'
 
@@ -119,13 +120,13 @@ export function MemoryCandidateCard({ candidate, status, variant = 'chat' }: {
       {error && <p role="alert" className="mt-1.5 text-[12px] text-[var(--danger)]">{error}</p>}
 
       {pending && (
-        <div className="memory-candidate-where mt-2 flex items-center gap-2 text-[12px] text-[var(--text-muted)]" data-testid="memory-candidate-where">
-          <span>{t('memory.candidate.where')}</span>
+        <div className="memory-candidate-where" data-testid="memory-candidate-where">
+          <span className="memory-candidate-where-label"><MapPin size={12} aria-hidden="true" />{t('memory.candidate.where')}</span>
           <Select<Place>
             compact
             value={place}
             label={t('memory.candidate.where')}
-            options={places.map((value) => ({ value, label: t(`memory.place.${value}` as I18nKey) }))}
+            options={places.map((value) => ({ value, label: t(`memory.place.${value}` as I18nKey), icon: <PlaceIcon place={value} size={13} /> }))}
             onChange={setPlace}
             disabled={busy !== null}
           />

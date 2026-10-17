@@ -217,6 +217,14 @@ export const scenarios = {
     title: 'Ajustes → Avanzado: estado, tarjetas plegadas con resumen, búsqueda que filtra y abre, almacenamiento y «Probar conexión»',
     phases: ['exercise'],
   },
+  'memory-places': {
+    title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',
+    phases: ['exercise'],
+  },
+  welcome: {
+    title: 'Bienvenida de primer uso: Rinari de pie en su cuarto, una pose por paso cruzada, los botones quietos, «Sobre ti» en Memoria y la ventana estrecha',
+    phases: ['exercise'],
+  },
   'files-tree': {
     title: 'Árbol de Archivos: carpetas compactas y arrastrar un archivo al composer como «@archivo»',
     phases: ['exercise'],

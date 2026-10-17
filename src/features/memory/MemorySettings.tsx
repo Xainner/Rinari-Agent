@@ -1,9 +1,10 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { LoaderCircle, Pencil, Trash2 } from 'lucide-react'
+import { LoaderCircle, MessageCircleHeart, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { engineApi, type AboutMe } from '../../services/engine'
 import WelcomeDialog, { USES } from '../welcome/WelcomeDialog'
+import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
 import { Button } from '../../components/ui/button'
 import { useConfirm } from '../../components/ui/useConfirm'
@@ -12,6 +13,7 @@ import { SearchField } from '../../components/ui/SearchField'
 import { memoryApi } from '../../services/memory'
 import { MemoryCandidateCard } from './MemoryCandidateCard'
 import { MemoryPortability } from './MemoryPortability'
+import { PlaceIcon } from './placeIcon'
 import {
   effectiveCandidateStatus,
   forgetMemory,
@@ -77,17 +79,27 @@ function AboutYou() {
   const told = Boolean(about && (about.name || about.uses.length || about.preferences))
   return (
     <Section title={t('memory.about.title')} desc={t('memory.about.hint')} anchor="memory-about">
-      <div className="memory-about" data-testid="memory-about">
-        {told && about ? (
-          <dl className="memory-about-facts">
-            {about.name && <div><dt>{t('welcome.name.title')}</dt><dd>{about.name}</dd></div>}
-            {about.uses.length > 0 && <div><dt>{t('welcome.uses.title')}</dt><dd>{about.uses.map(useLabel).join(' · ')}</dd></div>}
-            {about.preferences && <div><dt>{t('welcome.preferences.title')}</dt><dd className="whitespace-pre-wrap">{about.preferences}</dd></div>}
-          </dl>
-        ) : (
-          <p className="text-sm text-[var(--text-subtle)]">{t('memory.about.empty')}</p>
-        )}
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)} data-testid="memory-about-open">{t('memory.about.action')}</Button>
+      <div className="memory-about" data-testid="memory-about" data-empty={!told || undefined}>
+        <img className="memory-about-face" src={art.expression(told ? 'idle' : 'ask')} alt="" aria-hidden="true" draggable={false} />
+        <div className="min-w-0 flex-1">
+          {told && about ? (
+            <dl className="memory-about-facts">
+              {about.name && <div><dt>{t('memory.about.name')}</dt><dd className="memory-about-name">{about.name}</dd></div>}
+              {about.uses.length > 0 && (
+                <div>
+                  <dt>{t('memory.about.uses')}</dt>
+                  <dd className="memory-about-uses">{about.uses.map((use) => <span key={use} className="r-chip">{useLabel(use)}</span>)}</dd>
+                </div>
+              )}
+              {about.preferences && <div><dt>{t('memory.about.preferences')}</dt><dd className="whitespace-pre-wrap">{about.preferences}</dd></div>}
+            </dl>
+          ) : (
+            <p className="text-sm text-[var(--text-subtle)]">{t('memory.about.empty')}</p>
+          )}
+          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setOpen(true)} data-testid="memory-about-open">
+            <MessageCircleHeart size={13} aria-hidden="true" /> {t('memory.about.action')}
+          </Button>
+        </div>
       </div>
       <WelcomeDialog
         open={open}
@@ -286,7 +298,12 @@ function RecordsSection() {
             className="seg-tab"
             onClick={() => { setPlace(value); setSelected(new Set()) }}
           >
-            {t(`memory.place.${value}` as I18nKey)} <span className="seg-tab-count">{counts[value] ?? 0}</span>
+            {place === value && <span className="seg-tab-pill" aria-hidden="true" />}
+            <span className="relative inline-flex items-center gap-1.5">
+              {value !== 'all' && <PlaceIcon place={value} />}
+              {t(`memory.place.${value}` as I18nKey)}
+              <span className="seg-tab-count" data-zero={(counts[value] ?? 0) === 0 || undefined}>{counts[value] ?? 0}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -327,28 +344,8 @@ function RecordsSection() {
           {query.trim() ? t('memory.empty.search') : kind !== 'all' && memory.records.length > 0 ? t('memory.empty.kind') : t('memory.empty')}
         </p>
       )}
-      {chosen.length > 0 && (
-        <div className="memory-bulk flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs" data-testid="memory-bulk">
-          <span className="text-[var(--text-muted)]">{t('memory.selected', { n: chosen.length })}</span>
-          <Select<string>
-            compact
-            value={null}
-            placeholder={t('memory.moveTo')}
-            label={t('memory.moveTo')}
-            options={[
-              { value: 'general', label: t('memory.moveGeneral') },
-              ...(activeProfile ? [{ value: `profile|${activeProfile}`, label: t('memory.moveProfile', { name: profileName }) }] : []),
-              ...projects.map(([root, label]) => ({ value: `project|${root}`, label: t('memory.moveProject', { name: label }) })),
-            ]}
-            onChange={(target) => void moveSelected(target)}
-            testId="memory-move"
-          />
-          <Button size="sm" variant="ghost" onClick={() => void forgetSelected()}>{t('memory.forgetSelected')}</Button>
-          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t('memory.clearSelection')}</Button>
-        </div>
-      )}
       {visible.length > 0 && (
-        <ul className="divide-y divide-[var(--border)]" aria-label={t('memory.records.title')}>
+        <ul className="memory-records" data-selecting={chosen.length > 0 || undefined} aria-label={t('memory.records.title')}>
           {visible.map((record) => (
             <RecordRow
               key={record.id}
@@ -359,6 +356,38 @@ function RecordsSection() {
             />
           ))}
         </ul>
+      )}
+      {/* La barra flota sobre la lista (pegada abajo al desplazar): aparecer no empuja ninguna fila. */}
+      {chosen.length > 0 && (
+        <div className="memory-bulk-dock">
+          <div className="memory-bulk" data-testid="memory-bulk">
+            <input
+              type="checkbox"
+              className="r-checkbox"
+              checked={chosen.length === visible.length}
+              ref={(box) => { if (box) box.indeterminate = chosen.length < visible.length }}
+              onChange={() => setSelected(chosen.length === visible.length ? new Set() : new Set(visible.map((record) => record.id)))}
+              aria-label={t('memory.selectAll')}
+            />
+            <span className="memory-bulk-count">{t('memory.selected', { n: chosen.length })}</span>
+            <span className="flex-1" />
+            <Select<string>
+              compact
+              value={null}
+              placeholder={t('memory.moveTo')}
+              label={t('memory.moveTo')}
+              options={[
+                { value: 'general', label: t('memory.moveGeneral'), icon: <PlaceIcon place="general" size={13} /> },
+                ...(activeProfile ? [{ value: `profile|${activeProfile}`, label: t('memory.moveProfile', { name: profileName }), icon: <PlaceIcon place="profile" size={13} /> }] : []),
+                ...projects.map(([root, label]) => ({ value: `project|${root}`, label: t('memory.moveProject', { name: label }), icon: <PlaceIcon place="project" size={13} /> })),
+              ]}
+              onChange={(target) => void moveSelected(target)}
+              testId="memory-move"
+            />
+            <Button size="sm" variant="ghost" className="memory-bulk-forget" onClick={() => void forgetSelected()}><Trash2 aria-hidden="true" />{t('memory.forgetSelected')}</Button>
+            <Button size="icon-sm" variant="ghost" aria-label={t('memory.clearSelection')} title={t('memory.clearSelection')} onClick={() => setSelected(new Set())}><X aria-hidden="true" /></Button>
+          </div>
+        </div>
       )}
     </Section>
   )
@@ -405,7 +434,7 @@ function RecordRow({ record, onForget, selected = false, onSelect }: { record: M
   const updated = record.updated_at ? new Date(record.updated_at) : null
   const kind = kindLabel(record.kind, t)
   return (
-    <li data-testid="memory-record" className="py-3 first:pt-0 last:pb-0">
+    <li data-testid="memory-record" className="memory-record" data-selected={selected || undefined}>
       {editing ? (
         <div className="space-y-2">
           <label className="block">
@@ -429,7 +458,7 @@ function RecordRow({ record, onForget, selected = false, onSelect }: { record: M
           {onSelect && (
             <input
               type="checkbox"
-              className="mt-1 shrink-0"
+              className="r-checkbox memory-record-check"
               checked={selected}
               onChange={onSelect}
               aria-label={t('memory.select', { topic: record.topic })}
@@ -440,8 +469,9 @@ function RecordRow({ record, onForget, selected = false, onSelect }: { record: M
               <span className="text-sm font-medium text-[var(--text)]">{record.topic}</span>
               {kind && <span className="rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">{kind}</span>}
               {record.place && record.place !== 'general' && (
-                <span className="memory-place-chip rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]" data-place={record.place}>
-                  {t(`memory.place.${record.place}` as I18nKey)}{record.place_label ? ` · ${record.place_label}` : ''}
+                <span className="memory-place-chip" data-place={record.place} title={record.place_label ?? undefined}>
+                  <PlaceIcon place={record.place} size={11} />
+                  <span className="truncate">{t(`memory.place.${record.place}` as I18nKey)}{record.place_label ? ` · ${record.place_label}` : ''}</span>
                 </span>
               )}
             </div>

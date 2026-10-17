@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -44,10 +44,10 @@ it('saves the behavior and keeps a capacity fixed from the CLI as it is', async 
   view()
   const user = userEvent.setup()
   await user.click(await screen.findByRole('switch', { name: 'Compactar automáticamente' }))
-  await user.selectOptions(screen.getByLabelText('Modelo para resumir'), 'b')
-  const threshold = screen.getByLabelText('Umbral de compactación (%)')
-  await user.clear(threshold)
-  await user.type(threshold, '85')
+  await user.click(screen.getByRole('button', { name: /Modelo para resumir/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /Catalogued/ }))
+  fireEvent.change(screen.getByLabelText('Umbral de compactación (%)'), { target: { value: '85' } })
+  expect(screen.getByText('Compacta cuando el contexto llega al 85 %.')).toBeTruthy()
   expect(screen.getByText('Hay cambios sin guardar.')).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Guardar' }))
   await waitFor(() => expect(engineApi.contextSettingsSet).toHaveBeenCalledWith({
@@ -56,14 +56,12 @@ it('saves the behavior and keeps a capacity fixed from the CLI as it is', async 
   expect((await screen.findByRole('status')).textContent).toContain('Configuración guardada')
 })
 
-it('does not save an invalid threshold and can discard pending changes', async () => {
+it('can discard pending changes', async () => {
   view()
   const user = userEvent.setup()
   const threshold = await screen.findByLabelText('Umbral de compactación (%)')
-  await user.clear(threshold)
-  await user.type(threshold, '0')
-  expect(screen.getByText('Indica un número entero entre 1 y 100.')).toBeTruthy()
-  expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.change(threshold, { target: { value: '90' } })
+  expect(screen.getByText('Hay cambios sin guardar.')).toBeTruthy()
   await user.click(screen.getByRole('button', { name: 'Descartar cambios' }))
   expect((screen.getByLabelText('Umbral de compactación (%)') as HTMLInputElement).value).toBe('80')
   expect(screen.queryByText('Hay cambios sin guardar.')).toBeNull()

@@ -1087,6 +1087,8 @@ export const en: Record<I18nKey, string> = {
   'insight.toolCalls': 'Tool calls',
   'insight.noCost': 'No estimated cost: the engine knows no pricing.',
   'context.title': 'Context and compaction',
+  'context.intro': 'When Rinari summarises the conversation to keep working without losing the thread.',
+  'context.threshold.phrase': 'Compacts when the context reaches {n} %.',
   'context.ring': 'Context: {used} of {total} tokens ({percent})',
   'context.ringEstimated': 'Estimated context after compaction: {used} of {total} tokens ({percent})',
   'context.ringAfterCompaction': 'estimated after compaction',
@@ -1241,6 +1243,12 @@ export const en: Record<I18nKey, string> = {
   'agents.inherit': 'Inherit session',
   'agents.reset': 'Reset',
   'agents.budget': 'max {n} tools',
+  'agents.title': 'Agents',
+  'agents.intro': 'The subagents Rinari can start. Pick the model each one works with; empty uses the conversation’s.',
+  'agents.empty': 'No agents.',
+  'agents.profileInherit': 'Session permissions',
+  'agents.builtin': 'Rinari’s',
+  'agents.fromProject': 'From the project',
 
   /* Soul (Phase 8) */
   'soul.title': 'Personality',

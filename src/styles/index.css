@@ -3053,3 +3053,8 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .model-row-remove:hover:not(:disabled) { color: var(--danger); }
 .model-editor { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); padding-top: 10px; border-top: 1px solid var(--line-1); }
 .model-editor > :last-child { grid-column: 1 / -1; }
+
+/* Contexto (plan 0.4.0 #92): el umbral como control deslizante. */
+.context-threshold { max-width: 420px; }
+.context-slider { width: 100%; margin-top: 6px; accent-color: var(--accent-2); }
+.context-slider:disabled { opacity: 0.4; }

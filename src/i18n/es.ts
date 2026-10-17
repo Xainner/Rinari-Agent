@@ -1105,6 +1105,8 @@ export const es = {
   'insight.toolCalls': 'Tool calls',
   'insight.noCost': 'Sin costo estimado: el engine no conoce precios.',
   'context.title': 'Contexto y compactación',
+  'context.intro': 'Cuándo Rinari resume la conversación para seguir trabajando sin perder el hilo.',
+  'context.threshold.phrase': 'Compacta cuando el contexto llega al {n} %.',
   'context.ring': 'Contexto: {used} de {total} tokens ({percent})',
   'context.ringEstimated': 'Contexto estimado tras compactar: {used} de {total} tokens ({percent})',
   'context.ringAfterCompaction': 'estimado tras compactar',
@@ -1259,6 +1261,12 @@ export const es = {
   'agents.inherit': 'Heredar sesión',
   'agents.reset': 'Restablecer',
   'agents.budget': 'máx {n} tools',
+  'agents.title': 'Agentes',
+  'agents.intro': 'Los subagentes que Rinari puede lanzar. Elige con qué modelo trabaja cada uno; vacío usa el de la conversación.',
+  'agents.empty': 'No hay agentes.',
+  'agents.profileInherit': 'Permisos de la sesión',
+  'agents.builtin': 'De Rinari',
+  'agents.fromProject': 'Del proyecto',
 
   /* Soul (Fase 8) */
   'soul.title': 'Personalidad',

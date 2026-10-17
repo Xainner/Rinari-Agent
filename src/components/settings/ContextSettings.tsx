@@ -3,7 +3,8 @@ import { engineApi, commandMessage, type ModelSummary, type ProviderSummary } fr
 import type { ContextSettings as Config } from '../../types/protocol.generated'
 import { useI18n } from '../../i18n'
 import { Switch } from '../ui/switch'
-import { inputClass, Row, Section } from './parts'
+import { Select } from '../ui/select'
+import { Row, Section } from './parts'
 
 type Draft = { enabled: boolean; threshold: string; model_id: string | null }
 
@@ -56,38 +57,45 @@ export default function ContextSettings({ models, providers }: { models: ModelSu
     }
   }
 
-  return <div className="max-w-3xl space-y-6">
-    <h2 className="text-xl font-semibold text-[var(--text)]">{t('context.title')}</h2>
+  const summarizers = [
+    { value: '', label: t('context.summarizer.conversation') },
+    ...providers.flatMap((provider) => saveable.filter((model) => model.provider_id === provider.id).map((model) => ({ value: model.id, label: model.alias, detail: provider.alias }))),
+  ]
+  const percent = validThreshold(draft?.threshold ?? '') ? wholeNumber(draft?.threshold ?? '') : null
+
+  return <div className="space-y-4">
+    <div>
+      <h2 className="font-display text-lg font-bold text-[var(--text)]">{t('context.title')}</h2>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">{t('context.intro')}</p>
+    </div>
     {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
+    {!draft && !error && <div className="settings-card h-40 motion-safe:animate-pulse" aria-busy="true" />}
 
     {draft && <Section title={t('context.behavior')} desc={t('context.behavior.desc')}>
       <Row title={t('context.auto')} desc={t('context.auto.desc')} control={
         <Switch checked={draft.enabled} onCheckedChange={(enabled) => change({ enabled })} aria-label={t('context.auto')} />
       } />
-      <div className="max-w-xs">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--text)]">{t('context.threshold')}</span>
-          <input className={inputClass} type="number" min={1} max={100} inputMode="numeric" value={draft.threshold} aria-invalid={!validThreshold(draft.threshold)}
-            aria-describedby="context-threshold-help" onChange={(e) => change({ threshold: e.target.value })} />
+      <div className="context-threshold">
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-[var(--text)]">{t('context.threshold')}</span>
+          <span className="font-display text-lg font-bold text-[var(--text)]" aria-hidden="true">{percent ?? '—'} %</span>
         </label>
-        <p id="context-threshold-help" className={`mt-1 text-xs ${validThreshold(draft.threshold) ? 'text-[var(--text-subtle)]' : 'text-[var(--danger)]'}`}>
-          {validThreshold(draft.threshold) ? t('context.threshold.desc') : t('context.threshold.invalid')}
+        <input type="range" min={50} max={95} step={1} className="context-slider" value={percent ?? 80}
+          aria-label={t('context.threshold')} aria-valuetext={`${percent ?? 80} %`} aria-describedby="context-threshold-help"
+          onChange={(e) => change({ threshold: e.target.value })} />
+        <p id="context-threshold-help" className="mt-1 text-xs text-[var(--text-subtle)]">
+          {percent !== null ? t('context.threshold.phrase', { n: percent }) : t('context.threshold.invalid')}
         </p>
       </div>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-[var(--text)]">{t('context.summarizer')}</span>
-        <select className={inputClass} value={draft.model_id ?? ''} onChange={(e) => change({ model_id: e.target.value || null })}>
-          <option value="">{t('context.summarizer.conversation')}</option>
-          {providers.map((provider) => <optgroup key={provider.id} label={provider.alias}>
-            {saveable.filter((model) => model.provider_id === provider.id).map((model) => <option key={model.id} value={model.id}>{model.alias}</option>)}
-          </optgroup>)}
-        </select>
+        <Select value={draft.model_id ?? ''} options={summarizers} label={t('context.summarizer')} onChange={(value) => change({ model_id: value || null })} />
       </label>
     </Section>}
 
     {draft && <div className="flex flex-wrap items-center gap-3">
       <button type="button" disabled={busy || !dirty || !valid} onClick={() => void save()} className="btn btn-primary">{busy ? t('context.saving') : t('context.save')}</button>
-      {dirty && <button type="button" disabled={busy} onClick={() => { if (config) { setDraft(toDraft(config)); setSaved(false) } }} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--bg-hover)]">{t('context.discard')}</button>}
+      {dirty && <button type="button" disabled={busy} onClick={() => { if (config) { setDraft(toDraft(config)); setSaved(false) } }} className="btn btn-ghost">{t('context.discard')}</button>}
       {dirty && <span className="text-xs text-[var(--text-subtle)]">{t('context.pending')}</span>}
       {saved && !dirty && <span role="status" className="text-sm text-[var(--text-muted)]">{t('context.saved')}</span>}
     </div>}

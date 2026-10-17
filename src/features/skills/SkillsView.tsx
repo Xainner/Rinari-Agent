@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Plus, Search } from 'lucide-react'
+import { AlertTriangle, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { commandMessage, engineApi, type SkillEntry, type SkillProposal } from '../../services/engine'
 import { useI18n } from '../../i18n'
@@ -12,6 +12,8 @@ import { SKILLS_CHANGED_EVENT } from '../../components/composer/useSlashCommands
 import PendingSkills from './PendingSkills'
 import SkillDuplicates from './SkillDuplicates'
 import { useUIStore } from '../../stores/ui'
+import { SearchField } from '../../components/ui/SearchField'
+import { art } from '../rinari/art'
 
 /**
  * Ajustes > Skills: la biblioteca. Rinari (vienen con la app), Instaladas
@@ -22,6 +24,7 @@ export default function SkillsView() {
   const { t } = useI18n()
   const [skills, setSkills] = useState<SkillEntry[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [filter, setFilter] = useState<SkillFilter>('all')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
@@ -44,13 +47,14 @@ export default function SkillsView() {
     try {
       const result = await engineApi.skillList()
       setSkills(result.skills)
+      setLoadError('')
       // Aprendizaje: opcional según la capacidad del Engine; sin ella no se muestra.
       void engineApi.skillPendingList().then((res) => setPending(res.pending)).catch(() => setPending([]))
       void engineApi.skillSettingsGet().then((res) => setAutoLearn(res.auto_learn)).catch(() => setAutoLearn(null))
       // Las skills también son comandos `/`: el compositor vuelve a pedir el catálogo.
       window.dispatchEvent(new CustomEvent(SKILLS_CHANGED_EVENT, { detail: { from: 'library' } }))
     } catch (err) {
-      toast.error(commandMessage(err))
+      setLoadError(commandMessage(err))
     } finally {
       setLoaded(true)
     }
@@ -126,7 +130,7 @@ export default function SkillsView() {
       <SkillDuplicates />
 
       <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label={t('skills.filter')} className="flex flex-wrap gap-1">
+        <div role="tablist" aria-label={t('skills.filter')} className="seg-tabs flex-wrap">
           {SKILL_FILTERS.map((option) => (
             <button
               key={option}
@@ -134,28 +138,22 @@ export default function SkillsView() {
               role="tab"
               aria-selected={filter === option}
               onClick={() => setFilter(option)}
-              className={cn(
-                'rounded-lg border px-2.5 py-1 text-xs transition-colors',
-                filter === option
-                  ? 'border-[var(--accent)] bg-[var(--bg-active)] font-semibold text-[var(--text)]'
-                  : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]',
-              )}
+              className="seg-tab"
             >
-              {t(`skills.filter.${option}`)} · {counts[option]}
+              {filter === option && <span className="seg-tab-pill" aria-hidden="true" />}
+              <span className="relative">{t(`skills.filter.${option}`)} · {counts[option]}</span>
             </button>
           ))}
         </div>
-        <label className="ml-auto flex min-w-[12rem] items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 py-1.5">
-          <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
-          <input
-            aria-label={t('skills.search')}
-            placeholder={t('skills.search')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
-          />
-        </label>
+        <SearchField label={t('skills.search')} value={query} onChange={(event) => setQuery(event.target.value)} className="ml-auto min-w-[12rem]" />
       </div>
+
+      {loadError && (
+        <div role="alert" className="settings-card text-sm">
+          <p className="text-[var(--danger)]">{loadError}</p>
+          <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => void reload()}>{t('adv.retry')}</button>
+        </div>
+      )}
 
       <ul className="divide-y divide-[var(--border)] settings-card">
         {visible.map((entry) => {
@@ -172,19 +170,9 @@ export default function SkillsView() {
                   <span className={cn('text-sm font-medium', entry.enabled ? 'text-[var(--text)]' : 'text-[var(--text-subtle)]')}>
                     {entry.name}
                   </span>
-                  <span className="rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">
-                    {t(`skills.origin.${entry.origin}`)}
-                  </span>
-                  {entry.format === 'standard' && (
-                    <span className="rounded-md border border-[var(--border)] px-1.5 text-[10px] text-[var(--text-subtle)]">
-                      {t('skills.format.standard')}
-                    </span>
-                  )}
-                  {entry.status === 'pending' && (
-                    <span className="rounded-md border border-amber-500/40 px-1.5 text-[10px] text-[var(--warning)]">
-                      {t('skills.pending')}
-                    </span>
-                  )}
+                  <span className="r-chip">{t(`skills.origin.${entry.origin}`)}</span>
+                  {entry.format === 'standard' && <span className="r-chip">{t('skills.format.standard')}</span>}
+                  {entry.status === 'pending' && <span className="r-chip" data-tone="warning">{t('skills.pending')}</span>}
                   {reason && (
                     <span role="img" aria-label={t(`skills.attention.${reason}`)} title={t(`skills.attention.${reason}`)}>
                       <AlertTriangle size={12} aria-hidden="true" className="text-[var(--warning)]" />
@@ -204,11 +192,13 @@ export default function SkillsView() {
             </li>
           )
         })}
-        {loaded && visible.length === 0 && (
-          <li className="px-4 py-6 text-center text-sm text-[var(--text-subtle)]">
+        {loaded && !loadError && visible.length === 0 && (
+          <li className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-[var(--text-subtle)]">
+            <img src={art.chibi('wave')} alt="" draggable={false} className="h-20 w-auto opacity-90" />
             {skills.length === 0 ? t('skills.empty') : t('skills.noMatch')}
           </li>
         )}
+        {!loaded && <li className="h-24 motion-safe:animate-pulse" aria-busy="true" />}
       </ul>
 
       <SkillDetailDialog

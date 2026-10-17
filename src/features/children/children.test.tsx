@@ -135,14 +135,17 @@ it('a note lets the owner change how its child opens before starting it', async 
   await waitFor(() => expect(accept).toHaveBeenCalledWith('n1', { context: 'fork', isolation: 'same' }))
 })
 
-it('the chat shows a brief, a message from the mother and a report as what they are', async () => {
+it('the chat shows a brief, a message from the mother and a report as folded lines', async () => {
   const { default: MessageBubble } = await import('../../components/MessageBubble')
   const brief = render(
     <I18nProvider lang="es">
       <MessageBubble message={{ id: 'm1', role: 'user', createdAt: 0, content: 'Migra el módulo de pagos.', origin: { kind: 'user', source: 'child_brief', parent_session_id: 'ses_mother' } as never }} />
     </I18nProvider>,
   )
-  expect(screen.getByTestId('child-brief').textContent).toContain('Migra el módulo de pagos.')
+  expect(screen.getByTestId('child-brief').textContent).toContain('Encargo recibido de')
+  expect(screen.queryByText('Migra el módulo de pagos.')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Desplegar' }))
+  expect(screen.getByText('Migra el módulo de pagos.')).toBeTruthy()
   expect(screen.queryByTestId('user-message-bubble')).toBeNull()
   brief.unmount()
   const mother = render(
@@ -150,12 +153,20 @@ it('the chat shows a brief, a message from the mother and a report as what they 
       <MessageBubble message={{ id: 'm2', role: 'user', createdAt: 0, content: 'Usa la versión 2.', origin: { kind: 'user', source: 'parent_message', parent_session_id: 'ses_mother' } as never }} />
     </I18nProvider>,
   )
-  expect(screen.getByTestId('mother-badge').textContent).toBe('De la conversación madre')
+  expect(screen.getByTestId('mother-message').textContent).toContain('Mensaje recibido de')
+  expect(screen.queryByTestId('user-message-bubble')).toBeNull()
   mother.unmount()
+  useChildrenStore.setState({ byParent: { ses_mother: [child({ state: 'completed', report: { summary: 'Migré 3 módulos.', text: 'Migré 3 módulos y pasan las pruebas.' } })] }, loaded: {}, hidden: {} })
   render(
     <I18nProvider lang="es">
-      <MessageBubble message={{ id: 'm3', role: 'user', createdAt: 0, content: '«Migrar pagos»', origin: { kind: 'automation', source: 'child_report' } as never }} />
+      <MessageBubble message={{ id: 'm3', role: 'user', createdAt: 0, content: '«Migrar pagos»', origin: { kind: 'automation', source: 'child_report', children: ['ses_child'] } as never }} />
     </I18nProvider>,
   )
-  expect(screen.getByTestId('child-report-separator').textContent).toBe('Informe de «Migrar pagos»')
+  const report = screen.getByTestId('child-report-separator')
+  expect(report.textContent).toContain('Informe recibido de')
+  expect(report.textContent).toContain('Migrar pagos')
+  fireEvent.click(screen.getByRole('button', { name: 'Desplegar' }))
+  expect(screen.getByText('Migré 3 módulos y pasan las pruebas.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Migrar pagos' }))
+  expect(selectSession).toHaveBeenCalledWith('ses_child')
 })

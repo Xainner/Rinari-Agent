@@ -759,6 +759,15 @@ input[type='password']::-ms-clear {
 .sticky-note-spawn-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px dashed var(--note-ink-muted); border-radius: 999px; padding: 1px 8px; font-size: 10.5px; color: var(--note-ink-muted); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
 .sticky-note-spawn-chip:hover:not(:disabled) { border-style: solid; color: var(--note-ink); background: color-mix(in srgb, var(--note-ink) 8%, transparent); }
 .sticky-note-spawn-chip::after { content: '⇄'; font-size: 9px; opacity: 0.6; }
+.children-dock { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.child-report-lines { display: flex; flex-direction: column; gap: 4px; }
+.child-report-head { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; color: var(--text-subtle); }
+.child-report-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent-2) 55%, transparent); text-underline-offset: 3px; }
+.child-report-title:hover { color: var(--text); text-decoration-color: var(--accent-2); }
+.child-report-toggle { display: inline-flex; align-items: center; color: var(--text-subtle); transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast); }
+.child-report-toggle:hover { color: var(--text); }
+.child-report-toggle[aria-expanded='true'] { transform: rotate(90deg); }
+.child-report-body { margin-top: 4px; padding: 8px 12px; border-left: 2px solid color-mix(in srgb, var(--accent-2) 40%, transparent); font-size: 13px; color: var(--text-muted); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .child-row { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 10px 6px 7px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.5); font-size: 13px; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
 .child-row:hover { border-color: var(--line-2); background: rgb(20 15 34 / 0.6); }
 .child-row[data-entering] { animation: rinari-rise 220ms var(--ease-out) both; }

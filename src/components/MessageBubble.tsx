@@ -1,7 +1,8 @@
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, CornerDownRight, ClipboardList } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
+import type { I18nKey } from '../i18n/es'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
@@ -17,6 +18,7 @@ import { useOptionalEngineCommands, useOptionalEngineData } from '../features/en
 import { TurnSessionContext } from '../features/activity/turnSession'
 import { commandMessage } from '../services/engine'
 import { toast } from 'sonner'
+import { useChildrenStore } from '../features/children/childrenStore'
 
 /** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
 function PlayableAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
@@ -132,12 +134,12 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
   }
 
   // A child session's brief, from the conversation that opened it (plan-sesiones-hijas 5.5).
-  if (message.role === 'user' && message.origin?.source === 'child_brief') {
+  if (message.role === 'user' && (message.origin?.source === 'child_brief' || message.origin?.source === 'parent_message')) {
     return <BriefBubble message={message} />
   }
   // The mother's report turn: which children reported back.
   if (message.role === 'user' && message.origin?.source === 'child_report') {
-    return <ChildReportSeparator names={message.content} />
+    return <ChildReportSeparator names={message.content} childIds={(message.origin as { children?: unknown }).children} />
   }
 
   // A turn the goal started is not something the owner wrote: a separator.
@@ -157,7 +159,6 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
       <div data-testid="user-message-row" className="group/user flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
-        {message.origin?.source === 'parent_message' && <MotherBadge sessionId={(message.origin as { parent_session_id?: string }).parent_session_id ?? null} />}
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
         <ChildFromMessage text={text} />
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
@@ -345,40 +346,70 @@ function useSessionTitle(sessionId: string | null): string | null {
   return sessionId ? data?.sessionsById[sessionId]?.title ?? null : null
 }
 
+/** What the mother sent the child (its brief or a later message), folded like Claude Code's «Mensaje recibido de …». */
 function BriefBubble({ message }: { message: ChatMessage }) {
-  const { t } = useI18n()
-  const commands = useOptionalEngineCommands()
   const motherId = (message.origin as { parent_session_id?: string } | undefined)?.parent_session_id ?? null
-  const mother = useSessionTitle(motherId)
+  const brief = message.origin?.source === 'child_brief'
   return (
-    <div data-testid="child-brief" className="child-brief">
-      <p className="child-brief-from">
-        <GitBranchPlus size={12} aria-hidden="true" />
-        {mother && motherId
-          ? <>{t('children.briefFrom')} <button type="button" className="child-brief-mother" onClick={() => { void commands?.selectSession(motherId) }}>{mother}</button></>
-          : t('children.brief')}
-      </p>
-      <div className="child-brief-text">{message.content}</div>
+    <div data-testid={brief ? 'child-brief' : 'mother-message'} className="child-report-lines">
+      <ReceivedLine label={brief ? 'children.briefFrom' : 'children.messageFrom'} sessionId={motherId} fallback="children.fromMotherPlain" text={message.content} />
     </div>
   )
 }
 
-function MotherBadge({ sessionId }: { sessionId: string | null }) {
+/**
+ * The children that reported back, one quiet line each, like Claude Code's
+ * «Mensaje recibido de …»: the title opens the child, the chevron unfolds
+ * what it said.
+ */
+function ChildReportSeparator({ names, childIds }: { names: string; childIds: unknown }) {
   const { t } = useI18n()
-  const mother = useSessionTitle(sessionId)
+  const ids = Array.isArray(childIds) ? childIds.filter((id): id is string => typeof id === 'string') : []
+  if (ids.length === 0) {
+    return (
+      <div data-testid="child-report-separator" className="goal-separator" role="separator">
+        <span><ClipboardList size={11} aria-hidden="true" />{t('children.reportSeparator', { names })}</span>
+      </div>
+    )
+  }
   return (
-    <span data-testid="mother-badge" className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
-      <CornerDownRight size={11} aria-hidden="true" />
-      {mother ? t('children.fromMother', { title: mother }) : t('children.fromMotherPlain')}
-    </span>
+    <div data-testid="child-report-separator" className="child-report-lines">
+      {ids.map((id) => <ChildReportLine key={id} childId={id} />)}
+    </div>
   )
 }
 
-function ChildReportSeparator({ names }: { names: string }) {
+function ChildReportLine({ childId }: { childId: string }) {
+  const child = useChildrenStore((state) => {
+    for (const list of Object.values(state.byParent)) {
+      const found = list.find((item) => item.child_session_id === childId)
+      if (found) return found
+    }
+    return undefined
+  })
+  return <ReceivedLine label="children.reportFrom" sessionId={childId} fallbackTitle={child?.title} fallback="children.untitled" text={child?.report?.text || child?.report?.summary || ''} />
+}
+
+/** «<label> <session> ›»: the title opens that conversation, the chevron unfolds the text. */
+function ReceivedLine({ label, sessionId, fallbackTitle, fallback, text }: { label: I18nKey; sessionId: string | null; fallbackTitle?: string; fallback: I18nKey; text: string }) {
   const { t } = useI18n()
+  const commands = useOptionalEngineCommands()
+  const title = useSessionTitle(sessionId) || fallbackTitle || t(fallback)
+  const [open, setOpen] = useState(false)
   return (
-    <div data-testid="child-report-separator" className="goal-separator" role="separator">
-      <span><ClipboardList size={11} aria-hidden="true" />{t('children.reportSeparator', { names })}</span>
+    <div className="child-report-line" data-open={open || undefined}>
+      <p className="child-report-head">
+        <span>{t(label)}</span>
+        {sessionId
+          ? <button type="button" className="child-report-title" onClick={() => void commands?.selectSession(sessionId)}>{title}</button>
+          : <span className="child-report-title">{title}</span>}
+        {text && (
+          <button type="button" className="child-report-toggle" aria-expanded={open} aria-label={t(open ? 'children.reportHide' : 'children.reportShow')} onClick={() => setOpen((value) => !value)}>
+            <ChevronRight size={13} aria-hidden="true" />
+          </button>
+        )}
+      </p>
+      {open && text && <div className="child-report-body"><Markdown>{text}</Markdown></div>}
     </div>
   )
 }

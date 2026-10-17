@@ -89,7 +89,8 @@ describe('ChecklistDock', () => {
     act(() => applyChecklistEvent({ session_id: 's1', checklist: list('active', items) }))
     const dock = await screen.findByTestId('checklist-dock')
     expect(dock.getAttribute('data-state')).toBe('active')
-    expect(dock.textContent).toContain('1/3')
+    // The step in progress, like the turn's header: «Paso 2/3», not the 1 done.
+    expect(dock.textContent).toContain('Paso 2/3')
     expect(dock.textContent).toContain('Escribiendo las pruebas')
     expect(screen.queryByRole('button', { name: 'Quitar la lista' })).toBeNull()
     const toggle = screen.getByRole('button', { expanded: false })

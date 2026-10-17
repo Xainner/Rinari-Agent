@@ -1,11 +1,12 @@
 // Sesiones hijas con el Engine real (plan-sesiones-hijas 5):
 // 1. Pedirle a Rinari que lo haga «en otra sesión» abre una hija: aparece en la
 //    barra lateral y trabaja su encargo.
-// 2. Al terminar, la madre recibe la tarjeta con el informe y, como la abrió
-//    Rinari y estaba libre, hace un turno corto: «Informe de «Revisar docs»».
+// 2. Al terminar, la madre (sin fila de la hija en su chat) recibe el informe
+//    y, como la abrió Rinari y estaba libre, hace un turno corto: «Informe de
+//    «Revisar docs»».
 // 3. Un pedido que conviene aparte llega como oferta: «¿Lo hago en una sesión
 //    nueva?»; «Hazlo aquí» no abre nada y Rinari sigue en la madre.
-// 4. «Abrir» lleva a la hija, cuyo primer mensaje es el encargo de su madre.
+// 4. La hija se abre desde la barra lateral; su primer mensaje es el encargo.
 const assert = require('node:assert/strict')
 const { click, clickText, command, evaluate, input, key, reload, report, scenario, screenshot, settleAnimations, until, useLocalModel, wait } = require('../harness.cjs')
 
@@ -28,11 +29,10 @@ scenario(async () => {
   await send('Revisa los docs en otra sesión')
   await wait(text('La abrí aparte.'))
   await wait(`[...document.querySelectorAll('aside li')].some((li) => li.textContent.includes('Revisar docs'))`)
-  await wait(`Boolean(document.querySelector('[data-testid="child-card"]'))`)
-  assert.ok(await evaluate(`document.querySelector('[data-testid="child-card"]').hasAttribute('data-entering')`), 'the new child card enters')
-  await wait(`document.querySelector('[data-testid="child-card"]')?.dataset.state === 'completed'`)
-  await wait(text('REPORTE: arreglé 2 enlaces rotos.'))
+  // The child is not a row in the mother's chat: it lives in the sidebar and
+  // the mother tells its report.
   await wait(`document.querySelector('[data-testid="child-report-separator"]')?.textContent.includes('Revisar docs')`)
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="child-card"]'))`), false, 'no child row in the chat')
   await wait(text('INFORME LEÍDO'))
   await settleAnimations()
   await screenshot('mother-with-report')
@@ -50,7 +50,7 @@ scenario(async () => {
   assert.equal(children.children.length, 1, '«Hazlo aquí» opened no child')
 
   // 4. The child's first message is its mother's brief.
-  await clickText('Abrir', '[data-testid="child-card"] button', { includes: true })
+  await clickText('Revisar docs', 'aside li button', { includes: true })
   await wait(`Boolean(document.querySelector('[data-testid="child-brief"]'))`)
   await until(async () => (await evaluate(`document.querySelector('[data-testid="child-brief"]').textContent`)).includes('Docs'), 'the brief names its mother')
   await settleAnimations()

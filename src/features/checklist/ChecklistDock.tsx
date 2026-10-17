@@ -89,8 +89,9 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
           onClick={() => setExpanded(sessionId, !expanded)}
         >
           <ProgressRing done={counts.completed} total={counts.total} working={working} finished={state === 'completed'} />
+          {/* Mientras trabaja cuenta el paso en curso, igual que la cabecera del turno («Paso 2/3»); si no, los hechos. */}
           <span className="checklist-count" aria-label={t('checklist.progress', { done: counts.completed, total: counts.total })}>
-            {counts.completed}/{counts.total}
+            {working && current ? t('turn.status.step', { n: checklist.items.indexOf(current) + 1, total: counts.total }) : `${counts.completed}/${counts.total}`}
           </span>
           <span key={headline} className="checklist-headline" role={working ? 'status' : undefined}>{headline}</span>
           <ChevronUp size={14} aria-hidden="true" className="checklist-chevron" />

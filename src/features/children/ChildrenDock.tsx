@@ -40,6 +40,23 @@ export function useSessionChildren(sessionId: string): ChildSession[] {
  * own branch, «Integrar rama» and «Descartar» (merging is always the
  * owner's button).
  */
+/**
+ * The child is not a row in the mother's chat (the owner finds it in the
+ * sidebar and hears its report from the mother). Only a child that worked on
+ * its own branch waits here, above the composer, for «Integrar rama» or
+ * «Descartar»: merging is always the owner's button.
+ */
+export function ChildDecisions({ sessionId }: { sessionId: string }) {
+  const children = useSessionChildren(sessionId)
+  const pending = children.filter((child) => child.branch && !child.resolution && child.state !== 'working' && child.state !== 'waiting')
+  if (pending.length === 0) return null
+  return (
+    <section className="children-dock" data-testid="children-dock">
+      {pending.map((child) => <ChildRow key={child.child_session_id} child={child} />)}
+    </section>
+  )
+}
+
 export function ChildRow({ child }: { child: ChildSession }) {
   const { t } = useI18n()
   const commands = useOptionalEngineCommands()

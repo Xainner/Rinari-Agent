@@ -119,6 +119,20 @@ function readCollapsed(): boolean {
   return readBool('rinari.sidebarCollapsed', false)
 }
 
+/** Ancho de la barra lateral izquierda desplegada: se arrastra su borde y se recuerda. */
+export const SIDEBAR_WIDTH = { min: 220, initial: 278, max: 440 } as const
+const SIDEBAR_WIDTH_KEY = 'rinari.sidebarWidth'
+const clampSidebarWidth = (width: number) => Math.round(Math.max(SIDEBAR_WIDTH.min, Math.min(SIDEBAR_WIDTH.max, width)))
+
+function readSidebarWidth(): number {
+  try {
+    const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY))
+    return Number.isFinite(stored) && stored > 0 ? clampSidebarWidth(stored) : SIDEBAR_WIDTH.initial
+  } catch {
+    return SIDEBAR_WIDTH.initial
+  }
+}
+
 const FLOW_SCOPE_KEY = 'rinari.flowScope'
 /** Namespace mientras el hello no ha dicho cuál es el home real. */
 export const DEFAULT_FLOW_HOME = 'default'
@@ -209,6 +223,7 @@ interface UIState {
   sidebarOpen: boolean
   /** Rail colapsado en desktop (solo iconos). Persistido. */
   sidebarCollapsed: boolean
+  sidebarWidth: number
   paletteOpen: boolean
   theme: Theme
   accent: Accent
@@ -253,6 +268,7 @@ interface UIState {
   setLang: (lang: Language) => void
   setSidebarOpen: (open: boolean) => void
   setSidebarCollapsed: (collapsed: boolean) => void
+  setSidebarWidth: (width: number) => void
   toggleSidebarCollapsed: () => void
   setPaletteOpen: (open: boolean) => void
   togglePalette: () => void
@@ -283,6 +299,7 @@ export const useUIStore = create<UIState>((set) => ({
   lang: typeof window === 'undefined' ? 'es' : readLang(),
   sidebarOpen: false,
   sidebarCollapsed: typeof window === 'undefined' ? false : readCollapsed(),
+  sidebarWidth: typeof window === 'undefined' ? SIDEBAR_WIDTH.initial : readSidebarWidth(),
   paletteOpen: false,
   theme: typeof window === 'undefined' ? 'system' : getStoredTheme(),
   accent: initialAccent,
@@ -359,6 +376,11 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarCollapsed: (collapsed) => {
     writeBool('rinari.sidebarCollapsed', collapsed)
     set({ sidebarCollapsed: collapsed })
+  },
+  setSidebarWidth: (width) => {
+    const next = clampSidebarWidth(width)
+    try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(next)) } catch { /* sin almacenamiento: solo en memoria */ }
+    set({ sidebarWidth: next })
   },
   toggleSidebarCollapsed: () =>
     set((s) => {

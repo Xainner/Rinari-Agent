@@ -138,6 +138,10 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'sidebar-resize': {
+    title: 'Barra lateral: su borde se arrastra (asa oculta en reposo), con mínimo y máximo; el ancho se recuerda y doble clic lo devuelve',
+    phases: ['exercise'],
+  },
   'side-panel-stack': {
     title: 'Panel lateral: botones por vista, mosaico de hasta 4, separadores, reemplazar, arrastrar, ampliar y Ctrl+B',
     phases: ['exercise'],

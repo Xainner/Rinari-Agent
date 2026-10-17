@@ -3032,6 +3032,49 @@ Lo visual va con la sesión de pulido en la tanda 17; el punto 2 tiene una parte
 
 ---
 
+## 100. Hijas y madre: avisos a destiempo, mensajes que esperan y «Marcar como leído» (Planka, 2026-10-17)
+
+**Qué se pidió** (Planka, tablero Agent):
+- **Bug:** «La sesión hija avisa a la madre segundos después, incluso cuando ya había terminado».
+- **Ideas-2:**
+  - «El mensaje de la hija le llega a la madre recién cuando termina su turno. Que la línea o tarjeta salga abajo del chat hasta que la madre lo vea y responda»;
+  - «¿"Marcar como leído" se quita al ver el mensaje? Si solo hace eso, lo quitamos».
+
+**Cómo funciona hoy (verificado).**
+- **La hija no tiene cómo escribirle a la madre mientras trabaja.** Al terminar cada turno de la hija, se guarda su informe (`engine_protocol/children.py:482-514`) y se despierta a la madre con un **turno nuevo** de la madre (`wake`, `:516-567`, origen `automation/child_report`). Nada se inyecta en un turno que ya está corriendo.
+- **Cuándo se despierta a la madre:**
+  - si el turno de la hija lo empezó la madre (`child_brief`/`parent_message`, `:39`), en el acto;
+  - si lo escribió el dueño, **30 s después** (`OWNER_QUIET_S`, `:47`);
+  - no se la despierta mientras otra hija que abrió Rinari siga trabajando (`:527`), ni mientras la madre esté ocupada (`:530`). En ese caso, el fin del turno de la madre la vuelve a despertar (`:457-460`).
+- **Lo que ve la madre** del informe está en el estado de la tarea, que se arma **al empezar** su turno (`cli/agent_runtime.py:265`, `_children_text`). Por eso un informe que llega a mitad de turno no lo ve hasta el siguiente.
+- **En la app:** el turno del informe se dibuja como separador con una línea por hija (`MessageBubble.tsx:382-411`). Esa línea lee el informe **actual** de la hija (`childrenStore`), así que una línea vieja puede mostrar el informe nuevo. Fuera de la integración de ramas (`ChildrenDock`), nada queda esperando a que la madre lo atienda.
+- **«Marcar como leído»** (`TurnMeta.tsx:130-133`) solo marca ese turno como visto: quita «Nuevo» y deja de contar en la campana y la barra lateral. Hoy esa marca se quita sola al escribir en la conversación (`useEngineSession.ts:149-151`), pero no al ver el turno.
+
+**Causas del bug (verificadas).**
+1. **El origen se pierde en la cola.** Un mensaje de la madre que llega justo cuando la hija termina no entra como guía: va a la cola con `origin={"kind":"user"}` (`turns.py:1658`, `:1703`). Así se pierde `parent_message`, y el turno siguiente de la hija cuenta como escrito por el dueño. Resultado: la madre se entera **30 s después**, cuando la hija ya terminó.
+2. **El orden al terminar el turno.** `_start_next_queued` y `_goal_after_turn` corren **antes** que `children.after_turn` (`turns.py:1241-1243`). Si la hija arranca otro turno (de la cola o de un goal), `_report` la marca `completed` encima de `working`, y la madre recibe el aviso con la hija todavía trabajando. Después llega un segundo aviso.
+3. **Esperar a las hermanas** puede retrasar el aviso, y eso sí es intencional (`:527`).
+
+**Propuesta.**
+1. **La cola conserva el origen:** un mensaje de la madre encolado sigue siendo `parent_message` (y su prefijo); el turno que lo sirve informa al instante.
+2. **El informe primero:** `children.after_turn` corre antes de arrancar el siguiente turno de la cola o del goal. Si la hija sigue con otro turno, el aviso se guarda pero no se manda hasta que termine de verdad, así sale uno solo.
+3. **El aviso, a la vista hasta que se atiende:** si la madre está ocupada, aparece abajo del chat de la madre una tarjeta «*Hija X* terminó · Ver informe». Se quita cuando la madre lo trata en un turno (el informe entra a su estado de tarea) o cuando el dueño lo abre.
+   - **Abierta:** ¿el informe entra **en el turno en curso** de la madre como guía (como un mensaje guiado del dueño), en vez de esperar a que termine? Es posible con el mismo mecanismo de guía, pero cambia lo que la madre está haciendo. Lo decide el dueño.
+4. **Cada línea muestra su propio informe**, no el más reciente: el informe se guarda con el turno.
+5. **«Marcar como leído» se quita:** un turno se marca visto cuando su resultado aparece en pantalla con la ventana enfocada (o al escribir, como hoy).
+
+**Pruebas.**
+- **CLI:**
+  - un mensaje de la madre que llega al terminar la hija se encola como `parent_message` y despierta a la madre sin los 30 s;
+  - con un turno de goal o de cola detrás, hay un solo aviso, al final;
+  - con la madre ocupada, el aviso queda pendiente y llega al terminar.
+- **App:**
+  - la tarjeta pendiente aparece y se quita;
+  - cada línea con su informe;
+  - un turno visto en pantalla deja de ser «Nuevo» sin botón.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.

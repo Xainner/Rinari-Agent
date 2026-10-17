@@ -5,6 +5,7 @@ import { copyText } from '../../lib/clipboard'
 import { dispatchAction } from '../../services/actions'
 import { translate, type I18nKey } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
+import { commandMessage } from '../../services/engine'
 
 export default function DesktopContextMenu() {
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function DesktopContextMenu() {
         )
       void platform()
         .contextMenu.show(items, { x: event.clientX, y: event.clientY })
-        .catch((error) => toast.error(String(error)))
+        .catch((error) => toast.error(commandMessage(error)))
     }
     window.addEventListener('contextmenu', handler)
     return () => window.removeEventListener('contextmenu', handler)

@@ -63,6 +63,7 @@ it('opening a soul shows its text as Markdown, uses it, exports it and duplicate
   await userEvent.click(within(panel).getByRole('button', { name: /Duplicar para editar/ }))
   const form = await screen.findByTestId('soul-form')
   expect((within(form).getByLabelText('Nombre') as HTMLInputElement).value).toBe('Rinari (copia)')
+  expect(within(form).getByText('Duplicar alma')).toBeTruthy()
   await userEvent.click(within(form).getByTestId('soul-save'))
   await waitFor(() => expect(api.soulCreate).toHaveBeenCalledWith(expect.objectContaining({ id: 'rinari-copia', name: 'Rinari (copia)', identity: '# Rinari\n\nHabla **claro**.' })))
 })
@@ -70,7 +71,7 @@ it('opening a soul shows its text as Markdown, uses it, exports it and duplicate
 it('a new soul without text warns that only the level will speak, and can preview its Markdown', async () => {
   api.soulList.mockResolvedValue({ souls, active_id: null })
   mount()
-  await userEvent.click(await screen.findByRole('button', { name: 'Crear Soul' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Crear alma' }))
   const form = await screen.findByTestId('soul-form')
   expect(within(form).getByTestId('soul-empty-warning').textContent).toContain('solo el nivel de personalidad')
   await userEvent.type(within(form).getByLabelText('Identidad (texto del prompt)'), '**hola**')

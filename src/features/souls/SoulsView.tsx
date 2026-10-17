@@ -49,6 +49,8 @@ export function soulIdFor(name: string, taken: Set<string>): string {
 interface FormState {
   /** Editando una propia; `null` al crear o duplicar. */
   id: string | null
+  /** Copia de otra alma: el título dice «Duplicar alma», no «Crear» (#68). */
+  duplicate?: boolean
   name: string
   description: string
   identity: string
@@ -110,6 +112,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
   function edit(soul: SoulDetail, duplicate: boolean) {
     setForm({
       id: duplicate ? null : soul.id,
+      duplicate,
       name: duplicate ? t('soul.copyName', { name: soul.name }) : soul.name,
       description: soul.description,
       identity: soul.identity,
@@ -256,7 +259,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
       <Dialog open={form !== null} onOpenChange={(next) => !next && setForm(null)}>
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="soul-form">
           <DialogHeader>
-            <DialogTitle>{form?.id ? t('soul.edit') : t('soul.create')}</DialogTitle>
+            <DialogTitle>{form?.id ? t('soul.edit') : form?.duplicate ? t('soul.duplicateTitle') : t('soul.create')}</DialogTitle>
           </DialogHeader>
           {form && (
             <div className="space-y-4">

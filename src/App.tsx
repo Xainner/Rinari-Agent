@@ -294,7 +294,7 @@ function App() {
         confirmLabel: tr('update.restartAction'),
         cancelLabel: tr('common.cancel'),
       }).then((ok) => {
-        if (ok) void applyUpdate().catch((error) => toast.error(String(error)))
+        if (ok) void applyUpdate().catch((error) => toast.error(commandMessage(error)))
       })
     void onUpdateState((state) => {
       const before = previous
@@ -538,7 +538,7 @@ function App() {
         case 'about': goSettings('about'); break
         case 'report-bug':
           void platform().opener.openUrl(bugReportUrl(APP_VERSION, session.status, translate(lang, 'settings.about.issueTemplate')))
-            .catch(error => toast.error(String(error)))
+            .catch(error => toast.error(commandMessage(error)))
           break
         case 'engine': goEngine(); break
         case 'schedules': if (schedulesEnabled) goSchedules(); break
@@ -571,9 +571,9 @@ function App() {
           if (!found) { toast.success(translate(lang, 'update.upToDate')); return }
           toast(translate(lang, 'update.available', { v: found.version }), {
             description: found.unsigned ? translate(lang, 'update.unsigned') : undefined,
-            action: { label: translate(lang, 'update.download'), onClick: () => void downloadUpdate().catch(error => toast.error(String(error))) },
+            action: { label: translate(lang, 'update.download'), onClick: () => void downloadUpdate().catch(error => toast.error(commandMessage(error))) },
           })
-        }).catch(error => toast.error(String(error))); break
+        }).catch(error => toast.error(commandMessage(error))); break
       }
     }
     desktopActionRef.current = handle
@@ -681,7 +681,7 @@ function App() {
               session.activeProjectRoot ? () => goProject(session.activeProjectRoot as string) : null
             }
             onNewProjectChat={(id) => { session.openDraft(id); goChat() }}
-            onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(String(error)))}
+            onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(commandMessage(error)))}
             onMoveSessionProfile={profileMoves.moveSession}
             onMoveProjectProfile={profileMoves.moveProject}
             onNewChat={() => dispatchAction('new-chat')}

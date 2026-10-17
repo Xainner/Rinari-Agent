@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Bot, Columns3, ExternalLink, FileText, X } from 'lucide-react'
-import { useI18n } from '../../i18n'
+import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import type { FlowStage, ModelSummary } from '../../services/engine'
 import { STAGE_KIND_KEY, STAGE_STATUS_KEY, STAGE_STATUS_KIND, durationLabel, percent } from './flowModel'
 import { resolveExecutor } from './FlowStageCard'
@@ -130,7 +130,7 @@ export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, on
             {stage.files.map((file) => (
               <li key={file.path} className="flow-detail-row" title={file.path}>
                 <span className="inline-flex min-w-0 items-center gap-1"><FileText size={12} aria-hidden="true" /><span className="truncate">{file.path}</span></span>
-                <span className="flow-detail-count">{file.kind}</span>
+                <span className="flow-detail-count">{hasTranslation(`changes.kind.${file.kind}`) ? t(`changes.kind.${file.kind}` as I18nKey) : file.kind}</span>
               </li>
             ))}
             {stage.files_more > 0 && (

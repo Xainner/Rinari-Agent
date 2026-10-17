@@ -65,7 +65,7 @@ scenario(async () => {
 
   await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
   await wait(`!document.querySelector('${PANEL}')`)
-  await clickText('Crear Soul')
+  await clickText('Crear alma')
   await wait(`Boolean(document.querySelector('${FORM} [data-testid="soul-empty-warning"]'))`)
   await input(`${FORM} #soul-name`, 'Vacía')
   await click(`${FORM} [data-testid="soul-save"]`)

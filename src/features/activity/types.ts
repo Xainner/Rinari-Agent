@@ -63,6 +63,8 @@ export interface ToolTimelineItem extends TimelineItemBase {
   arguments?: string
   result?: string
   error?: string
+  /** El código del fallo (`NOT_FOUND`, `TIMEOUT`…): la causa se dice en el idioma de la app (#68). */
+  errorCode?: string
   durationMs?: number
   presentation?: ToolPresentation
 }

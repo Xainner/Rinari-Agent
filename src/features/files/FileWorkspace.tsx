@@ -118,7 +118,7 @@ export function FileLink({
           items.push({ kind: 'action', text: translate(lang, 'files.revealInFolder'), run: () => actions.reveal(target, turnId) })
         }
         items.push({ kind: 'action', text: translate(lang, 'app.copyAddress'), run: () => void copyText(target) })
-        void platform().contextMenu.show(items, { x: e.clientX, y: e.clientY }).catch((error) => toast.error(String(error)))
+        void platform().contextMenu.show(items, { x: e.clientX, y: e.clientY }).catch((error) => toast.error(commandMessage(error)))
       }}
       onClick={(e) => {
         if (target !== null && actions) {

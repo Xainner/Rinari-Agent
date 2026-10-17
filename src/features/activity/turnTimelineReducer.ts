@@ -477,6 +477,7 @@ function mergeEventItem(
       arguments: text(payload.arguments) || prior?.arguments,
       result: text(payload.result) || prior?.result,
       error: errorMessage(payload.error) ?? prior?.error,
+      errorCode: text(payload.error_code) || errorCode(payload.error) || prior?.errorCode,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
       presentation: nextPresentation,
     }

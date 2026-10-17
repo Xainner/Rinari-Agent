@@ -3,7 +3,7 @@ import { Download, Mic, Trash2, X, Ear } from 'lucide-react'
 import { toast } from 'sonner'
 import { Switch } from '../../components/ui/switch'
 import { useI18n, type I18nKey } from '../../i18n'
-import { commandMessage, engineApi, onEngineEvent, type SpeechStatus } from '../../services/engine'
+import { commandMessage, engineApi, errorText, onEngineEvent, type SpeechStatus } from '../../services/engine'
 import { useDictationPrefs } from './dictationPrefs'
 import { ProgressBar } from '../../components/ui/progress-bar'
 
@@ -38,8 +38,8 @@ export function useSpeechModelEvents(onReady: () => void) {
           return next
         })
         if (event === 'speech.model.failed') {
-          const error = (payload.error ?? {}) as { message?: string }
-          toast.error(error.message ?? 'download failed')
+          const error = (payload.error ?? {}) as { code?: string; message?: string }
+          toast.error(errorText(error.code ?? 'UNKNOWN', error.message))
         }
         onReady()
       }

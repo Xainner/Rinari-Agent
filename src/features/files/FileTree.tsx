@@ -10,7 +10,7 @@ import { copyText } from '../../lib/clipboard'
 import { useUIStore } from '../../stores/ui'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { MENTION_FILE_EVENT, TREE_FILE_MIME, type TreeFileRef } from './treeFile'
-import { engineApi, type WorkspaceDirEntry } from '../../services/engine'
+import { commandMessage, engineApi, type WorkspaceDirEntry } from '../../services/engine'
 import { SearchField } from '../../components/ui/SearchField'
 import { useFileWorkspace } from './FileWorkspace'
 
@@ -198,7 +198,7 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
         items.push({ kind: 'action', text: tr('files.tree.mention'), run: () => mention(entry) })
       if (entry.git) items.push({ kind: 'action', text: tr('files.tree.viewChanges'), run: () => useSessionDockStore.getState().openView(sessionId, 'changes') })
     }
-    void platform().contextMenu.show(items, { x: event.clientX, y: event.clientY }).catch((error) => toast.error(String(error)))
+    void platform().contextMenu.show(items, { x: event.clientX, y: event.clientY }).catch((error) => toast.error(commandMessage(error)))
   }
   const drag = (event: DragEvent, entry: WorkspaceDirEntry) => {
     if (entry.kind !== 'file') { event.preventDefault(); return }

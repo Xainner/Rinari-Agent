@@ -36,7 +36,7 @@ import { VisionWithheldNotice } from './VisionWithheldNotice'
 import { HumanCheckCard, humanCheckOf, type HumanCheck } from '../browser/HumanCheckCard'
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
-import { useI18n, type I18nKey } from '../../i18n'
+import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import type { ChatMessage } from '../../types'
 import Markdown from '../../components/Markdown'
@@ -249,6 +249,13 @@ function MoveToBackground({ toolCallId }: { toolCallId: string }) {
   )
 }
 
+/** Por qué falló una herramienta, en el idioma de la app (#68); el texto del
+ *  Engine queda debajo como detalle técnico. Sin código conocido, nada. */
+function toolCause(code: string | undefined, t: (key: I18nKey) => string): string | null {
+  const key = `toolError.${code}`
+  return code && hasTranslation(key) ? t(key) : null
+}
+
 function ToolTile({ tone, Icon }: { tone: string; Icon: typeof FileText }) {
   const wasRunning = useRef(tone === 'running')
   const celebrate = tone === 'done' && wasRunning.current
@@ -349,6 +356,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           </span>
         </summary>
         {instruction && <blockquote data-testid="agent-instruction" className="mt-1.5 max-h-60 overflow-auto whitespace-pre-wrap border-l-2 border-[var(--accent)]/40 pl-3 text-[12px] leading-relaxed text-[var(--text)] [overflow-wrap:anywhere]">{instruction.text}</blockquote>}
+        {failed && toolCause(item.errorCode, t) && <p role="alert" className="act-notice mt-1.5" data-tone="warning" data-testid="tool-cause"><span className="min-w-0">{toolCause(item.errorCode, t)}</span></p>}
         {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} toolCallId={item.toolCallId} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} toolCallId={item.toolCallId} /> : (item.arguments || item.result || item.error) && (
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-inset)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}

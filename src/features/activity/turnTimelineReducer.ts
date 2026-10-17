@@ -670,7 +670,8 @@ function normalizePersistedTurn(turn: TimelineTurn): TurnTimeline {
     items: [],
   }
   for (const item of turn.items) {
-    timeline = mergeIntoTimeline(timeline, item.event, item as Record<string, unknown>, timeline.startedAt)
+    // La página dice los ids una vez por turno (#91); cada fila los recibe aquí.
+    timeline = mergeIntoTimeline(timeline, item.event, { session_id: turn.session_id, turn_id: turn.turn_id, ...(item as Record<string, unknown>) }, timeline.startedAt)
   }
   if (turn.final_response && !timeline.items.some((item) => item.type === 'model' && item.outputKind === 'final')) {
     timeline = mergeIntoTimeline(timeline, 'model.content.completed', {

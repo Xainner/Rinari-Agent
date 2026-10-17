@@ -348,7 +348,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           </span>
         </summary>
         {instruction && <blockquote data-testid="agent-instruction" className="mt-1.5 max-h-60 overflow-auto whitespace-pre-wrap border-l-2 border-[var(--accent)]/40 pl-3 text-[12px] leading-relaxed text-[var(--text)] [overflow-wrap:anywhere]">{instruction.text}</blockquote>}
-        {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} toolCallId={item.toolCallId} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (
+        {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} toolCallId={item.toolCallId} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} toolCallId={item.toolCallId} /> : (item.arguments || item.result || item.error) && (
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-inset)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}
       </InspectionDetails>
@@ -508,12 +508,25 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
   return <span className="font-mono">{String(value)}</span>
 }
 
-function StructuredPresentation({ presentation, fallback }: {
+function StructuredPresentation({ presentation, fallback, toolCallId }: {
   presentation: NonNullable<Extract<TimelineItem, { type: 'tool' }>['presentation']>
   fallback?: string
+  toolCallId?: string
 }) {
-  const { lang } = useI18n()
-  const data = presentation.data
+  const { lang, t } = useI18n()
+  const sessionId = useContext(TurnSessionContext)
+  // El historial trae los datos con sus textos largos recortados (#91).
+  const [whole, setWhole] = useState<unknown>(undefined)
+  const [loadingWhole, setLoadingWhole] = useState(false)
+  const showWhole = () => {
+    if (!sessionId || !toolCallId) return
+    setLoadingWhole(true)
+    void engineApi.toolOutput(sessionId, toolCallId)
+      .then((result) => setWhole(result.data ?? null))
+      .catch((error) => toast.error(commandMessage(error)))
+      .finally(() => setLoadingWhole(false))
+  }
+  const data = whole !== undefined ? whole : presentation.data
   const entries = data && typeof data === 'object' && !Array.isArray(data)
     ? Object.entries(data as Record<string, unknown>).slice(0, 24)
     : []
@@ -533,6 +546,7 @@ function StructuredPresentation({ presentation, fallback }: {
     </dl> : data !== undefined ? <div className="p-2.5"><StructuredValue value={data} /></div> : fallback ? <pre className="max-h-44 overflow-auto whitespace-pre-wrap p-2.5 font-mono">{fallback}</pre> : <div className="p-2.5 text-[var(--text-subtle)]">{lang === 'es' ? 'Sin datos' : 'No data'}</div>}
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] p-2.5"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 break-all text-[var(--accent)] underline">{artifact}</span></FileLink>)}</div>}
     {presentation.error?.message && <div className="border-t border-red-400/20 p-2.5 text-[var(--danger)]">{presentation.error.message}</div>}
+    {presentation.page_truncated && whole === undefined && sessionId && toolCallId && <div className="border-t border-[var(--border)] px-2.5 py-1.5"><button type="button" data-testid="tool-output-whole" disabled={loadingWhole} onClick={showWhole} className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[var(--accent)] hover:bg-[var(--bg-hover)] disabled:opacity-40">{t('activity.showWhole')}</button></div>}
     {raw && <InspectionDetails inspectionId="json" className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">JSON</summary><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono">{raw}</pre></InspectionDetails>}
   </div>
 }

@@ -7,9 +7,11 @@
 //   `{ baseUrl, close }`. Sin `model`, el escenario usa un proveedor muerto
 //   (`127.0.0.1:9`) y los turnos que lance fallan a propósito.
 // - `fixtures(data)`: archivos que el escenario necesita en su carpeta.
+import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 
@@ -230,6 +232,17 @@ export const scenarios = {
   'soul-gallery': {
     title: 'Personalidad: galería de almas, panel con su texto, duplicar, exportar su soul.toml e identity.md, importarla de vuelta y el aviso de alma vacía',
     phases: ['exercise'],
+  },
+  'large-history': {
+    title: 'Conversación de 10 000 eventos: abre por su última página dentro del tiempo máximo, la página pesa poco y «Cargar anteriores» trae lo de antes',
+    phases: ['exercise'],
+    // Sembrada con el Python del Engine antes de arrancar (#91): por turnos reales serían minutos.
+    model: (data) => {
+      const cli = resolve(process.env.RINARI_CLI ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'DEV', 'RInari-CLI'))
+      const seed = join(dirname(fileURLToPath(import.meta.url)), 'large-history', 'seed.py')
+      execFileSync('uv', ['run', 'python', seed, join(data, 'engine')], { cwd: cli, stdio: 'inherit', env: { ...process.env, RINARI_HOME: join(data, 'engine') } })
+      return startFakeModel([{ text: 'HOLA' }])
+    },
   },
   'memory-places': {
     title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',

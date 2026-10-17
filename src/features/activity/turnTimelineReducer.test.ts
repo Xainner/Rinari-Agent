@@ -229,3 +229,13 @@ describe('peer provenance', () => {
     expect(state.timelines.t2.origin).toBeUndefined()
   })
 })
+
+it('a stored page says its ids once per turn; each row gets them back (#91)', () => {
+  const state = turnTimelineReducer(createInitialTimelineState(), { type: 'timeline/loaded', sessionId: 's9', turns: [{
+    turn_id: 't9', session_id: 's9', turn_index: 0, status: 'completed', started_at: '2026-10-17T10:00:00Z', completed_at: '2026-10-17T10:01:00Z',
+    user_message: 'Hola', final_response: '',
+    items: [{ event: 'governor.compact', activity_seq: 1, compaction_id: 'k1', status: 'completed', occurred_at: '2026-10-17T10:00:30Z' }],
+  }] })
+  const row = state.timelines.t9.items.find((item) => item.type === 'context') as { sessionId?: string } | undefined
+  expect(row?.sessionId).toBe('s9')
+})

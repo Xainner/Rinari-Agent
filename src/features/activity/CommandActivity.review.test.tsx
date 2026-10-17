@@ -66,3 +66,12 @@ it('an output the history cut can be shown whole (#91)', async () => {
   expect(toolOutput).toHaveBeenCalledWith('review-session', 'review')
   expect(screen.queryByTestId('tool-output-whole')).toBeNull()
 })
+
+it('a tool result whose data the history cut can be shown whole (#91)', async () => {
+  const { engineApi } = await import('../../services/engine')
+  vi.spyOn(engineApi, 'toolOutput').mockResolvedValue({ tool_call_id: 'review', stdout: null, stderr: null, data: { content: 'TODO EL CONTENIDO' } })
+  const { container } = show({ kind: 'tool', status: 'success', data: { content: 'TODO…' }, page_truncated: true })
+  fireEvent.click(screen.getByTestId('tool-output-whole'))
+  await waitFor(() => expect(container.textContent).toContain('TODO EL CONTENIDO'))
+  expect(screen.queryByTestId('tool-output-whole')).toBeNull()
+})

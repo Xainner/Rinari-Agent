@@ -3376,3 +3376,50 @@ button[data-copied] svg { animation: rinari-check-pop 0.4s var(--ease-out); }
 .soul-preview-label { display: block; margin: 0 0 3px 2px; font-size: 10.5px; color: var(--text-subtle); }
 .soul-preview-text { width: fit-content; max-width: 100%; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 4px 14px 14px 14px; background: linear-gradient(180deg, rgb(32 24 52 / 0.8), rgb(20 15 34 / 0.8)); font-size: 13px; line-height: 1.5; color: var(--text); animation: welcome-line-in 320ms var(--ease-out) both; }
 .soul-preview-line[data-kind='error'] .soul-preview-text { border-color: color-mix(in srgb, var(--warning) 28%, transparent); }
+
+/* Permisos de las conversaciones nuevas del proyecto (P-5): tres modos como un grupo con icono; Acceso completo en ámbar,
+   y debajo lo que hace el modo elegido. */
+.perm-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin-top: 6px; padding: 3px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(10 8 18 / 0.6); }
+.perm-option { display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: 6px; padding: 7px 8px; border: 1px solid transparent; border-radius: var(--r-sm); font-size: 12px; font-weight: 600; color: var(--text-muted); transition: color var(--dur-fast), background-color var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-base); }
+.perm-option > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.perm-option:hover { color: var(--text); background: rgb(255 255 255 / 0.03); }
+.perm-option[aria-checked='true'] { border-color: rgb(167 139 250 / 0.45); background: linear-gradient(135deg, rgb(147 88 255 / 0.32), rgb(124 58 237 / 0.18)); color: #fff; box-shadow: 0 4px 14px -8px rgb(147 88 255 / 0.9); }
+.perm-option[data-mode='read-only'][aria-checked='true'] { border-color: color-mix(in srgb, var(--info) 45%, transparent); background: color-mix(in srgb, var(--info) 14%, transparent); box-shadow: none; }
+.perm-option[data-mode='full-access'][aria-checked='true'] { border-color: color-mix(in srgb, var(--access-full) 55%, transparent); background: color-mix(in srgb, var(--access-full) 16%, transparent); color: var(--access-full); box-shadow: 0 4px 14px -8px var(--access-full); }
+.perm-picker-hint { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--text-muted); animation: welcome-line-in 260ms var(--ease-out) both; }
+.perm-picker-hint[data-mode='full-access'] { color: var(--access-full); }
+/* Tarea programada: el select de permisos en ámbar cuando lleva Acceso completo. */
+.schedule-permission[data-mode='full-access'] select { border-color: color-mix(in srgb, var(--access-full) 55%, transparent); color: var(--access-full); }
+
+/* Informe de uso, piezas nuevas: la línea del cliente, los límites por proveedor con su logo y el arreglo de cada aviso a la derecha. */
+.usage-report-client { display: block; max-width: 34rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-subtle); }
+.usage-report-provider-limits { display: flex; flex-direction: column; gap: 6px; }
+.usage-report-provider-limits + .usage-report-provider-limits { padding-top: 8px; border-top: 1px dashed var(--line-1); }
+.usage-report-line[data-tone='name'] { font-size: 12px; font-weight: 650; color: var(--text); }
+.usage-report-line[data-warning] { flex-wrap: wrap; }
+.usage-fix { margin-left: auto; }
+
+/* Personalidad como galería (#87): la cara de Rinari en las almas incluidas; el panel desplaza su texto con los botones
+   siempre a la vista; el editor no cambia de alto entre Texto y Vista previa. */
+.soul-card { cursor: pointer; transition: border-color var(--dur-base), box-shadow var(--dur-base), transform var(--dur-fast); }
+.soul-card:hover { border-color: var(--line-3); }
+.soul-card:active { transform: scale(0.99); }
+.soul-avatar { display: flex; width: 34px; height: 34px; flex-shrink: 0; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--line-2); border-radius: 11px; background: linear-gradient(135deg, rgb(232 121 249 / 0.2), rgb(147 88 255 / 0.14)); font: 700 15px/1 var(--font-display); color: var(--violet-200); }
+.soul-avatar[data-art] { background: var(--ink-3); }
+.soul-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.soul-card[data-active] .soul-avatar { border-color: rgb(167 139 250 / 0.6); box-shadow: var(--glow-1); }
+.soul-card-meta { margin-top: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.r-dialog.soul-panel { display: flex; max-height: 85vh; flex-direction: column; overflow: hidden; }
+.soul-panel-text { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-inset); font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+.soul-panel-actions { display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line-1); }
+.soul-editor { height: 20rem; margin-top: 4px; }
+textarea.soul-editor { resize: none; }
+.soul-editor-preview { overflow-y: auto; padding: 12px 16px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+.soul-empty-warning { display: flex; align-items: flex-start; gap: 7px; margin-top: 8px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--warning) 8%, transparent); font-size: 12px; line-height: 1.45; color: var(--text); }
+.soul-empty-warning > svg { flex-shrink: 0; margin-top: 1px; color: var(--warning); }
+
+/* «Ver completo» (#91): el mismo botón en la cabecera de un comando y al pie de un resultado con datos. */
+.tool-whole { display: inline-flex; height: 22px; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid rgb(167 139 250 / 0.35); border-radius: var(--r-pill); background: rgb(147 88 255 / 0.1); font-size: 11px; font-weight: 600; color: var(--accent-2); transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); }
+.tool-whole:hover:not(:disabled) { border-color: rgb(167 139 250 / 0.6); background: rgb(147 88 255 / 0.18); color: var(--text); }
+.tool-whole[data-loading] { cursor: default; opacity: 0.7; }
+.tool-whole-row { display: flex; justify-content: flex-end; padding: 6px 10px; border-top: 1px solid var(--border); }

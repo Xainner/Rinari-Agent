@@ -26,10 +26,14 @@ scenario(async () => {
   await wait(`Boolean(document.querySelector('${PANEL} [data-testid="soul-panel-text"] h1, ${PANEL} [data-testid="soul-panel-text"] h2, ${PANEL} [data-testid="soul-panel-text"] p'))`)
   await settleAnimations()
   await screenshot('02-panel')
+  // The text scrolls inside the panel; its buttons stay in view without scrolling.
+  assert.ok(await evaluate(`(() => { const panel = document.querySelector('${PANEL}').getBoundingClientRect(); const actions = document.querySelector('${PANEL} .soul-panel-actions').getBoundingClientRect(); return panel.bottom <= innerHeight && actions.bottom <= panel.bottom + 1 && actions.top >= panel.top })()`), 'the panel buttons are in view')
   passed.push('a card opens the soul with its text rendered')
 
   await clickText('Duplicar para editar', `${PANEL} button`, { includes: true })
   await wait(`document.querySelector('${FORM} #soul-name')?.value === 'Rinari (copia)'`)
+  await settleAnimations()
+  await screenshot('02b-form')
   await click(`${FORM} [data-testid="soul-save"]`)
   await wait(`Boolean(${cardNamed('Rinari (copia)')})`)
   passed.push('«Duplicar para editar» makes a custom copy')

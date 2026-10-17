@@ -30,6 +30,7 @@ import {
   LifeBuoy,
   Mic,
   ScanEye,
+  ChevronsDown,
 } from 'lucide-react'
 import { VisionWithheldNotice } from './VisionWithheldNotice'
 import { HumanCheckCard, humanCheckOf, type HumanCheck } from '../browser/HumanCheckCard'
@@ -513,7 +514,7 @@ function StructuredPresentation({ presentation, fallback, toolCallId }: {
   fallback?: string
   toolCallId?: string
 }) {
-  const { lang, t } = useI18n()
+  const { lang } = useI18n()
   const sessionId = useContext(TurnSessionContext)
   // El historial trae los datos con sus textos largos recortados (#91).
   const [whole, setWhole] = useState<unknown>(undefined)
@@ -546,13 +547,24 @@ function StructuredPresentation({ presentation, fallback, toolCallId }: {
     </dl> : data !== undefined ? <div className="p-2.5"><StructuredValue value={data} /></div> : fallback ? <pre className="max-h-44 overflow-auto whitespace-pre-wrap p-2.5 font-mono">{fallback}</pre> : <div className="p-2.5 text-[var(--text-subtle)]">{lang === 'es' ? 'Sin datos' : 'No data'}</div>}
     {presentation.artifacts && presentation.artifacts.length > 0 && <div className="border-t border-[var(--border)] p-2.5"><span className="mr-2 text-[var(--text-subtle)]">{lang === 'es' ? 'Artefactos' : 'Artifacts'}:</span>{presentation.artifacts.map((artifact) => <FileLink key={artifact} href={artifact}><span className="mr-2 break-all text-[var(--accent)] underline">{artifact}</span></FileLink>)}</div>}
     {presentation.error?.message && <div className="border-t border-red-400/20 p-2.5 text-[var(--danger)]">{presentation.error.message}</div>}
-    {presentation.page_truncated && whole === undefined && sessionId && toolCallId && <div className="border-t border-[var(--border)] px-2.5 py-1.5"><button type="button" data-testid="tool-output-whole" disabled={loadingWhole} onClick={showWhole} className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[var(--accent)] hover:bg-[var(--bg-hover)] disabled:opacity-40">{t('activity.showWhole')}</button></div>}
+    {presentation.page_truncated && whole === undefined && sessionId && toolCallId && <div className="tool-whole-row"><WholeButton loading={loadingWhole} onClick={showWhole} /></div>}
     {raw && <InspectionDetails inspectionId="json" className="border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--text-subtle)]"><summary className="cursor-pointer">JSON</summary><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono">{raw}</pre></InspectionDetails>}
   </div>
 }
 
+/** «Ver completo» (#91): pide entera una salida que el historial trajo recortada. */
+function WholeButton({ loading, onClick }: { loading: boolean; onClick: () => void }) {
+  const { t } = useI18n()
+  return (
+    <button type="button" data-testid="tool-output-whole" className="tool-whole" data-loading={loading || undefined} disabled={loading} onClick={onClick}>
+      {loading ? <LoaderCircle size={11} className="motion-safe:animate-spin" aria-hidden="true" /> : <ChevronsDown size={11} aria-hidden="true" />}
+      {t('activity.showWhole')}
+    </button>
+  )
+}
+
 function CommandPresentation({ presentation: shown, argumentsText, toolCallId }: { presentation: NonNullable<Extract<TimelineItem, { type: 'tool' }>['presentation']>; argumentsText?: string; toolCallId?: string }) {
-  const { lang, t } = useI18n()
+  const { lang } = useI18n()
   const sessionId = useContext(TurnSessionContext)
   // El historial trae la salida recortada (#91); «Ver completo» la pide entera.
   const [whole, setWhole] = useState<{ stdout: string | null; stderr: string | null } | null>(null)
@@ -581,7 +593,7 @@ function CommandPresentation({ presentation: shown, argumentsText, toolCallId }:
       {typeof exitCode === 'number' && <span className={failed ? 'text-[var(--danger)]' : 'text-[var(--success)]'}>{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
       {presentation.stderr_warning && <span className="text-[var(--warning)]">{lang === 'es' ? 'stderr con código 0' : 'stderr with exit 0'}</span>}
       {presentation.truncated && <span className="text-[var(--warning)]">{lang === 'es' ? 'salida visible truncada' : 'visible output truncated'}</span>}
-      {presentation.page_truncated && sessionId && toolCallId && <button type="button" data-testid="tool-output-whole" disabled={loadingWhole} onClick={showWhole} className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[var(--accent)] hover:bg-[var(--bg-hover)] disabled:opacity-40">{t('activity.showWhole')}</button>}
+      {presentation.page_truncated && sessionId && toolCallId && <WholeButton loading={loadingWhole} onClick={showWhole} />}
       {presentation.capture_truncated && <span className="text-[var(--danger)]">{lang === 'es' ? 'captura completa limitada a 50 MiB' : 'full capture limited to 50 MiB'}</span>}
       <button type="button" onClick={copy} disabled={!displayCommand} className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-[var(--bg-hover)] disabled:opacity-40"><Copy size={11} />{lang === 'es' ? 'Copiar' : 'Copy'}</button>
     </div>

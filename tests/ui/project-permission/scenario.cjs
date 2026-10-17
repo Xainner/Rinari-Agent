@@ -13,7 +13,8 @@ const CHIP = '.composer-surface button[title="Permisos de este chat"]'
 
 const project = async (id) => (await command('project_list', { include_archived: true })).projects.find((p) => p.id === id)
 const permissionOf = async (id) => (await command('session_permission_get', { reference: id })).session.permission_profile
-const choose = (value) => evaluate(`(() => {const el=document.querySelector(${JSON.stringify(SELECT)});Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+// Los modos son un grupo de radios (data-value dice el elegido); se elige pulsando el botón del modo.
+const choose = (value) => click(`${SELECT} [data-mode=${JSON.stringify(value)}]`)
 
 scenario(async () => {
   const passed = []
@@ -26,9 +27,11 @@ scenario(async () => {
   const header = `section[aria-label="Proyectos"] button[title=${JSON.stringify(alfa.root)}]`
   await click(`${header} + button + [aria-label="Opciones del proyecto"]`)
   await clickText('Editar', '[role="menuitem"]')
-  await wait(`document.querySelector(${JSON.stringify(SELECT)})?.value === 'workspace'`)
+  await wait(`document.querySelector(${JSON.stringify(SELECT)})?.dataset.value === 'workspace'`)
   await choose('read-only')
   await wait(`(async()=> (await window.rinariDesktop.command('project_list',{include_archived:true})).projects.find(p=>p.id===${JSON.stringify(alfa.id)}).permission_profile==='read-only')()`)
+  await settleAnimations()
+  await screenshot('project-page')
   passed.push('the project page sets the mode new conversations start in')
 
   await clickText('Nueva sesión')

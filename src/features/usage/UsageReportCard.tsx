@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Check, CircleCheck, Copy, Download, LoaderCircle, RotateCcw, TriangleAlert } from 'lucide-react'
+import { ArrowRight, BarChart3, Check, CircleCheck, Copy, Download, LoaderCircle, Minimize2, RotateCcw, TriangleAlert } from 'lucide-react'
+import ProviderLogo from '../../components/ProviderLogo'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
@@ -120,7 +121,7 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
         <span className="min-w-0">
           <span className="usage-report-title">{t('usage.title')}</span>
           <span className="usage-report-when">{when}</span>
-          {who && <span className="usage-report-when" data-testid="usage-report-client">{who}</span>}
+          {who && <span className="usage-report-client" data-testid="usage-report-client" title={who}>{who}</span>}
         </span>
         <span className="flex-1" />
         <div role="tablist" aria-label={t('usage.scope')} className="seg-tabs w-fit">
@@ -146,7 +147,12 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
           <p className="usage-report-label">{t('usage.limits')}</p>
           {limits.map((item) => (
             <div key={item.provider_id} className="usage-report-provider-limits" data-provider={item.provider_id}>
-              {(limits.length > 1 || item.provider_alias) && <p className="usage-report-line" data-tone="name">{item.provider_alias ?? item.provider_id}</p>}
+              {(limits.length > 1 || item.provider_alias) && (
+                <p className="usage-report-line" data-tone="name">
+                  <ProviderLogo productId={item.product_id ?? undefined} alias={item.provider_alias ?? undefined} size={14} />
+                  {item.provider_alias ?? item.provider_id}
+                </p>
+              )}
               {item.windows.map((window) => (
                 <div key={window.id} className="usage-report-window">
                   <span>{windowLabel(window.id, window.label)}</span>
@@ -220,10 +226,14 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
               {t(`usage.warning.${warning.kind}` as I18nKey, { n: warning.count, max: warning.max ?? 0, model: warning.model ?? '' })}
               {/* El arreglo de un toque de cada aviso (#78). */}
               {FIX_COMPACT.has(warning.kind) && report.scope === 'session' && sessionId && (
-                <button type="button" className="btn btn-quiet btn-xs" disabled={compacting} data-testid="usage-fix" onClick={() => void compactNow()}>{t('context.compactNow')}</button>
+                <button type="button" className="btn btn-secondary btn-xs usage-fix" disabled={compacting} data-testid="usage-fix" onClick={() => void compactNow()}>
+                  {compacting ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Minimize2 size={12} aria-hidden="true" />} {t('context.compactNow')}
+                </button>
               )}
               {FIX_MODELS.has(warning.kind) && (
-                <button type="button" className="btn btn-quiet btn-xs" data-testid="usage-fix" onClick={() => useUIStore.getState().goSettings('models')}>{t('usage.fix.models')}</button>
+                <button type="button" className="btn btn-secondary btn-xs usage-fix" data-testid="usage-fix" onClick={() => useUIStore.getState().goSettings('models')}>
+                  {t('usage.fix.models')} <ArrowRight size={12} aria-hidden="true" />
+                </button>
               )}
             </p>
           ))}

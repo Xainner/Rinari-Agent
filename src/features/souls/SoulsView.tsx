@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Copy, Download, Pencil, Trash2, Upload } from 'lucide-react'
+import { Check, Copy, Download, Pencil, Trash2, TriangleAlert, Upload } from 'lucide-react'
+import { art } from '../rinari/art'
 import { toast } from 'sonner'
 import CharacterIntensity from './CharacterIntensity'
 import {
@@ -210,29 +211,31 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
               onClick={() => void open(soul.id)}
             >
               <header className="profile-card-head">
-                <span className="soul-avatar" aria-hidden="true">{soul.name.trim().charAt(0).toUpperCase() || '?'}</span>
+                <span className="soul-avatar" aria-hidden="true" data-art={soul.source !== 'custom' || undefined}>
+                  {soul.source !== 'custom' ? <img src={art.expression('idle')} alt="" draggable={false} /> : soul.name.trim().charAt(0).toUpperCase() || '?'}
+                </span>
                 <span className="profile-card-name">{soul.name}</span>
                 {active && <span className="r-chip" data-tone="accent"><Check size={11} aria-hidden="true" /> {t('soul.inUse')}</span>}
               </header>
               {soul.description !== '' && <p className="profile-card-desc">{soul.description}</p>}
-              <p className="text-[11px] text-[var(--text-subtle)]">{soul.source === 'custom' ? t('soul.custom') : t('soul.bundled')} · v{soul.version}</p>
+              <p className="soul-card-meta">{soul.source === 'custom' ? t('soul.custom') : t('soul.bundled')} · v{soul.version}</p>
             </button>
           )
         })}
       </div>
 
       <Dialog open={detail !== null} onOpenChange={(next) => !next && setDetail(null)}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="soul-panel">
+        <DialogContent className="soul-panel max-w-2xl" data-testid="soul-panel">
           {detail && (
             <>
               <DialogHeader>
                 <DialogTitle>{detail.name}</DialogTitle>
                 <DialogDescription>{detail.description || (detail.source === 'custom' ? t('soul.custom') : t('soul.bundled'))}</DialogDescription>
               </DialogHeader>
-              <div className="soul-panel-text rounded-xl bg-[var(--bg-app)] px-4 py-3 text-[13px] leading-relaxed text-[var(--text-muted)]" data-testid="soul-panel-text">
+              <div className="soul-panel-text" data-testid="soul-panel-text">
                 {detail.identity.trim() ? <Markdown>{detail.identity}</Markdown> : <p>{t('soul.emptyText')}</p>}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="soul-panel-actions">
                 {detail.id !== activeId && (
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => { void use(detail.id); setDetail(null) }}>{t('soul.use')}</button>
                 )}
@@ -278,9 +281,9 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
                   </div>
                 </div>
                 {preview
-                  ? <div className="mt-1 min-h-[14rem] rounded-xl border border-[var(--border)] px-4 py-3 text-[13px] leading-relaxed text-[var(--text-muted)]" data-testid="soul-form-preview">{form.identity.trim() ? <Markdown>{form.identity}</Markdown> : <p>{t('soul.emptyText')}</p>}</div>
-                  : <textarea id="soul-identity" value={form.identity} onChange={(e) => setForm({ ...form, identity: e.target.value })} rows={14} spellCheck={false} className={`${inputClass} font-mono text-[13px] leading-relaxed`} />}
-                {form.identity.trim() === '' && <p className="mt-1 text-xs text-[var(--warning,var(--text-subtle))]" data-testid="soul-empty-warning">{t('soul.emptyWarning')}</p>}
+                  ? <div className="soul-editor soul-editor-preview" data-testid="soul-form-preview">{form.identity.trim() ? <Markdown>{form.identity}</Markdown> : <p>{t('soul.emptyText')}</p>}</div>
+                  : <textarea id="soul-identity" value={form.identity} onChange={(e) => setForm({ ...form, identity: e.target.value })} rows={14} spellCheck={false} className={`${inputClass} soul-editor font-mono text-[13px] leading-relaxed`} />}
+                {form.identity.trim() === '' && <p className="soul-empty-warning" data-testid="soul-empty-warning"><TriangleAlert size={13} aria-hidden="true" />{t('soul.emptyWarning')}</p>}
               </div>
             </div>
           )}

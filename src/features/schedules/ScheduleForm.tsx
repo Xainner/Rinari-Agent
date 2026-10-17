@@ -231,7 +231,7 @@ export default function ScheduleForm() {
                     <option value="review">REVIEW</option>
                   </select>
                 </label>
-                <label className="block sm:col-span-2">
+                <label className="block sm:col-span-2 schedule-permission" data-mode={draft.permission_profile ?? 'project'}>
                   <span className={labelClass}>{t('schedules.form.permission')}</span>
                   <select
                     value={draft.permission_profile ?? ''}

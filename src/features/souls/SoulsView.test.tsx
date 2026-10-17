@@ -21,7 +21,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../../services/engine', () => ({ engineApi: api, commandMessage: String }))
 const openFiles = vi.hoisted(() => vi.fn())
 vi.mock('../../platform', () => ({ platform: () => ({ dialog: { openFiles } }) }))
-vi.mock('../rinari/art', () => ({ art: { face: () => '', chibi: () => '' } }))
+vi.mock('../rinari/art', () => ({ art: { face: () => '', chibi: () => '', expression: () => '' } }))
 
 import SoulsView, { soulIdFor } from './SoulsView'
 

@@ -27,7 +27,7 @@ scenario(async () => {
   const deps = await evaluate(`document.querySelector('[data-testid="disable-provider-deps"]').innerText`)
   assert.match(deps, /Es el proveedor activo/)
   assert.match(deps, new RegExp(`Lo usan 1 agentes: ${agent}`))
-  assert.equal(await evaluate(`document.querySelector('#provider-replacement').value`), spare.id)
+  assert.equal(await evaluate(`document.querySelector('#provider-replacement').dataset.value`), spare.id)
   await settleAnimations()
   await screenshot('disable-dialog')
   await clickText('Desactivar', '[data-testid="disable-provider-dialog"] button')

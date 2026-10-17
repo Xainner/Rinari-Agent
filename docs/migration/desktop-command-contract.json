@@ -4872,8 +4872,8 @@
       "args": [
         {
           "name": "id",
-          "type": "String",
-          "optional": false
+          "type": "Option<String>",
+          "optional": true
         },
         {
           "name": "name",
@@ -4908,7 +4908,7 @@
         {
           "key": "id",
           "from": "id",
-          "optional": false
+          "optional": true
         },
         {
           "key": "name",

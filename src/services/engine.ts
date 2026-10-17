@@ -1626,7 +1626,8 @@ export const engineApi = {
       project_policy: projectPolicy ?? null,
     }),
   bundleCreate: (input: {
-    id: string;
+    /** Advanced: without it the Engine makes one from the name (#86). */
+    id?: string;
     name: string;
     description?: string;
     soul_id?: string;
@@ -1634,7 +1635,7 @@ export const engineApi = {
     agents?: Record<string, { model?: string; fallback?: string }>;
   }) =>
     platform().command<{ profile: ProfileBundle }>("bundle_create", {
-      id: input.id,
+      id: input.id ?? null,
       name: input.name,
       description: input.description ?? null,
       soul_id: input.soul_id ?? null,

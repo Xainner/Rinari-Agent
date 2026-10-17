@@ -8,6 +8,7 @@ import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import { bornAt } from '../../features/projects/workspaceModel'
 import { AppSidebar, type AppSidebarProps } from './AppSidebar'
 import { useUIStore } from '../../stores/ui'
+import { useProfileStore } from '../../features/profiles/profileStore'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const now = '2026-09-09T00:00:00Z'
@@ -148,6 +149,21 @@ describe('AppSidebar project and session lifecycle', () => {
     await user.click(screen.getAllByRole('button', { name: 'Opciones de sesión' }).at(-1)!)
     await user.click(screen.getByRole('menuitem', { name: /Restaurar/ }))
     expect(props.onRestoreSession).toHaveBeenCalledWith('archived')
+  })
+
+  it('shows only the archived work of the active profile, and no section when it has none (#85)', () => {
+    useProfileStore.setState({ activeId: 'trabajo' })
+    try {
+      renderSidebar({
+        archivedProjects: [{ ...project('other', 'Other profile project', true), rinari_profile_id: 'default' } as ProjectSummary],
+        archivedSessions: [{ ...session('mine', 'Mine archived', null, 'archived'), rinari_profile_id: 'trabajo' } as SessionSummary],
+      })
+      expect(screen.queryByText(/Other profile project/)).toBeNull()
+      expect(screen.queryByRole('button', { name: /Proyectos archivados/ })).toBeNull()
+      expect(screen.getByRole('button', { name: /Sesiones archivadas/ })).toBeTruthy()
+    } finally {
+      useProfileStore.setState({ activeId: null })
+    }
   })
 
   it('exposes fork, archive and rename instead of hiding engine lifecycle actions', async () => {

@@ -35,7 +35,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "bundle_activate": {"method":"profile_bundle.activate","params":[{"key":"id","from":"id","optional":false}]},
   "bundle_active": {"method":"profile_bundle.active","params":[]},
   "bundle_apply": {"method":"profile_bundle.apply","params":[{"key":"id","from":"id","optional":false},{"key":"session_ref","from":"session_ref","optional":true}]},
-  "bundle_create": {"method":"profile_bundle.create","params":[{"key":"id","from":"id","optional":false},{"key":"name","from":"name","optional":false},{"key":"description","from":"description","optional":true},{"key":"soul_id","from":"soul_id","optional":true},{"key":"mode","from":"mode","optional":true},{"key":"agents","from":"agents","optional":true}]},
+  "bundle_create": {"method":"profile_bundle.create","params":[{"key":"id","from":"id","optional":true},{"key":"name","from":"name","optional":false},{"key":"description","from":"description","optional":true},{"key":"soul_id","from":"soul_id","optional":true},{"key":"mode","from":"mode","optional":true},{"key":"agents","from":"agents","optional":true}]},
   "bundle_list": {"method":"profile_bundle.list","params":[]},
   "bundle_remove": {"method":"profile_bundle.remove","params":[{"key":"id","from":"id","optional":false},{"key":"reassign_to","from":"reassign_to","optional":true}]},
   "bundle_update": {"method":"profile_bundle.update","params":[{"key":"id","from":"id","optional":false},{"key":"name","from":"name","optional":true},{"key":"description","from":"description","optional":true},{"key":"soul_id","from":"soul_id","optional":true},{"key":"mode","from":"mode","optional":true},{"key":"agents","from":"agents","optional":true}]},

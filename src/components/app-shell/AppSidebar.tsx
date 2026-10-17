@@ -285,19 +285,22 @@ export function AppSidebar({
     observer.observe(section)
     return () => observer.disconnect()
   }, [placeTraveler])
+  // Lo archivado, como lo activo, solo del perfil en uso (#85).
+  const profileArchivedProjects = useMemo(() => archivedProjects.filter((project) => inProfile(project, activeProfileId)), [archivedProjects, activeProfileId])
+  const profileArchivedSessions = useMemo(() => archivedSessions.filter((session) => inProfile(session, activeProfileId)), [archivedSessions, activeProfileId])
   const archivedProjectResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
-    if (!needle) return archivedProjects
-    return archivedProjects.filter((project) =>
+    if (!needle) return profileArchivedProjects
+    return profileArchivedProjects.filter((project) =>
       [project.name, project.description, project.root]
         .some((value) => value?.toLocaleLowerCase().includes(needle)),
     )
-  }, [archivedProjects, query])
+  }, [profileArchivedProjects, query])
   const archivedSessionResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
-    if (!needle) return archivedSessions
-    return archivedSessions.filter((session) => session.title?.toLocaleLowerCase().includes(needle))
-  }, [archivedSessions, query])
+    if (!needle) return profileArchivedSessions
+    return profileArchivedSessions.filter((session) => session.title?.toLocaleLowerCase().includes(needle))
+  }, [profileArchivedSessions, query])
 
   const confirmDelete = () => {
     if (!deleteTarget) return

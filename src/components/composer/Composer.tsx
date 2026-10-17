@@ -22,6 +22,7 @@ import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import { ProjectChip } from './ProjectChip'
 import EffortPicker from './EffortPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
@@ -106,6 +107,11 @@ interface ComposerProps {
   mentionTargets?: readonly PaneMentionTarget[]
   /** Envía `text` al panel `targetId` como tarea del usuario (reenvío manual). */
   onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
+  /**
+   * Proyecto de una conversación nueva, elegible antes del primer envío (#42).
+   * Solo en un borrador; sin él no hay chip.
+   */
+  draftProject?: { projectId: string | null; onChange: (projectId: string | null) => void }
 }
 
 const MODES = ['plan', 'build', 'review'] as const
@@ -174,6 +180,7 @@ export default function Composer({
   onSearchFiles,
   mentionTargets,
   onSendToTarget,
+  draftProject,
 }: ComposerProps) {
   const { t } = useI18n()
   const draftKey = explicitDraftKey ?? (sessionId || 'draft')
@@ -780,6 +787,12 @@ export default function Composer({
 
   return (
     <div ref={rootRef} className="composer-root relative">
+      {/* El proyecto de una conversación nueva va encima del composer (#42; decisión del dueño). */}
+      {draftProject && !sessionId && (
+        <div className="composer-context-row">
+          <ProjectChip projectId={draftProject.projectId} onChange={draftProject.onChange} primary={primary} disabled={isSubmitting} />
+        </div>
+      )}
       <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} data-working={isStreaming || undefined} className="composer-surface rounded-[22px] border p-2.5 transition-colors">
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">

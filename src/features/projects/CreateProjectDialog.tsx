@@ -15,8 +15,22 @@ import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 interface Row {
   path: string
-  trust: boolean
+  /** `null` until the owner touches it: then the folder's own default applies (#60). */
+  trust: boolean | null
 }
+
+/**
+ * «Confiar» starts on (#60), except for a folder that brings hooks or MCP
+ * servers of its own: those run commands, so the owner reviews them first.
+ * While the check is in flight the switch shows on; «Crear» waits for it.
+ */
+function defaultTrust(check: ProjectFolderCheck | undefined): boolean {
+  if (!check) return true
+  if (check.trust_state === 'trusted') return true
+  return !(check.has_hooks || check.has_mcp)
+}
+
+const trustOf = (row: Row, check: ProjectFolderCheck | undefined) => row.trust ?? defaultTrust(check)
 
 const ERROR_KEYS: Record<string, I18nKey> = {
   NOT_FOUND: 'createProject.error.notFound',
@@ -64,7 +78,7 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
     setName('')
     setNameTouched(false)
     setDescription('')
-    setRows(initialPaths.map((path) => ({ path, trust: false })))
+    setRows(initialPaths.map((path) => ({ path, trust: null })))
     setChecks([])
     setProfileId(activeId)
   }, [open, initialPaths, activeId])
@@ -90,7 +104,7 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
 
   const allValid = rows.length > 0 && checks.length === rows.length && checks.every((check) => check.ok)
   const canCreate = name.trim().length > 0 && allValid && !checking && !creating
-  const trusted = rows.filter((row) => row.trust).length
+  const trusted = rows.filter((row, index) => trustOf(row, checks[index])).length
   const targetProfile = profiles.find((profile) => profile.id === (profileId ?? activeId)) ?? null
   const summary = useMemo(() => t('createProject.summary', {
     name: name.trim() || t('createProject.unnamed'),
@@ -102,7 +116,8 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
   async function addFolders() {
     const picked = await platform().dialog.openFiles({ directory: true, multiple: true, title: t('createProject.pick') })
     if (!picked?.length) return
-    setRows((current) => [...current, ...picked.filter((path) => !current.some((row) => row.path === path)).map((path) => ({ path, trust: false }))])
+    setRows((current) => [...current, ...picked.filter((path) => !current.some((row) => row.path === path))
+      .map((path) => ({ path, trust: null }))])
   }
 
   function makePrimary(index: number) {
@@ -118,9 +133,11 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
       const result = await engineApi.projectCreate({
         name: name.trim(),
         description: description.trim() || undefined,
-        folders: rows.map((row) => ({ path: row.path, trust: row.trust })),
+        folders: rows.map((row, index) => ({ path: row.path, trust: trustOf(row, checks[index]) })),
         rinariProfileId: target,
-        open: options.openSession ?? true,
+        // A conversation is not created until the first message (#60): the
+        // caller opens a draft of the project. `open: true` stays for the CLI.
+        open: options.openSession ?? false,
       })
       if (target && target !== activeId) await activate(target)
       // Like every other creation surface: the new project shows in the sidebar, open and unfiltered.
@@ -186,6 +203,8 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
               const check = checks[index]
               const error = check && !check.ok ? check.error : null
               const branch = branchLabel(check?.git_head ?? null)
+              const trust = trustOf(row, check)
+              const bringsCommands = Boolean(check?.ok && (check.has_hooks || check.has_mcp))
               return (
                 <li key={row.path} className={cn('create-project-row', error && 'is-invalid')} data-testid="create-project-row">
                   <span className="create-project-state" aria-hidden="true">
@@ -204,9 +223,17 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
                         {t(ERROR_KEYS[error.code] ?? 'createProject.error.notFound', { project: error.project_name ?? '' })}
                       </span>
                     )}
+                    {!error && check?.trust_state === 'trusted' && (
+                      <span className="create-project-trusted" data-testid="create-project-already-trusted">{t('createProject.alreadyTrusted')}</span>
+                    )}
+                    {!error && bringsCommands && check?.trust_state !== 'trusted' && (
+                      <span className="create-project-commands" data-testid="create-project-commands">
+                        <CircleAlert size={12} aria-hidden="true" /> {t('createProject.bringsCommands')}
+                      </span>
+                    )}
                   </span>
-                  <label className="create-project-trust" data-on={row.trust || undefined}>
-                    <input type="checkbox" className="create-project-switch" checked={row.trust} onChange={(event) => setRows((current) => current.map((item, i) => (i === index ? { ...item, trust: event.target.checked } : item)))} />
+                  <label className="create-project-trust" data-on={trust || undefined}>
+                    <input type="checkbox" className="create-project-switch" checked={trust} onChange={(event) => setRows((current) => current.map((item, i) => (i === index ? { ...item, trust: event.target.checked } : item)))} />
                     <span>{t('createProject.trust')}</span>
                   </label>
                   {index > 0 && (

@@ -12,6 +12,7 @@ import { applyChecklistEvent } from '../checklist/checklistStore'
 import { applyGoalEvent } from '../goal/goalStore'
 import { applyResumeEvent } from '../resume/resumeStore'
 import { applyExternalBrowserEvent } from '../browser/externalBrowserStore'
+import { applyTrustChangedEvent } from '../projects/trustWarning'
 import { markRenamedFromEvent } from '../../stores/titleMotion'
 import { onProfileEvent } from '../profiles/profileStore'
 import { applyFollowupEvent } from '../followups/followupStore'
@@ -67,6 +68,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       // El aviso de «Rinari retomó…» lo da el notificador, con las reglas de los demás (#24).
       if (event.event === 'session.resume.updated') applyResumeEvent(event.payload)
       if (event.event === 'browser.external.changed') applyExternalBrowserEvent(event.payload)
+      if (event.event === 'project.trust.changed') applyTrustChangedEvent(event.payload)
       applyFollowupEvent(event.event, event.payload)
       if (event.event === 'session.renamed') markRenamedFromEvent(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()

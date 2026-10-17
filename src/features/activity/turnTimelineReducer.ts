@@ -15,6 +15,8 @@ export const TRIGGERS_SESSION_REFRESH = new Set([
   'session.mode.changed',
   'session.model.changed',
   'session.renamed',
+  // La confianza de un proyecto cambió en el turno (#38): la barra lateral la muestra.
+  'project.trust.changed',
 ])
 
 export type TimelineAction =

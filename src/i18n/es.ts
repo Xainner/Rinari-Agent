@@ -326,6 +326,7 @@ export const es = {
   'project.untrustedWarning': 'Proyecto no confiado: las instrucciones locales están desactivadas.',
   'project.trustChanged': 'La confianza de este proyecto necesita revalidarse.',
   'project.trustChangedDetail': 'Su identidad Git cambió desde que confiaste (un remoto nuevo o un repositorio re-creado). Sus instrucciones locales quedan desactivadas hasta que vuelvas a confiar.',
+  'project.nowGitRepo': "La carpeta ahora es un repositorio Git y sigue siendo de confianza.",
   'project.trustAgain': 'Confiar de nuevo',
   'project.trusted': 'Proyecto marcado como confiable.',
   'project.copyPath': 'Copiar ruta',
@@ -355,6 +356,8 @@ export const es = {
   'createProject.trust': "Confiar",
   'createProject.trustAll': "Confiar en todas",
   'createProject.trustExplain': "Confiar en una carpeta deja que Rinari use sus instrucciones (RINARI.md) y sus hooks (.rinari/hooks.json), y que la edite sin preguntar. Los servidores MCP del proyecto siguen la confianza de la carpeta principal. No es Acceso completo: fuera de estas carpetas sigue preguntando. Una carpeta extra sin confianza queda fuera del proyecto hasta que confíes en ella.",
+  'createProject.alreadyTrusted': 'Ya es de confianza',
+  'createProject.bringsCommands': 'Esta carpeta trae hooks o servidores MCP que ejecutan comandos; revísalos antes de confiar.',
   'createProject.makePrimary': "Hacerla principal",
   'createProject.remove': "Quitar la carpeta",
   'createProject.summary': "Se creará «{name}» en el perfil «{profile}» con {folders} carpetas ({trusted} de confianza).",
@@ -1649,6 +1652,7 @@ export const es = {
   'sidebar.viewFlow': 'Ver flujo',
   'cmd.openFlows': 'Abrir flujos',
   'settings.shortcuts.flows': 'Abrir el Flujo en el panel lateral',
+  'settings.shortcuts.projectPicker': "Elegir el proyecto de una conversación nueva",
   'topbar.view.flows': 'Flujos',
   'topbar.label': 'Barra de estado',
   'topbar.workspaceView': 'Vista de trabajo',
@@ -3225,6 +3229,13 @@ export const es = {
   'composer.slash.hintMove': 'moverse',
   'composer.slash.hintComplete': 'completar',
   'composer.slash.hintPick': 'elegir',
+  'composer.project.none': "Sin proyecto",
+  'composer.project.noneDetail': "Una conversación general, sin carpeta",
+  'composer.project.choose': "Proyecto de esta conversación",
+  'composer.project.search': "Buscar proyecto…",
+  'composer.project.recent': "Recientes",
+  'composer.project.noneFound': "Ningún proyecto coincide",
+  'composer.project.openFolder': "Abrir carpeta…",
 } as const
 
 export type I18nKey = keyof typeof es

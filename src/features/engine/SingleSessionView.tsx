@@ -13,6 +13,7 @@ import { runUiCommand } from './slashUi'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
 import { ZoneBoundary } from '../../components/ZoneBoundary'
+import { moveNormalDraft } from '../projects/draftProject'
 
 /**
  * Vista Normal: la sesión activa con las mismas primitivas y el mismo
@@ -80,6 +81,7 @@ export default function SingleSessionView({
         messages={messages}
         sessionId={sessionId}
         composerDraftKey={draft?.key}
+        draftProject={draft ? { projectId: draft.projectId, onChange: (projectId) => { moveNormalDraft(projectId) } } : undefined}
         isStreaming={busy}
         engineReady={data.ready}
         onSend={commands.send}

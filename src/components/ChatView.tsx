@@ -104,6 +104,8 @@ interface ChatViewProps {
   onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
   /** Clave del borrador del composer cuando aún no hay sesión (conversación nueva). */
   composerDraftKey?: string
+  /** Proyecto elegible de la conversación nueva (#42); solo sin sesión. */
+  draftProject?: { projectId: string | null; onChange: (projectId: string | null) => void }
 }
 
 function ChatView({
@@ -152,6 +154,7 @@ function ChatView({
   mentionTargets,
   onSendToTarget,
   composerDraftKey,
+  draftProject,
 }: ChatViewProps) {
   const { t } = useI18n()
   const autoFollow = useUIStore((s) => s.autoFollow)
@@ -482,6 +485,7 @@ function ChatView({
       onCancelAttachmentPreparation={onCancelAttachmentPreparation}
       sessionId={sessionId}
       draftKey={sessionId ? undefined : composerDraftKey}
+      draftProject={sessionId ? undefined : draftProject}
       primary={composerPrimary}
       acceptsGlobalFocus={composerAcceptsGlobalFocus}
       isStreaming={isStreaming}

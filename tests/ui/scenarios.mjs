@@ -475,7 +475,11 @@ export const scenarios = {
     phases: ['exercise'],
   },
   'project-create': {
-    title: 'Nuevo proyecto: ventana con nombre, carpetas validadas, confianza, perfil y resumen; crea y abre',
+    title: 'Nuevo proyecto: ventana con nombre, carpetas validadas, confianza por defecto, perfil y resumen; crea y abre un borrador del proyecto',
+    phases: ['exercise'],
+  },
+  'composer-project': {
+    title: 'Conversación nueva: el chip del composer elige el proyecto, lo escrito viaja y el primer mensaje la crea allí',
     phases: ['exercise'],
   },
   'session-title': {

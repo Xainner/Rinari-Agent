@@ -24,6 +24,11 @@ interface ComposerState {
   sessionKey: string
   switchSession: (sessionKey: string) => void
   moveDraft: (fromSessionKey: string, toSessionKey: string) => void
+  /**
+   * A new conversation changes destination before its first message (#42):
+   * what was written travels to `to`, added after anything already there.
+   */
+  carryDraft: (fromSessionKey: string, toSessionKey: string) => void
   draftsBySession: Record<string, Draft>
   text: string
   setText: (text: string) => void
@@ -209,6 +214,22 @@ export const useComposerStore = create<ComposerState>((set, get) => ({
       ...draft,
       attachments: draft.attachments.map((item) => item.id === id ? { ...item, ...patch } : item),
     })
+  }),
+  carryDraft: (fromSessionKey, toSessionKey) => set((state) => {
+    if (fromSessionKey === toSessionKey) return state
+    const source = draftOf(state, fromSessionKey)
+    const target = draftOf(state, toSessionKey)
+    const merged: Draft = {
+      text: [target.text, source.text].filter((part) => part.trim()).join('\n\n'),
+      attachments: [...target.attachments, ...source.attachments],
+    }
+    const draftsBySession = { ...state.draftsBySession, [toSessionKey]: merged }
+    delete draftsBySession[fromSessionKey]
+    // The composer that showed `from` now shows `to`.
+    const mirror = state.sessionKey === fromSessionKey || state.sessionKey === toSessionKey
+      ? { sessionKey: toSessionKey, text: merged.text, attachments: merged.attachments }
+      : {}
+    return { ...mirror, draftsBySession }
   }),
   moveDraft: (fromSessionKey, toSessionKey) => set((state) => {
     const source = fromSessionKey === state.sessionKey

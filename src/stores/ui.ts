@@ -63,7 +63,7 @@ export type SettingsSection =
   | 'advanced'
   | 'about'
 
-export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'sidePanel' | 'boards' | 'flows' | 'collapsePane' | 'expandPane'
+export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'sidePanel' | 'boards' | 'flows' | 'collapsePane' | 'expandPane' | 'projectPicker'
 export type ShortcutBindings = Record<ShortcutAction, string>
 
 /**
@@ -85,6 +85,8 @@ export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
   // Colapso/expansión del panel enfocado en Boards; sin acelerador nativo.
   collapsePane: 'Ctrl+Alt+[',
   expandPane: 'Ctrl+Alt+]',
+  // El proyecto de una conversación nueva, desde el chip del composer (#42).
+  projectPicker: 'Ctrl+Shift+O',
 }
 
 function readBool(key: string, fallback: boolean): boolean {

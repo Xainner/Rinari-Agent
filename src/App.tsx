@@ -63,6 +63,7 @@ import { switchToProfileOf, useProfileWorkspace } from './features/profiles/useP
 import { useProfileMoves } from './features/profiles/useProfileMoves'
 import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
 import { useCreateProjectStore } from './features/projects/createProjectStore'
+import { PROJECT_PICKER_EVENT } from './components/composer/ProjectChip'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
@@ -383,6 +384,8 @@ function App() {
     // Colapso/expansión solo actúan en Boards; en otras vistas no hacen nada.
     if (action === 'collapsePane') dispatchAction('collapse-pane')
     if (action === 'expandPane') dispatchAction('expand-pane')
+    // Abre el chip de proyecto del composer enfocado, si es una conversación nueva (#42).
+    if (action === 'projectPicker') window.dispatchEvent(new Event(PROJECT_PICKER_EVENT))
   })
 
   const desktopActionRef = useRef<(action: DesktopAction) => void>(() => {})
@@ -592,10 +595,17 @@ function App() {
       {confirmDialog}
       {profileMoves.dialog}
       <CreateProjectDialog
-        onCreated={(_project, created) => {
+        onCreated={(project, created) => {
           void session.refreshProjects()
+          // A conversation of the new project, not created until the first
+          // message (#60): leaving without writing leaves nothing behind.
+          if (!created) {
+            session.openDraft(project.id)
+            goChat()
+            return
+          }
           void session.refreshSessions().then(() => {
-            if (created) void session.selectSession(created.id).then(() => goChat())
+            void session.selectSession(created.id).then(() => goChat())
           })
         }}
       />

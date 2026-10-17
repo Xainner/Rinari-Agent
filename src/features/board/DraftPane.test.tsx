@@ -35,7 +35,9 @@ it('a draft pane prepares no session; its first message creates one for its proj
   const pane = useBoardStore.getState().addDraftPane('proj_a')
   render(<BoardHarness engine={engine}><BoardView /></BoardHarness>)
   const region = screen.getByRole('region', { name: 'Nueva conversación' })
-  expect(within(region).getByText('Backend API')).toBeTruthy()
+  // In the header, and in the composer's project chip (#42).
+  expect(region.querySelector('.pane-header-project')?.textContent).toBe('Backend API')
+  expect(within(region).getByTestId('composer-project-chip').textContent).toContain('Backend API')
   expect(engine.ensureSessionReady).not.toHaveBeenCalled()
   const box = within(region).getByRole('textbox', { name: 'Mensaje' })
   fireEvent.change(box, { target: { value: 'Arregla el login' } })

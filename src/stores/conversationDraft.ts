@@ -44,6 +44,13 @@ interface ConversationDraftState {
   updateNormal: (patch: Partial<ConversationDraft>) => void
   /** El borrador se convirtió en sesión: se olvida su destino. */
   consumeNormal: (key: string) => void
+  /**
+   * Cambia el proyecto del borrador de la vista Normal antes del primer envío
+   * (#42). Modo, permisos y modelo viajan con él; el texto y los adjuntos los
+   * mueve quien llama (viven en el composer). Devuelve la clave anterior y la
+   * nueva, o `null` si no se puede: ya hay una sesión creada o en camino.
+   */
+  moveNormal: (projectId: string | null) => { from: string; to: string } | null
 }
 
 export const useConversationDraftStore = create<ConversationDraftState>((set, get) => ({
@@ -60,6 +67,20 @@ export const useConversationDraftStore = create<ConversationDraftState>((set, ge
     const next = { ...state.normal, ...patch }
     return { normal: next, byKey: { ...state.byKey, [next.key]: next } }
   }),
+  moveNormal: (projectId) => {
+    const current = get().normal
+    if (!current || current.sessionId || inflight.has(current.key)) return null
+    const to = draftKeyFor(projectId)
+    if (to === current.key) return { from: to, to }
+    const existing = get().byKey[to]
+    const moved: ConversationDraft = { ...(existing ?? newDraft(projectId, to)), mode: current.mode, permissionProfile: current.permissionProfile, model: current.model, projectId, key: to, sessionId: undefined }
+    set((state) => {
+      const byKey = { ...state.byKey, [to]: moved }
+      delete byKey[current.key]
+      return { normal: moved, byKey }
+    })
+    return { from: current.key, to }
+  },
   consumeNormal: (key) => set((state) => {
     const byKey = { ...state.byKey }
     delete byKey[key]

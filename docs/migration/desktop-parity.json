@@ -9,6 +9,20 @@
   },
   "commands": [
     {
+      "command": "advanced_settings_get",
+      "kind": "engine",
+      "method": "advanced.settings.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "advanced_settings_set",
+      "kind": "engine",
+      "method": "advanced.settings.set",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agent_config_get",
       "kind": "engine",
       "method": "agent.config.get",
@@ -380,6 +394,20 @@
       "command": "engine_status",
       "kind": "host",
       "method": null,
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "execution_settings_get",
+      "kind": "engine",
+      "method": "execution.settings.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "execution_settings_set",
+      "kind": "engine",
+      "method": "execution.settings.set",
       "manual": false,
       "callers": []
     },
@@ -2209,10 +2237,10 @@
     }
   ],
   "summary": {
-    "commands": 265,
-    "engine_backed": 259,
+    "commands": 269,
+    "engine_backed": 263,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 93
+    "without_callers": 97
   }
 }

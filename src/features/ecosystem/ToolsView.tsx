@@ -8,6 +8,7 @@ import {
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
 import SavedGrants from './SavedGrants'
+import NewDestinationsSwitch from './NewDestinationsSwitch'
 
 /**
  * Ajustes > Tools: centro de herramientas y permisos. Solo lectura del
@@ -61,6 +62,8 @@ export default function ToolsView() {
           <p className="text-xs text-[var(--text-subtle)]">{note}</p>
         )}
       </Section>
+
+      <NewDestinationsSwitch />
 
       <SavedGrants />
 

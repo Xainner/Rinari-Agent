@@ -975,14 +975,14 @@ export default function Composer({
             <PopoverTrigger asChild>
               <button type="button" disabled={isStreaming} title={t('perm.title')} className="composer-chip">
                 <Shield size={13} style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} />
-                <span className="composer-chip-label">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : 'Workspace'}</span>
+                <span className="composer-chip-label">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : t('perm.workspace')}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1.5">
               {currentMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{t('perm.readModesNote')}</p>}
               {([
                 ['read-only', t('perm.readOnly'), t('perm.readOnlyHint')],
-                ['workspace', 'Workspace', t('perm.workspaceHint')],
+                ['workspace', t('perm.workspace'), t('perm.workspaceHint')],
                 ['full-access', t('perm.fullAccess'), t('perm.fullAccessHint')],
               ] as const).map(([value, label, description]) => (
                 <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? t('perm.fullAccessNeedsUpdate') : undefined} onClick={() => {

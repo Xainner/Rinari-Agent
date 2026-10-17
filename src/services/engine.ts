@@ -851,6 +851,27 @@ export interface PermissionGrant {
 }
 
 /** A conversation another one opened for a separate piece of work (plan-sesiones-hijas 5). */
+export type TimeoutKey = 'connect' | 'first_byte' | 'idle' | 'total'
+export interface ExecutionPolicy {
+  max_concurrency: number
+  providers: Record<string, number>
+  models: Record<string, number>
+  timeouts?: Partial<Record<TimeoutKey, number>>
+  provider_timeouts?: Record<string, Partial<Record<TimeoutKey, number>>>
+}
+export interface ExecutionSettingsResult {
+  settings: ExecutionPolicy
+  defaults: { max_concurrency: number; timeouts: Record<TimeoutKey, number> }
+}
+export interface AdvancedSetting {
+  key: string
+  type: 'int' | 'float' | 'bool'
+  value: number | boolean
+  default: number | boolean
+  min: number | null
+  max: number | null
+}
+
 export interface ChildSession {
   child_session_id: string
   parent_session_id: string
@@ -1377,6 +1398,13 @@ export const engineApi = {
   attachmentPreview: (uri: string, max_bytes?: number, max_dimension?: number) =>
     platform().command<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null, max_dimension: max_dimension ?? null }),
   visionSettingsGet: () => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
+  /** Ajustes → Avanzado: model execution with its own pair (plan 0.4.0 #96). */
+  executionSettingsGet: () => platform().command<ExecutionSettingsResult>('execution_settings_get'),
+  executionSettingsSet: (settings: ExecutionPolicy) => platform().command<ExecutionSettingsResult>('execution_settings_set', { settings }),
+  /** The turn's limits and Ajustes → Permisos' switch: value, default and range of each. */
+  advancedSettingsGet: () => platform().command<{ limits: AdvancedSetting[] }>('advanced_settings_get'),
+  /** `null` puts the default back. */
+  advancedSettingsSet: (values: Record<string, number | boolean | null>) => platform().command<{ limits: AdvancedSetting[] }>('advanced_settings_set', { values }),
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
   // la petición sin sesión y la compactación manual fallaba.

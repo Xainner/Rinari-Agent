@@ -16,6 +16,8 @@ export interface CommandTranslation {
 }
 
 export const COMMAND_MAP: Record<string, CommandTranslation> = {
+  "advanced_settings_get": {"method":"advanced.settings.get","params":[]},
+  "advanced_settings_set": {"method":"advanced.settings.set","params":[{"key":"values","from":"values","optional":false}]},
   "agent_config_get": {"method":"agent.config.get","params":[{"key":"agent","from":"agent","optional":false}]},
   "agent_config_set": {"method":"agent.config.set","params":[{"key":"agent","from":"agent","optional":false},{"key":"model","from":"model","optional":false},{"key":"fallback","from":"fallback","optional":false},{"key":"enabled","from":"enabled","optional":false},{"key":"clear","from":"clear","optional":false}]},
   "agent_list": {"method":"agent.list","params":[]},
@@ -57,6 +59,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "documents_range_get": {"method":"documents.range.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"ref","from":"ref","optional":false},{"key":"selection","from":"selection","optional":true},{"key":"cursor","from":"cursor","optional":true}]},
   "documents_report_get": {"method":"documents.report.get","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"revision_id","from":"revision_id","optional":false},{"key":"validate","from":"validate","optional":true}]},
   "documents_revisions_list": {"method":"documents.revisions.list","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"document_id","from":"document_id","optional":true}]},
+  "execution_settings_get": {"method":"execution.settings.get","params":[]},
+  "execution_settings_set": {"method":"execution.settings.set","params":[{"key":"settings","from":"settings","optional":false}]},
   "followup_accept": {"method":"followup.accept","params":[{"key":"suggestion_id","from":"suggestion_id","optional":false},{"key":"context","from":"context","optional":true},{"key":"isolation","from":"isolation","optional":true}]},
   "followup_dismiss": {"method":"followup.dismiss","params":[{"key":"suggestion_id","from":"suggestion_id","optional":false}]},
   "followup_list": {"method":"followup.list","params":[{"key":"session_id","from":"session_id","optional":true},{"key":"project_id","from":"project_id","optional":true},{"key":"rinari_profile_id","from":"rinari_profile_id","optional":true},{"key":"status","from":"status","optional":true}]},

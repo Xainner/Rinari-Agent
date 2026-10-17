@@ -3167,6 +3167,74 @@
       "host_effects": []
     },
     {
+      "command": "execution_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "execution.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "execution_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "settings",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "execution.settings.set",
+      "engine_params": [
+        {
+          "key": "settings",
+          "from": "settings",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "advanced_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "advanced.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "advanced_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "values",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "advanced.settings.set",
+      "engine_params": [
+        {
+          "key": "values",
+          "from": "values",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "vision_model_reset",
       "module": "workspace",
       "args": [

@@ -6,14 +6,16 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **265**
-- Respaldados por Engine: **259**
+- Comandos: **269**
+- Respaldados por Engine: **263**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
 
 | Comando | Dueño | Método Engine | Llamadores |
 |---|---|---|---|
+| `advanced_settings_get` | engine | `advanced.settings.get` | **ninguno** |
+| `advanced_settings_set` | engine | `advanced.settings.set` | **ninguno** |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |
 | `agent_config_set` | engine | `agent.config.set` | `src/services/engine.ts` |
 | `agent_list` | engine | `agent.list` | `src/services/engine.ts` |
@@ -59,6 +61,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `engine_shutdown` | host | — | **ninguno** |
 | `engine_start` | host | — | **ninguno** |
 | `engine_status` | host | — | **ninguno** |
+| `execution_settings_get` | engine | `execution.settings.get` | **ninguno** |
+| `execution_settings_set` | engine | `execution.settings.set` | **ninguno** |
 | `followup_accept` | engine | `followup.accept` | **ninguno** |
 | `followup_dismiss` | engine | `followup.dismiss` | `src/services/engine.ts` |
 | `followup_list` | engine | `followup.list` | `src/services/engine.ts` |

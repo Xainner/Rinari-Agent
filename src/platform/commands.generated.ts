@@ -2,6 +2,8 @@
 // Source: docs/migration/desktop-command-contract.json (inventario vigente de comandos de Electron).
 
 export type DesktopCommand =
+  | "advanced_settings_get"
+  | "advanced_settings_set"
   | "agent_config_get"
   | "agent_config_set"
   | "agent_list"
@@ -47,6 +49,8 @@ export type DesktopCommand =
   | "engine_shutdown"
   | "engine_start"
   | "engine_status"
+  | "execution_settings_get"
+  | "execution_settings_set"
   | "followup_accept"
   | "followup_dismiss"
   | "followup_list"
@@ -269,6 +273,8 @@ export type DesktopCommand =
   | "workspace_process_stop"
 
 export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
+  "advanced_settings_get",
+  "advanced_settings_set",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -314,6 +320,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "engine_shutdown",
   "engine_start",
   "engine_status",
+  "execution_settings_get",
+  "execution_settings_set",
   "followup_accept",
   "followup_dismiss",
   "followup_list",
@@ -556,6 +564,8 @@ export const HOST_ONLY_COMMANDS: readonly HostOnlyCommand[] = [
 export type EngineBackedCommand = Exclude<DesktopCommand, HostOnlyCommand>
 
 export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
+  "advanced_settings_get",
+  "advanced_settings_set",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -597,6 +607,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "documents_range_get",
   "documents_report_get",
   "documents_revisions_list",
+  "execution_settings_get",
+  "execution_settings_set",
   "followup_accept",
   "followup_dismiss",
   "followup_list",

@@ -45,7 +45,7 @@ it('allows changing read scope in PLAN while showing immutable execution', async
   expect(screen.getByTitle('Permisos de este chat').textContent).toContain('Lectura · Acceso completo')
   await user.click(screen.getByTitle('Permisos de este chat'))
   expect(screen.getByText(/PLAN y REVIEW leen libremente/)).toBeTruthy()
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Workspace/ }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Proyecto/ }))
   expect(onPermissionChange).toHaveBeenCalledWith('workspace')
   expect(screen.queryByRole('dialog')).toBeNull()
 })

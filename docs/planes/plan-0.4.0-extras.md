@@ -5,9 +5,9 @@ Pedidos sueltos del dueño después de cerrar las tandas de [plan-0.4.0.md](plan
 | # | Qué | Dónde | Estado |
 |---|---|---|---|
 | E1 | La etiqueta de permisos junto al título sobra | Agent | Hecho (6d8adb3) |
-| E2 | El tiempo sale dos veces en la tarjeta de trabajo | Agent | Anotado |
-| E3 | Avisos entre perfiles: no salió el indicador | Agent | Investigado; falta reproducirlo en tu equipo |
-| E4 | El resumen final quedó dentro de la actividad y la respuesta fue una oración | CLI + Agent | Anotado |
+| E2 | El tiempo sale dos veces en la tarjeta de trabajo | Agent | Hecho |
+| E3 | Avisos entre perfiles: no salió el indicador | Agent | Registro arreglado (3e4f72e); falta reproducirlo con la Nightly nueva |
+| E4 | El resumen final quedó dentro de la actividad y la respuesta fue una oración | CLI + Agent | Hecho (CLI 452278c, Agent 67c3f29) |
 
 ---
 

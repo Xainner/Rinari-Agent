@@ -188,7 +188,7 @@ export default function DictationButton({
         {!status ? (
           <p className="text-[var(--text-muted)]">{t('dictation.unavailable')}</p>
         ) : !status.binary_found ? (
-          <p className="text-[var(--text-muted)]">{t('dictation.noBinary')}</p>
+          <p className="text-[var(--text-muted)]">{t(status.from_source ? 'dictation.noBinarySource' : 'dictation.noBinary')}</p>
         ) : (
           <>
             <p className="font-medium text-[var(--text)]">{t('dictation.setupTitle')}</p>

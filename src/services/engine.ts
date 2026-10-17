@@ -634,6 +634,8 @@ export interface SpeechStatus {
   language: string
   vocabulary: string
   binary_found: boolean
+  /** El Engine corre desde un checkout: whisper.cpp no viene incluido. */
+  from_source?: boolean
   model_installed: boolean
   ready: boolean
   models: SpeechModelInfo[]

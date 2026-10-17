@@ -3212,6 +3212,7 @@ export const es = {
   'dictation.earsNoModel': 'Rinari también escucha con esto: cuando le pides revisar un audio (una canción, una nota de voz), lo transcribe aquí mismo con el modelo que descargues abajo.',
   'dictation.unavailable': 'Esta versión de Rinari no tiene dictado.',
   'dictation.noBinary': 'Falta el programa de dictado (whisper.cpp). Reinstala o actualiza Rinari.',
+  'dictation.noBinarySource': 'Este build desde fuente no trae el programa de dictado (whisper.cpp). Define RINARI_WHISPER_BIN con la ruta de whisper-cli.exe, o ponlo en el PATH, y reinicia el motor.',
   'dictation.model': "Modelo",
   'dictation.modelDesc': "Se descarga una vez y queda en tu equipo. Más grande es más preciso y más lento sin GPU.",
   'dictation.tier.light': "ligero, equipos modestos",

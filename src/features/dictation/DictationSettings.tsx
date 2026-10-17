@@ -128,7 +128,7 @@ export default function DictationSettings() {
         <span>{status.model && status.models.some((model) => model.id === status.model && model.installed) ? t('dictation.ears', { model: status.model }) : t('dictation.earsNoModel')}</span>
       </p>
 
-      {!status.binary_found && <p role="status" className="text-sm text-[var(--warning)]">{t('dictation.noBinary')}</p>}
+      {!status.binary_found && <p role="status" className="text-sm text-[var(--warning)]">{t(status.from_source ? 'dictation.noBinarySource' : 'dictation.noBinary')}</p>}
 
       <div className={card}>
         <h3 className="text-sm font-semibold text-[var(--text)]">{t('dictation.model')}</h3>

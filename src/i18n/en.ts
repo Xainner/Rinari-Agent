@@ -3194,6 +3194,7 @@ export const en: Record<I18nKey, string> = {
   'dictation.earsNoModel': 'Rinari listens with this too: when you ask it to check an audio (a song, a voice note), it transcribes it right here with the model you download below.',
   'dictation.unavailable': 'This version of Rinari has no dictation.',
   'dictation.noBinary': 'The dictation program (whisper.cpp) is missing. Reinstall or update Rinari.',
+  'dictation.noBinarySource': 'This source build has no dictation program (whisper.cpp). Set RINARI_WHISPER_BIN to the path of whisper-cli.exe, or put it on the PATH, and restart the engine.',
   'dictation.model': "Model",
   'dictation.modelDesc': "Downloaded once and kept on this computer. Larger is more accurate and slower without a GPU.",
   'dictation.tier.light': "light, for modest computers",

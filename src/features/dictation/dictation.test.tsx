@@ -85,6 +85,13 @@ describe('transcripción como job del Engine', () => {
 })
 
 describe('Ajustes › Dictado', () => {
+  it('sin whisper.cpp, un build desde fuente dice cómo configurarlo en vez de «Reinstala»', async () => {
+    bridge.mockCommand('speech_status', () => ({ ...status, binary_found: false, from_source: true }))
+    render(<I18nProvider lang="es"><DictationSettings /></I18nProvider>)
+    expect(await screen.findByText(/RINARI_WHISPER_BIN/)).toBeTruthy()
+    expect(screen.queryByText(/Reinstala/)).toBeNull()
+  })
+
   it('muestra los modelos, descarga el elegido y guarda idioma y vocabulario en el Engine', async () => {
     bridge.mockCommand('speech_status', () => status)
     bridge.mockCommand('speech_model_download', (args) => ({ model: args.model, status: 'running' }))

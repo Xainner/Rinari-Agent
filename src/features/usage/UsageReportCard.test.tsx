@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // `/usage` (#78): la tarjeta pinta lo que trae el informe y lo copia como texto.
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -12,6 +12,7 @@ vi.mock('../../services/engine', () => ({
   engineApi: {
     providerUsage: vi.fn(async () => ({ provider_id: 'p1', product_id: 'x', status: 'available', windows: [{ id: 'w5h', label: '5 h', scope: 's', used_percent: 42, remaining_percent: 58, resets_at: '2026-10-17T20:00:00Z', duration_seconds: 18000 }], balances: [], fetched_at: null, source: null, detail: '', retry_at: null })),
     contextStatus: vi.fn(async () => ({ window_tokens: 200_000, window_source: 'provider', window_estimated: false, last_request: { input_tokens: 50_000 } })),
+    contextCompact: vi.fn(async () => ({})),
   },
   commandMessage: String,
 }))
@@ -69,4 +70,18 @@ it('a 0.4.0 snapshot paints its own limits of every provider, context and client
   await userEvent.click(screen.getByRole('button', { name: /Copiar/ }))
   expect(copied[0]).toContain('Plan limits:\n  claude-sub: not reported (they show after the next one)\n  opencode · 5h: 64% used')
   expect(copied[0]).toContain('Context:\n  30,000 of 200,000 tokens (15%)')
+})
+
+it('each warning has its one-tap fix: compact, or see the models', async () => {
+  const { engineApi } = await import('../../services/engine')
+  const { useUIStore } = await import('../../stores/ui')
+  const goSettings = vi.spyOn(useUIStore.getState(), 'goSettings').mockImplementation(() => {})
+  const warned: UsageReport = { ...REPORT, warnings: [{ kind: 'large_outputs', count: 2, max: 40_000 }, { kind: 'no_cache', count: 6, model: 'Sonnet' }] }
+  render(<I18nProvider lang="es"><UsageReportCard report={warned} sessionId="ses_a" /></I18nProvider>)
+  const card = screen.getByTestId('usage-report')
+  expect(card.textContent).toContain('Hay 2 salidas grandes que siguen en el contexto')
+  await userEvent.click(within(card.querySelector('[data-warning="large_outputs"]') as HTMLElement).getByRole('button', { name: 'Compactar ahora' }))
+  expect(engineApi.contextCompact).toHaveBeenCalledWith('ses_a')
+  await userEvent.click(within(card.querySelector('[data-warning="no_cache"]') as HTMLElement).getByRole('button', { name: 'Ver modelos' }))
+  expect(goSettings).toHaveBeenCalledWith('models')
 })

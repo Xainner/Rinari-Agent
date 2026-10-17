@@ -3,6 +3,7 @@ import { BarChart3, Check, CircleCheck, Copy, Download, LoaderCircle, RotateCcw,
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
+import { useUIStore } from '../../stores/ui'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type UsageScope } from './usageReport'
@@ -20,6 +21,10 @@ const level = (percent: number) => (percent >= 90 ? 'high' : percent >= 70 ? 'mi
  * escrita), las herramientas, los avisos de desperdicio y el tiempo; se
  * puede copiar, descargar o actualizar, y cambiar de ámbito.
  */
+/** Lo que arregla cada aviso: compactar suelta imágenes y salidas viejas; los demás piden otro modelo. */
+const FIX_COMPACT = new Set(['image_resent', 'large_outputs'])
+const FIX_MODELS = new Set(['empty_answers', 'no_cache', 'loops'])
+
 /** Por qué un proveedor no trae límites, en el idioma del dueño (el Engine lo dice en inglés). */
 function silentReason(item: UsageLimits): I18nKey {
   if (item.product_id === 'claude-subscription') return 'usage.limitsClaudeLater'
@@ -38,6 +43,18 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
   const [report, setReport] = useState(initial)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [compacting, setCompacting] = useState(false)
+  const compactNow = async () => {
+    setCompacting(true)
+    try {
+      await engineApi.contextCompact(sessionId)
+      toast.success(t('usage.fix.compacted'))
+    } catch (error) {
+      toast.error(commandMessage(error))
+    } finally {
+      setCompacting(false)
+    }
+  }
   const [liveLimits, setLiveLimits] = useState<ProviderUsageSnapshot | null>(null)
   const [liveContext, setLiveContext] = useState<ContextStatus | null>(null)
 
@@ -185,9 +202,16 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
         {report.warnings.length === 0
           ? <p className="usage-report-line" data-tone="ok"><CircleCheck size={13} aria-hidden="true" />{t('usage.allGood')}</p>
           : report.warnings.map((warning) => (
-            <p key={warning.kind} className="usage-report-line" data-tone="warning">
+            <p key={warning.kind} className="usage-report-line" data-tone="warning" data-warning={warning.kind}>
               <TriangleAlert size={13} aria-hidden="true" />
               {t(`usage.warning.${warning.kind}` as I18nKey, { n: warning.count, max: warning.max ?? 0, model: warning.model ?? '' })}
+              {/* El arreglo de un toque de cada aviso (#78). */}
+              {FIX_COMPACT.has(warning.kind) && report.scope === 'session' && sessionId && (
+                <button type="button" className="btn btn-quiet btn-xs" disabled={compacting} data-testid="usage-fix" onClick={() => void compactNow()}>{t('context.compactNow')}</button>
+              )}
+              {FIX_MODELS.has(warning.kind) && (
+                <button type="button" className="btn btn-quiet btn-xs" data-testid="usage-fix" onClick={() => useUIStore.getState().goSettings('models')}>{t('usage.fix.models')}</button>
+              )}
             </p>
           ))}
       </div>

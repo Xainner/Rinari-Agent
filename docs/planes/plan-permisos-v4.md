@@ -1,6 +1,6 @@
 # Permisos v4: tres modos, y Acceso completo sin preguntas
 
-Estado: **decidido** (dueño, 2026-10-12). Pedido del dueño: «Hermes, Claude Code y Codex no me piden permiso en modo normal ni para MCP, SSH y demás herramientas; Rinari, ni en "permitir todo", deja de preguntar». Se rehacen los permisos para toda la app (conversaciones, Boards, tareas programadas y [Rinari Agency](idea-rinari-agency.md)).
+Estado: **hecho en la tanda 17 de 0.4.0** (CLI f9aeeab, Agent 8c90e8e; falta el distintivo en la cabecera y el modo por defecto por proyecto). Decidido por el dueño el 2026-10-12. Pedido del dueño: «Hermes, Claude Code y Codex no me piden permiso en modo normal ni para MCP, SSH y demás herramientas; Rinari, ni en "permitir todo", deja de preguntar». Se rehacen los permisos para toda la app (conversaciones, Boards, tareas programadas y [Rinari Agency](idea-rinari-agency.md)).
 
 ## Qué hay hoy (permisos v3, verificado)
 

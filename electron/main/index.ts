@@ -409,31 +409,33 @@ function browserServices(): HostServices['browser'] {
     return context
   }
 
+  // Creación explícita. La vista nace en blanco; la primera navegación la
+  // pide el usuario o una herramienta.
+  const prepareContext = async (sessionId: string) => {
+    const view = await engine.request('browser.context.prepare', { session_id: sessionId })
+    const context = browserRegistry?.ensureContext(sessionId)
+    if (!context) return view
+    // Preparar no le pide nada al host, así que el id del Engine sólo se
+    // conocía con la primera operación del agente. Sin él la lista de
+    // pestañas no llega al Engine y el panel se quedaba en «Preparando el
+    // navegador…» sin dejar escribir una dirección.
+    browserHost?.adoptEngineContext(context, (view as { context_id?: unknown }).context_id)
+    if (context.order.length === 0) {
+      const target = browserRegistry!.createTarget(context)
+      await target.view.webContents.loadURL('about:blank')
+      await browserRegistry!.attach(target)
+    }
+    // La vista de arriba se leyó sin pestañas: se devuelve la de después de
+    // que el Engine las tenga.
+    await browserHost?.publishTargets(context.contextId)
+    return await engine.request('browser.context.get', { session_id: sessionId })
+  }
+
   return {
     // Consulta sin efectos: mirar el estado desde la UI no abre un navegador.
     context: (sessionId) => engine.request('browser.context.get', { session_id: sessionId }),
 
-    // Creación explícita. La vista nace en blanco; la primera navegación la
-    // pide el usuario o una herramienta.
-    prepare: async (sessionId) => {
-      const view = await engine.request('browser.context.prepare', { session_id: sessionId })
-      const context = browserRegistry?.ensureContext(sessionId)
-      if (!context) return view
-      // Preparar no le pide nada al host, así que el id del Engine sólo se
-      // conocía con la primera operación del agente. Sin él la lista de
-      // pestañas no llega al Engine y el panel se quedaba en «Preparando el
-      // navegador…» sin dejar escribir una dirección.
-      browserHost?.adoptEngineContext(context, (view as { context_id?: unknown }).context_id)
-      if (context.order.length === 0) {
-        const target = browserRegistry!.createTarget(context)
-        await target.view.webContents.loadURL('about:blank')
-        await browserRegistry!.attach(target)
-      }
-      // La vista de arriba se leyó sin pestañas: se devuelve la de después de
-      // que el Engine las tenga.
-      await browserHost?.publishTargets(context.contextId)
-      return await engine.request('browser.context.get', { session_id: sessionId })
-    },
+    prepare: (sessionId) => prepareContext(sessionId),
 
     attachSlot: async (sessionId) => {
       if (!layoutCoordinator) throw new Error('the window is not ready')
@@ -503,6 +505,10 @@ function browserServices(): HostServices['browser'] {
           code: 'INVALID_ARGUMENT',
         })
       }
+      // Desde la página de inicio (una dirección o un reciente) puede no haber
+      // contexto todavía: navegar lo prepara primero, en vez de fallar con
+      // «this session has no browser context» (plan 0.4.0 #99.2).
+      if (!browserRegistry?.contextForSession(sessionId)) await prepareContext(sessionId)
       const context = requireContext(sessionId)
       // Navegar la página que el agente está usando es la mutación más grande
       // que hay: se lleva por delante el DOM entero. Requiere el control.

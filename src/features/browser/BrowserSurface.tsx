@@ -77,7 +77,9 @@ export default function BrowserSurface({
   projectId,
 }: BrowserSurfaceProps) {
   const { t } = useI18n()
-  const projectKey = projectId || CHAT_KEY
+  // A loose chat keeps its own recents: they were shared by every chat and
+  // showed pages the owner never opened in this one (#99.2).
+  const projectKey = projectId || `${CHAT_KEY}:${sessionId}`
   const recordVisit = useBrowserPrefs((state) => state.recordVisit)
   const togglePin = useBrowserPrefs((state) => state.togglePin)
   const pinnedUrls = useBrowserPrefs((state) => state.pinned[projectKey])
@@ -177,7 +179,7 @@ export default function BrowserSurface({
         home={home}
       />
 
-      {problem && <p role="alert" className="browser-problem">{problem}</p>}
+      {problem && <p role="alert" className="browser-problem">{browserProblemText(problem, t)}</p>}
 
       {useNative && context ? (
         <NativeBrowserSlot
@@ -190,6 +192,7 @@ export default function BrowserSurface({
             <BrowserHome
               sessionId={sessionId}
               projectKey={projectKey}
+              scope={projectId ? 'project' : 'chat'}
               busy={busy}
               onOpen={(next) => void openFromHome(next)}
             />
@@ -203,4 +206,13 @@ export default function BrowserSurface({
       {!useNative && <footer className="browser-footer">{t('browser.fallbackNote')}</footer>}
     </section>
   )
+}
+
+/** What the host says when it cannot do something, in the owner's language (#99.2). */
+export function browserProblemText(message: string, t: ReturnType<typeof useI18n>['t']): string {
+  if (/no browser context/i.test(message)) return t('browser.problem.absent')
+  if (/has to wait: Rinari is finishing a step/i.test(message)) return t('browser.problem.busy')
+  if (/will not navigate to/i.test(message)) return t('browser.problem.blocked')
+  if (/the window is not ready|browser host is not ready/i.test(message)) return t('browser.problem.notReady')
+  return message
 }

@@ -16,6 +16,8 @@ export interface BrowserHomeProps {
   sessionId: string
   /** Proyecto de la conversación, o la clave de las conversaciones sin proyecto. */
   projectKey: string
+  /** A loose chat's recents are its own: «Recientes en esta conversación». */
+  scope?: 'project' | 'chat'
   /** Hay un turno en marcha: Rinari puede abrir una página en cualquier momento. */
   busy?: boolean
   onOpen: (url: string) => void
@@ -60,7 +62,7 @@ function PlaceTile({ place, onOpen, testId }: { place: BrowserPlace | RunningPag
  * previas), lo reciente y lo fijado. Es de la app, no una página web: no
  * carga nada de internet por sí sola.
  */
-export default function BrowserHome({ sessionId, projectKey, busy = false, onOpen }: BrowserHomeProps) {
+export default function BrowserHome({ sessionId, projectKey, scope = 'project', busy = false, onOpen }: BrowserHomeProps) {
   const { t } = useI18n()
   const engine = useBrowserPrefs((state) => state.engine)
   const recent = useBrowserPrefs((state) => state.recent[projectKey]) ?? []
@@ -152,8 +154,8 @@ export default function BrowserHome({ sessionId, projectKey, busy = false, onOpe
         </section>
       )}
 
-      <section className="browser-home-section" aria-label={t('browser.home.recent')}>
-        <h3>{t('browser.home.recent')}</h3>
+      <section className="browser-home-section" aria-label={t(scope === 'chat' ? 'browser.home.recentChat' : 'browser.home.recent')}>
+        <h3>{t(scope === 'chat' ? 'browser.home.recentChat' : 'browser.home.recent')}</h3>
         {recent.length > 0 ? (
           <div className="browser-home-grid">
             {recent.map((place) => <PlaceTile key={place.url} place={place} onOpen={open} testId="browser-home-recent" />)}

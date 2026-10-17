@@ -44,6 +44,7 @@ import MessageBubble from '../../components/MessageBubble'
 import { usePeerNavigation } from '../board/PeerNavigationContext'
 import TurnMeta from './TurnMeta'
 import CompactionDetails from '../context/CompactionDetails'
+import { turnRailNodes, useRailTrack } from './railTrack'
 import { useCalmMotion } from '../../lib/motion'
 import { CompactBar, shortTokens, useCountTo } from '../context/CompactBar'
 import TurnResult from './TurnResult'
@@ -917,9 +918,12 @@ const ActivityDetails = memo(function ActivityDetails({ items, status, onResolve
 }) {
   const blocks = useMemo(() => activityBlocks(items), [items])
   const live = turnIsActive(status)
-  return <div className="turn-rail space-y-2" data-live={live}>{blocks.map(block => block.type === 'text'
+  // La línea va de la primera bolita a la última, medida (#10).
+  const rail = useRef<HTMLDivElement>(null)
+  useRailTrack(rail, turnRailNodes)
+  return <div ref={rail} className="turn-rail space-y-2" data-live={live}>{blocks.map(block => block.type === 'text'
     ? <div key={block.id} data-activity-item={block.id} className="relative py-0.5 text-[14px] leading-relaxed text-[var(--text)]">
-        <span className="turn-node" data-state="text" aria-hidden="true" style={{ top: 9, width: 6, height: 6, left: -16 }} />
+        <span className="turn-node" data-state="text" aria-hidden="true" />
         <LiveText id={block.item.id} content={block.item.content} streaming={block.item.status === 'streaming'} live={live} />
       </div>
     : <div key={block.id} className="relative"><span className="turn-node" data-state={nodeState(block.items, live)} aria-hidden="true" /><OperationGroup items={block.items} status={status} onResolveApproval={onResolveApproval} /></div>)}</div>

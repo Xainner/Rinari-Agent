@@ -1761,9 +1761,18 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .turn-head-name { font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text); letter-spacing: -0.01em; }
 .turn-head-state { display: flex; min-width: 0; flex: 1; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); }
 .turn-rail { position: relative; padding-left: 26px; }
-.turn-rail::before { content: ''; position: absolute; left: 13px; top: 4px; bottom: 4px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, rgb(196 181 253 / 0.45), rgb(147 88 255 / 0.18) 70%, transparent); }
-.turn-rail[data-live='true']::after { content: ''; position: absolute; left: 11px; width: 6px; height: 40px; border-radius: 6px; background: linear-gradient(180deg, transparent, var(--violet-200), transparent); animation: rinari-travel 2.4s ease-in-out infinite; pointer-events: none; }
+/* #10/#21: un solo eje para la línea, su brillo y las bolitas, y una pista medida (useRailTrack) que va del
+   centro de la primera bolita al de la última. La línea no se desvanece hasta transparente. El brillo
+   recorre solo la pista, con transform; con movimiento reducido no hay brillo. */
+.turn-rail { --rail-x: 15px; }
+.turn-rail::before { content: ''; position: absolute; left: calc(var(--rail-x) - 1px); top: var(--rail-start, 4px); height: var(--rail-len, calc(100% - 8px)); width: 2px; border-radius: 2px; background: linear-gradient(180deg, rgb(196 181 253 / 0.45), rgb(147 88 255 / 0.22)); }
+.turn-rail[data-live='true']::after { content: ''; position: absolute; left: calc(var(--rail-x) - 3px); top: var(--rail-start, 0px); width: 6px; height: min(40px, var(--rail-len, 40px)); border-radius: 6px; background: linear-gradient(180deg, transparent, var(--violet-200), transparent); animation: rail-travel 2.4s ease-in-out infinite; pointer-events: none; }
+.turn-rail[data-track='none']::before, .turn-rail[data-track='none']::after { display: none; }
+@keyframes rail-travel { 0% { opacity: 0; transform: translateY(0); } 20%, 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(calc(var(--rail-len, 40px) - min(40px, var(--rail-len, 40px)))); } }
+@media (prefers-reduced-motion: reduce) { .turn-rail[data-live='true']::after { display: none; } }
+html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none; }
 .turn-node { position: absolute; left: -18px; top: 13px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-4); border: 2px solid var(--bg-app); box-sizing: content-box; }
+.turn-node[data-state='text'] { top: 9px; left: -16px; width: 6px; height: 6px; }
 .turn-node[data-state='done'] { background: var(--success); }
 .turn-node[data-state='running'] { background: var(--violet-500); box-shadow: 0 0 10px var(--violet-500); animation: rinari-pulse 1.4s infinite; }
 .turn-node[data-state='failed'] { background: var(--danger); }
@@ -2181,7 +2190,9 @@ button.agent-entry:hover { border-color: var(--line-3); background: rgb(20 15 34
 .agent-entry[data-state='done'] .agent-state { color: var(--success); }
 .agent-entry[data-state='failed'] .agent-state, .agent-entry[data-state='stopped'] .agent-state { color: var(--danger); }
 .agent-steps { position: relative; display: flex; flex-direction: column; gap: 2px; margin: 0 0 0 16px; padding-left: 18px; list-style: none; }
-.agent-steps::before { content: ''; position: absolute; left: 4px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: linear-gradient(var(--cyan-300), rgb(130 244 239 / 0.08)); }
+/* La misma pista medida que el timeline (#21): centrada en las bolitas (x = 4) y de la primera a la última. */
+.agent-steps::before { content: ''; position: absolute; left: 3px; top: var(--rail-start, 8px); height: var(--rail-len, calc(100% - 16px)); width: 2px; border-radius: 2px; background: linear-gradient(var(--cyan-300), rgb(130 244 239 / 0.3)); }
+.agent-steps[data-track='none']::before { display: none; }
 .agent-step { position: relative; padding: 4px 0; font-size: 12.5px; color: var(--text-muted); }
 .agent-step::before { content: ''; position: absolute; left: -18px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
 .agent-step[data-state='running']::before { background: var(--agent); box-shadow: 0 0 8px var(--agent); animation: rinari-pulse 1.2s infinite; }

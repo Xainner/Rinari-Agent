@@ -368,6 +368,10 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'spell-check': {
+    title: 'Corrector del composer: sugerencias y «Agregar al diccionario» con clic derecho',
+    phases: ['exercise'],
+  },
   'tray-menu-titlebar': {
     title: 'Acciones de la bandeja con ventana oculta y barra superior sin contador de ejecuciones',
     phases: ['exercise'],

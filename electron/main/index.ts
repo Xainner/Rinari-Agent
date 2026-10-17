@@ -41,6 +41,7 @@ import { hostLanguageFromLocale, hostText, type HostText } from './native/hostTe
 import { createImages } from './native/images'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
+import { installSpellMenu } from './native/spellMenu'
 import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
@@ -867,6 +868,10 @@ function openWindow(): void {
   })
 
   registry.trust(mainWindow.webContents.id)
+  const spellWindow = mainWindow
+  installSpellMenu(spellWindow, currentHostText, (template) => {
+    Menu.buildFromTemplate(template).popup({ window: spellWindow })
+  })
   handoff.open((request: OpenRequest) => send(PUSH.openRequest, request))
   // Ventana nueva: el overlay vive en su botón de la barra; se repone lo último.
   mainWindow.once('ready-to-show', () => indicators.reapply())

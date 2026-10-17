@@ -51,6 +51,13 @@ scenario(async () => {
   await screenshot('normal-live-visible')
   await evaluate(`${q('[data-operation-group] details > summary')}.click()`)
   await wait(`Boolean(document.querySelector('[data-operation-group] details[open]'))`)
+  // Opened by hand, its content is in view (#16): the chat goes down just enough, the header stays visible.
+  await delay(450)
+  {
+    const fit = await evaluate(`(() => { const view = document.querySelector('${scroller}').getBoundingClientRect(); const box = document.querySelector('[data-operation-group] details[open]').getBoundingClientRect(); const head = document.querySelector('[data-operation-group] details[open] > summary').getBoundingClientRect(); return { bottom: box.bottom, viewBottom: view.bottom, head: head.top, viewTop: view.top } })()`)
+    assert(fit.head >= fit.viewTop - 1, `the opened card keeps its header in view (${JSON.stringify(fit)})`)
+    assert(fit.bottom <= fit.viewBottom + 1 || fit.head <= fit.viewTop + 20, `the opened card's content is in view (${JSON.stringify(fit)})`)
+  }
   await evaluate(`${q('[data-operation-group] details > summary')}.focus()`)
   ui.win.focus()
   await key('Space')

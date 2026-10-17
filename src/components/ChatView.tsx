@@ -293,8 +293,22 @@ function ChatView({
           scroll.scrollTop += anchor.getBoundingClientRect().top - offset
           handleScroll()
         }
+        // Abierta a mano (#16): si el contenido se sale por abajo, el chat baja lo
+        // justo para mostrarlo, sin subir la cabecera más allá de un margen. Al
+        // cerrar, o con la tarjeta ya a la vista, no se mueve nada.
+        const reveal = () => {
+          const box = anchor.closest('details')
+          if (!manual || !box?.open || !anchor.isConnected || scrollRef.current !== scroll) return
+          const view = scroll.getBoundingClientRect()
+          const overflow = box.getBoundingClientRect().bottom - (view.bottom - 12)
+          const room = anchor.getBoundingClientRect().top - (view.top + 16)
+          const by = Math.min(overflow, room)
+          if (by <= 1) return
+          const calm = document.documentElement.dataset.motion === 'reduced' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+          scroll.scrollTo({ top: scroll.scrollTop + by, behavior: calm ? 'auto' : 'smooth' })
+        }
         restore()
-        requestAnimationFrame(restore)
+        requestAnimationFrame(() => { restore(); reveal() })
       }
     },
   }), [sessionId, handleScroll])

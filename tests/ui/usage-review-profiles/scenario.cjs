@@ -55,6 +55,14 @@ scenario(async () => {
   assert.ok(await evaluate(`Boolean(document.querySelector('[data-testid="profile-card"] dd[data-own]'))`), 'the own model is marked')
   await settleAnimations()
   await screenshot('04-profiles')
+  // The form: per agent its model, fallback and effort (#86).
+  await evaluate(`[...document.querySelectorAll('[data-testid="profile-card"]')].find((card) => card.textContent.includes('Diseño')).querySelector('.profile-card-actions .btn-secondary').click()`)
+  await wait(`Boolean(document.querySelector('[data-testid="profile-form"] [data-testid="profile-agent-effort-explore"]'))`)
+  assert.match(await evaluate(`document.querySelector('[data-testid="profile-agent-model-explore"]').textContent`), /prueba-local/)
+  await settleAnimations()
+  await screenshot('04b-profile-form')
+  await key('Escape')
+  await wait(`!document.querySelector('[data-testid="profile-form"]')`)
 
   // 4. Personality: «Así suena» follows the level.
   await clickText('Personalidad', 'nav button')

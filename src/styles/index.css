@@ -3367,6 +3367,18 @@ button[data-copied] svg { animation: rinari-check-pop 0.4s var(--ease-out); }
 .profile-card-facts dd[data-own]::before { content: ''; width: 5px; height: 5px; flex-shrink: 0; border-radius: 999px; background: var(--accent-2); box-shadow: 0 0 6px var(--accent-2); }
 .profile-card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line-1); }
 .profile-card-remove:hover:not(:disabled) { color: var(--danger); }
+.profile-card-extra { font-family: var(--font-sans); color: var(--text-subtle); }
+.profile-card-link { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; border: 0; background: none; padding: 0; font-size: 11.5px; color: var(--accent-2); cursor: pointer; }
+.profile-card-link:hover { text-decoration: underline; }
+.profile-card-details { font-size: 11.5px; color: var(--text-subtle); }
+.profile-card-details > summary { cursor: pointer; width: max-content; }
+.profile-card-details dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 6px 0 0; }
+.profile-card-details dl > div { display: contents; }
+.profile-card-details dd { margin: 0; overflow-wrap: anywhere; }
+/* Formulario (#86): por agente, modelo · respaldo · esfuerzo. */
+.profile-agent-row { display: grid; grid-template-columns: 88px repeat(3, minmax(0, 1fr)); align-items: center; gap: 6px; }
+.profile-agent-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-muted); }
+.profile-agent-columns { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-subtle); }
 
 /* «Así suena» (#87): cada ejemplo como una burbuja de Rinari con su cara; al cambiar de nivel, el texto entra como cambio. */
 .soul-preview { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; padding: 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(8 6 15 / 0.45); }

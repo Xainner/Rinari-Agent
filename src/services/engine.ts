@@ -811,7 +811,7 @@ export interface ProfileBundle {
   description: string;
   soul_id: string | null;
   mode: string | null;
-  agents: Record<string, { model?: string; fallback?: string }>;
+  agents: Record<string, { model?: string; fallback?: string; effort?: string; enabled?: boolean }>;
   /** The built-in default profile: always exists, never removed. */
   builtin?: boolean;
   /** Present on `bundle_list` with `rinari_profiles_v1`. */

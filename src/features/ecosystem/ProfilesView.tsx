@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Copy, Pencil, Sparkles, Trash2 } from 'lucide-react'
+import { Check, Copy, PanelLeft, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -9,7 +9,8 @@ import {
   type ProfileBundle,
   type SoulSummary,
 } from '../../services/engine'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
+import { useUIStore } from '../../stores/ui'
 import { art } from '../rinari/art'
 import { inputClass, labelClass } from '../../components/settings/parts'
 import { Select } from '../../components/ui/select'
@@ -30,6 +31,14 @@ import { useProfileStore } from '../profiles/profileStore'
 const DEFAULT_SOUL = 'rinari-default'
 /** «Como el general»: el agente sigue la asignación global. */
 const INHERIT = ''
+/** Los esfuerzos que el Engine acepta por agente (`agents/config.py` EFFORTS). */
+const EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'] as const
+
+interface AgentForm {
+  model: string
+  fallback: string
+  effort: string
+}
 
 interface FormState {
   /** Editando uno existente; vacío al crear o duplicar (el id lo pone el Engine). */
@@ -37,7 +46,7 @@ interface FormState {
   name: string
   description: string
   soul_id: string
-  agents: Record<string, string>
+  agents: Record<string, AgentForm>
 }
 
 const emptyForm = (): FormState => ({ id: null, name: '', description: '', soul_id: DEFAULT_SOUL, agents: {} })
@@ -100,15 +109,18 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
       name: duplicate ? t('rbundles.copyName', { name: profile.name }) : profile.name,
       description: profile.description,
       soul_id: profile.soul_id || DEFAULT_SOUL,
-      agents: Object.fromEntries(Object.entries(profile.agents ?? {}).map(([agent, value]) => [agent, value.model ?? INHERIT])),
+      agents: Object.fromEntries(Object.entries(profile.agents ?? {}).map(([agent, value]) => [agent, { model: value.model ?? INHERIT, fallback: value.fallback ?? INHERIT, effort: value.effort ?? INHERIT }])),
     })
   }
 
   async function save() {
     if (!form || form.name.trim() === '') return
     setSaving(true)
+    // Solo lo que el perfil cambia; lo vacío sigue la asignación general.
     const agentsMap = Object.fromEntries(
-      Object.entries(form.agents).filter(([, model]) => model !== INHERIT).map(([agent, model]) => [agent, { model }]),
+      Object.entries(form.agents)
+        .map(([agent, value]) => [agent, Object.fromEntries(Object.entries(value).filter(([, item]) => item !== INHERIT))] as const)
+        .filter(([, value]) => Object.keys(value).length > 0),
     )
     try {
       if (form.id) {
@@ -138,7 +150,18 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
     }
   }
 
-  const modelOptions = [{ value: INHERIT, label: t('rbundles.inherit') }, ...models.map((model) => ({ value: model.alias, label: model.alias, detail: model.provider ?? undefined }))]
+  /** «Ver en la barra lateral»: la barra muestra el trabajo del perfil activo. */
+  async function showInSidebar(profile: ProfileBundle) {
+    if (!profile.active) await use(profile)
+    const ui = useUIStore.getState()
+    ui.setSidebarCollapsed(false)
+    ui.goBackToWork()
+  }
+
+  const agentForm = (name: string): AgentForm => form?.agents[name] ?? { model: INHERIT, fallback: INHERIT, effort: INHERIT }
+  const setAgent = (name: string, patch: Partial<AgentForm>) => form && setForm({ ...form, agents: { ...form.agents, [name]: { ...agentForm(name), ...patch } } })
+  const effortOptions = [{ value: INHERIT, label: t('rbundles.inheritShort') }, ...EFFORTS.map((level) => ({ value: level, label: t(`thinking.${level}` as I18nKey) }))]
+  const modelOptions = [{ value: INHERIT, label: t('rbundles.inheritShort') }, ...models.map((model) => ({ value: model.alias, label: model.alias, detail: model.provider ?? undefined }))]
 
   return (
     <div className="space-y-4" data-testid="profiles-view">
@@ -166,16 +189,37 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
             <dl className="profile-card-facts">
               <div><dt>{t('rbundles.soul')}</dt><dd><Sparkles size={12} aria-hidden="true" /> {soulName(profile.soul_id)}</dd></div>
               {agents.map((agent) => {
-                const own = profile.agents?.[agent.name]?.model
+                const own = profile.agents?.[agent.name]
+                const general = modelName(agent.assignment?.model)
+                const extra = [own?.fallback && t('rbundles.fallbackShort', { model: modelName(own.fallback) ?? own.fallback }), own?.effort && t(`thinking.${own.effort}` as I18nKey)].filter(Boolean).join(' · ')
                 return (
                   <div key={agent.name} data-agent={agent.name}>
                     <dt>{agent.name}</dt>
-                    <dd data-own={own ? true : undefined}>{own ? modelName(own) : t('rbundles.asGeneral', { model: modelName(agent.assignment?.model) ?? '—' })}</dd>
+                    <dd data-own={own?.model ? true : undefined}>
+                      {own?.model ? modelName(own.model) : general ? t('rbundles.asGeneral', { model: general }) : t('rbundles.asGeneralChat')}
+                      {extra && <span className="profile-card-extra"> · {extra}</span>}
+                    </dd>
                   </div>
                 )
               })}
-              <div><dt>{t('rbundles.work')}</dt><dd>{t('rbundles.workCounts', { projects: profile.counts?.projects ?? 0, sessions: profile.counts?.sessions ?? 0 })}</dd></div>
+              <div>
+                <dt>{t('rbundles.work')}</dt>
+                <dd>
+                  {t('rbundles.workCounts', { projects: profile.counts?.projects ?? 0, sessions: profile.counts?.sessions ?? 0 })}
+                  {(profile.counts?.projects ?? 0) + (profile.counts?.sessions ?? 0) > 0 && (
+                    <button type="button" className="profile-card-link" onClick={() => void showInSidebar(profile)} data-testid="profile-show-sidebar">
+                      <PanelLeft size={12} aria-hidden="true" /> {t('rbundles.showInSidebar')}
+                    </button>
+                  )}
+                </dd>
+              </div>
             </dl>
+            <details className="profile-card-details" data-testid="profile-details">
+              <summary>{t('rbundles.details')}</summary>
+              <dl>
+                <div><dt>{t('rbundles.internalId')}</dt><dd><code>{profile.id}</code></dd></div>
+              </dl>
+            </details>
             <div className="profile-card-actions">
               {!profile.active && <button type="button" onClick={() => void use(profile)} className="btn btn-primary btn-sm">{t('rbundles.use')}</button>}
               <button type="button" onClick={() => open(profile)} className="btn btn-secondary btn-sm"><Pencil size={12} aria-hidden="true" /> {t('rbundles.edit')}</button>
@@ -192,7 +236,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
       </div>
 
       <Dialog open={form !== null} onOpenChange={(next) => !next && setForm(null)}>
-        <DialogContent className="max-w-lg" data-testid="profile-form">
+        <DialogContent className="max-w-xl" data-testid="profile-form">
           <DialogHeader>
             <DialogTitle>{form?.id ? t('rbundles.editTitle') : t('rbundles.create')}</DialogTitle>
           </DialogHeader>
@@ -219,18 +263,24 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
               {agents.length > 0 && (
                 <div className="space-y-2">
                   <p className={labelClass}>{t('rbundles.agentModels')}</p>
-                  {agents.map((agent) => (
-                    <div key={agent.name} className="flex items-center gap-2">
-                      <span className="w-28 shrink-0 text-xs text-[var(--text-muted)]">{agent.name}</span>
-                      <Select<string>
-                        className="flex-1"
-                        value={form.agents[agent.name] ?? INHERIT}
-                        label={agent.name}
-                        options={modelOptions}
-                        onChange={(model) => setForm({ ...form, agents: { ...form.agents, [agent.name]: model } })}
-                      />
-                    </div>
-                  ))}
+                  <div className="profile-agent-row profile-agent-columns" aria-hidden="true">
+                    <span />
+                    <span>{t('rbundles.colModel')}</span>
+                    <span>{t('rbundles.colFallback')}</span>
+                    <span>{t('rbundles.colEffort')}</span>
+                  </div>
+                  {agents.map((agent) => {
+                    const value = agentForm(agent.name)
+                    return (
+                      <div key={agent.name} className="profile-agent-row" role="group" aria-label={agent.name} data-agent={agent.name}>
+                        <span className="profile-agent-name">{agent.name}</span>
+                        <Select<string> value={value.model} label={t('rbundles.model', { agent: agent.name })} options={modelOptions} onChange={(model) => setAgent(agent.name, { model })} testId={`profile-agent-model-${agent.name}`} />
+                        <Select<string> value={value.fallback} label={t('rbundles.fallback', { agent: agent.name })} options={modelOptions} onChange={(fallback) => setAgent(agent.name, { fallback })} testId={`profile-agent-fallback-${agent.name}`} />
+                        <Select<string> value={value.effort} label={t('rbundles.effort', { agent: agent.name })} options={effortOptions} onChange={(effort) => setAgent(agent.name, { effort })} testId={`profile-agent-effort-${agent.name}`} />
+                      </div>
+                    )
+                  })}
+
                   <p className="text-[11px] text-[var(--text-subtle)]">{t('rbundles.inheritHint')}</p>
                 </div>
               )}

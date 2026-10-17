@@ -28,6 +28,8 @@ scenario(async () => {
   await send('Revisa los docs en otra sesión')
   await wait(text('La abrí aparte.'))
   await wait(`[...document.querySelectorAll('aside li')].some((li) => li.textContent.includes('Revisar docs'))`)
+  await wait(`Boolean(document.querySelector('[data-testid="child-card"]'))`)
+  assert.ok(await evaluate(`document.querySelector('[data-testid="child-card"]').hasAttribute('data-entering')`), 'the new child card enters')
   await wait(`document.querySelector('[data-testid="child-card"]')?.dataset.state === 'completed'`)
   await wait(text('REPORTE: arreglé 2 enlaces rotos.'))
   await wait(`document.querySelector('[data-testid="child-report-separator"]')?.textContent.includes('Revisar docs')`)

@@ -529,7 +529,7 @@ describe('child sessions under their mother (#40)', () => {
     })
     const nested = screen.getByTestId('session-children')
     expect(within(nested).getAllByRole('listitem').map((item) => item.textContent)).toEqual([expect.stringContaining('Pruebas'), expect.stringContaining('Docs')])
-    // The working one shows its spinner; the other, its state icon.
+    // The working one shows its spinner; the other, its state icon (check when done, the «hangs from» arrow before).
     expect(within(nested).getAllByTestId('session-child-icon')).toHaveLength(1)
     expect(screen.queryByTestId('session-children-chip')).toBeNull()
     expect(screen.getByText('Parser').closest('li')?.textContent).not.toMatch(/\d\/\d/)

@@ -157,9 +157,9 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
       <div data-testid="user-message-row" className="group/user flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
-        <ChildFromMessage text={text} />
         {message.origin?.source === 'parent_message' && <MotherBadge sessionId={(message.origin as { parent_session_id?: string }).parent_session_id ?? null} />}
-        <div className="flex w-full min-w-0 justify-end">
+        <div className="flex w-full min-w-0 items-center justify-end gap-2">
+        <ChildFromMessage text={text} />
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             <MessageAttachments attachments={message.attachments} />
@@ -334,8 +334,8 @@ function ChildFromMessage({ text }: { text: string }) {
   }
   return (
     <button type="button" data-testid="child-from-message" disabled={busy} onClick={() => void open()} title={t('children.fromMessageHint')}
-      className="inline-flex items-center gap-1 text-[10.5px] text-[var(--text-subtle)] opacity-0 transition-opacity group-hover/user:opacity-100 focus-visible:opacity-100 hover:text-[var(--text)]">
-      <GitBranchPlus size={11} aria-hidden="true" /> {t('children.fromMessage')}
+      className="child-from-message">
+      {busy ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <GitBranchPlus size={12} aria-hidden="true" />} {t('children.fromMessage')}
     </button>
   )
 }

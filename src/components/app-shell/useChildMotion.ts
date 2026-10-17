@@ -20,6 +20,8 @@ export function useChildMotion(sessions: readonly SessionSummary[], busy: Readon
   const previous = useRef<ReadonlySet<string>>(busy ?? new Set())
   const timers = useRef(new Set<number>())
   const [finished, setFinished] = useState<ReadonlySet<string>>(() => new Set())
+  // Las que esta barra vio terminar: siguen con su check aunque aún sean recientes.
+  const [ended, setEnded] = useState<ReadonlySet<string>>(() => new Set())
 
   useEffect(() => {
     const before = previous.current
@@ -27,6 +29,7 @@ export function useChildMotion(sessions: readonly SessionSummary[], busy: Readon
     const done = [...before].filter((id) => !busy?.has(id))
     if (done.length === 0) return
     setFinished((current) => new Set([...current, ...done]))
+    setEnded((current) => new Set([...current, ...done]))
     const timer = window.setTimeout(() => {
       timers.current.delete(timer)
       setFinished((current) => {
@@ -52,5 +55,6 @@ export function useChildMotion(sessions: readonly SessionSummary[], busy: Readon
     fresh,
     entering: (id: string) => !atMount.current!.has(id) && fresh(id),
     finished: (id: string) => finished.has(id),
+    ended: (id: string) => ended.has(id),
   }
 }

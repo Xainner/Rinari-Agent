@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react'
-import { ArrowUpRight, CircleCheck, CircleX, GitBranch, GitMerge, LoaderCircle, MessagesSquare, Trash2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowUpRight, FileText, Folder, GitBranch, GitMerge, Hand, LoaderCircle, Trash2, TriangleAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, type ChildSession } from '../../services/engine'
 import { useOptionalEngineCommands, useOptionalEngineData } from '../engine/EngineContext'
 import { useChildrenStore, visibleChild } from './childrenStore'
+import { useConfirm } from '../../components/ui/useConfirm'
+import { bornAt } from '../projects/workspaceModel'
+
+/** Una hija nacida hace menos de esto entra con movimiento; las que ya estaban, quietas. */
+const FRESH_MS = 15_000
 
 const EMPTY: ChildSession[] = []
 
@@ -52,6 +57,20 @@ function ChildCard({ child }: { child: ChildSession }) {
   const files = child.report?.files ?? []
   const decide = Boolean(child.branch) && !child.resolution && !working
   const open = () => { void commands?.selectSession(child.child_session_id) }
+  const confirm = useConfirm()
+  // Entra solo la que acaba de nacer; al volver a la madre, las tarjetas aparecen quietas.
+  const [entering] = useState(() => {
+    const born = bornAt(child.child_session_id)
+    return born !== null && Date.now() - born < FRESH_MS
+  })
+  // El check se dibuja si esta tarjeta la vio pasar de trabajando a terminada.
+  const previous = useRef(child.state)
+  const [celebrate, setCelebrate] = useState(false)
+  useEffect(() => {
+    const was = previous.current
+    previous.current = child.state
+    if ((was === 'working' || was === 'waiting') && child.state === 'completed') setCelebrate(true)
+  }, [child.state])
 
   const integrate = async () => {
     setBusy(true)
@@ -71,7 +90,13 @@ function ChildCard({ child }: { child: ChildSession }) {
     }
   }
   const discard = async () => {
-    if (!window.confirm(t('children.discardConfirm', { branch: child.branch ?? '' }))) return
+    const sure = await confirm.ask({
+      title: t('children.discardTitle'),
+      body: t('children.discardConfirm', { branch: child.branch ?? '' }),
+      confirmLabel: t('children.discard'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (!sure) return
     setBusy(true)
     try {
       await engineApi.sessionChildDiscard(child.child_session_id)
@@ -91,43 +116,63 @@ function ChildCard({ child }: { child: ChildSession }) {
     }
   }
 
-  const StateIcon = working ? LoaderCircle : child.state === 'completed' ? CircleCheck : CircleX
+  const tone = working ? (child.state === 'waiting' ? 'warning' : 'accent') : child.state === 'completed' ? 'success' : child.state === 'failed' ? 'danger' : undefined
   return (
-    <article className="child-card" data-testid="child-card" data-state={child.state} data-child-id={child.child_session_id} data-resolution={child.resolution ?? undefined}>
+    <article
+      className="child-card"
+      data-testid="child-card"
+      data-state={child.state}
+      data-child-id={child.child_session_id}
+      data-resolution={child.resolution ?? undefined}
+      data-entering={entering || undefined}
+    >
       <header className="child-card-head">
-        <StateIcon size={14} aria-hidden="true" className={working ? 'animate-spin' : undefined} />
-        <span className="child-card-title" title={title}>{title}</span>
-        <span className="child-card-state">{t(`children.state.${child.state}`)}</span>
+        <span className="child-card-tile" data-state={child.state} aria-hidden="true">
+          {child.state === 'working'
+            ? <span className="child-card-spin" />
+            : child.state === 'waiting'
+              ? <Hand size={13} />
+              : child.state === 'completed'
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className={celebrate ? 'r-check' : undefined}><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+                : <X size={13} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="child-card-kicker">{t('children.untitled')}</p>
+          <p className="child-card-title" title={title}>{title}</p>
+        </div>
+        <span className="r-chip child-card-state" data-tone={tone}>{t(`children.state.${child.state}`)}</span>
         {!working && (
-          <button type="button" className="child-card-close" aria-label={t('children.hide')} title={t('children.hide')} onClick={() => hide(child.child_session_id)}>
-            <X size={12} aria-hidden="true" />
+          <button type="button" className="btn btn-quiet btn-icon btn-xs" aria-label={t('children.hide')} title={t('children.hide')} onClick={() => hide(child.child_session_id)}>
+            <X size={13} aria-hidden="true" />
           </button>
         )}
       </header>
       {child.report?.summary && !working && <p className="child-card-summary">{child.report.summary}</p>}
       {child.report?.error && !working && <p className="child-card-error">{child.report.error}</p>}
       <p className="child-card-meta">
-        {child.branch ? <><GitBranch size={11} aria-hidden="true" /> <code>{child.branch}</code></> : <><MessagesSquare size={11} aria-hidden="true" /> {t('children.sameFolder')}</>}
-        {files.length > 0 && <span> · {t('children.files', { n: files.length })}</span>}
-        {child.resolution && <span> · {t(`children.resolution.${child.resolution}`)}</span>}
+        {child.branch
+          ? <span className="child-card-chip is-branch" title={child.worktree_path ?? undefined}><GitBranch size={11} aria-hidden="true" /><code>{child.branch}</code></span>
+          : <span className="child-card-chip"><Folder size={11} aria-hidden="true" />{t('children.sameFolder')}</span>}
+        {files.length > 0 && <span className="child-card-chip" title={files.join('\n')}><FileText size={11} aria-hidden="true" />{t('children.files', { n: files.length })}</span>}
+        {child.resolution && <span className="r-chip" data-tone={child.resolution === 'integrated' ? 'success' : undefined}>{t(`children.resolution.${child.resolution}`)}</span>}
       </p>
       {conflicts && (
         <div role="alert" className="child-card-conflicts">
-          <p>{t('children.conflicts')}</p>
+          <p className="child-card-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t('children.conflicts')}</p>
           <ul>{conflicts.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
-          <p>{t('children.conflictsHint')}</p>
+          <p className="child-card-conflicts-hint">{t('children.conflictsHint')}</p>
         </div>
       )}
       <div className="child-card-actions">
-        <button type="button" className="btn btn-quiet btn-sm" onClick={open}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={open}>
           {t('children.open')} <ArrowUpRight size={12} aria-hidden="true" />
         </button>
         {decide && (
           <>
             <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => void integrate()}>
-              <GitMerge size={12} aria-hidden="true" /> {t('children.integrate')}
+              {busy ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <GitMerge size={12} aria-hidden="true" />} {t('children.integrate')}
             </button>
-            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void discard()}>
+            <button type="button" className="btn btn-ghost btn-sm child-card-discard" disabled={busy} onClick={() => void discard()}>
               <Trash2 size={12} aria-hidden="true" /> {t('children.discard')}
             </button>
           </>
@@ -138,6 +183,7 @@ function ChildCard({ child }: { child: ChildSession }) {
           </button>
         )}
       </div>
+      {confirm.dialog}
     </article>
   )
 }

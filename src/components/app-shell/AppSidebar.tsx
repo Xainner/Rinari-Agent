@@ -15,6 +15,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Plus,
+  CornerDownRight,
   GitBranch,
   GitFork,
   Hand,
@@ -30,6 +31,7 @@ import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
 import { buildWorkspaceModel, projectDisplayName, groupRecentChats, nestSessions, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
 import { useChildMotion } from './useChildMotion'
+import { useChildrenStore } from '../../features/children/childrenStore'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -306,6 +308,14 @@ export function AppSidebar({
   // cuelga de su madre de ayer, no aparece suelta en «Hoy» (#40).
   const chatNest = nestSessions(model.chats)
   const childMotion = useChildMotion(sessions, busySessionIds)
+  // La rama propia de cada hija que se conoce (plan-sesiones-hijas 5.5): la hija que
+  // trabaja en su worktree lleva el icono de rama junto al título.
+  const childrenByParent = useChildrenStore((state) => state.byParent)
+  const childBranch = useMemo(() => {
+    const branches = new Map<string, string>()
+    for (const list of Object.values(childrenByParent)) for (const child of list) if (child.branch && child.resolution !== 'discarded') branches.set(child.child_session_id, child.branch)
+    return branches
+  }, [childrenByParent])
   /** Una sesión con sus hijas debajo, con sangría y siempre a la vista (#40). */
   const tree = (list: SessionSummary[], opts?: { travel?: boolean }, nest?: ReturnType<typeof nestSessions>) => {
     const { tops, children } = nest ? { tops: list, children: nest.children } : nestSessions(list)
@@ -332,7 +342,7 @@ export function AppSidebar({
     // Una hija terminada lleva su check (#40): se dibuja si esta barra la vio terminar.
     // La recién nacida que aún no arrancó y la que falló siguen con la rama.
     const childFinished = opts?.child === true && childMotion.finished(session.id)
-    const childDone = opts?.child === true && !working && signal !== 'failed' && (childFinished || !childMotion.fresh(session.id))
+    const childDone = opts?.child === true && !working && signal !== 'failed' && (childFinished || childMotion.ended(session.id) || !childMotion.fresh(session.id))
     return (
       <li key={session.id} data-entering={opts?.child && childMotion.entering(session.id) ? '' : undefined} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
@@ -370,7 +380,7 @@ export function AppSidebar({
               data-testid="session-child-icon"
               data-drawn={childFinished || undefined}
               className={cn('sidebar-child-check', childFinished && 'r-check')}
-            ><path d="M5 12.5l4.2 4.2L19 7" /></svg> : opts?.child ? <GitBranch
+            ><path d="M5 12.5l4.2 4.2L19 7" /></svg> : opts?.child ? <CornerDownRight
               size={13}
               aria-hidden="true"
               data-testid="session-child-icon"
@@ -388,6 +398,11 @@ export function AppSidebar({
                 active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]',
               )}
             />
+            {opts?.child && childBranch.has(session.id) && (
+              <span role="img" aria-label={t('sidebar.childBranch', { branch: childBranch.get(session.id)! })} title={childBranch.get(session.id)} data-testid="session-child-branch" className="shrink-0 text-[var(--text-subtle)]">
+                <GitBranch size={12} aria-hidden="true" />
+              </span>
+            )}
             {opts?.projectName && (
               <span title={opts.projectName} className="max-w-[40%] shrink-0 truncate text-[11px] text-[var(--text-subtle)]">
                 {opts.projectName}

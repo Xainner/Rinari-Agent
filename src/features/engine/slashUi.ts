@@ -4,6 +4,7 @@ import { dispatchAction } from '../../services/actions'
 import { useUIStore } from '../../stores/ui'
 import { translate } from '../../i18n'
 import { useGoalStore } from '../goal/goalStore'
+import { usageApi, useUsageReports } from '../usage/usageReport'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 
 export interface UiCommandDeps {
@@ -78,6 +79,18 @@ async function init(deps: UiCommandDeps): Promise<boolean> {
   return true
 }
 
+/** `/usage` (#78): el informe de esta conversación, como foto en el chat; sin turno. */
+async function usage(deps: UiCommandDeps): Promise<boolean> {
+  const sessionId = deps.sessionId || (await deps.ensureSession?.()) || ''
+  if (!sessionId) {
+    toast(translate(useUIStore.getState().lang, 'init.needsConversation'))
+    return true
+  }
+  const { report } = await usageApi.report('session', sessionId, { sessionId })
+  useUsageReports.getState().add(sessionId, report)
+  return true
+}
+
 /** `/child <tarea>`: la tarea va a una sesión hija que informa aquí (plan-sesiones-hijas 5.4). */
 async function child(text: string, deps: UiCommandDeps): Promise<boolean> {
   if (!text.trim()) return false
@@ -125,6 +138,8 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         return await init(deps)
       case 'child':
         return await child(text, deps)
+      case 'usage':
+        return await usage(deps)
       default:
         return false
     }

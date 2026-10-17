@@ -57,6 +57,7 @@ import WorkspaceView from './features/workspace/WorkspaceView'
 import ProjectHome from './features/projects/ProjectHome'
 import ProviderWizard from './features/providers/ProviderWizard'
 import WelcomeDialog from './features/welcome/WelcomeDialog'
+import ReviewExportDialog from './features/review/ReviewExportDialog'
 import { welcomeSeen, markWelcomeSeen } from './features/welcome/welcomeState'
 import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
@@ -842,6 +843,8 @@ function App() {
         )}
         </div>
       </AppShell>
+
+      <ReviewExportDialog />
 
       <WelcomeDialog
         open={welcomeOpen}

@@ -20,7 +20,7 @@
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, ReviewExportRequest, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -36,7 +36,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, StartupLimit, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, ReviewExportRequest, StartupLimit, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 export { JSON_FILE_MAX_BYTES } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
@@ -202,6 +202,8 @@ export interface DesktopBridge {
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
+    /** «Exportar para revisión» (#79): elige dónde guardar el .zip. */
+    exportReview(request: ReviewExportRequest): Promise<DiagnosticsExportResult>
   }
 
   app: {

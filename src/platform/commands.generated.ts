@@ -211,6 +211,7 @@ export type DesktopCommand =
   | "session_resume_cancel"
   | "session_resume_get"
   | "session_resume_now"
+  | "session_review_export"
   | "session_summary"
   | "session_timeline"
   | "session_tool_background"
@@ -263,6 +264,8 @@ export type DesktopCommand =
   | "turn_steer_now"
   | "turn_steer_update"
   | "usage_get"
+  | "usage_report"
+  | "usage_report_list"
   | "verification_latest"
   | "verification_plan"
   | "vision_model_reset"
@@ -493,6 +496,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_resume_cancel",
   "session_resume_get",
   "session_resume_now",
+  "session_review_export",
   "session_summary",
   "session_timeline",
   "session_tool_background",
@@ -545,6 +549,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "turn_steer_now",
   "turn_steer_update",
   "usage_get",
+  "usage_report",
+  "usage_report_list",
   "verification_latest",
   "verification_plan",
   "vision_model_reset",
@@ -790,6 +796,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_resume_cancel",
   "session_resume_get",
   "session_resume_now",
+  "session_review_export",
   "session_summary",
   "session_timeline",
   "session_tool_background",
@@ -842,6 +849,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "turn_steer_now",
   "turn_steer_update",
   "usage_get",
+  "usage_report",
+  "usage_report_list",
   "verification_latest",
   "verification_plan",
   "vision_model_reset",

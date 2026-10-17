@@ -8721,6 +8721,125 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "usage_report",
+      "module": "usage",
+      "args": [
+        {
+          "name": "scope",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "ref",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "save",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "usage.report",
+      "engine_params": [
+        {
+          "key": "scope",
+          "from": "scope",
+          "optional": false
+        },
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": true
+        },
+        {
+          "key": "save",
+          "from": "save",
+          "optional": true
+        },
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "usage_report_list",
+      "module": "usage",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "usage.report.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_review_export",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "from_seq",
+          "type": "Option<u64>",
+          "optional": true
+        },
+        {
+          "name": "include_messages",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.review.export",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "from_seq",
+          "from": "from_seq",
+          "optional": true
+        },
+        {
+          "key": "include_messages",
+          "from": "include_messages",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

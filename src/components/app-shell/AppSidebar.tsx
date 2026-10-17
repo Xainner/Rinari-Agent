@@ -1,3 +1,4 @@
+import { useReviewExport } from '../../features/review/ReviewExportDialog'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { strongestSignal } from '../../features/notifications/attentionIndicators'
 import { toast } from 'sonner'
@@ -26,6 +27,7 @@ import {
   Trash2,
   Workflow,
   X,
+  PackageOpen,
 } from 'lucide-react'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
@@ -456,6 +458,9 @@ export function AppSidebar({
                   </DropdownMenuItem>}
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
                     <GitFork size={13} /> {t('sidebar.fork')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => useReviewExport.getState().open(session.id)} data-testid="session-export-review">
+                    <PackageOpen size={13} /> {t('review.menu')}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => onArchiveSession(session.id)}>

@@ -1750,6 +1750,15 @@
       "callers": []
     },
     {
+      "command": "session_review_export",
+      "kind": "engine",
+      "method": "session.review.export",
+      "manual": false,
+      "callers": [
+        "src/features/review/ReviewExportDialog.tsx"
+      ]
+    },
+    {
       "command": "session_summary",
       "kind": "engine",
       "method": "session.summary",
@@ -2178,6 +2187,24 @@
       ]
     },
     {
+      "command": "usage_report",
+      "kind": "engine",
+      "method": "usage.report",
+      "manual": false,
+      "callers": [
+        "src/features/usage/usageReport.ts"
+      ]
+    },
+    {
+      "command": "usage_report_list",
+      "kind": "engine",
+      "method": "usage.report.list",
+      "manual": false,
+      "callers": [
+        "src/features/usage/usageReport.ts"
+      ]
+    },
+    {
       "command": "verification_latest",
       "kind": "engine",
       "method": "verification.latest",
@@ -2342,8 +2369,8 @@
     }
   ],
   "summary": {
-    "commands": 280,
-    "engine_backed": 274,
+    "commands": 283,
+    "engine_backed": 277,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 94

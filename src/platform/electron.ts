@@ -39,6 +39,7 @@ import type {
   BackgroundPatch,
   BackgroundSettings,
   HostSettings,
+  ReviewExportRequest,
   HostSettingsPatch,
   DiagnosticsExportResult,
   DiagnosticsPreview,
@@ -139,6 +140,7 @@ interface DesktopHostApi {
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
+    exportReview(request: ReviewExportRequest): Promise<DiagnosticsExportResult>
   }
   app: {
     background(): Promise<BackgroundSettings>
@@ -276,6 +278,7 @@ export const electronBridge: DesktopBridge = {
   diagnostics: {
     preview: () => required().diagnostics.preview(),
     export: () => required().diagnostics.export(),
+    exportReview: (request) => required().diagnostics.exportReview(request),
   },
 
   app: {

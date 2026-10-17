@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **280**
-- Respaldados por Engine: **274**
+- Comandos: **283**
+- Respaldados por Engine: **277**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -223,6 +223,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `session_resume_cancel` | engine | `session.resume.cancel` | `src/services/engine.ts` |
 | `session_resume_get` | engine | `session.resume.get` | `src/services/engine.ts` |
 | `session_resume_now` | engine | `session.resume.now` | **ninguno** |
+| `session_review_export` | engine | `session.review.export` | `src/features/review/ReviewExportDialog.tsx` |
 | `session_summary` | engine | `session.summary` | `src/services/engine.ts` |
 | `session_timeline` | engine | `session.timeline` | **ninguno** |
 | `session_tool_background` | engine | `session.tool.background` | **ninguno** |
@@ -275,6 +276,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `turn_steer_now` | engine | `session.turn.steer_now` | `src/services/engine.ts` |
 | `turn_steer_update` | engine | `session.turn.steer.update` | **ninguno** |
 | `usage_get` | engine | `usage.get` | `src/services/engine.ts` |
+| `usage_report` | engine | `usage.report` | `src/features/usage/usageReport.ts` |
+| `usage_report_list` | engine | `usage.report.list` | `src/features/usage/usageReport.ts` |
 | `verification_latest` | engine | `verification.latest` | `src/services/engine.ts` |
 | `verification_plan` | engine | `verification.plan` | `src/services/engine.ts` |
 | `vision_model_reset` | engine | `vision.model.reset` | `src/services/engine.ts` |

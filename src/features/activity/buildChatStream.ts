@@ -1,15 +1,19 @@
 import type { ChatMessage } from '../../types'
+import type { UsageReport } from '../usage/usageReport'
 import type { TurnTimeline } from './types'
 
 export type ChatStreamItem =
   | { id: string; kind: 'message'; message: ChatMessage; at: number }
   | { id: string; kind: 'timeline'; timeline: TurnTimeline; user?: ChatMessage; at: number }
+  /** Una foto de `/usage` (#78): se queda en el chat, nunca va al modelo. */
+  | { id: string; kind: 'report'; report: UsageReport; at: number }
 
 /** Merge persisted history and protocol timelines without rendering either source twice. */
 export function buildChatStream(
   messages: ChatMessage[],
   timelines: Record<string, TurnTimeline>,
   sessionId: string,
+  reports: UsageReport[] = [],
 ): ChatStreamItem[] {
   const sessionTimelines = Object.values(timelines).filter((turn) => turn.sessionId === sessionId)
   const timelineIds = new Set(sessionTimelines.map((turn) => turn.turnId))
@@ -33,6 +37,9 @@ export function buildChatStream(
       user,
       at: user?.createdAt ?? timeline.startedAt,
     })
+  }
+  for (const report of reports) {
+    rows.push({ id: `report:${report.generated_at}`, kind: 'report', report, at: Date.parse(report.generated_at) || 0 })
   }
   return rows.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id))
 }

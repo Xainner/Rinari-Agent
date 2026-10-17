@@ -34,6 +34,8 @@ export const CHANNEL = {
   /** «Exportar diagnóstico»: qué incluiría el paquete y guardarlo donde diga la persona. */
   diagnosticsPreview: 'rinari:diagnostics.preview',
   diagnosticsExport: 'rinari:diagnostics.export',
+  /** «Exportar para revisión» (#79): la parte del Engine + los registros de esas horas. */
+  diagnosticsExportReview: 'rinari:diagnostics.exportReview',
   /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
   appBackgroundGet: 'rinari:app.background.get',
   appBackgroundSet: 'rinari:app.background.set',
@@ -232,6 +234,15 @@ export interface BackgroundSettings {
 export interface BackgroundPatch {
   backgroundMode?: boolean
   launchAtLogin?: boolean
+}
+
+/** «Exportar para revisión» (#79): lo que el Engine ya preparó, sin secretos. */
+export interface ReviewExportRequest {
+  files: Record<string, string>
+  from?: string | null
+  to?: string | null
+  includeLogs: boolean
+  suggestedName: string
 }
 
 /** Cuánto se espera el saludo del Engine: «Automático» lo adapta (#70). */

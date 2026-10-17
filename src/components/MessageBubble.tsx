@@ -1,5 +1,6 @@
+import { seqOfMessage, useReviewExport } from '../features/review/ReviewExportDialog'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight, PackageOpen } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import type { I18nKey } from '../i18n/es'
@@ -161,6 +162,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
         <ChildFromMessage text={text} />
+        <ExportFromMessage messageId={message.id} />
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             <MessageAttachments attachments={message.attachments} />
@@ -317,6 +319,20 @@ function PlanSeparator({ kind, title, comment }: { kind: 'implement' | 'adjust';
 }
 
 /** «Hacer en sesión hija»: the owner's message, as the task of a child (plan-sesiones-hijas 5.4). */
+/** «Exportar desde aquí» (#79): el paquete de revisión desde este mensaje. */
+function ExportFromMessage({ messageId }: { messageId: string }) {
+  const { t } = useI18n()
+  const sessionId = useContext(TurnSessionContext)
+  const seq = seqOfMessage(messageId)
+  if (!sessionId || seq === undefined) return null
+  return (
+    <button type="button" data-testid="export-from-message" className="child-from-message" title={t('review.fromHereHint')}
+      onClick={() => useReviewExport.getState().open(sessionId, seq)}>
+      <PackageOpen size={12} aria-hidden="true" /> {t('review.fromHereShort')}
+    </button>
+  )
+}
+
 function ChildFromMessage({ text }: { text: string }) {
   const { t } = useI18n()
   const sessionId = useContext(TurnSessionContext)

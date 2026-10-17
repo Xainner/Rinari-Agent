@@ -37,6 +37,7 @@ import type {
   BackgroundSettings,
   DiagnosticsPreview,
   HostSettings,
+  ReviewExportRequest,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -82,6 +83,7 @@ export interface TestBridge extends DesktopBridge {
   indicators: AttentionIndicators[]
   openedFolders: string[]
   hostSettings: HostSettings
+  reviewExports: ReviewExportRequest[]
   relaunched: number
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
@@ -210,6 +212,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       detailedLogs: false, detailedLogsUntil: null, environment: [], channel: 'stable', packaged: false,
     },
     relaunched: 0,
+    reviewExports: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -311,6 +314,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     diagnostics: {
       async preview() {
         return bridge.diagnosticsState.preview
+      },
+      async exportReview(request) {
+        bridge.reviewExports.push(request)
+        return { saved: true }
       },
       async export() {
         bridge.diagnosticsState.exports += 1

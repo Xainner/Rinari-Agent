@@ -1,3 +1,4 @@
+import { usageApi, useUsageReports } from '../usage/usageReport'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { engineApi, onEngineEvent } from '../../services/engine'
@@ -195,7 +196,13 @@ export default function ContextRing({ sessionId, modelId, providerAlias }: { ses
           {balances.map((balance, index) => <p key={index} className="flex justify-between text-[11.5px] text-[var(--text-muted)]"><span>{balance.label}</span><span className="font-mono">{balance.unlimited ? t('providers.keyUnlimited') : `${balance.remaining ?? '—'} ${balance.currency}`}</span></p>)}
         </div>}
         <div className="mt-4 flex flex-wrap gap-2">
-          {sessionId && <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setOpen(false); useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'insight' }) }}>{t('context.details')}</button>}
+          {/* «Detalles» pinta el informe de uso en el chat (#78). */}
+          {sessionId && <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+            setOpen(false)
+            void usageApi.report('session', sessionId, { sessionId })
+              .then(({ report }) => useUsageReports.getState().add(sessionId, report))
+              .catch(() => useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'insight' }))
+          }}>{t('context.details')}</button>}
           {sessionId && <button type="button" className="btn btn-quiet btn-sm" disabled={compacting} onClick={() => void compactNow()}>{t('context.compactNow')}</button>}
         </div>
       </PopoverContent>

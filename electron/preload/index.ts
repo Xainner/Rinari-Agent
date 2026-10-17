@@ -27,6 +27,7 @@ import {
   type BackgroundPatch,
   type BackgroundSettings,
   type HostSettings,
+  type ReviewExportRequest,
   type HostSettingsPatch,
   type BridgeResult,
   type BrowserContextView,
@@ -204,6 +205,7 @@ const api = {
   diagnostics: {
     preview: () => call<DiagnosticsPreview>(CHANNEL.diagnosticsPreview),
     export: () => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExport),
+    exportReview: (request: ReviewExportRequest) => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExportReview, request),
   },
 
   app: {

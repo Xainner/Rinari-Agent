@@ -42,6 +42,7 @@ import { createImages } from './native/images'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
 import { installSpellMenu } from './native/spellMenu'
+import { buildReviewZip } from './diagnostics/reviewExport'
 import {
   activeEnvironment,
   applyHostSettingsPatch,
@@ -704,6 +705,23 @@ function buildServices(): HostServices {
         const choice = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
         if (choice.canceled || !choice.filePath) return { saved: false }
         await writeFile(choice.filePath, await diagnostics.bundle())
+        shell.showItemInFolder(choice.filePath)
+        return { saved: true }
+      },
+      /** «Exportar para revisión» (#79): la parte del Engine y los registros de esas horas. */
+      async exportReview(request) {
+        const window = getWindow()
+        const options = {
+          title: currentHostText().diagnosticsSaveTitle,
+          defaultPath: join(app.getPath('downloads'), request.suggestedName),
+          filters: [{ name: 'ZIP', extensions: ['zip'] }],
+        }
+        const choice = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+        if (choice.canceled || !choice.filePath) return { saved: false }
+        await diagnostics.app.flush()
+        await diagnostics.engine.flush()
+        const logs = [...diagnostics.app.files(), ...diagnostics.engine.files()]
+        await writeFile(choice.filePath, await buildReviewZip(request, logs))
         shell.showItemInFolder(choice.filePath)
         return { saved: true }
       },

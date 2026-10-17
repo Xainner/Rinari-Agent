@@ -1,3 +1,5 @@
+import { UsageReportCard } from '../features/usage/UsageReportCard'
+import { useUsageReports } from '../features/usage/usageReport'
 import { ActivityImageProvider } from '../features/activity/ImageActivity'
 import type { SendOptions } from '../features/engine/useEngineSession'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -176,9 +178,11 @@ function ChatView({
   const [dismissedPlans, setDismissedPlans] = useState<Set<string>>(() => new Set())
   const latestTurn = selectLatestTurn({ timelines }, sessionId) ?? undefined
   const pendingPlan = sessionMode === 'plan' && latestTurn?.mode === 'plan' && latestTurn.status === 'completed' && latestTurn.items.some(item => item.type === 'model' && item.outputKind === 'final' && item.content) && !dismissedPlans.has(latestTurn.turnId) && !isStreaming
+  const reports = useUsageReports((state) => state.bySession[sessionId])
+  useEffect(() => { if (sessionId) void useUsageReports.getState().load(sessionId) }, [sessionId])
   const stream = useMemo(
-    () => buildChatStream(messages, timelines, sessionId),
-    [messages, timelines, sessionId],
+    () => buildChatStream(messages, timelines, sessionId, reports),
+    [messages, timelines, sessionId, reports],
   )
   const presentation = conversationPresentation(historyPhase, stream.length)
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
@@ -369,7 +373,7 @@ function ChatView({
   // de ellas no se lleva al lector a otro sitio.
   const navigationRef = useRef(0)
   const revealTurn = useCallback((turnId: string): boolean => {
-    const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.message.turnId === turnId)
+    const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.kind === 'message' && row.message.turnId === turnId)
     if (index < 0) return false
     navigationRef.current += 1
     jumpRef.current = false
@@ -549,8 +553,10 @@ function ChatView({
                   key={row.id}
                   className={`mx-auto max-w-3xl px-4 ${index === 0 ? 'pt-6' : 'pt-3'} pb-3`}
                 >
-                  <FileTurnContext.Provider value={row.kind === 'timeline' ? row.timeline.turnId : row.message.turnId}>
-                  {row.kind === 'timeline' ? (
+                  <FileTurnContext.Provider value={row.kind === 'timeline' ? row.timeline.turnId : row.kind === 'message' ? row.message.turnId : undefined}>
+                  {row.kind === 'report' ? (
+                    <UsageReportCard report={row.report} sessionId={sessionId} />
+                  ) : row.kind === 'timeline' ? (
                     <TurnTimelineView
                       surface={homeVariant === 'pane' ? 'pane' : 'chat'}
                       timeline={row.timeline}

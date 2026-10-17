@@ -25,6 +25,7 @@ import {
   type BackgroundPatch,
   type BackgroundSettings,
   type HostSettings,
+  type ReviewExportRequest,
   type HostSettingsPatch,
   type DiagnosticsExportResult,
   type DiagnosticsPreview,
@@ -117,6 +118,7 @@ export interface HostServices {
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
+    exportReview(request: ReviewExportRequest): Promise<DiagnosticsExportResult>
   }
   /** Bandeja al cerrar e inicio con el sistema: preferencias que main necesita antes que el renderer. */
   app: {
@@ -411,6 +413,25 @@ function assertExpectedRevision(value: unknown): number | undefined {
 }
 
 /** Registra todos los canales. Devuelve la función que los retira. */
+/** Lo que llega del renderer para el paquete de revisión: solo texto y un nombre de archivo. */
+function assertReviewExport(value: unknown): ReviewExportRequest {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('review export must be an object')
+  const raw = value as Record<string, unknown>
+  const files = raw.files
+  if (!files || typeof files !== 'object' || Array.isArray(files)) throw new ValidationError('files must be an object')
+  const clean: Record<string, string> = {}
+  let size = 0
+  for (const [name, text] of Object.entries(files)) {
+    if (!/^[\w.-]{1,80}$/.test(name) || typeof text !== 'string') throw new ValidationError('files must map simple names to text')
+    size += text.length
+    clean[name] = text
+  }
+  if (size > 200 * 1024 * 1024) throw new ValidationError('review export is too large')
+  const stamp = (field: unknown) => (typeof field === 'string' && field.length <= 40 ? field : null)
+  const suggested = typeof raw.suggestedName === 'string' && /^[\w.-]{1,120}\.zip$/.test(raw.suggestedName) ? raw.suggestedName : 'rinari-revision.zip'
+  return { files: clean, from: stamp(raw.from), to: stamp(raw.to), includeLogs: raw.includeLogs === true, suggestedName: suggested }
+}
+
 export function registerIpc(registry: SenderRegistry, services: HostServices): () => void {
   const handlers: Array<[string, Parameters<typeof ipcMain.handle>[1]]> = [
     [CHANNEL.engineStatus, guarded(registry, () => services.engine.status())],
@@ -473,6 +494,10 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [
       CHANNEL.diagnosticsExport,
       guarded(registry, () => services.diagnostics.export()),
+    ],
+    [
+      CHANNEL.diagnosticsExportReview,
+      guarded(registry, (_event, request) => services.diagnostics.exportReview(assertReviewExport(request))),
     ],
     [CHANNEL.appBackgroundGet, guarded(registry, () => services.app.background())],
     [

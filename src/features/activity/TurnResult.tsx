@@ -1,6 +1,6 @@
-import { CircleAlert } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Copy, Stethoscope } from 'lucide-react'
 import { toast } from 'sonner'
-import { memo, type ReactNode } from 'react'
+import { memo, useEffect, useState, type ReactNode } from 'react'
 import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi, errorText } from '../../services/engine'
 import { copyText } from '../../lib/clipboard'
@@ -95,6 +95,13 @@ const DIAG_HIDDEN = new Set(['partial_text', 'provider_id', 'provider'])
  */
 function FailureDiagnostics({ details, code }: { details: Record<string, unknown>; code?: string }) {
   const { t } = useI18n()
+  // «Copiado» se ve en el botón un momento y vuelve solo.
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 1800)
+    return () => window.clearTimeout(timer)
+  }, [copied])
   const value = (key: string, raw: unknown): string => {
     if (typeof raw === 'boolean') return t(raw ? 'diag.yes' : 'diag.no')
     if (key === 'reason' && typeof raw === 'string' && hasTranslation(`diag.reason.${raw}`)) return t(`diag.reason.${raw}` as I18nKey)
@@ -106,23 +113,33 @@ function FailureDiagnostics({ details, code }: { details: Record<string, unknown
   const rows: Array<[string, string]> = [...(code ? [[t('diag.code'), code] as [string, string]] : []), ...[...known, ...rest].map((key) => [label(key), value(key, details[key])] as [string, string])]
   const json = JSON.stringify({ ...(code ? { code } : {}), ...Object.fromEntries(Object.entries(details).filter(([key]) => key !== 'partial_text')) }, null, 2)
   return (
-    <details className="failure-diag text-xs text-[var(--text-subtle)]" data-testid="failure-diagnostics">
-      <summary className="cursor-pointer">{t('turnResult.diagnostics')}</summary>
-      <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2">
-        {rows.map(([name, text]) => (
-          <div key={name} className="contents">
-            <dt className="text-[var(--text-muted)]">{name}</dt>
-            <dd className="min-w-0 break-words text-[var(--text)]">{text}</dd>
-          </div>
-        ))}
-      </dl>
-      <button
-        type="button"
-        className="btn btn-secondary btn-xs mt-1.5"
-        onClick={() => { void copyText(json).then((ok) => { if (ok) toast.success(t('turnResult.copied')) }) }}
-      >
-        {t('turnResult.copyDiagnostics')}
-      </button>
+    <details className="failure-diag" data-testid="failure-diagnostics">
+      <summary className="failure-diag-summary">
+        <Stethoscope size={13} aria-hidden="true" />
+        <span>{t('turnResult.diagnostics')}</span>
+        <ChevronRight size={13} className="failure-diag-chevron" aria-hidden="true" />
+      </summary>
+      <div className="failure-diag-body">
+        <dl className="failure-diag-grid">
+          {rows.map(([name, text]) => (
+            <div key={name}>
+              <dt>{name}</dt>
+              <dd>{text}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="failure-diag-foot">
+          <button
+            type="button"
+            className="btn btn-quiet btn-xs"
+            data-copied={copied || undefined}
+            onClick={() => { void copyText(json).then((ok) => { if (ok) setCopied(true); else toast.error(t('turnResult.copyFailed')) }) }}
+          >
+            {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+            {copied ? t('turnResult.copiedShort') : t('turnResult.copyDiagnostics')}
+          </button>
+        </div>
+      </div>
     </details>
   )
 }

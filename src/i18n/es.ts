@@ -3639,6 +3639,8 @@ export const es = {
   'turnResult.diagnostics': 'Diagnóstico de la interrupción',
   'turnResult.copyDiagnostics': 'Copiar diagnóstico',
   'turnResult.copied': 'Diagnóstico copiado',
+  'turnResult.copiedShort': 'Copiado',
+  'turnResult.copyFailed': 'No se pudo copiar el diagnóstico.',
   'diag.yes': 'sí',
   'diag.no': 'no',
   'diag.reason': 'Motivo',

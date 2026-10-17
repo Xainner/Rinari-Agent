@@ -3213,3 +3213,81 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .memory-candidate-where { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 5px 5px 5px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(255 255 255 / 0.03); font-size: 12px; color: var(--text-muted); }
 .memory-candidate-where-label { display: inline-flex; flex: 1; align-items: center; gap: 6px; }
 .memory-candidate-where-label > svg { color: var(--violet-400); }
+
+/* Avanzado, extras de 0.4.0 (#96): el arranque como barra, el entorno como tabla de solo lectura, filas con
+   estado (registros detallados encendidos, reinicio pendiente), «Limpiar» por sección y el canal de versiones. */
+.adv-row-meta { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; color: var(--accent-2); }
+.adv-row-live, .adv-row[data-pending] { margin: 0 -10px; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--r-md); transition: background-color var(--dur-base), border-color var(--dur-base); }
+.adv-row-live[data-on] { border-color: rgb(167 139 250 / 0.28); background: rgb(147 88 255 / 0.08); }
+.adv-row-live[data-on] .adv-row-title::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+.adv-row[data-pending] { border-color: color-mix(in srgb, var(--warning) 30%, transparent); background: color-mix(in srgb, var(--warning) 7%, transparent); }
+.adv-row[data-pending] .adv-row-hint { color: var(--warning); }
+.adv-startup { display: flex; flex-direction: column; gap: 8px; }
+.adv-startup-bar { display: flex; height: 10px; gap: 2px; overflow: hidden; border-radius: 999px; background: rgb(10 8 18 / 0.6); box-shadow: inset 0 0 0 1px var(--line-1); }
+.adv-startup-bar span { flex-basis: 0; min-width: 3px; background: var(--violet-400); transform-origin: left center; transition: opacity var(--dur-fast), filter var(--dur-fast); animation: adv-storage-fill 0.6s var(--ease-out) both; animation-delay: calc(var(--i) * 70ms); }
+.adv-startup-bar span:nth-child(5n+2) { background: var(--violet-600); }
+.adv-startup-bar span:nth-child(5n+3) { background: var(--magenta-400); }
+.adv-startup-bar span:nth-child(5n+4) { background: var(--cyan-300); }
+.adv-startup-bar span:nth-child(5n+5) { background: var(--success); }
+.adv-startup-steps { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: 11.5px; color: var(--text-muted); }
+.adv-startup-steps li { display: inline-flex; align-items: center; gap: 6px; transition: opacity var(--dur-fast); }
+.adv-startup-steps li span { font-family: var(--font-mono); color: var(--text-subtle); }
+.adv-startup-steps i { width: 7px; height: 7px; border-radius: 2px; background: var(--violet-400); }
+.adv-startup-steps li:nth-child(5n+2) i { background: var(--violet-600); }
+.adv-startup-steps li:nth-child(5n+3) i { background: var(--magenta-400); }
+.adv-startup-steps li:nth-child(5n+4) i { background: var(--cyan-300); }
+.adv-startup-steps li:nth-child(5n+5) i { background: var(--success); }
+.adv-startup[data-hovered] .adv-startup-bar span:not([data-active]), .adv-startup[data-hovered] .adv-startup-steps li:not([data-active]) { opacity: 0.35; }
+.adv-startup-bar span[data-active] { filter: brightness(1.2); }
+.adv-env { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-content: start; max-height: 252px; margin: 8px 0 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-inset); font-family: var(--font-mono); font-size: 11.5px; }
+.adv-env > div { display: contents; }
+.adv-env dt, .adv-env dd { margin: 0; padding: 6px 12px; border-top: 1px solid var(--line-1); }
+.adv-env > div:first-child dt, .adv-env > div:first-child dd { border-top: 0; }
+.adv-env dt { color: var(--accent-2); }
+.adv-env dd { min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }
+.adv-env > div:nth-child(even) dt, .adv-env > div:nth-child(even) dd { background: rgb(255 255 255 / 0.02); }
+.adv-storage-reclaim { margin-left: 8px; padding: 1px 6px; border-radius: var(--r-pill); background: rgb(147 88 255 / 0.12); font-size: 11px; color: var(--accent-2); white-space: nowrap; }
+.adv-storage-clean:not(:disabled):hover { color: var(--text); }
+.adv-suggest { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border: 1px solid rgb(167 139 250 / 0.32); border-radius: var(--r-md); background: linear-gradient(135deg, rgb(147 88 255 / 0.14), rgb(147 88 255 / 0.04)); font-size: 12.5px; color: var(--text); animation: rinari-pop-in var(--dur-base) var(--ease-out); }
+.adv-suggest > svg { flex-shrink: 0; color: var(--accent-2); }
+.adv-channel { display: inline-flex; height: 24px; align-items: center; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: rgb(255 255 255 / 0.04); font-size: 12px; font-weight: 600; color: var(--text); }
+.adv-channel[data-nightly] { border-color: rgb(232 121 249 / 0.45); background: linear-gradient(135deg, rgb(147 88 255 / 0.25), rgb(232 121 249 / 0.18)); box-shadow: 0 0 16px -6px rgb(232 121 249 / 0.6); }
+
+/* Diagnóstico de la interrupción (#68): una ficha plegable con etiquetas, no el JSON crudo; «Copiado» en el botón. */
+.failure-diag { font-size: 12px; }
+.failure-diag-summary { display: inline-flex; align-items: center; gap: 6px; margin-left: -6px; padding: 3px 8px 3px 6px; border-radius: var(--r-sm); list-style: none; color: var(--text-subtle); cursor: pointer; transition: color var(--dur-fast), background-color var(--dur-fast); }
+.failure-diag-summary::-webkit-details-marker { display: none; }
+.failure-diag-summary:hover { background: rgb(255 255 255 / 0.04); color: var(--text-muted); }
+.failure-diag-chevron { transition: transform var(--dur-fast) var(--ease-out); }
+.failure-diag[open] .failure-diag-chevron { transform: rotate(90deg); }
+.failure-diag-body { margin-top: 6px; overflow: hidden; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-inset); animation: rinari-pop-in var(--dur-base) var(--ease-out); }
+.failure-diag-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); margin: 0; }
+.failure-diag-grid > div { display: contents; }
+.failure-diag-grid dt, .failure-diag-grid dd { margin: 0; padding: 5px 12px; border-top: 1px solid var(--line-1); }
+.failure-diag-grid > div:first-child dt, .failure-diag-grid > div:first-child dd { border-top: 0; }
+.failure-diag-grid dt { color: var(--text-subtle); }
+.failure-diag-grid dd { min-width: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--text); overflow-wrap: anywhere; }
+.failure-diag-foot { display: flex; justify-content: flex-end; padding: 5px 6px; border-top: 1px solid var(--line-1); background: rgb(255 255 255 / 0.02); }
+.failure-diag-foot [data-copied] { color: var(--success); }
+button[data-copied] svg { animation: rinari-check-pop 0.4s var(--ease-out); }
+
+/* «Cargar anteriores» (#70): un corte con el botón en medio, al principio de la conversación. */
+.history-earlier { display: flex; max-width: 48rem; align-items: center; gap: 12px; margin: 0 auto; padding: 16px 16px 4px; }
+.history-earlier::before, .history-earlier::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line-2)); }
+.history-earlier::after { background: linear-gradient(90deg, var(--line-2), transparent); }
+.history-earlier-button { display: inline-flex; height: 28px; flex-shrink: 0; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: rgb(14 10 24 / 0.6); font-size: 12px; font-weight: 600; color: var(--text-muted); transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast); }
+.history-earlier-button:hover:not(:disabled) { border-color: var(--line-3); background: rgb(147 88 255 / 0.1); color: var(--text); }
+.history-earlier-button[data-loading] { cursor: default; color: var(--text-subtle); }
+.history-earlier-note { flex-shrink: 0; font-size: 11px; color: var(--text-subtle); }
+
+/* Arranque (#70): «Copiado» se nota en el botón y el aviso de arranque lento entra como cambio, no de golpe. */
+.startup-stage .btn[data-copied] { border-color: color-mix(in srgb, var(--success) 45%, transparent); color: var(--success); }
+.startup-copy[data-slow] { color: var(--violet-200); animation: startup-slow-in var(--dur-slow) var(--ease-out) both; }
+@keyframes startup-slow-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Ajustes se carga aparte: mientras llega, su silueta (menú y tarjetas) en vez de un hueco; aparece solo si tarda. */
+.settings-loading { display: grid; height: 100%; min-height: 0; flex: 1; grid-template-columns: 220px minmax(0, 720px); gap: 40px; padding: 28px 32px; animation: rinari-fade-in var(--dur-base) var(--ease-out) 160ms both; }
+.settings-loading::before, .settings-loading::after { content: ''; border-radius: var(--r-md); animation: rinari-pulse 1.6s ease-in-out 400ms infinite; }
+.settings-loading::before { background: repeating-linear-gradient(180deg, rgb(255 255 255 / 0.05) 0 26px, transparent 26px 38px); -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent); mask-image: linear-gradient(180deg, #000 55%, transparent); }
+.settings-loading::after { background: linear-gradient(180deg, rgb(255 255 255 / 0.07) 0 24px, transparent 24px 40px, rgb(255 255 255 / 0.04) 40px 54px, transparent 54px 84px, rgb(255 255 255 / 0.04) 84px 236px, transparent 236px 260px, rgb(255 255 255 / 0.04) 260px 412px, transparent 412px); }
+@media (max-width: 760px) { .settings-loading { grid-template-columns: minmax(0, 1fr); } .settings-loading::before { display: none; } }

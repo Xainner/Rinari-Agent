@@ -221,6 +221,11 @@ export const scenarios = {
     title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',
     phases: ['exercise'],
   },
+  'history-and-failure': {
+    title: 'Conversación larga con «Cargar anteriores» y la ficha «Diagnóstico de la interrupción» de un turno fallido, con «Copiado»',
+    phases: ['exercise'],
+    model: () => startFakeModel(Array.from({ length: 80 }, (_, i) => ({ text: `Respuesta ${i + 1}` }))),
+  },
   welcome: {
     title: 'Bienvenida de primer uso: Rinari de pie en su cuarto, una pose por paso cruzada, los botones quietos, «Sobre ti» en Memoria y la ventana estrecha',
     phases: ['exercise'],

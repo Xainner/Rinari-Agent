@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Activity, ChevronDown, Cpu, Download, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, RotateCcw,
-  Search, ShieldAlert, Stethoscope, Workflow,
+  Activity, ChevronDown, Cpu, Download, Eraser, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, Lock, RotateCcw,
+  Search, ShieldAlert, Sparkles, Stethoscope, Workflow,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -505,7 +505,7 @@ function DiagnosticsCard(card: CardProps) {
         </div>
         <Switch checked={technical} onCheckedChange={setTechnical} aria-label={t('settings.advanced.technicalActivity')} />
       </div>
-      <div className="adv-row" data-testid="detailed-logs">
+      <div className="adv-row adv-row-live" data-testid="detailed-logs" data-on={host?.detailedLogs || undefined}>
         <div className="min-w-0 flex-1">
           <p className="adv-row-title">{t('adv.diagnostics.detailed')}</p>
           <p className="adv-row-hint">
@@ -575,9 +575,13 @@ function StorageCard(card: CardProps) {
         <>
           <p className="adv-storage-total"><span>{formatBytes(usage.total)}</span> {t('adv.storage.inUse')}</p>
           {suggest && (
-            <p className="adv-note" data-tone="accent" data-testid="storage-suggest">
-              {t('adv.storage.suggest', { total: formatBytes(usage.total), size: formatBytes(suggest.reclaimable ?? 0), section: sectionName(suggest.id).toLowerCase() })}
-            </p>
+            <div className="adv-suggest" data-testid="storage-suggest">
+              <Sparkles size={14} aria-hidden="true" />
+              <p className="min-w-0 flex-1">{t('adv.storage.suggest', { total: formatBytes(usage.total), size: formatBytes(suggest.reclaimable ?? 0), section: sectionName(suggest.id).toLowerCase() })}</p>
+              <button type="button" className="btn btn-secondary btn-xs" disabled={cleaning !== null} onClick={() => void clean(suggest.id, suggest.reclaimable ?? 0)}>
+                <Eraser size={12} aria-hidden="true" /> {t('adv.storage.clean')}
+              </button>
+            </div>
           )}
           <div className="adv-storage-bar" aria-hidden="true" data-hovered={hovered ?? undefined}>
             {sections.map((row, index) => (
@@ -600,19 +604,19 @@ function StorageCard(card: CardProps) {
                   <span className="adv-storage-swatch" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     {sectionName(row.id)}
-                    {row.cleanable && reclaimable > 0 && <span className="adv-storage-reclaim"> · {t('adv.storage.reclaimable', { size: formatBytes(reclaimable) })}</span>}
+                    {row.cleanable && reclaimable > 0 && <span className="adv-storage-reclaim">{t('adv.storage.reclaimable', { size: formatBytes(reclaimable) })}</span>}
                   </span>
                   <span className="adv-storage-size">{formatBytes(row.bytes)}</span>
                   {row.cleanable && (
                     <button
                       type="button"
-                      className="btn btn-quiet btn-xs"
+                      className="btn btn-quiet btn-xs adv-storage-clean"
                       data-testid={`storage-clean-${row.id}`}
                       disabled={reclaimable === 0 || cleaning !== null}
                       title={reclaimable === 0 ? t('adv.storage.nothingToClean') : undefined}
                       onClick={() => void clean(row.id, reclaimable)}
                     >
-                      {cleaning === row.id ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : null} {t('adv.storage.clean')}
+                      {cleaning === row.id ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Eraser size={12} aria-hidden="true" />} {t('adv.storage.clean')}
                     </button>
                   )}
                 </li>
@@ -640,6 +644,40 @@ function ProcessesCard(card: CardProps) {
       <OrphanProcesses />
       <p className="adv-hint">{t('adv.processes.hint')}</p>
     </AdvCard>
+  )
+}
+
+/**
+ * El arranque como una barra (#70): un tramo por paso, de ancho proporcional a
+ * lo que tardó, y debajo cada paso con el segundo en que llegó.
+ */
+function StartupTimeline({ timeline, seconds }: { timeline: HostSettings['startupTimeline']; seconds: (ms: number) => string }) {
+  const { t } = useI18n()
+  const [hovered, setHovered] = useState<string | null>(null)
+  const total = timeline.at(-1)?.ms ?? 0
+  return (
+    <div className="adv-startup" data-testid="startup-timeline" data-hovered={hovered ?? undefined}>
+      <p className="adv-row-title">{t('adv.engine.timeline')} <span className="adv-row-meta">{seconds(total)} s</span></p>
+      <div className="adv-startup-bar" aria-hidden="true">
+        {timeline.map((entry, index) => (
+          <span
+            key={entry.step}
+            data-active={hovered === entry.step || undefined}
+            style={{ flexGrow: Math.max(entry.ms - (index > 0 ? timeline[index - 1].ms : 0), 1), '--i': index } as CSSProperties}
+            onMouseEnter={() => setHovered(entry.step)}
+            onMouseLeave={() => setHovered(null)}
+          />
+        ))}
+      </div>
+      <ol className="adv-startup-steps">
+        {timeline.map((entry, index) => (
+          <li key={entry.step} data-active={hovered === entry.step || undefined} style={{ '--i': index } as CSSProperties} onMouseEnter={() => setHovered(entry.step)} onMouseLeave={() => setHovered(null)}>
+            <i aria-hidden="true" />
+            {t(`adv.engine.step.${entry.step}` as I18nKey)} <span>{seconds(entry.ms)} s</span>
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
 
@@ -694,39 +732,36 @@ function EngineCard({ status, ...card }: CardProps & { status: EngineStatus | nu
                   data-active={host.startupLimit === limit || undefined}
                   onClick={() => void update({ startupLimit: limit })}
                 >
-                  {limit === 'auto' ? t('adv.engine.startupAuto', { s: host.startupLimit === 'auto' ? host.startupLimitS : 45 }) : t('adv.engine.startupSeconds', { s: limit })}
+                  {host.startupLimit === limit && <span className="seg-tab-pill" aria-hidden="true" />}
+                  <span className="relative">{limit === 'auto' ? t('adv.engine.startupAuto', { s: host.startupLimit === 'auto' ? host.startupLimitS : 45 }) : t('adv.engine.startupSeconds', { s: limit })}</span>
                 </button>
               ))}
             </div>
           </div>
-          {host.startupTimeline.length > 1 && (
-            <p className="adv-hint" data-testid="startup-timeline">
-              {t('adv.engine.timeline')}: {host.startupTimeline.map((entry) => `${t(`adv.engine.step.${entry.step}` as I18nKey)} ${seconds(entry.ms)} s`).join(' · ')}
-            </p>
-          )}
-          <div className="adv-row" data-testid="hardware-acceleration">
+          {host.startupTimeline.length > 1 && <StartupTimeline timeline={host.startupTimeline} seconds={seconds} />}
+          <div className="adv-row" data-testid="hardware-acceleration" data-pending={host.restartRequired || undefined}>
             <div className="min-w-0 flex-1">
               <p className="adv-row-title">{t('adv.engine.hardware')}</p>
               <p className="adv-row-hint">{host.restartRequired ? t('adv.engine.restartNeeded') : t('adv.engine.hardwareHint')}</p>
             </div>
             {host.restartRequired && (
-              <button type="button" className="btn btn-secondary btn-xs" onClick={() => void platform().app.relaunch().catch((e) => toast.error(commandMessage(e)))}>
-                {t('adv.engine.restartApp')}
+              <button type="button" className="btn btn-primary btn-xs" onClick={() => void platform().app.relaunch().catch((e) => toast.error(commandMessage(e)))}>
+                <RotateCcw size={12} aria-hidden="true" /> {t('adv.engine.restartApp')}
               </button>
             )}
             <Switch checked={host.hardwareAcceleration} onCheckedChange={(on) => void update({ hardwareAcceleration: on })} aria-label={t('adv.engine.hardware')} />
           </div>
           <div data-testid="engine-environment">
-            <p className="adv-row-title">{t('adv.engine.environment')}</p>
+            <p className="adv-row-title">{t('adv.engine.environment')} <Lock size={11} className="text-[var(--text-subtle)]" aria-hidden="true" /></p>
             <p className="adv-row-hint">{t('adv.engine.environmentHint')}</p>
             {host.environment.length === 0
               ? <p className="adv-hint">{t('adv.engine.environmentNone')}</p>
               : (
                 <dl className="adv-env">
                   {host.environment.map((entry) => (
-                    <div key={entry.name} className="contents">
-                      <dt className="font-mono">{entry.name}</dt>
-                      <dd className="min-w-0 break-all font-mono">{entry.value}</dd>
+                    <div key={entry.name}>
+                      <dt>{entry.name}</dt>
+                      <dd>{entry.value}</dd>
                     </div>
                   ))}
                 </dl>
@@ -768,7 +803,7 @@ function UpdatesCard(card: CardProps) {
           <p className="adv-row-title">{t('adv.updates.channel')}</p>
           <p className="adv-row-hint">{IS_NIGHTLY ? t('adv.updates.nightlyHint') : t('adv.updates.autoHint')}</p>
         </div>
-        <span className="r-chip" data-tone={IS_NIGHTLY ? 'accent' : undefined} data-testid="update-channel">{IS_NIGHTLY ? 'Nightly' : t('adv.updates.stable')}</span>
+        <span className="adv-channel" data-nightly={IS_NIGHTLY || undefined} data-testid="update-channel">{IS_NIGHTLY ? 'Nightly' : t('adv.updates.stable')}</span>
       </div>
       {IS_NIGHTLY ? (
         <div className="flex flex-wrap gap-2">

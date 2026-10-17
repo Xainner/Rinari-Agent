@@ -4,6 +4,7 @@ import { ActivityImageProvider } from '../features/activity/ImageActivity'
 import type { SendOptions } from '../features/engine/useEngineSession'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
+import { ArrowUp, LoaderCircle } from 'lucide-react'
 import type { AttachmentRef, ChatMessage } from '../types'
 import type { ModelRefreshResult, ModelSummary, ProviderSummary } from '../services/engine'
 import type { TurnTimeline } from '../features/activity/types'
@@ -639,20 +640,22 @@ function LoadEarlier({ total, onLoad }: { total: number; onLoad?: () => Promise<
   const { t } = useI18n()
   const [loading, setLoading] = useState(false)
   if (!onLoad) {
-    return <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">{t('history.hasMore', { n: total })}</p>
+    return <p className="history-earlier"><span className="history-earlier-note">{t('history.hasMore', { n: total })}</span></p>
   }
   return (
-    <div className="mx-auto flex max-w-3xl justify-center px-4 pt-4">
+    <div className="history-earlier">
       <button
         type="button"
         data-testid="history-load-earlier"
-        className="btn btn-ghost btn-xs"
+        className="history-earlier-button"
+        data-loading={loading || undefined}
         disabled={loading}
         onClick={() => {
           setLoading(true)
           void Promise.resolve(onLoad()).finally(() => setLoading(false))
         }}
       >
+        {loading ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <ArrowUp size={12} aria-hidden="true" />}
         {loading ? t('history.loadingEarlier') : t('history.loadEarlier')}
       </button>
     </div>

@@ -3621,6 +3621,8 @@ export const en: Record<I18nKey, string> = {
   'turnResult.diagnostics': 'Interruption diagnostics',
   'turnResult.copyDiagnostics': 'Copy diagnostics',
   'turnResult.copied': 'Diagnostics copied',
+  'turnResult.copiedShort': 'Copied',
+  'turnResult.copyFailed': 'Could not copy the diagnostic.',
   'diag.yes': 'yes',
   'diag.no': 'no',
   'diag.reason': 'Reason',

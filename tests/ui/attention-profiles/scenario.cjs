@@ -19,6 +19,9 @@ scenario(async () => {
   await useLocalModel()
   await command('session_create', { chat: true, title: 'Plan del perfil uno' })
   await command('bundle_create', { id: 'otro', name: 'Otro' })
+  await command('bundle_activate', { id: 'otro' })
+  await command('session_create', { chat: true, title: 'Chat del perfil dos' })
+  await command('bundle_activate', { id: 'default' })
   await reload()
   await click('.view-switcher button[aria-label="Normal"]')
   await clickText('Plan del perfil uno', 'aside button', { includes: true })
@@ -28,6 +31,11 @@ scenario(async () => {
   await until(async () => (await (await fetch(origin() + '/__pending')).json()) === true, 'the turn reaches the held model request')
 
   await switchTo('Otro')
+  // Como el dueño: en el otro perfil abre otro chat antes de que termine el primero.
+  await wait(`document.querySelector('aside')?.innerText.includes('Chat del perfil dos')`, 10000)
+  await clickText('Chat del perfil dos', 'aside button', { includes: true })
+  await wait('Boolean(document.querySelector(".composer-surface"))')
+  await delay(800)
   await fetch(origin() + '/__release')
   await delay(2500)
   const seen = await evaluate(`({

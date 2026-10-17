@@ -77,10 +77,11 @@ export function createDiagnostics(options: DiagnosticsOptions) {
         original.warn(...args)
         app.write('warn', format(...args))
       }
-      // Con registros detallados, también lo informativo.
+      // Lo informativo siempre: incluye las notas del renderer (`[rinari] attention …`),
+      // que dicen qué quedó pendiente. Con registros detallados, también `console.log`.
       console.info = (...args: unknown[]) => {
         original.info(...args)
-        if (detailed()) app.write('info', format(...args))
+        app.write('info', format(...args))
       }
       console.log = (...args: unknown[]) => {
         original.log(...args)

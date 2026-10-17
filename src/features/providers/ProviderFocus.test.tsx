@@ -4,7 +4,7 @@
 // proveedor ya no existe lo dice y no abre otro en su lugar.
 import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
@@ -81,5 +81,6 @@ it('an unknown cause keeps only the received message', () => {
   const timeline: TurnTimeline = { turnId: 't2', sessionId: 'ses_a', status: 'failed', startedAt: 1, userMessage: 'x', items: [], error: 'boom', errorDetails: { code: 'E1' } }
   render(<I18nProvider lang="es"><TurnResult timeline={timeline} /></I18nProvider>)
   expect(screen.getByRole('alert').textContent).toBe('boom')
-  expect(screen.queryByRole('button')).toBeNull()
+  // No action under the message; only the diagnostics' own «Copiar diagnóstico».
+  expect(within(screen.getByRole('alert')).queryByRole('button')).toBeNull()
 })

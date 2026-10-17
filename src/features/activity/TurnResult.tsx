@@ -1,8 +1,9 @@
 import { CircleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { memo, type ReactNode } from 'react'
-import { useI18n, type I18nKey } from '../../i18n'
-import { commandMessage, engineApi } from '../../services/engine'
+import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
+import { commandMessage, engineApi, errorText } from '../../services/engine'
+import { copyText } from '../../lib/clipboard'
 import { useUIStore } from '../../stores/ui'
 import PlanCard from '../plan/PlanCard'
 import MessageBubble from '../../components/MessageBubble'
@@ -40,7 +41,7 @@ const ACTIVE = new Set(['running', 'approval', 'cancelling'])
  * cuando un marcador de 1 px asoma.
  */
 function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
-  const { lang, t } = useI18n()
+  const { t } = useI18n()
   const final = provisional ?? [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
   const { changes: changeSets } = presentedChangeSets(timeline)
   const terminal = TERMINAL.has(timeline.status)
@@ -65,14 +66,9 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={ACTIVE.has(timeline.status)} />)}
       {failed && <FailureCause timeline={timeline} />}
       {failed && timeline.errorDetails?.history_preserved === true && (
-        <p className="text-xs text-[var(--text-muted)]">{lang === 'es' ? 'El trabajo previo está conservado. Puedes enviar un nuevo mensaje; las acciones de resultado desconocido requieren comprobar su estado.' : 'Previous work is preserved. You can send a new message; unknown action outcomes require checking their state.'}</p>
+        <p className="text-xs text-[var(--text-muted)]">{t('turnResult.historyPreserved')}</p>
       )}
-      {failed && timeline.errorDetails && (
-        <details className="text-xs text-[var(--text-subtle)]">
-          <summary>{lang === 'es' ? 'Diagnóstico de la interrupción' : 'Interruption diagnostics'}</summary>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap">{JSON.stringify(Object.fromEntries(Object.entries(timeline.errorDetails).filter(([key]) => key !== 'partial_text')), null, 2)}</pre>
-        </details>
-      )}
+      {failed && timeline.errorDetails && <FailureDiagnostics details={timeline.errorDetails} code={timeline.errorCode} />}
     </div>
   )
 }
@@ -86,18 +82,63 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
 const SWITCHABLE = new Set(['quota', 'rate', 'limit', 'auth', 'access', 'model', 'disabled'])
 /** A provider limit: the conversation can continue by itself when it resets (#24). */
 const LIMITS = new Set(['quota', 'rate', 'limit'])
+/** Causas cuyo texto crudo es de Rinari (en inglés), no del proveedor. */
+const OWN_TEXT = new Set(['disabled', 'engine', 'stream'])
+
+/** Datos del diagnóstico con su etiqueta; lo demás se lista con su nombre. */
+const DIAG_KEYS = ['reason', 'recoverable', 'reconciled', 'history_preserved', 'provider_alias', 'model', 'http_status', 'provider_error_code', 'provider_response_code', 'limit_kind', 'retry_after_s', 'resets_at', 'request_id', 'kind', 'close', 'attempts'] as const
+const DIAG_HIDDEN = new Set(['partial_text', 'provider_id', 'provider'])
+
+/**
+ * «Diagnóstico de la interrupción» (#68): una lista con etiquetas en el idioma
+ * de la app y «Copiar diagnóstico» para el JSON entero, en vez del JSON crudo.
+ */
+function FailureDiagnostics({ details, code }: { details: Record<string, unknown>; code?: string }) {
+  const { t } = useI18n()
+  const value = (key: string, raw: unknown): string => {
+    if (typeof raw === 'boolean') return t(raw ? 'diag.yes' : 'diag.no')
+    if (key === 'reason' && typeof raw === 'string' && hasTranslation(`diag.reason.${raw}`)) return t(`diag.reason.${raw}` as I18nKey)
+    return typeof raw === 'string' || typeof raw === 'number' ? String(raw) : JSON.stringify(raw)
+  }
+  const label = (key: string) => (key === 'provider_alias' ? t('diag.provider') : hasTranslation(`diag.${key}`) ? t(`diag.${key}` as I18nKey) : key)
+  const known: string[] = DIAG_KEYS.filter((key) => details[key] !== undefined && details[key] !== null && details[key] !== '')
+  const rest = Object.keys(details).filter((key) => !DIAG_HIDDEN.has(key) && !(DIAG_KEYS as readonly string[]).includes(key) && details[key] !== undefined && details[key] !== null)
+  const rows: Array<[string, string]> = [...(code ? [[t('diag.code'), code] as [string, string]] : []), ...[...known, ...rest].map((key) => [label(key), value(key, details[key])] as [string, string])]
+  const json = JSON.stringify({ ...(code ? { code } : {}), ...Object.fromEntries(Object.entries(details).filter(([key]) => key !== 'partial_text')) }, null, 2)
+  return (
+    <details className="failure-diag text-xs text-[var(--text-subtle)]" data-testid="failure-diagnostics">
+      <summary className="cursor-pointer">{t('turnResult.diagnostics')}</summary>
+      <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2">
+        {rows.map(([name, text]) => (
+          <div key={name} className="contents">
+            <dt className="text-[var(--text-muted)]">{name}</dt>
+            <dd className="min-w-0 break-words text-[var(--text)]">{text}</dd>
+          </div>
+        ))}
+      </dl>
+      <button
+        type="button"
+        className="btn btn-secondary btn-xs mt-1.5"
+        onClick={() => { void copyText(json).then((ok) => { if (ok) toast.success(t('turnResult.copied')) }) }}
+      >
+        {t('turnResult.copyDiagnostics')}
+      </button>
+    </details>
+  )
+}
 
 function FailureCause({ timeline }: { timeline: TurnTimeline }) {
-  const { t, lang } = useI18n()
+  const { t } = useI18n()
   const openProvider = useUIStore((s) => s.openProvider)
   const requestModelPicker = useUIStore((s) => s.requestModelPicker)
   const cause = turnFailure(timeline.errorDetails, timeline.errorCode)
   const commands = useOptionalEngineCommands()
-  const raw = timeline.error || (lang === 'es' ? 'El turno falló' : 'Turn failed')
+  const raw = timeline.error || t('turnResult.failed')
   if (!cause) {
+    // Sin causa acreditada, el error se dice por su código en el idioma de la app (#68).
     return (
       <div role="alert" className="flex items-center gap-2 py-1 text-[13px] text-[var(--danger)]">
-        <CircleAlert size={13} />{raw}
+        <CircleAlert size={13} />{timeline.errorCode ? errorText(timeline.errorCode, timeline.error) : raw}
       </div>
     )
   }
@@ -113,8 +154,10 @@ function FailureCause({ timeline }: { timeline: TurnTimeline }) {
           {cause.retryAfterS !== undefined && <> {t('failure.retryAfter', { seconds: Math.ceil(cause.retryAfterS) })}</>}
         </span>
       </div>
-      {/* «Desactivado» es un mensaje de Rinari, no del proveedor: la frase de arriba ya lo dice (#97). */}
-      {cause.kind !== 'disabled' && <p className="pl-[22px] text-xs break-words text-[var(--text-muted)]">{raw}</p>}
+      {/* Debajo van las palabras del proveedor. «Desactivado», el motor que se
+          cerró y la respuesta cortada son textos de Rinari que la frase de
+          arriba ya dice en el idioma de la app (#97, #68). */}
+      {!OWN_TEXT.has(cause.kind) && <p className="pl-[22px] text-xs break-words text-[var(--text-muted)]">{raw}</p>}
       {(tab || cause.kind === 'context' || cause.kind === 'disabled') && (
         <div className="flex flex-wrap items-center gap-2 pl-[22px]">
           {SWITCHABLE.has(cause.kind) && timeline.sessionId && (

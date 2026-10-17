@@ -21,6 +21,11 @@ export function translate(
   return s
 }
 
+/** Si existe un texto para esa clave (las armadas en tiempo de ejecución, como `error.<CÓDIGO>`). */
+export function hasTranslation(key: string): key is I18nKey {
+  return key in dicts.es
+}
+
 interface I18n {
   lang: Language
   t: (key: I18nKey, vars?: Record<string, string | number>) => string

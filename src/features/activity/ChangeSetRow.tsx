@@ -1,7 +1,7 @@
 import { ChevronDown, FileDiff, Info, RotateCcw, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useI18n, type I18nKey } from '../../i18n'
+import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,7 +134,7 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
           </AlertDialogHeader>
           {preview && conflicts > 0 && (
             <ul className="turn-changes-conflicts">
-              {preview.conflicts.map((conflict) => <li key={conflict.absolute_path}><ShieldAlert size={12} aria-hidden="true" /> {conflict.path} · {conflict.reason}</li>)}
+              {preview.conflicts.map((conflict) => <li key={conflict.absolute_path}><ShieldAlert size={12} aria-hidden="true" /> {conflict.path} · {hasTranslation(`changes.reason.${conflict.reason}`) ? t(`changes.reason.${conflict.reason}` as I18nKey) : conflict.reason}</li>)}
             </ul>
           )}
           <AlertDialogFooter>

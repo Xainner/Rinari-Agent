@@ -48,7 +48,8 @@ export default function StartupSplash({
         {failed ? (
           <>
             <h1 className="startup-title">{t('startup.failedTitle')}</h1>
-            <p className="startup-copy text-[var(--danger)]">{detail || t('startup.failed')}</p>
+            {/* El detalle del host viene en inglés: queda en «Detalles» (#68). */}
+            <p className="startup-copy text-[var(--danger)]">{t('startup.failed')}</p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
               <button type="button" onClick={onRetry} className="btn btn-primary">
                 <RotateCcw size={14} aria-hidden="true" />

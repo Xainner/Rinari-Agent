@@ -18,10 +18,10 @@ import type {
   QueuedPromptEntry,
 } from '../types/protocol.generated'
 import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
-import type { AttachmentRef } from '../types'
+import type { AttachmentRef, Language } from '../types'
 
 import { platform, type Unsubscribe } from '../platform'
-import { translate, type I18nKey } from '../i18n'
+import { hasTranslation, translate, type I18nKey } from '../i18n'
 import { useUIStore } from '../stores/ui'
 
 /** Texto de la app para errores que nacen aquí y se muestran tal cual. */
@@ -832,8 +832,35 @@ export function isCommandError(value: unknown): value is CommandError {
   );
 }
 
+/**
+ * Códigos cuyo mensaje trae palabras de afuera que ayudan (las del proveedor,
+ * de git, de la herramienta): van después del texto traducido.
+ */
+const ERROR_WITH_DETAIL = new Set([
+  'NETWORK_FAILURE', 'PROVIDER_MODEL_FAILURE', 'TOOL_FAILURE', 'CONFIGURATION_ERROR', 'MODEL_DISCOVERY_FAILED',
+  'DOWNLOAD_FAILED', 'SKILL_JOB_FAILED', 'PR_CREATE_FAILED', 'VALIDATION_FAILED', 'BLOCKED',
+])
+
+/**
+ * Un error del motor en el idioma de la app, por su código y no por su texto
+ * (#68). En español, un código conocido se dice con su frase; el texto del
+ * Engine queda de respaldo para uno desconocido y en la consola. En inglés
+ * se prefiere el texto del Engine, que es más preciso.
+ */
+export function errorText(code: string, message: string | undefined, lang: Language = useUIStore.getState().lang): string {
+  const key = `error.${code}`
+  const detail = message?.trim()
+  if (!hasTranslation(key)) return detail || translate(lang, 'error.unknown', { code })
+  if (lang === 'en' && detail) return detail
+  const text = translate(lang, key)
+  return ERROR_WITH_DETAIL.has(code) && detail ? `${text}: ${detail}` : text
+}
+
 export function commandMessage(error: unknown): string {
-  if (isCommandError(error)) return `${error.code}: ${error.message}`;
+  if (isCommandError(error)) {
+    if (error.message) console.warn(`[rinari] ${error.code}: ${error.message}`)
+    return errorText(error.code, error.message)
+  }
   return String(error);
 }
 

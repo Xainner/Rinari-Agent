@@ -719,7 +719,7 @@ function App() {
           <AppStatusBar
             context={
               view === 'chat' && activeHasContent ? (
-                <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} mother={activeMother} />
+                <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} mother={activeMother} permission={activeRecord?.effective_permission_profile ?? null} />
               ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null

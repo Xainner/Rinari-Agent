@@ -1,5 +1,5 @@
 import { TitleSwap } from '../TitleSwap'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { ResumeChip } from '../../features/resume/ResumeChip'
 import { useI18n } from '../../i18n'
 
@@ -13,7 +13,18 @@ interface ChatHeaderProps {
    * ella con un clic. `brief` es el título del encargo.
    */
   mother?: { id: string; title: string; brief?: string | null; onOpen: (id: string) => void } | null
+  /**
+   * El modo de permisos en vigor de la conversación (permisos v4, P-4): un
+   * distintivo siempre a la vista; en Acceso completo, en ámbar.
+   */
+  permission?: 'read-only' | 'workspace' | 'full-access' | null
 }
+
+const PERMISSION = {
+  'read-only': { label: 'perm.readOnly', hint: 'perm.readOnlyHint', Icon: Eye },
+  workspace: { label: 'perm.workspace', hint: 'perm.workspaceHint', Icon: ShieldCheck },
+  'full-access': { label: 'perm.fullAccess', hint: 'perm.fullAccessHint', Icon: ShieldAlert },
+} as const
 
 /**
  * La barra de título de una conversación solo lleva su título (plan 0.4.0
@@ -22,7 +33,7 @@ interface ChatHeaderProps {
  * «…» y el completo sale al pasar el ratón. Se monta dentro de `AppStatusBar`;
  * no es un segundo header global.
  */
-export default function ChatHeader({ title, sessionId = null, mother = null }: ChatHeaderProps) {
+export default function ChatHeader({ title, sessionId = null, mother = null, permission = null }: ChatHeaderProps) {
   const { t } = useI18n()
   if (!title) return null
   return (
@@ -47,7 +58,20 @@ export default function ChatHeader({ title, sessionId = null, mother = null }: C
         className="min-w-0 truncate text-sm font-semibold text-[var(--text)]"
       />
       <ResumeChip sessionId={sessionId} />
+      {permission && <PermissionBadge mode={permission} />}
       <span className="flex-1" />
     </div>
+  )
+}
+
+/** El modo de permisos, siempre visible junto al título (P-4); el detalle, al pasar el ratón. */
+function PermissionBadge({ mode }: { mode: NonNullable<ChatHeaderProps['permission']> }) {
+  const { t } = useI18n()
+  const { label, hint, Icon } = PERMISSION[mode]
+  return (
+    <span className="chat-header-permission" data-mode={mode} data-testid="chat-header-permission" title={t(hint)} role="status" aria-label={`${t('perm.title')}: ${t(label)}`}>
+      <Icon size={12} aria-hidden="true" />
+      <span>{t(label)}</span>
+    </span>
   )
 }

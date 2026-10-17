@@ -276,7 +276,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `vision_model_reset` | engine | `vision.model.reset` | `src/services/engine.ts` |
 | `vision_settings_get` | engine | `vision.settings.get` | `src/services/engine.ts` |
 | `vision_settings_set` | engine | `vision.settings.set` | `src/services/engine.ts` |
-| `workspace_dir_list` | engine | `workspace.dir.list` | **ninguno** |
+| `workspace_dir_list` | engine | `workspace.dir.list` | `src/services/engine.ts` |
 | `workspace_file_open` | host | — | **ninguno** |
 | `workspace_file_read` | engine | `workspace.file.read` | `src/services/desktop.ts` |
 | `workspace_file_resolve` | engine | `workspace.file.resolve` | **ninguno** |

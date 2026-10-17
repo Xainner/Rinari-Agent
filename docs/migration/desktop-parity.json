@@ -2191,7 +2191,9 @@
       "kind": "engine",
       "method": "workspace.dir.list",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "workspace_file_open",
@@ -2308,6 +2310,6 @@
     "engine_backed": 270,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 95
+    "without_callers": 94
   }
 }

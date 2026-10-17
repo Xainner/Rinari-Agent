@@ -3769,9 +3769,6 @@ export const es = {
   'memory.kind.decision': 'Decisión',
   'memory.kind.convention': 'Convención',
   'memory.candidate.where': 'Recordar en',
-} as const
-
-export type I18nKey = keyof typeof es
   'usage.title': 'Informe de uso',
   'usage.scope': 'Ámbito',
   'usage.scope.session': 'Esta conversación',
@@ -3850,3 +3847,6 @@ export type I18nKey = keyof typeof es
   'soul.preview.full.greeting': 'Hmph, por fin apareces. Bueno… ¿qué necesitas? ✨',
   'soul.preview.full.result': '¿Dudabas de mí? Ya arranca en el 5173. … De nada, ¿eh? 😤',
   'soul.preview.full.error': 'No pude instalar las dependencias: falta Node 22. Instálalo y vuelvo a intentarlo.',
+} as const
+
+export type I18nKey = keyof typeof es

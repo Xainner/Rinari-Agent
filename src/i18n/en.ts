@@ -3751,7 +3751,6 @@ export const en: Record<I18nKey, string> = {
   'memory.kind.decision': 'Decision',
   'memory.kind.convention': 'Convention',
   'memory.candidate.where': 'Remember in',
-}
   'usage.title': 'Usage report',
   'usage.scope': 'Scope',
   'usage.scope.session': 'This conversation',
@@ -3830,3 +3829,4 @@ export const en: Record<I18nKey, string> = {
   'soul.preview.full.greeting': 'Hmph, there you are at last. Well… what do you need? ✨',
   'soul.preview.full.result': 'Did you doubt me? It starts on 5173. … You\'re welcome, okay? 😤',
   'soul.preview.full.error': 'I couldn\'t install the dependencies: Node 22 is missing. Install it and I\'ll try again.',
+}

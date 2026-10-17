@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Brain, LoaderCircle } from 'lucide-react'
+import { Brain, LoaderCircle, Settings2, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
@@ -46,6 +46,9 @@ function RememberedNotice({ item }: { item: MemoryTimelineItem }) {
   const [busy, setBusy] = useState(false)
   const id = item.memoryId ?? ''
   const forgotten = Boolean(memory.forgotten[id])
+  // Entra (y su check se dibuja) solo el que acaba de guardarse: al reabrir la conversación, quieto.
+  const [fresh] = useState(() => Date.now() - item.occurredAt < 15_000)
+  const [more, setMore] = useState(false)
 
   async function undo() {
     setBusy(true)
@@ -60,17 +63,48 @@ function RememberedNotice({ item }: { item: MemoryTimelineItem }) {
   }
 
   return (
-    <p data-testid="memory-remembered" data-forgotten={forgotten || undefined} className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 py-1 text-[12px] text-[var(--text-muted)]">
-      <Brain size={13} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
-      <span className="min-w-0 [overflow-wrap:anywhere]">{t(forgotten ? 'memory.undone' : 'memory.remembered', { text: item.text })}</span>
-      {!forgotten && id && <>
-        <span aria-hidden="true">·</span>
-        <button type="button" disabled={busy} onClick={() => void undo()} className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-[var(--text)] disabled:opacity-60">
-          {busy && <LoaderCircle size={12} className="animate-spin" aria-hidden="true" />}{t('memory.undo')}
+    <section
+      data-testid="memory-remembered"
+      data-forgotten={forgotten || undefined}
+      data-status={forgotten ? 'forgotten' : 'saved'}
+      data-entering={fresh || undefined}
+      aria-label={t('memory.rememberedTitle')}
+      className="proposal-card memory-saved"
+    >
+      <header className="proposal-card-head">
+        <span className="proposal-card-icon" aria-hidden="true"><Brain size={15} /></span>
+        <div className="min-w-0 flex-1">
+          <p className="proposal-card-title">{t('memory.rememberedTitle')}</p>
+          {(item.topic || item.kind) && (
+            <p className="memory-saved-topic">
+              {item.topic && <span className="truncate">{item.topic}</span>}
+              {item.kind && <span className="r-chip">{item.kind}</span>}
+            </p>
+          )}
+        </div>
+        <span className="r-chip memory-saved-state" data-tone={forgotten ? undefined : 'success'}>
+          {forgotten
+            ? <X size={11} aria-hidden="true" />
+            : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={fresh ? 'r-check' : undefined}><path d="M5 12.5l4.2 4.2L19 7" /></svg>}
+          {t(forgotten ? 'memory.rememberedForgotten' : 'memory.rememberedSaved')}
+        </span>
+      </header>
+      <p className={`memory-saved-text${more ? ' is-expanded' : ''}`}>{item.text}</p>
+      {item.text.length > 160 && (
+        <button type="button" className="memory-saved-more" aria-expanded={more} onClick={() => setMore((value) => !value)}>
+          {more ? t('followups.less') : t('followups.readAll')}
         </button>
-      </>}
-      <span aria-hidden="true">·</span>
-      <button type="button" onClick={() => goSettings('memory')} className="underline underline-offset-2 hover:text-[var(--text)]">{t('memory.openSettings')}</button>
-    </p>
+      )}
+      <div className="memory-saved-actions">
+        {!forgotten && id && (
+          <button type="button" disabled={busy} onClick={() => void undo()} className="btn btn-ghost btn-xs">
+            {busy ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Undo2 size={12} aria-hidden="true" />}{t('memory.undo')}
+          </button>
+        )}
+        <button type="button" onClick={() => goSettings('memory')} className="btn btn-quiet btn-xs">
+          <Settings2 size={12} aria-hidden="true" />{t('memory.openSettings')}
+        </button>
+      </div>
+    </section>
   )
 }

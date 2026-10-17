@@ -1835,6 +1835,18 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .proposal-card-doc .md-body h3 { font-size: 13.5px; }
 .proposal-card-editor { min-height: 256px; resize: vertical; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; }
 .proposal-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* #17: lo que Rinari guarda en automático, una mini-tarjeta de la misma familia: «Recordé esto», el tema,
+   el texto en dos líneas y el estado «Guardado» (su check se dibuja al llegar). Olvidado, se apaga. */
+.memory-saved { gap: 6px; padding: 10px 12px; }
+.memory-saved[data-entering] { animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.memory-saved .proposal-card-icon { width: 30px; height: 30px; }
+.memory-saved-topic { display: flex; min-width: 0; align-items: center; gap: 6px; margin-top: 1px; font-size: 11.5px; color: var(--text-subtle); }
+.memory-saved-state { flex-shrink: 0; transition: color var(--dur-base), background-color var(--dur-base), box-shadow var(--dur-base); }
+.memory-saved-text { padding-left: 40px; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; transition: color var(--dur-base), opacity var(--dur-base); }
+.memory-saved-text.is-expanded { display: block; }
+.memory-saved-more { margin-left: 40px; width: fit-content; font-size: 11.5px; color: var(--accent-2); }
+.memory-saved-actions { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 36px; }
+.memory-saved[data-status='forgotten'] .memory-saved-text { text-decoration: line-through; text-decoration-color: rgb(255 255 255 / 0.25); opacity: 0.6; }
 .proposal-card-outcome { padding-left: 44px; font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .disclosure-button.is-turn-card.is-static:hover { border-color: rgb(167 139 250 / 0.22); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
 .turn-done { display: flex; min-width: 0; align-items: center; gap: 12px; }

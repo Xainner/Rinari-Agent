@@ -3474,3 +3474,7 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .r-dialog.profile-form { display: flex; max-height: 85vh; flex-direction: column; overflow: hidden; }
 .profile-form-body { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; }
 .profile-form-actions { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 8px; padding-top: 14px; padding-right: 8px; border-top: 1px solid var(--line-1); }
+
+/* Avanzado → Actualizaciones (Nightly): volver sin copia de la base se dice como aviso, no como pista gris. */
+.adv-note-warning { display: flex; align-items: flex-start; gap: 7px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--warning) 8%, transparent); font-size: 12px; line-height: 1.45; color: var(--text); }
+.adv-note-warning > svg { flex-shrink: 0; margin-top: 1px; color: var(--warning); }

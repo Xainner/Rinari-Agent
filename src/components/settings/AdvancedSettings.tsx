@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import { motion } from 'framer-motion'
 import {
   Activity, ChevronDown, Cpu, Download, Eraser, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, Lock, PackageOpen, RotateCcw,
-  Search, ShieldAlert, Sparkles, Stethoscope, Workflow,
+  Search, ShieldAlert, Sparkles, Stethoscope, TriangleAlert, Workflow,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -528,6 +528,8 @@ function DiagnosticsCard({ activeSessionId, ...card }: CardProps & { activeSessi
           <PackageOpen size={13} aria-hidden="true" /> {t('review.menu')}
         </button>
       </div>
+      {/* Sin conversación abierta, el porqué se lee aquí y no solo en el tooltip del botón apagado. */}
+      {!activeSessionId && <p className="adv-hint" data-testid="adv-review-hint">{t('adv.diagnostics.reviewNoSession')}</p>}
       {diagnostics.dialog}
     </AdvCard>
   )
@@ -846,7 +848,7 @@ function UpdatesCard(card: CardProps) {
           <button type="button" className="btn btn-secondary btn-sm" data-testid="back-to-stable" disabled={returning} onClick={() => void backToStable()}>
             {returning ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <RotateCcw size={13} aria-hidden="true" />} {t('adv.updates.backToStable')}
           </button>
-          {stableReturn && !stableReturn.backup && <p className="adv-row-hint w-full">{t('adv.updates.backNoCopy')}</p>}
+          {stableReturn && !stableReturn.backup && <p className="adv-note-warning w-full"><TriangleAlert size={13} aria-hidden="true" /><span>{t('adv.updates.backNoCopy')}</span></p>}
         </div>
       ) : (
         <>

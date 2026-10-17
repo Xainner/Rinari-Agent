@@ -113,6 +113,47 @@ it('never counts the past of a chat whose history is not loaded', () => {
   const { dispatch } = engine.runtime.getState()
   render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
   act(() => {
+    dispatch({
+      type: 'timeline/loaded',
+      sessionId: 'ses_a',
+      turns: [{ turn_id: 't0', session_id: 'ses_a', turn_index: 0, status: 'completed', started_at: '2026-09-15T09:00:00Z', completed_at: '2026-09-15T09:00:05Z', user_message: 'a', items: [], final_response: 'ok' }],
+    })
+  })
+  expect(useBoardAttentionStore.getState().sessions.ses_a).toBeUndefined()
+})
+
+it('#103: follows a chat the app never opened (a child, a scheduled task) from its first live result', () => {
+  const engine = harness(false)
+  const { dispatch } = engine.runtime.getState()
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
+    dispatch({
+      type: 'timeline/loaded',
+      sessionId: 'ses_a',
+      turns: [{ turn_id: 't0', session_id: 'ses_a', turn_index: 0, status: 'completed', started_at: '2026-09-15T09:00:00Z', completed_at: '2026-09-15T09:00:05Z', user_message: 'a', items: [], final_response: 'ok' }],
+    })
+  })
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
+  })
+  const session = useBoardAttentionStore.getState().sessions.ses_a
+  expect(session.initialized).toBe(true)
+  expect(session.turns.t0.state).toBe('baseline')
+  expect(unreadTurnIds(session)).toEqual(['t1'])
+  // The next one is tracked like in any followed chat.
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't2', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't2', session_id: 'ses_a', content: 'ok' }))
+  })
+  expect(unreadTurnIds(useBoardAttentionStore.getState().sessions.ses_a)).toEqual(['t1', 't2'])
+})
+
+it('#103: waits for a history that is loading instead of guessing', () => {
+  const engine = { ...harness(false), historyPhases: { ses_a: 'loading' as const } }
+  const { dispatch } = engine.runtime.getState()
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
     dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
     dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })

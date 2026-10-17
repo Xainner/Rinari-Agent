@@ -1,6 +1,8 @@
 // Un chat del perfil 1 termina mientras estás en el perfil 2 (dueño,
 // 2026-10-17): la cuenta del título y la barra de tareas sube, el selector de
-// perfiles marca el otro perfil y, al volver, el chat sale pendiente.
+// perfiles marca el otro perfil y, al volver, el chat sale pendiente. El chat
+// se crea desde la app («Nueva conversación»), como lo hizo el dueño: uno
+// creado así no se seguía y nunca quedaba pendiente (#103).
 const assert = require('node:assert/strict')
 const { ui, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, until, useLocalModel, wait, delay } = require('../harness.cjs')
 
@@ -17,16 +19,16 @@ async function switchTo(name) {
 
 scenario(async () => {
   await useLocalModel()
-  await command('session_create', { chat: true, title: 'Plan del perfil uno' })
   await command('bundle_create', { id: 'otro', name: 'Otro' })
   await command('bundle_activate', { id: 'otro' })
   await command('session_create', { chat: true, title: 'Chat del perfil dos' })
   await command('bundle_activate', { id: 'default' })
   await reload()
   await click('.view-switcher button[aria-label="Normal"]')
-  await clickText('Plan del perfil uno', 'aside button', { includes: true })
+  await clickText('Nueva conversación', 'button', { includes: true })
   await wait('Boolean(document.querySelector(".composer-surface"))')
   await input('.composer-surface textarea', 'Hazme un plan')
+  await wait(`!document.querySelector('.composer-surface button[aria-label="Enviar mensaje"]')?.disabled`)
   await click('.composer-surface button[aria-label="Enviar mensaje"]')
   await until(async () => (await (await fetch(origin() + '/__pending')).json()) === true, 'the turn reaches the held model request')
 

@@ -64,6 +64,8 @@ export default function BoardActivityController() {
   const data = useEngineData()
   const store = useRuntimeStore()
   const watches = useRef(new Map<string, SessionWatch>())
+  const phases = useRef(data.historyPhases)
+  phases.current = data.historyPhases
   const panes = useBoardStore((state) => state.panes)
   // Los borradores no tienen sesión ni actividad que observar.
   const members = useMemo(() => panes.filter((pane) => !isDraftPane(pane)), [panes])
@@ -99,7 +101,17 @@ export default function BoardActivityController() {
       if (!session?.initialized) {
         // Antes del baseline: recordar los que terminaron delante de nosotros.
         if (wasActive) watch.liveBeforeInit.add(turn.turnId)
-        return
+        if (!wasActive || phases.current?.[turn.sessionId] === 'loading') return
+        // Una conversación cuyo historial no se carga (una hija, una tarea
+        // programada) también se sigue: lo que se vio empezar y terminar en
+        // vivo es nuevo; lo demás que ya conocemos, baseline (#103).
+        const known = Object.values(store.getState().timelines).flatMap((other) => {
+          const done = other.sessionId === turn.sessionId && other.turnId !== turn.turnId ? terminalOutcomeOf(other) : null
+          return done ? [{ turnId: other.turnId, outcome: done as TerminalOutcome, completedAt: other.completedAt }] : []
+        })
+        watch.liveBeforeInit.delete(turn.turnId)
+        attention.initializeSessionAttention(turn.sessionId, known, { liveTerminalTurnIds: [...watch.liveBeforeInit] })
+        watch.liveBeforeInit.clear()
       }
       const source: TerminalSource = wasActive ? 'live' : previousStatus === undefined ? 'history' : 'snapshot'
       attention.observeTerminal(turn.sessionId, turn.turnId, outcome, source, turn.completedAt, {

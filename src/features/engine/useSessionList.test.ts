@@ -95,6 +95,15 @@ describe('useSessionList session visibility', () => {
     expect(useProjectExpansionStore.getState().choices.actual).toBe(false)
   })
 
+  it('a created session counts as loaded and empty, so its results can become pending (#103)', async () => {
+    const { result } = setup()
+    createSession.mockResolvedValue({ session: summary('new') })
+    sessions.mockResolvedValue({ sessions: [summary('new')] })
+    await act(async () => { await result.current.createSession(undefined, { activate: false }) })
+    expect(result.current.historyInfo.new).toEqual({ total: 0, hasMore: false, beforeSeq: null, beforeTurnIndex: null })
+    expect(sessionHistory).not.toHaveBeenCalledWith('new', expect.anything())
+  })
+
   it('resolves a root-only creation against the Engine catalog', async () => {
     const { result } = setup()
     const created = { ...summary('new'), kind: 'PROJECT', project_root: '/repo/actual' }

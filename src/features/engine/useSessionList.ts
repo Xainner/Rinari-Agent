@@ -463,6 +463,10 @@ export function useSessionList(options: {
       setRecentSessionIds((current) => [result.session.id, ...current.filter((item) => item !== result.session.id)])
       historyLoaded.current.add(result.session.id)
       setHistoryPhases((current) => ({ ...current, [result.session.id]: 'loaded' }))
+      // Su historial vacío también cuenta como cargado para los avisos: sin él,
+      // BoardActivityController no la seguía y sus resultados nunca quedaban
+      // pendientes (plan 0.4.0, #103).
+      setHistoryInfo((current) => ({ ...current, [result.session.id]: { total: 0, hasMore: false, beforeSeq: null, beforeTurnIndex: null } }))
       if (shouldActivate) activate(result.session.id)
       await revealSessionProject(result.session)
       void refreshSessions()

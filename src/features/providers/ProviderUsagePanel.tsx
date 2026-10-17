@@ -4,6 +4,7 @@ import { engineApi, commandMessage } from '../../services/engine'
 import type { ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
+import { ProgressBar } from '../../components/ui/progress-bar'
 
 export default function ProviderUsagePanel({ providerAlias, compact = false, ring = false }: { providerAlias: string; compact?: boolean; ring?: boolean }) {
   const { t, lang } = useI18n()
@@ -70,7 +71,7 @@ export default function ProviderUsagePanel({ providerAlias, compact = false, rin
         {snapshot.windows.map(window => <div key={window.id} className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
           <div className="break-words text-xs text-[var(--text-muted)]">{window.id === 'rolling' ? t('providers.windowRolling') : window.id === 'weekly' ? t('providers.windowWeekly') : window.id === 'monthly' ? t('providers.windowMonthly') : window.label}</div>
           <p className="my-2 text-xl font-semibold tabular-nums">{window.remaining_percent === null ? '—' : `${window.remaining_percent.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`} <span className="text-xs font-normal text-[var(--text-muted)]">{t('providers.remaining')}</span></p>
-          {window.remaining_percent !== null && <progress aria-label={`${window.label}: ${t('providers.remaining')}`} className="block h-1.5 w-full overflow-hidden rounded-full accent-[var(--accent)]" max={100} value={window.remaining_percent} />}
+          {window.remaining_percent !== null && <ProgressBar label={`${window.label}: ${t('providers.remaining')}`} max={100} value={window.remaining_percent} />}
           {window.duration_seconds !== null && window.id !== 'rolling' && <p className="mt-2 text-xs text-[var(--text-muted)]">{t('providers.windowHours', { n: window.duration_seconds / 3600 })}</p>}
           <p className="mt-2 text-xs text-[var(--text-subtle)]">{window.resets_at ? t('providers.resetsAt', { date: date(window.resets_at) }) : t('providers.resetUnknown')}</p>
         </div>)}

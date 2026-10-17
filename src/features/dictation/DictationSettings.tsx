@@ -5,6 +5,7 @@ import { Switch } from '../../components/ui/switch'
 import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent, type SpeechStatus } from '../../services/engine'
 import { useDictationPrefs } from './dictationPrefs'
+import { ProgressBar } from '../../components/ui/progress-bar'
 
 export function formatSize(bytes: number): string {
   return bytes >= 1_000_000_000 ? `${(bytes / 1_000_000_000).toFixed(1)} GB` : `${Math.round(bytes / 1_000_000)} MB`
@@ -158,7 +159,7 @@ export default function DictationSettings() {
                   </>
                 ) : downloading.has(model.id) ? (
                   <span className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                    <progress value={share ?? 0} max={1} aria-label={t('dictation.downloading', { model: model.id })} className="h-1.5 w-24" />
+                    <ProgressBar value={share} label={t('dictation.downloading', { model: model.id })} className="w-24" />
                     {share !== undefined ? `${Math.round(share * 100)}%` : t('dictation.starting')}
                     <button type="button" aria-label={t('dictation.cancelDownload')} onClick={() => void engineApi.speechModelCancel(model.id)} className="rounded p-0.5 hover:bg-[var(--bg-hover)]">
                       <X size={12} aria-hidden="true" />

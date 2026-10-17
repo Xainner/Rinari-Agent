@@ -7,6 +7,7 @@ import { commandMessage, engineApi, type SpeechStatus } from '../../services/eng
 import { useUIStore } from '../../stores/ui'
 import { formatSize, useSpeechModelEvents } from './DictationSettings'
 import { useDictation } from './useDictation'
+import { ProgressBar } from '../../components/ui/progress-bar'
 
 const ERROR_KEYS: Record<string, I18nKey> = {
   MIC_DENIED: 'dictation.error.micDenied',
@@ -196,7 +197,7 @@ export default function DictationButton({
             </p>
             {downloadingModel ? (
               <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                <progress value={share ?? 0} max={1} aria-label={t('dictation.downloading', { model: status.model })} className="h-1.5 flex-1" />
+                <ProgressBar value={share} label={t('dictation.downloading', { model: status.model })} className="flex-1" />
                 {share !== undefined ? `${Math.round(share * 100)}%` : t('dictation.starting')}
               </div>
             ) : (

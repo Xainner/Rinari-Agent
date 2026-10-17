@@ -107,6 +107,15 @@ scenario(async () => {
     await screenshot('07b-slash-menu')
     await input('.composer-surface textarea', '')
   })
+  // /usage (#78): the report card in the chat, without a turn.
+  await step('usage-report', async () => {
+    await input('.composer-surface textarea', '/usage')
+    await click('.composer-surface button[aria-label="Enviar mensaje"]')
+    await wait(`Boolean(document.querySelector('[data-testid="usage-report"]'))`, 30_000)
+    await evaluate(`document.querySelector('[data-testid="usage-report"]').scrollIntoView({ block: 'center' })`)
+    await delay(500)
+    await screenshot('07c-usage-report')
+  })
   await step('sidebar-context', () => rightClick(`[...document.querySelectorAll('aside button')].find(b=>b.textContent.includes('Recorrido visual'))`, '08-sidebar-context-menu'))
   await step('message-context', () => rightClick(`[...document.querySelectorAll('[data-testid="turn-result"], .markdown')].pop()`, '08b-message-context-menu'))
   await popoversIn('aside', '09-sidebar')

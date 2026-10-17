@@ -147,7 +147,8 @@ export function usageMarkdown(report: UsageReport, labels: { title: string; scop
     `Tools: ${report.tools.total} (${report.tools.ok} ok, ${report.tools.failed} failed)` +
       (report.tools.top.length ? ` · ${report.tools.top.map((item) => `${item.tool} ${item.count}`).join(', ')}` : ''),
     `Compactions: ${report.compactions}`,
-    `Active time: ${Math.round(report.time.active_ms / 1000)} s`,
+    `Active time: ${Math.round(report.time.active_ms / 1000)} s` +
+      (report.time.first_at && report.time.last_at ? ` · from ${report.time.first_at} to ${report.time.last_at}` : ''),
   )
   if (report.warnings.length) {
     lines.push('', 'Warnings:', ...report.warnings.map((warning) => `  - ${warning.kind}: ${warning.count}`))

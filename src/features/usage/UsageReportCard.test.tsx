@@ -39,6 +39,7 @@ it('shows limits, context, models, tools and warnings, and copies the report as 
   expect(card.textContent).toContain('4 veces')
   await waitFor(() => expect(card.textContent).toContain('42 %'))
   await waitFor(() => expect(card.textContent).toContain('1 compactaciones'))
+  expect(card.textContent).not.toContain('Duración')
   await userEvent.click(screen.getByRole('button', { name: /Copiar/ }))
   expect(copied[0]).toContain('Sonnet: 3 calls')
   expect(screen.getByRole('button', { name: /Copiado/ })).toBeTruthy()
@@ -50,6 +51,7 @@ it('a 0.4.0 snapshot paints its own limits of every provider, context and client
   vi.mocked(engineApi.contextStatus).mockClear()
   const snapshot: UsageReport = {
     ...REPORT,
+    time: { first_at: '2026-10-17T10:00:00Z', last_at: '2026-10-17T11:05:00Z', active_ms: 42_000 },
     client: { app_version: '0.4.0', engine_version: '0.4.0', profile: 'Trabajo', provider: 'claude-sub', model: 'sonnet' },
     context: { window_tokens: 200_000, used_tokens: 30_000, compact_at_tokens: 160_000, last_compaction_at: null },
     limits: [
@@ -59,6 +61,7 @@ it('a 0.4.0 snapshot paints its own limits of every provider, context and client
   }
   render(<I18nProvider lang="es"><UsageReportCard report={snapshot} sessionId="ses_a" /></I18nProvider>)
   const card = screen.getByTestId('usage-report')
+  expect(card.textContent).toContain('Duración: 1 h 5 min')
   expect(screen.getByTestId('usage-report-client').textContent).toBe('Rinari Agent 0.4.0 · Engine 0.4.0 · Trabajo · claude-sub / sonnet')
   const limits = card.querySelector('[data-block="limits"]')!
   // In the owner's language, not the Engine's English detail.

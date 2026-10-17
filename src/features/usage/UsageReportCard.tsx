@@ -11,6 +11,19 @@ import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type Usage
 const SCOPES: UsageScope[] = ['session', 'today', 'project', 'all']
 const compact = (value: number, lang: string) =>
   new Intl.NumberFormat(lang === 'es' ? 'es' : 'en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+/** De la primera a la última actividad del ámbito, en segundos. */
+const span = (first: string | null, last: string | null) => {
+  if (!first || !last) return null
+  const seconds = (Date.parse(last) - Date.parse(first)) / 1000
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+}
+const duration = (seconds: number) => {
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 1) return `${Math.round(seconds)} s`
+  if (minutes < 60) return `${minutes} min`
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+}
+
 /** El tono de una barra de uso: tranquilo, cerca del límite o en él. */
 const level = (percent: number) => (percent >= 90 ? 'high' : percent >= 70 ? 'mid' : 'low')
 
@@ -217,7 +230,10 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
       </div>
 
       <footer className="usage-report-actions">
-        <span className="usage-report-time">{t('usage.time', { s: Math.round(report.time.active_ms / 1000) })}</span>
+        <span className="usage-report-time">
+          {t('usage.time', { s: Math.round(report.time.active_ms / 1000) })}
+          {span(report.time.first_at, report.time.last_at) !== null && ` · ${t('usage.duration', { time: duration(span(report.time.first_at, report.time.last_at)!) })}`}
+        </span>
         <span className="flex-1" />
         <button type="button" className="btn btn-quiet btn-xs" onClick={() => void copyText(markdown()).then((ok) => { if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500) } })}>
           {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />} {copied ? t('usage.copied') : t('usage.copy')}

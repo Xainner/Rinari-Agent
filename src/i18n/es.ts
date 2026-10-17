@@ -3805,6 +3805,7 @@ export const es = {
   'usage.fix.models': 'Ver modelos',
   'usage.fix.compacted': 'Compactado: el modelo ya no carga eso',
   'usage.time': 'Tiempo activo: {s} s',
+  'usage.duration': 'Duración: {time}',
   'usage.copy': 'Copiar',
   'usage.copied': 'Copiado',
   'usage.download': 'Descargar .md',

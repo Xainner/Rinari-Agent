@@ -3787,6 +3787,7 @@ export const en: Record<I18nKey, string> = {
   'usage.fix.models': 'See models',
   'usage.fix.compacted': 'Compacted: the model no longer carries that',
   'usage.time': 'Active time: {s} s',
+  'usage.duration': 'Duration: {time}',
   'usage.copy': 'Copy',
   'usage.copied': 'Copied',
   'usage.download': 'Download .md',

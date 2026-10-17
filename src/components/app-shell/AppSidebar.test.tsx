@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
+import { bornAt } from '../../features/projects/workspaceModel'
 import { AppSidebar, type AppSidebarProps } from './AppSidebar'
 import { useUIStore } from '../../stores/ui'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
@@ -550,5 +551,48 @@ describe('child sessions under their mother (#40)', () => {
       activeId: 'mother',
     })
     expect(within(screen.getByTestId('session-children')).getByText('Pruebas')).toBeTruthy()
+  })
+
+  /** Un id de sesión real (ULID con prefijo) nacido en `ms`. */
+  const ulidAt = (ms: number) => {
+    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+    let time = ''
+    for (let value = ms, i = 0; i < 10; i += 1, value = Math.floor(value / 32)) time = alphabet[value % 32] + time
+    return `ses_${time}${'0'.repeat(16)}`
+  }
+
+  it('reads when a session was born from its ULID', () => {
+    expect(bornAt(ulidAt(1_760_000_000_000))).toBe(1_760_000_000_000)
+    expect(bornAt('ses_01_a')).toBeNull()
+  })
+
+  it('a new child comes out of its mother; one that was there at mount does not move', () => {
+    const fresh = ulidAt(Date.now())
+    const props = renderSidebar({ sessions: [session('mother', 'Parser'), child('ses_01_a', 'Pruebas', 'mother')], activeId: 'mother' })
+    cleanup()
+    const view = render(<I18nProvider lang="es"><AppSidebar {...props} /></I18nProvider>)
+    expect(screen.getByText('Pruebas').closest('li')?.hasAttribute('data-entering')).toBe(false)
+    view.rerender(<I18nProvider lang="es"><AppSidebar {...props} sessions={[...props.sessions, child(fresh, 'Docs', 'mother')]} busySessionIds={new Set([fresh])} /></I18nProvider>)
+    expect(screen.getByText('Docs').closest('li')?.hasAttribute('data-entering')).toBe(true)
+    // Remounting with it already there replays nothing.
+    cleanup()
+    render(<I18nProvider lang="es"><AppSidebar {...props} sessions={[...props.sessions, child(fresh, 'Docs', 'mother')]} /></I18nProvider>)
+    expect(screen.getByText('Docs').closest('li')?.hasAttribute('data-entering')).toBe(false)
+  })
+
+  it('a child seen finishing draws its check and its mother pulses once; a fresh one not started keeps the branch', () => {
+    const fresh = ulidAt(Date.now())
+    const props = renderSidebar({ sessions: [session('mother', 'Parser'), child(fresh, 'Docs', 'mother')], activeId: 'mother' })
+    cleanup()
+    const view = render(<I18nProvider lang="es"><AppSidebar {...props} /></I18nProvider>)
+    expect(screen.queryByRole('img', { name: 'Terminada' })).toBeNull()
+    view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set([fresh])} /></I18nProvider>)
+    expect(screen.getByTestId('session-children-chip').hasAttribute('data-pulse')).toBe(false)
+    view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set()} /></I18nProvider>)
+    const check = screen.getByRole('img', { name: 'Terminada' })
+    expect(check.getAttribute('data-drawn')).toBe('true')
+    const chip = screen.getByTestId('session-children-chip')
+    expect(chip.hasAttribute('data-pulse')).toBe(true)
+    expect(chip.hasAttribute('data-complete')).toBe(true)
   })
 })

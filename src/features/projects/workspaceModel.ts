@@ -140,3 +140,18 @@ export function nestSessions(list: SessionSummary[]): { tops: SessionSummary[]; 
   for (const siblings of children.values()) siblings.sort((a, b) => a.id.localeCompare(b.id))
   return { tops, children }
 }
+
+const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+/** Cuándo nació una sesión, por su id (un ULID con prefijo, `ses_01H…`); `null` si no lo es. */
+export function bornAt(id: string): number | null {
+  const ulid = id.slice(id.lastIndexOf('_') + 1)
+  if (ulid.length !== 26) return null
+  let ms = 0
+  for (const char of ulid.slice(0, 10).toUpperCase()) {
+    const value = CROCKFORD.indexOf(char)
+    if (value < 0) return null
+    ms = ms * 32 + value
+  }
+  return ms
+}

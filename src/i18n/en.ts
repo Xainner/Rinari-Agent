@@ -265,6 +265,7 @@ export const en: Record<I18nKey, string> = {
   'sidebar.newGeneralChat': 'New conversation without a project',
   'sidebar.sessionWorking': 'Session in progress',
   'sidebar.childSessions': '{done} of {total} child conversations done',
+  'sidebar.childDone': "Done",
   'sidebar.backToMother': 'Back to «{title}»',
   'sidebar.sessionInterrupted': 'Interrupted session, can resume',
   'sidebar.projectWorking': 'Project with sessions in progress',

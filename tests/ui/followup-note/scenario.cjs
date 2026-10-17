@@ -3,10 +3,13 @@
 // 2. «Hacer en otra conversación» crea una conversación nueva con el título
 //    de la nota y su turno se ejecuta; la conversación de origen sigue igual.
 // 3. La conversación nueva cuelga de «Origen» en la barra lateral, con su
-//    contador; abierta, su cabecera vuelve a la madre (#40).
+//    contador; abierta, su cabecera vuelve a la madre (#40). Entra bajando
+//    desde la fila de la madre y, al terminar, lleva su check.
 // 4. «Descartar» quita la otra. Recargar no las devuelve.
 const assert = require('node:assert/strict')
 const { click, clickText, command, delay, evaluate, input, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
+
+const REDUCED = process.env.RINARI_UI_REDUCED_MOTION === '1'
 
 const text = (value) => `document.body.innerText.includes(${JSON.stringify(value)})`
 const SEND = '.composer-surface button[aria-label="Enviar mensaje"]'
@@ -36,6 +39,11 @@ scenario(async () => {
   const title = await evaluate(`document.querySelector(${JSON.stringify(NOTE)} + ' .sticky-note-title').innerText`)
   await clickText('Hacer en otra conversación', `${NOTE} button`)
   await wait(`document.querySelector('aside')?.innerText.includes(${JSON.stringify(title)})`)
+  // The new child comes out of its mother's row (an animation only with motion on).
+  const CHILD_ROW = `[...document.querySelectorAll('[data-testid="session-children"] > li')].find((li) => li.innerText.includes(${JSON.stringify(title)}))`
+  await wait(`Boolean(${CHILD_ROW})`)
+  assert(await evaluate(`${CHILD_ROW}.hasAttribute('data-entering')`), 'the new child is marked as entering')
+  if (!REDUCED) assert.equal(await evaluate(`getComputedStyle(${CHILD_ROW}).animationName`), 'sidebar-child-in', 'the new child enters with its animation')
   await wait(text('TAREA HECHA') + ` || [...document.querySelectorAll('aside button')].some(b => b.innerText.includes(${JSON.stringify(title)}))`)
   const created = (await command('session_list', {})).sessions.find((s) => s.title === title)
   assert(created, 'the accepted note became a conversation')
@@ -47,6 +55,9 @@ scenario(async () => {
   assert.equal(created.lineage_kind, 'note')
   await wait(`[...document.querySelectorAll('[data-testid="session-children"]')].some((list) => list.innerText.includes(${JSON.stringify(title)}))`)
   assert(await evaluate(`Boolean(document.querySelector('[data-testid="session-children-chip"]'))`), 'the mother counts its children')
+  // Once its turn ends the child carries its check and the mother's counter is complete.
+  await wait(`Boolean(document.querySelector('[data-testid="session-children"] [role="img"][aria-label="Terminada"]'))`, 30_000)
+  await wait(`document.querySelector('[data-testid="session-children-chip"]')?.hasAttribute('data-complete')`)
   await clickText(title, '[data-testid="session-children"] button', { includes: true })
   await wait(`document.querySelector('[data-testid="chat-header-mother"]')?.innerText.includes('Origen')`)
   await screenshot('child')
@@ -63,5 +74,5 @@ scenario(async () => {
   await wait('Boolean(document.querySelector(".composer-surface"))')
   await delay(800)
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(NOTE)}))`), false)
-  report({ passed: ['note shows without starting work', 'accept opens a conversation that runs the task', 'the child hangs from its mother with a counter', 'the child header goes back to the mother', 'dismiss removes it for good'] })
+  report({ passed: ['note shows without starting work', 'accept opens a conversation that runs the task', 'the child hangs from its mother with a counter', 'the new child enters from its mother', 'the finished child carries its check', 'the child header goes back to the mother', 'dismiss removes it for good'] })
 })

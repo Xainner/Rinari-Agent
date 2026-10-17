@@ -29,6 +29,7 @@ import {
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
 import { buildWorkspaceModel, projectDisplayName, groupRecentChats, nestSessions, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
+import { useChildMotion } from './useChildMotion'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -304,6 +305,7 @@ export function AppSidebar({
   // Los chats sueltos se anidan antes de agruparlos por fecha: una hija de hoy
   // cuelga de su madre de ayer, no aparece suelta en «Hoy» (#40).
   const chatNest = nestSessions(model.chats)
+  const childMotion = useChildMotion(sessions, busySessionIds)
   // Madres plegadas (#40): sus hijas no se ven hasta desplegarlas.
   const [foldedMothers, setFoldedMothers] = useState<ReadonlySet<string>>(() => new Set())
   const toggleMother = (id: string) => setFoldedMothers((current) => {
@@ -320,9 +322,10 @@ export function AppSidebar({
       if (kids.length === 0) return row(session, opts)
       const done = kids.filter((kid) => busySessionIds?.has(kid.id) !== true && signalBySession?.[kid.id] !== 'needs_you').length
       const folded = foldedMothers.has(session.id)
+      const pulse = kids.some((kid) => childMotion.finished(kid.id) && signalBySession?.[kid.id] !== 'failed')
       return row(session, {
         ...opts,
-        mother: { done, total: kids.length, folded, onToggle: () => toggleMother(session.id) },
+        mother: { done, total: kids.length, folded, pulse, onToggle: () => toggleMother(session.id) },
         nested: folded ? null : (
           <ul className="sidebar-tree sidebar-children mt-0.5 ml-3.5 space-y-0.5 pl-1" data-testid="session-children">
             {kids.map((kid) => row(kid, { child: true }))}
@@ -332,14 +335,18 @@ export function AppSidebar({
     })
   }
 
-  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; mother?: { done: number; total: number; folded: boolean; onToggle: () => void }; nested?: ReactNode }) => {
+  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; mother?: { done: number; total: number; folded: boolean; pulse: boolean; onToggle: () => void }; nested?: ReactNode }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
     const signal = signalBySession?.[session.id] ?? null
     const signalLabel = signal === 'needs_you' ? t('sidebar.sessionNeedsYou') : signal === 'failed' ? t('sidebar.sessionFailed') : signal === 'unread' ? t('sidebar.sessionUnread') : null
+    // Una hija terminada lleva su check (#40): se dibuja si esta barra la vio terminar.
+    // La recién nacida que aún no arrancó y la que falló siguen con la rama.
+    const childFinished = opts?.child === true && childMotion.finished(session.id)
+    const childDone = opts?.child === true && !working && signal !== 'failed' && (childFinished || !childMotion.fresh(session.id))
     return (
-      <li key={session.id} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
+      <li key={session.id} data-entering={opts?.child && childMotion.entering(session.id) ? '' : undefined} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
           className={cn('sidebar-row', active && 'is-active')}
         >
@@ -361,7 +368,21 @@ export function AppSidebar({
               <Hand size={10} aria-hidden="true" />
             </span> : working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
               <span aria-hidden="true" className="sidebar-spin" />
-            </span> : opts?.child ? <GitBranch
+            </span> : childDone ? <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              role="img"
+              aria-label={t('sidebar.childDone')}
+              data-testid="session-child-icon"
+              data-drawn={childFinished || undefined}
+              className={cn('sidebar-child-check', childFinished && 'r-check')}
+            ><path d="M5 12.5l4.2 4.2L19 7" /></svg> : opts?.child ? <GitBranch
               size={13}
               aria-hidden="true"
               data-testid="session-child-icon"
@@ -387,6 +408,8 @@ export function AppSidebar({
                 aria-label={t('sidebar.childSessions', { done: opts.mother.done, total: opts.mother.total })}
                 title={t('sidebar.childSessions', { done: opts.mother.done, total: opts.mother.total })}
                 data-testid="session-children-chip"
+                data-complete={opts.mother.done === opts.mother.total || undefined}
+                data-pulse={opts.mother.pulse || undefined}
                 className="sidebar-children-chip"
                 onClick={(event) => { event.preventDefault(); event.stopPropagation(); opts.mother!.onToggle() }}
                 onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); opts.mother!.onToggle() } }}

@@ -1022,9 +1022,19 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 /* #40: la madre cuenta sus hijas listas y se pliega; la hija vuelve a la madre desde la cabecera. */
 .sidebar-children-chip { flex-shrink: 0; border-radius: 999px; border: 1px solid var(--line-2); padding: 0 6px; font-family: var(--font-mono); font-size: 10.5px; line-height: 16px; color: var(--text-subtle); cursor: pointer; }
 .sidebar-children-chip:hover, .sidebar-children-chip:focus-visible { color: var(--text); border-color: var(--line-3); outline: none; }
+.sidebar-children-chip[data-complete] { color: color-mix(in srgb, var(--success) 80%, var(--text-subtle)); border-color: color-mix(in srgb, var(--success) 30%, transparent); }
+/* Movimiento de las hijas: la nueva baja desde la fila de su madre; la que termina dibuja su check
+   (.r-check) y el contador de la madre late una vez. Con movimiento reducido, todo instantáneo. */
+.sidebar-children > li[data-entering] { animation: sidebar-child-in 220ms var(--ease-out); }
+@keyframes sidebar-child-in { from { overflow: hidden; max-height: 0; opacity: 0; transform: translateY(-6px); } to { overflow: hidden; max-height: 36px; opacity: 1; transform: none; } }
+.sidebar-child-check { flex-shrink: 0; color: color-mix(in srgb, var(--success) 75%, var(--text-subtle)); }
+.sidebar-children-chip[data-pulse] { animation: sidebar-mother-pulse 0.7s var(--ease-out); }
+@keyframes sidebar-mother-pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); } 35% { transform: scale(1.14); } 100% { transform: scale(1); box-shadow: 0 0 0 7px transparent; } }
 .chat-header-mother { display: inline-flex; min-width: 0; max-width: 45%; flex-shrink: 1; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 8px 2px 6px; font-size: 12px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
 .chat-header-mother:hover { background: var(--bg-hover); color: var(--text); }
 .chat-header-brief { color: var(--text-subtle); }
+/* La miga lleva su separador: «← Madre · Encargo / Hija». */
+.chat-header-mother::after { content: '/'; margin-left: 4px; color: var(--line-3); }
 .sidebar-signal[data-signal="failed"] { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
 .sidebar-signal[data-signal="unread"] { background: var(--accent-2); box-shadow: 0 0 6px rgb(167 139 250 / 0.6); }
 .sidebar-signal[data-signal="needs_you"] { display: grid; width: 16px; height: 16px; place-items: center; color: #2b1d00; background: var(--warning); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 20%, transparent); animation: sidebar-needs 1.8s ease-in-out 3; }

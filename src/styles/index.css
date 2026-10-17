@@ -1551,7 +1551,9 @@ html[data-motion='reduced'] .dock-view-button[data-ring='agent']::before, html[d
 .browser-size .r-select.is-compact { height: 30px; gap: 4px; padding: 0 6px; }
 .browser-size .r-select.is-compact .r-select-label { display: none; }
 .browser-size-value { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.browser-problem { padding: 8px 12px; font-size: 12px; color: var(--warning); }
+/* 99.2: un problema del navegador, traducido, como aviso de la app bajo la barra (no un texto suelto). */
+.browser-problem { display: flex; align-items: flex-start; gap: 8px; margin: 6px 8px 0; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--warning) 9%, transparent); font-size: 12px; line-height: 1.45; color: var(--text); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.browser-problem > svg { flex-shrink: 0; margin-top: 2px; color: var(--warning); }
 .browser-view-slot { flex: 1 1 auto; min-height: 0; overflow: auto; background: #0a0812; }
 /* Con un ancho fijo la página no se encoge: el hueco se desplaza en horizontal y lo de fuera queda en pauta. */
 .browser-view-scroll { display: flex; min-width: 0; min-height: 0; flex: 1 1 auto; overflow-x: auto; overflow-y: hidden; background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.018) 0 8px, transparent 8px 16px), #07060c; }
@@ -3077,6 +3079,15 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .model-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.45); }
 .model-row[data-editing] { border-color: color-mix(in srgb, var(--accent-2) 40%, transparent); }
 .model-row-remove:hover:not(:disabled) { color: var(--danger); }
+/* Agentes (#92): cada tarjeta con el icono de su tipo, el tipo traducido y el nombre técnico en mono. */
+.agent-card-title { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.agent-card-icon { display: flex; flex-shrink: 0; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--line-2); background: linear-gradient(135deg, rgb(130 244 239 / 0.18), rgb(147 88 255 / 0.12)); color: var(--cyan-300); transition: opacity var(--dur-base), filter var(--dur-base); }
+.agent-card-title:not([data-enabled]) .agent-card-icon { opacity: 0.45; filter: grayscale(0.6); }
+.agent-card-name { display: block; margin-top: 1px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text-subtle); }
+/* Pulido (#92/#93): la fila se aviva al pasar y el editor entra suave. */
+.model-row { transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.model-row:hover { border-color: var(--line-2); background: rgb(20 15 34 / 0.55); }
+.model-editor { animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .model-editor { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); padding-top: 10px; border-top: 1px solid var(--line-1); }
 .model-editor > :last-child { grid-column: 1 / -1; }
 

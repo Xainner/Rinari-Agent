@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Maximize2, Monitor, Smartphone, Tablet, Tv } from 'lucide-react'
+import { Maximize2, Monitor, Smartphone, Tablet, TriangleAlert, Tv } from 'lucide-react'
 
 import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
@@ -179,7 +179,7 @@ export default function BrowserSurface({
         home={home}
       />
 
-      {problem && <p role="alert" className="browser-problem">{browserProblemText(problem, t)}</p>}
+      {problem && <p role="alert" className="browser-problem"><TriangleAlert size={13} aria-hidden="true" /><span>{browserProblemText(problem, t)}</span></p>}
 
       {useNative && context ? (
         <NativeBrowserSlot

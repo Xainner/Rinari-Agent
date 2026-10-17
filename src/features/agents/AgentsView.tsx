@@ -7,11 +7,23 @@ import {
   type ModelSummary,
   type SessionEvent,
 } from '../../services/engine'
-import { RotateCcw } from 'lucide-react'
+import { BookOpen, Bot, Bug, Hammer, RotateCcw, ScanEye, Search, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
 import { Select } from '../../components/ui/select'
 import { Switch } from '../../components/ui/switch'
+import { useAgentType } from './agentLabel'
+
+/** Un icono por tipo de subagente (#92): se reconoce sin leer el nombre. */
+const AGENT_ICONS: Record<string, LucideIcon> = {
+  explore: Search,
+  explorer: Search,
+  debugger: Bug,
+  implementer: Hammer,
+  reviewer: ScanEye,
+  researcher: BookOpen,
+  verifier: ShieldCheck,
+}
 
 function str(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -143,12 +155,12 @@ export default function AgentsView({
       {agents.map((agent) => {
         const customised = agent.assignment.model !== null || agent.assignment.fallback !== null || !agent.assignment.enabled
         return (
-          <Section key={agent.name} title={agent.name}>
+          <Section key={agent.name} className="agent-card" title={<AgentTitle name={agent.name} enabled={agent.assignment.enabled} />}>
             <p className="text-sm text-[var(--text-muted)]">{agent.description}</p>
             <div className="flex flex-wrap gap-1.5">
               <span className="r-chip">{agent.profile === 'inherit' ? t('agents.profileInherit') : agent.profile}</span>
               <span className="r-chip">{agent.provenance === 'project' ? t('agents.fromProject') : t('agents.builtin')}</span>
-              <span className="r-chip">{t('agents.budget', { n: agent.budget.max_tool_calls })}</span>
+              {typeof agent.budget.max_tool_calls === 'number' && <span className="r-chip">{t('agents.budget', { n: agent.budget.max_tool_calls })}</span>}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
@@ -174,5 +186,21 @@ export default function AgentsView({
         )
       })}
     </div>
+  )
+}
+
+/** La cabecera de un agente: su icono, su tipo en el idioma del dueño y, en mono, el nombre técnico. */
+function AgentTitle({ name, enabled }: { name: string; enabled: boolean }) {
+  const typeOf = useAgentType()
+  const Icon = AGENT_ICONS[name] ?? Bot
+  const label = typeOf(name)
+  return (
+    <span className="agent-card-title" data-enabled={enabled || undefined}>
+      <span className="agent-card-icon" aria-hidden="true"><Icon size={16} /></span>
+      <span className="min-w-0">
+        <span className="block truncate">{label.charAt(0).toUpperCase() + label.slice(1)}</span>
+        {label !== name && <span className="agent-card-name">{name}</span>}
+      </span>
+    </span>
   )
 }

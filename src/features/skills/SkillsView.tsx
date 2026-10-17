@@ -129,8 +129,10 @@ export default function SkillsView() {
 
       <SkillDuplicates />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label={t('skills.filter')} className="seg-tabs flex-wrap">
+      {/* La búsqueda a todo el ancho y debajo los filtros: en una fila no caben y la búsqueda quedaba suelta (#92). */}
+      <div className="flex flex-col gap-2">
+        <SearchField label={t('skills.search')} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full" />
+        <div role="tablist" aria-label={t('skills.filter')} className="seg-tabs w-fit max-w-full flex-wrap">
           {SKILL_FILTERS.map((option) => (
             <button
               key={option}
@@ -145,7 +147,6 @@ export default function SkillsView() {
             </button>
           ))}
         </div>
-        <SearchField label={t('skills.search')} value={query} onChange={(event) => setQuery(event.target.value)} className="ml-auto min-w-[12rem]" />
       </div>
 
       {loadError && (

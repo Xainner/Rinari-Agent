@@ -1,3 +1,4 @@
+import { Check, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { CHECKS, checksOf, formatSeconds, formatTokens, sourceLabel, type ContextSource } from './contextStatus'
 
@@ -11,18 +12,21 @@ export default function CompactionDetails({ details }: { details: Record<string,
   const checks = checksOf(details.checks)
   const source = SOURCES.find((known) => known === details.source)
   const label = source ? sourceLabel(source, undefined, lang) : null
-  return <div className="mt-1 space-y-1 text-xs text-[var(--text-muted)]" data-testid="compaction-details">
+  return <div className="compaction-details" data-testid="compaction-details">
     {count(details.used) && count(details.after) && <p>
       {t('context.beforeAfter', { before: formatTokens(details.used, lang), after: formatTokens(details.after, lang) })}
       {count(details.duration) && ` · ${t('context.duration', { seconds: formatSeconds(details.duration, lang) })}`}
     </p>}
     {count(details.window) && <p>{t('context.window')}: {t('context.tokens', { n: formatTokens(details.window, lang) })}{label && ` · ${t(label.key, label.values)}`}</p>}
-    {Object.keys(checks).length > 0 && <ul aria-label={t('context.checks')} className="space-y-0.5">
+    {Object.keys(checks).length > 0 && <ul aria-label={t('context.checks')} className="compaction-checks">
       {CHECKS.flatMap((name) => {
         const outcome = checks[name]
-        return outcome ? [<li key={name}>{t(`context.check.${name}`)}: <span className={outcome === 'failed' ? 'text-[var(--danger)]' : outcome === 'repaired' ? 'text-[var(--warning)]' : 'text-[var(--text)]'}>{t(`context.check.${outcome}`)}</span></li>] : []
+        return outcome ? [<li key={name} className="r-chip" data-tone={outcome === 'failed' ? 'danger' : outcome === 'repaired' ? 'warning' : 'success'}>
+          {outcome === 'failed' ? <X size={11} aria-hidden="true" /> : <Check size={11} aria-hidden="true" />}
+          <span>{t(`context.check.${name}`)}</span><span className="compaction-check-outcome">{t(`context.check.${outcome}`)}</span>
+        </li>] : []
       })}
     </ul>}
-    {Object.keys(checks).length > 0 && <p className="text-[11px] text-[var(--text-subtle)]">{t('context.checks.note')}</p>}
+    {Object.keys(checks).length > 0 && <p className="compaction-note">{t('context.checks.note')}</p>}
   </div>
 }

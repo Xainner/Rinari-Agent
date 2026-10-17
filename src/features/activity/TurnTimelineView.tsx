@@ -16,6 +16,7 @@ import {
   ListTree,
   ArrowDownToLine,
   LoaderCircle,
+  Shrink,
   MessageCircleQuestion,
   Pencil,
   ShieldAlert,
@@ -43,6 +44,8 @@ import MessageBubble from '../../components/MessageBubble'
 import { usePeerNavigation } from '../board/PeerNavigationContext'
 import TurnMeta from './TurnMeta'
 import CompactionDetails from '../context/CompactionDetails'
+import { useCalmMotion } from '../../lib/motion'
+import { CompactBar, shortTokens, useCountTo } from '../context/CompactBar'
 import TurnResult from './TurnResult'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { MemoryActivityCard } from '../memory/MemoryActivityCard'
@@ -396,21 +399,66 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   if (item.type === 'system') return null
   if (item.type === 'verification') return <VerificationRow item={item} active={active} />
   const labels = !active && 'status' in item && item.status === 'running' ? t('activity.interrupted') : item.type === 'context'
-      ? (item.status === 'running' ? (lang === 'es' ? 'Compactando contexto automáticamente…' : 'Automatically compacting context…') : item.status === 'failed' ? (lang === 'es' ? 'No se pudo compactar el contexto' : 'Context compaction failed') : item.status === 'cancelled' ? (lang === 'es' ? 'Compactación cancelada' : 'Compaction cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : (lang === 'es' ? 'Contexto compactado' : 'Context compacted'))
+      ? (item.status === 'running' ? t('context.row.compactingAuto') : item.status === 'failed' ? t('context.row.failed') : item.status === 'cancelled' ? t('context.row.cancelled') : item.status === 'skipped' ? compactionSkipped(item, t) : t('context.row.done'))
       : ''
   if (!labels) return null
-  if (item.type === 'context') return <div className="py-1 text-[13px] text-[var(--text-muted)]">
-    <div className="flex items-center gap-2">{active && item.status === 'running' ? <LoaderCircle size={13} className="animate-spin" /> : <Sparkles size={13} />}<ActivityText active={active && item.status === 'running'}>{active && item.status === 'running' && item.reason === 'manual' ? (lang === 'es' ? 'Compactando contexto…' : 'Compacting context…') : labels}</ActivityText>
-      {(item.status === 'failed' || item.status === 'cancelled') && item.sessionId && <>
-        {/* El turno se detuvo aquí: compactar y seguir en un solo paso, sin escribir «Continúa». */}
-        <button className="underline" onClick={() => { void engineApi.contextCompact(item.sessionId!, lang === 'es' ? 'Continúa' : 'Continue').catch(e => toast.error(commandMessage(e))) }}>{lang === 'es' ? 'Compactar y continuar' : 'Compact and continue'}</button>
-        <button className="underline" onClick={() => { void engineApi.contextCompact(item.sessionId!).catch(e => toast.error(commandMessage(e))) }}>{lang === 'es' ? 'Solo compactar' : 'Compact only'}</button>
-      </>}
-    </div>
-    {(item.error || item.contextDetails) && <InspectionDetails inspectionId="context" className="mt-1"><summary>{lang === 'es' ? 'Detalles' : 'Details'}</summary>{item.error && <p className="whitespace-pre-wrap">{item.error}</p>}<CompactionDetails details={item.contextDetails} /></InspectionDetails>}
-  </div>
+  if (item.type === 'context') return <CompactionRow item={item} active={active} label={labels} />
   const Icon = Sparkles
   return <div className="flex items-center gap-2 py-1 text-[13px] text-[var(--text-muted)]"><Icon size={13} className="text-[var(--text-subtle)]" /><ActivityText active={active && operationIsActive(item)}>{labels}</ActivityText></div>
+}
+
+/**
+ * La compactación del contexto como las demás acciones (#28): su baldosa, la
+ * barrita de tokens que se encoge (116 k → 19 k, con las cifras contando) y el
+ * check que se dibuja al terminar; abierta, la ventana y las comprobaciones en
+ * chips. Si falló o se canceló, en ámbar o rojo con «Compactar y continuar».
+ */
+function CompactionRow({ item, active, label }: { item: ContextTimelineItem; active: boolean; label: string }) {
+  const { t, lang } = useI18n()
+  const calm = useCalmMotion()
+  const running = active && item.status === 'running'
+  const details = item.contextDetails ?? {}
+  const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined)
+  const used = num(details.used)
+  const after = num(details.after)
+  const seconds = num(details.duration)
+  // Las cifras cuentan y la barra baja solo si esta fila vio la compactación en curso.
+  const sawRunning = useRef(running)
+  useEffect(() => { if (running) sawRunning.current = true }, [running])
+  const animate = !calm && sawRunning.current && item.status === 'completed'
+  const shownAfter = useCountTo(used, after, animate)
+  const stopped = item.status === 'failed' || item.status === 'cancelled'
+  const tone = running ? 'running' : item.status === 'failed' ? 'failed' : item.status === 'cancelled' || item.status === 'skipped' || (!active && item.status === 'running') ? 'warn' : 'done'
+  const text = running
+    ? (used !== undefined ? t('context.row.compactingTokens', { tokens: shortTokens(used, lang) }) : item.reason === 'manual' ? t('context.row.compacting') : t('context.row.compactingAuto'))
+    : label
+  const reduction = item.status === 'completed' && used && after !== undefined ? Math.round((1 - after / used) * 100) : null
+  const showBar = running || (item.status === 'completed' && used !== undefined)
+  const hasBody = Boolean(item.error || item.contextDetails)
+  return <InspectionDetails inspectionId="context" data-testid="compaction-row" className="act-row group/activity text-[13px] text-[var(--text-muted)]" data-tone={tone}>
+    <summary data-static={hasBody ? undefined : ''}>
+      <ToolTile tone={tone} Icon={Shrink} />
+      <ActivityText active={running} className="act-label">{text}</ActivityText>
+      {showBar && <CompactBar used={used} after={after} running={running} animate={animate} />}
+      {item.status === 'completed' && used !== undefined && shownAfter !== undefined && (
+        <span className="compact-figures">{shortTokens(used, lang)} → {shortTokens(shownAfter, lang)}</span>
+      )}
+      {stopped && item.sessionId && <>
+        {/* El turno se detuvo aquí: compactar y seguir en un solo paso, sin escribir «Continúa». */}
+        <button type="button" className="tool-inline-action" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void engineApi.contextCompact(item.sessionId!, lang === 'es' ? 'Continúa' : 'Continue').catch(e => toast.error(commandMessage(e))) }}>{t('context.row.compactContinue')}</button>
+        <button type="button" className="tool-inline-action" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void engineApi.contextCompact(item.sessionId!).catch(e => toast.error(commandMessage(e))) }}>{t('context.row.compactOnly')}</button>
+      </>}
+      <span className="act-meta">
+        {reduction !== null && <span className="tabular-nums">−{reduction} %</span>}
+        {seconds !== undefined && item.status === 'completed' && <span className="tabular-nums">{elapsed(seconds * 1000)}</span>}
+        {hasBody && <ChevronDown size={13} className="transition-transform group-open/activity:rotate-180" />}
+      </span>
+    </summary>
+    {hasBody && <div data-activity-body>
+      {item.error && <p className="whitespace-pre-wrap text-[12.5px] text-[var(--text-muted)]">{item.error}</p>}
+      <CompactionDetails details={item.contextDetails} />
+    </div>}
+  </InspectionDetails>
 }
 
 /**

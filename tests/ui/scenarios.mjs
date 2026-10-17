@@ -213,6 +213,10 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'advanced-settings': {
+    title: 'Ajustes → Avanzado: estado, tarjetas plegadas con resumen, búsqueda que filtra y abre, almacenamiento y «Probar conexión»',
+    phases: ['exercise'],
+  },
   'sidebar-resize': {
     title: 'Barra lateral: su borde se arrastra (asa oculta en reposo), con mínimo y máximo; el ancho se recuerda y doble clic lo devuelve',
     phases: ['exercise'],
@@ -332,7 +336,7 @@ export const scenarios = {
     model: () => startFakeModel([{ text: 'SIN USO' }]),
   },
   'diagnostics-export': {
-    title: 'Acerca de: exportar diagnóstico con registros, volcados y resumen del Engine, sin contenido',
+    title: 'Avanzado → Diagnóstico: exportar diagnóstico con registros, volcados y resumen del Engine, sin contenido',
     phases: ['exercise'],
     model: () => startFakeModel([{ text: 'DIAGNÓSTICO' }]),
   },

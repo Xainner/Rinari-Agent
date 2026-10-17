@@ -32,7 +32,7 @@ function unzip(buffer) {
   return files
 }
 
-const { ui, command, evaluate, wait, click, until, useLocalModel, input, screenshot, report, scenario } = require('../harness.cjs')
+const { ui, command, evaluate, wait, click, clickText, until, useLocalModel, input, menuShortcut, screenshot, report, scenario } = require('../harness.cjs')
 
 scenario(async () => {
   await useLocalModel()
@@ -42,7 +42,11 @@ scenario(async () => {
   assert.equal(failed, 'NOT_FOUND')
   await evaluate(`window.rinariDesktop.command('session_history', { reference: ${JSON.stringify(session)} })`)
 
-  ui.win.webContents.send('rinari:push.menuAction', 'about')
+  // «Exportar diagnóstico» vive en Ajustes → Avanzado → Diagnóstico (#96).
+  await menuShortcut('settings', 'CmdOrCtrl+,')
+  await clickText('Avanzado', 'nav button')
+  await wait(`Boolean(document.querySelector('[data-testid="advanced-settings"]'))`)
+  await clickText('Diagnóstico', '[data-testid="advanced-settings"] .adv-card-head', { includes: true })
   await wait(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Exportar')`)
   await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Exportar').scrollIntoView({block:'center'})`)
   await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Exportar').click()`)

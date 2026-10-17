@@ -1639,6 +1639,7 @@ export const es = {
   'adv.diagnostics.technicalOff': 'Registros normales',
   'adv.diagnostics.openLogs': 'Abrir carpeta de registros',
   'adv.storage.title': 'Almacenamiento',
+  'adv.storage.inUse': "en uso",
   'adv.storage.desc': 'Cuánto ocupa cada parte de la carpeta de Rinari en este equipo.',
   'adv.storage.open': 'Ábrela para medir',
   'adv.storage.measuring': 'Midiendo…',

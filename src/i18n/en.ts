@@ -1621,6 +1621,7 @@ export const en: Record<I18nKey, string> = {
   'adv.diagnostics.technicalOff': 'Normal logs',
   'adv.diagnostics.openLogs': 'Open logs folder',
   'adv.storage.title': 'Storage',
+  'adv.storage.inUse': "in use",
   'adv.storage.desc': 'How much each part of Rinari\'s folder takes on this computer.',
   'adv.storage.open': 'Open it to measure',
   'adv.storage.measuring': 'Measuring…',

@@ -153,7 +153,7 @@ export default function SettingsShell({
           {navList}
         </aside>
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div key={section} className={`settings-page mx-auto w-full space-y-6 px-4 py-6 ${section === 'about' ? 'max-w-4xl' : 'max-w-2xl'}`}>
+          <div key={section} className={`settings-page mx-auto w-full space-y-6 px-4 py-6 ${section === 'about' || section === 'advanced' ? 'max-w-4xl' : 'max-w-2xl'}`}>
             {children}
           </div>
         </div>

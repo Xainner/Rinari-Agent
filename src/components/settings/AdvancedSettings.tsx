@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import {
   Activity, ChevronDown, Cpu, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, RotateCcw,
   Search, ShieldAlert, Stethoscope, Workflow,
@@ -19,6 +20,8 @@ import type { NetworkSettings, NetworkTest } from '../../types/protocol.generate
 import OrphanProcesses from '../../features/processes/OrphanProcesses'
 import { IS_NIGHTLY } from '../../lib/channel'
 import { inputClass } from './parts'
+import { useCalmMotion } from '../../lib/motion'
+import { useDiagnosticsExport } from './diagnosticsExport'
 
 const TIMEOUT_KEYS: readonly TimeoutKey[] = ['connect', 'first_byte', 'idle', 'total']
 type Preset = 'normal' | 'slow' | 'unstable' | 'custom'
@@ -164,9 +167,13 @@ function AdvancedHeader() {
 interface CardProps { id: string; hidden: boolean; open: boolean; onToggle: () => void }
 
 function AdvCard({ id, hidden, open, onToggle, icon, title, desc, summary, children }: CardProps & { icon: ReactNode; title: string; desc: string; summary: ReactNode; children: ReactNode }) {
+  const calm = useCalmMotion()
   if (hidden) return null
+  // Las tarjetas se recolocan con animación de diseño (`layout`) al abrir una o
+  // filtrar: la abierta ocupa las dos columnas y las demás se deslizan a su
+  // sitio en vez de saltar. Con movimiento reducido, el mismo orden sin animar.
   return (
-    <section className="adv-card settings-card" data-card={id} data-open={open || undefined}>
+    <motion.section layout={calm ? false : 'position'} transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }} className="adv-card settings-card" data-card={id} data-open={open || undefined}>
       <button type="button" className="adv-card-head" aria-expanded={open} aria-controls={`adv-${id}`} onClick={onToggle}>
         <span className="adv-card-icon" aria-hidden="true">{icon}</span>
         <span className="min-w-0 flex-1 text-left">
@@ -176,7 +183,7 @@ function AdvCard({ id, hidden, open, onToggle, icon, title, desc, summary, child
         <ChevronDown size={15} aria-hidden="true" className="adv-card-chevron" />
       </button>
       {open && <div id={`adv-${id}`} className="adv-card-body">{children}</div>}
-    </section>
+    </motion.section>
   )
 }
 
@@ -184,7 +191,7 @@ function StatusCard({ status, changed }: { status: EngineStatus | null; changed:
   const { t } = useI18n()
   const ready = status?.state === 'ready'
   return (
-    <div className="adv-status settings-card" data-testid="advanced-status">
+    <div className="adv-status" data-testid="advanced-status">
       <div className="adv-status-engine" data-ready={ready || undefined}>
         <span className="adv-status-dot" aria-hidden="true" />
         <span>{ready ? t('adv.status.ready') : t('adv.status.notReady')}</span>
@@ -347,6 +354,9 @@ function NetworkCard({ network, onSaved, ...card }: CardProps & { network: Netwo
   const [path, setPath] = useState(certs.path ?? '')
   const [test, setTest] = useState<NetworkTest | null>(null)
   const [testing, setTesting] = useState(false)
+  // Las últimas latencias de cada proveedor, para el mini gráfico de la fila.
+  const [history, setHistory] = useState<Record<string, number[]>>({})
+  const [round, setRound] = useState(0)
   const save = async (patch: { proxy?: unknown; certificates?: unknown }) => {
     try {
       onSaved(await engineApi.networkSettingsSet(patch))
@@ -366,7 +376,14 @@ function NetworkCard({ network, onSaved, ...card }: CardProps & { network: Netwo
   const runTest = async () => {
     setTesting(true)
     try {
-      setTest(await engineApi.networkTest())
+      const result = await engineApi.networkTest()
+      setTest(result)
+      setRound((value) => value + 1)
+      setHistory((current) => {
+        const next = { ...current }
+        for (const row of result.results) if (row.ok && typeof row.latency_ms === 'number') next[row.provider_id] = [...(current[row.provider_id] ?? []), row.latency_ms].slice(-8)
+        return next
+      })
     } catch (e) {
       toast.error(commandMessage(e))
     } finally {
@@ -425,15 +442,24 @@ function NetworkCard({ network, onSaved, ...card }: CardProps & { network: Netwo
           </button>
         </div>
         {test && (
-          <ul className="adv-test" data-testid="network-test">
+          <ul className="adv-test" data-testid="network-test" key={round}>
             {test.results.length === 0 && <li className="adv-hint">{t('adv.network.noProviders')}</li>}
-            {test.results.map((row) => (
-              <li key={row.provider_id} data-ok={row.ok || undefined}>
-                <span className="adv-test-dot" aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate">{row.alias}</span>
-                <span className="adv-test-detail">{row.ok ? `${row.latency_ms ?? '—'} ms` : t(`adv.network.fail.${row.error_kind ?? 'network'}` as I18nKey)}</span>
-              </li>
-            ))}
+            {test.results.map((row, index) => {
+              const past = history[row.provider_id] ?? []
+              const top = Math.max(...past, 1)
+              return (
+                <li key={row.provider_id} data-ok={row.ok || undefined} style={{ '--i': index } as CSSProperties}>
+                  <span className="adv-test-dot" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{row.alias}</span>
+                  {past.length > 1 && (
+                    <span className="adv-spark" aria-hidden="true" title={past.map((ms) => `${ms} ms`).join(' · ')}>
+                      {past.map((ms, at) => <i key={at} style={{ height: `${Math.max(12, (ms / top) * 100)}%` }} />)}
+                    </span>
+                  )}
+                  <span className="adv-test-detail">{row.ok ? `${row.latency_ms ?? '—'} ms` : t(`adv.network.fail.${row.error_kind ?? 'network'}` as I18nKey)}</span>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
@@ -445,17 +471,8 @@ function DiagnosticsCard(card: CardProps) {
   const { t } = useI18n()
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   const setTechnical = useUIStore((state) => state.setShowTechnicalActivityNames)
-  const [exporting, setExporting] = useState(false)
-  const exportBundle = async () => {
-    setExporting(true)
-    try {
-      await platform().diagnostics.export()
-    } catch (e) {
-      toast.error(commandMessage(e))
-    } finally {
-      setExporting(false)
-    }
-  }
+  // Lo que lleva el paquete se ve antes de guardarlo (se movió aquí desde Acerca de).
+  const diagnostics = useDiagnosticsExport()
   return (
     <AdvCard {...card} icon={<Stethoscope size={16} />} title={t('adv.diagnostics.title')} desc={t('adv.diagnostics.desc')} summary={technical ? t('adv.diagnostics.technicalOn') : t('adv.diagnostics.technicalOff')}>
       <div className="adv-row">
@@ -469,10 +486,11 @@ function DiagnosticsCard(card: CardProps) {
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => void platform().app.openFolder('logs').catch((e) => toast.error(commandMessage(e)))}>
           <FolderOpen size={13} aria-hidden="true" /> {t('adv.diagnostics.openLogs')}
         </button>
-        <button type="button" className="btn btn-secondary btn-sm" disabled={exporting} onClick={() => void exportBundle()}>
-          {exporting ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <Stethoscope size={13} aria-hidden="true" />} {t('settings.about.exportAction')}
+        <button type="button" className="btn btn-secondary btn-sm" disabled={diagnostics.exporting} onClick={() => void diagnostics.run()}>
+          {diagnostics.exporting ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <Stethoscope size={13} aria-hidden="true" />} {t('settings.about.exportAction')}
         </button>
       </div>
+      {diagnostics.dialog}
     </AdvCard>
   )
 }
@@ -483,6 +501,7 @@ function StorageCard(card: CardProps) {
   const { t } = useI18n()
   const [usage, setUsage] = useState<{ sections: StorageSection[]; total: number } | null>(null)
   const [failed, setFailed] = useState(false)
+  const [hovered, setHovered] = useState<string | null>(null)
   const load = useCallback(() => {
     setFailed(false)
     engineApi.storageUsage().then(setUsage).catch(() => setFailed(true))
@@ -495,12 +514,23 @@ function StorageCard(card: CardProps) {
       {!usage && !failed && <p className="adv-hint"><LoaderCircle size={12} className="inline motion-safe:animate-spin" aria-hidden="true" /> {t('adv.storage.measuring')}</p>}
       {usage && (
         <>
-          <div className="adv-storage-bar" aria-hidden="true">
-            {sections.map((row) => <span key={row.id} data-section={row.id} style={{ flexGrow: Math.max(row.bytes, 1) }} />)}
+          <p className="adv-storage-total"><span>{formatBytes(usage.total)}</span> {t('adv.storage.inUse')}</p>
+          <div className="adv-storage-bar" aria-hidden="true" data-hovered={hovered ?? undefined}>
+            {sections.map((row, index) => (
+              <span
+                key={row.id}
+                data-section={row.id}
+                data-active={hovered === row.id || undefined}
+                style={{ flexGrow: Math.max(row.bytes, 1), '--i': index } as CSSProperties}
+                title={`${t(`adv.storage.section.${row.id}` as I18nKey)} · ${formatBytes(row.bytes)}`}
+                onMouseEnter={() => setHovered(row.id)}
+                onMouseLeave={() => setHovered(null)}
+              />
+            ))}
           </div>
-          <ul className="adv-storage-list" data-testid="storage-usage">
+          <ul className="adv-storage-list" data-testid="storage-usage" data-hovered={hovered ?? undefined}>
             {sections.map((row) => (
-              <li key={row.id} data-section={row.id}>
+              <li key={row.id} data-section={row.id} data-active={hovered === row.id || undefined} onMouseEnter={() => setHovered(row.id)} onMouseLeave={() => setHovered(null)}>
                 <span className="adv-storage-swatch" aria-hidden="true" />
                 <span className="min-w-0 flex-1">{t(`adv.storage.section.${row.id}` as I18nKey)}</span>
                 <span className="adv-storage-size">{formatBytes(row.bytes)}</span>

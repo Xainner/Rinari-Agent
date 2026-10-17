@@ -305,7 +305,7 @@ function LiveSessionPane({
               onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
               onImplementPlan={session.implementPlan}
               onStop={session.stop}
-              onSteer={steering ? (text, files) => commands.steerTo(pane.sessionId, text, files) : undefined}
+              onSteer={steering ? (text, files, now) => commands.steerTo(pane.sessionId, text, files, now) : undefined}
               onQueue={steering ? (text) => commands.queueTo(pane.sessionId, text) : undefined}
               onOpenProviders={onOpenProviders}
               models={data.models}

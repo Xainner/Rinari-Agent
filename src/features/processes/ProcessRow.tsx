@@ -17,6 +17,7 @@ import {
 } from './processesModel'
 
 import { platform } from '../../platform'
+import { useSessionDockStore } from '../../stores/sessionDock'
 
 function statusColor(key: ReturnType<typeof deriveStatusKey>): string {
   switch (key) {
@@ -57,6 +58,7 @@ export default function ProcessRow({
   stopConfirmed = false,
   onToggle,
   onStop,
+  sessionId,
 }: {
   presentation: ProcessPresentation
   detailId: string
@@ -67,6 +69,8 @@ export default function ProcessRow({
   stopConfirmed?: boolean
   onToggle: () => void
   onStop: () => void
+  /** Con conversación, la URL se abre en el navegador del panel (#90). */
+  sessionId?: string
 }) {
   const { t } = useI18n()
   const [urlError, setUrlError] = useState('')
@@ -83,6 +87,25 @@ export default function ProcessRow({
   const readinessKey = readinessLabelKey(resource.readiness)
   const stopping = stopState.state === 'requesting' || stopState.state === 'reconciling'
   const validUrl = typeof resource.url === 'string' && isHttpUrl(resource.url) ? resource.url : null
+  const port = validUrl ? new URL(validUrl).port : ''
+  const openView = useSessionDockStore((state) => state.openView)
+  const openUrl = (url: string) => {
+    setUrlError('')
+    const external = () => platform().opener.openUrl(url).catch((reason: unknown) =>
+      setUrlError(reason instanceof Error ? reason.message : String(reason)),
+    )
+    if (!sessionId) {
+      void external()
+      return
+    }
+    try {
+      openView(sessionId, 'browser')
+      void platform().browser.navigate(sessionId, url).catch(external)
+    } catch {
+      // Un host sin navegador en el panel: el del sistema.
+      void external()
+    }
+  }
 
   return (
     <motion.li
@@ -112,6 +135,7 @@ export default function ProcessRow({
             {elapsed != null && ` · ${formatElapsedShort(elapsed)}`}
             {finishedSpan != null && ` · ${formatElapsedShort(finishedSpan)}`}
             {readinessKey != null && ` · ${t(readinessKey)}`}
+            {port && ` · :${port}`}
             {resource.pid != null && ` · PID ${resource.pid}`}
             {resource.kind !== 'process' && ` · ${t(kindLabelKey(resource.kind))}`}
           </span>
@@ -126,12 +150,7 @@ export default function ProcessRow({
             type="button"
             aria-label={t('processes.openUrl', { url: validUrl })}
             title={validUrl}
-            onClick={() => {
-              setUrlError('')
-              void platform().opener.openUrl(validUrl).catch((reason: unknown) =>
-                setUrlError(reason instanceof Error ? reason.message : String(reason)),
-              )
-            }}
+            onClick={() => openUrl(validUrl)}
             className="processes-action"
           >
             <ExternalLink size={13} />

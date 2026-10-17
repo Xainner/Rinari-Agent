@@ -4,6 +4,8 @@ import ProcessInspector from '../processes/ProcessInspector'
 import ProcessStopDialog from '../processes/ProcessStopDialog'
 import { stopResultKey } from '../processes/processesModel'
 import { useSessionProcesses } from '../processes/useSessionProcesses'
+import OrphanProcesses from '../processes/OrphanProcesses'
+import StopAllButton from '../processes/StopAllButton'
 
 /**
  * Lo que Rinari lanzó en esta conversación (servidores, pruebas, vistas
@@ -61,19 +63,34 @@ export default function AgentProcesses({ sessionId }: { sessionId: string }) {
     void snap.stop(stopTargetId)
   }
 
+  // Los huérfanos de un Engine anterior (#90) se ven aunque esta
+  // conversación no tenga procesos.
+  const orphans = <OrphanProcesses sessionId={sessionId} />
   if (snap.freshness === 'unsupported' || (snap.freshness === 'offline' && ordered.length === 0)) {
     return (
-      <p className="terminal-empty text-sm text-[var(--text-muted)]">
-        {snap.freshness === 'unsupported' ? t('processes.unsupported') : t('processes.offline')}
-      </p>
+      <>
+        {orphans}
+        <p className="terminal-empty text-sm text-[var(--text-muted)]">
+          {snap.freshness === 'unsupported' ? t('processes.unsupported') : t('processes.offline')}
+        </p>
+      </>
     )
   }
   if (ordered.length === 0) {
-    return <p className="terminal-empty text-sm text-[var(--text-muted)]">{t('terminal.agentEmpty')}</p>
+    return (
+      <>
+        {orphans}
+        <p className="terminal-empty text-sm text-[var(--text-muted)]">{t('terminal.agentEmpty')}</p>
+      </>
+    )
   }
 
   return (
     <div className="terminal-agent" data-testid="terminal-agent-processes">
+      {orphans}
+      <div className="flex justify-end">
+        <StopAllButton items={ordered} stop={snap.stop} />
+      </div>
       <ProcessInspector
         sessionId={sessionId}
         ordered={ordered}

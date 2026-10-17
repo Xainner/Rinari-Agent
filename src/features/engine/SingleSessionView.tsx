@@ -98,7 +98,7 @@ export default function SingleSessionView({
         onCancelAttachmentPreparation={commands.cancelAttachmentPreparation}
         onImplementPlan={commands.implementPlan}
         onStop={() => void commands.cancelTurn()}
-        onSteer={steering ? (text, files) => commands.steerTo(sessionId, text, files) : undefined}
+        onSteer={steering ? (text, files, now) => commands.steerTo(sessionId, text, files, now) : undefined}
         onQueue={steering ? (text) => commands.queueTo(sessionId, text) : undefined}
         onOpenProviders={onOpenProviders}
         models={data.models}

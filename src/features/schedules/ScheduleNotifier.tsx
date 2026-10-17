@@ -105,6 +105,8 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
         return
       }
       if (event.event !== 'schedule.run.completed') return
+      // Un comando que salió bien y solo avisa si falla: queda en el historial (#50).
+      if (payload.quiet === true) return
       const status = String(payload.status ?? '') as ScheduledRunStatus
       if (status === 'skipped') return
       if (payload.kind === 'reminder') {

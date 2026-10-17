@@ -686,6 +686,43 @@ function buildServices(): HostServices {
  * Engine. Antes había dos rutas y la de `before-quit` cerraba el Engine antes
  * del diálogo.
  */
+/**
+ * Al salir del todo se detiene lo que el modelo dejó corriendo (#90),
+ * salvo lo que pidió mantener (`persist`): eso se pregunta, una vez, con la
+ * lista. Sin Engine o si la consulta falla, se sale sin preguntar.
+ */
+async function askAboutPersistentProcesses(): Promise<void> {
+  if (engine.status().state !== 'ready') return
+  let processes: Array<{ name?: string | null; command?: string; port?: number | null }> = []
+  try {
+    const result = (await engine.request('process.persistent.list', {}, 3_000)) as { processes?: typeof processes } | null
+    processes = Array.isArray(result?.processes) ? result.processes : []
+  } catch {
+    return
+  }
+  if (processes.length === 0) return
+  const text = currentHostText()
+  const list = processes
+    .map((item) => `• ${item.name || item.command || '?'}${typeof item.port === 'number' ? ` · :${item.port}` : ''}`)
+    .join('\n')
+  const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+  const options = {
+    type: 'question' as const,
+    buttons: [text.keepRunningKeep, text.keepRunningStop],
+    defaultId: 0,
+    cancelId: 0,
+    message: text.keepRunningQuestion,
+    detail: text.keepRunningDetail.replace('{list}', list),
+  }
+  const { response } = target ? await dialog.showMessageBox(target, options) : await dialog.showMessageBox(options)
+  if (response !== 1) return
+  try {
+    await engine.request('process.persistent.stop', {}, 10_000)
+  } catch (error) {
+    console.error('[rinari] no se pudieron detener los procesos persistentes:', error)
+  }
+}
+
 const quitCoordinator = new QuitCoordinator({
   shouldConfirm: (reason) => confirmsQuit(reason, engine.status().state === 'ready'),
   async confirm() {
@@ -704,7 +741,10 @@ const quitCoordinator = new QuitCoordinator({
       : await dialog.showMessageBox(options)
     return response === 0
   },
-  shutdown: () => engine.shutdown().then(() => undefined),
+  async shutdown() {
+    await askAboutPersistentProcesses()
+    await engine.shutdown()
+  },
   commit(reason) {
     unregisterIpc?.()
     unregisterIpc = null

@@ -24,7 +24,7 @@ export type TimelineAction =
   | { type: 'message/sent'; sessionId: string; message: ChatMessage }
   | { type: 'turn/ack'; turnId: string; sessionId: string; now: number }
   | { type: 'turn/cancelling'; sessionId: string }
-  | { type: 'steer/sent'; sessionId: string; turnId: string; steerId: string; content: string; now: number }
+  | { type: 'steer/sent'; sessionId: string; turnId: string; steerId: string; content: string; now: number; interrupted?: boolean }
   | { type: 'busy/set'; sessionId: string; busy: boolean }
   | { type: 'history/loaded'; sessionId: string; messages: ChatMessage[] }
   | { type: 'timeline/loaded'; sessionId: string; turns: TimelineTurn[] }
@@ -401,6 +401,7 @@ function mergeEventItem(
       status: 'applied',
       source: text(payload.source) || undefined,
       followUp: payload.follow_up === true || undefined,
+      interrupted: payload.interrupted === true || (current?.type === 'steer' && current.interrupted) || undefined,
     }
   }
   if (event.startsWith('vision.')) {
@@ -779,6 +780,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       steerId: action.steerId,
       content: action.content,
       status: 'pending',
+      ...(action.interrupted ? { interrupted: true } : {}),
     }
     return { ...state, timelines: { ...state.timelines, [action.turnId]: { ...timeline, items: [...timeline.items, item] } } }
   }

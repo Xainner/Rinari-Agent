@@ -1,4 +1,4 @@
-import { Bell, Bot, CalendarClock, ExternalLink, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { Bell, Bot, CalendarClock, ExternalLink, Pencil, Play, Plus, SquareTerminal, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -161,7 +161,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                 >
                   <button type="button" onClick={() => setSelectedId(task.id)} className="min-w-0 flex-1 text-left">
                     <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--text)]">
-                      {task.kind === 'reminder' ? <Bell size={13} aria-hidden="true" /> : <Bot size={13} aria-hidden="true" />}
+                      {task.kind === 'reminder' ? <Bell size={13} aria-hidden="true" /> : task.kind === 'command' ? <SquareTerminal size={13} aria-hidden="true" /> : <Bot size={13} aria-hidden="true" />}
                       <span className="truncate">{task.name}</span>
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-[var(--text-subtle)]">{describeSchedule(task.schedule, t, locale)}</span>
@@ -209,7 +209,15 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                 <dt className="text-[var(--text-subtle)]">{t('schedules.nextLabel')}</dt>
                 <dd className="text-[var(--text)]">{selected.enabled ? formatWhen(selected.next_run_at, locale) : t('schedules.paused')}</dd>
                 <dt className="text-[var(--text-subtle)]">{t('schedules.form.kind')}</dt>
-                <dd className="text-[var(--text)]">{t(selected.kind === 'agent' ? 'schedules.kind.agent' : 'schedules.kind.reminder')}</dd>
+                <dd className="text-[var(--text)]">{t(selected.kind === 'agent' ? 'schedules.kind.agent' : selected.kind === 'command' ? 'schedules.kind.command' : 'schedules.kind.reminder')}</dd>
+                {selected.kind === 'command' && selected.command && (
+                  <>
+                    <dt className="text-[var(--text-subtle)]">{t('schedules.form.cwd')}</dt>
+                    <dd className="break-all font-mono text-xs text-[var(--text-muted)]">{selected.command.cwd || t('schedules.form.cwdPlaceholder')}</dd>
+                    <dt className="text-[var(--text-subtle)]">{t('schedules.form.onResult')}</dt>
+                    <dd className="text-[var(--text)]">{t(`schedules.onResult.${selected.command.on_result ?? 'notify_failure'}`)}</dd>
+                  </>
+                )}
                 {selected.kind === 'agent' && (
                   <>
                     <dt className="text-[var(--text-subtle)]">{t('schedules.form.project')}</dt>
@@ -223,7 +231,12 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                   </>
                 )}
               </dl>
-              <p className="mt-4 whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm text-[var(--text)]">{selected.prompt}</p>
+              {selected.kind === 'command' && selected.command && (
+                <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 font-mono text-xs text-[var(--text)]">{selected.command.command}</pre>
+              )}
+              {selected.prompt && (
+                <p className="mt-4 whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm text-[var(--text)]">{selected.prompt}</p>
+              )}
 
               <h3 className="mt-6 text-sm font-semibold text-[var(--text)]">{t('schedules.history')}</h3>
               {runs.length === 0 ? (
@@ -238,9 +251,18 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                       </span>
                       <StatusBadge run={run} />
                       <span className="min-w-0 flex-1 text-[var(--text-muted)]">
-                        <span className="line-clamp-2">
-                          {run.reason ? (SKIP_REASON_KEYS[run.reason] ? t(SKIP_REASON_KEYS[run.reason]) : run.reason) : run.summary ?? ''}
-                        </span>
+                        {selected.kind === 'command' && run.summary ? (
+                          <details>
+                            <summary className="cursor-pointer select-none">
+                              {run.reason ? (SKIP_REASON_KEYS[run.reason] ? t(SKIP_REASON_KEYS[run.reason]) : run.reason) : t('schedules.output')}
+                            </summary>
+                            <pre className="mt-1.5 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-subtle)] p-2 font-mono text-[11px] text-[var(--text)]">{run.summary}</pre>
+                          </details>
+                        ) : (
+                          <span className="line-clamp-2">
+                            {run.reason ? (SKIP_REASON_KEYS[run.reason] ? t(SKIP_REASON_KEYS[run.reason]) : run.reason) : run.summary ?? ''}
+                          </span>
+                        )}
                       </span>
                       {run.session_id && (
                         <button type="button" onClick={() => onOpenSession(run.session_id as string)} className="inline-flex shrink-0 items-center gap-1 text-xs text-[var(--accent)] hover:underline">

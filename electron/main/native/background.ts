@@ -8,7 +8,7 @@
  * sesión llega inyectado, y las reglas se prueban sin abrir una ventana.
  */
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 import type { BackgroundPatch, BackgroundSettings } from '../../shared/contracts'
@@ -86,6 +86,8 @@ export interface BackgroundDeps {
 }
 
 export function createBackground(deps: BackgroundDeps) {
+  // Sin archivo de ajustes es una instalación nueva (#50).
+  const fresh = !existsSync(deps.settingsPath)
   let settings = loadDesktopSettings(deps.settingsPath)
   const persist = () => {
     try {
@@ -93,6 +95,18 @@ export function createBackground(deps: BackgroundDeps) {
     } catch (error) {
       console.error('[rinari] no se pudieron guardar los ajustes de segundo plano:', error)
     }
+  }
+
+  // Las tareas programadas corren con Rinari en la bandeja: en una
+  // instalación nueva arranca con la sesión, oculta (#50). Quien ya la
+  // tenía conserva lo que eligió; el ajuste sigue en Ajustes.
+  if (fresh && deps.loginItems) {
+    try {
+      deps.loginItems.set(true)
+    } catch (error) {
+      console.error('[rinari] no se pudo activar el inicio con el sistema:', error)
+    }
+    persist()
   }
 
   return {

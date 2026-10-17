@@ -205,3 +205,49 @@ it('a run that needs you and then finishes is one entry in the bell, updated', a
   expect(items).toHaveLength(1)
   expect(items[0]).toMatchObject({ tone: 'success', body: 'Hecho', target: { kind: 'session', sessionId: 'ses_run' } })
 })
+
+it('a command task runs a command with a cron schedule, and its runs show the output (#50)', async () => {
+  expect(describeSchedule({ kind: 'cron', expr: '*/15 9-18 * * 1-5' }, t, 'es')).toBe('cron */15 9-18 * * 1-5')
+  expect(draftProblem({ ...emptyDraft(), name: 'x', kind: 'command', command: { command: ' ' } }, t)).toBe('Escribe el comando.')
+  expect(draftProblem({ ...emptyDraft(), name: 'x', kind: 'command', command: { command: 'npm test' } }, t)).toBeNull()
+  expect(draftProblem({ ...emptyDraft(), name: 'x', kind: 'command', command: { command: 'npm test', on_result: 'agent' } }, t)).toBe('Di qué debe hacer Rinari.')
+  expect(draftProblem({ ...emptyDraft(), name: 'x', prompt: 'p', schedule: { kind: 'cron', expr: '* * *' } }, t)).toBe('Una expresión cron tiene cinco campos.')
+
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openNew())
+  fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Copia' } })
+  fireEvent.click(screen.getByRole('radio', { name: /Comando/ }))
+  // Sin «pasárselo a Rinari», no se pide qué debe hacer.
+  expect(screen.queryByLabelText('Qué debe hacer Rinari')).toBeNull()
+  fireEvent.change(screen.getByLabelText('Comando'), { target: { value: 'npm run backup' } })
+  fireEvent.change(screen.getByLabelText('Carpeta'), { target: { value: 'C:/proyectos/app' } })
+  fireEvent.change(screen.getByLabelText('Cuándo'), { target: { value: 'cron' } })
+  fireEvent.change(screen.getByLabelText('Expresión cron'), { target: { value: '0 2 * * *' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Crear tarea' }))
+  await waitFor(() => expect(engineApi.scheduleCreate).toHaveBeenCalled())
+  expect(vi.mocked(engineApi.scheduleCreate).mock.calls[0][0]).toMatchObject({
+    name: 'Copia',
+    kind: 'command',
+    prompt: '',
+    schedule: { kind: 'cron', expr: '0 2 * * *' },
+    command: { command: 'npm run backup', cwd: 'C:/proyectos/app', on_result: 'notify_failure' },
+  })
+  cleanup()
+
+  const commandTask = task({ kind: 'command', prompt: '', command: { command: 'npm run backup', cwd: null, on_result: 'notify_failure' } })
+  vi.mocked(engineApi.scheduleList).mockResolvedValue({ tasks: [commandTask], now: 0 })
+  vi.mocked(engineApi.scheduleGet).mockResolvedValue({ task: commandTask, runs: [run({ status: 'failed', reason: 'exit code 3', summary: 'npm ERR! missing script', session_id: null })] })
+  wrap(<SchedulesView onOpenSession={() => {}} />)
+  expect(await screen.findByText('npm run backup')).toBeTruthy()
+  fireEvent.click(await screen.findByText('exit code 3'))
+  expect(screen.getByText('npm ERR! missing script')).toBeTruthy()
+})
+
+it('a command that went well and only reports failures stays quiet (#50)', async () => {
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { name: 'Copia', kind: 'command', status: 'completed', quiet: true, run_id: 'r1' } }))
+  expect(toasts.calls).toHaveLength(0)
+  act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { name: 'Copia', kind: 'command', status: 'failed', reason: 'exit code 3', run_id: 'r2' } }))
+  expect(toasts.calls.at(-1)).toMatchObject({ kind: 'error', title: 'Copia: Falló' })
+})

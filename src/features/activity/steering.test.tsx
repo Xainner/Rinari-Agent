@@ -36,6 +36,17 @@ describe('steering the running turn', () => {
     expect(state.timelines.t1.items.filter((item) => item.type === 'steer')).toHaveLength(1)
   })
 
+  it('a message sent now says it interrupted the step (#31)', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
+    state = turnTimelineReducer(state, { type: 'steer/sent', sessionId: 's1', turnId: 't1', steerId: 't1:steer_1', content: 'para', now: NOW, interrupted: true })
+    expect(state.timelines.t1.items.at(-1)).toMatchObject({ type: 'steer', status: 'pending', interrupted: true })
+    state = turnTimelineReducer(state, event('steer.applied', { ...ids, steer_id: 't1:steer_1', content: 'para', interrupted: true, activity_seq: 2 }))
+    const steer = state.timelines.t1.items.find((item) => item.type === 'steer')
+    expect(steer).toMatchObject({ status: 'applied', interrupted: true })
+    render(<I18nProvider lang="es"><TurnTimelineView timeline={state.timelines.t1} now={NOW} onResolveApproval={() => undefined} /></I18nProvider>)
+    expect(screen.getByText('Interrumpió el paso')).toBeTruthy()
+  })
+
   it('drops what the turn did not read when it comes back', () => {
     let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
     state = turnTimelineReducer(state, { type: 'steer/sent', sessionId: 's1', turnId: 't1', steerId: 't1:steer_1', content: 'x', now: NOW })
@@ -97,6 +108,15 @@ describe('composer while Rinari works', () => {
     fireEvent.change(box, { target: { value: 'luego los tests' } })
     fireEvent.keyDown(box, { key: 'Tab' })
     await vi.waitFor(() => expect(onQueue).toHaveBeenCalledWith('luego los tests'))
+  })
+
+  it('Ctrl+Enter sends it now, cutting the current step (#31)', async () => {
+    const onSteer = vi.fn(async () => true)
+    renderComposer({ onSteer })
+    const box = screen.getByRole('textbox', { name: /mensaje/i })
+    fireEvent.change(box, { target: { value: 'para, es en otra carpeta' } })
+    fireEvent.keyDown(box, { key: 'Enter', ctrlKey: true })
+    await vi.waitFor(() => expect(onSteer).toHaveBeenCalledWith('para, es en otra carpeta', [], true))
   })
 
   it('keeps the text when the Engine refuses it', async () => {

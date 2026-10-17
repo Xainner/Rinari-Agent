@@ -55,6 +55,21 @@ describe('segundo plano', () => {
     expect(dev.update({ launchAtLogin: true })).toEqual({ backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: false })
   })
 
+  it('a new install starts with the system, in the tray; an existing one keeps its choice (#50)', () => {
+    let openAtLogin = false
+    const loginItems = { get: () => openAtLogin, set: vi.fn((value: boolean) => { openAtLogin = value }) }
+    const path = settingsPath()
+    createBackground({ settingsPath: path, loginItems })
+    expect(loginItems.set).toHaveBeenCalledWith(true)
+    expect(openAtLogin).toBe(true)
+    // El dueño lo apaga: al volver a abrir no se enciende solo.
+    openAtLogin = false
+    loginItems.set.mockClear()
+    createBackground({ settingsPath: path, loginItems })
+    expect(loginItems.set).not.toHaveBeenCalled()
+    expect(openAtLogin).toBe(false)
+  })
+
   it('falls back to defaults on an unreadable file', () => {
     expect(loadDesktopSettings(join(tmpdir(), 'no-such-rinari-dir', 'x.json'))).toEqual({ backgroundMode: true, trayNoticeShown: false, language: null })
   })

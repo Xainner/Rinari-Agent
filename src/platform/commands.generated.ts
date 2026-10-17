@@ -94,6 +94,10 @@ export type DesktopCommand =
   | "plugin_list"
   | "plugin_set_enabled"
   | "policy_get"
+  | "process_orphan_stop"
+  | "process_orphans_list"
+  | "process_persistent_list"
+  | "process_persistent_stop"
   | "project_add"
   | "project_changes"
   | "project_create"
@@ -192,6 +196,7 @@ export type DesktopCommand =
   | "session_resume_now"
   | "session_summary"
   | "session_timeline"
+  | "session_tool_background"
   | "skill_disable"
   | "skill_duplicates_dismiss"
   | "skill_duplicates_list"
@@ -236,6 +241,7 @@ export type DesktopCommand =
   | "turn_start"
   | "turn_steer"
   | "turn_steer_cancel"
+  | "turn_steer_now"
   | "turn_steer_update"
   | "usage_get"
   | "verification_latest"
@@ -350,6 +356,10 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "plugin_list",
   "plugin_set_enabled",
   "policy_get",
+  "process_orphan_stop",
+  "process_orphans_list",
+  "process_persistent_list",
+  "process_persistent_stop",
   "project_add",
   "project_changes",
   "project_create",
@@ -448,6 +458,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_resume_now",
   "session_summary",
   "session_timeline",
+  "session_tool_background",
   "skill_disable",
   "skill_duplicates_dismiss",
   "skill_duplicates_list",
@@ -492,6 +503,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "turn_start",
   "turn_steer",
   "turn_steer_cancel",
+  "turn_steer_now",
   "turn_steer_update",
   "usage_get",
   "verification_latest",
@@ -621,6 +633,10 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "plugin_list",
   "plugin_set_enabled",
   "policy_get",
+  "process_orphan_stop",
+  "process_orphans_list",
+  "process_persistent_list",
+  "process_persistent_stop",
   "project_add",
   "project_changes",
   "project_create",
@@ -719,6 +735,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_resume_now",
   "session_summary",
   "session_timeline",
+  "session_tool_background",
   "skill_disable",
   "skill_duplicates_dismiss",
   "skill_duplicates_list",
@@ -763,6 +780,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "turn_start",
   "turn_steer",
   "turn_steer_cancel",
+  "turn_steer_now",
   "turn_steer_update",
   "usage_get",
   "verification_latest",

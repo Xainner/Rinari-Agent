@@ -71,6 +71,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [profiles-switch](profiles-switch/scenario.cjs) | Perfiles como espacios de trabajo: lo existente está en «Predeterminado», cambiar a uno nuevo vacía la barra con transición y Rinari saluda, lo creado ahí se queda ahí, «Mover a perfil» y el perfil activo sobrevive a reiniciar |
 | [title-rename-motion](title-rename-motion/scenario.cjs) | Cuando Rinari renombra la conversación el título cambia con una animación breve en su sitio: la fila no cambia de alto cuadro a cuadro y al volver a abrirla no se repite |
 | [full-access-confirm](full-access-confirm/scenario.cjs) | «Acceso completo» pide confirmación con lo que permite, lo que sigue preguntando y cómo quitarlo; cancelar deja workspace, confirmar aplica full-access y bajar el permiso no pregunta |
+| [steer-now](steer-now/scenario.cjs) | Un comando que no termina pasa a segundo plano con su botón y sigue vivo como proceso del chat; Ctrl+Enter manda un mensaje «ahora»: la respuesta en curso se corta, el turno lo lee y la burbuja dice «Interrumpió el paso» |
 | [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |
 
 ## Escribir un escenario

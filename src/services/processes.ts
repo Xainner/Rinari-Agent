@@ -19,6 +19,24 @@ export interface ProcessStopResult {
   running: boolean
 }
 
+/** Proceso de un Engine anterior que sigue vivo (#90). */
+export interface OrphanProcess {
+  id: string
+  session_id: string | null
+  handle: string | null
+  pid: number
+  command: string
+  cwd: string | null
+  name: string | null
+  port: number | null
+  persist?: boolean
+  started_at?: number | null
+}
+
+function isOrphan(value: unknown): value is OrphanProcess {
+  return isRecord(value) && typeof value.id === 'string' && typeof value.pid === 'number' && typeof value.command === 'string'
+}
+
 export interface ProcessStopPreconditions {
   engine_instance_id: string
   generation: number
@@ -175,6 +193,19 @@ export const processesApi = {
     })
     if (!isProcessStopResult(raw)) throw fail('processes.errorMalformed', { op: 'stop' })
     return raw
+  },
+
+  /** Procesos de un Engine anterior que siguen vivos (#90). */
+  async orphans(): Promise<OrphanProcess[]> {
+    const raw = await platform().command<unknown>('process_orphans_list', {})
+    const rows = isRecord(raw) && Array.isArray(raw.orphans) ? raw.orphans : []
+    return rows.filter(isOrphan)
+  },
+
+  async stopOrphan(id: string): Promise<boolean> {
+    requireId(id)
+    const raw = await platform().command<unknown>('process_orphan_stop', { id })
+    return isRecord(raw) && raw.stopped === true
   },
 }
 

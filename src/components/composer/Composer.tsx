@@ -79,7 +79,8 @@ interface ComposerProps {
    * Mientras Rinari trabaja, Enter le da el mensaje en el turno en curso (lo
    * lee al terminar el paso actual). Sin esta prop el compositor espera.
    */
-  onSteer?: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
+  /** `now`: «Enviar ahora» (#31), corta el paso en curso. */
+  onSteer?: (text: string, attachments?: AttachmentRef[], now?: boolean) => Promise<boolean>
   /** Tab mientras trabaja: el mensaje espera a que termine el turno. */
   onQueue?: (text: string) => Promise<boolean>
   models: ModelSummary[]
@@ -416,7 +417,7 @@ export default function Composer({
    * Mensaje durante el turno: ahora (guiar) o al terminar (cola). Al guiar,
    * los adjuntos listos van con el texto (#54); a la cola, solo el texto.
    */
-  async function handleSteer(later: boolean) {
+  async function handleSteer(later: boolean, now = false) {
     const submissionSessionKey = draftKey
     const draft = useComposerStore.getState().getDraft(submissionSessionKey)
     const content = draft.text
@@ -428,7 +429,7 @@ export default function Composer({
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
-      const delivered = later ? await onQueue!(content.trim()) : await onSteer!(content.trim(), files)
+      const delivered = later ? await onQueue!(content.trim()) : (now ? await onSteer!(content.trim(), files, true) : await onSteer!(content.trim(), files))
       if (!delivered) {
         setTextFor(submissionSessionKey, content)
         cancelSendReset()
@@ -937,10 +938,13 @@ export default function Composer({
             if (
               e.key === 'Enter' &&
               !e.nativeEvent.isComposing &&
-              (sendWithEnter ? !e.shiftKey : mod)
+              (sendWithEnter ? !e.shiftKey || (canSteer && mod) : mod)
             ) {
               e.preventDefault()
-              void (canSteer ? handleSteer(false) : handleSend())
+              // Mientras trabaja, Ctrl+Enter es «Enviar ahora» (#31); con «Enter
+              // envía» apagado, Ctrl+Mayús+Enter.
+              const now = canSteer && mod && (sendWithEnter || e.shiftKey)
+              void (canSteer ? handleSteer(false, now) : handleSend())
             }
           }}
           className="composer-textarea block max-h-[240px] min-h-13 w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] focus:outline-none focus-visible:outline-none"

@@ -6,14 +6,23 @@ import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../lib/ui'
 import { commandMessage, engineApi, type ScheduleSpec, type ScheduledTaskInput } from '../../services/engine'
 import { useEngineData } from '../engine/EngineContext'
-import { SCHEDULES_CHANGED_EVENT, WEEKDAY_KEYS, defaultOnceAt, draftProblem, useScheduleForm } from './scheduleModel'
+import { SCHEDULES_CHANGED_EVENT, WEEKDAY_KEYS, defaultOnceAt, draftProblem, emptyCommand, useScheduleForm } from './scheduleModel'
 
 const SPEC_DEFAULTS: Record<ScheduleSpec['kind'], () => ScheduleSpec> = {
   once: () => ({ kind: 'once', at: defaultOnceAt() }),
   interval: () => ({ kind: 'interval', minutes: 60 }),
   daily: () => ({ kind: 'daily', time: '09:00' }),
   weekly: () => ({ kind: 'weekly', days: [0, 1, 2, 3, 4], time: '09:00' }),
+  cron: () => ({ kind: 'cron', expr: '0 9 * * 1-5' }),
 }
+
+const KINDS = ['agent', 'command', 'reminder'] as const
+const KIND_KEYS = {
+  agent: ['schedules.kind.agent', 'schedules.kind.agentHint'],
+  command: ['schedules.kind.command', 'schedules.kind.commandHint'],
+  reminder: ['schedules.kind.reminder', 'schedules.kind.reminderHint'],
+} as const
+const ON_RESULT = ['notify_failure', 'nothing', 'agent'] as const
 
 /**
  * Crear o editar una tarea programada, o confirmar la que propuso Rinari.
@@ -41,6 +50,8 @@ export default function ScheduleForm() {
   const spec = draft.schedule
   const setSpec = (next: ScheduleSpec) => update({ schedule: next })
   const grants = draft.grants ?? []
+  const command = draft.command ?? emptyCommand()
+  const setCommand = (patch: Partial<typeof command>) => update({ command: { ...command, ...patch } })
 
   const save = async () => {
     const problem = draftProblem(draft, t)
@@ -52,6 +63,8 @@ export default function ScheduleForm() {
     setError('')
     try {
       const payload: ScheduledTaskInput = { ...draft, name: draft.name.trim(), prompt: draft.prompt.trim() }
+      if (payload.kind === 'command') payload.command = { ...command, command: command.command.trim(), cwd: command.cwd?.trim() || null }
+      else delete payload.command
       if (open.taskId) await engineApi.scheduleUpdate(open.taskId, payload)
       else await engineApi.scheduleCreate(payload)
       toast.success(open.taskId ? t('schedules.saved') : t('schedules.created', { name: payload.name }))
@@ -82,26 +95,70 @@ export default function ScheduleForm() {
             <input value={draft.name} maxLength={80} onChange={(event) => update({ name: event.target.value })} className={inputClass} />
           </label>
 
-          <div role="radiogroup" aria-label={t('schedules.form.kind')} className="grid grid-cols-2 gap-2">
-            {(['agent', 'reminder'] as const).map((kind) => (
+          <div role="radiogroup" aria-label={t('schedules.form.kind')} className="grid grid-cols-3 gap-2">
+            {KINDS.map((kind) => (
               <button
                 key={kind}
                 type="button"
                 role="radio"
                 aria-checked={draft.kind === kind}
-                onClick={() => update({ kind })}
+                onClick={() => update(kind === 'command' ? { kind, command: draft.command ?? emptyCommand() } : { kind })}
                 className={`rounded-xl border px-3 py-2 text-left text-sm ${draft.kind === kind ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
               >
-                <span className="block font-medium">{t(kind === 'agent' ? 'schedules.kind.agent' : 'schedules.kind.reminder')}</span>
-                <span className="block text-xs text-[var(--text-subtle)]">{t(kind === 'agent' ? 'schedules.kind.agentHint' : 'schedules.kind.reminderHint')}</span>
+                <span className="block font-medium">{t(KIND_KEYS[kind][0])}</span>
+                <span className="block text-xs text-[var(--text-subtle)]">{t(KIND_KEYS[kind][1])}</span>
               </button>
             ))}
           </div>
 
-          <label className="block">
-            <span className={labelClass}>{t(draft.kind === 'reminder' ? 'schedules.form.reminderText' : 'schedules.form.prompt')}</span>
-            <textarea value={draft.prompt} rows={4} maxLength={8000} onChange={(event) => update({ prompt: event.target.value })} className={inputClass} />
-          </label>
+          {draft.kind === 'command' && (
+            <section className="space-y-3">
+              <label className="block">
+                <span className={labelClass}>{t('schedules.form.command')}</span>
+                <textarea
+                  value={command.command}
+                  rows={3}
+                  maxLength={4000}
+                  spellCheck={false}
+                  placeholder="npm run backup"
+                  onChange={(event) => setCommand({ command: event.target.value })}
+                  className={`${inputClass} font-mono`}
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block sm:col-span-3">
+                  <span className={labelClass}>{t('schedules.form.cwd')}</span>
+                  <input value={command.cwd ?? ''} placeholder={t('schedules.form.cwdPlaceholder')} onChange={(event) => setCommand({ cwd: event.target.value })} className={`${inputClass} font-mono`} />
+                </label>
+                <label className="block">
+                  <span className={labelClass}>{t('schedules.form.shell')}</span>
+                  <select value={command.shell ?? 'default'} onChange={(event) => setCommand({ shell: event.target.value as typeof command.shell })} className={inputClass}>
+                    <option value="default">{t('schedules.shell.default')}</option>
+                    <option value="powershell">PowerShell</option>
+                    <option value="cmd">cmd</option>
+                    <option value="bash">bash</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className={labelClass}>{t('schedules.form.timeout')}</span>
+                  <input type="number" min={1} max={3600} value={command.timeout_s ?? 600} onChange={(event) => setCommand({ timeout_s: Number(event.target.value) })} className={inputClass} />
+                </label>
+                <label className="block">
+                  <span className={labelClass}>{t('schedules.form.onResult')}</span>
+                  <select value={command.on_result ?? 'notify_failure'} onChange={(event) => setCommand({ on_result: event.target.value as typeof command.on_result })} className={inputClass}>
+                    {ON_RESULT.map((value) => <option key={value} value={value}>{t(`schedules.onResult.${value}`)}</option>)}
+                  </select>
+                </label>
+              </div>
+            </section>
+          )}
+
+          {(draft.kind !== 'command' || command.on_result === 'agent') && (
+            <label className="block">
+              <span className={labelClass}>{t(draft.kind === 'reminder' ? 'schedules.form.reminderText' : draft.kind === 'command' ? 'schedules.form.agentPrompt' : 'schedules.form.prompt')}</span>
+              <textarea value={draft.prompt} rows={4} maxLength={8000} onChange={(event) => update({ prompt: event.target.value })} className={inputClass} />
+            </label>
+          )}
 
           <fieldset className="space-y-2">
             <legend className={labelClass}>{t('schedules.form.when')}</legend>
@@ -110,7 +167,14 @@ export default function ScheduleForm() {
               <option value="daily">{t('schedules.spec.daily')}</option>
               <option value="weekly">{t('schedules.spec.weekly')}</option>
               <option value="interval">{t('schedules.spec.interval')}</option>
+              <option value="cron">{t('schedules.spec.cron')}</option>
             </select>
+            {spec.kind === 'cron' && (
+              <label className="block">
+                <input aria-label={t('schedules.spec.cron')} value={spec.expr} spellCheck={false} onChange={(event) => setSpec({ kind: 'cron', expr: event.target.value })} className={`${inputClass} font-mono`} />
+                <span className="mt-1 block text-xs text-[var(--text-subtle)]">{t('schedules.form.cronHint')}</span>
+              </label>
+            )}
             {spec.kind === 'once' && (
               <input type="datetime-local" aria-label={t('schedules.form.at')} value={spec.at} onChange={(event) => setSpec({ kind: 'once', at: event.target.value })} className={inputClass} />
             )}
@@ -144,7 +208,7 @@ export default function ScheduleForm() {
             )}
           </fieldset>
 
-          {draft.kind === 'agent' && (
+          {(draft.kind === 'agent' || (draft.kind === 'command' && command.on_result === 'agent')) && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block sm:col-span-3">

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { I18nKey } from '../../i18n'
-import type { ScheduleSpec, ScheduledRunStatus, ScheduledTask, ScheduledTaskInput } from '../../services/engine'
+import type { ScheduleSpec, ScheduledCommand, ScheduledRunStatus, ScheduledTask, ScheduledTaskInput } from '../../services/engine'
 
 type Translate = (key: I18nKey, vars?: Record<string, string | number>) => string
 
@@ -61,6 +61,8 @@ export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: strin
         : spec.days.map((day) => t(WEEKDAY_KEYS[day])).join(', ')
       return t('schedules.describe.weekly', { days, time: spec.time })
     }
+    case 'cron':
+      return t('schedules.describe.cron', { expr: spec.expr })
   }
 }
 
@@ -103,7 +105,13 @@ export function draftFromTask(task: ScheduledTask): ScheduledTaskInput {
     model: task.model,
     skills: task.skills,
     grants: task.grants,
+    ...(task.command ? { command: task.command } : {}),
   }
+}
+
+/** Una tarea «Comando» nueva: avisa solo si falla (#50). */
+export function emptyCommand(): ScheduledCommand {
+  return { command: '', shell: 'default', cwd: null, timeout_s: 600, on_result: 'notify_failure' }
 }
 
 /**
@@ -112,11 +120,15 @@ export function draftFromTask(task: ScheduledTask): ScheduledTaskInput {
  */
 export function draftProblem(draft: ScheduledTaskInput, t: Translate): string | null {
   if (!draft.name.trim()) return t('schedules.form.needName')
-  if (!draft.prompt.trim()) return t(draft.kind === 'reminder' ? 'schedules.form.needReminder' : 'schedules.form.needPrompt')
+  if (draft.kind === 'command') {
+    if (!draft.command?.command.trim()) return t('schedules.form.needCommand')
+    if (draft.command.on_result === 'agent' && !draft.prompt.trim()) return t('schedules.form.needPrompt')
+  } else if (!draft.prompt.trim()) return t(draft.kind === 'reminder' ? 'schedules.form.needReminder' : 'schedules.form.needPrompt')
   const spec = draft.schedule
   if (spec.kind === 'weekly' && spec.days.length === 0) return t('schedules.form.needDays')
   if (spec.kind === 'interval' && (!Number.isInteger(spec.minutes) || spec.minutes < 5)) return t('schedules.form.minInterval')
   if (spec.kind === 'once' && !spec.at) return t('schedules.form.needAt')
+  if (spec.kind === 'cron' && spec.expr.trim().split(/\s+/).length !== 5) return t('schedules.form.needCron')
   return null
 }
 

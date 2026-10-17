@@ -138,6 +138,19 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'steer-now': {
+    title: 'Comando largo a segundo plano con su botón, y «Enviar ahora» (Ctrl+Enter) corta la respuesta en curso',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Servidor' })),
+      main: [
+        { tool: 'shell.exec', args: { argv: ['python', '-c', "import time; print('servidor-de-prueba listo', flush=True); time.sleep(300)"], timeout_s: 600 }, say: 'Arranco el servidor.' },
+        { text: 'TEXTO QUE NO SE VE' },
+        { text: 'LEÍ EL PUERTO: uso el 8099.' },
+        { text: 'EXTRA' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'sidebar-resize': {
     title: 'Barra lateral: su borde se arrastra (asa oculta en reposo), con mínimo y máximo; el ancho se recuerda y doble clic lo devuelve',
     phases: ['exercise'],

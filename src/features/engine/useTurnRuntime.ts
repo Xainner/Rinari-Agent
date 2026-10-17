@@ -137,9 +137,11 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
    * Mensaje para el turno en curso. El Engine lo lee tras el paso actual;
    * si el turno ya terminó, lo trata como mensaje normal.
    */
-  const steerTurn = useCallback(async (sessionId: string, message: string, attachments: AttachmentRef[] = []): Promise<boolean> => {
+  const steerTurn = useCallback(async (sessionId: string, message: string, attachments: AttachmentRef[] = [], now = false): Promise<boolean> => {
     try {
-      const result = await engineApi.turnSteer(sessionId, message, attachments)
+      const result = now
+        ? await engineApi.turnSteerNow(sessionId, message, attachments)
+        : await engineApi.turnSteer(sessionId, message, attachments)
       if (result.delivery === 'steer') {
         store.getState().dispatch({
           type: 'steer/sent',
@@ -148,6 +150,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
           steerId: result.steer_id,
           content: message,
           now: Date.now(),
+          ...(now ? { interrupted: true } : {}),
         })
       }
       return true

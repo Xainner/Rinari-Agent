@@ -18,6 +18,7 @@ import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
 import ProcessesDock from '../features/processes/ProcessesDock'
+import OrphanProcesses from '../features/processes/OrphanProcesses'
 import { FileTurnContext } from '../features/files/FileWorkspace'
 import MessageBubble from './MessageBubble'
 import { REVEAL_TURN_EVENT, takeQueuedTurnReveal } from '../features/board/boardCommands'
@@ -53,7 +54,7 @@ interface ChatViewProps {
   onCancelAttachmentPreparation?: (attachments: AttachmentRef[]) => Promise<void>
   onStop: () => void
   /** El Engine anuncia `turn_steering_v1`: escribir mientras trabaja la guía. */
-  onSteer?: (text: string, attachments?: AttachmentRef[]) => Promise<boolean>
+  onSteer?: (text: string, attachments?: AttachmentRef[], now?: boolean) => Promise<boolean>
   onQueue?: (text: string) => Promise<boolean>
   /** Mensajes que esperan al final del turno, sobre el compositor. */
   queue?: ReactNode
@@ -472,7 +473,7 @@ function ChatView({
     [afterOwnMessage, onSend],
   )
   const steer = useMemo(
-    () => onSteer && ((text: string) => afterOwnMessage(onSteer(text))),
+    () => onSteer && ((text: string, attachments?: AttachmentRef[], now?: boolean) => afterOwnMessage(onSteer(text, attachments, now))),
     [afterOwnMessage, onSteer],
   )
 
@@ -585,7 +586,10 @@ function ChatView({
         </div>
     ) : undefined}>
       {!processesInPanel && (presentation === 'empty' || presentation === 'conversation') && sessionId !== '' && (
-        <ProcessesDock key={`processes:${sessionId}`} sessionId={sessionId} openSignal={processesOpenSignal} />
+        <>
+          <OrphanProcesses key={`orphans:${sessionId}`} sessionId={sessionId} onlySession />
+          <ProcessesDock key={`processes:${sessionId}`} sessionId={sessionId} openSignal={processesOpenSignal} />
+        </>
       )}
       {(presentation === 'empty' || presentation === 'conversation') && (
         <>

@@ -66,7 +66,7 @@ export function SteerBubble({ item, sessionId }: { item: SteerTimelineItem; sess
   }
 
   return (
-    <div data-testid="steer-message" data-status={item.status} data-editing={editing || undefined} className="steer-row group flex w-full min-w-0 flex-col items-end gap-0.5 py-1.5">
+    <div data-testid="steer-message" data-status={item.status} data-interrupted={item.interrupted || undefined} data-editing={editing || undefined} className="steer-row group flex w-full min-w-0 flex-col items-end gap-0.5 py-1.5">
       <div className="flex w-full min-w-0 items-start justify-end gap-1">
         {canChange && !editing && (
           <span className="steer-actions">
@@ -100,7 +100,11 @@ export function SteerBubble({ item, sessionId }: { item: SteerTimelineItem; sess
         )}
       </div>
       <span className="text-[10px] text-[var(--text-subtle)]">
-        {editing ? t('steer.editHint') : t(pending ? 'steer.pending' : 'steer.applied')}
+        {editing
+          ? t('steer.editHint')
+          : item.interrupted
+            ? t(pending ? 'steer.interrupting' : 'steer.interrupted')
+            : t(pending ? 'steer.pending' : 'steer.applied')}
       </span>
     </div>
   )

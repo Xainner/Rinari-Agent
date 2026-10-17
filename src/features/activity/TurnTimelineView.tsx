@@ -210,6 +210,37 @@ function HumanCheckNotice({ check }: { check: HumanCheck }) {
   return <HumanCheckCard sessionId={useContext(TurnSessionContext)} check={check} />
 }
 
+/**
+ * Un comando largo en primer plano pasa a segundo plano (#32): sigue
+ * corriendo como proceso del chat y Rinari continúa con el turno.
+ */
+function MoveToBackground({ toolCallId }: { toolCallId: string }) {
+  const sessionId = useContext(TurnSessionContext)
+  const { t } = useI18n()
+  const [sent, setSent] = useState(false)
+  if (!sessionId) return null
+  return (
+    <button
+      type="button"
+      data-testid="tool-to-background"
+      disabled={sent}
+      title={t('activity.toBackgroundHint')}
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setSent(true)
+        void engineApi.toolBackground(sessionId, toolCallId).catch((error) => {
+          setSent(false)
+          toast.error(commandMessage(error))
+        })
+      }}
+      className="text-[12px] text-[var(--accent-2)] underline disabled:opacity-50 disabled:no-underline"
+    >
+      {t(sent ? 'activity.movingToBackground' : 'activity.toBackground')}
+    </button>
+  )
+}
+
 function ToolTile({ tone, Icon }: { tone: string; Icon: typeof FileText }) {
   const wasRunning = useRef(tone === 'running')
   const celebrate = tone === 'done' && wasRunning.current
@@ -302,6 +333,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           {!active && ['requested', 'running'].includes(item.status) && <span className="text-xs">{t('activity.interrupted')}</span>}
           {exited && <span className="font-mono text-[10px] text-[var(--warning)]">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
           {outputPath && <span onClick={e => e.stopPropagation()} className="text-[12px] text-[var(--accent-2)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
+          {running && item.status === 'running' && item.tool === 'shell.exec' && <MoveToBackground toolCallId={item.toolCallId} />}
           <span className="act-meta">
             {technical && <span className="font-mono text-[10px]">{item.tool}</span>}
             {shownDuration(item.durationMs) && <span className="tabular-nums">{elapsed(item.durationMs)}</span>}

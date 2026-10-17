@@ -421,6 +421,18 @@ export type ScheduleSpec =
   | { kind: 'interval'; minutes: number }
   | { kind: 'daily'; time: string }
   | { kind: 'weekly'; days: number[]; time: string }
+  /** Cinco campos: minuto hora día mes día-de-semana (#50). */
+  | { kind: 'cron'; expr: string }
+
+/** Lo que corre una tarea «Comando» y qué pasa con su salida (#50). */
+export interface ScheduledCommand {
+  command: string
+  shell?: 'default' | 'cmd' | 'powershell' | 'bash'
+  cwd?: string | null
+  timeout_s?: number
+  env?: Record<string, string>
+  on_result?: 'nothing' | 'notify_failure' | 'agent'
+}
 
 export interface ScheduleGrant {
   capability: string
@@ -446,9 +458,10 @@ export interface ScheduledRun {
 /** Lo que se envía al crear o editar una tarea (`scheduled_tasks_v1`). */
 export interface ScheduledTaskInput {
   name: string
-  kind: 'agent' | 'reminder'
+  kind: 'agent' | 'reminder' | 'command'
   schedule: ScheduleSpec
   prompt: string
+  command?: ScheduledCommand | null
   project_id?: string | null
   mode?: 'plan' | 'build' | 'review'
   model?: string | null
@@ -457,8 +470,9 @@ export interface ScheduledTaskInput {
   enabled?: boolean
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model'>> {
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command'>> {
   id: string
+  command?: ScheduledCommand | null
   project_id: string | null
   model: string | null
   next_run_at: number | null
@@ -835,7 +849,7 @@ export interface PermissionGrant {
 }
 
 export type SteerResult =
-  | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string }
+  | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string; interrupted?: string[] }
   | { session_id: string; delivery: 'queued'; position: number }
 
 export const engineApi = {
@@ -1359,6 +1373,20 @@ export const engineApi = {
       message,
       attachments: attachments.length ? attachmentInputs(attachments) : null,
     }),
+  /**
+   * «Enviar ahora» (#31): Rinari lo lee ya. Corta la respuesta que está
+   * escribiendo, pasa a segundo plano el comando en curso y una aprobación
+   * pendiente cuenta como «no». El turno sigue.
+   */
+  turnSteerNow: (session_id: string, message: string, attachments: Array<AttachmentInput | AttachmentRef> = []) =>
+    platform().command<SteerResult>("turn_steer_now", {
+      session_id,
+      message,
+      attachments: attachments.length ? attachmentInputs(attachments) : null,
+    }),
+  /** Move a foreground command of this session to the background (#32). */
+  toolBackground: (session_id: string, tool_call_id: string) =>
+    platform().command<{ session_id: string; tool_call_id: string; requested: boolean }>("session_tool_background", { session_id, tool_call_id }),
   /** Edit an unread message sent during the turn; STEER_ALREADY_READ once read (#54). */
   turnSteerUpdate: (session_id: string, steer_id: string, message: string) =>
     platform().command<{ status: 'updated'; steer_id: string; message: string }>("turn_steer_update", { session_id, steer_id, message }),

@@ -202,6 +202,8 @@ export interface SteerTimelineItem extends TimelineItemBase {
   source?: string
   /** La instrucción volvió a poner en marcha a un subagente que ya había terminado. */
   followUp?: boolean
+  /** «Enviar ahora» (#31): cortó el paso en curso para leerse ya. */
+  interrupted?: boolean
 }
 
 /**

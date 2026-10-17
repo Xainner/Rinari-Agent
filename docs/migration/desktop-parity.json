@@ -783,6 +783,38 @@
       "callers": []
     },
     {
+      "command": "process_orphan_stop",
+      "kind": "engine",
+      "method": "process.orphan.stop",
+      "manual": false,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "process_orphans_list",
+      "kind": "engine",
+      "method": "process.orphans.list",
+      "manual": false,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "process_persistent_list",
+      "kind": "engine",
+      "method": "process.persistent.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "process_persistent_stop",
+      "kind": "engine",
+      "method": "process.persistent.stop",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_add",
       "kind": "engine",
       "method": "project.add",
@@ -1589,6 +1621,13 @@
       "callers": []
     },
     {
+      "command": "session_tool_background",
+      "kind": "engine",
+      "method": "session.tool.background",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "skill_disable",
       "kind": "engine",
       "method": "skill.disable",
@@ -1953,6 +1992,15 @@
       "callers": []
     },
     {
+      "command": "turn_steer_now",
+      "kind": "engine",
+      "method": "session.turn.steer_now",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "turn_steer_update",
       "kind": "engine",
       "method": "session.turn.steer.update",
@@ -2124,10 +2172,10 @@
     }
   ],
   "summary": {
-    "commands": 254,
-    "engine_backed": 248,
+    "commands": 260,
+    "engine_backed": 254,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 86
+    "without_callers": 89
   }
 }

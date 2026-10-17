@@ -18,7 +18,7 @@
 // Necesita un display; en Linux sin sesión gráfica, `xvfb-run -a`.
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -34,6 +34,16 @@ const DEAD_PROXY = 'http://127.0.0.1:9'
 
 const args = process.argv.slice(2)
 const keep = args.includes('--keep')
+// Una build armada como Nightly (`npm run nightly`) usa la carpeta de datos de
+// la Nightly instalada: con ella abierta, cada escenario se cerraría solo.
+{
+  const main = join(ROOT, 'dist-electron', 'main.cjs')
+  if (existsSync(main) && readFileSync(main, 'utf8').includes('"com.rinari.agent.nightly"')) {
+    console.error('dist-electron está armado como Nightly: corre `npm run build && npm run desktop:build` antes de ui:e2e.')
+    process.exit(1)
+  }
+}
+
 const names = args.includes('--all') ? Object.keys(scenarios) : args.filter((arg) => !arg.startsWith('--'))
 
 if (args.includes('--list') || names.length === 0) {
@@ -93,13 +103,26 @@ function runPhase(name, env) {
     // A reviewed --keep window is no longer a running test. Keep the watchdog
     // until success, then leave the isolated app and provider alive for the owner.
     let tail = ''
+    // Solo cuenta como hecho si el escenario llegó al final de la fase: una app
+    // que se cierra sola (p. ej. sin el candado de instancia) también sale con 0.
+    const marker = `RINARI_UI_OK ${name} ${env.RINARI_UI_PHASE}`
+    let reached = false
     child.stdout.on('data', chunk => {
       process.stdout.write(chunk)
       tail = (tail + chunk.toString()).slice(-1000)
+      if (tail.includes(marker)) reached = true
       if (keep && env.RINARI_UI_LAST_PHASE === '1' && tail.includes(`RINARI_UI_OK ${name} ${env.RINARI_UI_PHASE}`)) clearTimeout(timer)
     })
     child.on('error', (error) => { clearTimeout(timer); console.error(error); resolve(1) })
-    child.on('exit', (code) => { clearTimeout(timer); resolve(code ?? 1) })
+    child.on('exit', (code) => {
+      clearTimeout(timer)
+      if (code === 0 && !reached) {
+        console.error(`${name} (${env.RINARI_UI_PHASE}): la app se cerró sin llegar al final del escenario.`)
+        resolve(1)
+        return
+      }
+      resolve(code ?? 1)
+    })
   })
 }
 

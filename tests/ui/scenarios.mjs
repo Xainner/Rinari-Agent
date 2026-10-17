@@ -444,6 +444,11 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => heldModel([{ text: 'Listo, ya revisé el informe.' }]),
   },
+  'attention-profiles': {
+    title: 'Pendientes: un chat del perfil 1 termina mientras estás en el perfil 2',
+    phases: ['exercise'],
+    model: () => heldModel([{ text: 'Este es el plan.' }]),
+  },
   'turn-notify': {
     title: 'Avisos: un plan que termina en otra conversación de Normal avisa con «Revisar plan», la barra lo marca y la campana lo nombra',
     phases: ['exercise'],

@@ -72,6 +72,21 @@ function stamp() {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.${now.getHours() * 100 + now.getMinutes()}`
 }
 
+/**
+ * `dist` y `dist-electron` son los mismos que usan `ui:e2e` y `npm run desktop`:
+ * armados como Nightly, la app de pruebas toma la carpeta de datos de la
+ * Nightly, choca con la instalada si está abierta y se cierra sin hacer nada.
+ * Al terminar (bien o mal) se vuelven a armar como la normal.
+ */
+let builtNightly = false
+
+function restoreStableBuild() {
+  if (!builtNightly) return
+  step('Build normal de vuelta (para ui:e2e y desktop)')
+  run('npx', ['vite', 'build'])
+  run(process.execPath, ['scripts/build-desktop.mjs'])
+}
+
 function main() {
   if (process.platform !== 'win32') throw new Error('La Nightly local se arma en Windows.')
 
@@ -122,6 +137,7 @@ function main() {
 
 
   step('App')
+  builtNightly = true
   run('npx', ['vite', 'build'], { env: nightlyEnv })
   run(process.execPath, ['scripts/build-desktop.mjs'], { env: nightlyEnv })
   const main = readFileSync(join(ROOT, 'dist-electron', 'main.cjs'), 'utf8')
@@ -170,9 +186,17 @@ function main() {
   console.log(`Engine: CLI ${cliBranch} ${cliSha.slice(0, 7)}. Comparte ~/.rinari con la normal: abre solo una a la vez.`)
 }
 
+let failed = false
 try {
   main()
 } catch (error) {
   console.error(`\n[nightly] ${error instanceof Error ? error.message : error}`)
-  process.exit(1)
+  failed = true
 }
+try {
+  restoreStableBuild()
+} catch (error) {
+  console.error(`\n[nightly] no se pudo rearmar la build normal: ${error instanceof Error ? error.message : error}`)
+  failed = true
+}
+if (failed) process.exit(1)

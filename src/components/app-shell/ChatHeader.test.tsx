@@ -32,11 +32,8 @@ it('a child shows «← Madre · Encargo» and opens the mother', async () => {
   expect(onOpen).toHaveBeenCalledWith('ses_mother')
 })
 
-// Permisos v4, P-4: el modo siempre a la vista; Acceso completo, marcado.
-it('shows the permission mode next to the title, full access stands out', () => {
-  const { rerender } = render(<ChatHeader title="Servidor" sessionId="ses_a" permission="workspace" />)
-  expect(screen.getByTestId('chat-header-permission').getAttribute('data-mode')).toBe('workspace')
-  expect(screen.getByTestId('chat-header-permission').textContent).toBe('Proyecto')
-  rerender(<ChatHeader title="Servidor" sessionId="ses_a" permission="full-access" />)
-  expect(screen.getByTestId('chat-header-permission').textContent).toBe('Acceso completo')
+// El modo y los permisos viven en el composer, no junto al título (dueño, 2026-10-17).
+it('the title bar carries no permission badge', () => {
+  render(<ChatHeader title="Servidor" sessionId="ses_a" />)
+  expect(screen.queryByTestId('chat-header-permission')).toBeNull()
 })

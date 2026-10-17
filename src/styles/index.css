@@ -1140,8 +1140,6 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .chat-header-brief { color: var(--text-subtle); }
 /* Permisos v4, P-4: el modo de la conversación siempre a la vista; Acceso completo en ámbar, con un
    brillo quieto (no parpadea: es un estado, no un trabajo en curso). */
-.chat-header-permission { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 11px; font-weight: 600; color: var(--text-subtle); white-space: nowrap; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
-.chat-header-permission[data-mode='full-access'] { border-color: color-mix(in srgb, var(--warning) 45%, transparent); background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); box-shadow: 0 0 12px -4px color-mix(in srgb, var(--warning) 60%, transparent); }
 /* La miga lleva su separador: «← Madre · Encargo / Hija». */
 .chat-header-mother::after { content: '/'; margin-left: 4px; color: var(--line-3); }
 .sidebar-signal[data-signal="failed"] { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }

@@ -273,6 +273,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "vision_model_reset": {"method":"vision.model.reset","params":[{"key":"model_id","from":"model_id","optional":false}]},
   "vision_settings_get": {"method":"vision.settings.get","params":[]},
   "vision_settings_set": {"method":"vision.settings.set","params":[],"passthrough":"settings"},
+  "workspace_dir_list": {"method":"workspace.dir.list","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"path","from":"path","optional":true}]},
   "workspace_file_read": {"method":"workspace.file.read","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"path","from":"path","optional":false},{"key":"turn_id","from":"turn_id","optional":false}]},
   "workspace_file_resolve": {"method":"workspace.file.resolve","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"path","from":"path","optional":false},{"key":"turn_id","from":"turn_id","optional":false}]},
   "workspace_file_search": {"method":"workspace.file.search","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"query","from":"query","optional":false},{"key":"limit","from":"limit","optional":false,"fallback":"30"}]},

@@ -851,6 +851,15 @@ export interface PermissionGrant {
 }
 
 /** A conversation another one opened for a separate piece of work (plan-sesiones-hijas 5). */
+export interface WorkspaceDirEntry {
+  name: string
+  relative_path: string
+  path: string
+  kind: 'dir' | 'file'
+  /** M modified · A added · D deleted · U untracked; a folder, what changed inside. */
+  git?: 'M' | 'A' | 'D' | 'U'
+}
+export interface WorkspaceDirListing { root: string; path: string; entries: WorkspaceDirEntry[]; truncated: boolean; git: boolean }
 export type TimeoutKey = 'connect' | 'first_byte' | 'idle' | 'total'
 export interface ExecutionPolicy {
   max_concurrency: number
@@ -1126,6 +1135,9 @@ export const engineApi = {
       'turn_changes_undo',
       { turn_id: turnId, paths: paths ?? null, apply_safe_only: applySafeOnly },
     ),
+  /** One folder of the conversation's workspace, for the Files tree (#98). */
+  workspaceDirList: (sessionId: string, path = '') =>
+    platform().command<WorkspaceDirListing>('workspace_dir_list', { session_id: sessionId, path }),
   searchWorkspaceFiles: (sessionId: string, query: string, limit = 30) =>
     platform().command<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>(
       "workspace_file_search",

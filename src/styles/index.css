@@ -3058,3 +3058,29 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .context-threshold { max-width: 420px; }
 .context-slider { width: 100%; margin-top: 6px; accent-color: var(--accent-2); }
 .context-slider:disabled { opacity: 0.4; }
+
+/* Árbol de la vista Archivos (plan 0.4.0 #98), al estilo de Claude Code. */
+.file-tree-section { border-top: 0; border-bottom: 1px solid var(--line-1); }
+.file-tree-section[data-full] { flex: 1; max-height: none; }
+.file-tree { display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; }
+.file-tree-head { display: flex; align-items: center; gap: 4px; position: sticky; top: 33px; z-index: 1; padding: 4px 0; background: var(--bg-panel, var(--bg)); }
+.file-tree-list, .file-tree-results { display: flex; flex-direction: column; }
+.file-tree-row { position: relative; display: flex; width: 100%; min-width: 0; align-items: center; gap: 5px; height: 24px; padding-right: 8px; border-radius: 6px; font-size: 12.5px; color: var(--text-muted); text-align: left; }
+.file-tree-row:hover { background: var(--bg-hover); color: var(--text); }
+.file-tree-row[aria-selected='true'] { background: color-mix(in srgb, var(--accent-2) 16%, transparent); color: var(--text); }
+.file-tree-row:focus-visible { outline: 1px solid var(--accent-2); outline-offset: -1px; }
+.file-tree-results .file-tree-row { padding-left: 8px; }
+.file-tree-guide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-1); }
+.file-tree-chevron { flex-shrink: 0; color: var(--text-subtle); transition: transform var(--dur-fast) var(--ease-out); }
+.file-tree-chevron[data-open] { transform: rotate(90deg); }
+.file-tree-chevron-space { flex-shrink: 0; width: 12px; }
+.file-tree-icon { flex-shrink: 0; color: var(--text-subtle); }
+.file-tree-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-tree-dir { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-subtle); }
+.file-tree-git { flex-shrink: 0; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; }
+.file-tree-row[data-git='M'] { color: #e2c08d; }
+.file-tree-row[data-git='A'], .file-tree-row[data-git='U'] { color: #73c991; }
+.file-tree-row[data-git='D'] { color: #f48771; }
+.file-tree-empty, .file-tree-error { padding: 6px 8px; font-size: 12px; color: var(--text-subtle); }
+.file-tree-error { color: var(--danger); }
+@media (prefers-reduced-motion: reduce) { .file-tree-chevron { transition: none; } }

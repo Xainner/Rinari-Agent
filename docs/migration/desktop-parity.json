@@ -2187,6 +2187,13 @@
       ]
     },
     {
+      "command": "workspace_dir_list",
+      "kind": "engine",
+      "method": "workspace.dir.list",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "workspace_file_open",
       "kind": "host",
       "method": null,
@@ -2297,10 +2304,10 @@
     }
   ],
   "summary": {
-    "commands": 275,
-    "engine_backed": 269,
+    "commands": 276,
+    "engine_backed": 270,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 94
+    "without_callers": 95
   }
 }

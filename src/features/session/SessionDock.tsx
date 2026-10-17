@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { useI18n } from '../../i18n'
 import type { SessionSummary } from '../../services/engine'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
-import { FileViewer } from '../files/FileWorkspace'
+import { FileViewer, useFileWorkspace } from '../files/FileWorkspace'
+import FileTree from '../files/FileTree'
 import BrowserSurface from '../browser/BrowserSurface'
 import TerminalPanel from '../terminal/TerminalPanel'
 import AgentsPanel from '../agents/AgentsPanel'
@@ -511,6 +512,7 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
     case 'files':
       return (
         <div className="dock-stack">
+          <FileTreeSection sessionId={sessionId} />
           <FileViewer className="dock-stack-main" />
           <DockSection sessionId={sessionId} view="files" section="artifacts" title={t('workspace.tab.artifacts')}>
             <ArtifactsPanel sessionId={sessionId} />
@@ -537,6 +539,24 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
 }
 
 /** Sección plegable al pie de una vista; se abre sola si la revelaron hacia ella. */
+/**
+ * El árbol del proyecto encima del archivo abierto (#98): desplegado mientras
+ * no hay nada abierto; con un archivo abierto se puede plegar.
+ */
+function FileTreeSection({ sessionId }: { sessionId: string }) {
+  const { t } = useI18n()
+  const files = useFileWorkspace()
+  const hasFile = Boolean(files?.selected)
+  const [open, setOpen] = useState(!hasFile)
+  useEffect(() => { if (!hasFile) setOpen(true) }, [hasFile])
+  return (
+    <details className="dock-section file-tree-section" open={open} onToggle={(event) => setOpen(event.currentTarget.open)} data-section="tree" data-full={!hasFile || undefined}>
+      <summary className="dock-section-head">{t('files.tree.title')}</summary>
+      {open && <FileTree sessionId={sessionId} />}
+    </details>
+  )
+}
+
 function DockSection({ sessionId, view, section, title, children }: { sessionId: string; view: DockView; section: DockSection; title: string; children: ReactNode }) {
   const hint = useSessionDockStore((state) => state.sections[dockNamespaceKey(state.homeId, sessionId)])
   const [open, setOpen] = useState(false)

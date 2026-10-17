@@ -5,7 +5,7 @@ import { useI18n, type I18nKey } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
-import { usageApi, usageMarkdown, type UsageReport, type UsageScope } from './usageReport'
+import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type UsageScope } from './usageReport'
 
 const SCOPES: UsageScope[] = ['session', 'today', 'project', 'all']
 const compact = (value: number, lang: string) =>
@@ -20,20 +20,38 @@ const level = (percent: number) => (percent >= 90 ? 'high' : percent >= 70 ? 'mi
  * escrita), las herramientas, los avisos de desperdicio y el tiempo; se
  * puede copiar, descargar o actualizar, y cambiar de ámbito.
  */
+/** Por qué un proveedor no trae límites, en el idioma del dueño (el Engine lo dice en inglés). */
+function silentReason(item: UsageLimits): I18nKey {
+  if (item.product_id === 'claude-subscription') return 'usage.limitsClaudeLater'
+  if (item.status === 'needs_auth') return 'usage.limitsNeedsAuth'
+  if (item.status === 'disabled') return 'usage.limitsDisabled'
+  if (item.product_id === 'ollama' || item.product_id === 'lmstudio') return 'usage.limitsLocal'
+  return 'usage.limitsUnknown'
+}
+
+/** Las ventanas que la app ya nombra (5 h, semanal…); las demás, como vienen. */
+const WINDOW_KEYS: Record<string, I18nKey> = { rolling: 'providers.windowRolling', weekly: 'providers.windowWeekly', monthly: 'providers.windowMonthly' }
+
 export function UsageReportCard({ report: initial, sessionId, providerId: chosenProvider }: { report: UsageReport; sessionId: string; providerId?: string | null }) {
   const { t, lang } = useI18n()
+  const windowLabel = (id: string, label: string) => (WINDOW_KEYS[id] ? t(WINDOW_KEYS[id]) : label)
   const [report, setReport] = useState(initial)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [limits, setLimits] = useState<ProviderUsageSnapshot | null>(null)
-  const [context, setContext] = useState<ContextStatus | null>(null)
+  const [liveLimits, setLiveLimits] = useState<ProviderUsageSnapshot | null>(null)
+  const [liveContext, setLiveContext] = useState<ContextStatus | null>(null)
 
-  // Los límites del proveedor que más usó la conversación, si no se dice otro.
+  // Una foto de 0.4.0 trae sus límites y su contexto; una de antes no: se
+  // piden en vivo, como entonces (el proveedor que más usó la conversación).
+  const legacy = initial.limits === undefined
   const providerId = chosenProvider ?? initial.models.find((row) => row.provider_id)?.provider_id ?? null
   useEffect(() => {
-    if (providerId) engineApi.providerUsage(providerId).then(setLimits).catch(() => setLimits(null))
-    if (sessionId) engineApi.contextStatus({ session_id: sessionId }).then(setContext).catch(() => setContext(null))
-  }, [providerId, sessionId])
+    if (!legacy) return
+    if (providerId) engineApi.providerUsage(providerId).then(setLiveLimits).catch(() => setLiveLimits(null))
+    if (sessionId) engineApi.contextStatus({ session_id: sessionId }).then(setLiveContext).catch(() => setLiveContext(null))
+  }, [legacy, providerId, sessionId])
+  const limits: UsageLimits[] = report.limits
+    ?? (liveLimits ? [{ ...liveLimits, provider_id: liveLimits.provider_id, provider_alias: null, product_id: liveLimits.product_id ?? null, conversation: true }] : [])
 
   const scopeLabel = t(`usage.scope.${report.scope}` as I18nKey)
   const when = new Date(report.generated_at).toLocaleString(lang === 'es' ? 'es' : 'en', { dateStyle: 'medium', timeStyle: 'short' })
@@ -58,8 +76,12 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
     link.click()
     URL.revokeObjectURL(url)
   }
-  const used = Number((context?.last_request as { input_tokens?: number } | null)?.input_tokens ?? 0)
-  const windowTokens = context?.window_tokens ?? 0
+  const used = report.context !== undefined
+    ? Number(report.context?.used_tokens ?? 0)
+    : Number((liveContext?.last_request as { input_tokens?: number } | null)?.input_tokens ?? 0)
+  const windowTokens = report.context !== undefined ? report.context?.window_tokens ?? 0 : liveContext?.window_tokens ?? 0
+  const client = report.client
+  const who = client ? [client.app_version && `Rinari Agent ${client.app_version}`, client.engine_version && `Engine ${client.engine_version}`, client.profile, [client.provider, client.model].filter(Boolean).join(' / ')].filter(Boolean).join(' · ') : ''
 
   return (
     <section className="usage-report" data-testid="usage-report" data-scope={report.scope} data-loading={loading || undefined} aria-label={t('usage.title')} aria-busy={loading || undefined}>
@@ -68,6 +90,7 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
         <span className="min-w-0">
           <span className="usage-report-title">{t('usage.title')}</span>
           <span className="usage-report-when">{when}</span>
+          {who && <span className="usage-report-when" data-testid="usage-report-client">{who}</span>}
         </span>
         <span className="flex-1" />
         <div role="tablist" aria-label={t('usage.scope')} className="seg-tabs w-fit">
@@ -88,19 +111,24 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
         <div><dt>{t('usage.col.cost')}</dt><dd>{report.totals.cost !== null && report.totals.cost !== undefined ? `$${report.totals.cost.toFixed(2)}` : '—'}</dd></div>
       </dl>
 
-      {limits && (limits.windows.length > 0 || limits.balances.length > 0 || limits.status !== 'available') && (
+      {limits.length > 0 && (
         <div className="usage-report-block" data-block="limits">
           <p className="usage-report-label">{t('usage.limits')}</p>
-          {limits.windows.map((window) => (
-            <div key={window.id} className="usage-report-window">
-              <span>{window.label}</span>
-              <span className="usage-bar" aria-hidden="true" data-level={level(window.used_percent ?? 0)}><span style={{ width: `${Math.min(100, window.used_percent ?? 0)}%` }} /></span>
-              <span className="usage-report-percent">{window.used_percent !== null ? `${Math.round(window.used_percent)} %` : '—'}</span>
-              {window.resets_at && <span className="usage-report-reset">{t('usage.resets', { time: new Date(window.resets_at).toLocaleString(lang === 'es' ? 'es' : 'en', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}
+          {limits.map((item) => (
+            <div key={item.provider_id} className="usage-report-provider-limits" data-provider={item.provider_id}>
+              {(limits.length > 1 || item.provider_alias) && <p className="usage-report-line" data-tone="name">{item.provider_alias ?? item.provider_id}</p>}
+              {item.windows.map((window) => (
+                <div key={window.id} className="usage-report-window">
+                  <span>{windowLabel(window.id, window.label)}</span>
+                  <span className="usage-bar" aria-hidden="true" data-level={level(window.used_percent ?? 0)}><span style={{ width: `${Math.min(100, window.used_percent ?? 0)}%` }} /></span>
+                  <span className="usage-report-percent">{window.used_percent !== null ? `${Math.round(window.used_percent)} %` : '—'}</span>
+                  {window.resets_at && <span className="usage-report-reset">{t('usage.resets', { time: new Date(window.resets_at).toLocaleString(lang === 'es' ? 'es' : 'en', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}
+                </div>
+              ))}
+              {item.balances.map((balance) => <p key={balance.scope} className="usage-report-line">{balance.label}: {balance.unlimited ? t('providers.keyUnlimited') : `${balance.remaining ?? '—'} ${balance.currency}`}</p>)}
+              {item.windows.length === 0 && item.balances.length === 0 && <p className="usage-report-line">{t(silentReason(item))}</p>}
             </div>
           ))}
-          {limits.balances.map((balance) => <p key={balance.scope} className="usage-report-line">{balance.label}</p>)}
-          {limits.windows.length === 0 && limits.balances.length === 0 && <p className="usage-report-line">{t('usage.limitsUnknown')}</p>}
         </div>
       )}
 

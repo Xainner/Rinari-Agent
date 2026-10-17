@@ -42,3 +42,31 @@ it('shows limits, context, models, tools and warnings, and copies the report as 
   expect(copied[0]).toContain('Sonnet: 3 calls')
   expect(screen.getByRole('button', { name: /Copiado/ })).toBeTruthy()
 })
+
+it('a 0.4.0 snapshot paints its own limits of every provider, context and client, with no live calls', async () => {
+  const { engineApi } = await import('../../services/engine')
+  vi.mocked(engineApi.providerUsage).mockClear()
+  vi.mocked(engineApi.contextStatus).mockClear()
+  const snapshot: UsageReport = {
+    ...REPORT,
+    client: { app_version: '0.4.0', engine_version: '0.4.0', profile: 'Trabajo', provider: 'claude-sub', model: 'sonnet' },
+    context: { window_tokens: 200_000, used_tokens: 30_000, compact_at_tokens: 160_000, last_compaction_at: null },
+    limits: [
+      { provider_id: 'p1', provider_alias: 'claude-sub', product_id: 'claude-subscription', status: 'unsupported', windows: [], balances: [], detail: 'they show after the next one', fetched_at: null, conversation: true },
+      { provider_id: 'p2', provider_alias: 'opencode', product_id: 'opencode-go', status: 'available', windows: [{ id: 'rolling', label: '5h', scope: 'account', used_percent: 64, remaining_percent: 36, resets_at: '2026-10-17T20:00:00Z', duration_seconds: null }], balances: [], detail: '', fetched_at: null, conversation: false },
+    ],
+  }
+  render(<I18nProvider lang="es"><UsageReportCard report={snapshot} sessionId="ses_a" /></I18nProvider>)
+  const card = screen.getByTestId('usage-report')
+  expect(screen.getByTestId('usage-report-client').textContent).toBe('Rinari Agent 0.4.0 · Engine 0.4.0 · Trabajo · claude-sub / sonnet')
+  const limits = card.querySelector('[data-block="limits"]')!
+  // In the owner's language, not the Engine's English detail.
+  expect(limits.querySelector('[data-provider="p1"]')!.textContent).toContain('aparecen después de la próxima')
+  expect(limits.querySelector('[data-provider="p2"]')!.textContent).toContain('64 %')
+  expect(card.querySelector('[data-block="context"]')!.textContent).toContain('30')
+  expect(engineApi.providerUsage).not.toHaveBeenCalled()
+  expect(engineApi.contextStatus).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: /Copiar/ }))
+  expect(copied[0]).toContain('Plan limits:\n  claude-sub: not reported (they show after the next one)\n  opencode · 5h: 64% used')
+  expect(copied[0]).toContain('Context:\n  30,000 of 200,000 tokens (15%)')
+})

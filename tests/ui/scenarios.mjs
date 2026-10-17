@@ -222,6 +222,11 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'HOLA' }))),
   },
+  'usage-report': {
+    title: '/usage: el informe en el chat sin llamar al modelo, con quién, límites de cada proveedor y modelos; /context y el anillo lo pintan; las fotos se quedan',
+    phases: ['exercise'],
+    model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'HOLA' }))),
+  },
   'memory-places': {
     title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',
     phases: ['exercise'],

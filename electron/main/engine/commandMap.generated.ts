@@ -273,7 +273,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "turn_steer_now": {"method":"session.turn.steer_now","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"message","from":"message","optional":false},{"key":"attachments","from":"attachments","optional":true}]},
   "turn_steer_update": {"method":"session.turn.steer.update","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"steer_id","from":"steer_id","optional":false},{"key":"message","from":"message","optional":false}]},
   "usage_get": {"method":"usage.get","params":[{"key":"ref","from":"reference","optional":true}]},
-  "usage_report": {"method":"usage.report","params":[{"key":"scope","from":"scope","optional":false},{"key":"ref","from":"ref","optional":true},{"key":"save","from":"save","optional":true},{"key":"session_id","from":"session_id","optional":true}]},
+  "usage_report": {"method":"usage.report","params":[{"key":"scope","from":"scope","optional":false},{"key":"ref","from":"ref","optional":true},{"key":"save","from":"save","optional":true},{"key":"session_id","from":"session_id","optional":true},{"key":"app_version","from":"app_version","optional":true}]},
   "usage_report_list": {"method":"usage.report.list","params":[{"key":"session_id","from":"session_id","optional":false}]},
   "verification_latest": {"method":"verification.latest","params":[{"key":"path","from":"path","optional":false},{"key":"kinds","from":"kinds","optional":true},{"key":"limit","from":"limit","optional":true}]},
   "verification_plan": {"method":"verification.plan","params":[{"key":"path","from":"path","optional":false},{"key":"changed_files","from":"changed_files","optional":false}]},

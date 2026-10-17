@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { version as APP_VERSION } from '../../../package.json'
 import { platform } from '../../platform'
+import type { ProviderUsageSnapshot } from '../../types/protocol.generated'
 
 /** Una fila por modelo del informe de uso (#78). */
 export interface UsageModelRow {
@@ -26,6 +28,15 @@ export interface UsageWarning {
   model?: string | null
 }
 
+/** Los límites del plan de un proveedor, tomados al hacer el informe (#78). */
+export interface UsageLimits extends Pick<ProviderUsageSnapshot, 'status' | 'windows' | 'balances' | 'detail' | 'fetched_at'> {
+  provider_id: string
+  provider_alias: string | null
+  product_id: string | null
+  /** El proveedor de esta conversación: sale primero, aunque no informe nada. */
+  conversation: boolean
+}
+
 /** `usage.report` del Engine: sale de lo guardado, sin llamar al modelo. */
 export interface UsageReport {
   scope: UsageScope
@@ -37,6 +48,12 @@ export interface UsageReport {
   compactions: number
   warnings: UsageWarning[]
   time: { first_at: string | null; last_at: string | null; active_ms: number }
+  /** Quién hizo el informe; falta en las fotos de antes de 0.4.0. */
+  client?: { app_version: string | null; engine_version: string | null; profile: string | null; provider: string | null; model: string | null }
+  /** El contexto de la conversación en ese momento (solo «Esta conversación»). */
+  context?: { window_tokens: number; used_tokens: number | null; compact_at_tokens: number | null; last_compaction_at: string | null } | null
+  /** Límites del plan: el proveedor de la conversación y los demás conectados. */
+  limits?: UsageLimits[]
 }
 
 export const usageApi = {
@@ -46,6 +63,7 @@ export const usageApi = {
       ref: ref ?? null,
       save: save ? true : null,
       session_id: save?.sessionId ?? null,
+      app_version: APP_VERSION,
     }),
   list: (sessionId: string) => platform().command<{ reports: UsageReport[] }>('usage_report_list', { session_id: sessionId }),
 }
@@ -80,7 +98,39 @@ const number = (value: number) => value.toLocaleString('en-US')
 
 /** El informe como texto para copiar o descargar, con el formato que pidió el dueño. */
 export function usageMarkdown(report: UsageReport, labels: { title: string; scope: string }): string {
-  const lines = [`# ${labels.title}`, '', `${labels.scope} · ${report.generated_at}`, '', 'Session:']
+  const lines = [`# ${labels.title}`, '', `${labels.scope} · ${report.generated_at}`]
+  const client = report.client
+  if (client) {
+    const who = [
+      client.app_version && `Rinari Agent ${client.app_version}`,
+      client.engine_version && `Engine ${client.engine_version}`,
+      client.profile && `profile ${client.profile}`,
+      [client.provider, client.model].filter(Boolean).join(' / '),
+    ].filter(Boolean)
+    if (who.length) lines.push(who.join(' · '))
+  }
+  if (report.limits?.length) {
+    lines.push('', 'Plan limits:')
+    for (const item of report.limits) {
+      const name = item.provider_alias ?? item.provider_id
+      if (!item.windows.length && !item.balances.length) {
+        lines.push(`  ${name}: not reported (${item.detail || item.status})`)
+        continue
+      }
+      for (const window of item.windows) {
+        const used = window.used_percent !== null && window.used_percent !== undefined ? `${Math.round(window.used_percent)}% used` : 'unknown'
+        lines.push(`  ${name} · ${window.label || window.id}: ${used}${window.resets_at ? ` · resets ${window.resets_at}` : ''}`)
+      }
+      for (const balance of item.balances) {
+        lines.push(`  ${name} · ${balance.label}: ${balance.unlimited ? 'unlimited' : balance.remaining ?? '—'} ${balance.currency ?? ''}`.trimEnd())
+      }
+    }
+  }
+  if (report.context?.window_tokens) {
+    const { used_tokens: used, window_tokens: total } = report.context
+    lines.push('', 'Context:', `  ${used ? number(used) : '—'} of ${number(total)} tokens${used ? ` (${Math.round((100 * used) / total)}%)` : ''} · ${report.compactions} compactions`)
+  }
+  lines.push('', 'Session:')
   for (const row of report.models) {
     lines.push(
       `  ${row.model_name}: ${row.calls} calls · ${number(row.input_tokens)} input · ${number(row.output_tokens)} output · ` +

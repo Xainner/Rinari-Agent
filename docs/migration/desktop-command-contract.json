@@ -8755,6 +8755,11 @@
           "name": "session_id",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "app_version",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -8779,6 +8784,11 @@
         {
           "key": "session_id",
           "from": "session_id",
+          "optional": true
+        },
+        {
+          "key": "app_version",
+          "from": "app_version",
           "optional": true
         }
       ],

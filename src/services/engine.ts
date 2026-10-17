@@ -1318,6 +1318,10 @@ export const engineApi = {
     }),
   soulRemove: (id: string) => platform().command<{ removed: { id: string } }>("soul_remove", { id }),
   soulActivate: (id: string) => platform().command<{ soul: SoulSummary }>("soul_activate", { id }),
+  /** Plan 0.4.0 #87: su `soul.toml` e `identity.md` en una carpeta elegida en el diálogo. */
+  soulExport: (id: string, folder: string) => platform().command<{ path: string; files: string[] }>("soul_export", { id, folder }),
+  /** Una carpeta de alma, o su `.toml` y su `.md`; se guarda como alma nueva. */
+  soulImport: (paths: string[]) => platform().command<{ soul: SoulDetail }>("soul_import", { paths }),
   mcpList: () => platform().command<{ servers: McpServer[] }>("mcp_list"),
   mcpCreate: (name: string, config: McpConfig) =>
     platform().command<{ server: McpServer }>("mcp_create", { name, ...config }),

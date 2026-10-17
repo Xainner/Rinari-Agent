@@ -227,6 +227,10 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'HOLA' }))),
   },
+  'soul-gallery': {
+    title: 'Personalidad: galería de almas, panel con su texto, duplicar, exportar su soul.toml e identity.md, importarla de vuelta y el aviso de alma vacía',
+    phases: ['exercise'],
+  },
   'memory-places': {
     title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',
     phases: ['exercise'],

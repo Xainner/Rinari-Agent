@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import CharacterIntensity from './CharacterIntensity'
+import { Check, Copy, Download, Pencil, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import CharacterIntensity from './CharacterIntensity'
 import {
   commandMessage,
   engineApi,
@@ -8,10 +9,13 @@ import {
   type SoulSummary,
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
-import { Section } from '../../components/settings/parts'
+import { platform } from '../../platform'
+import Markdown from '../../components/Markdown'
+import { inputClass, labelClass } from '../../components/settings/parts'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog'
@@ -25,21 +29,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
-import { inputClass, labelClass } from '../../components/settings/parts'
+
+/** Un id a partir del nombre, libre entre las almas que ya hay (como los perfiles, #86). */
+export function soulIdFor(name: string, taken: Set<string>): string {
+  const base = name
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+    .replace(/-+$/, '') || 'alma'
+  let candidate = base
+  for (let number = 2; taken.has(candidate); number += 1) candidate = `${base}-${number}`
+  return candidate
+}
+
+interface FormState {
+  /** Editando una propia; `null` al crear o duplicar. */
+  id: string | null
+  name: string
+  description: string
+  identity: string
+}
 
 /**
- * Ajustes > Soul: lista (bundled + customs), activar, crear, editar
- * identidad en crudo, eliminar customs. La Soul es solo voz: no toca
- * permisos, aprobaciones ni verificación (lo impone el engine).
+ * Ajustes → Personalidad (plan 0.4.0 #87). Arriba, «Cómo habla Rinari»: el
+ * nivel con su vista previa. Abajo, las almas como galería: cada tarjeta con
+ * su inicial, nombre, descripción y «En uso»; al abrir una, su texto en
+ * Markdown con «Usar», «Duplicar para editar», «Exportar» (su `soul.toml` y su
+ * `identity.md` en una carpeta) y, si es propia, «Editar» y «Eliminar».
+ * «Importar alma» toma esos archivos. La Soul es solo voz: no toca permisos,
+ * aprobaciones ni verificación (lo impone el Engine).
  */
 export default function SoulsView({ onChanged }: { onChanged: () => void }) {
   const { t } = useI18n()
   const [souls, setSouls] = useState<SoulSummary[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [detail, setDetail] = useState<SoulDetail | null>(null)
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [editing, setEditing] = useState<null | { id: string } | { id: null }>(null)
-  const [form, setForm] = useState({ id: '', name: '', identity: '', description: '' })
+  const [form, setForm] = useState<FormState | null>(null)
+  const [preview, setPreview] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<SoulSummary | null>(null)
 
@@ -59,22 +88,15 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
     void reload()
   }, [reload])
 
-  async function openSoul(id: string) {
-    if (openId === id) {
-      setOpenId(null)
-      setDetail(null)
-      return
-    }
+  async function open(id: string) {
     try {
-      const result = await engineApi.soulGet(id)
-      setDetail(result.soul)
-      setOpenId(id)
+      setDetail((await engineApi.soulGet(id)).soul)
     } catch (err) {
       toast.error(commandMessage(err))
     }
   }
 
-  async function activate(id: string) {
+  async function use(id: string) {
     try {
       await engineApi.soulActivate(id)
       await reload()
@@ -84,40 +106,58 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
     }
   }
 
-  function openCreate() {
-    setForm({ id: '', name: '', identity: '', description: '' })
-    setEditing({ id: null })
+  function edit(soul: SoulDetail, duplicate: boolean) {
+    setForm({
+      id: duplicate ? null : soul.id,
+      name: duplicate ? t('soul.copyName', { name: soul.name }) : soul.name,
+      description: soul.description,
+      identity: soul.identity,
+    })
+    setPreview(false)
+    setDetail(null)
   }
 
-  function openEdit(soul: SoulDetail) {
-    setForm({ id: soul.id, name: soul.name, identity: soul.identity, description: soul.description })
-    setEditing({ id: soul.id })
+  async function exportSoul(soul: SoulSummary) {
+    try {
+      const folder = (await platform().dialog.openFiles({ directory: true, title: t('soul.exportTitle') }))?.[0]
+      if (!folder) return
+      const result = await engineApi.soulExport(soul.id, folder)
+      toast.success(t('soul.exported', { path: result.path }))
+    } catch (err) {
+      toast.error(commandMessage(err))
+    }
+  }
+
+  async function importSoul() {
+    try {
+      const paths = await platform().dialog.openFiles({ multiple: true, title: t('soul.importTitle') })
+      if (!paths) return
+      const { soul } = await engineApi.soulImport(paths)
+      toast.success(t('soul.imported', { name: soul.name }))
+      await reload()
+      setDetail(soul)
+    } catch (err) {
+      toast.error(commandMessage(err))
+    }
   }
 
   async function save() {
-    if (form.id.trim() === '' || form.name.trim() === '' || form.identity.trim() === '') {
-      return
-    }
+    if (!form || form.name.trim() === '') return
     setSaving(true)
     try {
-      if (editing?.id === null) {
-        await engineApi.soulCreate({
-          id: form.id.trim(),
+      if (form.id === null) {
+        const { soul } = await engineApi.soulCreate({
+          id: soulIdFor(form.name, new Set(souls.map((item) => item.id))),
           name: form.name.trim(),
           identity: form.identity,
           description: form.description.trim() === '' ? undefined : form.description.trim(),
         })
-      } else if (editing) {
-        await engineApi.soulUpdate({
-          id: editing.id,
-          name: form.name.trim(),
-          identity: form.identity,
-          description: form.description,
-        })
-        const result = await engineApi.soulGet(editing.id)
-        setDetail(result.soul)
+        setDetail(soul)
+      } else {
+        await engineApi.soulUpdate({ id: form.id, name: form.name.trim(), identity: form.identity, description: form.description })
+        setDetail((await engineApi.soulGet(form.id)).soul)
       }
-      setEditing(null)
+      setForm(null)
       await reload()
       onChanged()
     } catch (err) {
@@ -131,10 +171,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
     if (!deleting) return
     try {
       await engineApi.soulRemove(deleting.id)
-      if (openId === deleting.id) {
-        setOpenId(null)
-        setDetail(null)
-      }
+      setDetail(null)
       setDeleting(null)
       await reload()
       onChanged()
@@ -144,175 +181,125 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-[var(--text)]">
-          {t('soul.title')}
-        </h2>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="btn btn-primary"
-        >
-          {t('soul.create')}
-        </button>
+    <div className="space-y-4" data-testid="souls-view">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-display text-lg font-bold text-[var(--text)]">{t('soul.title')}</h2>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => void importSoul()} className="btn btn-secondary btn-sm" data-testid="soul-import">
+            <Upload size={13} aria-hidden="true" /> {t('soul.import')}
+          </button>
+          <button type="button" onClick={() => { setForm({ id: null, name: '', description: '', identity: '' }); setPreview(false) }} className="btn btn-primary btn-sm">
+            {t('soul.create')}
+          </button>
+        </div>
       </div>
       <p className="text-sm text-[var(--text-subtle)]">{t('soul.voiceOnly')}</p>
       <CharacterIntensity />
 
-      {souls.map((soul) => {
-        const active = soul.id === activeId
-        const isOpen = openId === soul.id
-        return (
-          <Section key={soul.id} title={`${soul.name}${active ? ` · ${t('soul.active')}` : ''}`}>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-subtle)]">
-              <span className="font-mono">{soul.id}</span>
-              <span>v{soul.version}</span>
-              <span>{soul.source}</span>
-            </div>
-            {soul.description !== '' && (
-              <p className="text-sm text-[var(--text-muted)]">{soul.description}</p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {!active && (
-                <button
-                  type="button"
-                  onClick={() => void activate(soul.id)}
-                  className="btn btn-primary btn-sm"
-                >
-                  {t('soul.activate')}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => void openSoul(soul.id)}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
-              >
-                {t('soul.view')}
-              </button>
-              {soul.source === 'custom' && detail?.id === soul.id && (
-                <button
-                  type="button"
-                  onClick={() => openEdit(detail)}
-                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)]"
-                >
-                  {t('soul.edit')}
-                </button>
-              )}
-              {soul.source === 'custom' && (
-                <button
-                  type="button"
-                  onClick={() => setDeleting(soul)}
-                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
-                >
-                  {t('soul.delete')}
-                </button>
-              )}
-            </div>
-            {isOpen && detail && (
-              <pre className="max-h-80 overflow-auto rounded-xl bg-[var(--bg-app)] px-3 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap text-[var(--text-muted)]">
-                {detail.identity}
-              </pre>
-            )}
-          </Section>
-        )
-      })}
+      <h3 className="pt-2 text-sm font-semibold text-[var(--text)]">{t('soul.gallery')}</h3>
+      <div className="profiles-grid soul-gallery" data-testid="soul-gallery">
+        {souls.map((soul) => {
+          const active = soul.id === activeId
+          return (
+            <button
+              key={soul.id}
+              type="button"
+              className="profile-card settings-card soul-card text-left"
+              data-testid="soul-card"
+              data-active={active || undefined}
+              onClick={() => void open(soul.id)}
+            >
+              <header className="profile-card-head">
+                <span className="soul-avatar" aria-hidden="true">{soul.name.trim().charAt(0).toUpperCase() || '?'}</span>
+                <span className="profile-card-name">{soul.name}</span>
+                {active && <span className="r-chip" data-tone="accent"><Check size={11} aria-hidden="true" /> {t('soul.inUse')}</span>}
+              </header>
+              {soul.description !== '' && <p className="profile-card-desc">{soul.description}</p>}
+              <p className="text-[11px] text-[var(--text-subtle)]">{soul.source === 'custom' ? t('soul.custom') : t('soul.bundled')} · v{soul.version}</p>
+            </button>
+          )
+        })}
+      </div>
 
-      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editing?.id === null ? t('soul.create') : t('soul.edit')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {editing?.id === null && (
-              <div>
-                <label className={labelClass} htmlFor="soul-id">
-                  {t('soul.idLabel')}
-                </label>
-                <input
-                  id="soul-id"
-                  value={form.id}
-                  onChange={(e) => setForm({ ...form, id: e.target.value })}
-                  placeholder={t('soul.idPlaceholder')}
-                  className={inputClass}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+      <Dialog open={detail !== null} onOpenChange={(next) => !next && setDetail(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="soul-panel">
+          {detail && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{detail.name}</DialogTitle>
+                <DialogDescription>{detail.description || (detail.source === 'custom' ? t('soul.custom') : t('soul.bundled'))}</DialogDescription>
+              </DialogHeader>
+              <div className="soul-panel-text rounded-xl bg-[var(--bg-app)] px-4 py-3 text-[13px] leading-relaxed text-[var(--text-muted)]" data-testid="soul-panel-text">
+                {detail.identity.trim() ? <Markdown>{detail.identity}</Markdown> : <p>{t('soul.emptyText')}</p>}
               </div>
-            )}
-            <div>
-              <label className={labelClass} htmlFor="soul-name">
-                {t('soul.nameLabel')}
-              </label>
-              <input
-                id="soul-name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={inputClass}
-                autoComplete="off"
-              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {detail.id !== activeId && (
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { void use(detail.id); setDetail(null) }}>{t('soul.use')}</button>
+                )}
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => edit(detail, true)}><Copy size={12} aria-hidden="true" /> {t('soul.duplicate')}</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => void exportSoul(detail)}><Download size={12} aria-hidden="true" /> {t('soul.export')}</button>
+                {detail.source === 'custom' && (
+                  <>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => edit(detail, false)}><Pencil size={12} aria-hidden="true" /> {t('soul.edit')}</button>
+                    <button type="button" className="btn btn-ghost btn-sm text-[var(--danger)]" onClick={() => setDeleting(detail)}><Trash2 size={12} aria-hidden="true" /> {t('soul.delete')}</button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={form !== null} onOpenChange={(next) => !next && setForm(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="soul-form">
+          <DialogHeader>
+            <DialogTitle>{form?.id ? t('soul.edit') : t('soul.create')}</DialogTitle>
+          </DialogHeader>
+          {form && (
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass} htmlFor="soul-name">{t('soul.nameLabel')}</label>
+                <input id="soul-name" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} autoComplete="off" />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="soul-description">{t('soul.descriptionLabel')}</label>
+                <input id="soul-description" value={form.description} maxLength={500} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} autoComplete="off" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className={labelClass} htmlFor="soul-identity">{t('soul.identityLabel')}</label>
+                  <div role="tablist" className="seg-tabs w-fit">
+                    {[false, true].map((showing) => (
+                      <button key={String(showing)} type="button" role="tab" className="seg-tab" aria-selected={preview === showing} data-active={preview === showing || undefined} onClick={() => setPreview(showing)}>
+                        {preview === showing && <span className="seg-tab-pill" aria-hidden="true" />}
+                        <span className="relative">{showing ? t('soul.previewText') : t('soul.writeText')}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {preview
+                  ? <div className="mt-1 min-h-[14rem] rounded-xl border border-[var(--border)] px-4 py-3 text-[13px] leading-relaxed text-[var(--text-muted)]" data-testid="soul-form-preview">{form.identity.trim() ? <Markdown>{form.identity}</Markdown> : <p>{t('soul.emptyText')}</p>}</div>
+                  : <textarea id="soul-identity" value={form.identity} onChange={(e) => setForm({ ...form, identity: e.target.value })} rows={14} spellCheck={false} className={`${inputClass} font-mono text-[13px] leading-relaxed`} />}
+                {form.identity.trim() === '' && <p className="mt-1 text-xs text-[var(--warning,var(--text-subtle))]" data-testid="soul-empty-warning">{t('soul.emptyWarning')}</p>}
+              </div>
             </div>
-            <div>
-              <label className={labelClass} htmlFor="soul-description">
-                {t('soul.descriptionLabel')}
-              </label>
-              <input
-                id="soul-description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className={inputClass}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="soul-identity">
-                {t('soul.identityLabel')}
-              </label>
-              <textarea
-                id="soul-identity"
-                value={form.identity}
-                onChange={(e) => setForm({ ...form, identity: e.target.value })}
-                rows={14}
-                spellCheck={false}
-                className={`${inputClass} font-mono text-[13px] leading-relaxed`}
-              />
-            </div>
-          </div>
+          )}
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(null)}
-              className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-            >
-              {t('providers.cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={saving}
-              className="btn btn-primary btn-sm"
-            >
-              {t('providers.save')}
-            </button>
+            <button type="button" onClick={() => setForm(null)} className="btn btn-ghost btn-sm">{t('providers.cancel')}</button>
+            <button type="button" onClick={() => void save()} disabled={saving || !form?.name.trim()} className="btn btn-primary btn-sm" data-testid="soul-save">{t('providers.save')}</button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog open={deleting !== null} onOpenChange={(next) => !next && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('soul.delete')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleting && t('soul.confirmDelete', { name: deleting.name })}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{deleting && t('soul.confirmDelete', { name: deleting.name })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('providers.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void removeSoul()}>
-              {t('soul.delete')}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => void removeSoul()}>{t('soul.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

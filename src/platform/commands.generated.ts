@@ -236,7 +236,9 @@ export type DesktopCommand =
   | "snapshot_get"
   | "soul_activate"
   | "soul_create"
+  | "soul_export"
   | "soul_get"
+  | "soul_import"
   | "soul_list"
   | "soul_remove"
   | "soul_settings_get"
@@ -521,7 +523,9 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "snapshot_get",
   "soul_activate",
   "soul_create",
+  "soul_export",
   "soul_get",
+  "soul_import",
   "soul_list",
   "soul_remove",
   "soul_settings_get",
@@ -821,7 +825,9 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "snapshot_get",
   "soul_activate",
   "soul_create",
+  "soul_export",
   "soul_get",
+  "soul_import",
   "soul_list",
   "soul_remove",
   "soul_settings_get",

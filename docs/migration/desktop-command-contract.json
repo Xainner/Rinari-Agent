@@ -3863,6 +3863,62 @@
       "host_effects": []
     },
     {
+      "command": "soul_export",
+      "module": "souls",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "folder",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "soul.export",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "folder",
+          "from": "folder",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "soul_import",
+      "module": "souls",
+      "args": [
+        {
+          "name": "paths",
+          "type": "Vec<String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "soul.import",
+      "engine_params": [
+        {
+          "key": "paths",
+          "from": "paths",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "soul_settings_get",
       "module": "souls",
       "args": [],

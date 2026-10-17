@@ -3878,6 +3878,8 @@ export const es = {
   'rbundles.inheritShort': 'General',
   'rbundles.agentModels': 'Modelo de cada agente',
   'rbundles.asGeneralChat': 'como el general (el modelo de la conversación)',
+  'rbundles.allAgents': 'Todos los agentes',
+  'rbundles.otherAgents': 'Los demás agentes',
   'rbundles.fallbackShort': 'respaldo {model}',
   'rbundles.showInSidebar': 'Ver en la barra lateral',
   'rbundles.details': 'Detalles',

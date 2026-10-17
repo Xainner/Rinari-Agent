@@ -3451,3 +3451,26 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .memory-stale { display: inline-flex; height: 18px; align-items: center; gap: 4px; --tone: var(--text-subtle); font-size: 10.5px; }
 /* Dentro de su grupo, la fila no repite la categoría que ya dice el título. */
 .memory-group[data-kind] .memory-record-kind { display: none; }
+
+/* Perfiles (#86): lo propio de cada agente en su fila y lo heredado agrupado; el respaldo y el esfuerzo como chips;
+   «Ver en la barra lateral» en su propia línea; «Detalles» plegable con el id en mono. */
+.profile-card-facts dd { flex-wrap: wrap; }
+.profile-card-facts dt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 9rem; }
+.profile-card-facts .profile-card-extra { display: inline-flex; height: 18px; align-items: center; padding: 0 7px; border: 1px solid rgb(167 139 250 / 0.28); border-radius: var(--r-pill); background: rgb(147 88 255 / 0.08); font-family: var(--font-sans); font-size: 10.5px; color: var(--accent-2); }
+.profile-card-facts dd:has(.profile-card-link) { flex-direction: column; align-items: flex-start; gap: 4px; }
+.profile-card-facts .profile-card-link { margin-left: 0; }
+.profile-card-details > summary { display: inline-flex; align-items: center; gap: 4px; list-style: none; border-radius: 4px; transition: color var(--dur-fast); }
+.profile-card-details > summary::-webkit-details-marker { display: none; }
+.profile-card-details > summary:hover { color: var(--text-muted); }
+.profile-card-details-chevron { transition: transform var(--dur-fast) var(--ease-out); }
+.profile-card-details[open] .profile-card-details-chevron { transform: rotate(90deg); }
+.profile-card-details code { padding: 1px 6px; border-radius: 5px; background: rgb(255 255 255 / 0.05); font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.profile-agent-row:not(.profile-agent-columns) { padding: 3px 0; }
+.profile-agent-row { grid-template-columns: 110px repeat(3, minmax(0, 1fr)); }
+.profile-agent-name { font-weight: 600; color: var(--text); }
+.profile-agent-columns { padding-bottom: 2px; border-bottom: 1px solid var(--line-1); }
+.profile-card-facts dd > .min-w-0 { flex: 1 1 0; }
+/* El formulario desplaza su cuerpo; «Cancelar» y «Guardar» quedan siempre a la vista. */
+.r-dialog.profile-form { display: flex; max-height: 85vh; flex-direction: column; overflow: hidden; }
+.profile-form-body { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; }
+.profile-form-actions { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 8px; padding-top: 14px; padding-right: 8px; border-top: 1px solid var(--line-1); }

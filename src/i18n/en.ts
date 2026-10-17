@@ -3860,6 +3860,8 @@ export const en: Record<I18nKey, string> = {
   'rbundles.agentModels': 'Each agent\'s model',
   'rbundles.inheritShort': 'General',
   'rbundles.asGeneralChat': "as the general one (the conversation's model)",
+  'rbundles.allAgents': 'All agents',
+  'rbundles.otherAgents': 'The other agents',
   'rbundles.fallbackShort': 'fallback {model}',
   'rbundles.showInSidebar': 'Show in the sidebar',
   'rbundles.details': 'Details',

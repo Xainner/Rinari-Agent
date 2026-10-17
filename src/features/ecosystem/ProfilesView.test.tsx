@@ -76,3 +76,15 @@ it('the id lives in «Detalles», and «Ver en la barra lateral» uses the profi
   await userEvent.click(within(cards[1]).getByTestId('profile-show-sidebar'))
   await waitFor(() => expect(activate).toHaveBeenCalledWith('trabajo'))
 })
+
+it('the built-in profile says «Predeterminado», and keeps its stored name when not renamed', async () => {
+  render(<I18nProvider lang="es"><ProfilesView onChanged={() => {}} /></I18nProvider>)
+  const cards = await screen.findAllByTestId('profile-card')
+  await waitFor(() => expect(cards[1].textContent).toContain('Seria'))
+  expect(cards[0].querySelector('.profile-card-name')?.textContent).toBe('Predeterminado')
+  await userEvent.click(within(cards[0]).getByRole('button', { name: /Editar/ }))
+  const form = await screen.findByTestId('profile-form')
+  expect((within(form).getByLabelText('Nombre') as HTMLInputElement).value).toBe('Predeterminado')
+  await userEvent.click(within(form).getByTestId('profile-save'))
+  await waitFor(() => expect(api.bundleUpdate).toHaveBeenCalledWith('default', expect.objectContaining({ name: 'Default' })))
+})

@@ -356,7 +356,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           </span>
         </summary>
         {instruction && <blockquote data-testid="agent-instruction" className="mt-1.5 max-h-60 overflow-auto whitespace-pre-wrap border-l-2 border-[var(--accent)]/40 pl-3 text-[12px] leading-relaxed text-[var(--text)] [overflow-wrap:anywhere]">{instruction.text}</blockquote>}
-        {failed && toolCause(item.errorCode, t) && <p role="alert" className="act-notice mt-1.5" data-tone="warning" data-testid="tool-cause"><span className="min-w-0">{toolCause(item.errorCode, t)}</span></p>}
+        {failed && toolCause(item.errorCode, t) && <p role="alert" className="act-notice mt-1.5" data-tone="warning" data-testid="tool-cause"><span className="act-notice-icon" aria-hidden="true"><TriangleAlert size={12} /></span><span className="min-w-0">{toolCause(item.errorCode, t)}</span></p>}
         {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} toolCallId={item.toolCallId} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} toolCallId={item.toolCallId} /> : (item.arguments || item.result || item.error) && (
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-inset)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}

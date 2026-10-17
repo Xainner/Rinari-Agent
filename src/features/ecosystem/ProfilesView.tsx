@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Copy, PanelLeft, Pencil, Sparkles, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, Copy, PanelLeft, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import { useProfileStore } from '../profiles/profileStore'
+import { useAgentType } from '../agents/agentLabel'
 
 /** El alma de un perfil nuevo es la de Rinari (#86). */
 const DEFAULT_SOUL = 'rinari-default'
@@ -58,6 +59,8 @@ const emptyForm = (): FormState => ({ id: null, name: '', description: '', soul_
  * Crear y editar es un formulario con selectores; el id lo genera el Engine
  * a partir del nombre y el modo ya no es parte de un perfil.
  */
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
 export default function ProfilesView({ onChanged }: { activeSessionId?: string | null; onChanged: () => void }) {
   const { t } = useI18n()
   const [profiles, setProfiles] = useState<ProfileBundle[]>([])
@@ -91,10 +94,14 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
     return model ? `${model.alias}${model.provider ? ` · ${model.provider}` : ''}` : alias
   }
 
+  // El perfil incluido se guarda como «Default»; se muestra en el idioma de la app, como en la barra lateral.
+  const builtinDefault = (profile: Pick<ProfileBundle, 'name' | 'builtin'>) => Boolean(profile.builtin && profile.name === 'Default')
+  const profileLabel = (profile: Pick<ProfileBundle, 'name' | 'builtin'>) => (builtinDefault(profile) ? t('profiles.defaultName') : profile.name)
+
   async function use(profile: ProfileBundle) {
     try {
       await useProfileStore.getState().activate(profile.id)
-      toast.success(t('rbundles.using', { name: profile.name }))
+      toast.success(t('rbundles.using', { name: profileLabel(profile) }))
       await reload()
       onChanged()
     } catch (err) {
@@ -106,7 +113,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
     if (!profile) return setForm(emptyForm())
     setForm({
       id: duplicate ? null : profile.id,
-      name: duplicate ? t('rbundles.copyName', { name: profile.name }) : profile.name,
+      name: duplicate ? t('rbundles.copyName', { name: profileLabel(profile) }) : profileLabel(profile),
       description: profile.description,
       soul_id: profile.soul_id || DEFAULT_SOUL,
       agents: Object.fromEntries(Object.entries(profile.agents ?? {}).map(([agent, value]) => [agent, { model: value.model ?? INHERIT, fallback: value.fallback ?? INHERIT, effort: value.effort ?? INHERIT }])),
@@ -116,6 +123,9 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
   async function save() {
     if (!form || form.name.trim() === '') return
     setSaving(true)
+    // Sin renombrarlo, el incluido sigue llamándose «Default» por dentro.
+    const original = form.id ? profiles.find((profile) => profile.id === form.id) : undefined
+    const name = original && builtinDefault(original) && form.name.trim() === profileLabel(original) ? original.name : form.name.trim()
     // Solo lo que el perfil cambia; lo vacío sigue la asignación general.
     const agentsMap = Object.fromEntries(
       Object.entries(form.agents)
@@ -124,9 +134,9 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
     )
     try {
       if (form.id) {
-        await engineApi.bundleUpdate(form.id, { name: form.name.trim(), description: form.description.trim(), soul_id: form.soul_id, agents: agentsMap })
+        await engineApi.bundleUpdate(form.id, { name, description: form.description.trim(), soul_id: form.soul_id, agents: agentsMap })
       } else {
-        await engineApi.bundleCreate({ name: form.name.trim(), description: form.description.trim(), soul_id: form.soul_id, agents: agentsMap })
+        await engineApi.bundleCreate({ name, description: form.description.trim(), soul_id: form.soul_id, agents: agentsMap })
       }
       setForm(null)
       await reload()
@@ -161,6 +171,34 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
   const agentForm = (name: string): AgentForm => form?.agents[name] ?? { model: INHERIT, fallback: INHERIT, effort: INHERIT }
   const setAgent = (name: string, patch: Partial<AgentForm>) => form && setForm({ ...form, agents: { ...form.agents, [name]: { ...agentForm(name), ...patch } } })
   const effortOptions = [{ value: INHERIT, label: t('rbundles.inheritShort') }, ...EFFORTS.map((level) => ({ value: level, label: t(`thinking.${level}` as I18nKey) }))]
+  const typeOf = useAgentType()
+  /**
+   * Las filas de agentes de una tarjeta: uno por fila si tiene algo propio
+   * (resaltado); los que heredan, juntos en una fila por cada texto distinto,
+   * para no repetir seis veces «como el general».
+   */
+  const agentRows = (profile: ProfileBundle) => {
+    const rows: Array<{ key: string; names: string[]; label: string; text: string; extra: string; own: boolean }> = []
+    const inherited = new Map<string, string[]>()
+    for (const agent of agents) {
+      const own = profile.agents?.[agent.name]
+      const extra = [own?.fallback && t('rbundles.fallbackShort', { model: modelName(own.fallback) ?? own.fallback }), own?.effort && t(`thinking.${own.effort}` as I18nKey)].filter(Boolean).join(' · ')
+      if (own?.model || extra) {
+        const general = modelName(agent.assignment?.model)
+        const text = own?.model ? modelName(own.model) ?? own.model : general ? t('rbundles.asGeneral', { model: general }) : t('rbundles.asGeneralChat')
+        rows.push({ key: agent.name, names: [agent.name], label: capitalize(typeOf(agent.name)), text, extra, own: Boolean(own?.model) })
+        continue
+      }
+      const general = modelName(agent.assignment?.model)
+      const text = general ? t('rbundles.asGeneral', { model: general }) : t('rbundles.asGeneralChat')
+      inherited.set(text, [...(inherited.get(text) ?? []), agent.name])
+    }
+    for (const [text, names] of inherited) {
+      const label = names.length === 1 ? capitalize(typeOf(names[0])) : rows.length === 0 && inherited.size === 1 ? t('rbundles.allAgents') : inherited.size === 1 ? t('rbundles.otherAgents') : names.map(typeOf).join(', ')
+      rows.push({ key: `inherit:${text}`, names, label, text, extra: '', own: false })
+    }
+    return rows
+  }
   const modelOptions = [{ value: INHERIT, label: t('rbundles.inheritShort') }, ...models.map((model) => ({ value: model.alias, label: model.alias, detail: model.provider ?? undefined }))]
 
   return (
@@ -181,27 +219,22 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
         {profiles.map((profile) => (
           <article key={profile.id} className="profile-card settings-card" data-testid="profile-card" data-active={profile.active || undefined}>
             <header className="profile-card-head">
-              <span className="profile-card-mark" aria-hidden="true">{profile.name.trim().charAt(0).toUpperCase() || '·'}</span>
-              <span className="profile-card-name">{profile.name}</span>
+              <span className="profile-card-mark" aria-hidden="true">{profileLabel(profile).trim().charAt(0).toUpperCase() || '·'}</span>
+              <span className="profile-card-name">{profileLabel(profile)}</span>
               {profile.active && <span className="r-chip" data-tone="accent"><Check size={11} aria-hidden="true" /> {t('rbundles.inUse')}</span>}
             </header>
             {profile.description && <p className="profile-card-desc">{profile.description}</p>}
             <dl className="profile-card-facts">
               <div><dt>{t('rbundles.soul')}</dt><dd><Sparkles size={12} aria-hidden="true" /> {soulName(profile.soul_id)}</dd></div>
-              {agents.map((agent) => {
-                const own = profile.agents?.[agent.name]
-                const general = modelName(agent.assignment?.model)
-                const extra = [own?.fallback && t('rbundles.fallbackShort', { model: modelName(own.fallback) ?? own.fallback }), own?.effort && t(`thinking.${own.effort}` as I18nKey)].filter(Boolean).join(' · ')
-                return (
-                  <div key={agent.name} data-agent={agent.name}>
-                    <dt>{agent.name}</dt>
-                    <dd data-own={own?.model ? true : undefined}>
-                      {own?.model ? modelName(own.model) : general ? t('rbundles.asGeneral', { model: general }) : t('rbundles.asGeneralChat')}
-                      {extra && <span className="profile-card-extra"> · {extra}</span>}
-                    </dd>
-                  </div>
-                )
-              })}
+              {agentRows(profile).map((row) => (
+                <div key={row.key} data-agent={row.names.length === 1 ? row.names[0] : undefined}>
+                  <dt title={row.names.length > 1 ? row.names.map(typeOf).join(', ') : row.names[0]}>{row.label}</dt>
+                  <dd data-own={row.own || undefined}>
+                    <span className="min-w-0">{row.text}</span>
+                    {row.extra && <span className="profile-card-extra">{row.extra}</span>}
+                  </dd>
+                </div>
+              ))}
               <div>
                 <dt>{t('rbundles.work')}</dt>
                 <dd>
@@ -215,7 +248,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
               </div>
             </dl>
             <details className="profile-card-details" data-testid="profile-details">
-              <summary>{t('rbundles.details')}</summary>
+              <summary><ChevronRight size={12} className="profile-card-details-chevron" aria-hidden="true" />{t('rbundles.details')}</summary>
               <dl>
                 <div><dt>{t('rbundles.internalId')}</dt><dd><code>{profile.id}</code></dd></div>
               </dl>
@@ -236,12 +269,12 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
       </div>
 
       <Dialog open={form !== null} onOpenChange={(next) => !next && setForm(null)}>
-        <DialogContent className="max-w-xl" data-testid="profile-form">
+        <DialogContent className="profile-form max-w-xl" data-testid="profile-form">
           <DialogHeader>
             <DialogTitle>{form?.id ? t('rbundles.editTitle') : t('rbundles.create')}</DialogTitle>
           </DialogHeader>
           {form && (
-            <div className="space-y-4">
+            <div className="profile-form-body space-y-4">
               <div>
                 <label className={labelClass} htmlFor="profile-name">{t('rbundles.nameLabel')}</label>
                 <input id="profile-name" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} autoComplete="off" />
@@ -273,7 +306,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
                     const value = agentForm(agent.name)
                     return (
                       <div key={agent.name} className="profile-agent-row" role="group" aria-label={agent.name} data-agent={agent.name}>
-                        <span className="profile-agent-name">{agent.name}</span>
+                        <span className="profile-agent-name" title={agent.name}>{capitalize(typeOf(agent.name))}</span>
                         <Select<string> value={value.model} label={t('rbundles.model', { agent: agent.name })} options={modelOptions} onChange={(model) => setAgent(agent.name, { model })} testId={`profile-agent-model-${agent.name}`} />
                         <Select<string> value={value.fallback} label={t('rbundles.fallback', { agent: agent.name })} options={modelOptions} onChange={(fallback) => setAgent(agent.name, { fallback })} testId={`profile-agent-fallback-${agent.name}`} />
                         <Select<string> value={value.effort} label={t('rbundles.effort', { agent: agent.name })} options={effortOptions} onChange={(effort) => setAgent(agent.name, { effort })} testId={`profile-agent-effort-${agent.name}`} />
@@ -286,7 +319,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
               )}
             </div>
           )}
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="profile-form-actions">
             <button type="button" onClick={() => setForm(null)} className="btn btn-ghost btn-sm">{t('providers.cancel')}</button>
             <button type="button" onClick={() => void save()} disabled={saving || !form?.name.trim()} className="btn btn-primary btn-sm" data-testid="profile-save">{t('providers.save')}</button>
           </div>
@@ -297,7 +330,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('rbundles.delete')}</AlertDialogTitle>
-            <AlertDialogDescription>{removing && t('rbundles.confirmDeleteV2', { name: removing.name })}</AlertDialogDescription>
+            <AlertDialogDescription>{removing && t('rbundles.confirmDeleteV2', { name: profileLabel(removing) })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('providers.cancel')}</AlertDialogCancel>

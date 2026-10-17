@@ -5,6 +5,7 @@ import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { commandMessage, engineApi, isCommandError } from '../../services/engine'
 import type { SteerTimelineItem } from './types'
+import { ChildReportSeparator } from '../../components/MessageBubble'
 
 /**
  * Lo que escribiste mientras Rinari trabajaba, en el punto donde lo leyó.
@@ -14,6 +15,13 @@ import type { SteerTimelineItem } from './types'
  * `steer.cancelled`, así que aquí no se copia el texto nuevo a mano.
  */
 export function SteerBubble({ item, sessionId }: { item: SteerTimelineItem; sessionId?: string }) {
+  // El informe de una hija que la madre leyó a mitad de turno (#100): la misma
+  // línea «Mensaje recibido de …» que cuando la despierta, en el punto donde lo leyó.
+  if (item.source === 'child_report') return <ChildReportSeparator names={item.content} childIds={item.children} reports={item.reports} />
+  return <OwnerSteerBubble item={item} sessionId={sessionId} />
+}
+
+function OwnerSteerBubble({ item, sessionId }: { item: SteerTimelineItem; sessionId?: string }) {
   const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.content)

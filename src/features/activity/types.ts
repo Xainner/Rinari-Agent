@@ -208,6 +208,9 @@ export interface SteerTimelineItem extends TimelineItemBase {
   followUp?: boolean
   /** «Enviar ahora» (#31): cortó el paso en curso para leerse ya. */
   interrupted?: boolean
+  /** `child_report` (#100): las hijas cuyo informe leyó la madre a mitad de turno, y lo que dijo cada una. */
+  children?: string[]
+  reports?: Record<string, string>
 }
 
 /**

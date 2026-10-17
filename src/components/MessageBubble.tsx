@@ -140,7 +140,8 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
   }
   // The mother's report turn: which children reported back.
   if (message.role === 'user' && message.origin?.source === 'child_report') {
-    return <ChildReportSeparator names={message.content} childIds={(message.origin as { children?: unknown }).children} />
+    const origin = message.origin as { children?: unknown; reports?: unknown }
+    return <ChildReportSeparator names={message.content} childIds={origin.children} reports={origin.reports} />
   }
 
   // A turn the goal started is not something the owner wrote: a separator.
@@ -379,7 +380,7 @@ function BriefBubble({ message }: { message: ChatMessage }) {
  * «Mensaje recibido de …»: the title opens the child, the chevron unfolds
  * what it said.
  */
-function ChildReportSeparator({ names, childIds }: { names: string; childIds: unknown }) {
+export function ChildReportSeparator({ names, childIds, reports }: { names: string; childIds: unknown; reports?: unknown }) {
   const { t } = useI18n()
   const ids = Array.isArray(childIds) ? childIds.filter((id): id is string => typeof id === 'string') : []
   if (ids.length === 0) {
@@ -391,12 +392,19 @@ function ChildReportSeparator({ names, childIds }: { names: string; childIds: un
   }
   return (
     <div data-testid="child-report-separator" className="child-report-lines">
-      {ids.map((id) => <ChildReportLine key={id} childId={id} />)}
+      {ids.map((id) => <ChildReportLine key={id} childId={id} said={reportOf(reports, id)} />)}
     </div>
   )
 }
 
-function ChildReportLine({ childId }: { childId: string }) {
+/** Lo que dijo esa hija en ese informe (#100); los viejos no lo guardan. */
+function reportOf(reports: unknown, id: string): string | undefined {
+  if (!reports || typeof reports !== 'object') return undefined
+  const text = (reports as Record<string, unknown>)[id]
+  return typeof text === 'string' && text ? text : undefined
+}
+
+function ChildReportLine({ childId, said }: { childId: string; said?: string }) {
   const child = useChildrenStore((state) => {
     for (const list of Object.values(state.byParent)) {
       const found = list.find((item) => item.child_session_id === childId)
@@ -404,7 +412,7 @@ function ChildReportLine({ childId }: { childId: string }) {
     }
     return undefined
   })
-  return <ReceivedLine label="children.reportFrom" sessionId={childId} fallbackTitle={child?.title} fallback="children.untitled" text={child?.report?.text || child?.report?.summary || ''} />
+  return <ReceivedLine label="children.reportFrom" sessionId={childId} fallbackTitle={child?.title} fallback="children.untitled" text={said ?? (child?.report?.text || child?.report?.summary || '')} />
 }
 
 /** «<label> <session> ›»: the title opens that conversation, the chevron unfolds the text. */

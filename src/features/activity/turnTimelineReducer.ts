@@ -409,6 +409,8 @@ function mergeEventItem(
       source: text(payload.source) || undefined,
       followUp: payload.follow_up === true || undefined,
       interrupted: payload.interrupted === true || (current?.type === 'steer' && current.interrupted) || undefined,
+      ...(Array.isArray(payload.children) ? { children: payload.children.filter((id): id is string => typeof id === 'string') } : {}),
+      ...(payload.reports && typeof payload.reports === 'object' ? { reports: payload.reports as Record<string, string> } : {}),
     }
   }
   if (event.startsWith('vision.')) {

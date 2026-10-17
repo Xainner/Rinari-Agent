@@ -1,4 +1,4 @@
-import { CheckCheck, FileDiff, GraduationCap, Play, RotateCcw } from 'lucide-react'
+import { FileDiff, GraduationCap, Play, RotateCcw } from 'lucide-react'
 import { memo, useMemo, useState } from 'react'
 import { useI18n, type I18nKey } from '../../i18n'
 import type { ChatMessage, TurnStopReason } from '../../types'
@@ -50,7 +50,6 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
   const tracking = useReadTracking()
   const sessionId = tracking?.sessionId ?? null
   const receipt = useBoardAttentionStore((state) => (sessionId ? state.sessions[sessionId]?.turns[timeline.turnId] : undefined))
-  const markTurnSeen = useBoardAttentionStore((state) => state.markTurnSeen)
   const messages = useMemo<readonly ChatMessage[]>(() => (user ? [user] : []), [user])
   const { retry, dialog } = usePrepareRetry(sessionId, timeline, messages)
   const commands = useOptionalEngineCommands()
@@ -125,11 +124,6 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
             else onReviewChanges()
           }}>
             <FileDiff size={11} aria-hidden="true" /> {t('board.result.review')}
-          </button>
-        )}
-        {unread && sessionId && (
-          <button type="button" className="turn-meta-action" onClick={() => markTurnSeen(sessionId, timeline.turnId)}>
-            <CheckCheck size={11} aria-hidden="true" /> {t('board.result.markRead')}
           </button>
         )}
         {canContinue && (

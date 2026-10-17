@@ -170,3 +170,27 @@ it('the chat shows a brief, a message from the mother and a report as folded lin
   fireEvent.click(screen.getByRole('button', { name: 'Migrar pagos' }))
   expect(selectSession).toHaveBeenCalledWith('ses_child')
 })
+
+it('a report keeps what that child said then, and one read mid-turn shows as the same line (#100)', async () => {
+  const { SteerBubble } = await import('../activity/SteerBubble')
+  const { default: MessageBubble } = await import('../../components/MessageBubble')
+  useChildrenStore.setState({ byParent: { ses_mother: [child({ state: 'completed', report: { summary: 'Informe nuevo.', text: 'Informe nuevo.' } })] }, loaded: {}, hidden: {} })
+  const old = render(
+    <I18nProvider lang="es">
+      <MessageBubble message={{ id: 'm4', role: 'user', createdAt: 0, content: '«Migrar pagos»', origin: { kind: 'automation', source: 'child_report', children: ['ses_child'], reports: { ses_child: 'Informe viejo.' } } as never }} />
+    </I18nProvider>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Desplegar' }))
+  expect(screen.getByText('Informe viejo.')).toBeTruthy()
+  expect(screen.queryByText('Informe nuevo.')).toBeNull()
+  old.unmount()
+  render(
+    <I18nProvider lang="es">
+      <SteerBubble item={{ id: 'steer:s1', type: 'steer', activitySeq: 1, occurredAt: 0, steerId: 's1', content: '«Migrar pagos»', status: 'applied', source: 'child_report', children: ['ses_child'], reports: { ses_child: 'Lo leí a mitad de turno.' } }} sessionId="ses_mother" />
+    </I18nProvider>,
+  )
+  expect(screen.getByTestId('child-report-separator').textContent).toContain('Informe recibido de')
+  expect(screen.queryByTestId('steer-message')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Desplegar' }))
+  expect(screen.getByText('Lo leí a mitad de turno.')).toBeTruthy()
+})

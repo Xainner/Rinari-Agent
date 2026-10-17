@@ -2451,7 +2451,6 @@ export const es = {
   'board.result.modelUnknown': 'Modelo ejecutor: sin datos',
   'board.result.review': 'Revisar cambios',
   'board.result.reveal': 'Ver turno',
-  'board.result.markRead': 'Marcar como leído',
   'board.result.prepareRetry': 'Preparar reintento',
   'board.result.retryPrepared': 'Mensaje copiado al compositor: revisalo y enviá cuando quieras.',
   'board.result.retryNoInput': 'No hay una entrada de usuario asociada a este turno.',

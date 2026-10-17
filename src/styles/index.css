@@ -760,14 +760,27 @@ input[type='password']::-ms-clear {
 .sticky-note-spawn-chip:hover:not(:disabled) { border-style: solid; color: var(--note-ink); background: color-mix(in srgb, var(--note-ink) 8%, transparent); }
 .sticky-note-spawn-chip::after { content: '⇄'; font-size: 9px; opacity: 0.6; }
 .children-dock { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.child-report-lines { display: flex; flex-direction: column; gap: 4px; }
-.child-report-head { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; color: var(--text-subtle); }
-.child-report-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent-2) 55%, transparent); text-underline-offset: 3px; }
-.child-report-title:hover { color: var(--text); text-decoration-color: var(--accent-2); }
-.child-report-toggle { display: inline-flex; align-items: center; color: var(--text-subtle); transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast); }
-.child-report-toggle:hover { color: var(--text); }
-.child-report-toggle[aria-expanded='true'] { transform: rotate(90deg); }
-.child-report-body { margin-top: 4px; padding: 8px 12px; border-left: 2px solid color-mix(in srgb, var(--accent-2) 40%, transparent); font-size: 13px; color: var(--text-muted); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+/* «Informe recibido de X ›», «Encargo recibido de X ›», «Mensaje recibido de X ›» (como la línea de Claude
+   Code, con lo nuestro): texto gris, el título subrayado con el acento que abre esa conversación y un ›
+   que gira y despliega el texto (y lo repliega) con movimiento. */
+.child-report-lines { display: flex; flex-direction: column; gap: 2px; padding: 2px 0; }
+.child-report-head { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; line-height: 22px; color: var(--text-subtle); }
+.child-report-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text-muted); text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--accent-2) 45%, transparent); text-underline-offset: 3px; transition: color var(--dur-fast), text-decoration-color var(--dur-fast); }
+button.child-report-title:hover { color: var(--text); text-decoration-color: var(--accent-2); }
+.child-report-toggle { display: inline-flex; flex-shrink: 0; width: 22px; height: 22px; margin-left: -2px; align-items: center; justify-content: center; border-radius: 6px; color: var(--text-subtle); transition: color var(--dur-fast), background-color var(--dur-fast); }
+.child-report-toggle svg { transition: transform var(--dur-base) var(--ease-out); }
+.child-report-toggle:hover { color: var(--text); background: var(--bg-hover); }
+.child-report-toggle[aria-expanded='true'] { color: var(--accent-2); }
+.child-report-toggle[aria-expanded='true'] svg { transform: rotate(90deg); }
+.child-report-fold { display: grid; grid-template-rows: 1fr; animation: child-report-open var(--dur-base) var(--ease-out) both; }
+.child-report-fold[data-closing] { animation: child-report-close 180ms var(--ease-out) both; }
+.child-report-fold > div { min-height: 0; overflow: hidden; }
+@keyframes child-report-open { from { grid-template-rows: 0fr; opacity: 0; } to { grid-template-rows: 1fr; opacity: 1; } }
+@keyframes child-report-close { from { grid-template-rows: 1fr; opacity: 1; } to { grid-template-rows: 0fr; opacity: 0; } }
+.child-report-body { margin: 4px 0 2px 2px; padding: 6px 12px; border-left: 2px solid color-mix(in srgb, var(--accent-2) 40%, transparent); font-size: 13px; color: var(--text-muted); }
+.child-report-body .md-body { font-size: 13px; line-height: 1.55; color: var(--text-muted); }
+.child-report-body .md-body > :first-child { margin-top: 0; }
+.child-report-body .md-body > :last-child { margin-bottom: 0; }
 .child-row { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 10px 6px 7px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.5); font-size: 13px; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
 .child-row:hover { border-color: var(--line-2); background: rgb(20 15 34 / 0.6); }
 .child-row[data-entering] { animation: rinari-rise 220ms var(--ease-out) both; }
@@ -808,11 +821,6 @@ input[type='password']::-ms-clear {
 .offer-card-more:hover { text-decoration: underline; }
 .offer-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-left: 36px; }
 /* El encargo de una hija: su primer mensaje, que no es una burbuja del dueño. */
-.child-brief { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 10px 14px 12px; border: 1px solid rgb(167 139 250 / 0.22); border-left: 3px solid var(--accent); border-radius: var(--r-md) var(--r-lg) var(--r-lg) var(--r-md); background: linear-gradient(160deg, rgb(147 88 255 / 0.08), transparent 60%), rgb(16 12 27 / 0.6); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
-.child-brief-from { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-subtle); }
-.child-brief-mother { border-radius: 999px; padding: 0 7px; line-height: 18px; color: var(--violet-200); background: rgb(147 88 255 / 0.14); transition: background-color var(--dur-fast), color var(--dur-fast); }
-.child-brief-mother:hover { background: rgb(147 88 255 / 0.24); color: var(--text); }
-.child-brief-text { white-space: pre-wrap; font-size: 14px; line-height: 1.55; color: var(--text); }
 /* «Hacer en sesión hija», al pasar por un mensaje propio: junto a la burbuja, sin ocupar sitio arriba. */
 .child-from-message { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.5); font-size: 11.5px; font-weight: 600; color: var(--text-muted); opacity: 0; transition: opacity var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast); }
 .group\/user:hover .child-from-message, .child-from-message:focus-visible, .child-from-message:disabled { opacity: 1; }

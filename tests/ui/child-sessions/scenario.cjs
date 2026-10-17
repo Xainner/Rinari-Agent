@@ -36,6 +36,11 @@ scenario(async () => {
   await wait(text('INFORME LEÍDO'))
   await settleAnimations()
   await screenshot('mother-with-report')
+  // The report line unfolds its text.
+  await click('[data-testid="child-report-separator"] .child-report-toggle')
+  await wait(`Boolean(document.querySelector('[data-testid="child-report-separator"] .child-report-body'))`)
+  await settleAnimations()
+  await screenshot('report-open')
 
   // 3. An offer: «Hazlo aquí» opens nothing.
   await send('Y migra los pagos')

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
@@ -396,6 +396,22 @@ function ReceivedLine({ label, sessionId, fallbackTitle, fallback, text }: { lab
   const commands = useOptionalEngineCommands()
   const title = useSessionTitle(sessionId) || fallbackTitle || t(fallback)
   const [open, setOpen] = useState(false)
+  // El texto se despliega y se repliega con movimiento: al plegar sigue un
+  // instante montado mientras se cierra.
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
+  const toggle = () => {
+    window.clearTimeout(closeTimer.current)
+    if (!open) {
+      setClosing(false)
+      setOpen(true)
+      return
+    }
+    setOpen(false)
+    setClosing(true)
+    closeTimer.current = window.setTimeout(() => setClosing(false), 180)
+  }
   return (
     <div className="child-report-line" data-open={open || undefined}>
       <p className="child-report-head">
@@ -404,12 +420,16 @@ function ReceivedLine({ label, sessionId, fallbackTitle, fallback, text }: { lab
           ? <button type="button" className="child-report-title" onClick={() => void commands?.selectSession(sessionId)}>{title}</button>
           : <span className="child-report-title">{title}</span>}
         {text && (
-          <button type="button" className="child-report-toggle" aria-expanded={open} aria-label={t(open ? 'children.reportHide' : 'children.reportShow')} onClick={() => setOpen((value) => !value)}>
+          <button type="button" className="child-report-toggle" aria-expanded={open} aria-label={t(open ? 'children.reportHide' : 'children.reportShow')} title={t(open ? 'children.reportHide' : 'children.reportShow')} onClick={toggle}>
             <ChevronRight size={13} aria-hidden="true" />
           </button>
         )}
       </p>
-      {open && text && <div className="child-report-body"><Markdown>{text}</Markdown></div>}
+      {(open || closing) && text && (
+        <div className="child-report-fold" data-closing={closing || undefined} aria-hidden={closing || undefined}>
+          <div><div className="child-report-body"><Markdown>{text}</Markdown></div></div>
+        </div>
+      )}
     </div>
   )
 }

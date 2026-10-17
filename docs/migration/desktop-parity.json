@@ -1959,9 +1959,25 @@
       ]
     },
     {
+      "command": "soul_export",
+      "kind": "engine",
+      "method": "soul.export",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "soul_get",
       "kind": "engine",
       "method": "soul.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_import",
+      "kind": "engine",
+      "method": "soul.import",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -2369,10 +2385,10 @@
     }
   ],
   "summary": {
-    "commands": 283,
-    "engine_backed": 277,
+    "commands": 285,
+    "engine_backed": 279,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 94
+    "without_callers": 95
   }
 }

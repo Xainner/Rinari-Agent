@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **283**
-- Respaldados por Engine: **277**
+- Comandos: **285**
+- Respaldados por Engine: **279**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -248,7 +248,9 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `snapshot_get` | engine | `runtime.snapshot.get` | `src/services/engine.ts` |
 | `soul_activate` | engine | `soul.activate` | `src/services/engine.ts` |
 | `soul_create` | engine | `soul.create` | `src/services/engine.ts` |
+| `soul_export` | engine | `soul.export` | **ninguno** |
 | `soul_get` | engine | `soul.get` | `src/services/engine.ts` |
+| `soul_import` | engine | `soul.import` | `src/services/engine.ts` |
 | `soul_list` | engine | `soul.list` | `src/services/engine.ts` |
 | `soul_remove` | engine | `soul.remove` | `src/services/engine.ts` |
 | `soul_settings_get` | engine | `soul.settings.get` | **ninguno** |

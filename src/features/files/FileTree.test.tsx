@@ -18,8 +18,10 @@ const entry = (relative: string, kind: 'dir' | 'file', git?: string) => ({
   name: relative.split('/').pop(), relative_path: relative, path: `${ROOT}/${relative}`, kind, ...(git ? { git } : {}),
 })
 const LISTINGS: Record<string, unknown[]> = {
-  '': [entry('src', 'dir', 'M'), entry('README.md', 'file')],
+  '': [entry('src', 'dir', 'M'), entry('lib', 'dir'), entry('README.md', 'file')],
   src: [entry('src/app.ts', 'file', 'M'), entry('src/new.ts', 'file', 'U')],
+  lib: [entry('lib/core', 'dir')],
+  'lib/core': [entry('lib/core/index.ts', 'file')],
 }
 
 beforeEach(() => {
@@ -38,7 +40,7 @@ const listed = (path: string) => host.bridge.calls.filter((call) => call.name ==
 it('lists the root with folders first and loads a folder only when opened', async () => {
   view()
   const items = await screen.findAllByRole('treeitem')
-  expect(items.map((item) => item.textContent)).toEqual(['srcM', 'README.md'])
+  expect(items.map((item) => item.textContent)).toEqual(['srcM', 'lib', 'README.md'])
   expect(items[0].dataset.git).toBe('M')
   expect(listed('src')).toBe(0)
   await userEvent.click(items[0])
@@ -66,4 +68,21 @@ it('one search finds files anywhere', async () => {
   const results = await screen.findByTestId('file-tree-results')
   expect(results.textContent).toContain('app.ts')
   expect(results.textContent).toContain('src')
+})
+
+it('a folder that only holds another opens with it, as one row «lib/core»', async () => {
+  view()
+  await userEvent.click((await screen.findAllByRole('treeitem'))[1])
+  expect(await screen.findByText('lib/core')).toBeTruthy()
+  expect(await screen.findByText('index.ts')).toBeTruthy()
+})
+
+it('a file dragged from the tree carries what the composer needs for «@archivo»', async () => {
+  view()
+  const readme = (await screen.findAllByRole('treeitem')).find((item) => item.textContent === 'README.md')!
+  expect(readme.getAttribute('draggable')).toBe('true')
+  const data = new Map<string, string>()
+  const { fireEvent } = await import('@testing-library/react')
+  fireEvent.dragStart(readme, { dataTransfer: { setData: (type: string, value: string) => data.set(type, value), effectAllowed: '' } })
+  expect(JSON.parse(data.get('application/x-rinari-file')!)).toMatchObject({ sessionId: 'ses_a', relative_path: 'README.md' })
 })

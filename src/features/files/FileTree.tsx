@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactElement } from 'react'
+import { toast } from 'sonner'
+import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import {
   ChevronRight, ChevronsDownUp, Crosshair, File, FileCode, FileImage, FileText, Folder, FolderOpen, LoaderCircle,
 } from 'lucide-react'
-import { useI18n, type I18nKey } from '../../i18n'
+import { translate, useI18n, type I18nKey } from '../../i18n'
+import { platform, type ContextMenuItem } from '../../platform'
+import { copyText } from '../../lib/clipboard'
+import { useUIStore } from '../../stores/ui'
+import { useSessionDockStore } from '../../stores/sessionDock'
+import { MENTION_FILE_EVENT, TREE_FILE_MIME, type TreeFileRef } from './treeFile'
 import { engineApi, type WorkspaceDirEntry } from '../../services/engine'
 import { SearchField } from '../../components/ui/SearchField'
 import { useFileWorkspace } from './FileWorkspace'
@@ -30,7 +37,11 @@ function FileIcon({ name }: { name: string }) {
   return <Icon size={14} aria-hidden="true" className="file-tree-icon" />
 }
 
-interface Row { entry: WorkspaceDirEntry; depth: number }
+/** Desde cuántas filas visibles el árbol se dibuja como lista virtual. */
+const VIRTUAL_FROM = 120
+
+/** `label`: una carpeta compacta («src/caja») cuando cada una solo contiene otra. */
+interface Row { entry: WorkspaceDirEntry; depth: number; label: string }
 
 /**
  * El árbol del proyecto en la vista Archivos (plan 0.4.0 #98), como el de
@@ -52,15 +63,17 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
   const [root, setRoot] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
 
-  const load = useCallback(async (path: string) => {
+  const load = useCallback(async (path: string): Promise<WorkspaceDirEntry[]> => {
     setLoading((current) => new Set(current).add(path))
     try {
       const listing = await engineApi.workspaceDirList(sessionId, path)
       setChildren((current) => ({ ...current, [path]: listing.entries }))
       if (path === '') setRoot(listing.root)
       setError('')
+      return listing.entries
     } catch (err) {
       if (path === '') setError(err instanceof Error ? err.message : String(err))
+      return []
     } finally {
       setLoading((current) => { const next = new Set(current); next.delete(path); return next })
     }
@@ -75,14 +88,17 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
     for (const path of remembered) void load(path)
   }, [sessionId, load])
 
+  // Abrir una carpeta que solo contiene otra abre también esa (se ven juntas, «a/b»).
+  const openDeep = async (path: string) => {
+    setOpen((current) => { const next = new Set(current).add(path); writeOpen(sessionId, next); return next })
+    const entries = children[path] ?? await load(path)
+    if (entries.length === 1 && entries[0].kind === 'dir') await openDeep(entries[0].relative_path)
+  }
   const toggle = (path: string) => {
+    if (!open.has(path)) { void openDeep(path); return }
     setOpen((current) => {
       const next = new Set(current)
-      if (next.has(path)) next.delete(path)
-      else {
-        next.add(path)
-        if (!children[path]) void load(path)
-      }
+      next.delete(path)
       writeOpen(sessionId, next)
       return next
     })
@@ -92,8 +108,17 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
   const rows = useMemo(() => {
     const out: Row[] = []
     const walk = (path: string, depth: number) => {
-      for (const entry of children[path] ?? []) {
-        out.push({ entry, depth })
+      for (const first of children[path] ?? []) {
+        // Carpetas compactas: mientras una carpeta (ya cargada) solo contiene otra, van en una fila.
+        let entry = first
+        let label = first.name
+        let inside = first.kind === 'dir' ? children[first.relative_path] : undefined
+        while (inside && inside.length === 1 && inside[0].kind === 'dir') {
+          entry = inside[0]
+          label = `${label}/${entry.name}`
+          inside = children[entry.relative_path]
+        }
+        out.push({ entry, depth, label })
         if (entry.kind === 'dir' && open.has(entry.relative_path)) walk(entry.relative_path, depth + 1)
       }
     }
@@ -140,18 +165,99 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
   }, [query, sessionId])
 
   const openFile = (path: string) => files?.open(path)
+
+  // Lista virtual para carpetas grandes: la recorre la sección que hace scroll.
+  const virtRef = useRef<VirtualizerHandle>(null)
+  const [scroller, setScroller] = useState<HTMLElement | null>(null)
+  const scrollRef = useRef<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    const parent = listRef.current?.closest<HTMLElement>('.dock-section') ?? null
+    scrollRef.current = parent
+    setScroller(parent)
+  }, [results])
+  const virtual = scroller !== null && rows.length >= VIRTUAL_FROM
+
+  const fileRef = (entry: WorkspaceDirEntry): TreeFileRef => ({ sessionId, path: entry.path, relative_path: entry.relative_path, name: entry.name })
+  const mention = (entry: WorkspaceDirEntry) => window.dispatchEvent(new CustomEvent(MENTION_FILE_EVENT, { detail: fileRef(entry) }))
+
+  /** El menú de una fila: abrir, fuera, en la carpeta, copiar rutas, mencionar y ver cambios. Sin renombrar ni borrar. */
+  const menu = (event: MouseEvent, entry: WorkspaceDirEntry) => {
+    if (!platform().isDesktop()) return
+    event.preventDefault()
+    const lang = useUIStore.getState().lang
+    const tr = (key: I18nKey) => translate(lang, key)
+    const items: ContextMenuItem[] = []
+    if (entry.kind === 'file') {
+      items.push({ kind: 'action', text: tr('app.openFile'), run: () => openFile(entry.path) })
+      items.push({ kind: 'action', text: tr('files.tree.openExternal'), run: () => files?.openExternal(entry.path) })
+    }
+    items.push({ kind: 'action', text: tr('files.revealInFolder'), run: () => files?.reveal(entry.path) })
+    items.push({ kind: 'action', text: tr('files.tree.copyRelative'), run: () => void copyText(entry.relative_path) })
+    items.push({ kind: 'action', text: tr('files.tree.copyAbsolute'), run: () => void copyText(entry.path) })
+    if (entry.kind === 'file') {
+        items.push({ kind: 'action', text: tr('files.tree.mention'), run: () => mention(entry) })
+      if (entry.git) items.push({ kind: 'action', text: tr('files.tree.viewChanges'), run: () => useSessionDockStore.getState().openView(sessionId, 'changes') })
+    }
+    void platform().contextMenu.show(items, { x: event.clientX, y: event.clientY }).catch((error) => toast.error(String(error)))
+  }
+  const drag = (event: DragEvent, entry: WorkspaceDirEntry) => {
+    if (entry.kind !== 'file') { event.preventDefault(); return }
+    event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData(TREE_FILE_MIME, JSON.stringify(fileRef(entry)))
+    event.dataTransfer.setData('text/plain', entry.relative_path)
+  }
   const onKey = (event: KeyboardEvent<HTMLButtonElement>, row: Row) => {
     const index = rows.findIndex((item) => item.entry.relative_path === row.entry.relative_path)
     const move = (to: number) => {
-      const target = rows[Math.max(0, Math.min(rows.length - 1, to))]
+      const at = Math.max(0, Math.min(rows.length - 1, to))
+      const target = rows[at]
       if (!target) return
       setFocused(target.entry.relative_path)
-      listRef.current?.querySelector<HTMLButtonElement>(`[data-path="${CSS.escape(target.entry.relative_path)}"]`)?.focus()
+      const focus = () => listRef.current?.querySelector<HTMLButtonElement>(`[data-path="${CSS.escape(target.entry.relative_path)}"]`)?.focus()
+      // En la lista virtual la fila puede no estar montada: primero se trae a la vista.
+      if (virtual) { virtRef.current?.scrollToIndex(at, { align: 'nearest' }); requestAnimationFrame(focus) }
+      else focus()
     }
     if (event.key === 'ArrowDown') { event.preventDefault(); move(index + 1) }
     if (event.key === 'ArrowUp') { event.preventDefault(); move(index - 1) }
     if (event.key === 'ArrowRight' && row.entry.kind === 'dir' && !open.has(row.entry.relative_path)) { event.preventDefault(); toggle(row.entry.relative_path) }
     if (event.key === 'ArrowLeft' && row.entry.kind === 'dir' && open.has(row.entry.relative_path)) { event.preventDefault(); toggle(row.entry.relative_path) }
+  }
+
+  const renderRow = ({ entry, depth, label }: Row): ReactElement => {
+    const expanded = entry.kind === 'dir' && open.has(entry.relative_path)
+    const selected = activePath !== null && entry.path.replace(/\\/g, '/').toLowerCase() === activePath.replace(/\\/g, '/').toLowerCase()
+    return (
+      <button
+        key={entry.relative_path}
+        type="button"
+        role="treeitem"
+        aria-expanded={entry.kind === 'dir' ? expanded : undefined}
+        aria-selected={selected}
+        aria-level={depth + 1}
+        tabIndex={focused === entry.relative_path || (focused === null && depth === 0 && rows[0]?.entry === entry) ? 0 : -1}
+        data-path={entry.relative_path}
+        data-git={entry.git}
+        data-compact={label !== entry.name || undefined}
+        draggable={entry.kind === 'file'}
+        className="file-tree-row"
+        style={{ paddingLeft: 8 + depth * 14 }}
+        title={entry.relative_path}
+        onClick={() => (entry.kind === 'dir' ? toggle(entry.relative_path) : openFile(entry.path))}
+        onFocus={() => setFocused(entry.relative_path)}
+        onKeyDown={(event) => onKey(event, { entry, depth, label })}
+        onContextMenu={(event) => menu(event, entry)}
+        onDragStart={(event) => drag(event, entry)}
+      >
+        {Array.from({ length: depth }, (_, i) => <span key={i} className="file-tree-guide" style={{ left: 14 + i * 14 }} aria-hidden="true" />)}
+        {entry.kind === 'dir'
+          ? <><ChevronRight size={12} aria-hidden="true" className="file-tree-chevron" data-open={expanded || undefined} />{expanded ? <FolderOpen size={14} aria-hidden="true" className="file-tree-icon" /> : <Folder size={14} aria-hidden="true" className="file-tree-icon" />}</>
+          : <><span className="file-tree-chevron-space" aria-hidden="true" /><FileIcon name={entry.name} /></>}
+        <span className="file-tree-name">{label}</span>
+        {loading.has(entry.relative_path) && <LoaderCircle size={11} className="motion-safe:animate-spin" aria-hidden="true" />}
+        {entry.git && <span className="file-tree-git" title={t(`files.tree.git.${entry.git}` as I18nKey)}>{entry.git}</span>}
+      </button>
+    )
   }
 
   return (
@@ -183,37 +289,9 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
         <div ref={listRef} role="tree" aria-label={t('files.tree.label')} className="file-tree-list">
           {loading.has('') && rows.length === 0 && <p className="file-tree-empty"><LoaderCircle size={12} className="inline motion-safe:animate-spin" aria-hidden="true" /> {t('files.tree.loading')}</p>}
           {!loading.has('') && !error && rows.length === 0 && <p className="file-tree-empty">{t('files.tree.empty')}</p>}
-          {rows.map(({ entry, depth }) => {
-            const expanded = entry.kind === 'dir' && open.has(entry.relative_path)
-            const selected = activePath !== null && entry.path.replace(/\\/g, '/').toLowerCase() === activePath.replace(/\\/g, '/').toLowerCase()
-            return (
-              <button
-                key={entry.relative_path}
-                type="button"
-                role="treeitem"
-                aria-expanded={entry.kind === 'dir' ? expanded : undefined}
-                aria-selected={selected}
-                aria-level={depth + 1}
-                tabIndex={focused === entry.relative_path || (focused === null && depth === 0 && rows[0]?.entry === entry) ? 0 : -1}
-                data-path={entry.relative_path}
-                data-git={entry.git}
-                className="file-tree-row"
-                style={{ paddingLeft: 8 + depth * 14 }}
-                title={entry.relative_path}
-                onClick={() => (entry.kind === 'dir' ? toggle(entry.relative_path) : openFile(entry.path))}
-                onFocus={() => setFocused(entry.relative_path)}
-                onKeyDown={(event) => onKey(event, { entry, depth })}
-              >
-                {Array.from({ length: depth }, (_, i) => <span key={i} className="file-tree-guide" style={{ left: 14 + i * 14 }} aria-hidden="true" />)}
-                {entry.kind === 'dir'
-                  ? <><ChevronRight size={12} aria-hidden="true" className="file-tree-chevron" data-open={expanded || undefined} />{expanded ? <FolderOpen size={14} aria-hidden="true" className="file-tree-icon" /> : <Folder size={14} aria-hidden="true" className="file-tree-icon" />}</>
-                  : <><span className="file-tree-chevron-space" aria-hidden="true" /><FileIcon name={entry.name} /></>}
-                <span className="file-tree-name">{entry.name}</span>
-                {loading.has(entry.relative_path) && <LoaderCircle size={11} className="motion-safe:animate-spin" aria-hidden="true" />}
-                {entry.git && <span className="file-tree-git" title={t(`files.tree.git.${entry.git}` as I18nKey)}>{entry.git}</span>}
-              </button>
-            )
-          })}
+          {virtual
+            ? <Virtualizer ref={virtRef} scrollRef={scrollRef} data={rows} bufferSize={240}>{(row) => renderRow(row)}</Virtualizer>
+            : rows.map((row) => renderRow(row))}
         </div>
       )}
     </div>

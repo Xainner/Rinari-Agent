@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
 import { ProjectChip } from './ProjectChip'
+import { MENTION_FILE_EVENT, TREE_FILE_MIME, type TreeFileRef } from '../../features/files/treeFile'
 import EffortPicker from './EffortPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
@@ -782,6 +783,23 @@ export default function Composer({
     })
   }
 
+  // Del árbol de Archivos (#98): arrastrado o con «Mencionar en el chat», entra como «@archivo».
+  const [treeDrag, setTreeDrag] = useState(false)
+  function mentionTreeFile(file: TreeFileRef) {
+    if (sessionId && file.sessionId !== sessionId) return
+    addAttachment({ id: newAttachmentId(), path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
+    setText(`${text}${text && !/\s$/.test(text) ? ' ' : ''}@${file.relative_path} `)
+    textareaRef.current?.focus()
+  }
+  useEffect(() => {
+    const onMention = (event: Event) => {
+      const file = (event as CustomEvent<TreeFileRef>).detail
+      if (file && sessionId && file.sessionId === sessionId) mentionTreeFile(file)
+    }
+    window.addEventListener(MENTION_FILE_EVENT, onMention)
+    return () => window.removeEventListener(MENTION_FILE_EVENT, onMention)
+  })
+
   function chooseWorkspaceFile(file: { path: string; relative_path: string; name: string }) {
     addAttachment({ id: newAttachmentId(), path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
     setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
@@ -796,7 +814,23 @@ export default function Composer({
           <ProjectChip projectId={draftProject.projectId} onChange={draftProject.onChange} primary={primary} disabled={isSubmitting} />
         </div>
       )}
-      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} data-working={isStreaming || undefined} className="composer-surface rounded-[22px] border p-2.5 transition-colors">
+      <div
+        onDrop={event => {
+          event.preventDefault()
+          setTreeDrag(false)
+          // Un archivo arrastrado desde el árbol de Archivos (#98): como elegirlo con «@».
+          const raw = event.dataTransfer.getData(TREE_FILE_MIME)
+          if (raw) { try { mentionTreeFile(JSON.parse(raw) as TreeFileRef) } catch { /* not ours */ } }
+        }}
+        onDragOver={event => {
+          event.preventDefault()
+          if (Array.from(event.dataTransfer.types).includes(TREE_FILE_MIME)) { event.dataTransfer.dropEffect = 'copy'; setTreeDrag(true) }
+        }}
+        onDragLeave={event => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setTreeDrag(false) }}
+        data-working={isStreaming || undefined}
+        data-tree-drag={treeDrag || undefined}
+        className="composer-surface rounded-[22px] border p-2.5 transition-colors"
+      >
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (

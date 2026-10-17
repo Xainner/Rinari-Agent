@@ -217,6 +217,11 @@ export const scenarios = {
     title: 'Ajustes → Avanzado: estado, tarjetas plegadas con resumen, búsqueda que filtra y abre, almacenamiento y «Probar conexión»',
     phases: ['exercise'],
   },
+  'files-tree': {
+    title: 'Árbol de Archivos: carpetas compactas y arrastrar un archivo al composer como «@archivo»',
+    phases: ['exercise'],
+    model: () => startFakeModel(Array.from({ length: 4 }, () => ({ text: 'HOLA' }))),
+  },
   'sidebar-resize': {
     title: 'Barra lateral: su borde se arrastra (asa oculta en reposo), con mínimo y máximo; el ancho se recuerda y doble clic lo devuelve',
     phases: ['exercise'],

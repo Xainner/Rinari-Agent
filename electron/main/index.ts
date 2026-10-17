@@ -42,7 +42,15 @@ import { createImages } from './native/images'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
 import { installSpellMenu } from './native/spellMenu'
-import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
+import {
+  activeEnvironment,
+  applyHostSettingsPatch,
+  detailedLogsActive,
+  handshakeLimitMs,
+  loadHostSettings,
+  saveHostSettings,
+} from './native/hostSettings'
+import { PUSH, type EngineStatus, type HostSettings, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
 const isDev = Boolean(DEV_SERVER)
@@ -86,6 +94,37 @@ const diagnostics = createDiagnostics({
 })
 diagnostics.captureConsole()
 diagnostics.watchProcess()
+
+// Lo que main necesita antes de la ventana (#70, #91, #96). La aceleración por
+// hardware solo se puede apagar antes de `ready`: cambiarla pide reiniciar.
+const hostSettingsPath = join(app.getPath('userData'), 'host-settings.json')
+let hostSettings = loadHostSettings(hostSettingsPath)
+const hardwareAccelerationAtStart = hostSettings.hardwareAcceleration
+if (!hardwareAccelerationAtStart) app.disableHardwareAcceleration()
+
+function persistHostSettings(): void {
+  try {
+    saveHostSettings(hostSettingsPath, hostSettings)
+  } catch (error) {
+    console.error('[rinari] no se pudieron guardar los ajustes del host:', error)
+  }
+}
+
+/**
+ * Línea de tiempos del arranque (#91.6), en ms desde que abrió el proceso.
+ * Se escribe en `app.log` cuando el Engine saluda y se ve en Avanzado.
+ */
+const startupTimeline: Array<{ step: string; ms: number }> = []
+let startupLogged = false
+function markStartup(step: string): void {
+  if (startupTimeline.some((entry) => entry.step === step)) return
+  startupTimeline.push({ step, ms: Math.round(performance.now()) })
+  if (step === 'engine-hello' && !startupLogged) {
+    startupLogged = true
+    diagnostics.log('info', `startup ${startupTimeline.map((entry) => `${entry.step} ${entry.ms}ms`).join(' · ')}`)
+  }
+}
+markStartup('process')
 
 /** Raíz del renderer construido: en los recursos si está empaquetado. */
 function rendererRoot(): string {
@@ -200,6 +239,15 @@ let layoutCoordinator: ViewLayoutCoordinator | null = null
 const engineEventTaps = new Set<(event: Record<string, unknown>) => void>()
 
 const engine = new EngineSupervisor({
+  // El plazo del saludo se adapta a lo que tardó la última vez (#70).
+  handshakeTimeoutMs: () => handshakeLimitMs(hostSettings),
+  // Registros detallados: el Engine también escribe sus avisos de detalle.
+  engineEnv: (): Record<string, string> => (detailedLogsActive(hostSettings) ? { RINARI_LOG_LEVEL: 'DEBUG' } : {}),
+  onStarted: (ms) => {
+    markStartup('engine-hello')
+    hostSettings = { ...hostSettings, lastStartupMs: ms }
+    persistHostSettings()
+  },
   onEvent: (event) => {
     // El canal privado del broker se descarta **antes** de mirar si hay host.
     // El §5.4 prohíbe entregar esas solicitudes a `runtimeStore`/React, y eso
@@ -694,6 +742,17 @@ function buildServices(): HostServices {
         const failure = await shell.openPath(home)
         if (failure) throw new Error(failure)
       },
+      hostSettings: () => currentHostSettings(),
+      setHostSettings: (patch) => {
+        hostSettings = applyHostSettingsPatch(hostSettings, patch)
+        persistHostSettings()
+        diagnostics.log('info', `host settings changed: ${Object.keys(patch).join(', ')}`)
+        return currentHostSettings()
+      },
+      relaunch: async () => {
+        app.relaunch()
+        await quitCoordinator.requestQuit('menu')
+      },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -802,6 +861,24 @@ const updates = createUpdates({
   text: currentHostText,
 })
 
+/** Lo que ve Avanzado → Motor y Diagnóstico (#70, #91, #96). */
+function currentHostSettings(): HostSettings {
+  const detailed = detailedLogsActive(hostSettings)
+  return {
+    startupLimit: hostSettings.startupLimit,
+    startupLimitS: Math.round(handshakeLimitMs(hostSettings) / 1000),
+    lastStartupMs: hostSettings.lastStartupMs,
+    startupTimeline: [...startupTimeline],
+    hardwareAcceleration: hostSettings.hardwareAcceleration,
+    restartRequired: hostSettings.hardwareAcceleration !== hardwareAccelerationAtStart,
+    detailedLogs: detailed,
+    detailedLogsUntil: detailed && hostSettings.detailedLogsUntil ? new Date(hostSettings.detailedLogsUntil).toISOString() : null,
+    environment: activeEnvironment(process.env),
+    channel: IS_NIGHTLY ? 'nightly' : 'stable',
+    packaged: app.isPackaged,
+  }
+}
+
 /** Ensayo instalado y sin UI del canal local 0.2.0 → 0.2.1. */
 async function runUpdateE2E(resultPath: string): Promise<void> {
   const expected = process.env.RINARI_UPDATE_E2E_EXPECTED
@@ -863,6 +940,7 @@ function openWindow(): void {
       void quitCoordinator.requestQuit('window-close')
     },
     isQuitCommitted: () => quitCoordinator.isCommitted(),
+    onRevealed: () => markStartup('window'),
     // Solo la primera ventana: el sistema la abrió al iniciar sesión.
     startHidden: !mainWindow && (background?.startsHidden(process.argv) ?? false),
   })
@@ -1260,6 +1338,14 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
     if (background.backgroundMode) void tray.show()
     unregisterIpc = registerIpc(registry, buildServices())
     handoff.push(launchRequest)
+    markStartup('ready')
+    // El Engine arranca a la vez que carga la ventana (#91): antes esperaba a
+    // que el renderer montara y lo pidiera. `engine_start` del renderer se
+    // une a este arranque (el supervisor los serializa).
+    markStartup('engine-spawn')
+    void engine.start().catch(() => {
+      // El estado «failed» llega al renderer, que muestra el error y reintenta.
+    })
     openWindow()
     if (launchUpdate) void runRequestedUpdate(updates)
 

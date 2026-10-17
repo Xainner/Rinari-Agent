@@ -43,6 +43,11 @@ export const CHANNEL = {
   appIndicatorsSet: 'rinari:app.indicators.set',
   /** Ajustes → Avanzado: abre una carpeta conocida (nunca una ruta del renderer). */
   appOpenFolder: 'rinari:app.openFolder',
+  /** Ajustes → Avanzado → Motor y Diagnóstico: lo que main lee antes de la ventana (#70, #91, #96). */
+  appHostSettingsGet: 'rinari:app.hostSettings.get',
+  appHostSettingsSet: 'rinari:app.hostSettings.set',
+  /** Reiniciar la app (la aceleración por hardware se aplica al abrir). */
+  appRelaunch: 'rinari:app.relaunch',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
@@ -227,6 +232,36 @@ export interface BackgroundSettings {
 export interface BackgroundPatch {
   backgroundMode?: boolean
   launchAtLogin?: boolean
+}
+
+/** Cuánto se espera el saludo del Engine: «Automático» lo adapta (#70). */
+export type StartupLimit = 'auto' | 30 | 60
+
+/** Ajustes del host para Avanzado → Motor y Diagnóstico (#70, #91, #96). */
+export interface HostSettings {
+  startupLimit: StartupLimit
+  /** El plazo en uso ahora, en s (con «Automático», el calculado). */
+  startupLimitS: number
+  /** Lo que tardó el último saludo del Engine, en ms. */
+  lastStartupMs: number | null
+  /** Línea de tiempos del último arranque (#91.6), en ms desde que abrió el proceso. */
+  startupTimeline: Array<{ step: string; ms: number }>
+  hardwareAcceleration: boolean
+  /** Cambió la aceleración y falta reiniciar para aplicarla. */
+  restartRequired: boolean
+  detailedLogs: boolean
+  /** Hasta cuándo, en ISO; se apagan solos a las 24 h. */
+  detailedLogsUntil: string | null
+  /** Variables que cambian cómo trabaja Rinari; solo lectura y sin secretos. */
+  environment: Array<{ name: string; value: string }>
+  channel: 'stable' | 'nightly'
+  packaged: boolean
+}
+
+export interface HostSettingsPatch {
+  startupLimit?: StartupLimit
+  hardwareAcceleration?: boolean
+  detailedLogs?: boolean
 }
 
 export interface SystemNotificationRequest {

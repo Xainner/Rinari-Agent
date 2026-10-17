@@ -329,6 +329,7 @@ function LiveSessionPane({
               historyNote={data.historyInfo[pane.sessionId] ?? null}
               historyPhase={data.historyPhases?.[pane.sessionId] ?? 'unloaded'}
               onRetryHistory={() => void commands.retryHistoryFor(pane.sessionId)}
+              onLoadEarlier={() => commands.loadEarlierFor(pane.sessionId)}
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
               onReviewChanges={reviewChanges}

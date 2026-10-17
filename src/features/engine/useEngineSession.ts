@@ -395,6 +395,7 @@ export function useEngineSession() {
     ensureSessionReady: sessions.prepareSession,
     ensureHistoryLoaded: sessions.ensureHistoryLoaded,
     retryHistoryFor: sessions.retrySessionHistory,
+    loadEarlierFor: sessions.loadEarlierHistory,
     retryHistory: () => sessions.retrySessionHistory(sessions.activeSession),
     send,
     sendTo,

@@ -1,13 +1,15 @@
 import { Bot, ChevronDown, Plus, SquareTerminal, X } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { engineApi, type PtyShell } from '../../services/engine'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 import { nextTerminalTitle, useTerminalPrefs, useTerminalStore, type TerminalTab } from './terminalStore'
-import XtermView from './XtermView'
 import AgentProcesses from './AgentProcesses'
 import { AGENT_TAB, useAgentRunningCount } from './agentTab'
+
+// xterm se carga al abrir una terminal (#91), no con la app.
+const XtermView = lazy(() => import('./XtermView'))
 
 const EMPTY: readonly TerminalTab[] = []
 /** Sesiones cuya primera terminal ya se abrió sola: cerrar la última no la reabre. */
@@ -221,7 +223,7 @@ export default function TerminalPanel({ sessionId }: { sessionId: string }) {
           <AgentProcesses sessionId={sessionId} />
         ) : active ? (
           <>
-            <XtermView key={active.ptyId} ptyId={active.ptyId} fontSize={prefs.fontSize} exited={active.exited} autoFocus={focusPty === active.ptyId} />
+            <Suspense fallback={null}><XtermView key={active.ptyId} ptyId={active.ptyId} fontSize={prefs.fontSize} exited={active.exited} autoFocus={focusPty === active.ptyId} /></Suspense>
             {active.exited && (
               <div className="terminal-exited" role="status">
                 {active.exitCode === null ? t('terminal.exited') : t('terminal.exitedCode', { code: active.exitCode })}

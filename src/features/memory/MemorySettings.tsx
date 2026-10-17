@@ -1,7 +1,9 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { LoaderCircle, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
+import { engineApi, type AboutMe } from '../../services/engine'
+import WelcomeDialog, { USES } from '../welcome/WelcomeDialog'
 import { cn } from '../../lib/utils'
 import { Button } from '../../components/ui/button'
 import { useConfirm } from '../../components/ui/useConfirm'
@@ -19,7 +21,9 @@ import {
   useMemoryState,
 } from './memoryStore'
 import { kindLabel, memoryErrorMessage } from './memoryCopy'
-import { MEMORY_KINDS, type LearnedFactsMode, type MemoryRecord } from './types'
+import { MEMORY_KINDS, MEMORY_PLACES, type LearnedFactsMode, type MemoryPlace, type MemoryRecord } from './types'
+import { Select } from '../../components/ui/select'
+import { useProfileStore } from '../profiles/profileStore'
 
 const MODES: Array<{ value: LearnedFactsMode; title: 'memory.learning.ask' | 'memory.learning.auto'; hint: 'memory.learning.askHint' | 'memory.learning.autoHint' }> = [
   { value: 'ask', title: 'memory.learning.ask', hint: 'memory.learning.askHint' },
@@ -54,10 +58,49 @@ export default function MemorySettings() {
         </Section>
       )}
 
+      <AboutYou />
       <LearningMode />
       <RecordsSection />
       <MemoryPortability />
     </div>
+  )
+}
+
+/** «Sobre ti» (#71): lo de la bienvenida, con «Contarle a Rinari sobre ti» para repetirla. */
+function AboutYou() {
+  const { t } = useI18n()
+  const [about, setAbout] = useState<AboutMe | null>(null)
+  const [open, setOpen] = useState(false)
+  const load = () => { engineApi.aboutGet().then(setAbout).catch(() => setAbout(null)) }
+  useEffect(load, [])
+  const useLabel = (use: string) => ((USES as readonly string[]).includes(use) ? t(`welcome.use.${use}` as I18nKey) : use)
+  const told = Boolean(about && (about.name || about.uses.length || about.preferences))
+  return (
+    <Section title={t('memory.about.title')} desc={t('memory.about.hint')} anchor="memory-about">
+      <div className="memory-about" data-testid="memory-about">
+        {told && about ? (
+          <dl className="memory-about-facts">
+            {about.name && <div><dt>{t('welcome.name.title')}</dt><dd>{about.name}</dd></div>}
+            {about.uses.length > 0 && <div><dt>{t('welcome.uses.title')}</dt><dd>{about.uses.map(useLabel).join(' · ')}</dd></div>}
+            {about.preferences && <div><dt>{t('welcome.preferences.title')}</dt><dd className="whitespace-pre-wrap">{about.preferences}</dd></div>}
+          </dl>
+        ) : (
+          <p className="text-sm text-[var(--text-subtle)]">{t('memory.about.empty')}</p>
+        )}
+        <Button variant="secondary" size="sm" onClick={() => setOpen(true)} data-testid="memory-about-open">{t('memory.about.action')}</Button>
+      </div>
+      <WelcomeDialog
+        open={open}
+        repeat
+        onClose={(saved) => {
+          setOpen(false)
+          if (saved) {
+            toast.success(t('memory.about.saved'))
+            load()
+          }
+        }}
+      />
+    </Section>
   )
 }
 
@@ -116,6 +159,8 @@ function RecordsSection() {
   const searchId = useId()
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<string>('all')
+  const [place, setPlace] = useState<'all' | MemoryPlace>('all')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [results, setResults] = useState<MemoryRecord[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
@@ -135,13 +180,74 @@ function RecordsSection() {
     return () => { live = false; clearTimeout(timer) }
   }, [query, memory.records, t])
 
-  const source = results ?? memory.records
+  // «Sobre ti» vive en su propia sección.
+  const source = (results ?? memory.records).filter((record) => !record.topic.startsWith('about:'))
+  const placeOf = (record: MemoryRecord): MemoryPlace => record.place ?? (record.scope === 'project' ? 'project' : 'general')
+  const counts = useMemo(() => {
+    const out: Record<string, number> = { all: source.length }
+    for (const record of source) out[placeOf(record)] = (out[placeOf(record)] ?? 0) + 1
+    return out
+  }, [source])
   // Las cuatro categorías del contrato, más cualquier otra que el Engine use.
   const kinds = useMemo(() => {
     const extra = memory.records.map((record) => record.kind).filter((value) => value && !(MEMORY_KINDS as readonly string[]).includes(value))
     return [...MEMORY_KINDS, ...new Set(extra)]
   }, [memory.records])
-  const visible = kind === 'all' ? source : source.filter((record) => record.kind === kind)
+  const byPlace = place === 'all' ? source : source.filter((record) => placeOf(record) === place)
+  const visible = kind === 'all' ? byPlace : byPlace.filter((record) => record.kind === kind)
+  const chosen = visible.filter((record) => selected.has(record.id))
+  const activeProfile = useProfileStore((state) => state.activeId)
+  const profileName = useProfileStore((state) => state.profiles.find((profile) => profile.id === state.activeId)?.name ?? state.activeId ?? '')
+  const projects = useMemo(() => {
+    const roots = new Map<string, string>()
+    for (const record of memory.records) {
+      if (placeOf(record) === 'project' && record.place_ref) roots.set(record.place_ref, record.place_label ?? record.place_ref)
+    }
+    return [...roots.entries()]
+  }, [memory.records])
+  const toggle = (id: string) => setSelected((current) => {
+    const next = new Set(current)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+
+  async function moveSelected(target: string) {
+    const [where, ref] = target.split('|')
+    let moved = 0
+    for (const record of chosen) {
+      try {
+        await memoryApi.move(record.id, where, where === 'project' ? { project_root: ref } : where === 'profile' ? { place_ref: ref } : {})
+        moved += 1
+      } catch (e) {
+        toast.error(memoryErrorMessage(e, t))
+      }
+    }
+    setSelected(new Set())
+    if (moved) toast.success(t('memory.moved', { n: moved }))
+    void refreshMemory()
+  }
+
+  async function forgetSelected() {
+    const confirmed = await ask({
+      title: t('memory.forgetMany.title', { n: chosen.length }),
+      body: t('memory.forgetMany.body'),
+      confirmLabel: t('memory.forget'),
+      cancelLabel: t('memory.cancel'),
+    })
+    if (!confirmed) return
+    let done = 0
+    for (const record of chosen) {
+      try {
+        await forgetMemory(record.id, record.revision)
+        done += 1
+      } catch (e) {
+        toast.error(memoryErrorMessage(e, t))
+      }
+    }
+    setSelected(new Set())
+    if (done) toast.success(t('memory.forgottenMany', { n: done }))
+  }
 
   async function forget(record: MemoryRecord) {
     const confirmed = await ask({
@@ -169,6 +275,21 @@ function RecordsSection() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      <div role="tablist" aria-label={t('memory.places')} className="seg-tabs w-fit" data-testid="memory-places">
+        {(['all', ...MEMORY_PLACES] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={place === value}
+            data-active={place === value || undefined}
+            className="seg-tab"
+            onClick={() => { setPlace(value); setSelected(new Set()) }}
+          >
+            {t(`memory.place.${value}` as I18nKey)} <span className="seg-tab-count">{counts[value] ?? 0}</span>
+          </button>
+        ))}
+      </div>
       <div role="radiogroup" aria-label={t('memory.filter')} className="flex flex-wrap gap-1.5">
         {['all', ...kinds].map((value) => (
           <button
@@ -206,16 +327,44 @@ function RecordsSection() {
           {query.trim() ? t('memory.empty.search') : kind !== 'all' && memory.records.length > 0 ? t('memory.empty.kind') : t('memory.empty')}
         </p>
       )}
+      {chosen.length > 0 && (
+        <div className="memory-bulk flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs" data-testid="memory-bulk">
+          <span className="text-[var(--text-muted)]">{t('memory.selected', { n: chosen.length })}</span>
+          <Select<string>
+            compact
+            value={null}
+            placeholder={t('memory.moveTo')}
+            label={t('memory.moveTo')}
+            options={[
+              { value: 'general', label: t('memory.moveGeneral') },
+              ...(activeProfile ? [{ value: `profile|${activeProfile}`, label: t('memory.moveProfile', { name: profileName }) }] : []),
+              ...projects.map(([root, label]) => ({ value: `project|${root}`, label: t('memory.moveProject', { name: label }) })),
+            ]}
+            onChange={(target) => void moveSelected(target)}
+            testId="memory-move"
+          />
+          <Button size="sm" variant="ghost" onClick={() => void forgetSelected()}>{t('memory.forgetSelected')}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t('memory.clearSelection')}</Button>
+        </div>
+      )}
       {visible.length > 0 && (
         <ul className="divide-y divide-[var(--border)]" aria-label={t('memory.records.title')}>
-          {visible.map((record) => <RecordRow key={record.id} record={record} onForget={() => void forget(record)} />)}
+          {visible.map((record) => (
+            <RecordRow
+              key={record.id}
+              record={record}
+              selected={selected.has(record.id)}
+              onSelect={() => toggle(record.id)}
+              onForget={() => void forget(record)}
+            />
+          ))}
         </ul>
       )}
     </Section>
   )
 }
 
-function RecordRow({ record, onForget }: { record: MemoryRecord; onForget: () => void }) {
+function RecordRow({ record, onForget, selected = false, onSelect }: { record: MemoryRecord; onForget: () => void; selected?: boolean; onSelect?: () => void }) {
   const { t, lang } = useI18n()
   const [editing, setEditing] = useState(false)
   const [topic, setTopic] = useState(record.topic)
@@ -277,10 +426,24 @@ function RecordRow({ record, onForget }: { record: MemoryRecord; onForget: () =>
         </div>
       ) : (
         <div className="flex items-start gap-3">
+          {onSelect && (
+            <input
+              type="checkbox"
+              className="mt-1 shrink-0"
+              checked={selected}
+              onChange={onSelect}
+              aria-label={t('memory.select', { topic: record.topic })}
+            />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-[var(--text)]">{record.topic}</span>
               {kind && <span className="rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">{kind}</span>}
+              {record.place && record.place !== 'general' && (
+                <span className="memory-place-chip rounded-full border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]" data-place={record.place}>
+                  {t(`memory.place.${record.place}` as I18nKey)}{record.place_label ? ` · ${record.place_label}` : ''}
+                </span>
+              )}
             </div>
             <p className="mt-0.5 text-sm whitespace-pre-wrap text-[var(--text-muted)] [overflow-wrap:anywhere]">{record.text}</p>
             {updated && !Number.isNaN(updated.getTime()) && (

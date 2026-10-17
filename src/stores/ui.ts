@@ -234,6 +234,8 @@ interface UIState {
   showSuggestions: boolean
   /** Revela identificadores de protocolo junto a las etiquetas narrativas. */
   showTechnicalActivityNames: boolean
+  /** Buscar actualizaciones al abrir la app (Avanzado → Actualizaciones). */
+  autoCheckUpdates: boolean
   shortcutBindings: ShortcutBindings
   /** Home del proyecto abierto (root). Solo con view 'project'. */
   projectRoot: string | null
@@ -279,6 +281,7 @@ interface UIState {
   setAutoFollow: (on: boolean) => void
   setShowSuggestions: (on: boolean) => void
   setShowTechnicalActivityNames: (on: boolean) => void
+  setAutoCheckUpdates: (on: boolean) => void
   setShortcutBinding: (action: ShortcutAction, shortcut: string) => void
   resetShortcutBindings: () => void
 }
@@ -310,6 +313,7 @@ export const useUIStore = create<UIState>((set) => ({
     typeof window === 'undefined' ? true : readBool('rinari.showSuggestions', true),
   showTechnicalActivityNames:
     typeof window === 'undefined' ? false : readBool('rinari.showTechnicalActivityNames', false),
+  autoCheckUpdates: typeof window === 'undefined' ? true : readBool('rinari.autoCheckUpdates', true),
   shortcutBindings: typeof window === 'undefined' ? DEFAULT_SHORTCUT_BINDINGS : readShortcutBindings(),
   goChat: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
   goNormal: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
@@ -419,6 +423,10 @@ export const useUIStore = create<UIState>((set) => ({
   setShowTechnicalActivityNames: (on) => {
     writeBool('rinari.showTechnicalActivityNames', on)
     set({ showTechnicalActivityNames: on })
+  },
+  setAutoCheckUpdates: (on) => {
+    writeBool('rinari.autoCheckUpdates', on)
+    set({ autoCheckUpdates: on })
   },
   setShortcutBinding: (action, shortcut) => set((state) => {
     const shortcutBindings = { ...state.shortcutBindings, [action]: shortcut }

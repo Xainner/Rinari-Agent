@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **276**
-- Respaldados por Engine: **270**
+- Comandos: **280**
+- Respaldados por Engine: **274**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -75,6 +75,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `mcp_set_enabled` | engine | `mcp.enable` | `src/services/engine.ts` |
 | `mcp_test` | engine | `mcp.test` | `src/services/engine.ts` |
 | `mcp_update` | engine | `mcp.update` | `src/services/engine.ts` |
+| `memory_about_get` | engine | `memory.about.get` | `src/services/engine.ts` |
+| `memory_about_set` | engine | `memory.about.set` | `src/services/engine.ts` |
 | `memory_candidate_resolve` | engine | `memory.candidate.resolve` | `src/services/memory.ts` |
 | `memory_candidates_list` | engine | `memory.candidates.list` | `src/services/memory.ts` |
 | `memory_export` | engine | `memory.export` | `src/services/memory.ts` |
@@ -82,6 +84,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `memory_get` | engine | `memory.get` | `src/services/memory.ts` |
 | `memory_import` | engine | `memory.import` | `src/services/memory.ts` |
 | `memory_list` | engine | `memory.list` | `src/services/memory.ts` |
+| `memory_move` | engine | `memory.move` | `src/services/memory.ts` |
 | `memory_search` | engine | `memory.search` | `src/services/memory.ts` |
 | `memory_settings_get` | engine | `memory.settings.get` | `src/services/memory.ts` |
 | `memory_settings_set` | engine | `memory.settings.set` | `src/services/memory.ts` |
@@ -256,7 +259,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `speech_settings_set` | engine | `speech.settings.set` | `src/services/engine.ts` |
 | `speech_status` | engine | `speech.status` | `src/services/engine.ts` |
 | `speech_transcribe` | engine | `speech.transcribe` | **ninguno** |
-| `storage_usage` | engine | `storage.usage` | **ninguno** |
+| `storage_clean` | engine | `storage.clean` | **ninguno** |
+| `storage_usage` | engine | `storage.usage` | `src/services/engine.ts` |
 | `task_get` | engine | `task.get` | `src/services/engine.ts` |
 | `task_tree` | engine | `task.tree` | **ninguno** |
 | `tool_list` | engine | `tool.list` | `src/services/engine.ts` |

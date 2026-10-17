@@ -3,7 +3,7 @@ import { isCommandError } from '../../services/engine'
 
 type Translate = (key: I18nKey, vars?: Record<string, string | number>) => string
 
-const KNOWN_KINDS = new Set(['environment', 'workflow', 'preference', 'fact', 'rule'])
+const KNOWN_KINDS = new Set(['environment', 'workflow', 'preference', 'fact', 'rule', 'person', 'resource', 'decision', 'convention'])
 
 /** Nombre visible del tipo; uno desconocido se muestra tal cual lo manda el Engine. */
 export function kindLabel(kind: string | undefined, t: Translate): string {

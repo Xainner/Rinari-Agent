@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Activity, ChevronDown, Cpu, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, RotateCcw,
+  Activity, ChevronDown, Cpu, Download, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, RotateCcw,
   Search, ShieldAlert, Stethoscope, Workflow,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,11 +10,11 @@ import type { I18nKey } from '../../i18n/es'
 import { useUIStore } from '../../stores/ui'
 import { Switch } from '../ui/switch'
 import { useConfirm } from '../ui/useConfirm'
-import { platform } from '../../platform'
+import { platform, type HostSettings, type HostSettingsPatch, type StartupLimit } from '../../platform'
 import type { EngineStatus } from '../../platform/engineStatus'
 import {
   commandMessage, engineApi, type AdvancedSetting, type ExecutionSettingsResult,
-  type ModelSummary, type ProviderSummary, type TimeoutKey,
+  type ModelSummary, type ProviderSummary, type StorageUsage, type TimeoutKey,
 } from '../../services/engine'
 import type { NetworkSettings, NetworkTest } from '../../types/protocol.generated'
 import OrphanProcesses from '../../features/processes/OrphanProcesses'
@@ -22,6 +22,7 @@ import { IS_NIGHTLY } from '../../lib/channel'
 import { inputClass } from './parts'
 import { useCalmMotion } from '../../lib/motion'
 import { useDiagnosticsExport } from './diagnosticsExport'
+import { checkForUpdates } from '../../services/updates'
 
 const TIMEOUT_KEYS: readonly TimeoutKey[] = ['connect', 'first_byte', 'idle', 'total']
 type Preset = 'normal' | 'slow' | 'unstable' | 'custom'
@@ -144,10 +145,11 @@ export default function AdvancedSettings({ providers = [] }: { models?: ModelSum
         <ConnectionsCard {...card('connections', words('adv.connections.title', 'adv.connections.desc') + ' timeout tiempo espera concurrency')} execution={execution} providers={providers} onSaved={setExecution} />
         <LimitsCard {...card('limits', words('adv.limits.title', 'adv.limits.desc') + ' bucle loop subagentes coste cost')} limits={limits} onSaved={setLimits} />
         <NetworkCard {...card('network', words('adv.network.title', 'adv.network.desc') + ' proxy certificados certificates tls')} network={network} onSaved={setNetwork} />
-        <DiagnosticsCard {...card('diagnostics', words('adv.diagnostics.title', 'adv.diagnostics.desc') + ' registros logs')} />
-        <StorageCard {...card('storage', words('adv.storage.title', 'adv.storage.desc') + ' espacio disco disk')} />
+        <DiagnosticsCard {...card('diagnostics', words('adv.diagnostics.title', 'adv.diagnostics.desc', 'adv.diagnostics.detailed') + ' registros logs')} />
+        <StorageCard {...card('storage', words('adv.storage.title', 'adv.storage.desc', 'adv.storage.clean') + ' espacio disco disk')} />
         <ProcessesCard {...card('processes', words('adv.processes.title', 'adv.processes.desc') + ' huérfanos orphans')} />
-        <EngineCard {...card('engine', words('adv.engine.title', 'adv.engine.desc') + ' motor reiniciar restart rinari.md')} status={status} />
+        <EngineCard {...card('engine', words('adv.engine.title', 'adv.engine.desc', 'adv.engine.startupLimit', 'adv.engine.hardware', 'adv.engine.environment') + ' motor reiniciar restart rinari.md gpu')} status={status} />
+        <UpdatesCard {...card('updates', words('adv.updates.title', 'adv.updates.desc', 'adv.updates.channel') + ' nightly update')} />
         <ResetCard {...card('reset', words('adv.reset.title', 'adv.reset.desc'))} execution={execution} limits={limits} onDone={() => void load()} />
       </div>
     </section>
@@ -467,20 +469,50 @@ function NetworkCard({ network, onSaved, ...card }: CardProps & { network: Netwo
   )
 }
 
+/** Lo que main lee antes de la ventana: límite de arranque, aceleración, registros, entorno (#70, #91, #96). */
+function useHostSettings(open: boolean) {
+  const [host, setHost] = useState<HostSettings | null>(null)
+  useEffect(() => {
+    if (!open || host) return
+    platform().app.hostSettings().then(setHost).catch(() => {})
+  }, [open, host])
+  const update = async (patch: HostSettingsPatch) => {
+    try {
+      setHost(await platform().app.setHostSettings(patch))
+    } catch (e) {
+      toast.error(commandMessage(e))
+    }
+  }
+  return { host, update }
+}
+
 function DiagnosticsCard(card: CardProps) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   const setTechnical = useUIStore((state) => state.setShowTechnicalActivityNames)
+  const { host, update } = useHostSettings(card.open)
   // Lo que lleva el paquete se ve antes de guardarlo (se movió aquí desde Acerca de).
   const diagnostics = useDiagnosticsExport()
+  const until = host?.detailedLogsUntil
+    ? new Date(host.detailedLogsUntil).toLocaleString(lang === 'es' ? 'es' : 'en', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
+    : null
   return (
-    <AdvCard {...card} icon={<Stethoscope size={16} />} title={t('adv.diagnostics.title')} desc={t('adv.diagnostics.desc')} summary={technical ? t('adv.diagnostics.technicalOn') : t('adv.diagnostics.technicalOff')}>
+    <AdvCard {...card} icon={<Stethoscope size={16} />} title={t('adv.diagnostics.title')} desc={t('adv.diagnostics.desc')} summary={host?.detailedLogs ? t('adv.diagnostics.detailedOn') : t('adv.diagnostics.normalLogs')}>
       <div className="adv-row">
         <div className="min-w-0 flex-1">
           <p className="adv-row-title">{t('settings.advanced.technicalActivity')}</p>
           <p className="adv-row-hint">{t('settings.advanced.technicalActivityHint')}</p>
         </div>
         <Switch checked={technical} onCheckedChange={setTechnical} aria-label={t('settings.advanced.technicalActivity')} />
+      </div>
+      <div className="adv-row" data-testid="detailed-logs">
+        <div className="min-w-0 flex-1">
+          <p className="adv-row-title">{t('adv.diagnostics.detailed')}</p>
+          <p className="adv-row-hint">
+            {host?.detailedLogs && until ? `${t('adv.diagnostics.detailedUntil', { time: until })}. ${t('adv.diagnostics.detailedRestart')}` : t('adv.diagnostics.detailedHint')}
+          </p>
+        </div>
+        <Switch checked={host?.detailedLogs ?? false} disabled={!host} onCheckedChange={(on) => void update({ detailedLogs: on })} aria-label={t('adv.diagnostics.detailed')} />
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => void platform().app.openFolder('logs').catch((e) => toast.error(commandMessage(e)))}>
@@ -495,19 +527,46 @@ function DiagnosticsCard(card: CardProps) {
   )
 }
 
-interface StorageSection { id: string; bytes: number; files: number }
+/** Desde cuánto se sugiere limpiar (#91): nada se borra solo. */
+const SUGGEST_TOTAL = 5 * 1024 ** 3
+const SUGGEST_RECLAIMABLE = 500 * 1024 ** 2
 
 function StorageCard(card: CardProps) {
   const { t } = useI18n()
-  const [usage, setUsage] = useState<{ sections: StorageSection[]; total: number } | null>(null)
+  const confirm = useConfirm()
+  const [usage, setUsage] = useState<StorageUsage | null>(null)
   const [failed, setFailed] = useState(false)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [cleaning, setCleaning] = useState<string | null>(null)
   const load = useCallback(() => {
     setFailed(false)
     engineApi.storageUsage().then(setUsage).catch(() => setFailed(true))
   }, [])
   useEffect(() => { if (card.open && !usage) load() }, [card.open, usage, load])
   const sections = (usage?.sections ?? []).filter((row) => row.bytes > 0).sort((a, b) => b.bytes - a.bytes)
+  const sectionName = (id: string) => t(`adv.storage.section.${id}` as I18nKey)
+  const biggest = [...sections].filter((row) => row.cleanable && (row.reclaimable ?? 0) > 0).sort((a, b) => (b.reclaimable ?? 0) - (a.reclaimable ?? 0))[0]
+  const suggest = usage && biggest && usage.total >= SUGGEST_TOTAL && (biggest.reclaimable ?? 0) >= SUGGEST_RECLAIMABLE ? biggest : null
+  const clean = async (id: string, reclaimable: number) => {
+    const size = formatBytes(reclaimable)
+    const sure = await confirm.ask({
+      title: t('adv.storage.cleanTitle', { section: sectionName(id).toLowerCase() }),
+      body: t(`adv.storage.cleanBody.${id}` as I18nKey, { size }),
+      confirmLabel: t('adv.storage.clean'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (!sure) return
+    setCleaning(id)
+    try {
+      const done = await engineApi.storageClean(id)
+      setUsage(done.usage)
+      toast.success(done.kept > 0 ? t('adv.storage.cleanedKept', { size: formatBytes(done.freed), n: done.kept }) : t('adv.storage.cleaned', { size: formatBytes(done.freed) }))
+    } catch (e) {
+      toast.error(commandMessage(e))
+    } finally {
+      setCleaning(null)
+    }
+  }
   return (
     <AdvCard {...card} icon={<HardDrive size={16} />} title={t('adv.storage.title')} desc={t('adv.storage.desc')} summary={usage ? formatBytes(usage.total) : t('adv.storage.open')}>
       {failed && <p role="alert" className="adv-note" data-tone="danger">{t('adv.storage.failed')} <button type="button" className="btn btn-quiet btn-xs" onClick={load}>{t('adv.retry')}</button></p>}
@@ -515,6 +574,11 @@ function StorageCard(card: CardProps) {
       {usage && (
         <>
           <p className="adv-storage-total"><span>{formatBytes(usage.total)}</span> {t('adv.storage.inUse')}</p>
+          {suggest && (
+            <p className="adv-note" data-tone="accent" data-testid="storage-suggest">
+              {t('adv.storage.suggest', { total: formatBytes(usage.total), size: formatBytes(suggest.reclaimable ?? 0), section: sectionName(suggest.id).toLowerCase() })}
+            </p>
+          )}
           <div className="adv-storage-bar" aria-hidden="true" data-hovered={hovered ?? undefined}>
             {sections.map((row, index) => (
               <span
@@ -522,20 +586,38 @@ function StorageCard(card: CardProps) {
                 data-section={row.id}
                 data-active={hovered === row.id || undefined}
                 style={{ flexGrow: Math.max(row.bytes, 1), '--i': index } as CSSProperties}
-                title={`${t(`adv.storage.section.${row.id}` as I18nKey)} · ${formatBytes(row.bytes)}`}
+                title={`${sectionName(row.id)} · ${formatBytes(row.bytes)}`}
                 onMouseEnter={() => setHovered(row.id)}
                 onMouseLeave={() => setHovered(null)}
               />
             ))}
           </div>
           <ul className="adv-storage-list" data-testid="storage-usage" data-hovered={hovered ?? undefined}>
-            {sections.map((row) => (
-              <li key={row.id} data-section={row.id} data-active={hovered === row.id || undefined} onMouseEnter={() => setHovered(row.id)} onMouseLeave={() => setHovered(null)}>
-                <span className="adv-storage-swatch" aria-hidden="true" />
-                <span className="min-w-0 flex-1">{t(`adv.storage.section.${row.id}` as I18nKey)}</span>
-                <span className="adv-storage-size">{formatBytes(row.bytes)}</span>
-              </li>
-            ))}
+            {sections.map((row) => {
+              const reclaimable = row.reclaimable ?? 0
+              return (
+                <li key={row.id} data-section={row.id} data-active={hovered === row.id || undefined} onMouseEnter={() => setHovered(row.id)} onMouseLeave={() => setHovered(null)}>
+                  <span className="adv-storage-swatch" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    {sectionName(row.id)}
+                    {row.cleanable && reclaimable > 0 && <span className="adv-storage-reclaim"> · {t('adv.storage.reclaimable', { size: formatBytes(reclaimable) })}</span>}
+                  </span>
+                  <span className="adv-storage-size">{formatBytes(row.bytes)}</span>
+                  {row.cleanable && (
+                    <button
+                      type="button"
+                      className="btn btn-quiet btn-xs"
+                      data-testid={`storage-clean-${row.id}`}
+                      disabled={reclaimable === 0 || cleaning !== null}
+                      title={reclaimable === 0 ? t('adv.storage.nothingToClean') : undefined}
+                      onClick={() => void clean(row.id, reclaimable)}
+                    >
+                      {cleaning === row.id ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : null} {t('adv.storage.clean')}
+                    </button>
+                  )}
+                </li>
+              )
+            })}
           </ul>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => void platform().app.openFolder('home').catch((e) => toast.error(commandMessage(e)))}>
@@ -543,9 +625,10 @@ function StorageCard(card: CardProps) {
             </button>
             <button type="button" className="btn btn-quiet btn-sm" onClick={load}>{t('adv.storage.refresh')}</button>
           </div>
-          <p className="adv-hint">{t('adv.storage.cleanLater')}</p>
+          <p className="adv-hint">{t('adv.storage.manualOnly')}</p>
         </>
       )}
+      {confirm.dialog}
     </AdvCard>
   )
 }
@@ -560,10 +643,13 @@ function ProcessesCard(card: CardProps) {
   )
 }
 
+const STARTUP_LIMITS: StartupLimit[] = ['auto', 30, 60]
+
 function EngineCard({ status, ...card }: CardProps & { status: EngineStatus | null }) {
   const { t } = useI18n()
   const confirm = useConfirm()
   const [restarting, setRestarting] = useState(false)
+  const { host, update } = useHostSettings(card.open)
   const restart = async () => {
     const sure = await confirm.ask({ title: t('adv.engine.restartTitle'), body: t('adv.engine.restartBody'), confirmLabel: t('adv.engine.restart'), cancelLabel: t('common.cancel') })
     if (!sure) return
@@ -578,8 +664,11 @@ function EngineCard({ status, ...card }: CardProps & { status: EngineStatus | nu
     }
   }
   const openPlace = (place: 'home' | 'instructions') => void platform().app.openFolder(place).catch((e) => toast.error(commandMessage(e)))
+  const seconds = (ms: number) => (ms / 1000).toFixed(1).replace(/\.0$/, '')
+  const started = host?.lastStartupMs ? t('adv.engine.lastStartup', { s: seconds(host.lastStartupMs) }) : null
+  const summary = [status?.engine_version ?? '—', started].filter(Boolean).join(' · ')
   return (
-    <AdvCard {...card} icon={<Cpu size={16} />} title={t('adv.engine.title')} desc={t('adv.engine.desc')} summary={status?.engine_version ?? '—'}>
+    <AdvCard {...card} icon={<Cpu size={16} />} title={t('adv.engine.title')} desc={t('adv.engine.desc')} summary={summary}>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-secondary btn-sm" disabled={restarting} onClick={() => void restart()}>
           {restarting ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <RotateCcw size={13} aria-hidden="true" />} {t('adv.engine.restart')}
@@ -587,8 +676,121 @@ function EngineCard({ status, ...card }: CardProps & { status: EngineStatus | nu
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => openPlace('home')}><FolderOpen size={13} aria-hidden="true" /> {t('adv.engine.openHome')}</button>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => openPlace('instructions')}><FolderOpen size={13} aria-hidden="true" /> {t('adv.engine.openInstructions')}</button>
       </div>
+      {host && (
+        <>
+          <div className="adv-row" data-testid="startup-limit">
+            <div className="min-w-0 flex-1">
+              <p className="adv-row-title">{t('adv.engine.startupLimit')}{started ? <span className="adv-row-meta"> · {started}</span> : null}</p>
+              <p className="adv-row-hint">{t('adv.engine.startupLimitHint')}</p>
+            </div>
+            <div role="tablist" aria-label={t('adv.engine.startupLimit')} className="seg-tabs w-fit">
+              {STARTUP_LIMITS.map((limit) => (
+                <button
+                  key={String(limit)}
+                  type="button"
+                  role="tab"
+                  aria-selected={host.startupLimit === limit}
+                  className="seg-tab"
+                  data-active={host.startupLimit === limit || undefined}
+                  onClick={() => void update({ startupLimit: limit })}
+                >
+                  {limit === 'auto' ? t('adv.engine.startupAuto', { s: host.startupLimit === 'auto' ? host.startupLimitS : 45 }) : t('adv.engine.startupSeconds', { s: limit })}
+                </button>
+              ))}
+            </div>
+          </div>
+          {host.startupTimeline.length > 1 && (
+            <p className="adv-hint" data-testid="startup-timeline">
+              {t('adv.engine.timeline')}: {host.startupTimeline.map((entry) => `${t(`adv.engine.step.${entry.step}` as I18nKey)} ${seconds(entry.ms)} s`).join(' · ')}
+            </p>
+          )}
+          <div className="adv-row" data-testid="hardware-acceleration">
+            <div className="min-w-0 flex-1">
+              <p className="adv-row-title">{t('adv.engine.hardware')}</p>
+              <p className="adv-row-hint">{host.restartRequired ? t('adv.engine.restartNeeded') : t('adv.engine.hardwareHint')}</p>
+            </div>
+            {host.restartRequired && (
+              <button type="button" className="btn btn-secondary btn-xs" onClick={() => void platform().app.relaunch().catch((e) => toast.error(commandMessage(e)))}>
+                {t('adv.engine.restartApp')}
+              </button>
+            )}
+            <Switch checked={host.hardwareAcceleration} onCheckedChange={(on) => void update({ hardwareAcceleration: on })} aria-label={t('adv.engine.hardware')} />
+          </div>
+          <div data-testid="engine-environment">
+            <p className="adv-row-title">{t('adv.engine.environment')}</p>
+            <p className="adv-row-hint">{t('adv.engine.environmentHint')}</p>
+            {host.environment.length === 0
+              ? <p className="adv-hint">{t('adv.engine.environmentNone')}</p>
+              : (
+                <dl className="adv-env">
+                  {host.environment.map((entry) => (
+                    <div key={entry.name} className="contents">
+                      <dt className="font-mono">{entry.name}</dt>
+                      <dd className="min-w-0 break-all font-mono">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+          </div>
+        </>
+      )}
       <p className="adv-hint">{t('adv.engine.hint')}</p>
       {confirm.dialog}
+    </AdvCard>
+  )
+}
+
+/** El canal Nightly se instala desde el código; la versión normal, desde GitHub. */
+const RELEASES_URL = 'https://github.com/Xainner/Rinari-Agent/releases/latest'
+
+function UpdatesCard(card: CardProps) {
+  const { t } = useI18n()
+  const auto = useUIStore((state) => state.autoCheckUpdates)
+  const setAuto = useUIStore((state) => state.setAutoCheckUpdates)
+  const [checking, setChecking] = useState(false)
+  const check = async () => {
+    setChecking(true)
+    try {
+      const found = await checkForUpdates()
+      if (found) toast(t('adv.updates.found', { v: found.version }))
+      else toast.success(t('adv.updates.upToDate'))
+    } catch (e) {
+      toast.error(commandMessage(e))
+    } finally {
+      setChecking(false)
+    }
+  }
+  const summary = IS_NIGHTLY ? 'Nightly' : auto ? t('adv.updates.summaryStable') : t('adv.updates.summaryManual')
+  return (
+    <AdvCard {...card} icon={<Download size={16} />} title={t('adv.updates.title')} desc={t('adv.updates.desc')} summary={summary}>
+      <div className="adv-row">
+        <div className="min-w-0 flex-1">
+          <p className="adv-row-title">{t('adv.updates.channel')}</p>
+          <p className="adv-row-hint">{IS_NIGHTLY ? t('adv.updates.nightlyHint') : t('adv.updates.autoHint')}</p>
+        </div>
+        <span className="r-chip" data-tone={IS_NIGHTLY ? 'accent' : undefined} data-testid="update-channel">{IS_NIGHTLY ? 'Nightly' : t('adv.updates.stable')}</span>
+      </div>
+      {IS_NIGHTLY ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void platform().opener.openUrl(RELEASES_URL).catch((e) => toast.error(commandMessage(e)))}>
+            {t('adv.updates.backToStable')}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="adv-row">
+            <div className="min-w-0 flex-1">
+              <p className="adv-row-title">{t('adv.updates.auto')}</p>
+            </div>
+            <Switch checked={auto} onCheckedChange={setAuto} aria-label={t('adv.updates.auto')} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary btn-sm" disabled={checking} onClick={() => void check()}>
+              {checking ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <Download size={13} aria-hidden="true" />} {t('adv.updates.check')}
+            </button>
+          </div>
+        </>
+      )}
     </AdvCard>
   )
 }

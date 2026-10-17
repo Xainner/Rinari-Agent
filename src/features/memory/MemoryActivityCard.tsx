@@ -33,6 +33,10 @@ function CandidateFromTimeline({ item }: { item: MemoryTimelineItem }) {
         kind: known?.kind || item.kind,
         reason: known?.reason ?? item.reason,
         sensitive: known?.sensitive ?? item.sensitive,
+        // Dónde la quiso guardar Rinari (#75); la tarjeta deja cambiarlo.
+        scope: known?.scope,
+        place: known?.place ?? null,
+        project_root: known?.project_root ?? null,
       }}
       status={status}
     />

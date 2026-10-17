@@ -20,7 +20,7 @@
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -36,7 +36,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, StartupLimit, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 export { JSON_FILE_MAX_BYTES } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
@@ -214,6 +214,11 @@ export interface DesktopBridge {
     setIndicators(state: AttentionIndicators): Promise<void>
     /** Abre un lugar conocido con el sistema: la carpeta de Rinari, los registros o el RINARI.md global. */
     openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
+    /** Avanzado → Motor y Diagnóstico: límite de arranque, aceleración, registros detallados, entorno (#70, #91, #96). */
+    hostSettings(): Promise<HostSettings>
+    setHostSettings(patch: HostSettingsPatch): Promise<HostSettings>
+    /** Cierra y vuelve a abrir la app (para aplicar la aceleración por hardware). */
+    relaunch(): Promise<void>
   }
 
   events: {

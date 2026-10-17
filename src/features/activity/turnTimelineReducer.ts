@@ -29,6 +29,8 @@ export type TimelineAction =
   | { type: 'steer/sent'; sessionId: string; turnId: string; steerId: string; content: string; now: number; interrupted?: boolean }
   | { type: 'busy/set'; sessionId: string; busy: boolean }
   | { type: 'history/loaded'; sessionId: string; messages: ChatMessage[] }
+  /** «Cargar anteriores» (#70): una página más vieja delante de lo cargado. */
+  | { type: 'history/prepended'; sessionId: string; messages: ChatMessage[] }
   | { type: 'timeline/loaded'; sessionId: string; turns: TimelineTurn[] }
   | { type: 'snapshot/restored'; snapshot: unknown; now: number }
   | { type: 'approval/resolving'; approvalId: string }
@@ -704,6 +706,17 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       threads: {
         ...state.threads,
         [action.sessionId]: [...action.messages, ...live.filter((message) => !ids.has(message.id))],
+      },
+    }
+  }
+  if (action.type === 'history/prepended') {
+    const thread = state.threads[action.sessionId] ?? []
+    const ids = new Set(thread.map((message) => message.id))
+    return {
+      ...state,
+      threads: {
+        ...state.threads,
+        [action.sessionId]: [...action.messages.filter((message) => !ids.has(message.id)), ...thread],
       },
     }
   }

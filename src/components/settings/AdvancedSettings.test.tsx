@@ -17,13 +17,32 @@ vi.mock('../../services/engine', () => ({
     networkSettingsSet: vi.fn(),
     networkTest: vi.fn(),
     storageUsage: vi.fn(),
+    storageClean: vi.fn(),
   },
   commandMessage: (e: unknown) => String(e),
 }))
+const HOST = {
+  startupLimit: 'auto', startupLimitS: 30, lastStartupMs: 4800, startupTimeline: [{ step: 'process', ms: 0 }, { step: 'engine-hello', ms: 4800 }],
+  hardwareAcceleration: true, restartRequired: false, detailedLogs: false, detailedLogsUntil: null,
+  environment: [{ name: 'RINARI_WHISPER_BIN', value: 'C:/tools/whisper-cli.exe' }], channel: 'stable', packaged: true,
+}
+const host = { settings: { ...HOST } as Record<string, unknown>, relaunch: vi.fn(async () => {}) }
 vi.mock('../../platform', () => ({
   platform: () => ({
     engine: { status: vi.fn().mockResolvedValue({ state: 'ready', engine_version: '0.4.0', protocol_version: 1, detail: null, capabilities: {} }), restart: vi.fn() },
-    app: { openFolder: vi.fn().mockResolvedValue(undefined) },
+    app: {
+      openFolder: vi.fn().mockResolvedValue(undefined),
+      hostSettings: async () => ({ ...host.settings }),
+      setHostSettings: async (patch: Record<string, unknown>) => {
+        host.settings = { ...host.settings, ...patch }
+        if ('hardwareAcceleration' in patch) host.settings.restartRequired = true
+        if ('detailedLogs' in patch) host.settings.detailedLogsUntil = patch.detailedLogs ? '2026-10-18T09:00:00.000Z' : null
+        return { ...host.settings }
+      },
+      relaunch: host.relaunch,
+    },
+    opener: { openUrl: vi.fn() },
+    updates: { check: vi.fn().mockResolvedValue(null) },
     diagnostics: { export: vi.fn() },
   }),
 }))
@@ -54,7 +73,7 @@ beforeEach(() => {
   })
   vi.mocked(engineApi.storageUsage).mockResolvedValue({ home: '~/.rinari', total: 3000, sections: [{ id: 'conversations', bytes: 2000, files: 1 }, { id: 'logs', bytes: 1000, files: 2 }] })
 })
-afterEach(() => { cleanup(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); vi.clearAllMocks(); host.settings = { ...HOST } })
 
 const view = () => render(<I18nProvider lang="es"><AdvancedSettings /></I18nProvider>)
 const openCard = async (title: string) => {
@@ -130,4 +149,52 @@ it('a provider keeps its own times in Proveedores → Conexión; empty inherits'
   await userEvent.clear(firstByte)
   fireEvent.blur(firstByte)
   await waitFor(() => expect(engineApi.executionSettingsSet).toHaveBeenLastCalledWith(expect.objectContaining({ provider_timeouts: {} })))
+})
+
+it('Almacenamiento: «Limpiar» solo donde se puede, con confirmación, y la sugerencia al pasar de 5 GB (#91)', async () => {
+  const GB = 1024 ** 3
+  vi.mocked(engineApi.storageUsage).mockResolvedValue({
+    home: '~/.rinari', total: 11 * GB,
+    sections: [
+      { id: 'workspaces', bytes: 7 * GB, files: 10, cleanable: true, reclaimable: 6 * GB },
+      { id: 'conversations', bytes: 3 * GB, files: 1, cleanable: false, reclaimable: 0 },
+      { id: 'logs', bytes: GB, files: 2, cleanable: true, reclaimable: 0 },
+    ],
+  })
+  vi.mocked(engineApi.storageClean).mockResolvedValue({
+    section: 'workspaces', freed: 6 * GB, removed: 4, kept: 0,
+    usage: { home: '~/.rinari', total: 5 * GB, sections: [{ id: 'workspaces', bytes: GB, files: 2, cleanable: true, reclaimable: 0 }] },
+  })
+  view()
+  await openCard('Almacenamiento')
+  expect((await screen.findByTestId('storage-suggest')).textContent).toContain('6.0 GB')
+  expect(screen.queryByTestId('storage-clean-conversations')).toBeNull()
+  expect((screen.getByTestId('storage-clean-logs') as HTMLButtonElement).disabled).toBe(true)
+  await userEvent.click(screen.getByTestId('storage-clean-workspaces'))
+  const dialog = await screen.findByRole('alertdialog')
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Limpiar' }))
+  await waitFor(() => expect(engineApi.storageClean).toHaveBeenCalledWith('workspaces'))
+  await waitFor(() => expect(screen.queryByTestId('storage-suggest')).toBeNull())
+})
+
+it('Motor: límite de arranque, aceleración por hardware con reinicio y el entorno en solo lectura (#70, #96)', async () => {
+  view()
+  await openCard('Motor')
+  const limits = await screen.findByTestId('startup-limit')
+  expect(limits.textContent).toContain('Arrancó en 4.8 s')
+  await userEvent.click(within(limits).getByRole('tab', { name: '60 s' }))
+  await waitFor(() => expect(host.settings.startupLimit).toBe(60))
+  expect(screen.getByTestId('engine-environment').textContent).toContain('RINARI_WHISPER_BIN')
+  const hardware = screen.getByTestId('hardware-acceleration')
+  await userEvent.click(within(hardware).getByRole('switch'))
+  await userEvent.click(await within(hardware).findByRole('button', { name: 'Reiniciar ahora' }))
+  expect(host.relaunch).toHaveBeenCalled()
+})
+
+it('Diagnóstico: registros detallados por 24 h (#96)', async () => {
+  view()
+  await openCard('Diagnóstico')
+  const row = await screen.findByTestId('detailed-logs')
+  await userEvent.click(within(row).getByRole('switch'))
+  await waitFor(() => expect(row.textContent).toContain('Activos hasta'))
 })

@@ -26,6 +26,18 @@ import { isSessionHidden, partitionSessions } from './sessionVisibility'
  * The Engine lists 50 sessions unless asked for more, and the sidebar only
  * showed those: older chats vanished from it. Its ceiling is 500.
  */
+
+/** Mensajes por página de historial (#70). */
+const HISTORY_PAGE = 100
+
+/** Lo cargado de una conversación y desde dónde seguir hacia atrás. */
+export interface HistoryInfo {
+  total: number
+  hasMore: boolean
+  beforeSeq?: number | null
+  beforeTurnIndex?: number | null
+}
+
 export const SESSION_LIST_LIMIT = 500
 
 
@@ -84,7 +96,10 @@ export function useSessionList(options: {
   /** Archivadas: ciclo de vida explícito, separado de "cerrar". */
   const [archivedSessions, setArchivedSessions] = useState<SessionSummary[]>([])
   /** Total/has_more del historial cargado por sesión. */
-  const [historyInfo, setHistoryInfo] = useState<Record<string, { total: number; hasMore: boolean }>>({})
+  const [historyInfo, setHistoryInfo] = useState<Record<string, HistoryInfo>>({})
+  const historyInfoRef = useRef(historyInfo)
+  historyInfoRef.current = historyInfo
+  const earlierInFlight = useRef(new Set<string>())
   /** Sesiones con historial ya cargado o hilo vivo (no recargar encima). */
   const historyLoaded = useRef(new Set<string>())
   /** Un refresco obsoleto que resuelve tarde no debe sobrescribir uno más nuevo. */
@@ -237,14 +252,21 @@ export function useSessionList(options: {
       setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
       const job = (async () => {
         try {
+          // Una página, no la conversación entera (#70): lo anterior se pide
+          // con «Cargar anteriores».
           const [history, timeline] = await Promise.all([
-            engineApi.sessionHistory(id),
+            engineApi.sessionHistory(id, HISTORY_PAGE),
             timelineEnabled ? engineApi.sessionTimeline(id).catch(() => null) : Promise.resolve(null),
           ])
           if (!isCurrent()) return
           setHistoryInfo((prev) => ({
             ...prev,
-            [id]: { total: history.total, hasMore: history.has_more },
+            [id]: {
+              total: history.total,
+              hasMore: history.has_more || Boolean(timeline?.has_more),
+              beforeSeq: history.next_before_seq ?? null,
+              beforeTurnIndex: timeline?.has_more ? timeline.next_before_turn_index : null,
+            },
           }))
           const persisted = historyToMessages(history.messages)
           // Lo vivo siempre gana a un fetch de historial que llega tarde.
@@ -266,6 +288,33 @@ export function useSessionList(options: {
     },
     [dispatch, timelineEnabled],
   )
+
+  /** «Cargar anteriores» (#70): la página previa del historial y de los turnos. */
+  const loadEarlierHistory = useCallback(async (id: string): Promise<void> => {
+    const info = historyInfoRef.current[id]
+    if (!info?.hasMore || earlierInFlight.current.has(id)) return
+    earlierInFlight.current.add(id)
+    try {
+      const [history, timeline] = await Promise.all([
+        info.beforeSeq ? engineApi.sessionHistory(id, HISTORY_PAGE, info.beforeSeq) : Promise.resolve(null),
+        timelineEnabled && info.beforeTurnIndex !== null && info.beforeTurnIndex !== undefined
+          ? engineApi.sessionTimeline(id, info.beforeTurnIndex).catch(() => null)
+          : Promise.resolve(null),
+      ])
+      if (history) dispatch({ type: 'history/prepended', sessionId: id, messages: historyToMessages(history.messages) })
+      if (timeline) dispatch({ type: 'timeline/loaded', sessionId: id, turns: timeline.turns })
+      const beforeSeq = history ? history.next_before_seq ?? null : null
+      const beforeTurnIndex = timeline?.has_more ? timeline.next_before_turn_index : null
+      setHistoryInfo((prev) => ({
+        ...prev,
+        [id]: { ...info, beforeSeq, beforeTurnIndex, hasMore: Boolean(beforeSeq) || beforeTurnIndex !== null },
+      }))
+    } catch (err) {
+      toast.error(commandMessage(err))
+    } finally {
+      earlierInFlight.current.delete(id)
+    }
+  }, [dispatch, timelineEnabled])
 
   const retrySessionHistory = useCallback((id: string): Promise<void> => {
     historyLoaded.current.delete(id)
@@ -567,6 +616,7 @@ export function useSessionList(options: {
     refreshSessions,
     loadSessionHistory,
     retrySessionHistory,
+    loadEarlierHistory,
     ensureHistoryLoaded: loadSessionHistory,
     deferTrustWarning,
     prepareSession,

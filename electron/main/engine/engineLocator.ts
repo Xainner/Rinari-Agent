@@ -39,11 +39,17 @@ export class EngineNotFound extends Error {
   readonly code = 'ENGINE_NOT_FOUND'
 }
 
-/** El sidecar empaquetado: `<recursos>/engine-dist/python[.exe] -m rinari`. */
+/**
+ * El sidecar empaquetado: `<recursos>/engine-dist/python[.exe] -m
+ * rinari.engine_protocol`, la entrada rápida del Engine sin la CLI (#91). Un
+ * Engine que aún no la trae arranca por `-m rinari engine --stdio`.
+ */
 export function sidecarCommand(resourceDir: string): EngineCommand | null {
-  const python = join(resourceDir, 'engine-dist', process.platform === 'win32' ? 'python.exe' : 'python')
+  const root = join(resourceDir, 'engine-dist')
+  const python = join(root, process.platform === 'win32' ? 'python.exe' : 'python')
   if (!existsSync(python)) return null
-  return { program: python, args: ['-m', 'rinari', 'engine', '--stdio'], source: 'sidecar' }
+  const fast = existsSync(join(root, 'Lib', 'site-packages', 'rinari', 'engine_protocol', '__main__.py'))
+  return { program: python, args: fast ? ['-m', 'rinari.engine_protocol'] : ['-m', 'rinari', 'engine', '--stdio'], source: 'sidecar' }
 }
 
 function envArgs(env: NodeJS.ProcessEnv): string[] {

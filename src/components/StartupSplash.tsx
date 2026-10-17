@@ -1,5 +1,6 @@
 import { Check, Copy, RotateCcw } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../i18n'
 import { useWindowBounds } from '../hooks/useWindowBounds'
 import { copyText } from '../lib/clipboard'
@@ -34,6 +35,20 @@ export default function StartupSplash({
   useWindowBounds()
   const { t } = useI18n()
   const root = useStartupParallax()
+  // «Copiar detalles» dice que copió (#70): antes copiaba sin avisar.
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 1500)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+  // Pasados 10 s se dice que el primer arranque puede tardar (#70).
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (failed) return
+    const timer = window.setTimeout(() => setSlow(true), 10_000)
+    return () => window.clearTimeout(timer)
+  }, [failed])
   const technical = [state ? `state: ${state}` : null, detail ? `detail: ${detail}` : null].filter(Boolean).join('\n') || '—'
   return (
     <div ref={root} className="startup">
@@ -55,9 +70,14 @@ export default function StartupSplash({
                 <RotateCcw size={14} aria-hidden="true" />
                 {t('startup.retry')}
               </button>
-              <button type="button" onClick={() => void copyText(technical)} className="btn btn-ghost">
-                <Copy size={14} aria-hidden="true" />
-                {t('startup.copyDetails')}
+              <button
+                type="button"
+                onClick={() => void copyText(technical).then((ok) => (ok ? setCopied(true) : toast.error(t('startup.copyFailed'))))}
+                className="btn btn-ghost"
+                data-copied={copied || undefined}
+              >
+                {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                {copied ? t('startup.copied') : t('startup.copyDetails')}
               </button>
             </div>
             <details className="mt-4 w-full max-w-sm text-left text-xs text-[var(--text-muted)]">
@@ -68,7 +88,7 @@ export default function StartupSplash({
         ) : (
           <>
             <h1 className="startup-title">{t('startup.loading')}</h1>
-            <p className="startup-copy">{t('startup.loadingHint')}</p>
+            <p className="startup-copy" data-slow={slow || undefined}>{slow ? t('startup.slow') : t('startup.loadingHint')}</p>
             <ol className="startup-steps" role="status" aria-live="polite">
               {startupSteps(state).map((step, index) => (
                 <li key={step.key} data-state={step.state} style={{ animationDelay: `${index * 120}ms` }}>

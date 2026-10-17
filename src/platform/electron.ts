@@ -38,6 +38,8 @@ import type {
   MigrationStatus,
   BackgroundPatch,
   BackgroundSettings,
+  HostSettings,
+  HostSettingsPatch,
   DiagnosticsExportResult,
   DiagnosticsPreview,
 } from './contract'
@@ -144,6 +146,9 @@ interface DesktopHostApi {
     setLanguage(language: 'es' | 'en'): Promise<void>
     setIndicators(state: AttentionIndicators): Promise<void>
     openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
+    hostSettings(): Promise<HostSettings>
+    setHostSettings(patch: HostSettingsPatch): Promise<HostSettings>
+    relaunch(): Promise<void>
   }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
@@ -279,6 +284,9 @@ export const electronBridge: DesktopBridge = {
     setLanguage: (language) => required().app.setLanguage(language),
     setIndicators: (state) => required().app.setIndicators(state),
     openFolder: (place) => required().app.openFolder(place),
+    hostSettings: () => required().app.hostSettings(),
+    setHostSettings: (patch) => required().app.setHostSettings(patch),
+    relaunch: () => required().app.relaunch(),
   },
 
   events: {

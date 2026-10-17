@@ -36,6 +36,7 @@ import type {
   FlowScopeRequest,
   BackgroundSettings,
   DiagnosticsPreview,
+  HostSettings,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -80,6 +81,8 @@ export interface TestBridge extends DesktopBridge {
   /** Lo que el renderer mandó a la barra de tareas y la bandeja, en orden. */
   indicators: AttentionIndicators[]
   openedFolders: string[]
+  hostSettings: HostSettings
+  relaunched: number
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   /** Ruta real que `files.pathFor` da a cada `File` (#57); sin entrada, `null`. */
@@ -202,6 +205,11 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     hostLanguage: null,
     indicators: [],
     openedFolders: [],
+    hostSettings: {
+      startupLimit: 'auto', startupLimitS: 45, lastStartupMs: 4200, startupTimeline: [], hardwareAcceleration: true, restartRequired: false,
+      detailedLogs: false, detailedLogsUntil: null, environment: [], channel: 'stable', packaged: false,
+    },
+    relaunched: 0,
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -329,6 +337,19 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       },
       async openFolder(place) {
         bridge.openedFolders.push(place)
+      },
+      async hostSettings() {
+        return structuredClone(bridge.hostSettings)
+      },
+      async setHostSettings(patch) {
+        const next = { ...bridge.hostSettings, ...patch }
+        if (patch.detailedLogs !== undefined) next.detailedLogsUntil = patch.detailedLogs ? new Date(Date.now() + 86_400_000).toISOString() : null
+        if (patch.hardwareAcceleration !== undefined) next.restartRequired = true
+        bridge.hostSettings = next
+        return structuredClone(next)
+      },
+      async relaunch() {
+        bridge.relaunched += 1
       },
     },
 

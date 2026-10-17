@@ -44,6 +44,8 @@ export interface WindowDeps {
    * se muestra hasta que el usuario la abre (`presentWindow`).
    */
   startHidden?: boolean
+  /** La ventana quedó lista para mostrarse (línea de tiempos del arranque, #91). */
+  onRevealed?: (reason: string) => void
 }
 
 type RevealWindow = Pick<BrowserWindow, 'isDestroyed' | 'isVisible' | 'maximize' | 'show'>
@@ -244,8 +246,9 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   const reveal = (reason: string) => {
     if (shown || window.isDestroyed()) return
     shown = true
-    if (reason !== 'ready-to-show') {
-      console.error(`[rinari] la ventana se muestra por ${reason}: la página no llegó a pintar`)
+    deps.onRevealed?.(reason)
+    if (reason.startsWith('did-fail-load')) {
+      console.error(`[rinari] la ventana se muestra por ${reason}: la página no cargó`)
     }
     // Arranque en la bandeja: se queda oculta hasta que el usuario la abra.
     if (deps.startHidden) return
@@ -253,8 +256,10 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     revealMaximized(window, push)
   }
   window.once('ready-to-show', () => reveal('ready-to-show'))
-  // Respaldo: la página terminó de cargar pero no pintó.
-  window.webContents.once('did-finish-load', () => setTimeout(() => reveal('did-finish-load'), 1_500))
+  // En los arranques medidos `ready-to-show` no llegaba nunca y la ventana
+  // esperaba siempre 1,5 s de respaldo (#91): se muestra al terminar de
+  // cargar. El fondo oscuro de la ventana evita el destello blanco.
+  window.webContents.once('did-finish-load', () => reveal('did-finish-load'))
   // Y si ni siquiera carga, se muestra igual para poder diagnosticar.
   window.webContents.once('did-fail-load', (_event, code, description) =>
     reveal(`did-fail-load ${code}: ${description}`),

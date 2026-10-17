@@ -66,8 +66,10 @@ export interface SpawnOptions extends TransportHandlers {
   cwd?: string
   /** Época de conexión: identifica a esta instancia frente a las anteriores. */
   epoch: number
-  /** Plazo del handshake; solo los tests lo acortan. */
+  /** Plazo del handshake (#70: el host lo adapta a lo que tardó el último arranque). */
   handshakeTimeoutMs?: number
+  /** Variables añadidas al entorno del Engine (registros detallados). */
+  env?: Record<string, string>
 }
 
 interface PendingRequest {
@@ -154,7 +156,7 @@ export class NdjsonTransport {
 
   /** Lanza el proceso y completa el handshake; al volver, el lector corre. */
   static async spawn(options: SpawnOptions): Promise<NdjsonTransport> {
-    const { program, args, cwd, epoch, handshakeTimeoutMs, ...handlers } = options
+    const { program, args, cwd, epoch, handshakeTimeoutMs, env, ...handlers } = options
     let child: ChildProcessWithoutNullStreams
     try {
       child = spawn(program, [...args], {
@@ -164,7 +166,7 @@ export class NdjsonTransport {
         shell: false,
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+        env: { ...process.env, ...env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
       })
     } catch (reason) {
       throw new TransportError('spawn', reason instanceof Error ? reason.message : String(reason))

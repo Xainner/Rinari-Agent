@@ -368,6 +368,10 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'startup-timing': {
+    title: 'Arranque: Engine en paralelo con la ventana, línea de tiempos y límite adaptable',
+    phases: ['exercise'],
+  },
   'spell-check': {
     title: 'Corrector del composer: sugerencias y «Agregar al diccionario» con clic derecho',
     phases: ['exercise'],

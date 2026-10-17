@@ -17,7 +17,7 @@ import type { RuntimeStore } from './runtimeStore'
 
 type CommandKeys =
   | 'startEngine' | 'shutdownEngine' | 'restartEngine' | 'refreshStatus' | 'refreshSessions'
-  | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded' | 'retryHistoryFor' | 'retryHistory'
+  | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded' | 'retryHistoryFor' | 'retryHistory' | 'loadEarlierFor'
   | 'send' | 'sendTo' | 'prepareAttachments' | 'prepareAttachmentsFor'
   | 'cancelAttachmentPreparation' | 'cancelAttachmentPreparationFor'
   | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'steerTo' | 'queueTo' | 'resolveApproval'
@@ -31,7 +31,7 @@ type CommandKeys =
 
 const COMMAND_KEYS: readonly CommandKeys[] = [
   'startEngine', 'shutdownEngine', 'restartEngine', 'refreshStatus', 'refreshSessions',
-  'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded', 'retryHistoryFor', 'retryHistory',
+  'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded', 'retryHistoryFor', 'retryHistory', 'loadEarlierFor',
   'send', 'sendTo', 'prepareAttachments', 'prepareAttachmentsFor',
   'cancelAttachmentPreparation', 'cancelAttachmentPreparationFor',
   'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'steerTo', 'queueTo', 'resolveApproval',

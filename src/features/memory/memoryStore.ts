@@ -146,8 +146,8 @@ export function effectiveCandidateStatus(
   return { status: fallback }
 }
 
-export async function resolveCandidate(id: string, decision: CandidateDecision, edits: CandidateEdits = {}) {
-  const result = await memoryApi.resolveCandidate(id, decision, edits)
+export async function resolveCandidate(id: string, decision: CandidateDecision, edits: CandidateEdits = {}, where: { place?: string; project_root?: string } = {}) {
+  const result = await memoryApi.resolveCandidate(id, decision, edits, where)
   const status = candidateStatus(result?.status) === 'pending'
     ? decision === 'deny' ? 'denied' : 'approved'
     : candidateStatus(result.status) as Exclude<CandidateStatus, 'pending'>

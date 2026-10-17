@@ -189,6 +189,11 @@ async function ready() {
   await wait('(async () => (await window.rinariDesktop.engine.status()).state === "ready")()', 60_000)
   await wait('Boolean(document.querySelector(".view-switcher"))')
   await delay(400)
+  // Primer uso (#71): la bienvenida va antes del asistente de proveedores.
+  if (await evaluate(`Boolean(document.querySelector('[data-testid="welcome-skip"]'))`)) {
+    await evaluate(`document.querySelector('[data-testid="welcome-skip"]').click()`)
+    await delay(400)
+  }
   await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Configurar después')?.click()`)
   await evaluate('document.fonts.ready')
 }

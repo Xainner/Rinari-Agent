@@ -26,6 +26,8 @@ import {
   PUSH,
   type BackgroundPatch,
   type BackgroundSettings,
+  type HostSettings,
+  type HostSettingsPatch,
   type BridgeResult,
   type BrowserContextView,
   type BrowserPreviewView,
@@ -210,6 +212,9 @@ const api = {
     setLanguage: (language: 'es' | 'en') => call<void>(CHANNEL.appLanguageSet, language),
     setIndicators: (state: AttentionIndicators) => call<void>(CHANNEL.appIndicatorsSet, state),
     openFolder: (place: 'home' | 'logs' | 'instructions') => call<void>(CHANNEL.appOpenFolder, place),
+    hostSettings: () => call<HostSettings>(CHANNEL.appHostSettingsGet),
+    setHostSettings: (patch: HostSettingsPatch) => call<HostSettings>(CHANNEL.appHostSettingsSet, patch),
+    relaunch: () => call<void>(CHANNEL.appRelaunch),
   },
 
   contextMenu: {

@@ -72,6 +72,8 @@ interface ChatViewProps {
   timelines: Record<string, TurnTimeline>
   onResolveApproval: (id: string, decision: string) => void
   historyNote: { total: number; hasMore: boolean } | null
+  /** «Cargar anteriores» (#70): la página previa de la conversación. */
+  onLoadEarlier?: () => Promise<void> | void
   sessionMode: string | null
   onModeChange: (mode: string) => void
   reasoningEffort: import('../lib/reasoning').ReasoningEffort
@@ -136,6 +138,7 @@ function ChatView({
   timelines,
   onResolveApproval,
   historyNote,
+  onLoadEarlier,
   sessionMode,
   onModeChange,
   reasoningEffort,
@@ -536,9 +539,7 @@ function ChatView({
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={pointerDown} onKeyDown={userScrolls}>
             {historyNote?.hasMore && (
-              <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">
-                {t('history.hasMore', { n: historyNote.total })}
-              </p>
+              <LoadEarlier total={historyNote.total} onLoad={onLoadEarlier} />
             )}
             <div ref={contentRef}>
             <ActivityLayoutContext.Provider value={activityLayout}>
@@ -623,3 +624,31 @@ function ChatView({
 
 /** Memoizado: cada instancia solo repinta cuando cambian sus props (su sesión). */
 export default memo(ChatView)
+
+/**
+ * «Cargar anteriores» (#70): una conversación larga abre con su última página;
+ * lo anterior llega al pedirlo. Sin acción (vistas antiguas), queda la nota.
+ */
+function LoadEarlier({ total, onLoad }: { total: number; onLoad?: () => Promise<void> | void }) {
+  const { t } = useI18n()
+  const [loading, setLoading] = useState(false)
+  if (!onLoad) {
+    return <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-[11px] text-[var(--text-subtle)]">{t('history.hasMore', { n: total })}</p>
+  }
+  return (
+    <div className="mx-auto flex max-w-3xl justify-center px-4 pt-4">
+      <button
+        type="button"
+        data-testid="history-load-earlier"
+        className="btn btn-ghost btn-xs"
+        disabled={loading}
+        onClick={() => {
+          setLoading(true)
+          void Promise.resolve(onLoad()).finally(() => setLoading(false))
+        }}
+      >
+        {loading ? t('history.loadingEarlier') : t('history.loadEarlier')}
+      </button>
+    </div>
+  )
+}

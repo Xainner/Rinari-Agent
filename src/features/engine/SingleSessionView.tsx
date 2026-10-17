@@ -123,6 +123,7 @@ export default function SingleSessionView({
         onSearchFiles={commands.searchFiles}
         processesOpenSignal={processesOpenSignal}
         historyNote={sessionId !== '' ? (data.historyInfo[sessionId] ?? null) : null}
+        onLoadEarlier={sessionId !== '' ? () => commands.loadEarlierFor(sessionId) : undefined}
         onReviewChanges={sessionId ? reviewChanges : undefined}
       />
       </ZoneBoundary>

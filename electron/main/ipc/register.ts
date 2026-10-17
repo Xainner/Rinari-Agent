@@ -24,6 +24,8 @@ import {
   type BrowserSlotLease,
   type BackgroundPatch,
   type BackgroundSettings,
+  type HostSettings,
+  type HostSettingsPatch,
   type DiagnosticsExportResult,
   type DiagnosticsPreview,
   type OpenExternalFileRequest,
@@ -49,6 +51,7 @@ import {
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
 import { assertBackgroundPatch } from '../native/background'
+import { assertHostSettingsPatch } from '../native/hostSettings'
 import { assertIndicators, type AttentionIndicators } from '../native/indicators'
 import { assertOpenJson, assertSaveJson } from '../native/jsonFiles'
 import {
@@ -125,6 +128,9 @@ export interface HostServices {
     setIndicators(state: AttentionIndicators): void
     /** Abre un lugar conocido: la carpeta de Rinari, sus registros o el RINARI.md global. */
     openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
+    hostSettings(): HostSettings
+    setHostSettings(patch: HostSettingsPatch): HostSettings
+    relaunch(): Promise<void>
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -489,6 +495,9 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
         await services.app.openFolder(place)
       }),
     ],
+    [CHANNEL.appHostSettingsGet, guarded(registry, () => services.app.hostSettings())],
+    [CHANNEL.appHostSettingsSet, guarded(registry, (_event, patch) => services.app.setHostSettings(assertHostSettingsPatch(patch)))],
+    [CHANNEL.appRelaunch, guarded(registry, () => services.app.relaunch())],
     [
       CHANNEL.appIndicatorsSet,
       guarded(registry, (_event, state) => {

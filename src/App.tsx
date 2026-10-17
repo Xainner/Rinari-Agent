@@ -53,10 +53,11 @@ import AppSidebar from './components/app-shell/AppSidebar'
 import ChatHeader from './components/app-shell/ChatHeader'
 import CommandPalette from './components/CommandPalette'
 import EngineConsole from './features/engine/EngineConsole'
-import SettingsView from './features/settings/SettingsView'
 import WorkspaceView from './features/workspace/WorkspaceView'
 import ProjectHome from './features/projects/ProjectHome'
 import ProviderWizard from './features/providers/ProviderWizard'
+import WelcomeDialog from './features/welcome/WelcomeDialog'
+import { welcomeSeen, markWelcomeSeen } from './features/welcome/welcomeState'
 import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
 import { switchToProfileOf, useProfileWorkspace } from './features/profiles/useProfileWorkspace'
@@ -67,6 +68,8 @@ import { PROJECT_PICKER_EVENT } from './components/composer/ProjectChip'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
+// Ajustes se carga al abrirlo (#91): el bloque principal pesaba 1,8 MB.
+const SettingsView = lazy(() => import('./features/settings/SettingsView'))
 
 // De package.json al compilar: fija en el código se quedó en 0.2.0 tras publicar
 // la 0.2.1. `npm run release:bump` solo toca package.json y sus copias.
@@ -327,7 +330,8 @@ function App() {
       // App vive fuera del I18nProvider: se usa translate() con el idioma actual.
       const tr = (key: I18nKey, vars?: Record<string, string | number>) =>
         translate(lang, key, vars)
-      void checkForUpdates()
+      // Avanzado → Actualizaciones puede apagar la búsqueda al abrir.
+      void (useUIStore.getState().autoCheckUpdates ? checkForUpdates() : Promise.resolve(null))
         .then((found) => {
           if (!found) return
           toast(tr('update.available', { v: found.version }), {
@@ -371,6 +375,8 @@ function App() {
       target: session.sessionsError !== null ? undefined : { kind: 'providers' },
     })
   }, [bannerError, session.sessionsError, lang])
+  // Primer uso (#71): la bienvenida va antes de conectar el proveedor.
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
   useEffect(() => {
     if (
       session.ready &&
@@ -379,7 +385,8 @@ function App() {
       session.providers.length === 0 &&
       !wizardSnoozed
     ) {
-      setWizardOpen(true)
+      if (!welcomeSeen()) setWelcomeOpen(true)
+      else setWizardOpen(true)
     }
   }, [session.ready, session.catalogLoaded, session.catalogError, session.providers.length, wizardSnoozed])
 
@@ -822,17 +829,29 @@ function App() {
           />
         )}
         {view === 'settings' && (
-          <SettingsView
-            appVersion={APP_VERSION}
-            providers={session.providers}
-            models={session.models}
-            activeSessionId={session.activeSession || null}
-            engineCapabilities={session.status?.capabilities}
-            onCatalogChanged={() => void session.refreshCatalog()}
-          />
+          <Suspense fallback={<div className="settings-loading" aria-busy="true" />}>
+            <SettingsView
+              appVersion={APP_VERSION}
+              providers={session.providers}
+              models={session.models}
+              activeSessionId={session.activeSession || null}
+              engineCapabilities={session.status?.capabilities}
+              onCatalogChanged={() => void session.refreshCatalog()}
+            />
+          </Suspense>
         )}
         </div>
       </AppShell>
+
+      <WelcomeDialog
+        open={welcomeOpen}
+        onClose={() => {
+          // Respondida o saltada, no vuelve sola; se repite desde Ajustes → Memoria.
+          markWelcomeSeen()
+          setWelcomeOpen(false)
+          setWizardOpen(true)
+        }}
+      />
 
       <ProviderWizard
         open={wizardOpen}

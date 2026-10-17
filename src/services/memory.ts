@@ -27,6 +27,9 @@ export const memoryApi = {
   get: (id: string) => platform().command<{ record: MemoryRecord }>('memory_get', { id }),
   update: (id: string, expected_revision: number, fields: { text?: string; topic?: string }) =>
     platform().command<{ record: MemoryRecord }>('memory_update', { id, expected_revision, ...fields }),
+  /** Mover a otro lugar (#75): general, el perfil activo o un proyecto. */
+  move: (id: string, place: string, target: { place_ref?: string; project_root?: string } = {}) =>
+    platform().command<{ record: MemoryRecord }>('memory_move', { id, place, ...target }),
   forget: (id: string, expected_revision: number) =>
     platform().command<{ id: string; forgotten: boolean }>('memory_forget', { id, expected_revision }),
   /** Archivo portátil: recuerdos y lo olvidado, con su digest. */
@@ -37,10 +40,10 @@ export const memoryApi = {
   candidates: (status: 'pending' | 'resolved' | 'all' = 'all') =>
     platform().command<MemoryCandidatesResult>('memory_candidates_list', { status }),
   /** El Engine responde `{candidate}`; se acepta también la fila sola. */
-  resolveCandidate: async (id: string, decision: CandidateDecision, edits: CandidateEdits = {}) => {
+  resolveCandidate: async (id: string, decision: CandidateDecision, edits: CandidateEdits = {}, where: { place?: string; project_root?: string } = {}) => {
     const result = await platform().command<MemoryCandidate | { candidate: MemoryCandidate }>(
       'memory_candidate_resolve',
-      { id, decision, ...(decision === 'allow_once' ? edits : {}) },
+      { id, decision, ...(decision === 'allow_once' ? { ...edits, ...where } : {}) },
     )
     return 'candidate' in result && result.candidate && typeof result.candidate === 'object'
       ? result.candidate

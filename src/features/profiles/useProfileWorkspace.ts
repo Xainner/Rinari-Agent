@@ -50,11 +50,14 @@ export function useProfileWorkspace({ ready, activeRecord, refreshSessions, refr
     if (ready) void load()
   }, [ready, load])
 
+  // Al volver a la ventana se relee (la CLI pudo cambiar de perfil), pero
+  // nunca antes de que el motor esté listo: era un ENGINE_DOWN por arranque (#91).
   useEffect(() => {
+    if (!ready) return
     const onFocus = () => void load()
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [load])
+  }, [load, ready])
 
   const firstRevision = useRef(true)
   useEffect(() => {

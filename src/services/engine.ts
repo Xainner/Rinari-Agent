@@ -839,6 +839,9 @@ export function isCommandError(value: unknown): value is CommandError {
 const ERROR_WITH_DETAIL = new Set([
   'NETWORK_FAILURE', 'PROVIDER_MODEL_FAILURE', 'TOOL_FAILURE', 'CONFIGURATION_ERROR', 'MODEL_DISCOVERY_FAILED',
   'DOWNLOAD_FAILED', 'SKILL_JOB_FAILED', 'PR_CREATE_FAILED', 'VALIDATION_FAILED', 'BLOCKED',
+  // Códigos amplios: el motor explica el caso concreto («Checkpoints require a
+  // Git repository…») y perderlo deja al dueño sin saber qué pasó.
+  'INVALID_PARAMS', 'INVALID_ARGUMENT', 'INVALID_USAGE', 'NOT_FOUND', 'CONFLICT', 'PERMISSION_DENIED',
 ])
 
 /**
@@ -853,7 +856,22 @@ export function errorText(code: string, message: string | undefined, lang: Langu
   if (!hasTranslation(key)) return detail || translate(lang, 'error.unknown', { code })
   if (lang === 'en' && detail) return detail
   const text = translate(lang, key)
-  return ERROR_WITH_DETAIL.has(code) && detail ? `${text}: ${detail}` : text
+  return ERROR_WITH_DETAIL.has(code) && detail ? `${text.replace(/\.$/, '')}: ${detail}` : text
+}
+
+/** «Sobre ti» (#71): el nombre siempre entra al prompt; usos y preferencias orientan. */
+export interface AboutMe {
+  name: string | null
+  uses: string[]
+  preferences: string | null
+  updated_at: string | null
+}
+
+/** Lo que ocupa cada apartado de la carpeta de Rinari (Ajustes → Avanzado). */
+export interface StorageUsage {
+  home: string
+  sections: { id: string; bytes: number; files: number; cleanable?: boolean; reclaimable?: number }[]
+  total: number
 }
 
 export function commandMessage(error: unknown): string {
@@ -984,13 +1002,15 @@ export const engineApi = {
     platform().command<{ session: SessionSummary }>('session_restore', { reference }),
   forkSession: (reference: string, title?: string) =>
     platform().command<{ session: SessionSummary }>('session_fork', { reference, title: title ?? null }),
-  sessionHistory: (reference: string, limit?: number) =>
+  sessionHistory: (reference: string, limit?: number, beforeSeq?: number) =>
     platform().command<{
       session_id: string;
       messages: HistoryMessage[];
       total: number;
       has_more: boolean;
-    }>("session_history", { reference, limit: limit ?? null }),
+      /** Cursor de «Cargar anteriores» (#70); `null` sin más. */
+      next_before_seq?: number | null;
+    }>("session_history", { reference, limit: limit ?? null, before_seq: beforeSeq ?? null }),
   sessionTimeline: (reference: string, beforeTurnIndex?: number, limit?: number) =>
     platform().command<{
       session_id: string;
@@ -1453,7 +1473,13 @@ export const engineApi = {
   /** «Probar conexión»: one request without credentials to each enabled provider. */
   networkTest: () => platform().command<import('../types/protocol.generated').NetworkTest>('network_test', { provider_ids: null }),
   /** How much each part of Rinari's folder takes. */
-  storageUsage: () => platform().command<{ home: string; sections: { id: string; bytes: number; files: number }[]; total: number }>('storage_usage'),
+  storageUsage: () => platform().command<StorageUsage>('storage_usage'),
+  /** Lo que el dueño contó de sí en la bienvenida (#71). */
+  aboutGet: () => platform().command<AboutMe>('memory_about_get'),
+  aboutSet: (about: { name: string | null; uses: string[]; preferences: string | null }) =>
+    platform().command<AboutMe>('memory_about_set', { name: about.name ?? '', uses: about.uses, preferences: about.preferences ?? '' }),
+  /** «Limpiar» un apartado de Almacenamiento (#91): nada se borra solo. */
+  storageClean: (section: string) => platform().command<{ section: string; freed: number; removed: number; kept: number; usage: StorageUsage }>('storage_clean', { section }),
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
   // la petición sin sesión y la compactación manual fallaba.

@@ -63,6 +63,8 @@ export type DesktopCommand =
   | "mcp_set_enabled"
   | "mcp_test"
   | "mcp_update"
+  | "memory_about_get"
+  | "memory_about_set"
   | "memory_candidate_resolve"
   | "memory_candidates_list"
   | "memory_export"
@@ -70,6 +72,7 @@ export type DesktopCommand =
   | "memory_get"
   | "memory_import"
   | "memory_list"
+  | "memory_move"
   | "memory_search"
   | "memory_settings_get"
   | "memory_settings_set"
@@ -244,6 +247,7 @@ export type DesktopCommand =
   | "speech_settings_set"
   | "speech_status"
   | "speech_transcribe"
+  | "storage_clean"
   | "storage_usage"
   | "task_get"
   | "task_tree"
@@ -341,6 +345,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "mcp_set_enabled",
   "mcp_test",
   "mcp_update",
+  "memory_about_get",
+  "memory_about_set",
   "memory_candidate_resolve",
   "memory_candidates_list",
   "memory_export",
@@ -348,6 +354,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "memory_get",
   "memory_import",
   "memory_list",
+  "memory_move",
   "memory_search",
   "memory_settings_get",
   "memory_settings_set",
@@ -522,6 +529,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "speech_settings_set",
   "speech_status",
   "speech_transcribe",
+  "storage_clean",
   "storage_usage",
   "task_get",
   "task_tree",
@@ -634,6 +642,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "mcp_set_enabled",
   "mcp_test",
   "mcp_update",
+  "memory_about_get",
+  "memory_about_set",
   "memory_candidate_resolve",
   "memory_candidates_list",
   "memory_export",
@@ -641,6 +651,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "memory_get",
   "memory_import",
   "memory_list",
+  "memory_move",
   "memory_search",
   "memory_settings_get",
   "memory_settings_set",
@@ -815,6 +826,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "speech_settings_set",
   "speech_status",
   "speech_transcribe",
+  "storage_clean",
   "storage_usage",
   "task_get",
   "task_tree",

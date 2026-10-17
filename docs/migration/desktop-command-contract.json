@@ -916,6 +916,11 @@
           "name": "limit",
           "type": "Option<u32>",
           "optional": true
+        },
+        {
+          "name": "before_seq",
+          "type": "Option<u64>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -930,6 +935,11 @@
         {
           "key": "limit",
           "from": "limit",
+          "optional": true
+        },
+        {
+          "key": "before_seq",
+          "from": "before_seq",
           "optional": true
         }
       ],
@@ -3342,6 +3352,29 @@
       "manual": false,
       "engine_method": "storage.usage",
       "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "storage_clean",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "section",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "storage.clean",
+      "engine_params": [
+        {
+          "key": "section",
+          "from": "section",
+          "optional": false
+        }
+      ],
       "passthrough": null,
       "host_effects": []
     },
@@ -7838,6 +7871,16 @@
           "name": "topic",
           "type": "String",
           "optional": true
+        },
+        {
+          "name": "place",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "project_root",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -7862,6 +7905,16 @@
         {
           "key": "topic",
           "from": "topic",
+          "optional": true
+        },
+        {
+          "key": "place",
+          "from": "place",
+          "optional": true
+        },
+        {
+          "key": "project_root",
+          "from": "project_root",
           "optional": true
         }
       ],
@@ -8556,6 +8609,113 @@
         {
           "key": "title",
           "from": "title",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_about_get",
+      "module": "memory",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.about.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_about_set",
+      "module": "memory",
+      "args": [
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "uses",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "preferences",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.about.set",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "uses",
+          "from": "uses",
+          "optional": true
+        },
+        {
+          "key": "preferences",
+          "from": "preferences",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_move",
+      "module": "memory",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "place",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "place_ref",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "project_root",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.move",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "place",
+          "from": "place",
+          "optional": false
+        },
+        {
+          "key": "place_ref",
+          "from": "place_ref",
+          "optional": true
+        },
+        {
+          "key": "project_root",
+          "from": "project_root",
           "optional": true
         }
       ],

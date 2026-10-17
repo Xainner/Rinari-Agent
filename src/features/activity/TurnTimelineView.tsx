@@ -335,7 +335,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           <ActivityText active={running} className="act-label">{formatTool(item, lang)}</ActivityText>
           {!active && ['requested', 'running'].includes(item.status) && <span className="text-xs">{t('activity.interrupted')}</span>}
           {exited && <span className="font-mono text-[10px] text-[var(--warning)]">{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
-          {outputPath && <span onClick={e => e.stopPropagation()} className="text-[12px] text-[var(--accent-2)] underline"><FileLink href={outputPath}>{t('activity.viewFile')}</FileLink></span>}
+          {outputPath && <span onClick={e => e.stopPropagation()} className="tool-inline-action is-link"><FileLink href={outputPath}><FileText size={12} aria-hidden="true" />{t('activity.viewFile')}</FileLink></span>}
           {running && item.status === 'running' && item.tool === 'shell.exec' && <MoveToBackground toolCallId={item.toolCallId} />}
           <span className="act-meta">
             {technical && <span className="font-mono text-[10px]">{item.tool}</span>}

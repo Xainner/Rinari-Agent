@@ -1773,6 +1773,8 @@ export const es = {
   'changes.card.files': '{n} archivos cambiados',
   'changes.card.filesOne': '1 archivo cambiado',
   'changes.card.review': 'Revisar',
+  'changes.card.more': "Ver los {n} restantes",
+  'changes.card.fewer': "Ver menos",
   'changes.card.undo': 'Deshacer',
   'changes.card.openFile': 'Ver {path} en Cambios',
   'changes.card.sensitive': 'sensible',

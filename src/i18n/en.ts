@@ -1756,6 +1756,8 @@ export const en: Record<I18nKey, string> = {
   'changes.card.files': '{n} files changed',
   'changes.card.filesOne': '1 file changed',
   'changes.card.review': 'Review',
+  'changes.card.more': "Show the other {n}",
+  'changes.card.fewer': "Show fewer",
   'changes.card.undo': 'Undo',
   'changes.card.openFile': 'See {path} in Changes',
   'changes.card.sensitive': 'sensitive',

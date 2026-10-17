@@ -1885,6 +1885,9 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .tool-inline-action { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid rgb(167 139 250 / 0.3); background: rgb(147 88 255 / 0.1); font-size: 11.5px; font-weight: 600; color: var(--violet-200); transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); animation: rinari-fade-in var(--dur-base) var(--ease-out); }
 .tool-inline-action:hover:not(:disabled) { border-color: rgb(167 139 250 / 0.55); background: rgb(147 88 255 / 0.2); color: var(--text); }
 .tool-inline-action:disabled { cursor: default; opacity: 0.7; }
+/* «Ver archivo» (#99.5): la misma acción, con el enlace llenando el chip. */
+.tool-inline-action.is-link { padding: 0; }
+.tool-inline-action.is-link > a, .tool-inline-action.is-link > span { display: inline-flex; height: 100%; align-items: center; gap: 5px; padding: 0 9px; color: inherit; text-decoration: none; }
 /* Tareas «Comando» (#50): la salida de cada ejecución, plegada. */
 .schedule-output > summary { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; list-style: none; user-select: none; color: var(--text-muted); }
 .schedule-output > summary::-webkit-details-marker { display: none; }
@@ -2652,6 +2655,12 @@ html[data-motion='reduced'] .present-thumb:hover img { transform: none; }
 .turn-changes-kind { height: 17px; flex-shrink: 0; padding: 0 6px; font-size: 10px; }
 .turn-changes-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11.5px; color: var(--text); }
 .turn-changes-file-stat { display: inline-flex; flex-shrink: 0; gap: 6px; }
+/* #99.4: con muchos archivos se ven los primeros y «Ver los N restantes»; los que se despliegan entran suaves. */
+.turn-changes-files > li.is-extra { animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.turn-changes-more { display: inline-flex; width: fit-content; align-items: center; gap: 4px; margin: -2px 0 0 6px; font-size: 11.5px; color: var(--violet-200); transition: color var(--dur-fast); }
+.turn-changes-more:hover { color: var(--text); }
+.turn-changes-more svg { transition: transform var(--dur-fast) var(--ease-out); }
+.turn-changes-more[aria-expanded='true'] svg { transform: rotate(180deg); }
 .turn-changes-note { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-subtle); }
 .turn-changes-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .turn-changes-conflicts { display: flex; max-height: 160px; flex-direction: column; gap: 4px; overflow-y: auto; font-size: 12px; color: var(--warning); }

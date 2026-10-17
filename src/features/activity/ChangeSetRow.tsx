@@ -1,4 +1,4 @@
-import { FileDiff, Info, RotateCcw, ShieldAlert } from 'lucide-react'
+import { ChevronDown, FileDiff, Info, RotateCcw, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -26,6 +26,9 @@ const KIND_TONE: Record<TurnChangedFile['kind'], string | undefined> = {
   renamed: undefined,
 }
 
+/** Con más archivos que estos (y alguno más), la lista enseña los primeros y «Ver los N restantes» (#99.4). */
+const FILES_SHOWN = 5
+
 const STATUS_KEY: Partial<Record<string, I18nKey>> = {
   undone: 'changes.card.undone',
   partially_undone: 'changes.card.partiallyUndone',
@@ -44,9 +47,12 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
   const reviewTurn = useSessionDockStore((state) => state.reviewTurn)
   const [preview, setPreview] = useState<TurnUndoPreview | null>(null)
   const [working, setWorking] = useState(false)
+  const [allFiles, setAllFiles] = useState(false)
   const presentation = changeSetPresentation(item)
   if (presentation === 'hidden') return null
   const files = item.files
+  const folds = files.length > FILES_SHOWN + 1
+  const listed = folds && !allFiles ? files.slice(0, FILES_SHOWN) : files
 
   function review(path?: string) {
     if (sessionId) reviewTurn(sessionId, item.turnId, path)
@@ -89,8 +95,8 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
         {statusKey && <span className="r-chip turn-changes-status">{t(statusKey)}</span>}
       </header>
       <ul className="turn-changes-files">
-        {files.map((file) => (
-          <li key={file.absolute_path}>
+        {listed.map((file, index) => (
+          <li key={file.absolute_path} className={index >= FILES_SHOWN ? 'is-extra' : undefined}>
             <button type="button" className="turn-changes-file" disabled={!sessionId} onClick={() => review(file.path)} title={t('changes.card.openFile', { path: file.path })}>
               <span className="r-chip turn-changes-kind" data-tone={KIND_TONE[file.kind]}>{t(`changes.kind.${file.kind}`)}</span>
               <span className="turn-changes-path">{file.previous_path && file.kind === 'renamed' ? `${file.previous_path} → ${file.path}` : file.path}</span>
@@ -103,6 +109,12 @@ export function ChangeSetRow({ item, turnActive }: { item: Extract<TimelineItem,
           </li>
         ))}
       </ul>
+      {folds && (
+        <button type="button" className="turn-changes-more" aria-expanded={allFiles} onClick={() => setAllFiles((value) => !value)}>
+          {allFiles ? t('changes.card.fewer') : t('changes.card.more', { n: files.length - FILES_SHOWN })}
+          <ChevronDown size={12} aria-hidden="true" />
+        </button>
+      )}
       {hasPartialCoverage(item) && (
         <p className="turn-changes-note"><Info size={12} aria-hidden="true" /> {t('changes.card.partial')}</p>
       )}

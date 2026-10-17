@@ -58,3 +58,18 @@ it('marks a user forward with its quoted source and keeps the user alignment', (
   expect(screen.getByText('Reenviado desde «Backend API»')).toBeTruthy()
   expect(screen.getByText('¿Qué archivos cambiaste hoy?')).toBeTruthy()
 })
+
+it('«Exportar desde aquí» also on a message of the turn still running, from its turn (#79)', async () => {
+  const { TurnSessionContext } = await import('../features/activity/turnSession')
+  const { useReviewExport } = await import('../features/review/ReviewExportDialog')
+  render(
+    <I18nProvider lang="es">
+      <TurnSessionContext.Provider value="ses_live">
+        <MessageBubble message={{ id: 'local-123', role: 'user', content: 'Entrega ya', createdAt: 1, turnId: 'turn-live' }} />
+      </TurnSessionContext.Provider>
+    </I18nProvider>,
+  )
+  await userEvent.click(screen.getByTestId('export-from-message'))
+  expect(useReviewExport.getState().target).toEqual({ sessionId: 'ses_live', fromSeq: undefined, fromTurnId: 'turn-live' })
+  useReviewExport.getState().close()
+})

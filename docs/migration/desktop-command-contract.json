@@ -8925,6 +8925,11 @@
           "name": "include_messages",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "from_turn_id",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -8944,6 +8949,11 @@
         {
           "key": "include_messages",
           "from": "include_messages",
+          "optional": true
+        },
+        {
+          "key": "from_turn_id",
+          "from": "from_turn_id",
           "optional": true
         }
       ],

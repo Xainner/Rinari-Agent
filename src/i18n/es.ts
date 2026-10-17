@@ -3827,6 +3827,7 @@ export const es = {
   'review.title': 'Exportar para revisión',
   'review.whole': 'Toda la conversación, en un .zip para analizarla.',
   'review.fromHere': 'Desde el mensaje {n} en adelante.',
+  'review.fromThisTurn': 'Desde este turno',
   'review.fromHereShort': 'Exportar desde aquí',
   'review.fromHereHint': 'Paquete para revisión desde este mensaje',
   'review.messages': 'Incluir el texto de los mensajes',

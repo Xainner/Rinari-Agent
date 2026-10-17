@@ -3809,6 +3809,7 @@ export const en: Record<I18nKey, string> = {
   'review.title': 'Export for review',
   'review.whole': 'The whole conversation, in a .zip to analyze it.',
   'review.fromHere': 'From message {n} on.',
+  'review.fromThisTurn': 'From this turn',
   'review.fromHereShort': 'Export from here',
   'review.fromHereHint': 'Review package from this message',
   'review.messages': 'Include the messages\' text',

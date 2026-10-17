@@ -162,7 +162,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
         <ChildFromMessage text={text} />
-        <ExportFromMessage messageId={message.id} />
+        <ExportFromMessage messageId={message.id} turnId={message.turnId} />
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             <MessageAttachments attachments={message.attachments} />
@@ -320,14 +320,15 @@ function PlanSeparator({ kind, title, comment }: { kind: 'implement' | 'adjust';
 
 /** «Hacer en sesión hija»: the owner's message, as the task of a child (plan-sesiones-hijas 5.4). */
 /** «Exportar desde aquí» (#79): el paquete de revisión desde este mensaje. */
-function ExportFromMessage({ messageId }: { messageId: string }) {
+function ExportFromMessage({ messageId, turnId }: { messageId: string; turnId?: string }) {
   const { t } = useI18n()
   const sessionId = useContext(TurnSessionContext)
   const seq = seqOfMessage(messageId)
-  if (!sessionId || seq === undefined) return null
+  // Un mensaje del turno en curso aún no tiene número: su turno marca el inicio.
+  if (!sessionId || (seq === undefined && !turnId)) return null
   return (
     <button type="button" data-testid="export-from-message" className="child-from-message is-icon" title={t('review.fromHereHint')}
-      aria-label={t('review.fromHereShort')} onClick={() => useReviewExport.getState().open(sessionId, seq)}>
+      aria-label={t('review.fromHereShort')} onClick={() => useReviewExport.getState().open(sessionId, seq, turnId)}>
       <PackageOpen size={12} aria-hidden="true" />
     </button>
   )

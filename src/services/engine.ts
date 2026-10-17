@@ -122,8 +122,9 @@ export interface HistoryMessage {
 
 export interface TimelineEvent {
   event: string;
-  turn_id: string;
-  session_id: string;
+  /** Una página de `session.timeline` los dice en el turno, no en cada fila (#91). */
+  turn_id?: string;
+  session_id?: string;
   activity_seq: number;
   occurred_at?: string;
   [key: string]: unknown;

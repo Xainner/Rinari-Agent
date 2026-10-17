@@ -220,7 +220,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "session_resume_cancel": {"method":"session.resume.cancel","params":[{"key":"session_id","from":"sessionId","optional":false}]},
   "session_resume_get": {"method":"session.resume.get","params":[{"key":"session_id","from":"sessionId","optional":false}]},
   "session_resume_now": {"method":"session.resume.now","params":[{"key":"session_id","from":"sessionId","optional":false}]},
-  "session_review_export": {"method":"session.review.export","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"from_seq","from":"from_seq","optional":true},{"key":"include_messages","from":"include_messages","optional":true}]},
+  "session_review_export": {"method":"session.review.export","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"from_seq","from":"from_seq","optional":true},{"key":"include_messages","from":"include_messages","optional":true},{"key":"from_turn_id","from":"from_turn_id","optional":true}]},
   "session_summary": {"method":"session.summary","params":[{"key":"session_id","from":"sessionId","optional":false}]},
   "session_timeline": {"method":"session.timeline","params":[{"key":"ref","from":"reference","optional":false},{"key":"before_turn_index","from":null,"optional":true},{"key":"limit","from":"limit","optional":true}],"manual":true},
   "session_tool_background": {"method":"session.tool.background","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"tool_call_id","from":"tool_call_id","optional":false}]},

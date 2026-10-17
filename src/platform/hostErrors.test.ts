@@ -33,7 +33,9 @@ it('turns a plain bridge failure back into an Error with its code and details', 
 
 it('says an engine error by its code, in the app language (#68)', () => {
   expect(errorText('TURN_RUNNING', 'A turn is already running', 'es')).toBe('Rinari está trabajando en esta conversación. Espera a que termine o detenla.')
-  expect(errorText('INVALID_PARAMS', "Param 'title' must be a string.", 'es')).toBe('El motor no aceptó los datos de esta acción.')
+  // A broad code keeps the engine's explanation of the concrete case after the sentence.
+  expect(errorText('INVALID_PARAMS', 'Checkpoints require a Git repository', 'es')).toBe('El motor no aceptó los datos de esta acción: Checkpoints require a Git repository')
+  expect(errorText('STALE_RESOURCE', 'generation mismatch', 'es')).toBe('Esto cambió desde que se mostró (el motor se reinició). Vuelve a abrirlo.')
   // English keeps the engine's own words, which are more precise.
   expect(errorText('TURN_RUNNING', 'A turn is already running', 'en')).toBe('A turn is already running')
   expect(errorText('NOT_FOUND', '', 'en')).toBe('It no longer exists: it may have been deleted or closed.')

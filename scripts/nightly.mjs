@@ -155,11 +155,12 @@ function main() {
   }
   run(setup, ['--silent-install', INSTALL_DIR])
   // La instalación silenciosa no crea accesos directos; se crean con el mismo
-  // nombre que usa el instalador, así que desinstalar también los quita.
+  // nombre que usa el instalador («Rinari Nightly», #74), así que desinstalar
+  // también los quita. El nombre anterior se borra para no dejar dos.
   const shortcuts = [
     `[Environment]::GetFolderPath('Programs')`,
     `[Environment]::GetFolderPath('Desktop')`,
-  ].map((folder) => `$l = $s.CreateShortcut((Join-Path (${folder}) 'Rinari Agent Nightly.lnk')); $l.TargetPath = $exe; $l.WorkingDirectory = $dir; $l.Save()`)
+  ].map((folder) => `Remove-Item -LiteralPath (Join-Path (${folder}) 'Rinari Agent Nightly.lnk') -ErrorAction SilentlyContinue; $l = $s.CreateShortcut((Join-Path (${folder}) 'Rinari Nightly.lnk')); $l.TargetPath = $exe; $l.WorkingDirectory = $dir; $l.Save()`)
   run('powershell.exe', [
     '-NoProfile',
     '-Command',

@@ -31,6 +31,9 @@ const PRODUCT: &str = if NIGHTLY {
 } else {
     "Rinari Agent"
 };
+/// Nombre de los accesos directos (#74). `PRODUCT` no cambia: mueve la
+/// carpeta de datos, el actualizador y la entrada de desinstalación.
+const SHORTCUT: &str = if NIGHTLY { "Rinari Nightly" } else { "Rinari" };
 const EXECUTABLE: &str = if NIGHTLY {
     "rinari-agent-nightly.exe"
 } else {
@@ -1804,7 +1807,10 @@ mod registry {
     ) -> Result<()> {
         let base = shortcut_base(scope, kind);
         fs::create_dir_all(&base)?;
-        update_shortcut(&base.join(format!("{PRODUCT}.lnk")), target, create)
+        // El nombre anterior («Rinari Agent») se quita si apunta a nuestro
+        // ejecutable: al actualizar no quedan dos, y desinstalar borra ambos.
+        update_shortcut(&base.join(format!("{PRODUCT}.lnk")), target, false)?;
+        update_shortcut(&base.join(format!("{SHORTCUT}.lnk")), target, create)
     }
 
     fn shortcut_base(scope: InstallScope, kind: &str) -> PathBuf {

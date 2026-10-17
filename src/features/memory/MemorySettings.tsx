@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { LoaderCircle, MessageCircleHeart, Pencil, Trash2, X } from 'lucide-react'
+import { Hourglass, LoaderCircle, MessageCircleHeart, MessageSquare, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { engineApi, type AboutMe } from '../../services/engine'
@@ -372,9 +372,9 @@ function RecordsSection({ onOpenSession }: { onOpenSession?: (id: string) => voi
       {visible.length > 0 && groups.map((group, index) => (
         <div key={group.kind ?? 'all'} className="memory-group" data-kind={group.kind ?? undefined}>
           {group.kind && (
-            <p className="memory-group-title mt-2 mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)]" data-testid="memory-group">
+            <p className="memory-group-title" data-testid="memory-group">
               <span>{kindLabel(group.kind, t) || group.kind}</span>
-              <span className="memory-group-count font-normal text-[var(--text-subtle)]">{group.records.length}</span>
+              <span className="memory-group-count">{group.records.length}</span>
             </p>
           )}
           {/* El hueco para la barra flotante, una vez: al final de la última lista. */}
@@ -504,7 +504,7 @@ function RecordRow({ record, onForget, selected = false, onSelect, onOpenSession
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-[var(--text)]">{record.topic}</span>
-              {kind && <span className="rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">{kind}</span>}
+              {kind && <span className="memory-record-kind rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)]">{kind}</span>}
               {record.place && record.place !== 'general' && (
                 <span className="memory-place-chip" data-place={record.place} title={record.place_label ?? undefined}>
                   <PlaceIcon place={record.place} size={11} />
@@ -513,13 +513,13 @@ function RecordRow({ record, onForget, selected = false, onSelect, onOpenSession
               )}
             </div>
             <p className="mt-0.5 text-sm whitespace-pre-wrap text-[var(--text-muted)] [overflow-wrap:anywhere]">{record.text}</p>
-            <p className="memory-record-meta mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-subtle)]">
+            <p className="memory-record-meta">
               {updated && !Number.isNaN(updated.getTime()) && <span>{t('memory.updated', { date: updated.toLocaleDateString(lang) })}</span>}
               {/* De qué conversación salió (#75), con enlace si sigue existiendo. */}
               {record.origin && (record.origin.exists && onOpenSession
-                ? <button type="button" className="memory-origin" data-testid="memory-origin" onClick={() => onOpenSession(record.origin!.session_id)}>{t('memory.origin', { title: record.origin.title || record.origin.session_id })}</button>
-                : <span className="memory-origin" data-testid="memory-origin">{record.origin.exists ? t('memory.origin', { title: record.origin.title || record.origin.session_id }) : t('memory.originGone')}</span>)}
-              {isStale(record) && <span className="memory-stale r-chip" data-testid="memory-stale">{t('memory.stale')}</span>}
+                ? <button type="button" className="memory-origin" data-testid="memory-origin" onClick={() => onOpenSession(record.origin!.session_id)}><MessageSquare size={11} aria-hidden="true" /><span className="truncate">{t('memory.origin', { title: record.origin.title || record.origin.session_id })}</span></button>
+                : <span className="memory-origin" data-testid="memory-origin" data-gone={!record.origin.exists || undefined}><MessageSquare size={11} aria-hidden="true" /><span className="truncate">{record.origin.exists ? t('memory.origin', { title: record.origin.title || record.origin.session_id }) : t('memory.originGone')}</span></span>)}
+              {isStale(record) && <span className="memory-stale r-chip" data-testid="memory-stale"><Hourglass size={10} aria-hidden="true" />{t('memory.stale')}</span>}
             </p>
           </div>
           <div className="flex shrink-0 gap-1">

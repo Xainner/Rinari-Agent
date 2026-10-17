@@ -3423,3 +3423,19 @@ textarea.soul-editor { resize: none; }
 .tool-whole:hover:not(:disabled) { border-color: rgb(167 139 250 / 0.6); background: rgb(147 88 255 / 0.18); color: var(--text); }
 .tool-whole[data-loading] { cursor: default; opacity: 0.7; }
 .tool-whole-row { display: flex; justify-content: flex-end; padding: 6px 10px; border-top: 1px solid var(--border); }
+
+/* Memoria por categoría (#75): cada grupo con su título en versalitas, el conteo como píldora y una línea hasta el borde;
+   en cada fila, la fecha, el origen (enlace a la conversación, o tachado si ya no existe) y «Sin usar hace tiempo». */
+.memory-group + .memory-group { margin-top: 12px; }
+.memory-group-title { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; padding: 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-subtle); }
+.memory-group-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line-2), transparent); }
+.memory-group-count { display: inline-flex; min-width: 18px; height: 16px; align-items: center; justify-content: center; padding: 0 5px; border-radius: var(--r-pill); background: rgb(255 255 255 / 0.07); font: 600 10px/1 var(--font-mono); letter-spacing: 0; color: var(--text-muted); }
+.memory-record-meta { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 3px; font-size: 11px; color: var(--text-subtle); }
+.memory-origin { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 4px; color: var(--text-subtle); }
+.memory-origin > svg { flex-shrink: 0; }
+button.memory-origin { border-radius: 4px; color: var(--accent-2); transition: color var(--dur-fast); }
+button.memory-origin:hover { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.memory-origin[data-gone] { font-style: italic; opacity: 0.8; }
+.memory-stale { display: inline-flex; height: 18px; align-items: center; gap: 4px; --tone: var(--text-subtle); font-size: 10.5px; }
+/* Dentro de su grupo, la fila no repite la categoría que ya dice el título. */
+.memory-group[data-kind] .memory-record-kind { display: none; }

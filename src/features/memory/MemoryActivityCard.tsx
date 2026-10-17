@@ -13,7 +13,7 @@ import { useUIStore } from '../../stores/ui'
 import type { MemoryTimelineItem } from '../activity/types'
 import { MemoryCandidateCard } from './MemoryCandidateCard'
 import { effectiveCandidateStatus, forgetMemory, refreshMemory, useMemoryState } from './memoryStore'
-import { memoryErrorMessage } from './memoryCopy'
+import { kindLabel, memoryErrorMessage } from './memoryCopy'
 
 /**
  * Memoria en el chat, fuera de la actividad plegada: una propuesta
@@ -113,7 +113,7 @@ function RememberedNotice({ item }: { item: MemoryTimelineItem }) {
           {(item.topic || item.kind) && (
             <p className="memory-saved-topic">
               {item.topic && <span className="truncate">{item.topic}</span>}
-              {item.kind && <span className="r-chip">{item.kind}</span>}
+              {item.kind && <span className="r-chip">{kindLabel(item.kind, t) || item.kind}</span>}
             </p>
           )}
         </div>

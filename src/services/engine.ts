@@ -1547,6 +1547,9 @@ export const engineApi = {
       attachments: attachments.length ? attachmentInputs(attachments) : null,
     }),
   /** Move a foreground command of this session to the background (#32). */
+  /** La salida entera de un comando que el historial recortó (#91). */
+  toolOutput: (session_id: string, tool_call_id: string) =>
+    platform().command<{ tool_call_id: string; stdout: string | null; stderr: string | null }>("session_tool_output", { session_id, tool_call_id }),
   toolBackground: (session_id: string, tool_call_id: string) =>
     platform().command<{ session_id: string; tool_call_id: string; requested: boolean }>("session_tool_background", { session_id, tool_call_id }),
   /** Edit an unread message sent during the turn; STEER_ALREADY_READ once read (#54). */

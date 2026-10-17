@@ -224,6 +224,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "session_summary": {"method":"session.summary","params":[{"key":"session_id","from":"sessionId","optional":false}]},
   "session_timeline": {"method":"session.timeline","params":[{"key":"ref","from":"reference","optional":false},{"key":"before_turn_index","from":null,"optional":true},{"key":"limit","from":"limit","optional":true}],"manual":true},
   "session_tool_background": {"method":"session.tool.background","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"tool_call_id","from":"tool_call_id","optional":false}]},
+  "session_tool_output": {"method":"session.tool.output","params":[{"key":"ref","from":"session_id","optional":false},{"key":"tool_call_id","from":"tool_call_id","optional":false}]},
   "skill_disable": {"method":"skill.disable","params":[{"key":"name","from":"name","optional":false}]},
   "skill_duplicates_dismiss": {"method":"skill.duplicates.dismiss","params":[{"key":"skills","from":"skills","optional":false}]},
   "skill_duplicates_list": {"method":"skill.duplicates.list","params":[]},

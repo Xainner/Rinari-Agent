@@ -2729,6 +2729,7 @@ export const es = {
 
   // Auditoría i18n (2026-09-29): textos que estaban escritos en el código.
   'activity.viewFile': 'Ver archivo',
+  'activity.showWhole': 'Ver completo',
   'activity.toBackground': 'Mover a segundo plano',
   'activity.movingToBackground': 'Pasando a segundo plano…',
   'activity.toBackgroundHint': 'Sigue corriendo como proceso del chat y Rinari continúa con lo demás',

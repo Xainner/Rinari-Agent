@@ -8481,6 +8481,39 @@
       "host_effects": []
     },
     {
+      "command": "session_tool_output",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "tool_call_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.tool.output",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "tool_call_id",
+          "from": "tool_call_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "process_orphans_list",
       "module": "desktop",
       "args": [],

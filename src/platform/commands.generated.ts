@@ -215,6 +215,7 @@ export type DesktopCommand =
   | "session_summary"
   | "session_timeline"
   | "session_tool_background"
+  | "session_tool_output"
   | "skill_disable"
   | "skill_duplicates_dismiss"
   | "skill_duplicates_list"
@@ -502,6 +503,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_summary",
   "session_timeline",
   "session_tool_background",
+  "session_tool_output",
   "skill_disable",
   "skill_duplicates_dismiss",
   "skill_duplicates_list",
@@ -804,6 +806,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_summary",
   "session_timeline",
   "session_tool_background",
+  "session_tool_output",
   "skill_disable",
   "skill_duplicates_dismiss",
   "skill_duplicates_list",

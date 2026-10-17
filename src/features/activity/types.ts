@@ -81,6 +81,8 @@ export interface ToolPresentation {
   stderr?: string
   running?: boolean
   truncated?: boolean
+  /** The history page cut this output; `session.tool.output` has it whole (#91). */
+  page_truncated?: boolean
   /** The persisted full-capture artifact reached its hard byte limit. */
   capture_truncated?: boolean
   artifacts?: string[]

@@ -348,7 +348,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
           </span>
         </summary>
         {instruction && <blockquote data-testid="agent-instruction" className="mt-1.5 max-h-60 overflow-auto whitespace-pre-wrap border-l-2 border-[var(--accent)]/40 pl-3 text-[12px] leading-relaxed text-[var(--text)] [overflow-wrap:anywhere]">{instruction.text}</blockquote>}
-        {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (
+        {item.presentation?.kind === 'command' ? <CommandPresentation presentation={item.presentation} argumentsText={item.arguments} toolCallId={item.toolCallId} /> : item.presentation?.kind === 'tool' ? <StructuredPresentation presentation={item.presentation} fallback={item.error || item.result || item.arguments} /> : (item.arguments || item.result || item.error) && (
           <pre className="mt-1.5 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-inset)] p-2 font-mono text-[11px] text-[var(--text-subtle)]">{item.error || item.result || item.arguments}</pre>
         )}
       </InspectionDetails>
@@ -537,8 +537,21 @@ function StructuredPresentation({ presentation, fallback }: {
   </div>
 }
 
-function CommandPresentation({ presentation, argumentsText }: { presentation: NonNullable<Extract<TimelineItem, { type: 'tool' }>['presentation']>; argumentsText?: string }) {
-  const { lang } = useI18n()
+function CommandPresentation({ presentation: shown, argumentsText, toolCallId }: { presentation: NonNullable<Extract<TimelineItem, { type: 'tool' }>['presentation']>; argumentsText?: string; toolCallId?: string }) {
+  const { lang, t } = useI18n()
+  const sessionId = useContext(TurnSessionContext)
+  // El historial trae la salida recortada (#91); «Ver completo» la pide entera.
+  const [whole, setWhole] = useState<{ stdout: string | null; stderr: string | null } | null>(null)
+  const [loadingWhole, setLoadingWhole] = useState(false)
+  const presentation = whole ? { ...shown, stdout: whole.stdout ?? shown.stdout, stderr: whole.stderr ?? shown.stderr, page_truncated: false } : shown
+  const showWhole = () => {
+    if (!sessionId || !toolCallId) return
+    setLoadingWhole(true)
+    void engineApi.toolOutput(sessionId, toolCallId)
+      .then((result) => setWhole({ stdout: result.stdout, stderr: result.stderr }))
+      .catch((error) => toast.error(commandMessage(error)))
+      .finally(() => setLoadingWhole(false))
+  }
   const argv = Array.isArray(presentation.command) ? presentation.command : undefined
   const command = typeof presentation.command === 'string' ? presentation.command : undefined
   const displayCommand = argv ? `argv ${JSON.stringify(argv)}` : command
@@ -554,6 +567,7 @@ function CommandPresentation({ presentation, argumentsText }: { presentation: No
       {typeof exitCode === 'number' && <span className={failed ? 'text-[var(--danger)]' : 'text-[var(--success)]'}>{lang === 'es' ? `salida ${exitCode}` : `exit ${exitCode}`}</span>}
       {presentation.stderr_warning && <span className="text-[var(--warning)]">{lang === 'es' ? 'stderr con código 0' : 'stderr with exit 0'}</span>}
       {presentation.truncated && <span className="text-[var(--warning)]">{lang === 'es' ? 'salida visible truncada' : 'visible output truncated'}</span>}
+      {presentation.page_truncated && sessionId && toolCallId && <button type="button" data-testid="tool-output-whole" disabled={loadingWhole} onClick={showWhole} className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[var(--accent)] hover:bg-[var(--bg-hover)] disabled:opacity-40">{t('activity.showWhole')}</button>}
       {presentation.capture_truncated && <span className="text-[var(--danger)]">{lang === 'es' ? 'captura completa limitada a 50 MiB' : 'full capture limited to 50 MiB'}</span>}
       <button type="button" onClick={copy} disabled={!displayCommand} className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-[var(--bg-hover)] disabled:opacity-40"><Copy size={11} />{lang === 'es' ? 'Copiar' : 'Copy'}</button>
     </div>

@@ -2711,6 +2711,7 @@ export const en: Record<I18nKey, string> = {
   'skills.pendingProposed': "Proposal",
 
   'activity.viewFile': 'View file',
+  'activity.showWhole': 'Show all',
   'activity.toBackground': 'Move to background',
   'activity.movingToBackground': 'Moving to background…',
   'activity.toBackgroundHint': 'It keeps running as a chat process and Rinari carries on',

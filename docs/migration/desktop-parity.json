@@ -1782,6 +1782,13 @@
       "callers": []
     },
     {
+      "command": "session_tool_output",
+      "kind": "engine",
+      "method": "session.tool.output",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "skill_disable",
       "kind": "engine",
       "method": "skill.disable",
@@ -2385,10 +2392,10 @@
     }
   ],
   "summary": {
-    "commands": 285,
-    "engine_backed": 279,
+    "commands": 286,
+    "engine_backed": 280,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 95
+    "without_callers": 96
   }
 }

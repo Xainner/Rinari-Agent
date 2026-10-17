@@ -177,6 +177,7 @@ function presentation(value: unknown): ToolPresentation | undefined {
     stderr: text(raw.stderr),
     running: typeof raw.running === 'boolean' ? raw.running : undefined,
     truncated: raw.truncated === true,
+    page_truncated: raw.page_truncated === true || undefined,
     capture_truncated: raw.capture_truncated === true,
     artifacts: Array.isArray(raw.artifacts) ? raw.artifacts.filter((item): item is string => typeof item === 'string') : undefined,
     stream_sequences: raw.stream_sequences && typeof raw.stream_sequences === 'object'

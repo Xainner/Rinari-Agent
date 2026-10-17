@@ -918,7 +918,7 @@ export const en: Record<I18nKey, string> = {
   'settings.admin.unreachable': 'No response',
   'settings.about.export': 'Export diagnostics',
   'settings.about.exportDesc': 'Saves a ZIP with the app and Rinari core logs, crash dumps and a summary of versions, sizes and status. No messages, files or keys. Attach it when you report a problem.',
-  'settings.about.exportAction': 'Export',
+  'settings.about.exportAction': 'Export diagnostics',
   'settings.about.exportTitle': 'Export diagnostics',
   'settings.about.exportBody': "The bundle contains these files. The logs don't include your messages, files or keys, and your home folder shows as ~. Review it before sharing.",
   'settings.about.exportConfirm': 'Save…',

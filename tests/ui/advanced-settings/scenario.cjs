@@ -53,5 +53,14 @@ scenario(async () => {
   await settleAnimations()
   await evaluate(`document.querySelector('[data-card="engine"]').scrollIntoView({ block: 'start' })`)
   await screenshot('engine')
-  report({ passed: ['status and folded cards', 'search filters and opens', 'storage bar and network test', 'engine startup bar and updates'] })
+
+  // 6. Diagnóstico (#96): detailed logs, the logs folder, the diagnostic and «Exportar para revisión».
+  await clickText('Motor', `${PAGE} .adv-card-head`, { includes: true })
+  await clickText('Actualizaciones', `${PAGE} .adv-card-head`, { includes: true })
+  await clickText('Diagnóstico', `${PAGE} .adv-card-head`, { includes: true })
+  await wait(`Boolean(document.querySelector('[data-testid="adv-review-export"]'))`)
+  await settleAnimations()
+  await evaluate(`document.querySelector('[data-card="diagnostics"]').scrollIntoView({ block: 'start' })`)
+  await screenshot('diagnostics')
+  report({ passed: ['status and folded cards', 'search filters and opens', 'storage bar and network test', 'engine startup bar and updates', 'diagnostics with review export'] })
 }, { width: 1400, height: 900 })

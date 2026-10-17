@@ -936,7 +936,7 @@ export const es = {
   'settings.admin.unreachable': 'Sin respuesta',
   'settings.about.export': 'Exportar diagnóstico',
   'settings.about.exportDesc': 'Guarda un ZIP con los registros de la app y del núcleo de Rinari, los volcados de fallo y un resumen de versiones, tamaños y estado. Sin mensajes, archivos ni claves. Adjúntalo al informar de un problema.',
-  'settings.about.exportAction': 'Exportar',
+  'settings.about.exportAction': 'Exportar diagnóstico',
   'settings.about.exportTitle': 'Exportar diagnóstico',
   'settings.about.exportBody': 'El paquete contiene estos archivos. Los registros no incluyen tus mensajes, archivos ni claves, y tu carpeta personal aparece como ~. Revísalo antes de compartirlo.',
   'settings.about.exportConfirm': 'Guardar…',

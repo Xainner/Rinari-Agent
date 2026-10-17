@@ -55,8 +55,9 @@ scenario(async () => {
   assert.equal(created.lineage_kind, 'note')
   await wait(`[...document.querySelectorAll('[data-testid="session-children"]')].some((list) => list.innerText.includes(${JSON.stringify(title)}))`)
   assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="session-children-chip"]'))`), false, 'the mother carries no counter')
-  // Once its turn ends the child carries its check.
-  await wait(`Boolean(document.querySelector('[data-testid="session-children"] [role="img"][aria-label="Terminada"]'))`, 30_000)
+  // Once its turn ends the child reads like any session: no check.
+  await wait(`[...document.querySelectorAll('[data-testid="session-children"] li')].some((li) => li.innerText.includes(${JSON.stringify(title)}) && !li.querySelector('[role="status"]'))`, 30_000)
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="session-children"] [role="img"][aria-label="Terminada"]'))`), false, 'no check on a finished child')
   await clickText(title, '[data-testid="session-children"] button', { includes: true })
   await wait(`document.querySelector('[data-testid="chat-header-mother"]')?.innerText.includes('Origen')`)
   await screenshot('child')

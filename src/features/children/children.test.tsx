@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi, type ChildSession } from '../../services/engine'
 import { desktopApi, type QuestionRequest } from '../../services/desktop'
-import { ChildrenDock } from './ChildrenDock'
+import { ChildRow, useSessionChildren } from './ChildrenDock'
 import { OfferCard, offerOf } from './OfferCard'
 import { applyChildEvent, useChildrenStore } from './childrenStore'
 
@@ -51,7 +51,11 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-const dock = () => render(<I18nProvider lang="es"><ChildrenDock sessionId="ses_mother" /></I18nProvider>)
+function Rows({ sessionId }: { sessionId: string }) {
+  const children = useSessionChildren(sessionId)
+  return <>{children.map((item) => <ChildRow key={item.child_session_id} child={item} />)}</>
+}
+const dock = () => render(<I18nProvider lang="es"><Rows sessionId="ses_mother" /></I18nProvider>)
 
 it('shows a working child, then its report with the owner\'s merge decision', async () => {
   vi.mocked(engineApi.sessionChildrenList).mockResolvedValue({ session_id: 'ses_mother', children: [child()] })
@@ -78,15 +82,17 @@ it('shows a working child, then its report with the owner\'s merge decision', as
   expect(screen.queryByRole('button', { name: /Integrar rama/ })).toBeNull()
 })
 
-it('hides nothing to decide once closed, and shows nothing without children', async () => {
+it('a finished child reads like a session: no check, no «Misma carpeta»', async () => {
   vi.mocked(engineApi.sessionChildrenList).mockResolvedValue({ session_id: 'ses_mother', children: [] })
   const { container } = dock()
   await waitFor(() => expect(engineApi.sessionChildrenList).toHaveBeenCalled())
-  expect(container.querySelector('[data-testid="children-dock"]')).toBeNull()
-  applyChildEvent('session.child.updated', { child: child({ branch: null, isolation: 'same', state: 'completed', report: { summary: 'Listo.' } }) })
+  expect(container.querySelector('[data-testid="child-card"]')).toBeNull()
+  applyChildEvent('session.child.updated', { child: child({ branch: null, isolation: 'same', state: 'completed', report: { summary: 'Listo.', text: 'Listo. ' + 'detalle '.repeat(40) } }) })
   expect(await screen.findByText('Listo.')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Cerrar la tarjeta' }))
-  expect(screen.queryByText('Listo.')).toBeNull()
+  expect(screen.queryByText('Misma carpeta')).toBeNull()
+  expect(container.querySelector('.r-check')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: /Leer todo|Ver todo|Leer/ }))
+  expect(screen.getByText(/detalle detalle/)).toBeTruthy()
 })
 
 it('an offer waits for «Nueva sesión» or «Hazlo aquí»', async () => {

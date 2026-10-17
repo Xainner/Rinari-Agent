@@ -268,7 +268,6 @@ export const es = {
   'sidebar.newGeneralChat': 'Nueva conversación sin proyecto',
   'sidebar.sessionWorking': 'Sesión en curso',
   'sidebar.childBranch': "En su rama {branch}",
-  'sidebar.childDone': "Terminada",
   'sidebar.resize': "Ancho de la barra lateral",
   'sidebar.backToMother': 'Volver a «{title}»',
   'sidebar.sessionInterrupted': 'Sesión interrumpida, se puede reanudar',

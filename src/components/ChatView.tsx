@@ -28,7 +28,7 @@ import { unreadResultCount, useBoardAttentionStore } from '../stores/boardAttent
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
 import { GoalDock } from '../features/goal/GoalDock'
-import { ChildrenDock } from '../features/children/ChildrenDock'
+import { ChildRow, useSessionChildren } from '../features/children/ChildrenDock'
 import { StickyNote } from '../features/followups/StickyNote'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
@@ -173,9 +173,10 @@ function ChatView({
   const [dismissedPlans, setDismissedPlans] = useState<Set<string>>(() => new Set())
   const latestTurn = selectLatestTurn({ timelines }, sessionId) ?? undefined
   const pendingPlan = sessionMode === 'plan' && latestTurn?.mode === 'plan' && latestTurn.status === 'completed' && latestTurn.items.some(item => item.type === 'model' && item.outputKind === 'final' && item.content) && !dismissedPlans.has(latestTurn.turnId) && !isStreaming
+  const children = useSessionChildren(sessionId)
   const stream = useMemo(
-    () => buildChatStream(messages, timelines, sessionId),
-    [messages, timelines, sessionId],
+    () => buildChatStream(messages, timelines, sessionId, children),
+    [messages, timelines, sessionId, children],
   )
   const presentation = conversationPresentation(historyPhase, stream.length)
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
@@ -352,7 +353,7 @@ function ChatView({
   // de ellas no se lleva al lector a otro sitio.
   const navigationRef = useRef(0)
   const revealTurn = useCallback((turnId: string): boolean => {
-    const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.message.turnId === turnId)
+    const index = streamRef.current.findIndex((row) => row.kind === 'timeline' ? row.timeline.turnId === turnId : row.kind === 'message' && row.message.turnId === turnId)
     if (index < 0) return false
     navigationRef.current += 1
     jumpRef.current = false
@@ -534,8 +535,8 @@ function ChatView({
                   key={row.id}
                   className={`mx-auto max-w-3xl px-4 ${index === 0 ? 'pt-6' : 'pt-3'} pb-3`}
                 >
-                  <FileTurnContext.Provider value={row.kind === 'timeline' ? row.timeline.turnId : row.message.turnId}>
-                  {row.kind === 'timeline' ? (
+                  <FileTurnContext.Provider value={row.kind === 'timeline' ? row.timeline.turnId : row.kind === 'message' ? row.message.turnId : undefined}>
+                  {row.kind === 'child' ? <ChildRow child={row.child} /> : row.kind === 'timeline' ? (
                     <TurnTimelineView
                       surface={homeVariant === 'pane' ? 'pane' : 'chat'}
                       timeline={row.timeline}
@@ -595,7 +596,6 @@ function ChatView({
       {(presentation === 'empty' || presentation === 'conversation') && (
         <>
           {sessionId !== '' && <GoalDock key={`goal:${sessionId}`} sessionId={sessionId} onHint={(text) => void onSend(text)} />}
-          {sessionId !== '' && <ChildrenDock key={`children:${sessionId}`} sessionId={sessionId} />}
           {sessionId !== '' && <ChecklistDock key={`checklist:${sessionId}`} sessionId={sessionId} />}
           <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
           {queue}

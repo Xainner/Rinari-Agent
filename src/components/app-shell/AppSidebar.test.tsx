@@ -576,15 +576,13 @@ describe('child sessions under their mother (#40)', () => {
     expect(screen.getByText('Docs').closest('li')?.hasAttribute('data-entering')).toBe(false)
   })
 
-  it('a child seen finishing draws its check; a fresh one not started keeps the branch', () => {
+  it('a child that finishes reads like any session: no check, its branch mark stays', () => {
     const fresh = ulidAt(Date.now())
     const props = renderSidebar({ sessions: [session('mother', 'Parser'), child(fresh, 'Docs', 'mother')], activeId: 'mother' })
     cleanup()
-    const view = render(<I18nProvider lang="es"><AppSidebar {...props} /></I18nProvider>)
-    expect(screen.queryByRole('img', { name: 'Terminada' })).toBeNull()
-    view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set([fresh])} /></I18nProvider>)
+    const view = render(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set([fresh])} /></I18nProvider>)
     view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set()} /></I18nProvider>)
-    const check = screen.getByRole('img', { name: 'Terminada' })
-    expect(check.getAttribute('data-drawn')).toBe('true')
+    expect(screen.queryByRole('img', { name: 'Terminada' })).toBeNull()
+    expect(screen.getByText('Docs').closest('li')?.querySelector('[data-testid="session-child-icon"]')).toBeTruthy()
   })
 })

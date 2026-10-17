@@ -339,10 +339,6 @@ export function AppSidebar({
     const onBoard = boardSessionIds?.has(session.id) === true
     const signal = signalBySession?.[session.id] ?? null
     const signalLabel = signal === 'needs_you' ? t('sidebar.sessionNeedsYou') : signal === 'failed' ? t('sidebar.sessionFailed') : signal === 'unread' ? t('sidebar.sessionUnread') : null
-    // Una hija terminada lleva su check (#40): se dibuja si esta barra la vio terminar.
-    // La recién nacida que aún no arrancó y la que falló siguen con la rama.
-    const childFinished = opts?.child === true && childMotion.finished(session.id)
-    const childDone = opts?.child === true && !working && signal !== 'failed' && (childFinished || childMotion.ended(session.id) || !childMotion.fresh(session.id))
     return (
       <li key={session.id} data-entering={opts?.child && childMotion.entering(session.id) ? '' : undefined} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
@@ -366,21 +362,7 @@ export function AppSidebar({
               <Hand size={10} aria-hidden="true" />
             </span> : working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
               <span aria-hidden="true" className="sidebar-spin" />
-            </span> : childDone ? <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              role="img"
-              aria-label={t('sidebar.childDone')}
-              data-testid="session-child-icon"
-              data-drawn={childFinished || undefined}
-              className={cn('sidebar-child-check', childFinished && 'r-check')}
-            ><path d="M5 12.5l4.2 4.2L19 7" /></svg> : opts?.child ? <CornerDownRight
+            </span> : opts?.child ? <CornerDownRight
               size={13}
               aria-hidden="true"
               data-testid="session-child-icon"

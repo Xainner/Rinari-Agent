@@ -1447,6 +1447,8 @@ export const es = {
   'models.hidden': 'Ocultos ({n})',
   'models.show': 'Mostrar',
   'models.saving': 'Guardando los modelos del proveedor…',
+  'models.new': '{provider}: {n} modelos nuevos',
+  'models.newOne': '{provider}: 1 modelo nuevo',
   'providers.pick.search': 'Buscar proveedor',
   'providers.pick.none': 'Nada coincide con «{query}».',
   'providers.pick.change': 'Cambiar',

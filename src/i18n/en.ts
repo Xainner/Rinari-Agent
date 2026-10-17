@@ -1429,6 +1429,8 @@ export const en: Record<I18nKey, string> = {
   'models.hidden': 'Hidden ({n})',
   'models.show': 'Show',
   'models.saving': 'Saving the provider’s models…',
+  'models.new': '{provider}: {n} new models',
+  'models.newOne': '{provider}: 1 new model',
   'providers.pick.search': 'Search providers',
   'providers.pick.none': 'Nothing matches “{query}”.',
   'providers.pick.change': 'Change',

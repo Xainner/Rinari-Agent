@@ -33,7 +33,14 @@ export function useCatalog() {
       if (event.event === 'models.changed') void refreshRef.current(false)
       if (event.event === 'model.discovery.completed') {
         const added = event.payload.added as Record<string, string[]> | undefined
-        if (added && Object.keys(added).length > 0) void refreshRef.current(false)
+        if (added && Object.keys(added).length > 0) {
+          void refreshRef.current(false)
+          // «OpenCode Go: 2 modelos nuevos» (#93): the start-up discovery saved them.
+          const lang = useUIStore.getState().lang
+          for (const [provider, aliases] of Object.entries(added)) {
+            if (aliases.length > 0) toast(translate(lang, aliases.length === 1 ? 'models.newOne' : 'models.new', { provider, n: aliases.length }))
+          }
+        }
       }
       if (event.event === 'model.discovery.failed') {
         const error = event.payload.error as { message?: string } | undefined

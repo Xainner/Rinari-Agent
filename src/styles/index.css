@@ -1944,8 +1944,13 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .sidebar-search { display: flex; align-items: center; gap: 8px; border-radius: var(--r-sm); border: 1px solid var(--line-1); background: rgb(10 8 18 / 0.6); padding: 7px 10px; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .sidebar-search:focus-within { border-color: var(--line-3); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.1); }
 .sidebar-heading { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; color: var(--text-subtle); text-transform: uppercase; }
-.sidebar-project { display: flex; width: 100%; align-items: center; gap: 8px; border-radius: var(--r-sm); padding: 6px 8px; text-align: left; transition: background-color var(--dur-fast); }
+.sidebar-project { display: flex; width: 100%; min-width: 0; flex: 1 1 0; align-items: center; gap: 8px; border-radius: var(--r-sm); padding: 6px 8px; text-align: left; transition: background-color var(--dur-fast); }
 .sidebar-project:hover { background: var(--bg-hover); }
+/* #69: con un nombre largo el «+» sigue en su sitio (el nombre se corta con «…»); se ve siempre, tenue,
+   y se aviva al pasar por el proyecto. La lista no se desplaza de lado. */
+.sidebar-project-add { opacity: 0.4; transition: opacity var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
+.group\/project:hover .sidebar-project-add, .sidebar-project-add:focus-visible { opacity: 1; }
+.sidebar-scroll { overflow-x: clip; }
 /* Carpetas de un proyecto en su página. */
 .project-folders { display: grid; min-width: 0; gap: 8px; border-radius: var(--r-lg); border: 1px solid var(--line-1); background: var(--bg-inset); padding: 10px 12px; }
 .project-folders-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

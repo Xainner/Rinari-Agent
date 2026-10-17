@@ -3,8 +3,11 @@
 // 2. Arrastrarla ensancha la barra exactamente lo arrastrado, sin rebote al soltar.
 // 3. Tiene un mínimo y un máximo.
 // 4. El ancho se recuerda al recargar; doble clic vuelve al de siempre.
+// 5. Con un proyecto de nombre larguísimo, su «+» sigue a la vista y la lista no se desplaza de lado (#69).
 const assert = require('node:assert/strict')
-const { click, delay, evaluate, reload, report, scenario, screenshot, settleAnimations, ui, wait } = require('../harness.cjs')
+const { mkdirSync } = require('node:fs')
+const { join } = require('node:path')
+const { click, command, delay, evaluate, reload, report, scenario, screenshot, settleAnimations, ui, wait } = require('../harness.cjs')
 
 const ASIDE = 'aside.app-sidebar'
 const HANDLE = `${ASIDE} [role="separator"][aria-orientation="vertical"]`
@@ -77,5 +80,24 @@ scenario(async () => {
   await delay(500)
   await settleAnimations()
   assert.equal(await width(), 278, 'a double click restores the usual width')
-  report({ passed: ['handle hidden at rest, shown near the pointer', 'follows the pointer without bounce', 'minimum and maximum', 'width remembered', 'double click restores it'] })
+
+  // 5. A very long project name keeps its «+» in view, without sideways scroll.
+  const folder = join(ui.data, 'workspace', 'largo')
+  mkdirSync(folder, { recursive: true })
+  const name = 'Proyecto con un nombre larguísimo que no cabe de ninguna manera en la barra'
+  await command('project_add', { path: folder, name })
+  await reload()
+  await click('.view-switcher button[aria-label="Normal"]')
+  await wait(`[...document.querySelectorAll('.sidebar-project-name')].some((el) => el.textContent === ${JSON.stringify(name)})`)
+  await settleAnimations()
+  const fit = await evaluate(`(() => {
+    const aside = document.querySelector(${JSON.stringify(ASIDE)}).getBoundingClientRect()
+    const add = document.querySelector('.sidebar-project-add').getBoundingClientRect()
+    const scroll = document.querySelector('.sidebar-scroll')
+    return { addRight: add.right, asideRight: aside.right, addOpacity: Number(getComputedStyle(document.querySelector('.sidebar-project-add')).opacity), sideways: scroll.scrollWidth - scroll.clientWidth }
+  })()`)
+  assert.ok(fit.addRight <= fit.asideRight - 4, `the project «+» stays inside the sidebar (${JSON.stringify(fit)})`)
+  assert.ok(fit.addOpacity > 0.2, 'the «+» is visible even without hovering')
+  assert.ok(fit.sideways <= 0, 'the list does not scroll sideways')
+  report({ passed: ['project «+» always in view with a long name', 'handle hidden at rest, shown near the pointer', 'follows the pointer without bounce', 'minimum and maximum', 'width remembered', 'double click restores it'] })
 })

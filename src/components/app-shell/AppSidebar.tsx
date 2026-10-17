@@ -616,7 +616,7 @@ export function AppSidebar({
           <ul className="space-y-1.5">
             {model.sections.map(({ project, sessions: items }) => (
               <li key={project.id} className="group/project" onContextMenu={e => { if (!e.defaultPrevented) { e.preventDefault(); setProjectMenu(project.id) } }}>
-                <div className="flex items-center">
+                <div className="flex min-w-0 items-center">
                 <button
                   type="button"
                   aria-expanded={projectOpen(project.id)}
@@ -629,7 +629,7 @@ export function AppSidebar({
                     {/* Sin rama (#83): varias conversaciones pueden compartirla; vive en Resumen. */}
                     <span className="sidebar-project-name">{project.name || projectDisplayName(project.root)}</span>
                   </span>
-                  {project.pinned && <Pin size={11} className="text-[var(--text-subtle)]" />}
+                  {project.pinned && <Pin size={11} className="shrink-0 text-[var(--text-subtle)]" />}
                   {items.length > 0 && (
                     <span className="shrink-0 rounded-md border border-[var(--border)] px-1 font-mono text-[10px] text-[var(--text-subtle)]">
                       {items.length}
@@ -651,10 +651,10 @@ export function AppSidebar({
                 </button>
                 {onNewProjectChat && <button type="button" aria-label={t('sidebar.newSessionIn', { name: project.name || projectDisplayName(project.root) })} title={t('sidebar.newSessionInProject')} onClick={() => {
                   onNewProjectChat(project.id)
-                }} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 hover:bg-[var(--bg-hover)]"><Plus size={14} /></button>}
+                }} className="sidebar-project-add shrink-0 rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"><Plus size={14} /></button>}
                 <DropdownMenu open={projectMenu === project.id} onOpenChange={open => setProjectMenu(open ? project.id : null)}>
                   <DropdownMenuTrigger asChild>
-                    <button type="button" aria-label={t('project.options')} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100">
+                    <button type="button" aria-label={t('project.options')} className="shrink-0 rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100">
                       <MoreHorizontal size={13} />
                     </button>
                   </DropdownMenuTrigger>

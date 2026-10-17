@@ -6,6 +6,8 @@ export const suggestionCatalog: HomeSuggestion[] = [
   { id: 'plan', group: 'general', icon: 'plan', title: 'home.plan.title', description: 'home.plan.description', prompt: 'home.plan.prompt' },
   { id: 'concept', group: 'general', icon: 'concept', title: 'home.concept.title', description: 'home.concept.description', prompt: 'home.concept.prompt' },
   { id: 'file', group: 'general', icon: 'file', title: 'home.file.title', description: 'home.file.description', prompt: 'home.file.prompt' },
+  // `/init` (#81): conocer el proyecto y proponer su RINARI.md, lo primero en uno nuevo (#60).
+  { id: 'init', group: 'project', icon: 'file', title: 'init.suggestion.title', description: 'init.suggestion.detail', prompt: 'init.suggestion.prompt' },
   { id: 'architecture', group: 'project', icon: 'code', title: 'home.architecture.title', description: 'home.architecture.description', prompt: 'home.architecture.prompt' },
   { id: 'improvement', group: 'project', icon: 'plan', title: 'home.improvement.title', description: 'home.improvement.description', prompt: 'home.improvement.prompt' },
   { id: 'problem', group: 'project', icon: 'concept', title: 'home.problem.title', description: 'home.problem.description', prompt: 'home.problem.prompt' },

@@ -7953,6 +7953,82 @@
       ],
       "passthrough": null,
       "host_effects": []
+    },
+    {
+      "command": "project_init_start",
+      "module": "projects",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.init.start",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_instructions_resolve",
+      "module": "projects",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "proposalId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "decision",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.instructions.resolve",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "proposal_id",
+          "from": "proposalId",
+          "optional": false
+        },
+        {
+          "key": "decision",
+          "from": "decision",
+          "optional": false
+        },
+        {
+          "key": "content",
+          "from": "content",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
     }
   ]
 }

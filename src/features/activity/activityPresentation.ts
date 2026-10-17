@@ -1,4 +1,4 @@
-import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem, PresentTimelineItem } from './types'
+import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem, InstructionsTimelineItem, PresentTimelineItem } from './types'
 
 export const turnIsActive = (status: TurnTimeline['status']) => ['running', 'approval', 'cancelling'].includes(status)
 export const pendingApproval = (item: TimelineItem): item is ApprovalTimelineItem => item.type === 'approval' && ['pending', 'resolving'].includes(item.status)
@@ -52,6 +52,7 @@ export function projectActivity(timeline: TurnTimeline) {
   // Propuestas y recuerdos: tarjetas propias, también desde un subagente.
   const memories: MemoryTimelineItem[] = []
   const skills: SkillTimelineItem[] = []
+  const instructions: InstructionsTimelineItem[] = []
   // Lo que Rinari entregó con file.present (#35): a la vista siempre.
   const presented: PresentTimelineItem[] = []
   const segments: ActivitySegment[] = [{ id: 'initial', items: [], publicTexts: [] }]
@@ -77,6 +78,10 @@ export function projectActivity(timeline: TurnTimeline) {
     }
     if (item.type === 'skill') {
       if (!skills.some((skill) => skill.id === item.id)) skills.push(item)
+      return null
+    }
+    if (item.type === 'instructions') {
+      if (!instructions.some((entry) => entry.id === item.id)) instructions.push(item)
       return null
     }
     if (item.type === 'present') {
@@ -121,7 +126,7 @@ export function projectActivity(timeline: TurnTimeline) {
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }
-  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, presented, final, provisional, actions: actions.size, incidents: incidents.size }
+  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, instructions, presented, final, provisional, actions: actions.size, incidents: incidents.size }
 }
 
 /** Active identities win over the last row or output timestamp. Token/stdout updates cannot rotate the header. */

@@ -91,6 +91,8 @@ export default function SingleSessionView({
           fork: commands.forkSession,
           rename: commands.renameSession,
           confirm,
+          hasProject: Boolean(project),
+          ensureSession: commands.startDraftSession,
         })}
         onPrepareAttachments={sessionId ? commands.prepareAttachments : undefined}
         onCancelAttachmentPreparation={commands.cancelAttachmentPreparation}

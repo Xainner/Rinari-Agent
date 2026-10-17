@@ -962,6 +962,17 @@ export const engineApi = {
       budget: options.budget ?? null,
       start: options.start ?? null,
     }),
+  /** `/init` (#81): un turno de solo lectura que propone el RINARI.md del proyecto. */
+  projectInitStart: (sessionId: string) =>
+    platform().command<{ status: string; turn_id: string; session_id: string }>('project_init_start', { sessionId }),
+  /** Guarda (tal cual o editado) o descarta la propuesta de `/init`. */
+  projectInstructionsResolve: (sessionId: string, proposalId: string, decision: 'save' | 'discard', content?: string) =>
+    platform().command<{ proposal_id: string; status: 'saved' | 'discarded'; path: string; edited?: boolean }>('project_instructions_resolve', {
+      sessionId,
+      proposalId,
+      decision,
+      content: content ?? null,
+    }),
   goalPause: (sessionId: string) =>
     platform().command<{ goal: Goal | null }>('session_goal_pause', { sessionId }),
   goalResume: (sessionId: string, options: { start?: boolean } = {}) =>

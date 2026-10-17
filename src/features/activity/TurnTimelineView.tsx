@@ -46,6 +46,7 @@ import TurnResult from './TurnResult'
 import { ModelChangeNotice } from './ModelChangeNotice'
 import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
+import { InstructionsProposalCard } from '../projects/InstructionsProposalCard'
 import { PresentedFiles } from './PresentedFiles'
 import LiveText from './LiveText'
 import TurnStatusCard, { TurnDoneHeader } from './TurnStatusCard'
@@ -791,6 +792,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {projection.notices.map(item => item.type !== 'model' && <ActivityRow key={item.id} item={item} onResolveApproval={onResolveApproval} />)}
       {projection.memories.map(item => <MemoryActivityCard key={item.id} item={item} />)}
       {projection.skills.map(item => <SkillProposalCard key={item.id} item={item} />)}
+      {projection.instructions.map(item => <InstructionsProposalCard key={item.id} item={item} sessionId={timeline.sessionId} />)}
       {projection.presented.map(item => <PresentedFiles key={item.id} item={item} />)}
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />

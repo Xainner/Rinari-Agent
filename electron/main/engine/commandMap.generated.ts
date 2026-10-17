@@ -112,6 +112,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "project_folder_remove": {"method":"project.folder.remove","params":[{"key":"project_id","from":"project_id","optional":false},{"key":"path","from":"path","optional":false}]},
   "project_folders_validate": {"method":"project.folders.validate","params":[{"key":"paths","from":"paths","optional":false},{"key":"project_id","from":"project_id","optional":true}]},
   "project_get": {"method":"project.get","params":[{"key":"project_id","from":"project_id","optional":false}]},
+  "project_init_start": {"method":"project.init.start","params":[{"key":"session_id","from":"sessionId","optional":false}]},
+  "project_instructions_resolve": {"method":"project.instructions.resolve","params":[{"key":"session_id","from":"sessionId","optional":false},{"key":"proposal_id","from":"proposalId","optional":false},{"key":"decision","from":"decision","optional":false},{"key":"content","from":"content","optional":true}]},
   "project_intelligence": {"method":"project.intelligence","params":[{"key":"path","from":"path","optional":false}]},
   "project_list": {"method":"project.list","params":[{"key":"include_archived","from":"include_archived","optional":false,"fallback":false}]},
   "project_list_recent": {"method":"project.list_recent","params":[{"key":"limit","from":"limit","optional":true}]},

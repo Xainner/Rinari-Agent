@@ -13,6 +13,10 @@ export interface UiCommandDeps {
   rename: (sessionId: string, title: string) => Promise<void>
   /** Confirmación con el estilo de la app (`useConfirm().ask`); sin ella, la nativa. */
   confirm?: (options: { title: string; body?: string; confirmLabel: string; cancelLabel: string }) => Promise<boolean>
+  /** La conversación está en un proyecto (`/init` solo tiene sentido ahí). */
+  hasProject?: boolean
+  /** Crea la sesión de una conversación nueva que aún no existe; `null` si no puede. */
+  ensureSession?: () => Promise<string | null>
 }
 
 /**
@@ -55,6 +59,25 @@ async function goal(sessionId: string, text: string, confirm?: UiCommandDeps['co
   return true
 }
 
+/**
+ * `/init` (#81): Rinari recorre el proyecto en solo lectura y propone su
+ * RINARI.md en una tarjeta. En una conversación nueva, la crea primero.
+ */
+async function init(deps: UiCommandDeps): Promise<boolean> {
+  const lang = useUIStore.getState().lang
+  if (!deps.hasProject) {
+    toast(translate(lang, 'init.needsProject'))
+    return true
+  }
+  const sessionId = deps.sessionId || (await deps.ensureSession?.()) || ''
+  if (!sessionId) {
+    toast(translate(lang, 'init.needsConversation'))
+    return true
+  }
+  await engineApi.projectInitStart(sessionId)
+  return true
+}
+
 export async function runUiCommand(name: string, text: string, deps: UiCommandDeps): Promise<boolean> {
   const workspace = (tab: WorkspaceTab) => {
     deps.reveal(deps.sessionId, 'workspace', { workspaceTab: tab })
@@ -84,6 +107,8 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         return true
       case 'goal':
         return await goal(deps.sessionId, text, deps.confirm)
+      case 'init':
+        return await init(deps)
       default:
         return false
     }

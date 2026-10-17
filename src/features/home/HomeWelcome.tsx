@@ -10,8 +10,13 @@ const icons = { code: Code2, plan: Route, concept: Lightbulb, file: FileCode2 }
 export type HomeWelcomeVariant = 'home' | 'pane'
 
 /** Un solo shell conserva el composer al pasar de sesión vacía a conversación. */
-export default function HomeWelcome({ sessionId, context, engineReady, children, conversationActive = false, transcript, variant = 'home' }: {
+export default function HomeWelcome({ sessionId, draftKey: explicitDraftKey, context, engineReady, children, conversationActive = false, transcript, variant = 'home' }: {
   sessionId: string
+  /**
+   * Borrador del composer de una conversación nueva: el de un proyecto o un
+   * panel no es el general, y una sugerencia escrita en `draft` no se veía.
+   */
+  draftKey?: string
   context: Omit<HomeContext, 'attachmentCount'>
   engineReady: boolean
   children: ReactNode
@@ -20,7 +25,7 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
   variant?: HomeWelcomeVariant
 }) {
   const { t } = useI18n()
-  const draftKey = sessionId || 'draft'
+  const draftKey = sessionId || explicitDraftKey || 'draft'
   const draft = useComposerStore(selectDraft(draftKey))
   const attachmentCount = draft.attachments.length
   const showSuggestions = useUIStore((state) => state.showSuggestions)

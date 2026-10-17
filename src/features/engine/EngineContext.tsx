@@ -23,7 +23,7 @@ type CommandKeys =
   | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'steerTo' | 'queueTo' | 'resolveApproval'
   | 'refreshCatalog' | 'discoverCatalog' | 'refreshModels' | 'useModel' | 'useModelFor'
   | 'selectSession' | 'setActiveSession' | 'setMode' | 'setModeFor' | 'setPermission' | 'setPermissionFor'
-  | 'searchFiles' | 'searchFilesFor' | 'openDraft' | 'materializeDraft'
+  | 'searchFiles' | 'searchFilesFor' | 'openDraft' | 'materializeDraft' | 'startDraftSession'
   | 'closeSession' | 'renameSession' | 'pinSession' | 'archiveSession' | 'restoreSession' | 'forkSession' | 'deleteSession'
   | 'refreshProjects' | 'openProject' | 'updateProject' | 'removeProject'
   | 'loadProjectStatus' | 'loadProjectIntelligence' | 'trustProject'
@@ -37,7 +37,7 @@ const COMMAND_KEYS: readonly CommandKeys[] = [
   'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'steerTo', 'queueTo', 'resolveApproval',
   'refreshCatalog', 'discoverCatalog', 'refreshModels', 'useModel', 'useModelFor',
   'selectSession', 'setActiveSession', 'setMode', 'setModeFor', 'setPermission', 'setPermissionFor',
-  'searchFiles', 'searchFilesFor', 'openDraft', 'materializeDraft',
+  'searchFiles', 'searchFilesFor', 'openDraft', 'materializeDraft', 'startDraftSession',
   'closeSession', 'renameSession', 'pinSession', 'archiveSession', 'restoreSession', 'forkSession', 'deleteSession',
   'refreshProjects', 'openProject', 'updateProject', 'removeProject',
   'loadProjectStatus', 'loadProjectIntelligence', 'trustProject',

@@ -299,6 +299,7 @@ function LiveSessionPane({
                 fork: commands.forkSession,
                 rename: commands.renameSession,
                 confirm,
+                hasProject: session.record?.kind === 'PROJECT',
               })}
               onPrepareAttachments={session.prepareAttachments}
               onCancelAttachmentPreparation={session.cancelAttachmentPreparation}

@@ -482,6 +482,18 @@ export const scenarios = {
     title: 'Conversación nueva: el chip del composer elige el proyecto, lo escrito viaja y el primer mensaje la crea allí',
     phases: ['exercise'],
   },
+  'project-init': {
+    title: '/init: Rinari explora el proyecto en solo lectura y propone su RINARI.md; solo «Guardar» lo escribe',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Tienda' })),
+      main: [
+        { tool: 'project.instructions.propose', args: { content: '# Tienda\n\nUna tienda con Vite.\n\n## Cómo probar\n\n- `npm test`\n', summary: 'Tienda con Vite' }, say: 'Propongo el RINARI.md.' },
+        { text: 'PROPUESTA LISTA' },
+        { text: 'OTRA' },
+      ],
+    }, laneOf),
+  },
   'session-title': {
     title: 'Barra lateral: título que resume el primer mensaje',
     phases: ['exercise'],

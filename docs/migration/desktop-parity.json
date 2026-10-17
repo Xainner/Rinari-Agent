@@ -856,6 +856,20 @@
       ]
     },
     {
+      "command": "project_init_start",
+      "kind": "engine",
+      "method": "project.init.start",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "project_instructions_resolve",
+      "kind": "engine",
+      "method": "project.instructions.resolve",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "project_intelligence",
       "kind": "engine",
       "method": "project.intelligence",
@@ -2110,10 +2124,10 @@
     }
   ],
   "summary": {
-    "commands": 252,
-    "engine_backed": 246,
+    "commands": 254,
+    "engine_backed": 248,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 84
+    "without_callers": 86
   }
 }

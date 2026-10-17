@@ -81,6 +81,7 @@ function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('memory.candidate.')) return `memory:candidate:${payload.candidate_id}`
   if (event === 'memory.remembered') return `memory:remembered:${payload.memory_id}`
   if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return `skill:${payload.name}`
+  if (event === 'instructions.proposed' || event === 'instructions.proposal.resolved') return `instructions:${payload.proposal_id}`
   if (event === 'file.presented') return `present:${payload.present_id}`
   if (event === 'speech.setup_needed') return `speech-setup:${payload.reason}`
   if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
@@ -228,6 +229,40 @@ function similarList(value: unknown): SkillSimilar[] {
   })
 }
 
+/** La propuesta de RINARI.md de `/init` (#81) y su resolución. */
+function mergeInstructionsItem(
+  current: TimelineItem | undefined,
+  event: string,
+  payload: Record<string, unknown>,
+  id: string,
+  activitySeq: number,
+  occurredAt: number,
+): TimelineItem | null {
+  const prior = current?.type === 'instructions' ? current : undefined
+  if (event === 'instructions.proposal.resolved') {
+    if (!prior) return null
+    const status = text(payload.status)
+    return { ...prior, status: status === 'saved' || status === 'discarded' ? status : prior.status }
+  }
+  const proposalId = text(payload.proposal_id)
+  const content = text(payload.content)
+  if (!proposalId || !content) return null
+  return {
+    id,
+    type: 'instructions',
+    activitySeq: prior?.activitySeq ?? activitySeq,
+    occurredAt: prior?.occurredAt ?? occurredAt,
+    proposalId,
+    path: text(payload.path),
+    content,
+    previous: typeof payload.previous === 'string' ? payload.previous : null,
+    summary: text(payload.summary),
+    reuses: strings(payload.reuses),
+    // Un `instructions.proposed` repetido (recarga) no deshace una resolución ya vista.
+    status: prior && prior.status !== 'pending' ? prior.status : 'pending',
+  }
+}
+
 function mergeSkillItem(
   current: TimelineItem | undefined,
   event: string,
@@ -332,6 +367,7 @@ function mergeEventItem(
   }
   if (event.startsWith('memory.')) return mergeMemoryItem(current, event, payload, id, activitySeq, occurredAt)
   if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return mergeSkillItem(current, event, payload, id, activitySeq, occurredAt)
+  if (event === 'instructions.proposed' || event === 'instructions.proposal.resolved') return mergeInstructionsItem(current, event, payload, id, activitySeq, occurredAt)
   if (event === 'file.presented') {
     // Lo que Rinari entregó a propósito (#35).
     const files = Array.isArray(payload.items) ? payload.items.filter((file): file is PresentedFile => Boolean(file) && typeof file === 'object' && typeof (file as PresentedFile).name === 'string') : []
@@ -808,6 +844,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
   // no debe crear un turno fantasma «en curso».
   if (event.startsWith('memory.') && !state.timelines[turnId] && event !== 'memory.candidate.created' && event !== 'memory.remembered') return state
   if (event === 'skill.proposal.resolved' && !state.timelines[turnId]) return state
+  if (event === 'instructions.proposal.resolved' && !state.timelines[turnId]) return state
   let timeline = state.timelines[turnId] ?? defaultTimeline(turnId, sessionId, action.now)
   if (event === 'turn.started') {
     timeline = {
@@ -915,6 +952,8 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('memory.') ||
     event.event === 'skill.proposed' ||
     event.event === 'skill.proposal.resolved' ||
+    event.event === 'instructions.proposed' ||
+    event.event === 'instructions.proposal.resolved' ||
     event.event === 'provider.reasoning.dropped' ||
     event.event === 'model.fallback' ||
     event.event === 'provider.protocol.learned' ||

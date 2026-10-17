@@ -309,6 +309,21 @@ export function useEngineSession() {
 
 
 
+  /**
+   * La conversación nueva de Normal pasa a existir sin mensaje: lo que la
+   * necesita antes de escribir nada (`/init`, #81). Normal pasa a ella.
+   */
+  const startDraftSession = useCallback(async (): Promise<string | null> => {
+    if (sessions.activeSession) return sessions.activeSession
+    const draft = useConversationDraftStore.getState().normal
+    if (!draft) return null
+    const created = await materializeDraft(draft, { activate: false })
+    if (!created) return null
+    useConversationDraftStore.getState().consumeNormal(draft.key)
+    sessions.setActiveSession(created)
+    return created
+  }, [materializeDraft, sessions])
+
   // -- plan --------------------------------------------------------------------
 
   const implementPlanFor = useCallback(async (sessionId: string, planTurnId?: string): Promise<boolean> => {
@@ -420,6 +435,7 @@ export function useEngineSession() {
       : sessions.setPermission(profile),
     openDraft,
     materializeDraft,
+    startDraftSession,
     setPermissionFor: sessions.setPermissionFor,
     searchFiles: sessions.searchFiles,
     searchFilesFor: sessions.searchFilesFor,

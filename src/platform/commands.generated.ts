@@ -103,6 +103,8 @@ export type DesktopCommand =
   | "project_folder_remove"
   | "project_folders_validate"
   | "project_get"
+  | "project_init_start"
+  | "project_instructions_resolve"
   | "project_intelligence"
   | "project_list"
   | "project_list_recent"
@@ -357,6 +359,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "project_folder_remove",
   "project_folders_validate",
   "project_get",
+  "project_init_start",
+  "project_instructions_resolve",
   "project_intelligence",
   "project_list",
   "project_list_recent",
@@ -626,6 +630,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "project_folder_remove",
   "project_folders_validate",
   "project_get",
+  "project_init_start",
+  "project_instructions_resolve",
   "project_intelligence",
   "project_list",
   "project_list_recent",

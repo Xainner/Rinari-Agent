@@ -516,7 +516,7 @@ function ChatView({
 
   return (
     <ActivityImageProvider key={sessionId}><ChatFileDropZone draftKey={sessionId || composerDraftKey || 'draft'} enabled={presentation === 'empty' || presentation === 'conversation'}>
-    <HomeWelcome key={sessionId} sessionId={sessionId} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
+    <HomeWelcome key={sessionId} sessionId={sessionId} draftKey={composerDraftKey} context={homeContext} engineReady={engineReady} conversationActive={presentation !== 'empty'} variant={homeVariant} transcript={presentation === 'conversation' ? (
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={pointerDown} onKeyDown={userScrolls}>
             {historyNote?.hasMore && (

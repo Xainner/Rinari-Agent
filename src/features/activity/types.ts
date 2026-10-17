@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill' | 'present'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill' | 'instructions' | 'present'
   activitySeq: number
   occurredAt: number
 }
@@ -248,6 +248,19 @@ export interface SkillTimelineItem extends TimelineItemBase {
   turnedOn?: string[]
 }
 
+/** La propuesta de RINARI.md de `/init` (#81): nada se escribe sin «Guardar». */
+export interface InstructionsTimelineItem extends TimelineItemBase {
+  type: 'instructions'
+  proposalId: string
+  path: string
+  content: string
+  /** El RINARI.md que había, para ver los cambios; `null` si no existía. */
+  previous: string | null
+  summary: string
+  reuses: string[]
+  status: 'pending' | 'saved' | 'discarded'
+}
+
 /** Un archivo, carpeta o página que Rinari entregó con `file.present` (#35). */
 export interface PresentedFile {
   kind: string
@@ -271,6 +284,7 @@ export type TimelineItem =
   | PresentTimelineItem
   | MemoryTimelineItem
   | SkillTimelineItem
+  | InstructionsTimelineItem
   | SteerTimelineItem
   | VisionTimelineItem
   | QuestionTimelineItem

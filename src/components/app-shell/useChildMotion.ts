@@ -4,15 +4,15 @@ import { bornAt } from '../../features/projects/workspaceModel'
 
 /** Una hija nacida hace menos de esto entra con movimiento, salvo que ya estuviera al montarse la barra. */
 const FRESH_MS = 15_000
-/** Lo que dura el check recién dibujado de una hija y el latido de su madre. */
+/** Lo que dura el check recién dibujado de una hija. */
 const CELEBRATE_MS = 2_400
 
 /**
  * El movimiento de las conversaciones hijas en la barra lateral (#40): la hija
- * nueva sale de la fila de su madre; la que termina (vista pasar de trabajando
- * a terminada) dibuja su check y el contador de la madre late una vez. Volver
- * a montar no repite nada: las hijas que ya estaban no entran, y un final solo
- * cuenta si esta barra la vio trabajando.
+ * nueva sale de la fila de su madre y la que termina (vista pasar de
+ * trabajando a terminada) dibuja su check. Volver a montar no repite nada: las
+ * hijas que ya estaban no entran, y un final solo cuenta si esta barra la vio
+ * trabajando.
  */
 export function useChildMotion(sessions: readonly SessionSummary[], busy: ReadonlySet<string> | undefined) {
   const atMount = useRef<ReadonlySet<string> | null>(null)

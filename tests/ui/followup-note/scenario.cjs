@@ -2,7 +2,7 @@
 // 1. Un turno deja dos notas: aparece una (con «+1»), sin empezar nada nuevo.
 // 2. «Hacer en otra conversación» crea una conversación nueva con el título
 //    de la nota y su turno se ejecuta; la conversación de origen sigue igual.
-// 3. La conversación nueva cuelga de «Origen» en la barra lateral, con su
+// 3. La conversación nueva cuelga de «Origen» en la barra lateral, sin
 //    contador; abierta, su cabecera vuelve a la madre (#40). Entra bajando
 //    desde la fila de la madre y, al terminar, lleva su check.
 // 4. «Descartar» quita la otra. Recargar no las devuelve.
@@ -54,10 +54,9 @@ scenario(async () => {
   assert.equal(created.parent_session_id, (await command('session_list', {})).sessions.find((s) => s.title === 'Origen').id)
   assert.equal(created.lineage_kind, 'note')
   await wait(`[...document.querySelectorAll('[data-testid="session-children"]')].some((list) => list.innerText.includes(${JSON.stringify(title)}))`)
-  assert(await evaluate(`Boolean(document.querySelector('[data-testid="session-children-chip"]'))`), 'the mother counts its children')
-  // Once its turn ends the child carries its check and the mother's counter is complete.
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="session-children-chip"]'))`), false, 'the mother carries no counter')
+  // Once its turn ends the child carries its check.
   await wait(`Boolean(document.querySelector('[data-testid="session-children"] [role="img"][aria-label="Terminada"]'))`, 30_000)
-  await wait(`document.querySelector('[data-testid="session-children-chip"]')?.hasAttribute('data-complete')`)
   await clickText(title, '[data-testid="session-children"] button', { includes: true })
   await wait(`document.querySelector('[data-testid="chat-header-mother"]')?.innerText.includes('Origen')`)
   await screenshot('child')
@@ -74,5 +73,5 @@ scenario(async () => {
   await wait('Boolean(document.querySelector(".composer-surface"))')
   await delay(800)
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(NOTE)}))`), false)
-  report({ passed: ['note shows without starting work', 'accept opens a conversation that runs the task', 'the child hangs from its mother with a counter', 'the new child enters from its mother', 'the finished child carries its check', 'the child header goes back to the mother', 'dismiss removes it for good'] })
+  report({ passed: ['note shows without starting work', 'accept opens a conversation that runs the task', 'the child hangs from its mother without a counter', 'the new child enters from its mother', 'the finished child carries its check', 'the child header goes back to the mother', 'dismiss removes it for good'] })
 })

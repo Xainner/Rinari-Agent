@@ -267,7 +267,6 @@ export const es = {
   'sidebar.chats': 'Conversaciones',
   'sidebar.newGeneralChat': 'Nueva conversación sin proyecto',
   'sidebar.sessionWorking': 'Sesión en curso',
-  'sidebar.childSessions': '{done} de {total} conversaciones hijas listas',
   'sidebar.childDone': "Terminada",
   'sidebar.backToMother': 'Volver a «{title}»',
   'sidebar.sessionInterrupted': 'Sesión interrumpida, se puede reanudar',

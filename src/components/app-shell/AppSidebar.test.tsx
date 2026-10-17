@@ -521,7 +521,7 @@ describe('child sessions under their mother (#40)', () => {
     lineage_kind: 'note',
   })
 
-  it('a note and a fork hang from their mother with a done/total chip, and fold', async () => {
+  it('a note and a fork hang from their mother, always in view, without a counter (#40)', () => {
     renderSidebar({
       sessions: [session('mother', 'Parser'), child('ses_01_a', 'Pruebas', 'mother'), child('ses_02_b', 'Docs', 'mother'), session('other', 'Suelta')],
       busySessionIds: new Set(['ses_02_b']),
@@ -529,14 +529,10 @@ describe('child sessions under their mother (#40)', () => {
     })
     const nested = screen.getByTestId('session-children')
     expect(within(nested).getAllByRole('listitem').map((item) => item.textContent)).toEqual([expect.stringContaining('Pruebas'), expect.stringContaining('Docs')])
-    // The working one shows its spinner; the other, the branch icon.
+    // The working one shows its spinner; the other, its state icon.
     expect(within(nested).getAllByTestId('session-child-icon')).toHaveLength(1)
-    const chip = screen.getByTestId('session-children-chip')
-    expect(chip.textContent).toBe('1/2')
-    await userEvent.click(chip)
-    expect(screen.queryByTestId('session-children')).toBeNull()
-    await userEvent.click(chip)
-    expect(screen.getByTestId('session-children')).toBeTruthy()
+    expect(screen.queryByTestId('session-children-chip')).toBeNull()
+    expect(screen.getByText('Parser').closest('li')?.textContent).not.toMatch(/\d\/\d/)
   })
 
   it('a child whose mother is not in the list stays on its own', () => {
@@ -580,19 +576,15 @@ describe('child sessions under their mother (#40)', () => {
     expect(screen.getByText('Docs').closest('li')?.hasAttribute('data-entering')).toBe(false)
   })
 
-  it('a child seen finishing draws its check and its mother pulses once; a fresh one not started keeps the branch', () => {
+  it('a child seen finishing draws its check; a fresh one not started keeps the branch', () => {
     const fresh = ulidAt(Date.now())
     const props = renderSidebar({ sessions: [session('mother', 'Parser'), child(fresh, 'Docs', 'mother')], activeId: 'mother' })
     cleanup()
     const view = render(<I18nProvider lang="es"><AppSidebar {...props} /></I18nProvider>)
     expect(screen.queryByRole('img', { name: 'Terminada' })).toBeNull()
     view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set([fresh])} /></I18nProvider>)
-    expect(screen.getByTestId('session-children-chip').hasAttribute('data-pulse')).toBe(false)
     view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set()} /></I18nProvider>)
     const check = screen.getByRole('img', { name: 'Terminada' })
     expect(check.getAttribute('data-drawn')).toBe('true')
-    const chip = screen.getByTestId('session-children-chip')
-    expect(chip.hasAttribute('data-pulse')).toBe(true)
-    expect(chip.hasAttribute('data-complete')).toBe(true)
   })
 })

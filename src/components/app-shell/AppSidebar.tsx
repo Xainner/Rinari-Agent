@@ -306,27 +306,15 @@ export function AppSidebar({
   // cuelga de su madre de ayer, no aparece suelta en «Hoy» (#40).
   const chatNest = nestSessions(model.chats)
   const childMotion = useChildMotion(sessions, busySessionIds)
-  // Madres plegadas (#40): sus hijas no se ven hasta desplegarlas.
-  const [foldedMothers, setFoldedMothers] = useState<ReadonlySet<string>>(() => new Set())
-  const toggleMother = (id: string) => setFoldedMothers((current) => {
-    const next = new Set(current)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    return next
-  })
-  /** Una sesión con sus hijas debajo, con sangría (#40). */
+  /** Una sesión con sus hijas debajo, con sangría y siempre a la vista (#40). */
   const tree = (list: SessionSummary[], opts?: { travel?: boolean }, nest?: ReturnType<typeof nestSessions>) => {
     const { tops, children } = nest ? { tops: list, children: nest.children } : nestSessions(list)
     return tops.map((session) => {
       const kids = children.get(session.id) ?? []
       if (kids.length === 0) return row(session, opts)
-      const done = kids.filter((kid) => busySessionIds?.has(kid.id) !== true && signalBySession?.[kid.id] !== 'needs_you').length
-      const folded = foldedMothers.has(session.id)
-      const pulse = kids.some((kid) => childMotion.finished(kid.id) && signalBySession?.[kid.id] !== 'failed')
       return row(session, {
         ...opts,
-        mother: { done, total: kids.length, folded, pulse, onToggle: () => toggleMother(session.id) },
-        nested: folded ? null : (
+        nested: (
           <ul className="sidebar-tree sidebar-children mt-0.5 ml-3.5 space-y-0.5 pl-1" data-testid="session-children">
             {kids.map((kid) => row(kid, { child: true }))}
           </ul>
@@ -335,7 +323,7 @@ export function AppSidebar({
     })
   }
 
-  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; mother?: { done: number; total: number; folded: boolean; pulse: boolean; onToggle: () => void }; nested?: ReactNode }) => {
+  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; nested?: ReactNode }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
@@ -400,23 +388,6 @@ export function AppSidebar({
                 active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]',
               )}
             />
-            {opts?.mother && (
-              <span
-                role="button"
-                tabIndex={0}
-                aria-expanded={!opts.mother.folded}
-                aria-label={t('sidebar.childSessions', { done: opts.mother.done, total: opts.mother.total })}
-                title={t('sidebar.childSessions', { done: opts.mother.done, total: opts.mother.total })}
-                data-testid="session-children-chip"
-                data-complete={opts.mother.done === opts.mother.total || undefined}
-                data-pulse={opts.mother.pulse || undefined}
-                className="sidebar-children-chip"
-                onClick={(event) => { event.preventDefault(); event.stopPropagation(); opts.mother!.onToggle() }}
-                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); opts.mother!.onToggle() } }}
-              >
-                {opts.mother.done}/{opts.mother.total}
-              </span>
-            )}
             {opts?.projectName && (
               <span title={opts.projectName} className="max-w-[40%] shrink-0 truncate text-[11px] text-[var(--text-subtle)]">
                 {opts.projectName}

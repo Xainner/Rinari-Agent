@@ -1019,17 +1019,12 @@ button.processes-collapsed-line { display: flex; align-items: center; gap: 8px; 
 .app-topbar-attention-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--warning); color: #1a1226; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
 /* Señales de la barra lateral (#33): rojo si falló, acento si hay un resultado sin leer y, «Te necesita», una insignia ámbar en lugar del círculo de trabajando. */
 .sidebar-signal { flex-shrink: 0; width: 7px; height: 7px; border-radius: 999px; }
-/* #40: la madre cuenta sus hijas listas y se pliega; la hija vuelve a la madre desde la cabecera. */
-.sidebar-children-chip { flex-shrink: 0; border-radius: 999px; border: 1px solid var(--line-2); padding: 0 6px; font-family: var(--font-mono); font-size: 10.5px; line-height: 16px; color: var(--text-subtle); cursor: pointer; }
-.sidebar-children-chip:hover, .sidebar-children-chip:focus-visible { color: var(--text); border-color: var(--line-3); outline: none; }
-.sidebar-children-chip[data-complete] { color: color-mix(in srgb, var(--success) 80%, var(--text-subtle)); border-color: color-mix(in srgb, var(--success) 30%, transparent); }
-/* Movimiento de las hijas: la nueva baja desde la fila de su madre; la que termina dibuja su check
-   (.r-check) y el contador de la madre late una vez. Con movimiento reducido, todo instantáneo. */
+/* #40: la hija vuelve a la madre desde la cabecera. */
+/* Movimiento de las hijas: la nueva baja desde la fila de su madre y la que termina dibuja su check
+   (.r-check). Con movimiento reducido, todo instantáneo. */
 .sidebar-children > li[data-entering] { animation: sidebar-child-in 220ms var(--ease-out); }
 @keyframes sidebar-child-in { from { overflow: hidden; max-height: 0; opacity: 0; transform: translateY(-6px); } to { overflow: hidden; max-height: 36px; opacity: 1; transform: none; } }
 .sidebar-child-check { flex-shrink: 0; color: color-mix(in srgb, var(--success) 75%, var(--text-subtle)); }
-.sidebar-children-chip[data-pulse] { animation: sidebar-mother-pulse 0.7s var(--ease-out); }
-@keyframes sidebar-mother-pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); } 35% { transform: scale(1.14); } 100% { transform: scale(1); box-shadow: 0 0 0 7px transparent; } }
 .chat-header-mother { display: inline-flex; min-width: 0; max-width: 45%; flex-shrink: 1; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 8px 2px 6px; font-size: 12px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
 .chat-header-mother:hover { background: var(--bg-hover); color: var(--text); }
 .chat-header-brief { color: var(--text-subtle); }

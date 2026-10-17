@@ -95,7 +95,7 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 | 14 | Comandos y tareas | 32, 50, 90 | Procesos en segundo plano y comandos programados comparten el registro de procesos. |
 | 15 | Permisos | 56 | Mejor junto con el [plan de permisos v4](plan-permisos-v4.md) (mismos botones y textos); si v4 no entra en 0.4.0, va solo. |
 | 16 | Preguntas | 37, 63 | El mismo componente. |
-| 17 | Estilo nuevo pendiente | **96 primero (prioridad alta)**; 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos), 98 (árbol de Archivos) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
+| 17 | Estilo nuevo pendiente | **96 primero (prioridad alta)**; 10, 12, 15, 16, 17, 21, 28, 29, 65, 69, 92 (con el 93: el guardado de modelos), 98 (árbol de Archivos), 99 (pedidos del dueño) | Una sola pasada de diseño sobre lo que aún tiene el estilo viejo. |
 | 18 | Sueltos | 4, 8, 72, 74 | Independientes y pequeños. |
 | 19 | Español completo | 68 (y los textos del 56) | Traducir por código en un solo lugar evita repetir el arreglo en cada pantalla. |
 | 20 | Arranque y rendimiento | 70, 91 | Saludo, reintento e historial por páginas; base para equipos lentos. |
@@ -358,6 +358,7 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 96 | Ajustes → Avanzado: qué hace cada cosa y rediseño urgente (hoy, al abrir «Ejecución de modelos», un muro de ~110 campos numéricos) (dueño) | Agent + CLI | Decidido · prioridad alta |
 | 97 | Activar y desactivar proveedores (desactivado: sus modelos no salen en el composer ni en ningún selector), y rediseño de Ajustes → Proveedores y del diálogo «Agregar proveedor» (dueño) | CLI + Agent | Decidido |
 | 98 | Vista Archivos con árbol de archivos, como en Claude Code (dueño) | CLI + Agent | Decidido |
+| 99 | Pedidos del dueño para la tanda 17: Resumen sobre la barra de scroll, navegador sin contexto y recientes que no abren, selector de ancho con iconos, lista de archivos cambiados plegable, «Ver archivo» sin estilo | Agent (+ CLI por revisar en el navegador) | Por hacer |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -3009,6 +3010,21 @@ El feedback para el servidor del Visual Lab (su esquema de salida, `readOnlyHint
 
 ---
 
+## 99. Pedidos del dueño para la tanda 17 (2026-10-16, con capturas)
+
+1. **Resumen sobre la barra de scroll.** La tarjeta flotante del Resumen tapa la barra de scroll del chat: correrla un poco a la izquierda (o reservar el ancho de la barra) para que la barra se vea y se pueda arrastrar.
+2. **Navegador: «this session has no browser context» y recientes que no abren** (sesión `ses_01M53WAB202GV9669SY8PCC7CH`, un chat sin proyecto).
+   - El panel muestra el error del Engine en crudo, en inglés y sin estilo, bajo la barra.
+   - La página de inicio dice «Recientes en este proyecto» en un chat sin proyecto, y lista páginas que el dueño no recuerda haber abierto ahí: revisar de dónde salen (¿recientes de otro alcance?) y el título según el alcance («en esta conversación»).
+   - Pulsar un reciente no hace nada y sale una notificación de error. **Causa (verificada en el código):** el texto sale de `requireContext` en `electron/main/index.ts` (código `BROWSER_ABSENT`): `navigate` y las demás operaciones exigen un contexto ya preparado, y la página de inicio navega sin llamar antes a `prepare`. Arreglo: que navegar desde la página de inicio (o el puente al navegar sin contexto) prepare primero el contexto, y un mensaje claro y traducido si aun así no se puede.
+3. **Selector de ancho («Ajustar al panel», Móvil 390, Tablet 768, Escritorio 1280, Ancho 1920) sin estilo.** Es un `select` nativo: pasarlo al estilo de la app y, si se puede, con iconos de dispositivo (móvil vertical y horizontal, tablet, monitor, ancho) en vez de solo texto.
+4. **La lista de archivos cambiados de la tarjeta del turno, plegable.** Con muchos archivos (la captura tiene 12) la tarjeta crece demasiado: mostrar los primeros y «Ver los N restantes», o plegarla entera con el resumen «12 archivos cambiados +133 −0».
+5. **«Ver archivo» sin estilo** en la fila de actividad de una escritura: un enlace subrayado del navegador; pasarlo a la acción con el estilo de la app.
+
+Lo visual va con la sesión de pulido en la tanda 17; el punto 2 tiene una parte del motor o del puente del navegador que hay que reproducir primero.
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -3088,6 +3104,7 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 96 | Avanzado: el máximo de salida pasa a Modelos y lo de cada proveedor a Proveedores → «Conexión»; Avanzado queda con Estado, Conexiones, Límites del turno, Red (entra en 0.4.0), Diagnóstico, Almacenamiento, Procesos, Motor, Actualizaciones y Restablecer; los ajustes que no hacen nada salen del esquema. |
 | 97 | Activar/desactivar proveedores es global; desactivado, sus modelos salen de todos los selectores, no se le llama y la clave se conserva; pantalla de Proveedores y «Agregar proveedor» rediseñadas juntas (el diálogo usa el asistente inicial). |
 | 98 | Árbol de Archivos al estilo Claude Code, en la tanda del bloque 17: `workspace.dir.list` en el CLI y el árbol en la app; cabecera con un solo buscador de archivos. |
+| 99 | Los cinco pedidos del dueño del 2026-10-16 entran en la tanda 17. |
 | 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

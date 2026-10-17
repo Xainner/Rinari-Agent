@@ -212,6 +212,8 @@ export interface DesktopBridge {
     setLanguage(language: Language): Promise<void>
     /** Número de chats pendientes en la barra de tareas y marca en la bandeja. */
     setIndicators(state: AttentionIndicators): Promise<void>
+    /** Abre un lugar conocido con el sistema: la carpeta de Rinari, los registros o el RINARI.md global. */
+    openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
   }
 
   events: {

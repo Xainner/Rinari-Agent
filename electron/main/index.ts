@@ -7,8 +7,8 @@
  */
 
 import { app, protocol, BrowserWindow, ClipboardItem, Menu, clipboard, crashReporter, dialog, nativeImage, shell } from 'electron'
-import { copyFile, readFile, writeFile } from 'node:fs/promises'
-import { release as osRelease } from 'node:os'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { homedir, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
@@ -666,6 +666,26 @@ function buildServices(): HostServices {
       },
       setIndicators: (state) => {
         indicators.apply(state)
+      },
+      openFolder: async (place) => {
+        // Solo lugares conocidos: la carpeta de Rinari, los registros de la
+        // app o el RINARI.md global (que se crea vacío si no existe).
+        const home = process.env.RINARI_HOME?.trim() || join(homedir(), '.rinari')
+        if (place === 'logs') {
+          const failure = await shell.openPath(logsDirFor(app.getPath('userData')))
+          if (failure) throw new Error(failure)
+          return
+        }
+        if (place === 'instructions') {
+          const file = join(home, 'RINARI.md')
+          await mkdir(home, { recursive: true })
+          await writeFile(file, '', { flag: 'a' })
+          const failure = await shell.openPath(file)
+          if (failure) throw new Error(failure)
+          return
+        }
+        const failure = await shell.openPath(home)
+        if (failure) throw new Error(failure)
       },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),

@@ -41,6 +41,8 @@ export const CHANNEL = {
   appLanguageSet: 'rinari:app.language.set',
   /** Chats pendientes: número en la barra de tareas y marca en la bandeja. */
   appIndicatorsSet: 'rinari:app.indicators.set',
+  /** Ajustes → Avanzado: abre una carpeta conocida (nunca una ruta del renderer). */
+  appOpenFolder: 'rinari:app.openFolder',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',

@@ -3235,6 +3235,84 @@
       "host_effects": []
     },
     {
+      "command": "network_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "network.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "network_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "proxy",
+          "type": "serde_json::Value",
+          "optional": true
+        },
+        {
+          "name": "certificates",
+          "type": "serde_json::Value",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "network.settings.set",
+      "engine_params": [
+        {
+          "key": "proxy",
+          "from": "proxy",
+          "optional": true
+        },
+        {
+          "key": "certificates",
+          "from": "certificates",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "network_test",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "provider_ids",
+          "type": "serde_json::Value",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "network.test",
+      "engine_params": [
+        {
+          "key": "provider_ids",
+          "from": "provider_ids",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "storage_usage",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "storage.usage",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "vision_model_reset",
       "module": "workspace",
       "args": [

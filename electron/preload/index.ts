@@ -209,6 +209,7 @@ const api = {
     setBackground: (patch: BackgroundPatch) => call<BackgroundSettings>(CHANNEL.appBackgroundSet, patch),
     setLanguage: (language: 'es' | 'en') => call<void>(CHANNEL.appLanguageSet, language),
     setIndicators: (state: AttentionIndicators) => call<void>(CHANNEL.appIndicatorsSet, state),
+    openFolder: (place: 'home' | 'logs' | 'instructions') => call<void>(CHANNEL.appOpenFolder, place),
   },
 
   contextMenu: {

@@ -123,6 +123,8 @@ export interface HostServices {
     setLanguage(language: 'es' | 'en'): void
     /** Número de chats pendientes y marca de la bandeja (indicators.ts). */
     setIndicators(state: AttentionIndicators): void
+    /** Abre un lugar conocido: la carpeta de Rinari, sus registros o el RINARI.md global. */
+    openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -476,6 +478,15 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, language) => {
         if (language !== 'es' && language !== 'en') throw new ValidationError('language must be "es" or "en"')
         services.app.setLanguage(language)
+      }),
+    ],
+    [
+      CHANNEL.appOpenFolder,
+      guarded(registry, async (_event, place) => {
+        if (place !== 'home' && place !== 'logs' && place !== 'instructions') {
+          throw new ValidationError('place must be "home", "logs" or "instructions"')
+        }
+        await services.app.openFolder(place)
       }),
     ],
     [

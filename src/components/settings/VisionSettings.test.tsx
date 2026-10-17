@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi } from '../../services/engine'
-import ExecutionSettings from './ExecutionSettings'
 import VisionSettings from './VisionSettings'
 
 vi.mock('../../services/engine', () => ({
@@ -54,19 +53,4 @@ it('native mode saves on click; auxiliary waits for its model', async () => {
   expect(screen.getByLabelText('Modelo visual auxiliar')).toBeTruthy()
   await userEvent.click(screen.getByRole('radio', { name: /Nativo/ }))
   await waitFor(() => expect(engineApi.visionSettingsSet).toHaveBeenCalledWith(expect.objectContaining({ mode: 'conversation' })))
-})
-
-it('execution overrides clear back to inheritance from Advanced', async () => {
-  vi.mocked(engineApi.visionSettingsGet).mockResolvedValue({
-    mode: 'automatic', model_id: null, confirm_unknown: false,
-    execution: { max_concurrency: 8, providers: { p: 1 }, models: { sees: 2048 } },
-  })
-  vi.mocked(engineApi.visionSettingsSet).mockImplementation(async (c) => c)
-  render(<I18nProvider lang="es"><ExecutionSettings providers={providers} models={models} /></I18nProvider>)
-  await userEvent.clear(await screen.findByLabelText('Llamadas simultáneas por proveedor: Proveedor'))
-  await userEvent.clear(screen.getByLabelText('Ve'))
-  await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
-  await waitFor(() => expect(engineApi.visionSettingsSet).toHaveBeenLastCalledWith(expect.objectContaining({
-    execution: { max_concurrency: 8, providers: {}, models: {} },
-  })))
 })

@@ -1405,6 +1405,14 @@ export const engineApi = {
   advancedSettingsGet: () => platform().command<{ limits: AdvancedSetting[] }>('advanced_settings_get'),
   /** `null` puts the default back. */
   advancedSettingsSet: (values: Record<string, number | boolean | null>) => platform().command<{ limits: AdvancedSetting[] }>('advanced_settings_set', { values }),
+  /** Red: proxy and certificates of every outgoing request of the Engine (plan 0.4.0 #96). */
+  networkSettingsGet: () => platform().command<import('../types/protocol.generated').NetworkSettings>('network_settings_get'),
+  networkSettingsSet: (patch: { proxy?: unknown; certificates?: unknown }) =>
+    platform().command<import('../types/protocol.generated').NetworkSettings>('network_settings_set', { proxy: patch.proxy ?? null, certificates: patch.certificates ?? null }),
+  /** «Probar conexión»: one request without credentials to each enabled provider. */
+  networkTest: () => platform().command<import('../types/protocol.generated').NetworkTest>('network_test', { provider_ids: null }),
+  /** How much each part of Rinari's folder takes. */
+  storageUsage: () => platform().command<{ home: string; sections: { id: string; bytes: number; files: number }[]; total: number }>('storage_usage'),
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
   // la petición sin sesión y la compactación manual fallaba.

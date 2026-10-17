@@ -79,6 +79,7 @@ export interface TestBridge extends DesktopBridge {
   hostLanguage: 'es' | 'en' | null
   /** Lo que el renderer mandó a la barra de tareas y la bandeja, en orden. */
   indicators: AttentionIndicators[]
+  openedFolders: string[]
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
   /** Ruta real que `files.pathFor` da a cada `File` (#57); sin entrada, `null`. */
@@ -200,6 +201,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     hostLanguage: null,
     indicators: [],
+    openedFolders: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
@@ -324,6 +326,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       },
       async setIndicators(state) {
         bridge.indicators.push(state)
+      },
+      async openFolder(place) {
+        bridge.openedFolders.push(place)
       },
     },
 

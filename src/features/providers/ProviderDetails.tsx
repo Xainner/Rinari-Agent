@@ -6,11 +6,12 @@ import ModelCatalog from './ModelCatalog'
 import ProviderUsagePanel from './ProviderUsagePanel'
 import ProviderAuthPanel from './ProviderAuthPanel'
 import ExternalRuntimePanel from './ExternalRuntimePanel'
+import ProviderConnectionSettings from './ProviderConnectionSettings'
 import { registerProviderModels } from './registerModels'
 import type { ProviderTab } from '../../stores/ui'
 
-type Tab = 'summary' | 'models' | 'usage' | 'diagnostics'
-const TABS: readonly Tab[] = ['summary', 'models', 'usage', 'diagnostics']
+type Tab = 'summary' | 'connection' | 'models' | 'usage' | 'diagnostics'
+const TABS: readonly Tab[] = ['summary', 'connection', 'models', 'usage', 'diagnostics']
 
 /** La última prueba de una tarjeta: conectó o no, cuántos modelos y cuánto tardó. */
 export interface ProviderTestResult {
@@ -54,7 +55,7 @@ export default function ProviderDetails({
   const { t, lang } = useI18n()
   const tabId = useId()
   const tabs = usage ? TABS : TABS.filter((value) => value !== 'usage')
-  const [tab, setTab] = useState<Tab>(initialTab && initialTab !== 'connection' && tabs.includes(initialTab) ? initialTab : 'summary')
+  const [tab, setTab] = useState<Tab>(initialTab && tabs.includes(initialTab) ? initialTab : 'summary')
   const [diagnostics, setDiagnostics] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState('')
   const off = provider.enabled === false
@@ -115,6 +116,7 @@ export default function ProviderDetails({
           {onDelete && <button type="button" className="btn btn-ghost btn-sm provider-delete" onClick={onDelete}><Trash2 size={13} aria-hidden="true" /> {t('providers.delete')}</button>}
         </div>
       </div>}
+      {tab === 'connection' && <ProviderConnectionSettings providerId={provider.id} />}
       {tab === 'models' && <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />}
       {tab === 'usage' && <ProviderUsagePanel providerAlias={provider.alias} />}
       {tab === 'diagnostics' && <div className="space-y-3">

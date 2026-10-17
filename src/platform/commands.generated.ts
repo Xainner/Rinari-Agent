@@ -86,6 +86,9 @@ export type DesktopCommand =
   | "model_use"
   | "models_roles_get"
   | "models_roles_set"
+  | "network_settings_get"
+  | "network_settings_set"
+  | "network_test"
   | "peer_group_get"
   | "peer_group_revoke"
   | "peer_group_set"
@@ -239,6 +242,7 @@ export type DesktopCommand =
   | "speech_settings_set"
   | "speech_status"
   | "speech_transcribe"
+  | "storage_usage"
   | "task_get"
   | "task_tree"
   | "tool_list"
@@ -357,6 +361,9 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "model_use",
   "models_roles_get",
   "models_roles_set",
+  "network_settings_get",
+  "network_settings_set",
+  "network_test",
   "peer_group_get",
   "peer_group_revoke",
   "peer_group_set",
@@ -510,6 +517,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "speech_settings_set",
   "speech_status",
   "speech_transcribe",
+  "storage_usage",
   "task_get",
   "task_tree",
   "tool_list",
@@ -643,6 +651,9 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "model_use",
   "models_roles_get",
   "models_roles_set",
+  "network_settings_get",
+  "network_settings_set",
+  "network_test",
   "peer_group_get",
   "peer_group_revoke",
   "peer_group_set",
@@ -796,6 +807,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "speech_settings_set",
   "speech_status",
   "speech_transcribe",
+  "storage_usage",
   "task_get",
   "task_tree",
   "tool_list",

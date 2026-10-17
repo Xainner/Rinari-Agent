@@ -13,14 +13,18 @@
       "kind": "engine",
       "method": "advanced.settings.get",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "advanced_settings_set",
       "kind": "engine",
       "method": "advanced.settings.set",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "agent_config_get",
@@ -402,14 +406,18 @@
       "kind": "engine",
       "method": "execution.settings.get",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "execution_settings_set",
       "kind": "engine",
       "method": "execution.settings.set",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "followup_accept",
@@ -709,6 +717,27 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "network_settings_get",
+      "kind": "engine",
+      "method": "network.settings.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "network_settings_set",
+      "kind": "engine",
+      "method": "network.settings.set",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "network_test",
+      "kind": "engine",
+      "method": "network.test",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "peer_group_get",
@@ -1968,6 +1997,13 @@
       "callers": []
     },
     {
+      "command": "storage_usage",
+      "kind": "engine",
+      "method": "storage.usage",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "task_get",
       "kind": "engine",
       "method": "task.get",
@@ -2237,8 +2273,8 @@
     }
   ],
   "summary": {
-    "commands": 269,
-    "engine_backed": 263,
+    "commands": 273,
+    "engine_backed": 267,
     "host_only": 6,
     "manual_adapters": 10,
     "without_callers": 97

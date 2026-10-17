@@ -6,16 +6,16 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **269**
-- Respaldados por Engine: **263**
+- Comandos: **273**
+- Respaldados por Engine: **267**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
 
 | Comando | Dueño | Método Engine | Llamadores |
 |---|---|---|---|
-| `advanced_settings_get` | engine | `advanced.settings.get` | **ninguno** |
-| `advanced_settings_set` | engine | `advanced.settings.set` | **ninguno** |
+| `advanced_settings_get` | engine | `advanced.settings.get` | `src/services/engine.ts` |
+| `advanced_settings_set` | engine | `advanced.settings.set` | `src/services/engine.ts` |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |
 | `agent_config_set` | engine | `agent.config.set` | `src/services/engine.ts` |
 | `agent_list` | engine | `agent.list` | `src/services/engine.ts` |
@@ -61,8 +61,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `engine_shutdown` | host | — | **ninguno** |
 | `engine_start` | host | — | **ninguno** |
 | `engine_status` | host | — | **ninguno** |
-| `execution_settings_get` | engine | `execution.settings.get` | **ninguno** |
-| `execution_settings_set` | engine | `execution.settings.set` | **ninguno** |
+| `execution_settings_get` | engine | `execution.settings.get` | `src/services/engine.ts` |
+| `execution_settings_set` | engine | `execution.settings.set` | `src/services/engine.ts` |
 | `followup_accept` | engine | `followup.accept` | **ninguno** |
 | `followup_dismiss` | engine | `followup.dismiss` | `src/services/engine.ts` |
 | `followup_list` | engine | `followup.list` | `src/services/engine.ts` |
@@ -98,6 +98,9 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `model_use` | engine | `model.use` | **ninguno** |
 | `models_roles_get` | engine | `models.roles.get` | `src/services/engine.ts` |
 | `models_roles_set` | engine | `models.roles.set` | `src/services/engine.ts` |
+| `network_settings_get` | engine | `network.settings.get` | **ninguno** |
+| `network_settings_set` | engine | `network.settings.set` | **ninguno** |
+| `network_test` | engine | `network.test` | **ninguno** |
 | `peer_group_get` | engine | `session.peer_group.get` | `src/services/engine.ts` |
 | `peer_group_revoke` | engine | `session.peer_group.revoke` | `src/services/engine.ts` |
 | `peer_group_set` | engine | `session.peer_group.set` | `src/services/engine.ts` |
@@ -251,6 +254,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `speech_settings_set` | engine | `speech.settings.set` | `src/services/engine.ts` |
 | `speech_status` | engine | `speech.status` | `src/services/engine.ts` |
 | `speech_transcribe` | engine | `speech.transcribe` | **ninguno** |
+| `storage_usage` | engine | `storage.usage` | **ninguno** |
 | `task_get` | engine | `task.get` | `src/services/engine.ts` |
 | `task_tree` | engine | `task.tree` | **ninguno** |
 | `tool_list` | engine | `tool.list` | `src/services/engine.ts` |

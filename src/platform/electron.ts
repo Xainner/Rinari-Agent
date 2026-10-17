@@ -143,6 +143,7 @@ interface DesktopHostApi {
     setBackground(patch: BackgroundPatch): Promise<BackgroundSettings>
     setLanguage(language: 'es' | 'en'): Promise<void>
     setIndicators(state: AttentionIndicators): Promise<void>
+    openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
   }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
@@ -277,6 +278,7 @@ export const electronBridge: DesktopBridge = {
     setBackgroundSettings: (patch) => required().app.setBackground(patch),
     setLanguage: (language) => required().app.setLanguage(language),
     setIndicators: (state) => required().app.setIndicators(state),
+    openFolder: (place) => required().app.openFolder(place),
   },
 
   events: {

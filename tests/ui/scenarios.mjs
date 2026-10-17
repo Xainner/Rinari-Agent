@@ -166,7 +166,7 @@ export const scenarios = {
       main: [
         { tool: 'user.ask', args: { questions: [
           { id: 'where', title: '¿A dónde vamos?', options: [{ label: 'Playa' }, { label: 'Montaña' }] },
-          { id: 'days', title: '¿Cuántos días?', options: [{ label: 'Tres' }, { label: 'Cinco' }] },
+          { id: 'days', title: '¿Cuántos días?', options: [{ label: 'Uno' }, { label: 'Tres' }, { label: 'Cinco' }, { label: 'Siete' }] },
           { id: 'who', title: '¿Con quién?', options: [{ label: 'Sola' }, { label: 'En grupo' }] },
         ] }, say: 'Antes, unas preguntas.' },
         { text: 'PLAN LISTO' },

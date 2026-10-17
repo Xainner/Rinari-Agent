@@ -3,6 +3,8 @@
 //    puntos que dicen en cuál se está.
 // 2. Elegir una opción avanza: la pregunta nueva entra desde la derecha
 //    (muestreo cuadro a cuadro con requestAnimationFrame).
+//    La opción elegida se ve marcada un instante antes de pasar, y la tarjeta
+//    crece suave hasta la altura de la pregunta nueva (que tiene más opciones).
 // 3. Volver con ‹ la trae desde la izquierda.
 // 4. En la última, el botón es «Enviar respuestas» y envía.
 // Con RINARI_UI_REDUCED_MOTION=1 la pregunta cambia sin desplazarse.
@@ -19,17 +21,23 @@ async function release() {
   assert.equal(await fetch(new URL('/__release?lane=main', ui.model)).then((r) => r.json()), true)
 }
 
-/** Clicks and samples the horizontal offset of the incoming question for ~300 ms. */
+/** Clicks and samples the horizontal offset of the incoming question for ~500 ms (the chosen option shows marked for an instant first). */
 async function stepAndSample(selector) {
   return evaluate(`new Promise((resolve) => {
     const xs = []
+    const hs = []
+    let marked = false
+    const stage = () => document.querySelector('${CARD} .question-stage')
+    const from = Math.round(stage().getBoundingClientRect().height)
     document.querySelector(${JSON.stringify(selector)}).click()
     const start = performance.now()
     const frame = () => {
       const step = document.querySelector('${CARD} .question-step')
       if (step) xs.push(new DOMMatrixReadOnly(getComputedStyle(step).transform).m41)
-      if (performance.now() - start < 320) requestAnimationFrame(frame)
-      else resolve(xs)
+      hs.push(Math.round(stage().getBoundingClientRect().height))
+      if (document.querySelector('${CARD} .question-ghost .question-option.is-on')) marked = true
+      if (performance.now() - start < 520) requestAnimationFrame(frame)
+      else resolve({ xs, hs, from, marked })
     }
     requestAnimationFrame(frame)
   })`)
@@ -55,18 +63,23 @@ scenario(async () => {
   await screenshot('first-question')
 
   // 2. Choosing an option moves forward: in from the right.
-  const forward = await stepAndSample(`${CARD} [role="radio"]`)
+  const sample = await stepAndSample(`${CARD} [role="radio"]`)
+  const forward = sample.xs
   await wait(text('¿Cuántos días?'))
+  const to = sample.hs.at(-1)
+  assert.ok(to > sample.from + 20, `the card grows to the longer question (${sample.from} → ${to})`)
   if (REDUCED) assert.ok(forward.every((x) => Math.abs(x) < 0.5), `no slide with reduced motion (${forward})`)
   else {
     assert.ok(forward.some((x) => x > 4), `it comes in from the right (${forward})`)
     assert.ok(Math.abs(forward.at(-1)) < 0.5, `it settles in place (${forward})`)
+    assert.ok(sample.marked, 'the chosen option shows marked before moving on')
+    assert.ok(sample.hs.some((h) => h > sample.from + 2 && h < to - 2), `the height grows smoothly (${sample.hs})`)
   }
   await settleAnimations()
   assert.deepEqual(await evaluate(`[...document.querySelectorAll('${CARD} .question-dot')].map((d) => d.dataset.state)`), ['answered', 'current', 'pending'])
 
   // 3. Back: in from the left.
-  const back = await stepAndSample(`${CARD} button[aria-label="Pregunta anterior"]`)
+  const back = (await stepAndSample(`${CARD} button[aria-label="Pregunta anterior"]`)).xs
   await wait(text('¿A dónde vamos?'))
   if (!REDUCED) assert.ok(back.some((x) => x < -4), `back comes in from the left (${back})`)
   await settleAnimations()
@@ -83,5 +96,5 @@ scenario(async () => {
   await clickText('Enviar respuestas', `${CARD} button`)
   await release() // PLAN LISTO
   await wait(text('PLAN LISTO'))
-  report({ passed: ['one main button', 'progress dots', REDUCED ? 'no slide with reduced motion' : 'forward and back slide from their side', 'last question sends'] })
+  report({ passed: ['one main button', 'progress dots', REDUCED ? 'no slide with reduced motion' : 'forward and back slide from their side', REDUCED ? 'height follows the question' : 'chosen option marked, height grows smoothly', 'last question sends'] })
 }, { width: 1280, height: 860 })

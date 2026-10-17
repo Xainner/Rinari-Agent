@@ -2789,8 +2789,28 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .question-step[data-direction='back'] { animation: question-in-back var(--dur-base) var(--ease-out) both; }
 @keyframes question-in-forward { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 @keyframes question-in-back { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .question-step[data-direction] { animation: none; } }
+/* #63: la altura sigue a la pregunta (con más o menos opciones crece o encoge suave). La que se va
+   queda encima como fantasma: tras elegir, su opción se marca un instante y sale hacia su lado
+   mientras la nueva entra, que espera ese instante. Con movimiento reducido no hay fantasma. */
+.question-stage { position: relative; transition: height var(--dur-base) var(--ease-out); overflow: clip; overflow-clip-margin: 8px; }
+.question-ghost { position: absolute; inset: 0 0 auto 0; pointer-events: none; animation: question-out-forward 200ms var(--ease-out) both; }
+.question-ghost[data-direction='back'] { animation-name: question-out-back; }
+.question-ghost[data-chosen] { animation-delay: 140ms; }
+.question-ghost[data-chosen] .question-option.is-on { animation: question-mark 140ms var(--ease-out) both; }
+.question-step[data-chosen] { animation-delay: 140ms; }
+@keyframes question-out-forward { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-16px); } }
+@keyframes question-out-back { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(16px); } }
+@keyframes question-mark { from { background: transparent; border-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .question-step[data-direction], .question-ghost { animation: none; } .question-ghost { display: none; } }
+/* El título recibe el foco al cambiar de pregunta (para el lector de pantalla); no lleva anillo: no es un control. */
+.question-card h3[tabindex='-1']:focus { outline: none; box-shadow: none; }
 .question-dots { display: inline-flex; gap: 4px; }
+/* «Permitido siempre» (#56): los antiguos «Siempre en los chats» van al final, separados y apagados:
+   ya no se aplican y solo están para quitarlos. */
+.grants-group[data-legacy] { margin-top: 6px; padding-top: 10px; border-top: 1px dashed var(--line-2); }
+.grants-group[data-legacy] > p:first-child { color: var(--text-muted); }
+.grants-group[data-legacy] li { border-style: dashed; opacity: 0.72; transition: opacity var(--dur-fast); }
+.grants-group[data-legacy] li:hover, .grants-group[data-legacy] li:focus-within { opacity: 1; }
 .question-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--border); transition: background-color var(--dur-fast), transform var(--dur-fast); }
 .question-dot[data-state='answered'] { background: rgb(196 181 253 / 0.6); }
 .question-dot[data-state='current'] { background: var(--accent); transform: scale(1.25); }

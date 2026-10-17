@@ -70,7 +70,7 @@ export default function SavedGrants() {
         const legacy = rows[0].legacy === true
         const Icon = chats ? MessageSquare : Folder
         return (
-          <div key={scope} className="space-y-1" data-legacy={legacy || undefined}>
+          <div key={scope} className="grants-group space-y-1" data-legacy={legacy || undefined}>
             <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text)]" title={chats ? undefined : scope}>
               <Icon size={12} aria-hidden="true" />
               {legacy ? t('grants.legacy') : chats ? t('grants.chats') : rows[0].scope_label || scope}

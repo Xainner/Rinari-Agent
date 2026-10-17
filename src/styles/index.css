@@ -3046,3 +3046,10 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 [data-section='other'] { --adv-color: #94a3b8; }
 .adv-storage-bar span[data-section], .adv-storage-list li[data-section] .adv-storage-swatch { background: var(--adv-color); }
 @media (max-width: 720px) { .adv-card-body { padding-left: 16px; } }
+
+/* Modelos de un proveedor (plan 0.4.0 #92, #93): fila de solo lectura con «Editar». */
+.model-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.45); }
+.model-row[data-editing] { border-color: color-mix(in srgb, var(--accent-2) 40%, transparent); }
+.model-row-remove:hover:not(:disabled) { color: var(--danger); }
+.model-editor { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); padding-top: 10px; border-top: 1px solid var(--line-1); }
+.model-editor > :last-child { grid-column: 1 / -1; }

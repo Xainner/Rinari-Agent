@@ -98,8 +98,8 @@ export function ModelOutputCap({ modelId }: { modelId: string }) {
   const { t } = useI18n()
   const [execution, setExecution] = useState<ExecutionSettingsResult | null>(null)
   useEffect(() => { engineApi.executionSettingsGet().then(setExecution).catch(() => setExecution(null)) }, [])
-  if (!execution) return null
-  const value = execution.settings.models[modelId]
+  if (!execution?.settings) return null
+  const value = execution.settings.models?.[modelId]
   const save = async (raw: string) => {
     const models = { ...execution.settings.models }
     if (raw.trim() === '') {

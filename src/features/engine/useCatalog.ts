@@ -4,7 +4,6 @@ import {
   commandMessage,
   engineApi,
   onEngineEvent,
-  type DiscoveredModel,
   type ModelRefreshResult,
   type ModelSummary,
   type ProviderSummary,
@@ -23,43 +22,18 @@ export function useCatalog() {
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const providersRef = useRef<ProviderSummary[]>([])
 
-  const mergeDiscovered = useCallback((found: Record<string, DiscoveredModel[]>) => {
-    setModels((current) => {
-      const saved = current.filter((model) => model.saved !== false)
-      const savedKeys = new Set(saved.map((model) => `${model.provider_id}\0${model.provider_model_id}`))
-      const discovered = providersRef.current.flatMap((provider) =>
-        (found[provider.alias] ?? []).map<ModelSummary>((model) => ({
-          id: `catalog:${provider.id}:${model.provider_model_id}`,
-          alias: model.provider_model_id,
-          provider_id: provider.id,
-          provider: provider.alias,
-          provider_model_id: model.provider_model_id,
-          capabilities: model.capabilities,
-          availability: model.availability,
-          settings: {},
-          active: false,
-          saved: false,
-        })),
-      )
-      const retained = current.filter(
-        (model) => model.saved === false && !(model.provider && found[model.provider]),
-      )
-      return [
-        ...saved,
-        ...retained,
-        ...discovered.filter(
-          (model) => !savedKeys.has(`${model.provider_id}\0${model.provider_model_id}`),
-        ),
-      ]
-    })
-  }, [])
-
+  const refreshRef = useRef<(discover?: boolean) => Promise<void>>(async () => {})
+  // What a provider offers is saved by the Engine (#93): a discovery that
+  // added models, or any change, reloads the saved list. Nothing is listed
+  // «sin guardar» any more.
   useEffect(() => {
     let disposed = false
     let unlisten: (() => void) | undefined
     void onEngineEvent((event) => {
-      if (event.event === 'model.discovery.completed' && event.payload.providers) {
-        mergeDiscovered(event.payload.providers as Record<string, DiscoveredModel[]>)
+      if (event.event === 'models.changed') void refreshRef.current(false)
+      if (event.event === 'model.discovery.completed') {
+        const added = event.payload.added as Record<string, string[]> | undefined
+        if (added && Object.keys(added).length > 0) void refreshRef.current(false)
       }
       if (event.event === 'model.discovery.failed') {
         const error = event.payload.error as { message?: string } | undefined
@@ -73,7 +47,7 @@ export function useCatalog() {
       disposed = true
       unlisten?.()
     }
-  }, [mergeDiscovered])
+  }, [])
 
   const refreshCatalog = useCallback(async (discover = true): Promise<void> => {
     try {
@@ -86,7 +60,7 @@ export function useCatalog() {
         // A turned-off provider gets no call at all (#97).
         for (const provider of p.providers.filter((item) => item.enabled !== false)) {
           void engineApi.modelDiscoveryStart(provider.alias).then((job) => {
-            if (job.providers) mergeDiscovered(job.providers)
+            if (job.added && Object.keys(job.added).length > 0) void refreshRef.current(false)
           }).catch((err: unknown) => setCatalogError(commandMessage(err)))
         }
       }
@@ -98,7 +72,8 @@ export function useCatalog() {
     } finally {
       setCatalogLoaded(true)
     }
-  }, [mergeDiscovered])
+  }, [])
+  refreshRef.current = refreshCatalog
 
   /**
    * Re-reads every provider: availability, capabilities and context windows

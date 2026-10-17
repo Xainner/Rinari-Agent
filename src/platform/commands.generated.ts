@@ -79,10 +79,12 @@ export type DesktopCommand =
   | "model_discover"
   | "model_discovery_start"
   | "model_get"
+  | "model_hidden_list"
   | "model_list"
   | "model_refresh"
   | "model_remove"
   | "model_test"
+  | "model_unhide"
   | "model_use"
   | "models_roles_get"
   | "models_roles_set"
@@ -354,10 +356,12 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "model_discover",
   "model_discovery_start",
   "model_get",
+  "model_hidden_list",
   "model_list",
   "model_refresh",
   "model_remove",
   "model_test",
+  "model_unhide",
   "model_use",
   "models_roles_get",
   "models_roles_set",
@@ -644,10 +648,12 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "model_discover",
   "model_discovery_start",
   "model_get",
+  "model_hidden_list",
   "model_list",
   "model_refresh",
   "model_remove",
   "model_test",
+  "model_unhide",
   "model_use",
   "models_roles_get",
   "models_roles_set",

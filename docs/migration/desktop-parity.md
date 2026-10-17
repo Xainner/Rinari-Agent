@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **273**
-- Respaldados por Engine: **267**
+- Comandos: **275**
+- Respaldados por Engine: **269**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **10**
 - Imports Tauri activos: **0**
@@ -91,16 +91,18 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `model_discover` | engine | `model.discover` | `src/services/engine.ts` |
 | `model_discovery_start` | engine | `model.discovery.start` | **ninguno** |
 | `model_get` | engine | `model.get` | `src/services/engine.ts` |
+| `model_hidden_list` | engine | `model.hidden.list` | `src/services/engine.ts` |
 | `model_list` | engine | `model.list` | `src/services/engine.ts` |
 | `model_refresh` | engine | `model.refresh` | `src/services/engine.ts` |
 | `model_remove` | engine | `model.remove` | **ninguno** |
 | `model_test` | engine | `model.test` | **ninguno** |
+| `model_unhide` | engine | `model.unhide` | `src/services/engine.ts` |
 | `model_use` | engine | `model.use` | **ninguno** |
 | `models_roles_get` | engine | `models.roles.get` | `src/services/engine.ts` |
 | `models_roles_set` | engine | `models.roles.set` | `src/services/engine.ts` |
-| `network_settings_get` | engine | `network.settings.get` | **ninguno** |
-| `network_settings_set` | engine | `network.settings.set` | **ninguno** |
-| `network_test` | engine | `network.test` | **ninguno** |
+| `network_settings_get` | engine | `network.settings.get` | `src/services/engine.ts` |
+| `network_settings_set` | engine | `network.settings.set` | `src/services/engine.ts` |
+| `network_test` | engine | `network.test` | `src/services/engine.ts` |
 | `peer_group_get` | engine | `session.peer_group.get` | `src/services/engine.ts` |
 | `peer_group_revoke` | engine | `session.peer_group.revoke` | `src/services/engine.ts` |
 | `peer_group_set` | engine | `session.peer_group.set` | `src/services/engine.ts` |

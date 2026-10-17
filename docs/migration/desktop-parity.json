@@ -662,6 +662,15 @@
       ]
     },
     {
+      "command": "model_hidden_list",
+      "kind": "engine",
+      "method": "model.hidden.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "model_list",
       "kind": "engine",
       "method": "model.list",
@@ -694,6 +703,15 @@
       "callers": []
     },
     {
+      "command": "model_unhide",
+      "kind": "engine",
+      "method": "model.unhide",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "model_use",
       "kind": "engine",
       "method": "model.use",
@@ -723,21 +741,27 @@
       "kind": "engine",
       "method": "network.settings.get",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "network_settings_set",
       "kind": "engine",
       "method": "network.settings.set",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "network_test",
       "kind": "engine",
       "method": "network.test",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "peer_group_get",
@@ -2273,10 +2297,10 @@
     }
   ],
   "summary": {
-    "commands": 273,
-    "engine_backed": 267,
+    "commands": 275,
+    "engine_backed": 269,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 97
+    "without_callers": 94
   }
 }

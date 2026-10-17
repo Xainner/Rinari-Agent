@@ -6069,6 +6069,62 @@
       "host_effects": []
     },
     {
+      "command": "model_hidden_list",
+      "module": "models",
+      "args": [
+        {
+          "name": "provider",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "model.hidden.list",
+      "engine_params": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "model_unhide",
+      "module": "models",
+      "args": [
+        {
+          "name": "provider",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider_model_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "model.unhide",
+      "engine_params": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        },
+        {
+          "key": "provider_model_id",
+          "from": "provider_model_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "model_alias",
       "module": "models",
       "args": [

@@ -1794,6 +1794,10 @@ export const engineApi = {
       new_alias: newAlias,
       provider: provider ?? null,
     }),
+  /** Models the owner removed: hidden from refreshes until «Mostrar» (#93). */
+  modelHiddenList: (provider: string) => platform().command<{ hidden: string[] }>('model_hidden_list', { provider }),
+  modelUnhide: (provider: string, providerModelId: string) =>
+    platform().command<{ model: ModelSummary }>('model_unhide', { provider, provider_model_id: providerModelId }),
   modelRemove: (reference: string, provider?: string) =>
     platform().command<{ removed: { id: string; alias: string } }>("model_remove", {
       reference,
@@ -1815,6 +1819,8 @@ export const engineApi = {
       status: 'running' | 'completed';
       cached: boolean;
       providers?: Record<string, DiscoveredModel[]>;
+      /** Aliases the Engine saved, per provider (#93). */
+      added?: Record<string, string[]>;
     }>('model_discovery_start', { provider: provider ?? null }),
   /** `addNew` also saves the models a provider started offering (desktop refresh). */
   modelRefresh: (provider?: string, addNew = false) =>

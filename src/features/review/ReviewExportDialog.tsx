@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LoaderCircle, PackageOpen } from 'lucide-react'
+import { LoaderCircle, MessageSquareText, PackageOpen, ScrollText, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { useI18n } from '../../i18n'
@@ -72,25 +72,34 @@ export default function ReviewExportDialog() {
   return (
     <Dialog open={target !== null} onOpenChange={(next) => { if (!next) close() }}>
       <DialogContent className="review-export max-w-md" data-testid="review-export">
-        <DialogTitle className="flex items-center gap-2"><PackageOpen size={16} aria-hidden="true" /> {t('review.title')}</DialogTitle>
-        <DialogDescription>
-          {target?.fromSeq !== undefined ? t('review.fromHere', { n: target.fromSeq }) : t('review.whole')}
-        </DialogDescription>
-        <div className="adv-row">
-          <div className="min-w-0 flex-1">
-            <p className="adv-row-title">{t('review.messages')}</p>
-            <p className="adv-row-hint">{messages ? t('review.messagesOn') : t('review.messagesOff')}</p>
+        <div className="review-export-head">
+          <span className="review-export-icon" aria-hidden="true"><PackageOpen size={18} /></span>
+          <div className="min-w-0">
+            <DialogTitle>{t('review.title')}</DialogTitle>
+            <DialogDescription className="review-export-scope" data-from={target?.fromSeq !== undefined || undefined}>
+              {target?.fromSeq !== undefined ? t('review.fromHere', { n: target.fromSeq }) : t('review.whole')}
+            </DialogDescription>
           </div>
-          <Switch checked={messages} onCheckedChange={setMessages} aria-label={t('review.messages')} />
         </div>
-        <div className="adv-row">
-          <div className="min-w-0 flex-1">
-            <p className="adv-row-title">{t('review.logs')}</p>
-            <p className="adv-row-hint">{t('review.logsHint')}</p>
+        <div className="review-export-options">
+          <div className="review-export-option" data-on={messages || undefined}>
+            <MessageSquareText size={15} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="adv-row-title">{t('review.messages')}</p>
+              <p className="adv-row-hint">{messages ? t('review.messagesOn') : t('review.messagesOff')}</p>
+            </div>
+            <Switch checked={messages} onCheckedChange={setMessages} aria-label={t('review.messages')} />
           </div>
-          <Switch checked={logs} onCheckedChange={setLogs} aria-label={t('review.logs')} />
+          <div className="review-export-option" data-on={logs || undefined}>
+            <ScrollText size={15} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="adv-row-title">{t('review.logs')}</p>
+              <p className="adv-row-hint">{t('review.logsHint')}</p>
+            </div>
+            <Switch checked={logs} onCheckedChange={setLogs} aria-label={t('review.logs')} />
+          </div>
         </div>
-        <p className="adv-hint">{t('review.secrets')}</p>
+        <p className="review-export-secrets"><ShieldCheck size={14} aria-hidden="true" /><span>{t('review.secrets')}</span></p>
         <div className="flex justify-end gap-2">
           <button type="button" className="btn btn-ghost btn-sm" onClick={close}>{t('common.cancel')}</button>
           <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => void run()} data-testid="review-export-save">

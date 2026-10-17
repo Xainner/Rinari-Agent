@@ -158,6 +158,7 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
         {profiles.map((profile) => (
           <article key={profile.id} className="profile-card settings-card" data-testid="profile-card" data-active={profile.active || undefined}>
             <header className="profile-card-head">
+              <span className="profile-card-mark" aria-hidden="true">{profile.name.trim().charAt(0).toUpperCase() || '·'}</span>
               <span className="profile-card-name">{profile.name}</span>
               {profile.active && <span className="r-chip" data-tone="accent"><Check size={11} aria-hidden="true" /> {t('rbundles.inUse')}</span>}
             </header>
@@ -175,13 +176,14 @@ export default function ProfilesView({ onChanged }: { activeSessionId?: string |
               })}
               <div><dt>{t('rbundles.work')}</dt><dd>{t('rbundles.workCounts', { projects: profile.counts?.projects ?? 0, sessions: profile.counts?.sessions ?? 0 })}</dd></div>
             </dl>
-            <div className="flex flex-wrap gap-2">
+            <div className="profile-card-actions">
               {!profile.active && <button type="button" onClick={() => void use(profile)} className="btn btn-primary btn-sm">{t('rbundles.use')}</button>}
               <button type="button" onClick={() => open(profile)} className="btn btn-secondary btn-sm"><Pencil size={12} aria-hidden="true" /> {t('rbundles.edit')}</button>
-              <button type="button" onClick={() => open(profile, true)} className="btn btn-ghost btn-sm"><Copy size={12} aria-hidden="true" /> {t('rbundles.duplicate')}</button>
+              <span className="flex-1" />
+              <button type="button" onClick={() => open(profile, true)} className="btn btn-ghost btn-sm btn-icon" aria-label={t('rbundles.duplicate')} title={t('rbundles.duplicate')}><Copy size={13} aria-hidden="true" /></button>
               {!profile.builtin && (
-                <button type="button" onClick={() => setRemoving(profile)} className="btn btn-ghost btn-sm text-[var(--danger)]">
-                  <Trash2 size={12} aria-hidden="true" /> {t('rbundles.delete')}
+                <button type="button" onClick={() => setRemoving(profile)} className="btn btn-ghost btn-sm btn-icon profile-card-remove" aria-label={t('rbundles.delete')} title={t('rbundles.delete')}>
+                  <Trash2 size={13} aria-hidden="true" />
                 </button>
               )}
             </div>

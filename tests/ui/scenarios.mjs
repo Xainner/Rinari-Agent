@@ -217,6 +217,11 @@ export const scenarios = {
     title: 'Ajustes → Avanzado: estado, tarjetas plegadas con resumen, búsqueda que filtra y abre, almacenamiento y «Probar conexión»',
     phases: ['exercise'],
   },
+  'usage-review-profiles': {
+    title: 'Tandas 22–23: informe de /usage en el chat, «Exportar desde aquí» y su diálogo, tarjetas de Perfiles y «Así suena»',
+    phases: ['exercise'],
+    model: () => startFakeModel(Array.from({ length: 6 }, () => ({ text: 'HOLA' }))),
+  },
   'memory-places': {
     title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',
     phases: ['exercise'],

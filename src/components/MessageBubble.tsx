@@ -326,9 +326,9 @@ function ExportFromMessage({ messageId }: { messageId: string }) {
   const seq = seqOfMessage(messageId)
   if (!sessionId || seq === undefined) return null
   return (
-    <button type="button" data-testid="export-from-message" className="child-from-message" title={t('review.fromHereHint')}
-      onClick={() => useReviewExport.getState().open(sessionId, seq)}>
-      <PackageOpen size={12} aria-hidden="true" /> {t('review.fromHereShort')}
+    <button type="button" data-testid="export-from-message" className="child-from-message is-icon" title={t('review.fromHereHint')}
+      aria-label={t('review.fromHereShort')} onClick={() => useReviewExport.getState().open(sessionId, seq)}>
+      <PackageOpen size={12} aria-hidden="true" />
     </button>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, Check, Copy, Download, LoaderCircle, RotateCcw } from 'lucide-react'
+import { BarChart3, Check, CircleCheck, Copy, Download, LoaderCircle, RotateCcw, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
@@ -10,6 +10,8 @@ import { usageApi, usageMarkdown, type UsageReport, type UsageScope } from './us
 const SCOPES: UsageScope[] = ['session', 'today', 'project', 'all']
 const compact = (value: number, lang: string) =>
   new Intl.NumberFormat(lang === 'es' ? 'es' : 'en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+/** El tono de una barra de uso: tranquilo, cerca del límite o en él. */
+const level = (percent: number) => (percent >= 90 ? 'high' : percent >= 70 ? 'mid' : 'low')
 
 /**
  * Informe de uso en el chat (`/usage`, plan 0.4.0 #78): una foto con fecha
@@ -60,20 +62,31 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
   const windowTokens = context?.window_tokens ?? 0
 
   return (
-    <section className="usage-report" data-testid="usage-report" data-scope={report.scope} aria-label={t('usage.title')}>
+    <section className="usage-report" data-testid="usage-report" data-scope={report.scope} data-loading={loading || undefined} aria-label={t('usage.title')} aria-busy={loading || undefined}>
       <header className="usage-report-head">
-        <BarChart3 size={15} aria-hidden="true" />
-        <span className="usage-report-title">{t('usage.title')}</span>
-        <span className="usage-report-when">{when}</span>
+        <span className="usage-report-icon" aria-hidden="true"><BarChart3 size={15} /></span>
+        <span className="min-w-0">
+          <span className="usage-report-title">{t('usage.title')}</span>
+          <span className="usage-report-when">{when}</span>
+        </span>
         <span className="flex-1" />
         <div role="tablist" aria-label={t('usage.scope')} className="seg-tabs w-fit">
           {SCOPES.map((scope) => (
             <button key={scope} type="button" role="tab" className="seg-tab" aria-selected={report.scope === scope} data-active={report.scope === scope || undefined} onClick={() => void reload(scope)}>
-              {t(`usage.scope.${scope}` as I18nKey)}
+              {report.scope === scope && <span className="seg-tab-pill" aria-hidden="true" />}
+              <span className="relative">{t(`usage.scope.${scope}` as I18nKey)}</span>
             </button>
           ))}
         </div>
       </header>
+
+      <dl className="usage-report-totals">
+        <div><dt>{t('usage.col.calls')}</dt><dd>{report.totals.calls}</dd></div>
+        <div><dt>{t('usage.col.input')}</dt><dd>{compact(report.totals.input_tokens, lang)}</dd></div>
+        <div><dt>{t('usage.col.output')}</dt><dd>{compact(report.totals.output_tokens, lang)}</dd></div>
+        <div><dt>{t('usage.col.cacheRead')}</dt><dd>{compact(report.totals.cache_read_tokens, lang)}</dd></div>
+        <div><dt>{t('usage.col.cost')}</dt><dd>{report.totals.cost !== null && report.totals.cost !== undefined ? `$${report.totals.cost.toFixed(2)}` : '—'}</dd></div>
+      </dl>
 
       {limits && (limits.windows.length > 0 || limits.balances.length > 0 || limits.status !== 'available') && (
         <div className="usage-report-block" data-block="limits">
@@ -81,8 +94,8 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
           {limits.windows.map((window) => (
             <div key={window.id} className="usage-report-window">
               <span>{window.label}</span>
-              <span className="usage-bar" aria-hidden="true"><span style={{ width: `${Math.min(100, window.used_percent ?? 0)}%` }} /></span>
-              <span>{window.used_percent !== null ? `${Math.round(window.used_percent)} %` : '—'}</span>
+              <span className="usage-bar" aria-hidden="true" data-level={level(window.used_percent ?? 0)}><span style={{ width: `${Math.min(100, window.used_percent ?? 0)}%` }} /></span>
+              <span className="usage-report-percent">{window.used_percent !== null ? `${Math.round(window.used_percent)} %` : '—'}</span>
               {window.resets_at && <span className="usage-report-reset">{t('usage.resets', { time: new Date(window.resets_at).toLocaleString(lang === 'es' ? 'es' : 'en', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}
             </div>
           ))}
@@ -94,6 +107,7 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
       {windowTokens > 0 && (
         <div className="usage-report-block" data-block="context">
           <p className="usage-report-label">{t('usage.context')}</p>
+          <span className="usage-bar" aria-hidden="true" data-level={level((100 * used) / windowTokens)}><span style={{ width: `${Math.min(100, (100 * used) / windowTokens)}%` }} /></span>
           <p className="usage-report-line">
             {t('usage.contextLine', { used: compact(used, lang), window: compact(windowTokens, lang), percent: windowTokens ? Math.round((100 * used) / windowTokens) : 0 })}
             {report.compactions > 0 && ` · ${t('usage.compactions', { n: report.compactions })}`}
@@ -130,26 +144,29 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
 
       <div className="usage-report-block" data-block="tools">
         <p className="usage-report-label">{t('usage.tools')}</p>
-        <p className="usage-report-line">
-          {t('usage.toolsLine', { total: report.tools.total, ok: report.tools.ok, failed: report.tools.failed })}
-          {report.tools.top.length > 0 && ` · ${report.tools.top.map((item) => `${item.tool} ${item.count}`).join(', ')}`}
-        </p>
+        <p className="usage-report-line">{t('usage.toolsLine', { total: report.tools.total, ok: report.tools.ok, failed: report.tools.failed })}</p>
+        {report.tools.top.length > 0 && (
+          <p className="usage-report-tools">
+            {report.tools.top.map((item) => <span key={item.tool} className="usage-report-tool"><span>{item.tool}</span> {item.count}</span>)}
+          </p>
+        )}
       </div>
 
       <div className="usage-report-block" data-block="warnings">
         <p className="usage-report-label">{t('usage.warnings')}</p>
         {report.warnings.length === 0
-          ? <p className="usage-report-line" data-tone="ok">{t('usage.allGood')}</p>
+          ? <p className="usage-report-line" data-tone="ok"><CircleCheck size={13} aria-hidden="true" />{t('usage.allGood')}</p>
           : report.warnings.map((warning) => (
             <p key={warning.kind} className="usage-report-line" data-tone="warning">
+              <TriangleAlert size={13} aria-hidden="true" />
               {t(`usage.warning.${warning.kind}` as I18nKey, { n: warning.count, max: warning.max ?? 0, model: warning.model ?? '' })}
             </p>
           ))}
       </div>
 
-      <p className="usage-report-line usage-report-time">{t('usage.time', { s: Math.round(report.time.active_ms / 1000) })}</p>
-
       <footer className="usage-report-actions">
+        <span className="usage-report-time">{t('usage.time', { s: Math.round(report.time.active_ms / 1000) })}</span>
+        <span className="flex-1" />
         <button type="button" className="btn btn-quiet btn-xs" onClick={() => void copyText(markdown()).then((ok) => { if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500) } })}>
           {copied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />} {copied ? t('usage.copied') : t('usage.copy')}
         </button>

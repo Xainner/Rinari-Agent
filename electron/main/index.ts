@@ -850,6 +850,11 @@ const quitCoordinator = new QuitCoordinator({
     await engine.shutdown()
   },
   commit(reason) {
+    // La ventana se va antes que los canales: viva, seguía pidiendo, y cada
+    // pedido sin canal quedaba como ERROR en app.log (#91).
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.destroy()
+    }
     unregisterIpc?.()
     unregisterIpc = null
     if (reason !== 'update') {

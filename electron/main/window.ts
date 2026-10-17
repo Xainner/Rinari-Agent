@@ -268,12 +268,20 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   // Errores del renderer al proceso principal: sin esto, una excepción en el
   // arranque de React no aparece en ningún sitio que se pueda leer.
   // Los avisos repetidos iguales se agrupan (#58): «(×120 más en 10 min)».
-  const rendererLog = createRepeatGrouper((entry) => console.error(entry))
-  window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    // Avisos y errores, más las líneas de diagnóstico propias (`[rinari] …`).
-    if (level >= 2 || message.startsWith('[rinari] ')) rendererLog.log(`[renderer] ${message} (${sourceId}:${line})`)
+  const rendererErrors = createRepeatGrouper((entry) => console.error(entry))
+  const rendererNotes = createRepeatGrouper((entry) => console.info(entry))
+  window.webContents.on('console-message', (details) => {
+    const { level, message, lineNumber, sourceId } = details
+    const entry = `[renderer] ${message} (${sourceId}:${lineNumber})`
+    // Avisos y errores como ERROR; las líneas de diagnóstico propias
+    // (`[rinari] …`) que no lo son, como INFO: «attention 0» no es un error (#91).
+    if (level === 'warning' || level === 'error') rendererErrors.log(entry)
+    else if (message.startsWith('[rinari] ')) rendererNotes.log(entry)
   })
-  window.on('closed', () => rendererLog.flush())
+  window.on('closed', () => {
+    rendererErrors.flush()
+    rendererNotes.flush()
+  })
   window.webContents.on('render-process-gone', (_event, details) => {
     console.error(`[renderer] el proceso se fue: ${details.reason}`)
   })

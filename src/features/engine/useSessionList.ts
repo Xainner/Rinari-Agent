@@ -543,6 +543,10 @@ export function useSessionList(options: {
   /** Eliminación permanente con cascada explícita del engine. */
   const deleteSession = useCallback(
     async (id: string, cascade: boolean): Promise<SessionDeleteResult | null> => {
+      // La vista suelta la conversación antes de borrarla: si no, el anillo y
+      // el composer la volvían a pedir y el Engine respondía NOT_FOUND (#91).
+      const wasActive = activeSession === id
+      if (wasActive) setActiveSession('')
       try {
         const result = await engineApi.deleteSession(id, cascade)
         useActivityDisclosure.getState().forgetSession(id)
@@ -552,11 +556,12 @@ export function useSessionList(options: {
         await refreshSessions()
         return result
       } catch (err) {
+        if (wasActive) setActiveSession(id)
         toast.error(commandMessage(err))
         return null
       }
     },
-    [forgetRow, refreshSessions],
+    [activeSession, forgetRow, refreshSessions],
   )
 
   /** Cambia PLAN/BUILD/REVIEW de una sesión concreta. Tareas y contexto intactos. */

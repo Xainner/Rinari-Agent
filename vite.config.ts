@@ -5,9 +5,23 @@ import tailwindcss from "@tailwindcss/vite";
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
+// Las pruebas del instalador (`installer/setup`) usan sus propias dependencias
+// (`npm ci --prefix installer/setup`, como en el CI). En una copia sin ellas se
+// saltan con un aviso, en vez de fallar al no encontrar `@tauri-apps/api`.
+// @ts-expect-error type error without @types/node package
+import { existsSync } from "node:fs";
+const installerDeps = existsSync("installer/setup/node_modules/@tauri-apps/api");
+if (!installerDeps && process.argv.some((arg: string) => arg.includes("vitest"))) {
+  console.warn("[vitest] installer/setup sin dependencias: se saltan sus pruebas (npm ci --prefix installer/setup).");
+}
+
 // https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [react(), tailwindcss()],
+
+  test: {
+    exclude: ["**/node_modules/**", "**/dist/**", ...(installerDeps ? [] : ["installer/setup/**"])],
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

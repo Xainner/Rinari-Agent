@@ -54,3 +54,10 @@ it('solo pensando dice «Pensando…»', () => {
   mount(base, 3_000)
   expect(screen.getByRole('status').textContent).toBe('Pensando…')
 })
+
+// Plan 0.4.0 extras, E2: al empezar, el reloj de la acción marcaría lo mismo que el total.
+it('mientras la acción empezó con el turno, solo se ve el tiempo total', () => {
+  mount({ ...base, items: [] } as unknown as TurnTimeline, 13_000)
+  expect(screen.queryByTestId('turn-action-time')).toBeNull()
+  expect(screen.getByTestId('turn-total-time')).toBeTruthy()
+})

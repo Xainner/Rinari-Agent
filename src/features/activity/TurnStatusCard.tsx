@@ -76,9 +76,13 @@ export default function TurnStatusCard({ timeline, now }: { timeline: TurnTimeli
   const step = stepIndex >= 0 && ownList ? ownList.items[stepIndex] : null
   const title = step ? (step.active_form || step.content) : action
   const total = turnDuration(timeline, now)
-  const actionMs = Math.max(0, now - actionSince(timeline))
+  const since = actionSince(timeline)
+  const actionMs = Math.max(0, now - since)
+  // Mientras la acción empezó con el turno, su reloj marca lo mismo que el
+  // total: se muestra solo el total (plan 0.4.0 extras, E2).
+  const ownClock = since - timeline.startedAt >= 2000
   const stepLabel = step && ownList ? t('turn.status.step', { n: stepIndex + 1, total: ownList.items.length }) : null
-  const detail = [stepLabel, step ? action : null, shortElapsed(actionMs)].filter(Boolean).join(' · ')
+  const detail = [stepLabel, step ? action : null, ownClock ? shortElapsed(actionMs) : null].filter(Boolean).join(' · ')
   const working = !['approval', 'question', 'cancelling'].includes(state.kind)
   // La primera vez, entra: su hueco crece (el chat baja con él, sin saltar) y la tarjeta llega después.
   const [entering] = useState(() => !entered.has(timeline.turnId))
@@ -95,7 +99,7 @@ export default function TurnStatusCard({ timeline, now }: { timeline: TurnTimeli
           <div className="turn-status-detail">
             {stepLabel && <span className="turn-status-step">{stepLabel}</span>}
             {step && <span className="turn-status-action">{action}</span>}
-            <span className="turn-status-clock" data-testid="turn-action-time">{shortElapsed(actionMs)}</span>
+            {ownClock && <span className="turn-status-clock" data-testid="turn-action-time">{shortElapsed(actionMs)}</span>}
             {state.parallel > 0 && <span>{t('activity.parallelAgents', { n: state.parallel })}</span>}
           </div>
         </div>

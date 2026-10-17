@@ -77,6 +77,16 @@ function defaultTimeline(turnId: string, sessionId: string, now: number): TurnTi
   }
 }
 
+/** Un hash corto y estable de un texto (FNV-1a), para ids sin clave propia. */
+function shortHash(value: string): string {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(36)
+}
+
 function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('memory.candidate.')) return `memory:candidate:${payload.candidate_id}`
   if (event === 'memory.remembered') return `memory:remembered:${payload.memory_id}`
@@ -84,7 +94,10 @@ function itemId(event: string, payload: Record<string, unknown>): string {
   if (event === 'instructions.proposed' || event === 'instructions.proposal.resolved') return `instructions:${payload.proposal_id}`
   if (event === 'file.presented') return `present:${payload.present_id}`
   if (event === 'speech.setup_needed') return `speech-setup:${payload.reason}`
-  if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
+  // Sin `steer_id` (instrucciones a un subagente de sesiones viejas, #25), el
+  // id sale de su posición y su texto: antes todas compartían `steer:undefined`
+  // y cada una pisaba a la anterior.
+  if (event.startsWith('steer.')) return payload.steer_id ? `steer:${payload.steer_id}` : `steer:${payload.activity_seq ?? 0}:${shortHash(text(payload.content))}`
   if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
   if (event.startsWith('question.')) return `question:${payload.request_id}`
@@ -386,6 +399,8 @@ function mergeEventItem(
       steerId: text(payload.steer_id),
       content: text(payload.content) || (current?.type === 'steer' ? current.content : ''),
       status: 'applied',
+      source: text(payload.source) || undefined,
+      followUp: payload.follow_up === true || undefined,
     }
   }
   if (event.startsWith('vision.')) {
@@ -543,6 +558,7 @@ function mergeEventItem(
       phase: event === 'agent.completed' || event === 'agent.failed' ? 'terminal' : prior?.phase ?? 'started',
       status: event === 'agent.completed' ? 'completed' : event === 'agent.failed' ? 'failed' : prior?.status ?? 'running',
       agent: text(payload.agent) || prior?.agent || 'Agent',
+      nickname: text(payload.nickname) || prior?.nickname,
       objective: text(payload.objective) || prior?.objective,
       items: children, summary: text(payload.summary) || text(payload.error) || prior?.summary,
       cwd: text(payload.cwd) || prior?.cwd, profile: text(payload.profile) || prior?.profile,

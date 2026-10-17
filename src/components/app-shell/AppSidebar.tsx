@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { strongestSignal } from '../../features/notifications/attentionIndicators'
 import { toast } from 'sonner'
 import {
@@ -15,6 +15,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Plus,
+  GitBranch,
   GitFork,
   Hand,
   Pencil,
@@ -27,7 +28,7 @@ import {
 } from 'lucide-react'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
-import { buildWorkspaceModel, projectDisplayName, groupRecentChats, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
+import { buildWorkspaceModel, projectDisplayName, groupRecentChats, nestSessions, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -300,7 +301,38 @@ export function AppSidebar({
     setCascade(false)
   }
 
-  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string }) => {
+  // Los chats sueltos se anidan antes de agruparlos por fecha: una hija de hoy
+  // cuelga de su madre de ayer, no aparece suelta en «Hoy» (#40).
+  const chatNest = nestSessions(model.chats)
+  // Madres plegadas (#40): sus hijas no se ven hasta desplegarlas.
+  const [foldedMothers, setFoldedMothers] = useState<ReadonlySet<string>>(() => new Set())
+  const toggleMother = (id: string) => setFoldedMothers((current) => {
+    const next = new Set(current)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+  /** Una sesión con sus hijas debajo, con sangría (#40). */
+  const tree = (list: SessionSummary[], opts?: { travel?: boolean }, nest?: ReturnType<typeof nestSessions>) => {
+    const { tops, children } = nest ? { tops: list, children: nest.children } : nestSessions(list)
+    return tops.map((session) => {
+      const kids = children.get(session.id) ?? []
+      if (kids.length === 0) return row(session, opts)
+      const done = kids.filter((kid) => busySessionIds?.has(kid.id) !== true && signalBySession?.[kid.id] !== 'needs_you').length
+      const folded = foldedMothers.has(session.id)
+      return row(session, {
+        ...opts,
+        mother: { done, total: kids.length, folded, onToggle: () => toggleMother(session.id) },
+        nested: folded ? null : (
+          <ul className="sidebar-tree sidebar-children mt-0.5 ml-3.5 space-y-0.5 pl-1" data-testid="session-children">
+            {kids.map((kid) => row(kid, { child: true }))}
+          </ul>
+        ),
+      })
+    })
+  }
+
+  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; mother?: { done: number; total: number; folded: boolean; onToggle: () => void }; nested?: ReactNode }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
@@ -329,7 +361,12 @@ export function AppSidebar({
               <Hand size={10} aria-hidden="true" />
             </span> : working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
               <span aria-hidden="true" className="sidebar-spin" />
-            </span> : <MessageSquare
+            </span> : opts?.child ? <GitBranch
+              size={13}
+              aria-hidden="true"
+              data-testid="session-child-icon"
+              className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-subtle)]')}
+            /> : <MessageSquare
               size={14}
               aria-hidden="true"
               className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-subtle)]')}
@@ -342,6 +379,21 @@ export function AppSidebar({
                 active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]',
               )}
             />
+            {opts?.mother && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-expanded={!opts.mother.folded}
+                aria-label={t('sidebar.childSessions', { done: opts.mother.done, total: opts.mother.total })}
+                title={t('sidebar.childSessions', { done: opts.mother.done, total: opts.mother.total })}
+                data-testid="session-children-chip"
+                className="sidebar-children-chip"
+                onClick={(event) => { event.preventDefault(); event.stopPropagation(); opts.mother!.onToggle() }}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); opts.mother!.onToggle() } }}
+              >
+                {opts.mother.done}/{opts.mother.total}
+              </span>
+            )}
             {opts?.projectName && (
               <span title={opts.projectName} className="max-w-[40%] shrink-0 truncate text-[11px] text-[var(--text-subtle)]">
                 {opts.projectName}
@@ -436,6 +488,7 @@ export function AppSidebar({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        {opts?.nested}
       </li>
     )
   }
@@ -632,7 +685,7 @@ export function AppSidebar({
                 </div>
                 {items.length > 0 && projectOpen(project.id) && (
                   <ul className="sidebar-tree mt-0.5 ml-3.5 space-y-0.5 pl-1">
-                    {items.map((session) => row(session))}
+                    {tree(items)}
                   </ul>
                 )}
               </li>
@@ -683,9 +736,9 @@ export function AppSidebar({
             </button>
           </div>
           <ul className="space-y-0.5">
-            {groupRecentChats(model.chats).map(group => <li key={group.key} className="mt-2">
+            {groupRecentChats(chatNest.tops).map(group => <li key={group.key} className="mt-2">
               <details open><summary className="cursor-pointer px-1 pb-2 text-[11px] text-[var(--text-subtle)]">{t(`home.${group.key}`)}</summary>
-              <ul className="space-y-0.5">{group.sessions.map(session => row(session, { travel: true }))}</ul></details>
+              <ul className="space-y-0.5">{tree(group.sessions, { travel: true }, chatNest)}</ul></details>
             </li>)}
             {model.chats.length === 0 && !profileEmpty && (
               <li className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.emptyChats')}</li>

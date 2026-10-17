@@ -1,11 +1,18 @@
 import { TitleSwap } from '../TitleSwap'
+import { ArrowLeft } from 'lucide-react'
 import { ResumeChip } from '../../features/resume/ResumeChip'
+import { useI18n } from '../../i18n'
 
 interface ChatHeaderProps {
   /** null = sin sesión activa. */
   title: string | null
   /** La conversación del título: un cambio a otra no se anima; también da el «Reanuda 17:40» (#24). */
   sessionId?: string | null
+  /**
+   * La conversación madre de una hija (#40): «← Madre · Encargo» vuelve a
+   * ella con un clic. `brief` es el título del encargo.
+   */
+  mother?: { id: string; title: string; brief?: string | null; onOpen: (id: string) => void } | null
 }
 
 /**
@@ -15,10 +22,24 @@ interface ChatHeaderProps {
  * «…» y el completo sale al pasar el ratón. Se monta dentro de `AppStatusBar`;
  * no es un segundo header global.
  */
-export default function ChatHeader({ title, sessionId = null }: ChatHeaderProps) {
+export default function ChatHeader({ title, sessionId = null, mother = null }: ChatHeaderProps) {
+  const { t } = useI18n()
   if (!title) return null
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2" title={title}>
+      {mother && (
+        <button
+          type="button"
+          className="chat-header-mother"
+          data-testid="chat-header-mother"
+          title={t('sidebar.backToMother', { title: mother.title })}
+          onClick={() => mother.onOpen(mother.id)}
+        >
+          <ArrowLeft size={13} aria-hidden="true" />
+          <span className="truncate">{mother.title}</span>
+          {mother.brief && <span className="chat-header-brief truncate">· {mother.brief}</span>}
+        </button>
+      )}
       <TitleSwap
         as="p"
         sessionId={sessionId}

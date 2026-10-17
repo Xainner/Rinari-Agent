@@ -124,6 +124,8 @@ export interface AgentTimelineItem extends TimelineItemBase {
   phase: 'started' | 'terminal'
   status: 'running' | 'completed' | 'failed'
   agent: string
+  /** Apodo para mostrar (#73): «Vega». El id sigue siendo la clave. */
+  nickname?: string
   objective?: string
   items?: TimelineItem[]
   summary?: string
@@ -196,6 +198,10 @@ export interface SteerTimelineItem extends TimelineItemBase {
   steerId: string
   content: string
   status: 'pending' | 'applied'
+  /** `coordinator`: una instrucción de Rinari a un subagente (#25). */
+  source?: string
+  /** La instrucción volvió a poner en marcha a un subagente que ya había terminado. */
+  followUp?: boolean
 }
 
 /**

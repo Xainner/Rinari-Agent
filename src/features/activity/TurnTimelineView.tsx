@@ -47,6 +47,7 @@ import { ModelChangeNotice } from './ModelChangeNotice'
 import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
 import { InstructionsProposalCard } from '../projects/InstructionsProposalCard'
+import { AgentInstruction, useAgentLabel } from '../agents/agentLabel'
 import { PresentedFiles } from './PresentedFiles'
 import LiveText from './LiveText'
 import TurnStatusCard, { TurnDoneHeader } from './TurnStatusCard'
@@ -493,6 +494,7 @@ type AgentItem = Extract<TimelineItem, { type: 'agent' }>
  */
 function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveApproval: (id: string, decision: string) => void }) {
   const { lang, t } = useI18n()
+  const agentLabel = useAgentLabel()
   const active = useContext(ActivityActive)
   const agentSession = useContext(TurnSessionContext)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -569,7 +571,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
         <span className="act-tile" data-state={active && item.status === 'running' ? 'running' : item.status === 'completed' ? 'done' : item.status === 'running' ? 'idle' : 'failed'} style={{ color: 'var(--agent)' }} aria-hidden="true">
           {active && item.status === 'running' ? <LoaderCircle size={14} className="r-spin" /> : <Bot size={14} />}
         </span>
-        <span className="font-semibold">{item.agent}</span>
+        <span className="font-semibold" data-testid="agent-name">{agentLabel(item)}</span>
         {item.objective && <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--text-muted)]" title={item.objective}>{item.objective}</span>}
         <ActivityText active={active && item.status === 'running'} className="act-meta text-[12px]">{!active && item.status === 'running' ? t('activity.interrupted') : item.status === 'running' ? (lang === 'es' ? 'Trabajando' : 'Working') : item.status === 'completed' ? (lang === 'es' ? 'Completado' : 'Completed') : (lang === 'es' ? 'Interrumpido o fallido' : 'Stopped or failed')}</ActivityText>
         {item.agentId && agentSession && <button type="button" className="btn btn-ghost btn-xs" onClick={event => {
@@ -584,6 +586,7 @@ function AgentCard({ item, onResolveApproval }: { item: AgentItem; onResolveAppr
         {(item.cwd || item.profile) && <p className="break-all font-mono text-xs text-[var(--text-subtle)]">{item.profile} · {item.cwd}</p>}
         <ActivityActive.Provider value={active && item.status === 'running'}>{(item.items ?? []).map(child => <InspectionItem key={child.id} id={child.id}>{child.type === 'model'
           ? child.content ? <LiveText id={child.id} content={child.content} streaming={child.status === 'streaming'} live={active && item.status === 'running'} /> : null
+          : child.type === 'steer' ? <AgentInstruction item={child} />
           : <ActivityRow item={child} onResolveApproval={onResolveApproval} />}</InspectionItem>)}</ActivityActive.Provider>
         {item.summary && !(item.items ?? []).some(child => child.type === 'model' && child.content === item.summary) && <Markdown>{item.summary}</Markdown>}
         {!item.items?.length && !item.summary && <p className="text-xs text-[var(--text-muted)]">{active && item.status === 'running' ? (lang === 'es' ? 'Esperando actividad del agente…' : 'Waiting for agent activity…') : t('activity.noDetails')}</p>}

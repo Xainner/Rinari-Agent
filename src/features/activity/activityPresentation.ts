@@ -108,7 +108,7 @@ export function projectActivity(timeline: TurnTimeline) {
     if (item.type === 'agent') {
       if (item.status === 'failed') incidents.add(`${owner}/${item.id}`)
       return { ...item, items: (item.items ?? []).flatMap(child => {
-        const selected = inspect(child, `${owner}/${item.agentId}`, item.agent, ownerActive && item.status === 'running')
+        const selected = inspect(child, `${owner}/${item.agentId}`, item.nickname ? `${item.nickname} · ${item.agent}` : item.agent, ownerActive && item.status === 'running')
         return selected ? [selected] : []
       }) }
     }

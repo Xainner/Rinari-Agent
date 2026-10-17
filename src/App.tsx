@@ -116,6 +116,16 @@ function App() {
     [session.approvals],
   )
   const activeTitle = activeRecord?.title ?? null
+  // La madre de una conversación hija (#40), para la miga de la cabecera.
+  const motherRecord = activeRecord?.parent_session_id ? session.sessionsById[activeRecord.parent_session_id] ?? null : null
+  const activeMother = motherRecord
+    ? {
+        id: motherRecord.id,
+        title: motherRecord.title || translate(lang, 'sidebar.newChat'),
+        brief: typeof activeRecord?.brief?.title === 'string' && activeRecord.brief.title !== activeTitle ? activeRecord.brief.title : null,
+        onOpen: (id: string) => { void session.selectSession(id) },
+      }
+    : null
 
   // Handoff `rinari code [path] [--session]`: misma sesión/proyecto.
   // Con path: project.open registra/deduplica y devuelve la sesión
@@ -709,7 +719,7 @@ function App() {
           <AppStatusBar
             context={
               view === 'chat' && activeHasContent ? (
-                <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} />
+                <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} mother={activeMother} />
               ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null

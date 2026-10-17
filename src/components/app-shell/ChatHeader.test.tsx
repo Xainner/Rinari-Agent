@@ -19,3 +19,15 @@ it('sin título no pinta nada', () => {
   const { container } = render(<ChatHeader title={null} />)
   expect(container.textContent).toBe('')
 })
+
+// #40: una conversación hija vuelve a su madre desde la cabecera.
+it('a child shows «← Madre · Encargo» and opens the mother', async () => {
+  const { fireEvent } = await import('@testing-library/react')
+  const onOpen = (await import('vitest')).vi.fn()
+  render(<ChatHeader title="Pruebas del parser" sessionId="ses_child" mother={{ id: 'ses_mother', title: 'Parser', brief: 'Añadir pruebas', onOpen }} />)
+  const back = screen.getByTestId('chat-header-mother')
+  expect(back.textContent).toContain('Parser')
+  expect(back.textContent).toContain('Añadir pruebas')
+  fireEvent.click(back)
+  expect(onOpen).toHaveBeenCalledWith('ses_mother')
+})

@@ -512,3 +512,43 @@ describe('AppSidebar signals for every conversation (#33)', () => {
     expect(screen.getByTestId('sidebar-project-signal').getAttribute('data-signal')).toBe('failed')
   })
 })
+
+describe('child sessions under their mother (#40)', () => {
+  const child = (id: string, title: string, parent: string, projectId: string | null = null): SessionSummary => ({
+    ...session(id, title, projectId),
+    parent_session_id: parent,
+    lineage_kind: 'note',
+  })
+
+  it('a note and a fork hang from their mother with a done/total chip, and fold', async () => {
+    renderSidebar({
+      sessions: [session('mother', 'Parser'), child('ses_01_a', 'Pruebas', 'mother'), child('ses_02_b', 'Docs', 'mother'), session('other', 'Suelta')],
+      busySessionIds: new Set(['ses_02_b']),
+      activeId: 'other',
+    })
+    const nested = screen.getByTestId('session-children')
+    expect(within(nested).getAllByRole('listitem').map((item) => item.textContent)).toEqual([expect.stringContaining('Pruebas'), expect.stringContaining('Docs')])
+    // The working one shows its spinner; the other, the branch icon.
+    expect(within(nested).getAllByTestId('session-child-icon')).toHaveLength(1)
+    const chip = screen.getByTestId('session-children-chip')
+    expect(chip.textContent).toBe('1/2')
+    await userEvent.click(chip)
+    expect(screen.queryByTestId('session-children')).toBeNull()
+    await userEvent.click(chip)
+    expect(screen.getByTestId('session-children')).toBeTruthy()
+  })
+
+  it('a child whose mother is not in the list stays on its own', () => {
+    renderSidebar({ sessions: [child('ses_03_c', 'Huérfana', 'gone')], activeId: 'ses_03_c' })
+    expect(screen.queryByTestId('session-children')).toBeNull()
+    expect(screen.getByText('Huérfana')).toBeTruthy()
+  })
+
+  it('works inside a project too', () => {
+    renderSidebar({
+      sessions: [session('mother', 'Parser', 'project'), child('ses_04_d', 'Pruebas', 'mother', 'project')],
+      activeId: 'mother',
+    })
+    expect(within(screen.getByTestId('session-children')).getByText('Pruebas')).toBeTruthy()
+  })
+})

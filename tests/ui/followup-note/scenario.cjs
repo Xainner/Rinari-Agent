@@ -2,7 +2,9 @@
 // 1. Un turno deja dos notas: aparece una (con «+1»), sin empezar nada nuevo.
 // 2. «Hacer en otra conversación» crea una conversación nueva con el título
 //    de la nota y su turno se ejecuta; la conversación de origen sigue igual.
-// 3. «Descartar» quita la otra. Recargar no las devuelve.
+// 3. La conversación nueva cuelga de «Origen» en la barra lateral, con su
+//    contador; abierta, su cabecera vuelve a la madre (#40).
+// 4. «Descartar» quita la otra. Recargar no las devuelve.
 const assert = require('node:assert/strict')
 const { click, clickText, command, delay, evaluate, input, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
 
@@ -40,7 +42,18 @@ scenario(async () => {
   await delay(500)
   await screenshot('accepted')
 
-  // 3. Dismiss the other; it does not come back after a reload.
+  // 3. The child hangs from its mother and its header goes back to it (#40).
+  assert.equal(created.parent_session_id, (await command('session_list', {})).sessions.find((s) => s.title === 'Origen').id)
+  assert.equal(created.lineage_kind, 'note')
+  await wait(`[...document.querySelectorAll('[data-testid="session-children"]')].some((list) => list.innerText.includes(${JSON.stringify(title)}))`)
+  assert(await evaluate(`Boolean(document.querySelector('[data-testid="session-children-chip"]'))`), 'the mother counts its children')
+  await clickText(title, '[data-testid="session-children"] button', { includes: true })
+  await wait(`document.querySelector('[data-testid="chat-header-mother"]')?.innerText.includes('Origen')`)
+  await screenshot('child')
+  await click('[data-testid="chat-header-mother"]')
+  await wait(`document.querySelector('aside button[aria-current="page"]')?.innerText.includes('Origen')`)
+
+  // 4. Dismiss the other; it does not come back after a reload.
   await wait(`Boolean(document.querySelector(${JSON.stringify(NOTE)}))`)
   await click(`${NOTE} .sticky-note-dismiss`)
   await wait(`!document.querySelector(${JSON.stringify(NOTE)})`)
@@ -50,5 +63,5 @@ scenario(async () => {
   await wait('Boolean(document.querySelector(".composer-surface"))')
   await delay(800)
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(NOTE)}))`), false)
-  report({ passed: ['note shows without starting work', 'accept opens a conversation that runs the task', 'dismiss removes it for good'] })
+  report({ passed: ['note shows without starting work', 'accept opens a conversation that runs the task', 'the child hangs from its mother with a counter', 'the child header goes back to the mother', 'dismiss removes it for good'] })
 })

@@ -534,15 +534,21 @@ input[type='password']::-ms-clear {
 .composer-chip { position: relative; display: inline-flex; min-height: 32px; min-width: 0; cursor: pointer; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.55); padding: 0 11px; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-base); }
 .composer-chip:hover:not(:disabled) { color: var(--text); border-color: var(--line-3); background: var(--bg-hover); }
 .composer-chip:disabled { cursor: default; opacity: 0.45; }
-/* #42: el proyecto de una conversación nueva, con su rama, en una fila encima del composer. */
-.composer-context-row { display: flex; align-items: center; gap: 6px; padding: 0 6px 6px; }
-.composer-project-chip { display: inline-flex; max-width: min(320px, 100%); min-width: 0; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid transparent; background: transparent; padding: 3px 9px 3px 7px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
+/* #42: el proyecto de una conversación nueva, con su rama, en una fila encima del composer.
+   La fila no ocupa sitio (lo que aparece no mueve lo demás): la portada y el panel borrador de Boards
+   le dejan el hueco siempre, haya chip o no, y el composer no salta al empezar una conversación nueva. */
+.composer-context-row { position: absolute; left: 0; right: 0; bottom: 100%; display: flex; align-items: center; gap: 6px; padding: 0 6px 6px; pointer-events: none; }
+.composer-context-row > * { pointer-events: auto; }
+.composer-project-chip { display: inline-flex; max-width: min(320px, 100%); min-width: 0; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid transparent; background: transparent; padding: 3px 7px 3px 7px; font-size: 12px; font-weight: 600; line-height: 16px; color: var(--text-muted); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
 .composer-project-chip:hover:not(:disabled), .composer-project-chip[data-state="open"] { color: var(--text); border-color: var(--line-2); background: var(--bg-hover); }
 .composer-project-chip:focus-visible { outline: none; border-color: var(--accent); }
 .composer-project-chip:disabled { cursor: default; opacity: 0.45; }
 .composer-project-chip .composer-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .composer-project-chip .composer-chip-icon { flex-shrink: 0; }
 .composer-project-branch { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text-subtle); }
+.composer-project-caret { flex-shrink: 0; margin-left: -1px; color: var(--text-subtle); transition: transform var(--dur-base) var(--ease-out), color var(--dur-fast); }
+.composer-project-chip:hover:not(:disabled) .composer-project-caret { color: var(--text-muted); }
+.composer-project-chip[data-state="open"] .composer-project-caret { transform: rotate(180deg); color: var(--accent-2); }
 .composer-project-heading { padding: 8px 10px 4px; font-size: 11px; font-weight: 600; color: var(--text-subtle); }
 .composer-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .composer-chip-icon { width: 32px; padding: 0; justify-content: center; }
@@ -636,7 +642,7 @@ input[type='password']::-ms-clear {
 .is-conversation .conversation-visual-slot { display: flex; flex: 1; min-height: 0; }
 .is-conversation .conversation-visual-slot > .home-hero { position: absolute; inset: 0 0 auto; pointer-events: none; }
 .home-hero { width: 100%; }
-.home-art { width: 100%; height: clamp(160px, calc(100dvh - 480px), 520px); flex-shrink: 0; position: relative; overflow: hidden; }
+.home-art { width: 100%; height: clamp(160px, calc(100dvh - 506px), 520px); flex-shrink: 0; position: relative; overflow: hidden; }
 .home-art::before { content: ''; position: absolute; left: 50%; bottom: 4%; width: min(60%, 640px); aspect-ratio: 2 / 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse at center, rgb(147 88 255 / 0.28), transparent 70%); filter: blur(10px); pointer-events: none; }
 .home-art img { position: relative; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; mask-image: linear-gradient(to bottom, black 65%, transparent 100%); animation: home-art-in 0.9s var(--ease-out) both, home-float 9s ease-in-out 1s infinite; }
 @keyframes home-art-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
@@ -652,7 +658,7 @@ input[type='password']::-ms-clear {
   width: min(calc(100% - 32px), 1080px);
   margin-inline: auto;
 }
-.conversation-shell.is-empty .conversation-composer-slot { margin-top: 16px; }
+.conversation-shell.is-empty .conversation-composer-slot { margin-top: 42px; } /* con el hueco del chip de proyecto (#42) */
 .conversation-shell.is-empty .conversation-composer-slot .composer-root > p { display: none; }
 .conversation-shell.is-empty .conversation-composer-slot textarea { min-height: 42px; }
 .conversation-shell.is-conversation .conversation-composer-slot {
@@ -695,7 +701,7 @@ input[type='password']::-ms-clear {
 .conversation-transcript { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 140px; }
 .conversation-enter { animation: conversation-enter-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes conversation-enter-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (max-width: 1250px) { .home-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .home-art { height: clamp(145px, calc(100dvh - 520px), 400px); } }
+@media (max-width: 1250px) { .home-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .home-art { height: clamp(145px, calc(100dvh - 546px), 400px); } }
 @media (max-height: 740px) { .home-footer > p, .home-footer-rule { display: none; } .home-footer { padding-top: 10px; } .home-suggestions { margin-top: 16px; } }
 @media (max-width: 600px) { .conversation-shell.is-empty { padding-top: 32px; } .home-card-grid { grid-template-columns: 1fr; gap: 8px; } .home-motto { display: none; } .home-card { min-height: 64px; padding: 10px; } }
 @container welcome (max-width: 900px) { .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -1140,6 +1146,7 @@ html[data-motion='reduced'] .sidebar-signal[data-signal="needs_you"] { animation
 .variant-pane .home-greeting h1 { font-size: clamp(17px, 4cqw, 22px); }
 .variant-pane .home-greeting p { font-size: 12px; }
 .variant-pane .conversation-composer-slot { margin-top: 10px; }
+.conversation-shell.variant-pane.is-empty .conversation-composer-slot { margin-top: 38px; }
 .variant-pane .home-suggestions { margin-top: 14px; }
 .variant-pane .home-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .variant-pane .home-card { min-height: 60px; padding: 9px; }

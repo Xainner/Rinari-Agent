@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, FolderOpen, FolderGit2, MessageCircle, Search } from 'lucide-react'
+import { Check, ChevronDown, Folder, FolderOpen, MessageCircle, Search } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
 import { engineApi, type ProjectSummary } from '../../services/engine'
@@ -98,12 +98,15 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
           title={t('composer.project.choose')}
           aria-label={`${t('composer.project.choose')}: ${label}`}
         >
-          {current ? <FolderGit2 size={13} aria-hidden="true" className="composer-chip-icon" /> : <MessageCircle size={13} aria-hidden="true" className="composer-chip-icon" />}
+          {current ? <Folder size={13} aria-hidden="true" className="composer-chip-icon" /> : <MessageCircle size={13} aria-hidden="true" className="composer-chip-icon" />}
           <span className="composer-chip-label">{label}</span>
           {branch && <span className="composer-project-branch">{branch}</span>}
+          <ChevronDown size={12} aria-hidden="true" className="composer-project-caret" />
         </button>
       </PopoverTrigger>
+      {/* Hacia arriba: el chip está encima del composer y abrirlo hacia abajo lo tapaba. */}
       <PopoverContent
+        side="top"
         align="start"
         className="composer-project-menu flex min-h-0 w-72 flex-col overflow-hidden p-1.5"
         style={{ maxHeight: 'min(28rem, var(--radix-popover-content-available-height))' }}
@@ -123,9 +126,11 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
           {matching.map((project) => (
             <ProjectRow
               key={project.id}
-              icon={<FolderGit2 size={14} aria-hidden="true" />}
+              icon={<Folder size={14} aria-hidden="true" />}
               title={project.name || baseName(project.root)}
-              detail={[branchLabel(project.git_head ?? null), project.root].filter(Boolean).join(' · ')}
+              detail={[branchLabel(project.git_head ?? null), shortPath(project.root)].filter(Boolean).join(' · ')}
+              fullDetail={project.root}
+              mono
               selected={project.id === projectId}
               onClick={() => choose(project.id)}
             />
@@ -142,13 +147,13 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
   )
 }
 
-function ProjectRow({ icon, title, detail, selected, onClick }: { icon: React.ReactNode; title: string; detail: string; selected: boolean; onClick: () => void }) {
+function ProjectRow({ icon, title, detail, fullDetail, mono = false, selected, onClick }: { icon: React.ReactNode; title: string; detail: string; fullDetail?: string; mono?: boolean; selected: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]', selected && 'bg-[var(--bg-subtle)]')} aria-pressed={selected} data-testid="composer-project-option">
-      <span className="shrink-0 text-[var(--text-subtle)]">{icon}</span>
+      <span className={cn('shrink-0', selected ? 'text-[var(--accent-2)]' : 'text-[var(--text-subtle)]')}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-medium text-[var(--text)]">{title}</span>
-        {detail && <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]" title={detail}>{detail}</span>}
+        {detail && <span className={cn('block truncate text-[11px] text-[var(--text-subtle)]', mono && 'font-mono')} title={fullDetail ?? detail}>{detail}</span>}
       </span>
       {selected && <Check size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />}
     </button>
@@ -156,3 +161,11 @@ function ProjectRow({ icon, title, detail, selected, onClick }: { icon: React.Re
 }
 
 const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path
+
+/** La ruta sin el principio cuando es larga: lo que distingue una carpeta es su final. */
+function shortPath(path: string): string {
+  const separator = path.includes('\\') ? '\\' : '/'
+  const parts = path.split(/[\\/]/).filter(Boolean)
+  if (parts.length <= 3) return path
+  return `…${separator}${parts.slice(-3).join(separator)}`
+}

@@ -34,6 +34,7 @@ export default function SettingsView({
   activeSessionId,
   engineCapabilities,
   onCatalogChanged,
+  onOpenSession,
 }: {
   appVersion: string
   providers: ProviderSummary[]
@@ -41,6 +42,8 @@ export default function SettingsView({
   activeSessionId: string | null
   engineCapabilities?: Record<string, boolean>
   onCatalogChanged: () => void
+  /** Abre una conversación (el origen de un recuerdo, #75). */
+  onOpenSession?: (id: string) => void
 }) {
   const { lang } = useI18n()
   const section = useUIStore((s) => s.settingsSection)
@@ -61,7 +64,7 @@ export default function SettingsView({
       )}
       {section === 'vision' && <VisionSettings models={models} providers={providers} />}
       {section === 'context' && <ContextSettings models={models} providers={providers} />}
-      {section === 'memory' && <MemorySettings />}
+      {section === 'memory' && <MemorySettings onOpenSession={onOpenSession} />}
       {section === 'dictation' && <DictationSettings />}
       {section === 'notifications' && <NotificationSettings />}
       {section === 'browser' && <BrowserSettings />}

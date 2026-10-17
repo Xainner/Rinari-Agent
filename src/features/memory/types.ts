@@ -37,6 +37,10 @@ export interface MemoryRecord {
   /** El nombre de ese perfil, proyecto o chat. */
   place_label?: string | null
   provenance?: string | null
+  /** La conversación de la que salió (#75); `exists` falso si ya se borró. */
+  origin?: { session_id: string; title?: string | null; exists: boolean } | null
+  /** La última vez que entró a un prompt; nula si nunca (#75). */
+  last_used_at?: string | null
   created_at?: string | null
   updated_at?: string | null
   /** Concurrencia optimista: `memory.update`/`memory.forget` la exigen. */

@@ -224,6 +224,9 @@ export interface MemoryTimelineItem extends TimelineItemBase {
   scope?: string
   reason?: string
   sensitive?: boolean
+  /** Recuerdos: dónde quedó (#75), para decirlo y ofrecer «Mover». */
+  place?: string
+  placeRef?: string
   /** Propuestas: `pending` hasta `memory.candidate.resolved`. Recuerdos: `remembered`. */
   status: 'pending' | 'approved' | 'denied' | 'remembered'
 }

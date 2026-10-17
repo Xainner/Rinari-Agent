@@ -228,6 +228,8 @@ function mergeMemoryItem(
     scope: text(payload.scope) || prior?.scope,
     reason: text(payload.reason) || prior?.reason,
     sensitive: payload.sensitive === true || prior?.sensitive === true,
+    place: text(payload.place) || prior?.place,
+    placeRef: text(payload.place_ref) || prior?.placeRef,
     // Un `created` repetido (snapshot, recarga) no deshace una resolución ya vista.
     status: candidate ? prior?.status ?? 'pending' : 'remembered',
   }

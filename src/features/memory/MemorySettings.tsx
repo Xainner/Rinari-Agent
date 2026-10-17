@@ -26,6 +26,7 @@ import { kindLabel, memoryErrorMessage } from './memoryCopy'
 import { MEMORY_KINDS, MEMORY_PLACES, type LearnedFactsMode, type MemoryPlace, type MemoryRecord } from './types'
 import { Select } from '../../components/ui/select'
 import { useProfileStore } from '../profiles/profileStore'
+import { useOptionalEngineData } from '../engine/EngineContext'
 
 const MODES: Array<{ value: LearnedFactsMode; title: 'memory.learning.ask' | 'memory.learning.auto'; hint: 'memory.learning.askHint' | 'memory.learning.autoHint' }> = [
   { value: 'ask', title: 'memory.learning.ask', hint: 'memory.learning.askHint' },
@@ -38,7 +39,15 @@ const MODES: Array<{ value: LearnedFactsMode; title: 'memory.learning.ask' | 'me
  * olvidarlo, y exportarlo o importarlo en un archivo. Nada se decide aquí:
  * cada acción va al Engine y se relee.
  */
-export default function MemorySettings() {
+/** Un recuerdo que no entra a un prompt desde hace tanto se marca (#75). */
+const STALE_DAYS = 30
+
+export function isStale(record: MemoryRecord, now = Date.now()): boolean {
+  const last = Date.parse(record.last_used_at ?? record.created_at ?? '')
+  return Number.isFinite(last) && now - last > STALE_DAYS * 86_400_000
+}
+
+export default function MemorySettings({ onOpenSession }: { onOpenSession?: (id: string) => void } = {}) {
   const { t } = useI18n()
   const memory = useMemoryState()
   const pending = memory.candidates.filter((candidate) => effectiveCandidateStatus(memory, candidate.id, 'pending').status === 'pending')
@@ -62,7 +71,7 @@ export default function MemorySettings() {
 
       <AboutYou />
       <LearningMode />
-      <RecordsSection />
+      <RecordsSection onOpenSession={onOpenSession} />
       <MemoryPortability />
     </div>
   )
@@ -164,8 +173,9 @@ function LearningMode() {
   )
 }
 
-function RecordsSection() {
+function RecordsSection({ onOpenSession }: { onOpenSession?: (id: string) => void }) {
   const { t } = useI18n()
+  const engine = useOptionalEngineData()
   const memory = useMemoryState()
   const { ask, dialog } = useConfirm()
   const searchId = useId()
@@ -217,6 +227,21 @@ function RecordsSection() {
     }
     return [...roots.entries()]
   }, [memory.records])
+  const recentChats = useMemo(
+    () => (engine?.sessions ?? []).slice(0, 6).map((item) => ({ id: item.id, title: item.title ?? '' })),
+    [engine?.sessions],
+  )
+  // Con «Todo» y sin búsqueda, agrupadas por categoría (#75).
+  const groups = useMemo(() => {
+    if (kind !== 'all' || query.trim()) return [{ kind: null as string | null, records: visible }]
+    const order = new Map<string, MemoryRecord[]>()
+    for (const record of visible) {
+      const bucket = order.get(record.kind) ?? []
+      bucket.push(record)
+      order.set(record.kind, bucket)
+    }
+    return [...order.entries()].map(([value, records]) => ({ kind: value as string | null, records }))
+  }, [kind, query, visible])
   const toggle = (id: string) => setSelected((current) => {
     const next = new Set(current)
     if (next.has(id)) next.delete(id)
@@ -229,7 +254,7 @@ function RecordsSection() {
     let moved = 0
     for (const record of chosen) {
       try {
-        await memoryApi.move(record.id, where, where === 'project' ? { project_root: ref } : where === 'profile' ? { place_ref: ref } : {})
+        await memoryApi.move(record.id, where, where === 'project' ? { project_root: ref } : where === 'profile' || where === 'chat' ? { place_ref: ref } : {})
         moved += 1
       } catch (e) {
         toast.error(memoryErrorMessage(e, t))
@@ -344,19 +369,29 @@ function RecordsSection() {
           {query.trim() ? t('memory.empty.search') : kind !== 'all' && memory.records.length > 0 ? t('memory.empty.kind') : t('memory.empty')}
         </p>
       )}
-      {visible.length > 0 && (
-        <ul className="memory-records" data-selecting={chosen.length > 0 || undefined} aria-label={t('memory.records.title')}>
-          {visible.map((record) => (
-            <RecordRow
-              key={record.id}
-              record={record}
-              selected={selected.has(record.id)}
-              onSelect={() => toggle(record.id)}
-              onForget={() => void forget(record)}
-            />
-          ))}
-        </ul>
-      )}
+      {visible.length > 0 && groups.map((group, index) => (
+        <div key={group.kind ?? 'all'} className="memory-group" data-kind={group.kind ?? undefined}>
+          {group.kind && (
+            <p className="memory-group-title mt-2 mb-1 flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)]" data-testid="memory-group">
+              <span>{kindLabel(group.kind, t) || group.kind}</span>
+              <span className="memory-group-count font-normal text-[var(--text-subtle)]">{group.records.length}</span>
+            </p>
+          )}
+          {/* El hueco para la barra flotante, una vez: al final de la última lista. */}
+          <ul className="memory-records" data-selecting={(chosen.length > 0 && index === groups.length - 1) || undefined} aria-label={group.kind ? kindLabel(group.kind, t) || group.kind : t('memory.records.title')}>
+            {group.records.map((record) => (
+              <RecordRow
+                key={record.id}
+                record={record}
+                selected={selected.has(record.id)}
+                onSelect={() => toggle(record.id)}
+                onForget={() => void forget(record)}
+                onOpenSession={onOpenSession}
+              />
+            ))}
+          </ul>
+        </div>
+      ))}
       {/* La barra flota sobre la lista (pegada abajo al desplazar): aparecer no empuja ninguna fila. */}
       {chosen.length > 0 && (
         <div className="memory-bulk-dock">
@@ -380,6 +415,8 @@ function RecordsSection() {
                 { value: 'general', label: t('memory.moveGeneral'), icon: <PlaceIcon place="general" size={13} /> },
                 ...(activeProfile ? [{ value: `profile|${activeProfile}`, label: t('memory.moveProfile', { name: profileName }), icon: <PlaceIcon place="profile" size={13} /> }] : []),
                 ...projects.map(([root, label]) => ({ value: `project|${root}`, label: t('memory.moveProject', { name: label }), icon: <PlaceIcon place="project" size={13} /> })),
+                // A una conversación: las recientes (#75); la memoria de un chat se va con él.
+                ...recentChats.map((chat) => ({ value: `chat|${chat.id}`, label: t('memory.moveChat', { name: chat.title || chat.id }), icon: <PlaceIcon place="chat" size={13} /> })),
               ]}
               onChange={(target) => void moveSelected(target)}
               testId="memory-move"
@@ -393,7 +430,7 @@ function RecordsSection() {
   )
 }
 
-function RecordRow({ record, onForget, selected = false, onSelect }: { record: MemoryRecord; onForget: () => void; selected?: boolean; onSelect?: () => void }) {
+function RecordRow({ record, onForget, selected = false, onSelect, onOpenSession }: { record: MemoryRecord; onForget: () => void; selected?: boolean; onSelect?: () => void; onOpenSession?: (id: string) => void }) {
   const { t, lang } = useI18n()
   const [editing, setEditing] = useState(false)
   const [topic, setTopic] = useState(record.topic)
@@ -476,9 +513,14 @@ function RecordRow({ record, onForget, selected = false, onSelect }: { record: M
               )}
             </div>
             <p className="mt-0.5 text-sm whitespace-pre-wrap text-[var(--text-muted)] [overflow-wrap:anywhere]">{record.text}</p>
-            {updated && !Number.isNaN(updated.getTime()) && (
-              <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">{t('memory.updated', { date: updated.toLocaleDateString(lang) })}</p>
-            )}
+            <p className="memory-record-meta mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--text-subtle)]">
+              {updated && !Number.isNaN(updated.getTime()) && <span>{t('memory.updated', { date: updated.toLocaleDateString(lang) })}</span>}
+              {/* De qué conversación salió (#75), con enlace si sigue existiendo. */}
+              {record.origin && (record.origin.exists && onOpenSession
+                ? <button type="button" className="memory-origin" data-testid="memory-origin" onClick={() => onOpenSession(record.origin!.session_id)}>{t('memory.origin', { title: record.origin.title || record.origin.session_id })}</button>
+                : <span className="memory-origin" data-testid="memory-origin">{record.origin.exists ? t('memory.origin', { title: record.origin.title || record.origin.session_id }) : t('memory.originGone')}</span>)}
+              {isStale(record) && <span className="memory-stale r-chip" data-testid="memory-stale">{t('memory.stale')}</span>}
+            </p>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button size="icon-sm" variant="ghost" aria-label={t('memory.editLabel', { topic: record.topic })} title={t('memory.edit')} onClick={open}>

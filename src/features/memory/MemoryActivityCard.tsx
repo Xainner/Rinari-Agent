@@ -1,11 +1,18 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { Brain, LoaderCircle, Settings2, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
+import { memoryApi } from '../../services/memory'
+import { Select } from '../../components/ui/select'
+import { TurnSessionContext } from '../activity/turnSession'
+import { useOptionalEngineData } from '../engine/EngineContext'
+import { useProfileStore } from '../profiles/profileStore'
+import { PlaceIcon } from './placeIcon'
+import type { MemoryPlace } from './types'
 import { useUIStore } from '../../stores/ui'
 import type { MemoryTimelineItem } from '../activity/types'
 import { MemoryCandidateCard } from './MemoryCandidateCard'
-import { effectiveCandidateStatus, forgetMemory, useMemoryState } from './memoryStore'
+import { effectiveCandidateStatus, forgetMemory, refreshMemory, useMemoryState } from './memoryStore'
 import { memoryErrorMessage } from './memoryCopy'
 
 /**
@@ -53,6 +60,30 @@ function RememberedNotice({ item }: { item: MemoryTimelineItem }) {
   // Entra (y su check se dibuja) solo el que acaba de guardarse: al reabrir la conversación, quieto.
   const [fresh] = useState(() => Date.now() - item.occurredAt < 15_000)
   const [more, setMore] = useState(false)
+  // Dónde quedó (#75): lo dice el evento; «Mover» lo cambia sin ir a Ajustes.
+  const [place, setPlace] = useState<string>(item.place || 'general')
+  const sessionId = useContext(TurnSessionContext)
+  const engine = useOptionalEngineData()
+  const activeProfile = useProfileStore((state) => state.activeId)
+  const projectRoot = sessionId ? engine?.sessionsById?.[sessionId]?.project_root ?? null : null
+  const moveOptions = [
+    ...(place !== 'general' ? [{ value: 'general', label: t('memory.moveGeneral'), icon: <PlaceIcon place="general" size={13} /> }] : []),
+    ...(activeProfile && place !== 'profile' ? [{ value: `profile|${activeProfile}`, label: t('memory.place.profile'), icon: <PlaceIcon place="profile" size={13} /> }] : []),
+    ...(projectRoot && place !== 'project' ? [{ value: `project|${projectRoot}`, label: t('memory.place.project'), icon: <PlaceIcon place="project" size={13} /> }] : []),
+    ...(sessionId && place !== 'chat' ? [{ value: `chat|${sessionId}`, label: t('memory.place.chat'), icon: <PlaceIcon place="chat" size={13} /> }] : []),
+  ]
+
+  async function move(target: string) {
+    const [where, ref] = target.split('|')
+    try {
+      await memoryApi.move(id, where, where === 'project' ? { project_root: ref } : ref ? { place_ref: ref } : {})
+      setPlace(where)
+      toast.success(t('memory.moved', { n: 1 }))
+      void refreshMemory()
+    } catch (e) {
+      toast.error(memoryErrorMessage(e, t))
+    }
+  }
 
   async function undo() {
     setBusy(true)
@@ -86,6 +117,12 @@ function RememberedNotice({ item }: { item: MemoryTimelineItem }) {
             </p>
           )}
         </div>
+        {!forgotten && place && (
+          <span className="memory-place-chip" data-place={place} data-testid="memory-remembered-place">
+            <PlaceIcon place={place as MemoryPlace} size={11} />
+            <span className="truncate">{t(`memory.place.${place}` as I18nKey)}</span>
+          </span>
+        )}
         <span className="r-chip memory-saved-state" data-tone={forgotten ? undefined : 'success'}>
           {forgotten
             ? <X size={11} aria-hidden="true" />
@@ -104,6 +141,17 @@ function RememberedNotice({ item }: { item: MemoryTimelineItem }) {
           <button type="button" disabled={busy} onClick={() => void undo()} className="btn btn-ghost btn-xs">
             {busy ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <Undo2 size={12} aria-hidden="true" />}{t('memory.undo')}
           </button>
+        )}
+        {!forgotten && id && moveOptions.length > 0 && (
+          <Select<string>
+            compact
+            value={null}
+            placeholder={t('memory.move')}
+            label={t('memory.move')}
+            options={moveOptions}
+            onChange={(target) => void move(target)}
+            testId="memory-remembered-move"
+          />
         )}
         <button type="button" onClick={() => goSettings('memory')} className="btn btn-quiet btn-xs">
           <Settings2 size={12} aria-hidden="true" />{t('memory.openSettings')}

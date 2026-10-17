@@ -138,3 +138,22 @@ it('la línea del turno muestra la tarjeta fuera de la actividad plegada', () =>
   expect(screen.getByTestId('memory-candidate')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Aprobar' })).toBeTruthy()
 })
+
+describe('«Recordado» dice dónde quedó y deja moverlo (#75)', () => {
+  it('muestra el lugar y «Mover» a este chat lo cambia', async () => {
+    bridge.mockCommand('memory_move', (args) => ({ record: { id: args.id, place: args.place } }))
+    const { TurnSessionContext } = await import('../activity/turnSession')
+    render(
+      <I18nProvider lang="es">
+        <TurnSessionContext.Provider value="ses_here">
+          <MemoryActivityCard item={{ ...rememberedItem, place: 'general' }} />
+        </TurnSessionContext.Provider>
+      </I18nProvider>,
+    )
+    expect(screen.getByTestId('memory-remembered-place').textContent).toBe('General')
+    await userEvent.click(screen.getByTestId('memory-remembered-move'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Chat/ }))
+    await waitFor(() => expect(callsTo('memory_move')).toEqual([{ id: 'm1', place: 'chat', place_ref: 'ses_here' }]))
+    expect(screen.getByTestId('memory-remembered-place').textContent).toBe('Chat')
+  })
+})

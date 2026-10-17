@@ -148,3 +148,23 @@ it('un Engine sin memory.settings deja el ajuste desactivado y lo explica', asyn
   expect(await screen.findByText('Esta versión de Rinari todavía no permite cambiar este ajuste.')).toBeTruthy()
   expect((screen.getByRole('radio', { name: /Automático/ }) as HTMLButtonElement).disabled).toBe(true)
 })
+
+it('agrupa por categoría, dice de qué conversación salió cada recuerdo y cuáles llevan tiempo sin usarse (#75)', async () => {
+  const old = new Date(Date.now() - 60 * 86_400_000).toISOString()
+  stored = [
+    { ...records[0], origin: { session_id: 'ses_a', title: 'Charla de idioma', exists: true }, last_used_at: new Date().toISOString() },
+    { ...records[1], origin: { session_id: 'ses_b', title: null, exists: false }, created_at: old, last_used_at: null },
+    { ...records[2], created_at: old, last_used_at: old },
+  ]
+  const opened: string[] = []
+  render(<I18nProvider lang="es"><MemorySettings onOpenSession={(id) => opened.push(id)} /></I18nProvider>)
+  await screen.findByText('Responde en español')
+  expect(screen.getAllByTestId('memory-group').map((group) => [...group.children].map((part) => part.textContent))).toEqual([['Preferencia', '1'], ['Entorno', '1'], ['Flujo de trabajo', '1']])
+  const rows = screen.getAllByTestId('memory-record')
+  await userEvent.click(within(rows[0]).getByRole('button', { name: 'De: Charla de idioma' }))
+  expect(opened).toEqual(['ses_a'])
+  expect(within(rows[1]).getByTestId('memory-origin').textContent).toBe('De una conversación que ya no existe')
+  expect(within(rows[0]).queryByTestId('memory-stale')).toBeNull()
+  expect(within(rows[1]).getByTestId('memory-stale').textContent).toBe('Sin usar hace tiempo')
+  expect(within(rows[2]).getByTestId('memory-stale')).toBeTruthy()
+})

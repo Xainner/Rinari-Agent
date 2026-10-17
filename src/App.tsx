@@ -838,6 +838,7 @@ function App() {
               activeSessionId={session.activeSession || null}
               engineCapabilities={session.status?.capabilities}
               onCatalogChanged={() => void session.refreshCatalog()}
+              onOpenSession={chooseSession}
             />
           </Suspense>
         )}

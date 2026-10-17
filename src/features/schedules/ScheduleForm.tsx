@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../lib/ui'
 import { commandMessage, engineApi, type ScheduleSpec, type ScheduledTaskInput } from '../../services/engine'
 import { useEngineData } from '../engine/EngineContext'
+import { FullAccessDialog } from '../permissions/FullAccessDialog'
 import { SCHEDULES_CHANGED_EVENT, WEEKDAY_KEYS, defaultOnceAt, draftProblem, emptyCommand, useScheduleForm } from './scheduleModel'
 
 const SPEC_DEFAULTS: Record<ScheduleSpec['kind'], () => ScheduleSpec> = {
@@ -23,6 +24,7 @@ const KIND_KEYS = {
   reminder: ['schedules.kind.reminder', 'schedules.kind.reminderHint'],
 } as const
 const ON_RESULT = ['notify_failure', 'nothing', 'agent'] as const
+const PERMISSION_LABEL = { 'read-only': 'perm.readOnly', workspace: 'perm.workspace', 'full-access': 'perm.fullAccess' } as const
 
 /**
  * Crear o editar una tarea programada, o confirmar la que propuso Rinari.
@@ -38,6 +40,7 @@ export default function ScheduleForm() {
   const [grantInput, setGrantInput] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmFull, setConfirmFull] = useState(false)
 
   useEffect(() => {
     setDraft(open ? open.draft : null)
@@ -229,6 +232,24 @@ export default function ScheduleForm() {
                   </select>
                 </label>
                 <label className="block sm:col-span-2">
+                  <span className={labelClass}>{t('schedules.form.permission')}</span>
+                  <select
+                    value={draft.permission_profile ?? ''}
+                    data-testid="schedule-permission"
+                    onChange={(event) => {
+                      const value = event.target.value as NonNullable<ScheduledTaskInput['permission_profile']> | ''
+                      if (value === 'full-access') setConfirmFull(true)
+                      else update({ permission_profile: value || null })
+                    }}
+                    className={inputClass}
+                  >
+                    <option value="">{t('schedules.form.permissionDefault', { mode: t(PERMISSION_LABEL[data.projects.find((project) => project.id === draft.project_id)?.permission_profile ?? 'workspace']) })}</option>
+                    <option value="read-only">{t('perm.readOnly')}</option>
+                    <option value="workspace">{t('perm.workspace')}</option>
+                    <option value="full-access">{t('perm.fullAccess')}</option>
+                  </select>
+                </label>
+                <label className="block sm:col-span-2">
                   <span className={labelClass}>{t('schedules.form.model')}</span>
                   <select value={draft.model ?? ''} onChange={(event) => update({ model: event.target.value || null })} className={inputClass}>
                     <option value="">{t('schedules.form.defaultModel')}</option>
@@ -277,6 +298,14 @@ export default function ScheduleForm() {
             {open.taskId ? t('schedules.form.save') : t('schedules.form.create')}
           </button>
         </div>
+        <FullAccessDialog
+          open={confirmFull}
+          onCancel={() => setConfirmFull(false)}
+          onConfirm={() => {
+            setConfirmFull(false)
+            update({ permission_profile: 'full-access' })
+          }}
+        />
       </DialogContent>
     </Dialog>
   )

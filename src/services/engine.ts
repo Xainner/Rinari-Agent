@@ -346,6 +346,8 @@ export interface SoulDetail extends SoulSummary {
 
 /** Proyecto registrado en el engine (project.list_recent). */
 export type ProjectSummary = ProtocolProjectSummary
+/** Lo que `project.update` cambia; `permission_profile: ''` quita el valor por defecto (P-5). */
+export type ProjectPatch = { name?: string; description?: string; pinned?: boolean; archived?: boolean; permission_profile?: '' | 'read-only' | 'workspace' | 'full-access' }
 
 export interface ProjectGitStatus {
   available: boolean;
@@ -464,15 +466,18 @@ export interface ScheduledTaskInput {
   command?: ScheduledCommand | null
   project_id?: string | null
   mode?: 'plan' | 'build' | 'review'
+  /** Sin valor: el modo por defecto del proyecto, o Proyecto (permisos v4 P-5). */
+  permission_profile?: 'read-only' | 'workspace' | 'full-access' | null
   model?: string | null
   skills?: string[]
   grants?: ScheduleGrant[]
   enabled?: boolean
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command'>> {
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile'>> {
   id: string
   command?: ScheduledCommand | null
+  permission_profile?: ScheduledTaskInput['permission_profile']
   project_id: string | null
   model: string | null
   next_run_at: number | null
@@ -980,7 +985,8 @@ export const engineApi = {
       chat: options?.chat ?? false,
       title: options?.title ?? null,
       mode: options?.mode ?? 'build',
-      permission_profile: options?.permission_profile ?? 'workspace',
+      // Sin elegir: el valor por defecto del proyecto (o Proyecto) lo pone el Engine.
+      permission_profile: options?.permission_profile ?? null,
       project_id: options?.project_id ?? null,
     }),
   openSession: (reference: string) =>
@@ -1720,7 +1726,7 @@ export const engineApi = {
     }),
   projectUpdate: (
     projectId: string,
-    patch: { name?: string; description?: string; pinned?: boolean; archived?: boolean },
+    patch: ProjectPatch,
   ) =>
     platform().command<{ project: ProjectSummary }>('project_update', {
       project_id: projectId,
@@ -1728,6 +1734,8 @@ export const engineApi = {
       description: patch.description ?? null,
       pinned: patch.pinned ?? null,
       archived: patch.archived ?? null,
+      // '' lo quita: las conversaciones nuevas vuelven a Proyecto (P-5).
+      permission_profile: patch.permission_profile ?? null,
     }),
   projectRemove: (projectId: string, sessionPolicy: 'keep' | 'archive' | 'delete' = 'archive') =>
     platform().command<{

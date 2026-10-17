@@ -138,7 +138,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "project_remove": {"method":"project.remove","params":[{"key":"project_id","from":"project_id","optional":false},{"key":"session_policy","from":"policy","optional":false}]},
   "project_status": {"method":"project.status","params":[{"key":"path","from":"path","optional":false}]},
   "project_trust": {"method":"project.trust","params":[{"key":"path","from":"path","optional":false}]},
-  "project_update": {"method":"project.update","params":[{"key":"project_id","from":"project_id","optional":false},{"key":"name","from":"name","optional":false},{"key":"description","from":"description","optional":false},{"key":"pinned","from":"pinned","optional":false},{"key":"archived","from":"archived","optional":false}]},
+  "project_update": {"method":"project.update","params":[{"key":"project_id","from":"project_id","optional":false},{"key":"name","from":"name","optional":false},{"key":"description","from":"description","optional":false},{"key":"pinned","from":"pinned","optional":false},{"key":"archived","from":"archived","optional":false},{"key":"permission_profile","from":"permission_profile","optional":false}]},
   "provider_auth_cancel": {"method":"provider.auth.cancel","params":[{"key":"ref","from":"ref","optional":false}]},
   "provider_auth_get": {"method":"provider.auth.get","params":[{"key":"ref","from":"ref","optional":false},{"key":"operation_id","from":"operation_id","optional":true}]},
   "provider_auth_logout": {"method":"provider.auth.logout","params":[{"key":"ref","from":"ref","optional":false}]},

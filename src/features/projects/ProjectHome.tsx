@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Archive, ArrowLeft, Copy, Folder, MessageSquare, Pin, Plus, ShieldCheck } from 'lucide-react'
 import type {
   ProjectIntelligence,
+  ProjectPatch,
   ProjectStatus,
   ProjectSummary,
   SessionSummary,
@@ -11,6 +12,7 @@ import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
 import { ProjectBranch } from './ProjectBranch'
 import { ProjectFolders } from './ProjectFolders'
+import { FullAccessDialog } from '../permissions/FullAccessDialog'
 
 export interface ProjectHomeProps {
   root: string
@@ -26,7 +28,7 @@ export interface ProjectHomeProps {
   /** Carga perezosa: estado git (siempre) e inteligencia (solo si falta). */
   onEnsure: () => void
   onTrust: () => void
-  onUpdate: (changes: { name?: string; description?: string; pinned?: boolean }) => Promise<boolean>
+  onUpdate: (changes: ProjectPatch) => Promise<boolean>
   onArchive: () => void
 }
 
@@ -54,6 +56,7 @@ export default function ProjectHome({
   const { t } = useI18n()
   const [name, setName] = useState(project?.name ?? projectDisplayName(root))
   const [description, setDescription] = useState(project?.description ?? '')
+  const [confirmFull, setConfirmFull] = useState(false)
 
   useEffect(() => {
     setName(project?.name ?? projectDisplayName(root))
@@ -128,6 +131,32 @@ export default function ProjectHome({
               <Archive size={13} /> {t('project.archive')}
             </button>
           </div>
+          <label className="block pt-1 text-[11px] font-semibold text-[var(--text-subtle)]">
+            {t('project.permission')}
+            <select
+              value={project.permission_profile ?? 'workspace'}
+              data-testid="project-permission"
+              onChange={(event) => {
+                const value = event.target.value as 'read-only' | 'workspace' | 'full-access'
+                if (value === 'full-access') setConfirmFull(true)
+                else void onUpdate({ permission_profile: value === 'workspace' ? '' : value })
+              }}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-transparent px-2.5 py-2 text-sm font-normal text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+            >
+              <option value="read-only">{t('perm.readOnly')}</option>
+              <option value="workspace">{t('perm.workspace')}</option>
+              <option value="full-access">{t('perm.fullAccess')}</option>
+            </select>
+            <span className="mt-1 block font-normal text-[var(--text-subtle)]">{t('project.permissionHint')}</span>
+          </label>
+          <FullAccessDialog
+            open={confirmFull}
+            onCancel={() => setConfirmFull(false)}
+            onConfirm={() => {
+              setConfirmFull(false)
+              void onUpdate({ permission_profile: 'full-access' })
+            }}
+          />
         </section>
       )}
 

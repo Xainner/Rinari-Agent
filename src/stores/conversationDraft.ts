@@ -24,6 +24,8 @@ export interface ConversationDraft {
    * de crear otra.
    */
   sessionId?: string
+  /** El dueño eligió los permisos a mano: el valor del proyecto ya no los cambia. */
+  permissionPicked?: boolean
 }
 
 /** Un borrador por destino: el del proyecto A no se mezcla con el de B ni con el general. */
@@ -31,8 +33,37 @@ export function draftKeyFor(projectId: string | null): string {
   return projectId ? `draft:project:${projectId}` : 'draft'
 }
 
+/**
+ * Modo de permisos con el que nace una conversación de cada proyecto
+ * (permisos v4 P-5). Lo llena `useProjects` con lo que dice el Engine; sin
+ * valor, Proyecto.
+ */
+const projectPermissions = new Map<string, DraftPermission>()
+
+export function setProjectPermissionDefaults(projects: { id: string; permission_profile?: string | null }[]): void {
+  projectPermissions.clear()
+  for (const project of projects) {
+    const value = project.permission_profile
+    if (value === 'read-only' || value === 'workspace' || value === 'full-access') projectPermissions.set(project.id, value)
+  }
+  // Los borradores abiertos siguen el valor nuevo mientras nadie los cambió.
+  const follow = (draft: ConversationDraft): ConversationDraft => {
+    if (draft.permissionPicked || draft.sessionId || !draft.projectId) return draft
+    const permissionProfile = projectPermissionDefault(draft.projectId)
+    return draft.permissionProfile === permissionProfile ? draft : { ...draft, permissionProfile }
+  }
+  useConversationDraftStore.setState((state) => {
+    const byKey = Object.fromEntries(Object.entries(state.byKey).map(([key, draft]) => [key, follow(draft)]))
+    return { normal: state.normal ? follow(state.normal) : null, byKey }
+  })
+}
+
+export function projectPermissionDefault(projectId: string | null): DraftPermission {
+  return (projectId && projectPermissions.get(projectId)) || 'workspace'
+}
+
 export function newDraft(projectId: string | null, key = draftKeyFor(projectId)): ConversationDraft {
-  return { key, projectId, mode: 'build', permissionProfile: 'workspace' }
+  return { key, projectId, mode: 'build', permissionProfile: projectPermissionDefault(projectId) }
 }
 
 interface ConversationDraftState {
@@ -58,13 +89,17 @@ export const useConversationDraftStore = create<ConversationDraftState>((set, ge
   byKey: {},
   openNormal: (projectId) => {
     const key = draftKeyFor(projectId)
-    const draft = get().byKey[key] ?? newDraft(projectId, key)
+    const kept = get().byKey[key]
+    // Un borrador guardado sigue el valor del proyecto mientras nadie lo cambió.
+    const draft = kept
+      ? (kept.permissionPicked ? kept : { ...kept, permissionProfile: projectPermissionDefault(projectId) })
+      : newDraft(projectId, key)
     set((state) => ({ normal: draft, byKey: { ...state.byKey, [key]: draft } }))
     return draft
   },
   updateNormal: (patch) => set((state) => {
     if (!state.normal) return state
-    const next = { ...state.normal, ...patch }
+    const next = { ...state.normal, ...patch, ...('permissionProfile' in patch ? { permissionPicked: true } : {}) }
     return { normal: next, byKey: { ...state.byKey, [next.key]: next } }
   }),
   moveNormal: (projectId) => {
@@ -73,7 +108,17 @@ export const useConversationDraftStore = create<ConversationDraftState>((set, ge
     const to = draftKeyFor(projectId)
     if (to === current.key) return { from: to, to }
     const existing = get().byKey[to]
-    const moved: ConversationDraft = { ...(existing ?? newDraft(projectId, to)), mode: current.mode, permissionProfile: current.permissionProfile, model: current.model, projectId, key: to, sessionId: undefined }
+    const moved: ConversationDraft = {
+      ...(existing ?? newDraft(projectId, to)),
+      mode: current.mode,
+      // Elegidos a mano viajan; si no, mandan los del proyecto nuevo (P-5).
+      permissionProfile: current.permissionPicked ? current.permissionProfile : projectPermissionDefault(projectId),
+      permissionPicked: current.permissionPicked,
+      model: current.model,
+      projectId,
+      key: to,
+      sessionId: undefined,
+    }
     set((state) => {
       const byKey = { ...state.byKey, [to]: moved }
       delete byKey[current.key]

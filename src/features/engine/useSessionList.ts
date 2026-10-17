@@ -457,7 +457,7 @@ export function useSessionList(options: {
         chat: !projectId,
         title: options.title ?? translate(useUIStore.getState().lang, 'sidebar.newChat'),
         mode: options.mode ?? 'build',
-        permission_profile: options.permissionProfile ?? 'workspace',
+        permission_profile: options.permissionProfile,
       })
       rememberRows([result.session])
       setRecentSessionIds((current) => [result.session.id, ...current.filter((item) => item !== result.session.id)])

@@ -4,6 +4,7 @@ import {
   commandMessage,
   engineApi,
   type ProjectIntelligence,
+  type ProjectPatch,
   type ProjectStatus,
   type ProjectSummary,
 } from '../../services/engine'
@@ -11,6 +12,7 @@ import { sortProjects } from './workspaceModel'
 import { translate } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { setProjectPermissionDefaults } from '../../stores/conversationDraft'
 
 /**
  * Projects: proyectos recientes del engine, apertura, estado Git vivo e
@@ -40,6 +42,8 @@ export function useProjects(options: { engineReady: boolean }) {
         .map((project) => ({ ...project, ...byRecent.get(project.id) }))
       )
       setProjects(active)
+      // De project.list: es la que siempre trae el valor por defecto de permisos.
+      setProjectPermissionDefaults(all.projects)
       setArchivedProjects(all.projects.filter((project) => project.archived))
       setProjectsError(null)
     } catch (err) {
@@ -72,7 +76,7 @@ export function useProjects(options: { engineReady: boolean }) {
 
   const updateProject = useCallback(async (
     projectId: string,
-    changes: { name?: string; description?: string; pinned?: boolean; archived?: boolean },
+    changes: ProjectPatch,
   ): Promise<boolean> => {
     try {
       await engineApi.projectUpdate(projectId, changes)

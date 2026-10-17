@@ -22,7 +22,7 @@ vi.mock('../../services/engine', () => ({
 }))
 vi.mock('../engine/EngineContext', () => ({
   useEngineData: () => ({
-    projects: [{ id: 'prj_1', name: 'Rinari CLI' }],
+    projects: [{ id: 'prj_1', name: 'Rinari CLI', permission_profile: 'read-only' }],
     models: [{ id: 'mdl_1', alias: 'main', saved: true }],
   }),
 }))
@@ -146,6 +146,25 @@ it('creates a weekly task with its grants', async () => {
     grants: [{ capability: 'shell.exec', target: null }],
   })
   expect(useScheduleForm.getState().open).toBeNull()
+})
+
+it('a task runs in the project permissions unless it has its own; full access asks first (P-5)', async () => {
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openNew())
+  fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Limpieza' } })
+  fireEvent.change(screen.getByLabelText('Qué debe hacer Rinari'), { target: { value: 'Borra temporales' } })
+  const select = screen.getByTestId('schedule-permission') as HTMLSelectElement
+  expect(select.value).toBe('')
+  expect(within(select).getByRole('option', { name: 'Los del proyecto (Proyecto)' })).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('Proyecto'), { target: { value: 'prj_1' } })
+  expect(within(select).getByRole('option', { name: 'Los del proyecto (Solo lectura)' })).toBeTruthy()
+  fireEvent.change(select, { target: { value: 'full-access' } })
+  expect(select.value).toBe('')
+  fireEvent.click(await screen.findByRole('button', { name: 'Activar acceso completo' }))
+  await waitFor(() => expect(select.value).toBe('full-access'))
+  fireEvent.click(screen.getByRole('button', { name: 'Crear tarea' }))
+  await waitFor(() => expect(engineApi.scheduleCreate).toHaveBeenCalled())
+  expect(vi.mocked(engineApi.scheduleCreate).mock.calls[0][0]).toMatchObject({ project_id: 'prj_1', permission_profile: 'full-access' })
 })
 
 it('shows the Engine refusal as is', async () => {

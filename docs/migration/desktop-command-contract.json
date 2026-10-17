@@ -5329,6 +5329,11 @@
           "name": "archived",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "permission_profile",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -5358,6 +5363,11 @@
         {
           "key": "archived",
           "from": "archived",
+          "optional": false
+        },
+        {
+          "key": "permission_profile",
+          "from": "permission_profile",
           "optional": false
         }
       ],

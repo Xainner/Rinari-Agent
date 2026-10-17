@@ -584,6 +584,10 @@ export const scenarios = {
     title: 'Acceso completo: diálogo que explica, cancelar no cambia nada, confirmar lo activa, bajar no pregunta',
     phases: ['exercise'],
   },
+  'project-permission': {
+    title: 'Permisos por defecto del proyecto: se eligen en su página, Acceso completo confirma, la conversación nueva nace con ellos',
+    phases: ['exercise'],
+  },
   'profiles-switch': {
     title: 'Perfiles como espacios de trabajo: lo existente en Predeterminado, cambiar, perfil vacío, mover y reiniciar',
     phases: ['exercise'],

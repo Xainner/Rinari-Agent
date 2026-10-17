@@ -36,6 +36,7 @@ import DisableProviderDialog from './DisableProviderDialog'
 import { Switch } from '../../components/ui/switch'
 import { useUIStore, type ProviderTab } from '../../stores/ui'
 import { art } from '../rinari/art'
+import { Select } from '../../components/ui/select'
 
 type Status = 'connected' | 'error' | 'noCredential' | 'unchecked' | 'off'
 const STATUS_TONE: Record<Status, string | undefined> = { connected: 'success', error: 'danger', noCredential: 'warning', unchecked: undefined, off: undefined }
@@ -340,11 +341,12 @@ export default function ProvidersView({
           {deleting?.active && others.length > 0 && (
             <div className="px-6">
               <label className="field-label" htmlFor="provider-switch">{t('providers.switchTo')}</label>
-              <select id="provider-switch" value={switchTo} onChange={(e) => setSwitchTo(e.target.value)} className="field-input">
-                {others.map((p) => (
-                  <option key={p.alias} value={p.alias}>{p.alias}</option>
-                ))}
-              </select>
+              <Select
+                id="provider-switch"
+                value={switchTo}
+                onChange={setSwitchTo}
+                options={others.map((p) => ({ value: p.alias, label: p.alias, icon: <ProviderLogo productId={p.product_id ?? undefined} alias={p.alias} endpoint={p.endpoint ?? undefined} size={16} /> }))}
+              />
             </div>
           )}
           <AlertDialogFooter>

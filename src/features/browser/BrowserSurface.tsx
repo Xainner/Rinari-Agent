@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Maximize2, Monitor, Smartphone, Tablet, Tv } from 'lucide-react'
 
 import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
@@ -7,6 +8,15 @@ import { CHAT_KEY, rememberable, useBrowserPrefs } from '../../stores/browserPre
 
 import BrowserHome from './BrowserHome'
 import { PAGE_WIDTHS, usePageSizeStore } from './pageSize'
+import { Select } from '../../components/ui/select'
+
+/** Un icono de dispositivo para cada ancho de página (#99.3). */
+const PAGE_WIDTH_ICONS: Record<(typeof PAGE_WIDTHS)[number], ReactNode> = {
+  390: <Smartphone size={14} />,
+  768: <Tablet size={14} />,
+  1280: <Monitor size={14} />,
+  1920: <Tv size={14} />,
+}
 import BrowserToolbar from './BrowserToolbar'
 import NativeBrowserSlot from './NativeBrowserSlot'
 import ScreenshotBrowserFallback from './ScreenshotBrowserFallback'
@@ -115,18 +125,17 @@ export default function BrowserSurface({
   const [slotHeight, setSlotHeight] = useState(0)
   const sizeControl = useNative ? (
     <label className="browser-size" title={t('browser.size.label')}>
-      <select
-        aria-label={t('browser.size.label')}
-        data-testid="browser-size"
-        className="browser-toolbar-select"
-        value={chosenWidth ?? 'fit'}
-        onChange={(event) => setPageWidth(sessionId, event.target.value === 'fit' ? null : Number(event.target.value))}
-      >
-        <option value="fit">{t('browser.size.fit')}</option>
-        {PAGE_WIDTHS.map((width) => (
-          <option key={width} value={width}>{t(`browser.size.${width}` as const)}</option>
-        ))}
-      </select>
+      <Select
+        compact
+        label={t('browser.size.label')}
+        testId="browser-size"
+        value={chosenWidth ? String(chosenWidth) : 'fit'}
+        onChange={(value) => setPageWidth(sessionId, value === 'fit' ? null : Number(value))}
+        options={[
+          { value: 'fit', label: t('browser.size.fit'), icon: <Maximize2 size={14} /> },
+          ...PAGE_WIDTHS.map((width) => ({ value: String(width), label: t(`browser.size.${width}` as const), icon: PAGE_WIDTH_ICONS[width] })),
+        ]}
+      />
       {pageWidth && slotHeight > 0 && <span className="browser-size-value" data-testid="browser-size-value">{pageWidth} × {slotHeight}</span>}
     </label>
   ) : undefined

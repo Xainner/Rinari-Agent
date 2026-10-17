@@ -80,7 +80,7 @@ it('turning off the active provider names what depends on it and moves it to the
   expect(deps.textContent).toContain('Es el proveedor activo.')
   expect(deps.textContent).toContain('Es el modelo de respaldo.')
   expect(deps.textContent).toContain('Lo usan 1 agentes: reviewer.')
-  expect((within(dialog).getByLabelText('Usar en su lugar') as HTMLSelectElement).value).toBe('mdl_spare')
+  expect(within(dialog).getByLabelText('Usar en su lugar').getAttribute('data-value')).toBe('mdl_spare')
   fireEvent.click(within(dialog).getByRole('button', { name: 'Desactivar' }))
   await waitFor(() => expect(calls.map(([name]) => name)).toContain('provider_update'))
   expect(calls).toEqual([

@@ -50,6 +50,8 @@ Antes de escribir estilos, usa lo que ya existe:
 
 - Botones: clases `.btn` + `btn-primary | btn-secondary | btn-ghost | btn-quiet | btn-danger` y tamaños `btn-sm | btn-xs | btn-lg | btn-icon` (también vía `<Button>`).
 - Campos: `.field-input`, `.field-label`, `.field-hint`.
+- Selectores: `<Select>` de `src/components/ui/select.tsx` (disparador con icono, nombre y chevron; lista `.r-pop` con iconos, check e insignia; `compact` para barras). Nada de `<select>` nativo en lo nuevo: su lista es el menú del sistema.
+- Progreso: `<ProgressBar>` de `src/components/ui/progress-bar.tsx` (indeterminada sin `value`). Un test falla si aparece un `<progress>` nativo.
 - Casillas: `<input type="checkbox" className="r-checkbox">` (dibuja su check al marcarse y una raya con `indeterminate`); nada de `accent-color` sobre la casilla del sistema.
 - Chips de estado: `.r-chip` con `data-tone` (`accent`, `success`, `warning`, `danger`; sin tono, neutro). Una superficie solo ajusta tamaño (`.skill-status`, `.goal-chip`), no colores.
 - Pestañas y segmentados: `.seg-tabs` / `.seg-tab` con la píldora `.seg-tab-pill` (framer-motion `layoutId`); navegación por flechas.

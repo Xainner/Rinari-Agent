@@ -13,6 +13,8 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import { dependenciesOf, disableWithReplacement, hasDependencies, type ProviderDependencies } from './providerDependencies'
+import { Select } from '../../components/ui/select'
+import ProviderLogo from '../../components/ProviderLogo'
 
 /**
  * Desactivar un proveedor (plan 0.4.0 #97): antes de confirmar dice qué
@@ -98,16 +100,12 @@ export default function DisableProviderDialog({
                 <label className="field-label" htmlFor="provider-replacement">
                   {t('providers.disable.replacement')}
                 </label>
-                <select
+                <Select
                   id="provider-replacement"
                   value={replacement}
-                  onChange={(event) => setReplacement(event.target.value)}
-                  className="field-input"
-                >
-                  {candidates.map((model) => (
-                    <option key={model.id} value={model.id}>{`${model.alias} · ${model.provider ?? ''}`}</option>
-                  ))}
-                </select>
+                  onChange={setReplacement}
+                  options={candidates.map((model) => ({ value: model.id, label: model.alias, detail: model.provider ?? undefined, icon: <ProviderLogo alias={model.provider ?? undefined} size={16} /> }))}
+                />
               </div>
             ) : (
               <p className="field-hint">{t('providers.disable.noReplacement')}</p>

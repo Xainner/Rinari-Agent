@@ -750,71 +750,54 @@ input[type='password']::-ms-clear {
 .sticky-note-why { font-size: 11.5px; font-style: italic; line-height: 1.45; color: var(--note-ink-muted); }
 .sticky-note-caution { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; color: var(--note-caution); }
 .sticky-note-actions { display: flex; margin-top: 6px; }
-/* Sesiones hijas (plan-sesiones-hijas 5.5). La tarjeta de cada hija sobre el composer lleva la piel de
-   la tarjeta del turno: ficha de estado, título, chip de estado, sus chips (rama, archivos) y acciones.
-   Mientras trabaja corre una línea viva por su pie; la nueva entra subiendo y, al terminar, su check
-   se dibuja. Con movimiento reducido, todo instantáneo. */
+/* Sesiones hijas (plan-sesiones-hijas 5.5). Cada hija es una fila del chat de su madre, como una fila de
+   herramienta: su ficha (girando mientras trabaja, mano si espera tu aprobación, aspa si falló), el
+   título que la abre, su estado (con brillo mientras trabaja) y el informe debajo en dos líneas. Sin
+   check al terminar: se ve como una sesión normal. La nueva entra subiendo; con movimiento reducido,
+   todo instantáneo. */
 .sticky-note-spawn { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .sticky-note-spawn-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px dashed var(--note-ink-muted); border-radius: 999px; padding: 1px 8px; font-size: 10.5px; color: var(--note-ink-muted); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
 .sticky-note-spawn-chip:hover:not(:disabled) { border-style: solid; color: var(--note-ink); background: color-mix(in srgb, var(--note-ink) 8%, transparent); }
 .sticky-note-spawn-chip::after { content: '⇄'; font-size: 9px; opacity: 0.6; }
-.child-row { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 7px 10px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: rgb(16 12 27 / 0.45); font-size: 12.5px; }
+.child-row { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 10px 6px 7px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(16 12 27 / 0.5); font-size: 13px; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.child-row:hover { border-color: var(--line-2); background: rgb(20 15 34 / 0.6); }
 .child-row[data-entering] { animation: rinari-rise 220ms var(--ease-out) both; }
 .child-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.child-row-icon { display: flex; flex-shrink: 0; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 7px; background: rgb(147 88 255 / 0.12); color: var(--violet-200); }
-.child-row-icon[data-state='waiting'] { color: var(--warning); }
-.child-row-icon[data-state='failed'] { color: var(--danger); }
-.child-row-title { display: flex; min-width: 0; flex: 1; align-items: baseline; gap: 8px; text-align: left; }
-.child-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text); }
-.child-row-title:hover .child-row-name { text-decoration: underline; text-underline-offset: 3px; }
-.child-row-state { flex-shrink: 0; font-size: 11.5px; color: var(--text-subtle); }
-.child-row-open { flex-shrink: 0; }
-.child-row-report { padding-left: 30px; }
-.child-row-summary { font-size: 12.5px; line-height: 1.45; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+.child-row-spin { width: 12px; height: 12px; border-radius: 999px; border: 2px solid rgb(196 181 253 / 0.25); border-top-color: var(--violet-200); animation: rinari-orbit 0.9s linear infinite; }
+.child-row-title { display: flex; min-width: 0; flex: 1; align-items: baseline; gap: 8px; text-align: left; color: var(--text-muted); }
+.child-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text); }
+.child-row-title:hover .child-row-name { text-decoration: underline; text-decoration-color: rgb(196 181 253 / 0.5); text-underline-offset: 3px; }
+.child-row-state { flex-shrink: 0; font-size: 12px; color: var(--text-subtle); }
+.child-row-open { flex-shrink: 0; color: var(--text-subtle); }
+.child-row:hover .child-row-open { color: var(--text-muted); }
+.child-row-report { padding-left: 34px; }
+.child-row-summary { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
 .child-row-summary.is-expanded { display: block; -webkit-line-clamp: unset; }
 .child-row-more { display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; font-size: 11.5px; color: var(--violet-200); }
+.child-row-more:hover { color: var(--text); }
+.child-row-more svg { transition: transform var(--dur-fast) var(--ease-out); }
 .child-row-more[aria-expanded='true'] svg { transform: rotate(180deg); }
-.child-row .child-card-actions, .child-row .child-card-conflicts, .child-row .child-card-error { padding-left: 30px; margin-left: 0; }
-.child-card { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px 10px 10px; overflow: hidden; border: 1px solid rgb(167 139 250 / 0.22); border-radius: var(--r-lg); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.7); font-size: 12.5px; }
-.child-card[data-entering] { animation: rinari-rise 220ms var(--ease-out) both; }
-.child-card[data-state='completed'] { border-color: color-mix(in srgb, var(--success) 26%, transparent); }
-.child-card[data-state='failed'] { border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
-.child-card[data-state='cancelled'] { border-color: var(--line-2); background: rgb(16 12 27 / 0.55); }
-.child-card[data-state='waiting'] { border-color: color-mix(in srgb, var(--warning) 34%, transparent); }
-.child-card[data-resolution] { opacity: 0.85; }
-/* Sigue trabajando: una línea que fluye por el pie (un bucle solo mientras trabaja). */
-.child-card[data-state='working']::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-2), transparent); background-size: 50% 100%; background-repeat: no-repeat; animation: rinari-flow 1.8s linear infinite; }
-.child-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.child-card-tile { display: flex; flex-shrink: 0; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 9px; border: 1px solid var(--line-2); background: rgb(147 88 255 / 0.12); color: var(--violet-200); }
-.child-card-tile[data-state='completed'] { border-color: color-mix(in srgb, var(--success) 35%, transparent); background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
-.child-card-tile[data-state='failed'] { border-color: color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
-.child-card-tile[data-state='waiting'] { border-color: color-mix(in srgb, var(--warning) 35%, transparent); background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
-.child-card-tile[data-state='cancelled'] { background: transparent; color: var(--text-subtle); }
-.child-card-spin { width: 13px; height: 13px; border-radius: 999px; border: 2px solid rgb(196 181 253 / 0.25); border-top-color: var(--violet-200); animation: rinari-orbit 0.9s linear infinite; }
-.child-card-kicker { font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-subtle); }
-.child-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 650; color: var(--text); }
-.child-card-state { flex-shrink: 0; }
-.child-card-summary { padding-left: 38px; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.child-card-error { padding-left: 38px; font-size: 12px; color: var(--danger); }
-.child-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding-left: 38px; }
-.child-card-chip { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.45); font-size: 11px; color: var(--text-muted); }
-.child-card-chip code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--violet-200); }
-.child-card-conflicts { margin-left: 38px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--danger) 8%, transparent); font-size: 12px; color: var(--text-muted); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
-.child-card-conflicts-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--danger); }
-.child-card-conflicts ul { margin: 4px 0; display: flex; flex-wrap: wrap; gap: 4px; }
-.child-card-conflicts code { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 6px; background: rgb(10 8 18 / 0.5); color: var(--text); }
-.child-card-conflicts-hint { font-size: 11.5px; color: var(--text-subtle); }
-.child-card-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 38px; }
-.child-card-discard:hover:not(:disabled) { color: var(--danger); }
-/* «¿Lo hago en una sesión nueva?» */
-.offer-card-kicker { width: fit-content; }
-.offer-card-title { margin-top: 8px; font-size: 14.5px; font-weight: 650; color: var(--text); }
-.offer-card-reason { margin-top: 2px; font-size: 12.5px; color: var(--text-muted); }
-.offer-card-prompt { margin-top: 8px; padding: 8px 12px; border-left: 2px solid rgb(196 181 253 / 0.45); border-radius: 0 var(--r-md) var(--r-md) 0; background: rgb(10 8 18 / 0.4); white-space: pre-wrap; color: var(--text); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.child-chip { display: inline-flex; min-width: 0; max-width: 100%; flex-shrink: 0; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.45); font-size: 11px; color: var(--text-muted); }
+.child-chip code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--violet-200); }
+.child-row-error { padding-left: 34px; font-size: 12px; color: var(--danger); }
+.child-row-conflicts { margin-left: 34px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--danger) 8%, transparent); font-size: 12px; color: var(--text-muted); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.child-row-conflicts-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--danger); }
+.child-row-conflicts ul { margin: 4px 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.child-row-conflicts code { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 6px; background: rgb(10 8 18 / 0.5); color: var(--text); }
+.child-row-conflicts-hint { font-size: 11.5px; color: var(--text-subtle); }
+.child-row-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 34px; }
+.child-row-discard:hover:not(:disabled) { color: var(--danger); }
+/* «¿Lo hago en una sesión nueva?», compacta en la zona del composer. */
+.offer-card { padding: 10px 14px 12px; }
+.offer-card-head { display: flex; align-items: center; gap: 10px; }
+.offer-card-kicker { font-size: 11px; font-weight: 600; color: var(--violet-200); }
+.offer-card-title { font-size: 13.5px; font-weight: 650; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.offer-card-reason { margin-top: 4px; padding-left: 36px; font-size: 12px; color: var(--text-muted); }
+.offer-card-prompt { margin-top: 4px; padding-left: 36px; font-size: 12.5px; line-height: 1.45; white-space: pre-wrap; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .offer-card-prompt.is-expanded { display: block; }
-.offer-card-more { margin-top: 4px; font-size: 11.5px; color: var(--accent-2); }
+.offer-card-more { margin-left: 36px; font-size: 11.5px; color: var(--accent-2); }
 .offer-card-more:hover { text-decoration: underline; }
-.offer-card-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.offer-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; padding-left: 36px; }
 /* El encargo de una hija: su primer mensaje, que no es una burbuja del dueño. */
 .child-brief { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 10px 14px 12px; border: 1px solid rgb(167 139 250 / 0.22); border-left: 3px solid var(--accent); border-radius: var(--r-md) var(--r-lg) var(--r-lg) var(--r-md); background: linear-gradient(160deg, rgb(147 88 255 / 0.08), transparent 60%), rgb(16 12 27 / 0.6); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .child-brief-from { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-subtle); }

@@ -7,6 +7,7 @@ import { useOptionalEngineCommands, useOptionalEngineData } from '../engine/Engi
 import { useChildrenStore } from './childrenStore'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { bornAt } from '../projects/workspaceModel'
+import { cn } from '../../lib/utils'
 
 /** Una hija nacida hace menos de esto entra con movimiento; las que ya estaban, quietas. */
 const FRESH_MS = 15_000
@@ -52,7 +53,7 @@ export function ChildRow({ child }: { child: ChildSession }) {
   const decide = Boolean(child.branch) && !child.resolution && !working
   const open = () => { void commands?.selectSession(child.child_session_id) }
   const confirm = useConfirm()
-  // Entra solo la que acaba de nacer; al volver a la madre, las tarjetas aparecen quietas.
+  // Entra solo la que acaba de nacer; al volver a la madre, las filas aparecen quietas.
   const [entering] = useState(() => {
     const born = bornAt(child.child_session_id)
     return born !== null && Date.now() - born < FRESH_MS
@@ -116,9 +117,9 @@ export function ChildRow({ child }: { child: ChildSession }) {
       data-entering={entering || undefined}
     >
       <div className="child-row-head">
-        <span className="child-row-icon" data-state={child.state} aria-hidden="true">
+        <span className="act-tile child-row-icon" data-state={child.state === 'working' ? 'running' : child.state === 'waiting' ? 'warn' : child.state === 'failed' ? 'failed' : undefined} aria-hidden="true">
           {child.state === 'working'
-            ? <span className="child-card-spin" />
+            ? <span className="child-row-spin" />
             : child.state === 'waiting'
               ? <Hand size={13} />
               : child.state === 'failed'
@@ -127,10 +128,10 @@ export function ChildRow({ child }: { child: ChildSession }) {
         </span>
         <button type="button" className="child-row-title" onClick={open} title={t('children.open')}>
           <span className="child-row-name">{title}</span>
-          <span className="child-row-state">{t(`children.state.${child.state}`)}</span>
+          <span className={cn('child-row-state', working && 'activity-text-shimmer')}>{t(`children.state.${child.state}`)}</span>
         </button>
-        {child.branch && <span className="child-card-chip is-branch" title={child.worktree_path ?? undefined}><GitBranch size={11} aria-hidden="true" /><code>{child.branch}</code></span>}
-        {files.length > 0 && <span className="child-card-chip" title={files.join('\n')}><FileText size={11} aria-hidden="true" />{t('children.files', { n: files.length })}</span>}
+        {child.branch && <span className="child-chip is-branch" title={child.worktree_path ?? undefined}><GitBranch size={11} aria-hidden="true" /><code>{child.branch}</code></span>}
+        {files.length > 0 && <span className="child-chip" title={files.join('\n')}><FileText size={11} aria-hidden="true" />{t('children.files', { n: files.length })}</span>}
         {child.resolution && <span className="r-chip" data-tone={child.resolution === 'integrated' ? 'success' : undefined}>{t(`children.resolution.${child.resolution}`)}</span>}
         <button type="button" className="btn btn-quiet btn-xs child-row-open" onClick={open}>
           {t('children.open')} <ArrowUpRight size={12} aria-hidden="true" />
@@ -146,22 +147,22 @@ export function ChildRow({ child }: { child: ChildSession }) {
           )}
         </div>
       )}
-      {child.report?.error && !working && <p className="child-card-error">{child.report.error}</p>}
+      {child.report?.error && !working && <p className="child-row-error">{child.report.error}</p>}
       {conflicts && (
-        <div role="alert" className="child-card-conflicts">
-          <p className="child-card-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t('children.conflicts')}</p>
+        <div role="alert" className="child-row-conflicts">
+          <p className="child-row-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t('children.conflicts')}</p>
           <ul>{conflicts.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
-          <p className="child-card-conflicts-hint">{t('children.conflictsHint')}</p>
+          <p className="child-row-conflicts-hint">{t('children.conflictsHint')}</p>
         </div>
       )}
       {(decide || (working && child.branch)) && (
-        <div className="child-card-actions">
+        <div className="child-row-actions">
           {decide && (
             <>
               <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => void integrate()}>
                 {busy ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <GitMerge size={12} aria-hidden="true" />} {t('children.integrate')}
               </button>
-              <button type="button" className="btn btn-ghost btn-sm child-card-discard" disabled={busy} onClick={() => void discard()}>
+              <button type="button" className="btn btn-ghost btn-sm child-row-discard" disabled={busy} onClick={() => void discard()}>
                 <Trash2 size={12} aria-hidden="true" /> {t('children.discard')}
               </button>
             </>

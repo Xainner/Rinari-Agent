@@ -42,9 +42,14 @@ export function OfferCard({ request, offer, onResolved }: { request: QuestionReq
     }
   }
   return (
-    <section className="question-card offer-card mb-3 p-4 text-sm" data-testid="offer-card" aria-label={t('children.offer.region')}>
-      <p className="offer-card-kicker r-chip" data-tone="accent"><GitBranchPlus size={12} aria-hidden="true" /> {t('children.offer.question')}</p>
-      <h3 className="offer-card-title">{offer.title}</h3>
+    <section className="question-card offer-card mb-3 text-sm" data-testid="offer-card" aria-label={t('children.offer.region')}>
+      <div className="offer-card-head">
+        <span className="act-tile" data-state="running" aria-hidden="true"><GitBranchPlus size={13} /></span>
+        <div className="min-w-0 flex-1">
+          <p className="offer-card-kicker">{t('children.offer.question')}</p>
+          <h3 className="offer-card-title">{offer.title}</h3>
+        </div>
+      </div>
       {offer.reason && <p className="offer-card-reason">{offer.reason}</p>}
       <p className={`offer-card-prompt${expanded ? ' is-expanded' : ''}`}>{offer.prompt}</p>
       {offer.prompt.length > 160 && (
@@ -52,17 +57,16 @@ export function OfferCard({ request, offer, onResolved }: { request: QuestionReq
           {expanded ? t('followups.less') : t('followups.readAll')}
         </button>
       )}
-      <p className="offer-card-meta">
-        <span className="child-card-chip">
+      <div className="offer-card-foot">
+        <span className="child-chip">
           {offer.context === 'fork' ? <MessagesSquare size={11} aria-hidden="true" /> : <FileText size={11} aria-hidden="true" />}
           {t(offer.context === 'fork' ? 'children.context.fork' : 'children.context.brief')}
         </span>
-        <span className="child-card-chip">
+        <span className="child-chip">
           {offer.isolation === 'same' ? <Folder size={11} aria-hidden="true" /> : <GitBranch size={11} aria-hidden="true" />}
           {t(offer.isolation === 'same' ? 'children.isolation.same' : offer.isolation === 'worktree' ? 'children.isolation.worktree' : 'children.isolation.auto')}
         </span>
-      </p>
-      <div className="mt-3 flex justify-end gap-2">
+        <span className="flex-1" />
         <button type="button" disabled={busy} className="btn btn-secondary btn-sm" onClick={() => void answer('here')}>{t('children.offer.here')}</button>
         <button type="button" disabled={busy} className="btn btn-primary btn-sm" onClick={() => void answer('new_session')}><GitBranchPlus size={13} aria-hidden="true" /> {t('children.offer.new')}</button>
       </div>

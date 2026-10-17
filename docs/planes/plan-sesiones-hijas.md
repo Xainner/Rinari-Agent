@@ -1,6 +1,6 @@
 # Sesiones hijas
 
-Estado: **decidido; A1 hecho (bloque 13), A2 + A3 + ofertas en curso como tanda propia (2026-10-16)**. Sacado del plan de Boards el 2026-10-12 (no es de Boards: vive en la barra lateral y en el chat).
+Estado: **A1 hecho (bloque 13); A2 + A3 + ofertas con la lógica hecha (H1–H3: CLI 0c6eeec y b2eac4f, Agent 84368b8), falta el pulido de interfaz (H4)**. Sacado del plan de Boards el 2026-10-12 (no es de Boards: vive en la barra lateral y en el chat).
 
 **Versiones** (decisión del dueño, 2026-10-12):
 - **A1 entra en 0.4.0** ([plan-0.4.0.md](plan-0.4.0.md), #40): el vínculo madre → hija y la barra lateral anidada. Ya da valor con lo que existe, porque las notas aceptadas, los forks y las tareas programadas crean sesiones.
@@ -123,7 +123,7 @@ Rinari no tiene archivo de reglas: las aprobaciones de sesión («siempre en est
 - **Topes:** 4 hijas trabajando a la vez por madre y 2 niveles (una hija puede tener hijas; una nieta no). Al pasarse, un error claro que sugiere esperar o usar una nota.
 
 ### 5.3 De vuelta a la madre
-- Cuando una hija **termina un turno que no lanzó el dueño** (el encargo, o un mensaje de la madre), la madre recibe un **informe**: el final de su último mensaje (≈400 caracteres), los archivos cambiados, la rama si usó worktree y su estado (terminó, falló, se detuvo, espera aprobación). Los turnos que el dueño lleva a mano dentro de la hija no avisan.
+- Cuando una hija **termina un turno que no lanzó el dueño** (el encargo, o un mensaje de la madre), la madre recibe un **informe**: el inicio de su último mensaje (≈400 caracteres; el texto completo, hasta 4000, queda en el informe), los archivos cambiados, la rama si usó worktree y su estado (terminó, falló, se detuvo, espera aprobación). Los turnos que el dueño lleva a mano dentro de la hija no avisan.
 - **En la madre:** tarjeta de entrega «Terminó *X*» con el resumen, los archivos, «Abrir», y si hay rama «Integrar rama» / «Descartar». El modelo de la madre ve los informes en su contexto del turno siguiente (segmento `task_state`).
 - **La madre continúa sola** (decisión del dueño, A-3) **si la hija la abrió Rinari** (`start`, `offer` o paso de plan) **y la madre está libre**: cuando ya no queda ninguna de esas hijas trabajando, la madre hace un turno corto con todos los informes nuevos: revisa el resultado (un informe no es prueba), sigue con lo que eso desbloquee de lo que el dueño pidió, o se lo cuenta en una o dos líneas. Las que nacen de una nota solo dejan la tarjeta. Nunca se encadena: un informe dispara a lo sumo un turno.
 - **Integrar rama** lo hace **solo el dueño** (botón), nunca el modelo: fusiona con el `worktree_manager`; si hay conflictos, la tarjeta los nombra y ofrece «Resolver en la hija» (un mensaje a la hija). «Descartar» borra el worktree y la rama, con confirmación.
@@ -131,7 +131,7 @@ Rinari no tiene archivo de reglas: las aprobaciones de sesión («siempre en est
 ### 5.4 Después de nacer
 - `session.message({child, text})`: la madre le escribe a **una hija suya** (A-4). Si la hija trabaja, le llega como guía; si no, empieza un turno marcado «de *Madre*». Nada hacia otras conversaciones (eso es de la Agency).
 - `session.children()`: estado, rama y último informe de cada hija.
-- El dueño puede crear hijas a mano: «Abrir en sesión hija» en el menú de un mensaje y `/hija <tarea>` (equivalen a `session.start`); «Bifurcar» sigue igual, anidado.
+- El dueño puede crear hijas a mano: «Hacer en sesión hija» al pasar sobre un mensaje suyo y `/child <tarea>` (los comandos van en inglés, como `/goal`), ambos con `session.child.start`; «Bifurcar» sigue igual, anidado.
 
 ### 5.5 En la interfaz
 - Tarjeta de **oferta** («¿Nueva sesión o aquí?»), tarjeta de **hija iniciada** en el chat de la madre, tarjeta de **entrega**, y la **nota** con su contexto y carpeta visibles (se pueden cambiar antes de iniciarla).

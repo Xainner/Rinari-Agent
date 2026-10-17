@@ -67,7 +67,9 @@ function isImageRunning(image) {
 function stamp() {
   const now = new Date()
   const pad = (n) => String(n).padStart(2, '0')
-  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.${pad(now.getHours())}${pad(now.getMinutes())}`
+  // Semver no admite ceros a la izquierda en un identificador numérico: «0112»
+  // hace que electron-updater rechace la versión. La hora va como 112.
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.${now.getHours() * 100 + now.getMinutes()}`
 }
 
 function main() {

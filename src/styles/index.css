@@ -2410,6 +2410,17 @@ html[data-motion='reduced'] .image-viewer-img { transition: none; }
 html[data-motion='reduced'] .profile-pending-badge { animation: none; }
 
 /* Al volver (#62): un resultado que terminó mientras no estabas lleva borde con brillo y «Nuevo · terminó hace…» hasta leerse; luego se apaga. */
+/* #29: el cambio de modelo, arriba del turno: «logo anterior → logo nuevo». La flecha se desliza una vez
+   cuando aparece en un turno en curso; en el historial, quieta. */
+.model-change { display: flex; padding: 2px 0; }
+.model-change-chip { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 7px; height: 26px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(16 12 27 / 0.6); font-size: 12px; color: var(--text-muted); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.model-change-model { display: inline-flex; min-width: 0; align-items: center; gap: 5px; }
+.model-change-model.is-previous { color: var(--text-subtle); }
+.model-change-model:not(.is-previous) { color: var(--text); font-weight: 500; }
+.model-change-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-change-arrow { flex-shrink: 0; color: var(--accent-2); }
+.model-change[data-animate] .model-change-arrow { animation: model-change-slide 0.6s var(--ease-out) 0.1s both; }
+@keyframes model-change-slide { from { opacity: 0; transform: translateX(-6px); } 60% { opacity: 1; transform: translateX(2px); } to { opacity: 1; transform: none; } }
 .turn-result { position: relative; }
 /* Un resultado sin leer lo dice su chip «Nuevo · terminó ahora», que se apaga solo; sin marco alrededor (decisión del dueño). */
 .turn-result[data-return='fading'] .turn-return-pill { opacity: 0; transition: opacity 1.6s var(--ease-out) 0.6s; }

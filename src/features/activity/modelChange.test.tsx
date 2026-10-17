@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // «Se cambió de modelo de A a B»: lo decide el Engine (`model.changed`) y se
-// pinta debajo del primer texto de B, en vivo y al reconstruir el historial.
+// pinta arriba del turno, antes del primer mensaje (#29), en vivo y al
+// reconstruir el historial (también si el aviso llegó después del texto).
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -27,7 +28,7 @@ function view(timeline: Parameters<typeof TurnTimelineView>[0]['timeline'], lang
 }
 
 describe('model change notice', () => {
-  it('sits right after the first progress text of the new model, once', () => {
+  it('sits at the top of the turn, before the first message, once', () => {
     let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { ...ids, message: 'Sigue' }))
     state = turnTimelineReducer(state, event('model.started', { ...ids, model_call_id: 'model_1', model: 'mdl_b', activity_seq: 1 }))
     state = turnTimelineReducer(state, event('model.content.completed', { ...ids, model_call_id: 'model_1', content: 'Voy a revisar el selector.', output_kind: 'progress', activity_seq: 1 }))
@@ -36,14 +37,16 @@ describe('model change notice', () => {
     state = turnTimelineReducer(state, event('model.content.completed', { ...ids, model_call_id: 'model_2', content: 'Listo.', output_kind: 'final', activity_seq: 3 }))
     state = turnTimelineReducer(state, event('turn.completed', ids))
     view(state.timelines.t2)
-    fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
     const notices = screen.getAllByTestId('model-change')
     expect(notices).toHaveLength(1)
-    expect(notices[0].textContent).toBe('Se cambió de modelo de deepseek-v4.1-flash a glm-5.3-flash.')
-    // Debajo del progreso, antes de la respuesta final.
-    const progress = screen.getByText('Voy a revisar el selector.')
-    expect(progress.compareDocumentPosition(notices[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(notices[0].getAttribute('aria-label')).toBe('Se cambió de modelo de deepseek-v4.1-flash a glm-5.3-flash.')
+    expect(notices[0].textContent).toContain('deepseek-v4.1-flash')
+    expect(notices[0].textContent).toContain('glm-5.3-flash')
+    // Arriba: antes de la respuesta final y del progreso del turno.
     expect(notices[0].compareDocumentPosition(screen.getByText('Listo.')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno' }))
+    expect(notices[0].compareDocumentPosition(screen.getByText('Voy a revisar el selector.')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getAllByTestId('model-change')).toHaveLength(1)
   })
 
   it('is rebuilt in place from the persisted timeline, under a final answer, in English too', () => {
@@ -58,7 +61,7 @@ describe('model change notice', () => {
     } as unknown as TimelineTurn
     const state = turnTimelineReducer(createInitialTimelineState(), { type: 'timeline/loaded', sessionId: 's1', turns: [turn] })
     view(state.timelines.t2, 'en')
-    expect(screen.getByTestId('model-change').textContent).toBe('Model changed from deepseek-v4.1-flash to glm-5.3-flash.')
+    expect(screen.getByTestId('model-change').getAttribute('aria-label')).toBe('Model changed from deepseek-v4.1-flash to glm-5.3-flash.')
   })
 
   it('names the provider when both models share a name, and does not invent a missing one', () => {
@@ -66,11 +69,11 @@ describe('model change notice', () => {
     state = turnTimelineReducer(state, event('model.content.completed', { ...ids, model_call_id: 'model_1', content: 'Hola.', output_kind: 'final', activity_seq: 1 }))
     state = turnTimelineReducer(state, event('model.changed', { ...change, previous: { model_id: 'mdl_a', alias: 'gpt-5', provider_alias: 'openai' }, next: { model_id: 'mdl_b', alias: 'gpt-5', provider_alias: 'openrouter' } }))
     view(state.timelines.t2)
-    expect(screen.getByTestId('model-change').textContent).toBe('Se cambió de modelo de gpt-5 (openai) a gpt-5 (openrouter).')
+    expect(screen.getByTestId('model-change').getAttribute('aria-label')).toBe('Se cambió de modelo de gpt-5 (openai) a gpt-5 (openrouter).')
     cleanup()
     state = turnTimelineReducer(state, event('model.changed', { ...change, previous: { model_id: 'mdl_gone' } }))
     view(state.timelines.t2)
-    expect(screen.getByTestId('model-change').textContent).toBe('Se cambió de modelo a glm-5.3-flash.')
+    expect(screen.getByTestId('model-change').getAttribute('aria-label')).toBe('Se cambió de modelo a glm-5.3-flash.')
   })
 
   it('without a text to anchor to, nothing is announced', () => {

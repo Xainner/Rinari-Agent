@@ -10,7 +10,6 @@ import { useResultVisibility } from '../board/useResultVisibility'
 import { ChangeSetRow } from './ChangeSetRow'
 import type { TurnTimeline, ModelTimelineItem } from './types'
 import { presentedChangeSets } from './changeSetPresentation'
-import { ModelChangeNotice } from './ModelChangeNotice'
 import { failureTab, turnFailure, type TurnFailure } from './turnFailure'
 import { AutoResume } from '../resume/AutoResume'
 import { useOptionalEngineCommands } from '../engine/EngineContext'
@@ -58,13 +57,10 @@ function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
       {final?.type === 'model' && (timeline.mode === 'plan' && !provisional
         ? (
           // El plan, como tarjeta compacta; entero en la vista «Plan» del panel lateral (#55).
-          <PlanCard content={final.content} turnId={timeline.turnId} actions={planActions}>
-            {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
-          </PlanCard>
+          <PlanCard content={final.content} turnId={timeline.turnId} actions={planActions} />
         )
         : <>
           <MessageBubble message={{ id: final.id, role: 'assistant', content: final.content, createdAt: final.occurredAt, turnId: timeline.turnId }} />
-          {final.modelChange && <ModelChangeNotice change={final.modelChange} />}
         </>)}
       {changeSets.map((item) => <ChangeSetRow key={item.id} item={item} turnActive={ACTIVE.has(timeline.status)} />)}
       {failed && <FailureCause timeline={timeline} />}

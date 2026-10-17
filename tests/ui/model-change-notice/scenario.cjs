@@ -1,6 +1,7 @@
-// Cambiar de modelo desde el composer y enviar: debajo del primer texto del
-// modelo nuevo aparece «Se cambió de modelo de A a B», una sola vez, y sigue
-// en su sitio tras reiniciar la app y el Engine.
+// Cambiar de modelo desde el composer y enviar: arriba del turno, antes del
+// primer mensaje del modelo nuevo, aparece el chip «A → B» (que dice «Se cambió
+// de modelo de A a B»), una sola vez, y sigue en su sitio tras reiniciar la app
+// y el Engine (#29).
 const assert = require('node:assert/strict')
 const { click, clickText, command, evaluate, input, reload, report, scenario, screenshot, useLocalModel, wait } = require('../harness.cjs')
 
@@ -13,11 +14,11 @@ async function send(text, reply) {
   await wait(`document.body.innerText.includes(${JSON.stringify(reply)})`)
   await wait(`!document.querySelector('button[aria-label="Detener generación"]')`)
 }
-const notices = () => evaluate(`[...document.querySelectorAll(${JSON.stringify(notice)})].map(e=>e.textContent)`)
+const notices = () => evaluate(`[...document.querySelectorAll(${JSON.stringify(notice)})].map(e=>e.getAttribute('aria-label'))`)
 async function noticeFollowsReply() {
   assert.deepEqual(await notices(), [expected])
-  // Debajo de la respuesta del modelo nuevo, no en otro sitio.
-  assert(await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(notice)});const r=[...document.querySelectorAll('.markdown, [data-testid="turn-result"]')].find(e=>e.textContent.includes('RESPUESTA DOS'));return Boolean(r && (r.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING))})()`))
+  // Arriba del turno: antes de la respuesta del modelo nuevo, no debajo.
+  assert(await evaluate(`(() => {const n=document.querySelector(${JSON.stringify(notice)});const r=[...document.querySelectorAll('.markdown, [data-testid="turn-result"]')].find(e=>e.textContent.includes('RESPUESTA DOS'));return Boolean(r && (n.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING))})()`))
 }
 
 async function exercise() {

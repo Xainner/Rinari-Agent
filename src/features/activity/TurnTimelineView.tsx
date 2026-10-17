@@ -805,9 +805,16 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const meaningful = timeline.items.some((item) => !(item.type === 'system' && item.kind === 'turn_preparing'))
   const showHeader = !paneThinking && (!active || timeline.status === 'cancelling' || (elapsed >= arrival && (meaningful || elapsed >= Math.max(300, arrival))))
   const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
+  // El cambio de modelo va arriba del turno, antes del primer mensaje (#29); en
+  // un historial viejo, con el aviso después del texto, también se sube aquí.
+  const modelChange = useMemo(() => {
+    for (const item of timeline.items) if (item.type === 'model' && item.modelChange) return item.modelChange
+    return null
+  }, [timeline.items])
   return (
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
+      {modelChange && <ModelChangeNotice change={modelChange} animate={active} />}
       {/* La cabecera del turno en curso, como tarjeta de estado (#49). */}
       {active && showHeader && <TurnStatusCard timeline={timeline} now={now} />}
       {projection.segments.map((segment, index) => {
@@ -866,7 +873,6 @@ const ActivityDetails = memo(function ActivityDetails({ items, status, onResolve
     ? <div key={block.id} data-activity-item={block.id} className="relative py-0.5 text-[14px] leading-relaxed text-[var(--text)]">
         <span className="turn-node" data-state="text" aria-hidden="true" style={{ top: 9, width: 6, height: 6, left: -16 }} />
         <LiveText id={block.item.id} content={block.item.content} streaming={block.item.status === 'streaming'} live={live} />
-        {block.item.modelChange && <ModelChangeNotice change={block.item.modelChange} />}
       </div>
     : <div key={block.id} className="relative"><span className="turn-node" data-state={nodeState(block.items, live)} aria-hidden="true" /><OperationGroup items={block.items} status={status} onResolveApproval={onResolveApproval} /></div>)}</div>
 })

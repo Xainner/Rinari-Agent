@@ -91,6 +91,9 @@ scenario(async () => {
   const fit = await evaluate(`(() => { const s = document.querySelector('[data-testid="summary-dock"]').getBoundingClientRect(); const chat = document.querySelector('.session-workspace-chat').getBoundingClientRect(); const slot = document.querySelector('.session-workspace-chat .conversation-composer-slot').getBoundingClientRect(); return { inside: s.left >= chat.left && s.right <= chat.right + 0.5, bottom: Math.round(s.bottom), composer: Math.round(slot.top) } })()`)
   assert.ok(fit.inside, 'the summary floats inside the chat column, not over the side panel')
   assert.ok(fit.bottom <= fit.composer, `the summary stays above the composer (${fit.bottom} > ${fit.composer})`)
+  // It leaves the chat's scrollbar free, to see it and drag it (#99.1).
+  const bar = await evaluate(`(() => { const s = document.querySelector('[data-testid="summary-dock"]').getBoundingClientRect(); const scroller = [...document.querySelectorAll('.session-workspace-chat .overflow-y-auto')].find((el) => el.scrollHeight > el.clientHeight) ?? document.querySelector('.session-workspace-chat .overflow-y-auto'); const r = scroller.getBoundingClientRect(); return { summaryRight: s.right, barLeft: r.right - (scroller.offsetWidth - scroller.clientWidth || 8) } })()`)
+  assert.ok(bar.summaryRight <= bar.barLeft - 2, `the summary leaves the scrollbar free (${JSON.stringify(bar)})`)
   await wait(`document.querySelector('[data-testid="summary-panel"] [data-card="env"]')?.innerText.includes('Caja') || document.querySelector('[data-testid="summary-panel"] [data-card="env"]')?.innerText.includes('sin git')`)
   await wait(`Boolean(document.querySelector('[data-testid="summary-panel"] [data-card="changes"]'))`)
   await settleAnimations()

@@ -2180,7 +2180,8 @@ button.agent-entry:hover { border-color: var(--line-3); background: rgb(20 15 34
 .dock-more-signal[data-tone='live'] { color: var(--cyan-300, var(--agent)); }
 /* Resumen: una tarjeta que flota sobre el chat, arriba a la derecha. No es parte del panel lateral:
    no lo abre ni cambia el ancho del chat. Baja como mucho hasta encima del composer (--summary-bottom). */
-.summary-float { position: absolute; top: 10px; right: 10px; z-index: 15; display: flex; width: min(340px, calc(100% - 20px)); min-height: 0; max-height: max(180px, calc(100% - 10px - var(--summary-bottom, 10px))); flex-direction: column; overflow: hidden; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, rgb(30 22 48 / 0.96), rgb(15 11 25 / 0.97)); box-shadow: var(--sh-pop, var(--sh-3)), inset 0 1px 0 rgb(255 255 255 / 0.05); backdrop-filter: blur(14px); transform-origin: top right; animation: summary-float-in 0.22s var(--ease-out) both; }
+/* #99.1: deja libre la barra de scroll del chat (8 px) y su margen, para que se vea y se pueda arrastrar. */
+.summary-float { position: absolute; top: 10px; right: 22px; z-index: 15; display: flex; width: min(340px, calc(100% - 32px)); min-height: 0; max-height: max(180px, calc(100% - 10px - var(--summary-bottom, 10px))); flex-direction: column; overflow: hidden; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, rgb(30 22 48 / 0.96), rgb(15 11 25 / 0.97)); box-shadow: var(--sh-pop, var(--sh-3)), inset 0 1px 0 rgb(255 255 255 / 0.05); backdrop-filter: blur(14px); transform-origin: top right; animation: summary-float-in 0.22s var(--ease-out) both; }
 .summary-float[data-still] { animation: none; }
 .summary-float[data-leaving] { pointer-events: none; animation: summary-float-out 0.18s ease-in forwards; }
 @keyframes summary-float-in { from { opacity: 0; transform: translateY(-6px) scale(0.97); } }

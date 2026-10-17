@@ -1,6 +1,6 @@
 # Boards: limpieza y panel colapsado con estado
 
-Estado: **decidido** (2026-10-12, quinta versión). El dueño pidió no complicarlo:
+Estado: **decidido** (2026-10-12, quinta versión); **entra en 0.4.0** como bloques 25–27 (dueño, 2026-10-17, decisión C-3). El dueño pidió no complicarlo:
 - **Limpieza:** se quitan la mensajería entre paneles y «Quitar y cerrar sesión». La comunicación entre agentes es otra función, **Rinari Agency**: [idea-rinari-agency.md](idea-rinari-agency.md).
 - **Una pieza nueva:** el panel colapsado que mantiene su estado en vivo.
 - **Las mejoras se ven después,** sobre esa base. Comparar, todavía no. Las ideas de las versiones anteriores quedan aparcadas en B.5.
@@ -113,7 +113,7 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka,
 | C5 | Pendientes de otros perfiles: agregar paneles filtra por el perfil activo y lo de otros perfiles no se ve | Plan 0.4.0, #34 | Decidido (depende de C4) |
 | C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Decidido (B.1, fase B1) |
 | C7 | Mensajes entre paneles «como subagentes» | Planka, Idea; triage I1 | Resuelto por decisión: la mensajería se quita (B.1) y la comunicación entre agentes pasa a [Rinari Agency](idea-rinari-agency.md) |
-| C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Sin decidir. Encaja con el pulido de movimiento |
+| C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Hecho: la píldora se desliza entre las dos opciones (`WorkspaceViewSwitcher.tsx`, `layoutId`, 6a0b4069) |
 | C9 | Panel en blanco (0 filas) al pasar de Normal a Boards | Visto 3 veces en uso real; intermitente en el escenario `chat-interaction-fixes` | Abierto, sin causa confirmada. Hipótesis: Virtua con un ancla de scroll restaurada fuera de rango |
 | C10 | Dos paneles escribiendo en la misma carpeta: el Engine no los serializa y el board solo avisa | `docs/debt.md` | Abierto. El chip con «Abrir en worktree» quedó aparcado (B.5) |
 | C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Abierto. Lo necesita el panel colapsado con estado (B.2) |
@@ -167,5 +167,6 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka,
 | B-3 | Paneles que cambian de tamaño solos según su estado | Descartado (dueño, 2026-10-12) |
 | B-4 | Comparar | Todavía no (dueño, 2026-10-12) |
 | B-5 | Lo demás de las versiones anteriores (B.5) | Aparcado: se propone pieza por pieza después de usar Boards limpio |
-| C-1 | Lo que es solo de Boards sale de 0.4.0 y queda en este plan: C1 («Preparando el turno…»), la limpieza (B1) y el panel colapsado (B2) | Decidido (dueño, 2026-10-12) |
+| C-1 | ~~Lo que es solo de Boards sale de 0.4.0 y queda en este plan: C1 («Preparando el turno…»), la limpieza (B1) y el panel colapsado (B2)~~ | Cambiado: ver C-3 |
+| C-3 | Boards entra en 0.4.0: B1, B2 y B3 como bloques 25, 26 y 27 del [plan 0.4.0](plan-0.4.0.md), con lo abierto de la Parte C (C1, C6, C9, C11, C12, C14). Antes de retirar el `PeerBroker`, los permisos de sesión (#56) salen a su propio servicio: hoy viven dentro de él. C8 ya existe (6a0b4069). C10 sigue aparcado (B.5). | Decidido (dueño, 2026-10-17) |
 | C-2 | El buzón de los peers (`PeerBroker`) se retira con la mensajería, para que Rinari Agency construya bien su propia base | Decidido (dueño, 2026-10-12) |

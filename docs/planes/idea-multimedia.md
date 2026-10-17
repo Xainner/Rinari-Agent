@@ -1,6 +1,6 @@
 # Multimedia en Rinari Agent: crear y editar imágenes (y después audio y video)
 
-Estado: **entra en la 0.4.0** (Planka, Ideas-2, 2026-10-13; decisión del dueño, 2026-10-14).
+Estado: **entra en la 0.4.0** (Planka, Ideas-2, 2026-10-13; decisión del dueño, 2026-10-14), como bloques 28 y 29 del [plan 0.4.0](plan-0.4.0.md) (2026-10-17).
 
 ## Qué se pidió
 
@@ -58,3 +58,4 @@ El mismo patrón de conectores:
 1. **Versión: entra en la 0.4.0** (decisión del dueño, 2026-10-14).
 2. **Ningún conector por defecto.** Si no hay ninguno configurado, Rinari lo dice con honestidad («no tengo cómo crear imágenes; configura un conector en Ajustes → Visión e imágenes») y no improvisa con otras herramientas.
 3. **La primera fase incluye todo lo de imágenes:** crear, editar, variaciones, escalar y quitar fondo (M1 y la parte de imágenes de M2 se juntan).
+4. **Bloques (2026-10-17):** el 28 hace la base (las cinco herramientas, entrega, revisión con visión, confirmación con costo, tope de gasto, uso) con **Codex con la suscripción de ChatGPT** y **OpenAI API**; el 29, FAL.ai, Google, OpenRouter, ComfyUI local y «MCP asignado». Codex va primero porque el dueño ya lo tiene en esta PC con Codex CLI y se puede probar de verdad. Antes se comprueba si el backend de la suscripción que ya usa el Engine (`CodexResponsesAdapter`) acepta generar imágenes; si no, el conector llama a Codex CLI. Los conectores sin clave del dueño se prueban con proveedores falsos y queda anotado qué falta comprobar. Audio y video (M3–M4), después de la 0.4.0.

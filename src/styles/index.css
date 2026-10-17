@@ -1689,6 +1689,30 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .disclosure-button.is-turn-card:hover { border-color: rgb(167 139 250 / 0.38); background: linear-gradient(160deg, rgb(147 88 255 / 0.11), transparent 60%), rgb(20 15 34 / 0.6); }
 .disclosure-button.is-turn-card[data-tone='danger'] { border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
 .disclosure-button.is-turn-card[data-tone='muted'] { border-color: var(--line-2); background: rgb(16 12 27 / 0.5); }
+/* Tarjetas de propuesta del chat (#81, la de RINARI.md de /init): la misma piel que la tarjeta del turno,
+   una cabecera con icono, título y ruta, el documento en su caja y las acciones al pie. */
+.proposal-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 12px 14px 14px 12px; border: 1px solid rgb(167 139 250 / 0.22); border-radius: var(--r-lg); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
+.proposal-card:not([data-status='pending']) { gap: 6px; border-color: var(--line-2); background: rgb(16 12 27 / 0.5); }
+.proposal-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.proposal-card-icon { display: flex; flex-shrink: 0; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--line-2); background: linear-gradient(135deg, rgb(147 88 255 / 0.28), rgb(147 88 255 / 0.1)); color: var(--violet-200); }
+.proposal-card:not([data-status='pending']) .proposal-card-icon { background: rgb(147 88 255 / 0.1); color: var(--text-muted); }
+.proposal-card-title { font-size: 13.5px; font-weight: 650; color: var(--text); }
+.proposal-card-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.proposal-card-tabs { flex-shrink: 0; padding: 2px; }
+.proposal-card-tabs .seg-tab { padding: 4px 10px; font-size: 11.5px; }
+.proposal-card-notes { display: flex; flex-direction: column; gap: 3px; padding-left: 44px; }
+.proposal-card-summary { font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
+.proposal-card-reuses { font-size: 11.5px; color: var(--text-subtle); }
+/* El documento propuesto, como una hoja: cabe en la tarjeta y se desplaza por dentro. */
+.proposal-card-doc { max-height: 320px; overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(8 6 14 / 0.6); padding: 12px 16px; font-size: 13px; }
+.proposal-card-doc[data-view='diff'] { padding: 0; }
+.proposal-card-doc .md-body > :first-child { margin-top: 0; }
+.proposal-card-doc .md-body h1 { font-size: 17px; }
+.proposal-card-doc .md-body h2 { font-size: 14.5px; }
+.proposal-card-doc .md-body h3 { font-size: 13.5px; }
+.proposal-card-editor { min-height: 256px; resize: vertical; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; }
+.proposal-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.proposal-card-outcome { padding-left: 44px; font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .disclosure-button.is-turn-card.is-static:hover { border-color: rgb(167 139 250 / 0.22); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
 .turn-done { display: flex; min-width: 0; align-items: center; gap: 12px; }
 .turn-done-title { min-width: 0; flex: 1 1 auto; font-size: 14px; font-weight: 600; color: var(--text); }

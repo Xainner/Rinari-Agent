@@ -3226,6 +3226,8 @@ export const en: Record<I18nKey, string> = {
   'init.card.discarded': "Discarded: nothing was written",
   'init.card.preview': "Preview",
   'init.card.changes': "Changes",
+  'init.card.statusSaved': "Saved",
+  'init.card.statusDiscarded': "Discarded",
   'init.suggestion.title': "Get to know the project",
   'init.suggestion.detail': "Rinari explores it and proposes its RINARI.md",
   'init.suggestion.prompt': '/init',

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Check, FileText, LoaderCircle, Pencil, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
-import { cn } from '../../lib/utils'
 import { unifiedDiff } from '../../lib/lineDiff'
 import { commandMessage, engineApi } from '../../services/engine'
 import DiffView from '../workspace/DiffView'
@@ -41,48 +40,60 @@ export function InstructionsProposalCard({ item, sessionId }: { item: Instructio
     }
   }
 
+  const where = shortPath(item.path)
   return (
-    <section className="r-card rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3" data-testid="instructions-proposal" data-status={status}>
-      <header className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-[var(--accent-2)]" aria-hidden="true">
-          <FileText size={15} />
-        </span>
+    <section className="proposal-card" data-testid="instructions-proposal" data-status={status} aria-label={t(item.previous !== null ? 'init.card.update' : 'init.card.title')}>
+      <header className="proposal-card-head">
+        <span className="proposal-card-icon" aria-hidden="true"><FileText size={16} /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-[var(--text)]">{t(item.previous !== null ? 'init.card.update' : 'init.card.title')}</p>
-          <p className="truncate font-mono text-[11px] text-[var(--text-subtle)]" title={item.path}>{fileName}</p>
-          {item.summary && <p className="mt-1 text-xs text-[var(--text-muted)]">{item.summary}</p>}
-          {item.reuses.length > 0 && <p className="mt-1 text-[11px] text-[var(--text-subtle)]">{t('init.card.reuses', { files: item.reuses.join(', ') })}</p>}
+          <p className="proposal-card-title">{t(item.previous !== null ? 'init.card.update' : 'init.card.title')}</p>
+          <p className="proposal-card-path" title={item.path}>{where}</p>
         </div>
+        {status === 'pending' && !editing && item.previous !== null && (
+          <div className="seg-tabs proposal-card-tabs" role="tablist" aria-label={fileName}>
+            {(['changes', 'preview'] as const).map((tab) => (
+              <button key={tab} type="button" role="tab" aria-selected={view === tab} className="seg-tab" onClick={() => setView(tab)}>
+                {view === tab && <span className="seg-tab-pill" aria-hidden="true" />}
+                <span className="relative">{t(tab === 'changes' ? 'init.card.changes' : 'init.card.preview')}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {status !== 'pending' && (
+          <span className="r-chip" data-tone={status === 'saved' ? 'success' : undefined}>
+            {status === 'saved' ? <Check size={11} aria-hidden="true" /> : <X size={11} aria-hidden="true" />}
+            {t(status === 'saved' ? 'init.card.statusSaved' : 'init.card.statusDiscarded')}
+          </span>
+        )}
       </header>
 
-      {status === 'pending' && !editing && item.previous !== null && (
-        <div className="mt-2.5 inline-flex rounded-full border border-[var(--border)] p-0.5 text-[11px]" role="tablist">
-          {(['changes', 'preview'] as const).map((tab) => (
-            <button key={tab} type="button" role="tab" aria-selected={view === tab} onClick={() => setView(tab)} className={cn('rounded-full px-2.5 py-0.5 transition-colors', view === tab ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]')}>
-              {t(tab === 'changes' ? 'init.card.changes' : 'init.card.preview')}
-            </button>
-          ))}
+      {(item.summary || item.reuses.length > 0) && (
+        <div className="proposal-card-notes">
+          {item.summary && <p className="proposal-card-summary">{item.summary}</p>}
+          {item.reuses.length > 0 && <p className="proposal-card-reuses">{t('init.card.reuses', { files: item.reuses.join(', ') })}</p>}
         </div>
       )}
 
       {status === 'pending' && !editing && (
-        <div className="mt-2.5 max-h-80 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2.5 text-[13px]" data-testid="instructions-proposal-body">
+        <div className="proposal-card-doc" data-view={view === 'changes' && diff ? 'diff' : 'preview'} data-testid="instructions-proposal-body">
           {view === 'changes' && diff ? <DiffView diff={diff} /> : <Markdown>{item.content}</Markdown>}
         </div>
       )}
 
       {status === 'pending' && editing && (
         <textarea
-          className="field-input mt-2.5 min-h-64 w-full resize-y font-mono text-[12px]"
+          className="field-input proposal-card-editor"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-label={fileName}
+          spellCheck={false}
+          autoFocus
           data-testid="instructions-proposal-editor"
         />
       )}
 
       {status === 'pending' ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="proposal-card-actions">
           {editing ? (
             <>
               <button type="button" className="btn btn-primary btn-sm" disabled={busy || !draft.trim()} onClick={() => void resolve('save', draft)} data-testid="instructions-proposal-save-edited">
@@ -105,10 +116,16 @@ export function InstructionsProposalCard({ item, sessionId }: { item: Instructio
           )}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-[var(--text-muted)]" data-testid="instructions-proposal-outcome">
-          {status === 'saved' ? t('init.card.saved', { path: item.path }) : t('init.card.discarded')}
+        <p className="proposal-card-outcome" role="status" data-testid="instructions-proposal-outcome" title={status === 'saved' ? item.path : undefined}>
+          {status === 'saved' ? t('init.card.saved', { path: where }) : t('init.card.discarded')}
         </p>
       )}
     </section>
   )
+}
+
+/** La carpeta y el archivo: la ruta entera queda en el `title`. */
+function shortPath(path: string): string {
+  const parts = path.split(/[\\/]/).filter(Boolean)
+  return parts.length <= 2 ? path : parts.slice(-2).join(path.includes('\\') ? '\\' : '/')
 }

@@ -3244,6 +3244,8 @@ export const es = {
   'init.card.discarded': "Descartada: no se escribió nada",
   'init.card.preview': "Vista previa",
   'init.card.changes': "Cambios",
+  'init.card.statusSaved': "Guardada",
+  'init.card.statusDiscarded': "Descartada",
   'init.suggestion.title': "Conoce el proyecto",
   'init.suggestion.detail': "Rinari lo recorre y propone su RINARI.md",
   'init.suggestion.prompt': '/init',

@@ -28,6 +28,7 @@ Estado: **en curso** (el dueño dio inicio el 2026-10-15). Se trabaja por bloque
 | 4. Turno en vivo | Lógica hecha (Agent 9b4e847): #58 (red de seguridad por zona, un oyente por canal en el preload, bloques de código estables, registro agrupado, CSP de vistas previas), #88/#20 (solo un gesto apaga «seguir el final», ir al final una vez por cuadro) y #51 (la cabecera espera la llegada del mensaje), con el escenario `chat-follow-live`. El movimiento (#52, #49, #89) y la fila de bucles (#66f) son de la sesión de pulido. |
 | 5. Lista de pasos | Lógica hecha: #66b (una lista abierta o interrumpida se retoma en el turno siguiente con la marca «(interrumpida)»), #48 (tras 6 rondas de trabajo de varios pasos sin lista, un recordatorio sugiere empezarla, una vez por turno) y #7 (Flujos lee `checklist.updated`: avance de etapa y tareas del resumen salen de la lista cuando no hay grafo). CLI dc26ad9; Agent 3ec809d (#6 plural, #30 oculta `checklist.update` del timeline, #7 `useFlow`, y la red de seguridad de Boards dentro de `SessionPane`). Lo visual (#22, #26 y «Paso n/m» del #49) es de la sesión de pulido. |
 | 6. Avisos y atención | Lógica hecha (Agent 51785d7, 1c81acb, 738cc13, 447004b, ea298a8), con los escenarios `turn-notify` y `return-to-window`. #84: un turno sin nada que leer (solo compactó, o se detuvo sin texto) nace visto; los recibos de conversaciones borradas o archivadas se limpian (al borrar/archivar y al arrancar, preguntando al Engine por las que no conoce); escribir en una conversación marca lo anterior; leer un resultado marca los anteriores; «Marcar todo como leído» en la bandeja, la barra de tareas (versión instalada), la campana y la paleta; el texto del icono de la bandeja nombra las conversaciones y cada cambio del número deja una línea en `app.log` (ids y estados). #62: lo que terminó con la ventana sin atención se lee con un gesto o a los 3 s, no a los 500 ms. #33: avisos (toast con «Ir», notificación del sistema) y señales de la barra lateral para todas las conversaciones; un plan avisa con su texto y «Revisar plan»; «Te necesita» sustituye al círculo de trabajando; un proyecto plegado muestra la señal más urgente; la campana tiene «Conversaciones». Hallazgo: las notificaciones del sistema no salían nunca (permiso fijado a «no soportado» y apagadas por defecto); ahora salen por defecto. Las preferencias pasan a una sección «Notificaciones» (por ahora dentro de General). #64: título y primeras líneas en texto llano, «Mostrar el contenido» (encendido), «Abrir» / «Revisar plan» y «Responder» desde la notificación de Windows (Electron 44 lo permite; falta la prueba manual del dueño en Windows). #34: punto con número en el selector de perfil y número por perfil en su menú; abrir un aviso de otro perfil cambia de perfil. #24: «Rinari retomó X» sigue las mismas reglas. Lo visual (marca y píldora «Nuevo · terminó hace…» del #62, botón «↓ Nuevo resultado», página propia de Notificaciones, pulso del punto del #34, estilo de la sección de la campana) es de la sesión de pulido. |
+| 24. Pedidos tras la Nightly (2026-10-17) | #101 (Agent 6d8adb3), #102 (Agent abce800) y #104 (CLI 452278c; el cambio de la app se revirtió por decisión del dueño, 64f1324) hechos. #103: la línea de pendientes ya queda siempre en `app.log` (3e4f72e) y el runner de `ui:e2e` ya no da por buenos escenarios que no terminaron (48ef7b3); falta repetir los pasos del dueño con la Nightly nueva. |
 | 7. Archivos de ida y vuelta | Hecho: #35 (`file.present` y la red de seguridad de rutas en código), #36 (`audio.transcribe` con el whisper del dictado), #57 (audio y video como adjuntos, archivos por ruta hasta 1 GiB, avisos antes de enviar), #18 y #67. CLI f35c1f2; Agent a94bab3, 608e6d0 y 3cf16b4. Ajuste: un archivo pegado sin ruta sigue viajando dentro del mensaje (hasta 6 MiB) en vez de escribirse a un temporal. La tarjeta de entregas con miniaturas (35b), el reproductor en el adjunto y la nota de Ajustes → Dictado son de la sesión de pulido. |
 | 8. Mensaje durante el turno | #54 hecho (CLI b8a0939, Agent 7b8e1bc): el mensaje lleva sus adjuntos y se puede editar o borrar mientras no se leyó; los botones de la burbuja, en la sesión de pulido. El #31 «Enviar ahora» pasa al bloque 14: necesita mover el comando de primer plano a segundo plano (#32). |
 
@@ -366,6 +367,10 @@ Del dueño, 2026-10-10. Numerados a continuación de los del video.
 | 97 | Activar y desactivar proveedores (desactivado: sus modelos no salen en el composer ni en ningún selector), y rediseño de Ajustes → Proveedores y del diálogo «Agregar proveedor» (dueño) | CLI + Agent | Decidido |
 | 98 | Vista Archivos con árbol de archivos, como en Claude Code (dueño) | CLI + Agent | Decidido |
 | 99 | Pedidos del dueño para la tanda 17: Resumen sobre la barra de scroll, navegador sin contexto y recientes que no abren, selector de ancho con iconos, lista de archivos cambiados plegable, «Ver archivo» sin estilo | Agent (+ CLI por revisar en el navegador) | Por hacer |
+| 101 | La etiqueta de permisos junto al título sobra: el modo ya está en el composer (dueño) | Agent | Hecho (6d8adb3) |
+| 102 | El tiempo sale dos veces en la tarjeta de trabajo (dueño) | Agent | Hecho (abce800) |
+| 103 | Avisos entre perfiles: sonó la notificación, pero no hubo indicador de perfil ni del chat (dueño) | Agent | Registro arreglado (3e4f72e); falta reproducirlo con la Nightly nueva |
+| 104 | El resumen final quedó dentro de la actividad y la respuesta fue una oración (dueño) | CLI | Hecho en el CLI (452278c); el cambio de la app se revirtió (64f1324) |
 
 Los hallazgos 18–20 vienen de las tarjetas del tablero Agent en Planka (lista Bug), revisadas el 2026-10-11. El análisis completo está en [planka-triage-0.4.0.md](planka-triage-0.4.0.md) (B2, B3 y B1). El resto de tarjetas queda fuera hasta que el dueño diga.
 
@@ -3087,6 +3092,88 @@ Lo visual va con la sesión de pulido en la tanda 17; el punto 2 tiene una parte
 
 ---
 
+Los #101–#104 son pedidos del dueño del 2026-10-17, después de cerrar las tandas (antes en `plan-0.4.0-extras.md`).
+
+## 101. Sin etiqueta de permisos en la barra del título
+
+**Qué se vio** (dueño, 2026-10-17, con captura). Junto al título de la conversación sale «Acceso completo» en ámbar: «No me gusta que en el título salga el acceso, ya eso lo tenemos en el composer».
+
+**Causa.** Permisos v4, P-4 ([plan-permisos-v4.md](plan-permisos-v4.md)) pidió el modo «siempre a la vista en su cabecera» (`ChatHeader.tsx`, `PermissionBadge`, c3c4191). El chip del composer ya dice el mismo modo y deja cambiarlo.
+
+**Hecho (6d8adb3).** Se quitó la etiqueta, su prop `permission` desde `App.tsx` y su CSS; la prueba de `ChatHeader` comprueba que no está. El modo queda en el chip del composer. Entra en la próxima Nightly.
+
+---
+
+## 102. El tiempo, dos veces en la tarjeta de trabajo
+
+**Qué se vio** (dueño, 2026-10-17, con captura). Mientras Rinari trabaja, la tarjeta dice «Pensando… / 12 s» a la izquierda y «13 s ~3…» a la derecha: el mismo tiempo dos veces.
+
+**Causa (verificada, `features/activity/TurnStatusCard.tsx`).** Son dos relojes a propósito (#49, diseño A):
+- debajo del título, `turn-action-time`: lo que lleva **la acción en curso** (`actionSince`: desde la acción o la última llamada al modelo), que se reinicia con cada acción para distinguir un turno largo que avanza de uno trabado;
+- a la derecha, `turn-total-time`: el **total del turno**, junto a los tokens.
+
+Al empezar el turno, o mientras la primera acción no termina, los dos arrancan casi a la vez y marcan lo mismo (12 s / 13 s), así que se lee como un reloj duplicado.
+
+**Propuesta.**
+1. **El reloj de la acción solo cuando aporta:** se oculta mientras la acción empezó a menos de 2 s del inicio del turno (es decir, mientras ambos cuentan lo mismo). Aparece en cuanto hay una acción posterior, y entonces dice qué mide: «esta acción · 12 s».
+2. A la derecha queda siempre el total con los tokens, que no cambia.
+3. En un panel angosto (una sola línea) se muestra solo el total; el de la acción va en el detalle al pasar el ratón, como hoy.
+
+**Pruebas.** Vitest de `TurnStatusCard`: con una sola acción desde el inicio hay un solo reloj; tras una segunda acción salen los dos y el de la acción se reinicia. Captura en `ui-tour` del turno en curso. Pasa por la sesión de pulido de UI.
+
+---
+
+## 103. Avisos entre perfiles: «no hubo indicador de perfil ni del chat»
+
+**Qué se vio** (dueño, 2026-10-17, Nightly 1257, con capturas):
+1. En el perfil 1 pidió un plan en un chat.
+2. Se fue a otro perfil y pidió otra cosa en otro chat.
+3. Sonó la notificación, pero no hubo número en la barra de tareas ni en la bandeja, ni marca en el selector de perfil ni en el chat.
+
+**Lo que dicen los datos** (base del dueño, solo lectura):
+- «Plan para tictactoe en JavaScript» (perfil Predeterminado): dos turnos de **9 s y 7 s**; el último terminó a las 19:48:49 UTC.
+- «Fallo al eliminar archivo en galería» (perfil «0.3.2», id `test`): un turno de **12 min**, de 19:40:29 a 19:52:11 UTC.
+- El turno del tictactoe terminó casi seguro con el chat todavía a la vista: un resultado que se ve 0,5 s con la ventana atendida cuenta como leído, así que ese no quedó pendiente.
+- La notificación que sonó es, casi seguro, la de «Fallo al eliminar» (19:52). Esa sí debió marcar el perfil «0.3.2», salvo que fuera la conversación a la vista en ese momento.
+
+**Lo que se comprobó.**
+- Escenario nuevo `attention-profiles`: un chat del perfil 1 termina mientras estás en el perfil 2. Resultado: el título pasa a «(1) Rinari Agent», el avatar del selector lleva «1», la campana también, y sale el aviso «terminó». **Funciona en la app de pruebas.**
+- **Fallo encontrado en las pruebas (arreglado).** `npm run nightly` arma `dist`/`dist-electron` como Nightly, en la misma carpeta que usa `ui:e2e`. Con la Nightly instalada abierta, la app de pruebas no conseguía el candado de una sola instancia, se cerraba sola con código 0, y el runner lo daba por «OK».
+  - Ahora el runner solo da «OK» si el escenario llega a `RINARI_UI_OK`, y se niega a correr sobre una build Nightly.
+  - `npm run nightly` vuelve a armar la build normal al terminar.
+  - Los «OK» de escenarios corridos después de una Nightly no valían; se repitieron y pasan.
+- `app.log` no sirve para reconstruirlo: la línea `[rinari] attention …` es `console.info` y solo se guarda con «Registros detallados».
+
+**Propuesta.**
+1. **La línea de pendientes, siempre en `app.log`** (solo ids y estados, sin contenido): cuando un chat queda pendiente o deja de estarlo, que quede rastro aunque los registros detallados estén apagados.
+2. **Reproducirlo con el dueño:** con la Nightly nueva, «Registros detallados» encendidos y los mismos pasos. Si falla, el registro dice qué decidió la app.
+3. Si el caso real es «la conversación que terminó era la que estaba a la vista al cambiar de perfil»: al cambiar de perfil, la conversación anterior deja de contar como vista (la superficie ya no es suya).
+
+---
+
+## 104. El resumen final quedó dentro de la actividad; la respuesta fue una oración
+
+**Qué se vio** (dueño, 2026-10-17, `ses_01M55P2JNEXZ7WFGE3VEGV5MA8`): «el resumen final parece que me lo dio en la lista colapsable y al final solo me dio una oración».
+
+**Causa (verificada en los eventos de la sesión).**
+1. **19:52:04:** Rinari escribe el resumen completo (2877 caracteres).
+2. **19:52:08:** llama a `checklist.update` para cerrar la lista de pasos.
+3. **19:52:11:** cierra con «Listo, checklist cerrado: no queda nada pendiente. El diagnóstico y las dos tareas sugeridas ya están sobre la mesa.» (116 caracteres).
+
+La app toma como respuesta final solo el texto **después de la última herramienta**. Por eso el resumen queda como texto intermedio dentro de la actividad plegable.
+
+**Propuesta.**
+1. **App:** las herramientas de **contabilidad** no parten la respuesta final: `checklist.update`, `goal.update`, `memory.*` y las sugerencias de seguimiento. La respuesta final es el texto que va después de la última acción **de verdad**. En este caso se ve el resumen, y debajo la línea de cierre.
+2. **CLI:** una regla en el prompt: «cierra la lista de pasos **antes** de escribir el resumen final; después de él, ninguna herramienta». Así no depende solo de la app.
+
+**Pruebas.**
+- **Vitest:** con texto → `checklist.update` → texto corto, el resultado muestra los dos textos, y la actividad no se queda con el resumen.
+- **CLI:** la regla está en el prompt.
+
+**Decisión del dueño (2026-10-17).** El punto 1 no va: juntar textos en la app según qué herramientas hay en medio se siente forzado, y la app ya funcionaba bien. Se revirtió (64f1324). La respuesta final sigue siendo el texto después de la última herramienta, y el arreglo queda solo en el CLI: la descripción de `checklist` pide cerrarla antes del resumen (452278c).
+
+---
+
 ## Decisiones
 
 Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
@@ -3167,6 +3254,8 @@ Tomadas el 2026-10-11: el dueño aceptó todas las recomendaciones.
 | 97 | Activar/desactivar proveedores es global; desactivado, sus modelos salen de todos los selectores, no se le llama y la clave se conserva; pantalla de Proveedores y «Agregar proveedor» rediseñadas juntas (el diálogo usa el asistente inicial). |
 | 98 | Árbol de Archivos al estilo Claude Code, en la tanda del bloque 17: `workspace.dir.list` en el CLI y el árbol en la app; cabecera con un solo buscador de archivos. |
 | 99 | Los cinco pedidos del dueño del 2026-10-16 entran en la tanda 17. |
+| 101 | Sin etiqueta de permisos en la cabecera; el modo queda en el chip del composer. |
+| 104 | La app no junta textos: la respuesta final es lo que va después de la última herramienta. Rinari cierra la lista de pasos y después escribe el resumen con lo entregado, como último mensaje (regla en el Engine). |
 | 93 | Todo lo que el proveedor anuncia se guarda solo, venga de donde venga la actualización; sin «Guardar» en la lista; «Quitar» oculta (con «Ocultos» para recuperar). |
 | Boards | Lo que es solo de Boards no va en 0.4.0: está en [plan-boards.md](plan-boards.md) (el «Preparando el turno…» del panel, la limpieza y el panel colapsado con estado). |
 | Pregunta | ¿Qué comparten los perfiles? Cada perfil tiene su Soul (con la intensidad), su modo, sus modelos por agente, sus proyectos y sus conversaciones. Se comparten los proveedores, la memoria, las skills (también las aprendidas), MCP y plugins, las tareas programadas y el resto de Ajustes. El dueño lo deja así. |

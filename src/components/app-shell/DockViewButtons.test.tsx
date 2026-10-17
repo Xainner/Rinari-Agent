@@ -91,7 +91,9 @@ it('en una ventana estrecha quedan las vistas abiertas o con aviso, y el resto p
     await userEvent.click(screen.getByRole('button', { name: /^Más vistas/ }))
     expect(await screen.findByRole('menuitemcheckbox', { name: /Navegador/ })).toBeTruthy()
     expect(screen.getByRole('menuitemcheckbox', { name: /Agentes/ })).toBeTruthy()
-    expect(screen.getByRole('menuitemcheckbox', { name: /Insight/ })).toBeTruthy()
+    expect(screen.getByRole('menuitemcheckbox', { name: /Flujo/ })).toBeTruthy()
+    // «Contexto y uso» (Insight) salió del panel con el #78.
+    expect(screen.queryByRole('menuitemcheckbox', { name: /Insight/ })).toBeNull()
   } finally {
     window.matchMedia = original
   }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -99,7 +99,8 @@ export function SteerBubble({ item, sessionId }: { item: SteerTimelineItem; sess
           </div>
         )}
       </div>
-      <span className="text-[10px] text-[var(--text-subtle)]">
+      <span className="steer-note">
+        {item.interrupted && !editing && <Zap size={10} aria-hidden="true" />}
         {editing
           ? t('steer.editHint')
           : item.interrupted

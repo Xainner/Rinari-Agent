@@ -103,7 +103,7 @@ export default function ScheduleForm() {
                 role="radio"
                 aria-checked={draft.kind === kind}
                 onClick={() => update(kind === 'command' ? { kind, command: draft.command ?? emptyCommand() } : { kind })}
-                className={`rounded-xl border px-3 py-2 text-left text-sm ${draft.kind === kind ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
+                className={`flex flex-col justify-start rounded-xl border px-3 py-2 text-left text-sm transition-colors ${draft.kind === kind ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
               >
                 <span className="block font-medium">{t(KIND_KEYS[kind][0])}</span>
                 <span className="block text-xs text-[var(--text-subtle)]">{t(KIND_KEYS[kind][1])}</span>

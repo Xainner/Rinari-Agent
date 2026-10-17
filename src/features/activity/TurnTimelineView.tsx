@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   GitBranch,
   ListTree,
+  ArrowDownToLine,
   LoaderCircle,
   MessageCircleQuestion,
   Pencil,
@@ -234,8 +235,9 @@ function MoveToBackground({ toolCallId }: { toolCallId: string }) {
           toast.error(commandMessage(error))
         })
       }}
-      className="text-[12px] text-[var(--accent-2)] underline disabled:opacity-50 disabled:no-underline"
+      className="tool-inline-action"
     >
+      {sent ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <ArrowDownToLine size={12} aria-hidden="true" />}
       {t(sent ? 'activity.movingToBackground' : 'activity.toBackground')}
     </button>
   )

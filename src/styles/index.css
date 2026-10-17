@@ -924,6 +924,21 @@ html[data-motion='reduced'] .goal-mark-orbit { display: none; }
 .processes-action:disabled { opacity: .5; }
 .processes-action-stop { color: var(--danger); }
 .processes-action-stop:hover, .processes-action-stop:focus-visible { border-color: var(--danger); color: var(--danger); }
+/* «Detener todos» armado (#90): el segundo clic se ve como lo que es, sin diálogo. */
+.processes-action-stop[data-armed] { border-color: color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 16%, transparent); color: #fff; font-weight: 600; animation: rinari-fade-in var(--dur-fast) var(--ease-out); }
+.processes-action-stop[data-armed]:hover, .processes-action-stop[data-armed]:focus-visible { background: color-mix(in srgb, var(--danger) 26%, transparent); color: #fff; }
+/* Huérfanos (#90): procesos de un Engine anterior que siguen vivos. Un aviso ámbar con sus filas. */
+.orphans { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); border-radius: var(--r-lg); background: linear-gradient(160deg, color-mix(in srgb, var(--warning) 8%, transparent), transparent 60%), rgb(16 12 27 / 0.6); font-size: 12.5px; animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.orphans-head { display: flex; align-items: flex-start; gap: 10px; }
+.orphans-icon { display: flex; flex-shrink: 0; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 8px; background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.orphans-title { font-weight: 600; color: var(--text); }
+.orphans-hint { margin-top: 1px; font-size: 11.5px; line-height: 1.4; color: var(--text-subtle); }
+.orphans-list { display: flex; flex-direction: column; gap: 2px; padding-left: 36px; }
+.orphans-row { display: flex; min-width: 0; align-items: center; gap: 8px; border-radius: 8px; padding: 2px 0 2px 6px; transition: background-color var(--dur-fast); }
+.orphans-row:hover { background: var(--bg-hover); }
+.orphans-command { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11.5px; color: var(--text); }
+.orphans-port { font-family: var(--font-mono); }
+.orphans-pid { flex-shrink: 0; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
 .processes-row-error { font-size: 12px; color: var(--warning); padding: 0 6px 6px; }
 .processes-attention, .processes-collapsed-line { display: block; width: 100%; text-align: left; font-size: 12px; color: var(--warning); padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); }
 .processes-collapsed-line { color: var(--text-muted); }
@@ -1778,6 +1793,23 @@ html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data
 .steer-row:hover .steer-actions, .steer-row:focus-within .steer-actions { opacity: 1; }
 @media (hover: none) { .steer-actions { opacity: 1; } }
 .steer-delete:hover:not(:disabled) { color: var(--danger); }
+.steer-note { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-subtle); }
+/* «Enviar ahora» (#31): la burbuja que cortó el paso lleva un rayo y un filo de acento; mientras
+   espera a que el paso se corte, el rayo late (sigue en curso). */
+.steer-row[data-interrupted] .steer-note { color: var(--accent-2); }
+.steer-row[data-interrupted] .steer-bubble { box-shadow: inset 0 0 0 1px rgb(196 181 253 / 0.38); }
+.steer-row[data-interrupted][data-status='pending'] .steer-note svg { animation: rinari-pulse 1.2s ease-in-out infinite; }
+/* Acción en la fila de una herramienta que corre («Mover a segundo plano», #32). */
+.tool-inline-action { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid rgb(167 139 250 / 0.3); background: rgb(147 88 255 / 0.1); font-size: 11.5px; font-weight: 600; color: var(--violet-200); transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); animation: rinari-fade-in var(--dur-base) var(--ease-out); }
+.tool-inline-action:hover:not(:disabled) { border-color: rgb(167 139 250 / 0.55); background: rgb(147 88 255 / 0.2); color: var(--text); }
+.tool-inline-action:disabled { cursor: default; opacity: 0.7; }
+/* Tareas «Comando» (#50): la salida de cada ejecución, plegada. */
+.schedule-output > summary { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; list-style: none; user-select: none; color: var(--text-muted); }
+.schedule-output > summary::-webkit-details-marker { display: none; }
+.schedule-output > summary::before { content: ''; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform var(--dur-fast) var(--ease-out); }
+.schedule-output[open] > summary::before { transform: rotate(45deg); }
+.schedule-output > summary:hover { color: var(--text); }
+.schedule-output > pre { margin-top: 6px; max-height: 16rem; overflow: auto; white-space: pre-wrap; border: 1px solid var(--line-1); border-radius: var(--r-md); background: rgb(8 6 14 / 0.6); padding: 8px 10px; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--text); }
 .steer-edit { width: min(85%, 36rem); min-height: 38px; resize: none; padding: 8px 14px; border: 1px solid rgb(167 139 250 / 0.5); border-radius: 16px 16px 6px 16px; background: rgb(124 58 237 / 0.16); color: var(--text); font: inherit; font-size: 14px; line-height: 1.6; outline: none; box-shadow: 0 0 0 3px rgb(147 88 255 / 0.14); animation: rinari-fade-in var(--dur-fast) var(--ease-out) both; }
 .steer-edit:disabled { opacity: 0.6; }
 

@@ -252,11 +252,11 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                       <StatusBadge run={run} />
                       <span className="min-w-0 flex-1 text-[var(--text-muted)]">
                         {selected.kind === 'command' && run.summary ? (
-                          <details>
-                            <summary className="cursor-pointer select-none">
+                          <details className="schedule-output">
+                            <summary>
                               {run.reason ? (SKIP_REASON_KEYS[run.reason] ? t(SKIP_REASON_KEYS[run.reason]) : run.reason) : t('schedules.output')}
                             </summary>
-                            <pre className="mt-1.5 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--bg-subtle)] p-2 font-mono text-[11px] text-[var(--text)]">{run.summary}</pre>
+                            <pre>{run.summary}</pre>
                           </details>
                         ) : (
                           <span className="line-clamp-2">

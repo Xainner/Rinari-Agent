@@ -40,38 +40,9 @@ export function isChecklistCall(item: { tool?: string }): boolean {
   return item.tool === 'checklist.update'
 }
 
-/**
- * Trámites del turno: cerrar la lista de pasos, un objetivo, la memoria. No son
- * acciones y no parten la respuesta final (plan 0.4.0 extras, E4).
- */
-const BOOKKEEPING = /^(checklist|goal|memory)\./
-
-/**
- * El texto que el modelo escribió justo antes de la respuesta final con solo
- * trámites en medio (p. ej. el resumen y luego `checklist.update`): es parte
- * de la respuesta, no actividad intermedia.
- */
-function finalLead(items: TimelineItem[], final: ModelTimelineItem | undefined): ModelTimelineItem | undefined {
-  if (!final) return undefined
-  let bookkeeping = false
-  for (let index = items.indexOf(final) - 1; index >= 0; index -= 1) {
-    const item = items[index]
-    if (item.type === 'model') {
-      if (!item.content) continue
-      return bookkeeping && item.outputKind !== 'final' ? item : undefined
-    }
-    if (item.type === 'tool' && BOOKKEEPING.test(item.tool ?? '')) { bookkeeping = true; continue }
-    if (item.type === 'system' || item.type === 'memory' || item.type === 'changeset') continue
-    return undefined
-  }
-  return undefined
-}
-
 export function projectActivity(timeline: TurnTimeline) {
   const active = turnIsActive(timeline.status)
-  const lastFinal = [...timeline.items].reverse().find((i): i is ModelTimelineItem => i.type === 'model' && i.outputKind === 'final' && Boolean(i.content))
-  const lead = active ? undefined : finalLead(timeline.items, lastFinal)
-  const final = lead && lastFinal ? { ...lastFinal, content: `${lead.content}\n\n${lastFinal.content}` } : lastFinal
+  const final = [...timeline.items].reverse().find((i): i is ModelTimelineItem => i.type === 'model' && i.outputKind === 'final' && Boolean(i.content))
   const candidate = [...timeline.items].reverse().find((i): i is ModelTimelineItem => i.type === 'model' && Boolean(i.content) && !i.outputKind)
   const provisional = candidate && (!final || candidate.activitySeq > final.activitySeq) ? candidate : undefined
   const approvals = new Map<string, { item: ApprovalTimelineItem; agent?: string }>()
@@ -146,12 +117,12 @@ export function projectActivity(timeline: TurnTimeline) {
   }
   for (const item of timeline.items) {
     if (item.type === 'steer') { segments.push({ id: item.id, steer: item, items: [], publicTexts: [] }); continue }
-    if (item === lead || item === lastFinal) continue
     if (item.type === 'model' && !item.outputKind && item.content) {
       segments.at(-1)!.publicTexts.push(item)
       // A partial answer is kept outside only after interruption; live text keeps its position.
       if (!active && item === provisional) continue
     }
+    if (item === final) continue
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }

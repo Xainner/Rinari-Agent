@@ -941,7 +941,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {projection.instructions.map(item => <InstructionsProposalCard key={item.id} item={item} sessionId={timeline.sessionId} />)}
       {projection.presented.map(item => <PresentedFiles key={item.id} item={item} />)}
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
-      <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} final={projection.final} />
+      <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />
     </ActivityTransition></ActivityActive.Provider></ActivityMotion.Provider>
   )

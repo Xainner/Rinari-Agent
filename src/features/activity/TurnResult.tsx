@@ -22,8 +22,6 @@ export interface TurnResultProps {
   /** Acción única de implementación para un PLAN (la aporta la conversación). */
   planActions?: ReactNode
   provisional?: ModelTimelineItem
-  /** La respuesta final ya proyectada (con el texto previo a un trámite, E4). */
-  final?: ModelTimelineItem
 }
 
 const TERMINAL = new Set(['completed', 'failed', 'stopped', 'cancelled'])
@@ -42,9 +40,9 @@ const ACTIVE = new Set(['running', 'approval', 'cancelling'])
  * resultado cuenta como leído cuando su cuerpo real está en pantalla, no
  * cuando un marcador de 1 px asoma.
  */
-function TurnResult({ timeline, planActions, provisional, final: projected }: TurnResultProps) {
+function TurnResult({ timeline, planActions, provisional }: TurnResultProps) {
   const { t } = useI18n()
-  const final = provisional ?? projected ?? [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
+  const final = provisional ?? [...timeline.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final' && item.content)
   const { changes: changeSets } = presentedChangeSets(timeline)
   const terminal = TERMINAL.has(timeline.status)
   const ref = useResultVisibility(timeline.turnId, terminal)

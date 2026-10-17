@@ -233,3 +233,15 @@ it('keeps pending questions still without hiding their surrounding public progre
   expect(rendered.container.querySelector('.activity-text-shimmer')).toBeNull()
   expect(screen.getByText('Texto público')).toBeTruthy()
 })
+
+// Plan 0.4.0 extras, E4: el resumen, luego cerrar la lista de pasos, luego una línea.
+it('a summary followed only by closing the checklist is part of the final answer', () => {
+  const summary = { ...model, id: 'summary', modelCallId: 'summary', activitySeq: 1, content: 'Resumen completo del trabajo', outputKind: 'progress' as const, status: 'completed' as const }
+  const close = { id: 'tool:ck', type: 'tool' as const, tool: 'checklist.update', toolCallId: 'ck', activitySeq: 2, occurredAt: 5000, status: 'completed' as const }
+  const last = { ...model, id: 'final', modelCallId: 'final', activitySeq: 3, content: 'Listo, lista cerrada.', outputKind: 'final' as const, status: 'completed' as const }
+  render(view({ ...base, status: 'completed', completedAt: 6000, items: [summary, close, last] }))
+  const result = screen.getByTestId('turn-result').textContent ?? ''
+  expect(result).toContain('Resumen completo del trabajo')
+  expect(result).toContain('Listo, lista cerrada.')
+  expect(screen.getAllByText('Resumen completo del trabajo')).toHaveLength(1)
+})

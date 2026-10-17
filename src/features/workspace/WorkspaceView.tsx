@@ -6,18 +6,16 @@ import type { SessionSummary } from '../../services/engine'
 import ChangesPanel from './ChangesPanel'
 import CheckpointsPanel from './CheckpointsPanel'
 import ArtifactsPanel from './ArtifactsPanel'
-import InsightPanel from './InsightPanel'
 
-export type WorkspaceTab = 'changes' | 'checkpoints' | 'artifacts' | 'insight'
+export type WorkspaceTab = 'changes' | 'checkpoints' | 'artifacts'
 
-const TABS: WorkspaceTab[] = ['changes', 'checkpoints', 'artifacts', 'insight']
+const TABS: WorkspaceTab[] = ['changes', 'checkpoints', 'artifacts']
 
 /** Alcance real de cada superficie: por raíz de proyecto o por sesión. */
 export const WORKSPACE_TAB_SCOPE: Record<WorkspaceTab, 'project' | 'session'> = {
   changes: 'project',
   checkpoints: 'project',
   artifacts: 'session',
-  insight: 'session',
 }
 
 interface WorkspaceViewProps {
@@ -136,7 +134,6 @@ export default function WorkspaceView({
             {tab === 'changes' && <ChangesPanel key={path} path={path} onFiles={() => {}} />}
             {tab === 'checkpoints' && <CheckpointsPanel key={path} path={path} />}
             {tab === 'artifacts' && session && <ArtifactsPanel key={session.id} sessionId={session.id} />}
-            {tab === 'insight' && session && <InsightPanel key={session.id} sessionId={session.id} />}
           </div>
         </>
       )}

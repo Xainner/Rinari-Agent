@@ -1071,23 +1071,12 @@ export const en: Record<I18nKey, string> = {
   'workspace.tab.changes': 'Changes',
   'workspace.tab.checkpoints': 'Checkpoints',
   'workspace.tab.artifacts': 'Artifacts',
-  'workspace.tab.insight': 'Context & usage',
 
   /* Artifacts (Phase 10) */
   'artifacts.empty': 'This session has no artifacts yet.',
   'artifacts.truncated': 'Truncated view: the full artifact lives in the engine store.',
 
   /* Insight (Phase 10) */
-  'insight.context': 'Context',
-  'insight.usage': 'Usage',
-  'insight.loading': 'Loading…',
-  'insight.compacted': 'Compacted',
-  'insight.yes': 'Yes',
-  'insight.no': 'No',
-  'insight.modelCalls': 'Model calls',
-  'insight.tokens': 'Tokens in / out',
-  'insight.toolCalls': 'Tool calls',
-  'insight.noCost': 'No estimated cost: the engine knows no pricing.',
   'context.title': 'Context and compaction',
   'context.intro': 'When Rinari summarises the conversation to keep working without losing the thread.',
   'context.threshold.phrase': 'Compacts when the context reaches {n} %.',
@@ -1930,7 +1919,6 @@ export const en: Record<I18nKey, string> = {
   'dock.view.changes': 'Changes',
   'dock.view.agents': 'Agents',
   'dock.view.flow': 'Flow',
-  'dock.view.insight': 'Insight',
   'dock.more': 'More views',
   'dock.replaceTitle': 'Four views are already open',
   'dock.replaceHint': '{view} takes the place of the one you pick.',

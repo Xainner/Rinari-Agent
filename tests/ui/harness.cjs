@@ -107,8 +107,8 @@ async function click(selector, button = 'left') {
 }
 /**
  * Abre o cierra una vista del panel lateral como lo haría una persona: con su
- * botón de la barra de título o, si va en el menú «⋮» (Agentes, Flujos,
- * Insight, o lo que no cabe en una ventana estrecha), desde ese menú.
+ * botón de la barra de título o, si va en el menú «⋮» (Agentes, Flujos
+ * o lo que no cabe en una ventana estrecha), desde ese menú.
  */
 async function toggleDockView(view) {
   const button = `.dock-view-bar button[data-view="${view}"]`

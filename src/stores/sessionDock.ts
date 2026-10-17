@@ -11,11 +11,11 @@ import { create } from 'zustand'
  * `webContentsId`, grants, `busy`, handles CDP ni generaciones: nada de eso
  * es autoridad recuperable.
  */
-export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan' | 'insight'
+export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan'
 /** Las vistas con botón propio en la barra de título, en su orden. */
 export const PRIMARY_VIEWS: readonly DockView[] = ['browser', 'terminal', 'files', 'changes']
 /** Las que van en el menú «⋮» (Agentes y Flujos desde el 0.4.0); cuentan para el límite como las demás. */
-export const MORE_VIEWS: readonly DockView[] = ['agents', 'flow', 'insight']
+export const MORE_VIEWS: readonly DockView[] = ['agents', 'flow']
 /** La vista «Plan» (#55) tiene botón solo cuando la conversación tiene un plan. */
 export const DOCK_VIEWS: readonly DockView[] = [...PRIMARY_VIEWS, 'plan', ...MORE_VIEWS]
 export const MAX_VIEWS = 4
@@ -23,8 +23,9 @@ export const MAX_VIEWS = 4
 /** Nombres de antes (una superficie a la vez, Workspace con pestañas): se aceptan al revelar. */
 export type LegacySurface = 'workspace'
 export type DockSurface = DockView | LegacySurface
-export type WorkspaceTab = 'changes' | 'checkpoints' | 'artifacts' | 'insight'
-export const WORKSPACE_TABS: readonly WorkspaceTab[] = ['changes', 'checkpoints', 'artifacts', 'insight']
+// «Contexto y uso» se fue al informe de uso (#78); un valor guardado con ella se ignora.
+export type WorkspaceTab = 'changes' | 'checkpoints' | 'artifacts'
+export const WORKSPACE_TABS: readonly WorkspaceTab[] = ['changes', 'checkpoints', 'artifacts']
 
 /** Proporciones del mosaico: ancho de la columna izquierda y alto de la vista de arriba en cada columna. */
 export interface DockSplit { col: number; left: number; right: number }
@@ -85,7 +86,6 @@ export function viewForSurface(surface: DockSurface, workspaceTab?: WorkspaceTab
   if (surface !== 'workspace') return { view: surface }
   if (workspaceTab === 'checkpoints') return { view: 'changes', section: 'checkpoints' }
   if (workspaceTab === 'artifacts') return { view: 'files', section: 'artifacts' }
-  if (workspaceTab === 'insight') return { view: workspaceTab }
   return { view: 'changes' }
 }
 

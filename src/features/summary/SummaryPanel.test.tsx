@@ -31,6 +31,8 @@ vi.mock('../engine/EngineContext', async (importOriginal) => {
 })
 const openUrl = vi.fn(async () => undefined)
 const navigate = vi.fn(async () => undefined)
+const showUsageReport = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('../usage/usageReport', () => ({ showUsageReport }))
 vi.mock('../../platform', () => ({ platform: () => ({ opener: { openUrl }, browser: { navigate } }) }))
 
 import { I18nProvider } from '../../i18n'
@@ -111,11 +113,12 @@ it('sale cada tarjeta solo si tiene algo; sin proyecto lo dice', async () => {
   expect(within(panel).queryByRole('region', { name: 'Cambios' })).toBeNull()
 })
 
-it('una tarjeta lleva a su vista: Contexto abre Insight y Resultados abre un archivo', async () => {
+it('una tarjeta lleva a su vista: Contexto pinta el informe de uso y Resultados abre un archivo', async () => {
   artifactList.mockResolvedValue({ artifacts: [{ uri: 'artifact://a', name: 'informe.html' }] })
   mount()
   await userEvent.click(await screen.findByRole('button', { name: /^Contexto/ }))
-  expect(useSessionDockStore.getState().layoutFor('ses_a').views).toEqual(['insight'])
+  expect(showUsageReport).toHaveBeenCalledWith('ses_a')
+  expect(useSessionDockStore.getState().layoutFor('ses_a').views).toEqual([])
   expect(await screen.findByRole('region', { name: 'Resultados' })).toBeTruthy()
   expect(screen.getByText('informe.html')).toBeTruthy()
 })

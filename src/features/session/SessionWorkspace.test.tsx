@@ -17,7 +17,6 @@ vi.mock('../../services/desktop', () => ({
 vi.mock('../../lib/highlight', () => ({ highlightToHtml: vi.fn().mockResolvedValue(null) }))
 vi.mock('../workspace/ChangesPanel', () => ({ default: ({ path }: { path: string }) => <div data-testid={`changes-${path}`} /> }))
 vi.mock('../workspace/CheckpointsPanel', () => ({ default: () => <div data-testid="checkpoints" /> }))
-vi.mock('../workspace/InsightPanel', () => ({ default: ({ sessionId }: { sessionId: string }) => <div data-testid={`insight-${sessionId}`} /> }))
 vi.mock('../workspace/ArtifactsPanel', () => ({ default: () => <div data-testid="artifacts" /> }))
 vi.mock('../summary/SummaryPanel', () => ({ default: () => <div data-testid="summary-panel" /> }))
 
@@ -215,10 +214,10 @@ it('UX-08: when chat and dock do not fit, the dock becomes a drawer inside the s
 })
 
 it('the same dock layout follows the session from Normal into its board pane', () => {
-  useSessionDockStore.getState().reveal('ses_a', 'workspace', { workspaceTab: 'insight' })
+  useSessionDockStore.getState().reveal('ses_a', 'workspace', { workspaceTab: 'artifacts' })
   useSessionDockStore.getState().setWidth('ses_a', 420)
   const normal = render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
-  expect(screen.getByTestId('session-dock').dataset.views).toBe('insight')
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
   expect(screen.getByTestId('session-dock').style.width).toBe('420px')
   normal.unmount()
 
@@ -227,7 +226,7 @@ it('the same dock layout follows the session from Normal into its board pane', (
   render(<BoardHarness engine={engine}><BoardView /></BoardHarness>)
   const pane = screen.getByRole('region', { name: 'Backend API' })
   const dock = within(pane).getByTestId('session-dock')
-  expect(dock.dataset.views).toBe('insight')
+  expect(dock.dataset.views).toBe('files')
   expect(dock.style.width).toBe('420px')
 })
 

@@ -1,8 +1,9 @@
 import { ArrowDown, ArrowUp, Bot, ChevronDown, Ellipsis, FileStack, FileDiff, FolderOpen, Gauge, GitBranch, GitPullRequest, GitPullRequestCreate, Globe, ListChecks, Plug, Server, SquareTerminal, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
-import { engineApi, type ArtifactSummary, type ScheduledTask, type SessionSummary } from '../../services/engine'
+import { commandMessage, engineApi, type ArtifactSummary, type ScheduledTask, type SessionSummary } from '../../services/engine'
 import type { ContextStatus } from '../../types/protocol.generated'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { useBranchNoticeStore } from '../../stores/branchNotice'
@@ -14,6 +15,7 @@ import { useSessionTimelines } from '../engine/sessionSelectors'
 import { sessionAgents } from '../agents/AgentsPanel'
 import { presentedChangeSets } from '../activity/changeSetPresentation'
 import { ringFigures } from '../context/ContextRing'
+import { showUsageReport } from '../usage/usageReport'
 import { useAgentRunningCount } from '../terminal/agentTab'
 import { useFileWorkspace } from '../files/FileWorkspace'
 import { branchChangeText } from '../engine/useSessionList'
@@ -152,7 +154,7 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
     const percent = Math.round(figures.ratio * 100)
     cards.context = (
       <SummaryCard id="context" icon={<Gauge size={14} />} title={t('summary.context.title')} meta={`${figures.estimated ? '≈' : ''}${percent}%`}
-        onOpen={() => openView(sessionId, 'insight')} openLabel={t('summary.context.open')} prefs={prefs} onPrefs={update}>
+        onOpen={() => void showUsageReport(sessionId).catch((err) => toast.error(commandMessage(err)))} openLabel={t('summary.context.open')} prefs={prefs} onPrefs={update}>
         <div className="summary-bar" data-near={figures.near || undefined} role="img" aria-label={t('summary.context.used', { n: percent })}>
           <span style={{ width: `${percent}%` }} />
         </div>

@@ -4,7 +4,7 @@ import { dispatchAction } from '../../services/actions'
 import { useUIStore } from '../../stores/ui'
 import { translate } from '../../i18n'
 import { useGoalStore } from '../goal/goalStore'
-import { usageApi, useUsageReports } from '../usage/usageReport'
+import { showUsageReport } from '../usage/usageReport'
 import type { DockSurface, WorkspaceTab } from '../../stores/sessionDock'
 
 export interface UiCommandDeps {
@@ -86,8 +86,7 @@ async function usage(deps: UiCommandDeps): Promise<boolean> {
     toast(translate(useUIStore.getState().lang, 'init.needsConversation'))
     return true
   }
-  const { report } = await usageApi.report('session', sessionId, { sessionId })
-  useUsageReports.getState().add(sessionId, report)
+  await showUsageReport(sessionId)
   return true
 }
 
@@ -118,8 +117,9 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
       case 'compact':
         await engineApi.contextCompact(deps.sessionId)
         return true
+      // El contexto está en el informe de uso (#78): ya no hay pestaña propia.
       case 'context':
-        return workspace('insight')
+        return await usage(deps)
       case 'diff':
         return workspace('changes')
       case 'skills':

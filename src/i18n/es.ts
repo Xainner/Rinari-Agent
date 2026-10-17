@@ -1089,23 +1089,12 @@ export const es = {
   'workspace.tab.changes': 'Cambios',
   'workspace.tab.checkpoints': 'Checkpoints',
   'workspace.tab.artifacts': 'Artefactos',
-  'workspace.tab.insight': 'Contexto y uso',
 
   /* Artifacts (Phase 10) */
   'artifacts.empty': 'Esta sesión aún no tiene artefactos.',
   'artifacts.truncated': 'Vista truncada: el artefacto completo vive en el store del engine.',
 
   /* Insight (Phase 10) */
-  'insight.context': 'Contexto',
-  'insight.usage': 'Uso',
-  'insight.loading': 'Cargando…',
-  'insight.compacted': 'Compactado',
-  'insight.yes': 'Sí',
-  'insight.no': 'No',
-  'insight.modelCalls': 'Llamadas al modelo',
-  'insight.tokens': 'Tokens in / out',
-  'insight.toolCalls': 'Tool calls',
-  'insight.noCost': 'Sin costo estimado: el engine no conoce precios.',
   'context.title': 'Contexto y compactación',
   'context.intro': 'Cuándo Rinari resume la conversación para seguir trabajando sin perder el hilo.',
   'context.threshold.phrase': 'Compacta cuando el contexto llega al {n} %.',
@@ -1947,7 +1936,6 @@ export const es = {
   'dock.view.changes': 'Cambios',
   'dock.view.agents': 'Agentes',
   'dock.view.flow': 'Flujo',
-  'dock.view.insight': 'Insight',
   'dock.more': 'Más vistas',
   'dock.replaceTitle': 'Ya hay cuatro vistas abiertas',
   'dock.replaceHint': '{view} ocupará el sitio de la que elijas.',

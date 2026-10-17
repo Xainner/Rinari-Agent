@@ -104,3 +104,12 @@ export function usageMarkdown(report: UsageReport, labels: { title: string; scop
   }
   return `${lines.join('\n')}\n`
 }
+
+/**
+ * Pinta en el chat el informe de uso de una conversación (#78): `/usage`,
+ * `/context`, el «Detalles» del anillo y la tarjeta de contexto del resumen.
+ */
+export async function showUsageReport(sessionId: string): Promise<void> {
+  const { report } = await usageApi.report('session', sessionId, { sessionId })
+  useUsageReports.getState().add(sessionId, report)
+}

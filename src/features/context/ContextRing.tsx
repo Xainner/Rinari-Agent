@@ -1,10 +1,10 @@
-import { usageApi, useUsageReports } from '../usage/usageReport'
+import { showUsageReport } from '../usage/usageReport'
+import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { engineApi, onEngineEvent } from '../../services/engine'
+import { commandMessage, engineApi, onEngineEvent } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
-import { useSessionDockStore } from '../../stores/sessionDock'
 import { lastCompaction, lastRequest } from './contextStatus'
 
 /** Events after which the session's context may have grown or shrunk. */
@@ -199,9 +199,7 @@ export default function ContextRing({ sessionId, modelId, providerAlias }: { ses
           {/* «Detalles» pinta el informe de uso en el chat (#78). */}
           {sessionId && <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
             setOpen(false)
-            void usageApi.report('session', sessionId, { sessionId })
-              .then(({ report }) => useUsageReports.getState().add(sessionId, report))
-              .catch(() => useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'insight' }))
+            void showUsageReport(sessionId).catch((err) => toast.error(commandMessage(err)))
           }}>{t('context.details')}</button>}
           {sessionId && <button type="button" className="btn btn-quiet btn-sm" disabled={compacting} onClick={() => void compactNow()}>{t('context.compactNow')}</button>}
         </div>

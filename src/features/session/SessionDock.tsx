@@ -11,7 +11,6 @@ import AgentsPanel from '../agents/AgentsPanel'
 import TurnChangesView from '../workspace/TurnChangesView'
 import CheckpointsPanel from '../workspace/CheckpointsPanel'
 import ArtifactsPanel from '../workspace/ArtifactsPanel'
-import InsightPanel from '../workspace/InsightPanel'
 import FlowView from '../flow/FlowView'
 import PlanView from '../plan/PlanView'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
@@ -532,8 +531,6 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
       return <FlowView sessionId={sessionId} embedded />
     case 'plan':
       return <PlanView sessionId={sessionId} />
-    case 'insight':
-      return <div className="dock-scroll"><InsightPanel key={sessionId} sessionId={sessionId} /></div>
   }
   void sharedRoot
 }

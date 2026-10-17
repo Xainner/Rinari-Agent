@@ -94,7 +94,7 @@ export default function SettingsView({
         />
       )}
       {section === 'terminal' && <TerminalView />}
-      {section === 'advanced' && <AdvancedSettings models={models} providers={providers} />}
+      {section === 'advanced' && <AdvancedSettings models={models} providers={providers} activeSessionId={activeSessionId} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
       {/* Solo lo que aún no tiene página: Dictado, Notificaciones y Navegador ya la tienen. */}
       {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'about'].includes(section) && (

@@ -217,6 +217,8 @@ const api = {
     hostSettings: () => call<HostSettings>(CHANNEL.appHostSettingsGet),
     setHostSettings: (patch: HostSettingsPatch) => call<HostSettings>(CHANNEL.appHostSettingsSet, patch),
     relaunch: () => call<void>(CHANNEL.appRelaunch),
+    stableReturnPreview: () => call<import('../shared/contracts').StableReturnPreview>(CHANNEL.appStableReturnPreview),
+    stableReturnApply: (name: string) => call<void>(CHANNEL.appStableReturnApply, name),
   },
 
   contextMenu: {

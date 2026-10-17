@@ -50,6 +50,8 @@ export const CHANNEL = {
   appHostSettingsSet: 'rinari:app.hostSettings.set',
   /** Reiniciar la app (la aceleración por hardware se aplica al abrir). */
   appRelaunch: 'rinari:app.relaunch',
+  appStableReturnPreview: 'rinari:app.stableReturn.preview',
+  appStableReturnApply: 'rinari:app.stableReturn.apply',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
@@ -267,6 +269,15 @@ export interface HostSettings {
   environment: Array<{ name: string; value: string }>
   channel: 'stable' | 'nightly'
   packaged: boolean
+}
+
+/** «Volver a la versión normal» desde la Nightly (#96): a qué copia de la base se vuelve. */
+export interface StableReturnPreview {
+  /** Solo en la Nightly. */
+  available: boolean
+  backup: { name: string; createdAt: string; from: number; to: number } | null
+  /** La versión normal está instalada para este usuario (si no, se abre la página de descargas). */
+  stableInstalled: boolean
 }
 
 export interface HostSettingsPatch {

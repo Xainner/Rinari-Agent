@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Activity, ChevronDown, Cpu, Download, Eraser, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, Lock, RotateCcw,
+  Activity, ChevronDown, Cpu, Download, Eraser, FolderOpen, Gauge, Globe, HardDrive, LoaderCircle, Lock, PackageOpen, RotateCcw,
   Search, ShieldAlert, Sparkles, Stethoscope, Workflow,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import { useUIStore } from '../../stores/ui'
 import { Switch } from '../ui/switch'
 import { useConfirm } from '../ui/useConfirm'
 import { platform, type HostSettings, type HostSettingsPatch, type StartupLimit } from '../../platform'
+import type { StableReturnPreview } from '../../../electron/shared/contracts'
 import type { EngineStatus } from '../../platform/engineStatus'
 import {
   commandMessage, engineApi, type AdvancedSetting, type ExecutionSettingsResult,
@@ -18,6 +19,7 @@ import {
 } from '../../services/engine'
 import type { NetworkSettings, NetworkTest } from '../../types/protocol.generated'
 import OrphanProcesses from '../../features/processes/OrphanProcesses'
+import { useReviewExport } from '../../features/review/ReviewExportDialog'
 import { IS_NIGHTLY } from '../../lib/channel'
 import { inputClass } from './parts'
 import { useCalmMotion } from '../../lib/motion'
@@ -68,7 +70,7 @@ function formatBytes(bytes: number): string {
  * tarjetas plegables con su resumen y una búsqueda arriba. El máximo de
  * salida vive en cada modelo y los tiempos de un proveedor en el proveedor.
  */
-export default function AdvancedSettings({ providers = [] }: { models?: ModelSummary[]; providers?: ProviderSummary[] }) {
+export default function AdvancedSettings({ providers = [], activeSessionId = null }: { models?: ModelSummary[]; providers?: ProviderSummary[]; activeSessionId?: string | null }) {
   const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<Record<string, boolean>>({})
@@ -145,7 +147,7 @@ export default function AdvancedSettings({ providers = [] }: { models?: ModelSum
         <ConnectionsCard {...card('connections', words('adv.connections.title', 'adv.connections.desc') + ' timeout tiempo espera concurrency')} execution={execution} providers={providers} onSaved={setExecution} />
         <LimitsCard {...card('limits', words('adv.limits.title', 'adv.limits.desc') + ' bucle loop subagentes coste cost')} limits={limits} onSaved={setLimits} />
         <NetworkCard {...card('network', words('adv.network.title', 'adv.network.desc') + ' proxy certificados certificates tls')} network={network} onSaved={setNetwork} />
-        <DiagnosticsCard {...card('diagnostics', words('adv.diagnostics.title', 'adv.diagnostics.desc', 'adv.diagnostics.detailed') + ' registros logs')} />
+        <DiagnosticsCard {...card('diagnostics', words('adv.diagnostics.title', 'adv.diagnostics.desc', 'adv.diagnostics.detailed', 'review.title') + ' registros logs')} activeSessionId={activeSessionId} />
         <StorageCard {...card('storage', words('adv.storage.title', 'adv.storage.desc', 'adv.storage.clean') + ' espacio disco disk')} />
         <ProcessesCard {...card('processes', words('adv.processes.title', 'adv.processes.desc') + ' huérfanos orphans')} />
         <EngineCard {...card('engine', words('adv.engine.title', 'adv.engine.desc', 'adv.engine.startupLimit', 'adv.engine.hardware', 'adv.engine.environment') + ' motor reiniciar restart rinari.md gpu')} status={status} />
@@ -486,7 +488,7 @@ function useHostSettings(open: boolean) {
   return { host, update }
 }
 
-function DiagnosticsCard(card: CardProps) {
+function DiagnosticsCard({ activeSessionId, ...card }: CardProps & { activeSessionId: string | null }) {
   const { t, lang } = useI18n()
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   const setTechnical = useUIStore((state) => state.setShowTechnicalActivityNames)
@@ -520,6 +522,10 @@ function DiagnosticsCard(card: CardProps) {
         </button>
         <button type="button" className="btn btn-secondary btn-sm" disabled={diagnostics.exporting} onClick={() => void diagnostics.run()}>
           {diagnostics.exporting ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <Stethoscope size={13} aria-hidden="true" />} {t('settings.about.exportAction')}
+        </button>
+        {/* La conversación abierta, para que otro la revise (#79). */}
+        <button type="button" className="btn btn-secondary btn-sm" data-testid="adv-review-export" disabled={!activeSessionId} title={activeSessionId ? undefined : t('adv.diagnostics.reviewNoSession')} onClick={() => activeSessionId && useReviewExport.getState().open(activeSessionId)}>
+          <PackageOpen size={13} aria-hidden="true" /> {t('review.menu')}
         </button>
       </div>
       {diagnostics.dialog}
@@ -779,10 +785,40 @@ function EngineCard({ status, ...card }: CardProps & { status: EngineStatus | nu
 const RELEASES_URL = 'https://github.com/Xainner/Rinari-Agent/releases/latest'
 
 function UpdatesCard(card: CardProps) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const auto = useUIStore((state) => state.autoCheckUpdates)
   const setAuto = useUIStore((state) => state.setAutoCheckUpdates)
   const [checking, setChecking] = useState(false)
+  const confirm = useConfirm()
+  // Nightly → la copia de la base a la que se vuelve (#96).
+  const [stableReturn, setStableReturn] = useState<StableReturnPreview | null>(null)
+  const [returning, setReturning] = useState(false)
+  useEffect(() => {
+    if (!IS_NIGHTLY || !card.open) return
+    platform().app.stableReturnPreview().then(setStableReturn).catch(() => setStableReturn(null))
+  }, [card.open])
+  const backToStable = async () => {
+    const backup = stableReturn?.backup
+    if (!backup) {
+      void platform().opener.openUrl(RELEASES_URL).catch((e) => toast.error(commandMessage(e)))
+      return
+    }
+    const date = new Date(backup.createdAt).toLocaleString(lang === 'es' ? 'es' : 'en', { dateStyle: 'medium', timeStyle: 'short' })
+    const sure = await confirm.ask({
+      title: t('adv.updates.backTitle'),
+      body: `${t('adv.updates.backBody', { date })} ${stableReturn?.stableInstalled ? t('adv.updates.backOpensStable') : t('adv.updates.backOpensDownloads')}`,
+      confirmLabel: t('adv.updates.backConfirm'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (!sure) return
+    setReturning(true)
+    try {
+      await platform().app.stableReturnApply(backup.name)
+    } catch (e) {
+      toast.error(commandMessage(e))
+      setReturning(false)
+    }
+  }
   const check = async () => {
     setChecking(true)
     try {
@@ -807,9 +843,10 @@ function UpdatesCard(card: CardProps) {
       </div>
       {IS_NIGHTLY ? (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void platform().opener.openUrl(RELEASES_URL).catch((e) => toast.error(commandMessage(e)))}>
-            {t('adv.updates.backToStable')}
+          <button type="button" className="btn btn-secondary btn-sm" data-testid="back-to-stable" disabled={returning} onClick={() => void backToStable()}>
+            {returning ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <RotateCcw size={13} aria-hidden="true" />} {t('adv.updates.backToStable')}
           </button>
+          {stableReturn && !stableReturn.backup && <p className="adv-row-hint w-full">{t('adv.updates.backNoCopy')}</p>}
         </div>
       ) : (
         <>
@@ -826,6 +863,7 @@ function UpdatesCard(card: CardProps) {
           </div>
         </>
       )}
+      {confirm.dialog}
     </AdvCard>
   )
 }

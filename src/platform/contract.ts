@@ -221,6 +221,10 @@ export interface DesktopBridge {
     setHostSettings(patch: HostSettingsPatch): Promise<HostSettings>
     /** Cierra y vuelve a abrir la app (para aplicar la aceleración por hardware). */
     relaunch(): Promise<void>
+    /** Nightly → «Volver a la versión normal» (#96): la copia de la base a la que se vuelve. */
+    stableReturnPreview(): Promise<import('../../electron/shared/contracts').StableReturnPreview>
+    /** Restaura esa copia, abre la versión normal y cierra la Nightly. */
+    stableReturnApply(name: string): Promise<void>
   }
 
   events: {

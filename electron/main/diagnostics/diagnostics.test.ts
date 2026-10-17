@@ -145,6 +145,23 @@ describe('createDiagnostics', () => {
     expect(readFileSync(diagnostics.engine.path, 'utf8')).toContain('sent as an error')
   })
 
+  it('con registros detallados anota cada comando y su tiempo; sin ellos, nada (#96)', async () => {
+    let on = false
+    const logsDir = mkdtempSync(join(tmpdir(), 'rinari-detailed-'))
+    const diagnostics = createDiagnostics({
+      logsDir, crashDir: null, appVersion: '0.4.0', versions: {}, os: { platform: 'win32', release: '10', arch: 'x64' },
+      engine: { status: () => ({ state: 'ready' }), diagnostics: async () => ({}) },
+      detailed: () => on,
+    })
+    diagnostics.commandDone('session_list', 12.4)
+    on = true
+    diagnostics.commandDone('session_history', 87.6)
+    await diagnostics.app.flush()
+    const app = readFileSync(diagnostics.app.path, 'utf8')
+    expect(app).not.toContain('session_list')
+    expect(app).toContain('DEBUG command session_history 88 ms')
+  })
+
   it('la vista previa lista el resumen, los registros y los volcados', async () => {
     const { diagnostics } = setup()
     diagnostics.log('info', 'arranque')

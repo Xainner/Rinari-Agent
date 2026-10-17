@@ -133,6 +133,9 @@ export interface HostServices {
     hostSettings(): HostSettings
     setHostSettings(patch: HostSettingsPatch): HostSettings
     relaunch(): Promise<void>
+    stableReturnPreview(): Promise<import('../../shared/contracts').StableReturnPreview>
+    /** Restaura la copia elegida con el Engine apagado, abre la normal y cierra la Nightly. */
+    stableReturnApply(name: string): Promise<void>
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -523,6 +526,11 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [CHANNEL.appHostSettingsGet, guarded(registry, () => services.app.hostSettings())],
     [CHANNEL.appHostSettingsSet, guarded(registry, (_event, patch) => services.app.setHostSettings(assertHostSettingsPatch(patch)))],
     [CHANNEL.appRelaunch, guarded(registry, () => services.app.relaunch())],
+    [CHANNEL.appStableReturnPreview, guarded(registry, () => services.app.stableReturnPreview())],
+    [CHANNEL.appStableReturnApply, guarded(registry, (_event, name) => {
+      if (typeof name !== 'string' || !/^antes-de-migrar-[\w-]+$/.test(name)) throw new Error('Invalid backup name')
+      return services.app.stableReturnApply(name)
+    })],
     [
       CHANNEL.appIndicatorsSet,
       guarded(registry, (_event, state) => {

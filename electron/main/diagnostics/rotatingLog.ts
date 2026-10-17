@@ -9,7 +9,7 @@ import { appendFile, mkdir, rename, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { redact as defaultRedact } from './redact'
 
-export type LogLevel = 'info' | 'warn' | 'error'
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 export interface RotatingLogOptions {
   dir: string

@@ -198,3 +198,15 @@ it('Diagnóstico: registros detallados por 24 h (#96)', async () => {
   await userEvent.click(within(row).getByRole('switch'))
   await waitFor(() => expect(row.textContent).toContain('Activos hasta'))
 })
+
+it('Diagnóstico: «Exportar para revisión» abre el diálogo de la conversación activa, y sin una no deja (#96)', async () => {
+  const { useReviewExport } = await import('../../features/review/ReviewExportDialog')
+  const { unmount } = render(<I18nProvider lang="es"><AdvancedSettings /></I18nProvider>)
+  await openCard('Diagnóstico')
+  expect((await screen.findByTestId('adv-review-export') as HTMLButtonElement).disabled).toBe(true)
+  unmount()
+  render(<I18nProvider lang="es"><AdvancedSettings activeSessionId="ses_a" /></I18nProvider>)
+  await openCard('Diagnóstico')
+  await userEvent.click(await screen.findByTestId('adv-review-export'))
+  expect(useReviewExport.getState().target?.sessionId).toBe('ses_a')
+})

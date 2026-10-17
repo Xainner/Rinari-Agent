@@ -7,12 +7,15 @@
  */
 
 import { app, protocol, BrowserWindow, ClipboardItem, Menu, clipboard, crashReporter, dialog, nativeImage, shell } from 'electron'
+import { spawn } from 'node:child_process'
+import { statSync } from 'node:fs'
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
 import { APP_USER_MODEL_ID, IS_NIGHTLY, NIGHTLY_USER_DATA_DIR, PRODUCT_NAME } from './channel'
+import { listBackups, pickBackup, restoreBackup, stableExecutable } from './native/backToStable'
 import { OTHER_EXECUTABLE, isImageRunning } from './otherChannel'
 import { BrowserRegistry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
@@ -92,6 +95,8 @@ const diagnostics = createDiagnostics({
     diagnostics: () => engine.request('engine.diagnostics', {}),
   },
   extraLogFiles: [join(logsDirFor(app.getPath('userData')), 'updater.log')],
+  // `hostSettings` se carga justo después; hasta entonces, normal.
+  detailed: () => detailedLogsActive(hostSettings),
 })
 diagnostics.captureConsole()
 diagnostics.watchProcess()
@@ -618,9 +623,12 @@ function buildServices(): HostServices {
       // del protocolo y con otras claves. Sin traducir, ninguna llamada de
       // dominio llegaría a su destino.
       request: async (name, params) => {
+        const started = performance.now()
         try {
           const call = translateCommand(name, params ?? {})
-          return await engine.request(call.method, call.params)
+          const result = await engine.request(call.method, call.params)
+          diagnostics.commandDone(name, performance.now() - started)
+          return result
         } catch (error) {
           diagnostics.commandFailed(name, error instanceof EngineCommandError ? error.code : 'HOST_ERROR')
           throw error
@@ -743,7 +751,7 @@ function buildServices(): HostServices {
       openFolder: async (place) => {
         // Solo lugares conocidos: la carpeta de Rinari, los registros de la
         // app o el RINARI.md global (que se crea vacío si no existe).
-        const home = process.env.RINARI_HOME?.trim() || join(homedir(), '.rinari')
+        const home = rinariHome()
         if (place === 'logs') {
           const failure = await shell.openPath(logsDirFor(app.getPath('userData')))
           if (failure) throw new Error(failure)
@@ -771,6 +779,28 @@ function buildServices(): HostServices {
         app.relaunch()
         await quitCoordinator.requestQuit('menu')
       },
+      stableReturnPreview: async () => {
+        if (!IS_NIGHTLY) return { available: false, backup: null, stableInstalled: false }
+        const backup = pickBackup(listBackups(rinariHome()), statSync(app.getPath('userData')).birthtime)
+        return {
+          available: true,
+          backup: backup && { name: backup.name, createdAt: backup.createdAt.toISOString(), from: backup.from, to: backup.to },
+          stableInstalled: stableExecutable() !== null,
+        }
+      },
+      stableReturnApply: async (name) => {
+        if (!IS_NIGHTLY) throw new Error('Only the Nightly can go back to the normal version')
+        const backup = listBackups(rinariHome()).find((item) => item.name === name)
+        if (!backup) throw new Error(`Backup not found: ${name}`)
+        // La base no se toca con el Engine abierto.
+        await engine.shutdown()
+        const kept = await restoreBackup(rinariHome(), backup)
+        diagnostics.log('warn', `back to the normal version: restored ${backup.name}; the Nightly state is kept in ${kept}`)
+        const stable = stableExecutable()
+        if (stable) spawn(stable, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref()
+        else await shell.openExternal('https://github.com/Xainner/Rinari-Agent/releases/latest')
+        await quitCoordinator.requestQuit('menu')
+      },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
     notifications,
@@ -778,6 +808,11 @@ function buildServices(): HostServices {
     migration,
     handoff: { initial: () => parseOpenRequest(process.argv, app.isPackaged ? 1 : 2) },
   }
+}
+
+/** La carpeta de Rinari que usa el Engine (`~/.rinari`, o `RINARI_HOME`). */
+function rinariHome(): string {
+  return process.env.RINARI_HOME?.trim() || join(homedir(), '.rinari')
 }
 
 /**

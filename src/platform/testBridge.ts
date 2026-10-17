@@ -358,6 +358,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async relaunch() {
         bridge.relaunched += 1
       },
+      async stableReturnPreview() {
+        return { available: false, backup: null, stableInstalled: false }
+      },
+      async stableReturnApply() {},
     },
 
     events: {

@@ -151,6 +151,8 @@ interface DesktopHostApi {
     hostSettings(): Promise<HostSettings>
     setHostSettings(patch: HostSettingsPatch): Promise<HostSettings>
     relaunch(): Promise<void>
+    stableReturnPreview(): Promise<import('../../electron/shared/contracts').StableReturnPreview>
+    stableReturnApply(name: string): Promise<void>
   }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
@@ -290,6 +292,8 @@ export const electronBridge: DesktopBridge = {
     hostSettings: () => required().app.hostSettings(),
     setHostSettings: (patch) => required().app.setHostSettings(patch),
     relaunch: () => required().app.relaunch(),
+    stableReturnPreview: () => required().app.stableReturnPreview(),
+    stableReturnApply: (name) => required().app.stableReturnApply(name),
   },
 
   events: {

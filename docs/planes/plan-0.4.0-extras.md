@@ -7,7 +7,7 @@ Pedidos sueltos del dueño después de cerrar las tandas de [plan-0.4.0.md](plan
 | E1 | La etiqueta de permisos junto al título sobra | Agent | Hecho (6d8adb3) |
 | E2 | El tiempo sale dos veces en la tarjeta de trabajo | Agent | Hecho |
 | E3 | Avisos entre perfiles: no salió el indicador | Agent | Registro arreglado (3e4f72e); falta reproducirlo con la Nightly nueva |
-| E4 | El resumen final quedó dentro de la actividad y la respuesta fue una oración | CLI + Agent | Hecho (CLI 452278c, Agent 67c3f29) |
+| E4 | El resumen final quedó dentro de la actividad y la respuesta fue una oración | CLI | Hecho en el CLI (452278c); el cambio de la app se revirtió (64f1324) |
 
 ---
 
@@ -86,3 +86,5 @@ La app toma como respuesta final solo el texto **después de la última herramie
 **Pruebas.**
 - **Vitest:** con texto → `checklist.update` → texto corto, el resultado muestra los dos textos, y la actividad no se queda con el resumen.
 - **CLI:** la regla está en el prompt.
+
+**Decisión del dueño (2026-10-17).** El punto 1 no va: juntar textos en la app según qué herramientas hay en medio se siente forzado, y la app ya funcionaba bien. Se revirtió (64f1324). La respuesta final sigue siendo el texto después de la última herramienta, y el arreglo queda solo en el CLI: la descripción de `checklist` pide cerrarla antes del resumen (452278c).

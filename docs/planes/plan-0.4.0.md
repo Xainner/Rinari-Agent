@@ -3063,6 +3063,18 @@ Lo visual va con la sesión de pulido en la tanda 17; el punto 2 tiene una parte
 4. **Cada línea muestra su propio informe**, no el más reciente: el informe se guarda con el turno.
 5. **«Marcar como leído» se quita:** un turno se marca visto cuando su resultado aparece en pantalla con la ventana enfocada (o al escribir, como hoy).
 
+**Decisión del dueño (2026-10-17): como Claude Code.** El informe no espera a que termine el turno de la madre. Entra en su siguiente paso, como un mensaje guiado, y ella decide si cambia de rumbo. Con eso sobra la tarjeta del punto 3.
+
+**Hecho (2026-10-17).**
+- **CLI 3d5068d:**
+  - el mensaje de la madre conserva su origen en la cola;
+  - el informe se guarda antes del turno siguiente, con un solo aviso;
+  - con la madre ocupada, el informe entra por guía (`source: child_report`) y se marca leído cuando ella lo lee; si su turno acaba antes, la despierta como siempre.
+- **Agent f2480f6:**
+  - el informe leído a mitad de turno se ve como la misma línea «Informe recibido de…»;
+  - cada línea guarda lo que dijo la hija en ese momento;
+  - «Marcar como leído» se quitó. **Corrección:** ver el resultado ya marcaba el turno como visto (`useResultVisibility`: 0,5 s a la vista con la ventana atendida, o 3 s / un gesto si terminó en tu ausencia); el botón era solo un atajo.
+
 **Pruebas.**
 - **CLI:**
   - un mensaje de la madre que llega al terminar la hija se encola como `parent_message` y despierta a la madre sin los 30 s;

@@ -39,3 +39,20 @@ it('says so when nothing is allowed for good', async () => {
   render(<I18nProvider lang="es"><SavedGrants /></I18nProvider>)
   expect(await screen.findByText('Todavía no hay nada permitido para siempre.')).toBeTruthy()
 })
+
+it('lists old «always in chats» grants as old, last, to remove (#56)', async () => {
+  vi.mocked(engineApi.permissionGrantsList).mockResolvedValue({
+    grants: [
+      { id: 'g2', scope: 'chats', scope_kind: 'chats', legacy: true, scope_label: '', capability: 'shell.exec', rule_id: 'git_remote_mutation', target: null, description: '', granted_at: '' },
+      { id: 'g1', scope: 'C:/repo/app', scope_kind: 'project', scope_label: 'App', capability: 'network.outbound', rule_id: 'network_send', target: 'api.github.com', description: '', granted_at: '' },
+    ],
+  })
+  const { container } = render(<I18nProvider lang="es"><SavedGrants /></I18nProvider>)
+  expect(await screen.findByText('Antiguos: «Siempre en los chats»')).toBeTruthy()
+  expect(screen.getByText(/Ya no se aplican/)).toBeTruthy()
+  const groups = [...container.querySelectorAll('[data-legacy]')]
+  expect(groups).toHaveLength(1)
+  // After the project ones.
+  expect(screen.getByText('App').compareDocumentPosition(groups[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Quitar «git push»' })).toBeTruthy()
+})

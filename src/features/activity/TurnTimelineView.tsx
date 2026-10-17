@@ -684,19 +684,23 @@ function StreamOutput({ label, content, warning = false }: { label: string; cont
 const ScheduledRunContext = createContext<string | null>(null)
 
 function ApprovalActions({ item, disabled, onResolve }: { item: Extract<TimelineItem, { type: 'approval' }>; disabled: boolean; onResolve: (id: string, decision: string) => void }) {
-  const { lang } = useI18n()
+  const { t } = useI18n()
   const runSession = useContext(ScheduledRunContext)
   const [granting, setGranting] = useState(false)
-  const choices = [
-    ['deny', lang === 'es' ? 'Denegar' : 'Deny'],
-    ['allow_once', lang === 'es' ? 'Permitir una vez' : 'Allow once'],
-    ['allow_session', lang === 'es' ? 'Permitir en este chat' : 'Allow in this chat'],
-    ['allow_project', item.grantScope === 'chats'
-      ? (lang === 'es' ? 'Siempre en los chats' : 'Always in chats')
-      : (lang === 'es' ? 'Siempre en este proyecto' : 'Always in this project')],
+  // Los alcances según la conversación (#56): en un chat suelto «En este
+  // chat»; en una de proyecto «En esta sesión» y «Siempre en este proyecto».
+  // Un chat suelto no tiene «siempre»: el Engine ya no lo ofrece.
+  const project = item.grantScope === 'project'
+  const choices: Array<[string, string]> = [
+    ['deny', t('approval.choice.deny')],
+    ['allow_once', t('approval.choice.once')],
+    ['allow_session', t(project ? 'approval.choice.session' : 'approval.choice.chat')],
+    ['allow_project', t('approval.choice.project')],
   ]
-  // «Siempre…» solo si el Engine lo ofrece: uno anterior a permisos v3 no lo entiende.
-  const offered = choices.filter(([decision]) => item.choices ? item.choices.includes(decision) : decision !== 'allow_project')
+  // «Siempre…» solo si el Engine lo ofrece, y nunca en un chat suelto.
+  const offered = choices.filter(([decision]) => decision === 'allow_project'
+    ? project && Boolean(item.choices?.includes(decision))
+    : item.choices ? item.choices.includes(decision) : true)
   const buttonClass = (decision: string) => decision === 'allow_once' ? 'btn btn-primary' : decision === 'deny' ? 'btn btn-ghost' : 'btn btn-secondary'
   // La tarea suma el permiso y la ejecución sigue: las próximas no preguntan.
   const allowForTask = async () => {
@@ -715,7 +719,7 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
     {offered.map(([decision, label]) => <button key={decision} type="button" disabled={disabled} onClick={() => onResolve(item.approvalId, decision)} className={buttonClass(decision)}>{label}</button>)}
     {runSession && item.reusable !== false && offered.some(([decision]) => decision === 'allow_session') && (
       <button type="button" disabled={disabled || granting} onClick={() => void allowForTask()} className={buttonClass('allow_task')}>
-        {lang === 'es' ? 'Permitir para esta tarea' : 'Allow for this task'}
+        {t('approval.choice.task')}
       </button>
     )}
   </>

@@ -83,10 +83,10 @@ describe('TurnTimelineView', () => {
   it('does not offer a reusable grant when the engine forbids it', () => {
     view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'fs.write', risk: 'high', description: 'Archivo sensible', choices: ['deny', 'allow_once'], reusable: false }] }, 1_200)
     expect(screen.getByRole('button', { name: 'Permitir una vez' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Permitir en este chat' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'En este chat' })).toBeNull()
   })
 
-  it('offers «always here» only when the engine does, named for the project or the chats', async () => {
+  it('scopes follow the conversation: «in this chat» loose, «in this session» and «always» in a project (#56)', async () => {
     const resolve = vi.fn()
     const approval = { id: 'approval:p1', type: 'approval' as const, activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending' as const, capability: 'network.outbound', target: 'api.example.com', risk: 'medium', description: 'Enviar datos' }
     const legacy = view({ ...base, status: 'approval', items: [approval] }, 1_200, resolve)
@@ -96,9 +96,18 @@ describe('TurnTimelineView', () => {
     const project = view({ ...base, status: 'approval', items: [offered] }, 1_200, resolve)
     await userEvent.click(screen.getByRole('button', { name: 'Siempre en este proyecto' }))
     expect(resolve).toHaveBeenCalledWith('p1', 'allow_project')
+    expect(screen.getByRole('button', { name: 'En esta sesión' })).toBeTruthy()
     project.unmount()
+    // A loose chat: «in this chat», never «always» (even from an older Engine).
     view({ ...base, status: 'approval', items: [{ ...offered, grantScope: 'chats' as const }] }, 1_200, resolve)
-    expect(screen.getByRole('button', { name: 'Siempre en los chats' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'En este chat' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Siempre/ })).toBeNull()
+  })
+
+  it('says why in the owner language, not the Engine text (#56)', () => {
+    view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'shell.exec', target: 'npm test', risk: 'medium', description: 'shell.exec: read-only mode: a command could change files, so each one is asked', ruleId: 'read_only_command' }] }, 1_200)
+    expect(screen.getByText('Correr un comando en modo solo lectura (podría cambiar archivos)')).toBeTruthy()
+    expect(screen.queryByText(/read-only mode/)).toBeNull()
   })
 
   it('names the rule that asked in plain words, and warns after external content', () => {

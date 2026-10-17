@@ -10,6 +10,7 @@
 import { createServer } from 'node:http'
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 
 const paragraphs = (count, line) => Array.from({ length: count }, (_, i) => line(i + 1)).join('\n\n')
@@ -135,6 +136,41 @@ export const scenarios = {
         { text: 'OBJETIVO LISTO' },
         { text: 'EXTRA UNO' },
         { text: 'EXTRA DOS' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
+  'approval-scopes': {
+    title: 'Aprobaciones según la conversación: en un chat suelto «En este chat» sin «Siempre», vale en ese chat y otro vuelve a preguntar',
+    phases: ['exercise'],
+    model: () => {
+      const outside = (name) => join(tmpdir(), 'rinari-ui-approval-scopes', name)
+      return startRoutedModel({
+        title: Array.from({ length: 6 }, () => ({ text: 'Notas' })),
+        main: [
+          { tool: 'fs.write', args: { path: outside('uno.txt'), content: 'uno' }, say: 'La guardo.' },
+          { text: 'NOTA UNO' },
+          { tool: 'fs.write', args: { path: outside('dos.txt'), content: 'dos' }, say: 'Otra.' },
+          { text: 'NOTA DOS' },
+          { tool: 'fs.write', args: { path: outside('tres.txt'), content: 'tres' }, say: 'Aquí también.' },
+          { text: 'NO LA GUARDÉ' },
+          { text: 'EXTRA' },
+        ],
+      }, laneOf, { held: ['main'] })
+    },
+  },
+  'question-steps': {
+    title: 'Preguntas de varios pasos: un solo botón «Continuar» / «Enviar respuestas», puntos de progreso y la pregunta entra desde el lado hacia el que se avanzó',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Viaje' })),
+      main: [
+        { tool: 'user.ask', args: { questions: [
+          { id: 'where', title: '¿A dónde vamos?', options: [{ label: 'Playa' }, { label: 'Montaña' }] },
+          { id: 'days', title: '¿Cuántos días?', options: [{ label: 'Tres' }, { label: 'Cinco' }] },
+          { id: 'who', title: '¿Con quién?', options: [{ label: 'Sola' }, { label: 'En grupo' }] },
+        ] }, say: 'Antes, unas preguntas.' },
+        { text: 'PLAN LISTO' },
+        { text: 'EXTRA' },
       ],
     }, laneOf, { held: ['main'] }),
   },

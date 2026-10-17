@@ -55,6 +55,9 @@ export default function SavedGrants() {
   }
   const groups = new Map<string, PermissionGrant[]>()
   for (const grant of grants ?? []) groups.set(grant.scope, [...(groups.get(grant.scope) ?? []), grant])
+  // Los antiguos «Siempre en los chats» ya no se aplican (#56): se ven al
+  // final, para quitarlos.
+  const ordered = [...groups.entries()].sort(([, a], [, b]) => Number(a[0].legacy === true) - Number(b[0].legacy === true))
 
   return (
     <Section title={t('grants.title')}>
@@ -62,15 +65,17 @@ export default function SavedGrants() {
       {grants !== null && grants.length === 0 && (
         <p className="text-xs text-[var(--text-muted)]">{t('grants.empty')}</p>
       )}
-      {[...groups.entries()].map(([scope, rows]) => {
+      {ordered.map(([scope, rows]) => {
         const chats = rows[0].scope_kind === 'chats'
+        const legacy = rows[0].legacy === true
         const Icon = chats ? MessageSquare : Folder
         return (
-          <div key={scope} className="space-y-1">
+          <div key={scope} className="space-y-1" data-legacy={legacy || undefined}>
             <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text)]" title={chats ? undefined : scope}>
               <Icon size={12} aria-hidden="true" />
-              {chats ? t('grants.chats') : rows[0].scope_label || scope}
+              {legacy ? t('grants.legacy') : chats ? t('grants.chats') : rows[0].scope_label || scope}
             </p>
+            {legacy && <p className="text-[11px] text-[var(--text-subtle)]">{t('grants.legacyHint')}</p>}
             <ul className="space-y-1">
               {rows.map((grant) => (
                 <li key={grant.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs">

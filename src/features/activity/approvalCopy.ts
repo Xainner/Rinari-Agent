@@ -20,6 +20,18 @@ const RULE_TITLE: Record<string, I18nKey> = {
   preexisting_user_work: 'approval.rule.userWork',
   'peer-message': 'approval.rule.peer',
   unknown_capability: 'approval.rule.unknown',
+  read_only_command: 'approval.rule.readOnlyCommand',
+  shell_cwd_outside: 'approval.rule.shellCwdOutside',
+  shell_send: 'approval.rule.shellSend',
+  private_change_snapshot: 'approval.rule.privateSnapshot',
+}
+
+/** En un chat sin proyecto, «fuera del proyecto» es fuera de la carpeta del chat (#56). */
+const CHAT_TITLE: Record<string, I18nKey> = {
+  write_outside_root: 'approval.rule.writeOutsideChat',
+  shell_external_mutation: 'approval.rule.shellOutsideChat',
+  delete_outside_root: 'approval.rule.deleteOutsideChat',
+  shell_cwd_outside: 'approval.rule.shellCwdOutsideChat',
 }
 
 const RISK: Record<string, I18nKey> = {
@@ -46,7 +58,7 @@ export function approvalCopy(item: ApprovalTimelineItem, t: Translate): Approval
   const description = item.description || item.capability
   const separator = description.indexOf(': ')
   const tool = separator > 0 && !description.slice(0, separator).includes(' ') ? description.slice(0, separator) : null
-  const key = item.ruleId ? RULE_TITLE[item.ruleId] : undefined
+  const key = item.ruleId ? (item.grantScope === 'chats' && CHAT_TITLE[item.ruleId]) || RULE_TITLE[item.ruleId] : undefined
   return {
     title: key ? t(key, { target: item.target ?? '', capability: item.capability }) : description,
     tool: key ? tool : null,

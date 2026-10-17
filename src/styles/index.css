@@ -2784,6 +2784,16 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .question-option { border-radius: var(--r-md); border: 1px solid transparent; transition: background-color var(--dur-fast), border-color var(--dur-fast); }
 .question-option:hover { background: var(--bg-hover); }
 .question-option.is-on { background: rgb(147 88 255 / 0.14); border-color: rgb(196 181 253 / 0.55); }
+/* #63: la pregunta entra desde el lado hacia el que se avanzó; con movimiento reducido, sin desplazarse. */
+.question-step[data-direction='forward'] { animation: question-in-forward var(--dur-base) var(--ease-out) both; }
+.question-step[data-direction='back'] { animation: question-in-back var(--dur-base) var(--ease-out) both; }
+@keyframes question-in-forward { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes question-in-back { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .question-step[data-direction] { animation: none; } }
+.question-dots { display: inline-flex; gap: 4px; }
+.question-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--border); transition: background-color var(--dur-fast), transform var(--dur-fast); }
+.question-dot[data-state='answered'] { background: rgb(196 181 253 / 0.6); }
+.question-dot[data-state='current'] { background: var(--accent); transform: scale(1.25); }
 
 /* Menú de comandos «/» del compositor. */
 .composer-suggestions { padding: 6px; }

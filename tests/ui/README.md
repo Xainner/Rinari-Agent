@@ -72,6 +72,8 @@ también `failure.png` y el final del texto visible en la consola.
 | [title-rename-motion](title-rename-motion/scenario.cjs) | Cuando Rinari renombra la conversación el título cambia con una animación breve en su sitio: la fila no cambia de alto cuadro a cuadro y al volver a abrirla no se repite |
 | [full-access-confirm](full-access-confirm/scenario.cjs) | «Acceso completo» pide confirmación con lo que permite, lo que sigue preguntando y cómo quitarlo; cancelar deja workspace, confirmar aplica full-access y bajar el permiso no pregunta |
 | [steer-now](steer-now/scenario.cjs) | Un comando que no termina pasa a segundo plano con su botón y sigue vivo como proceso del chat; Ctrl+Enter manda un mensaje «ahora»: la respuesta en curso se corta, el turno lo lee y la burbuja dice «Interrumpió el paso» |
+| [approval-scopes](approval-scopes/scenario.cjs) | En un chat suelto la aprobación ofrece «Denegar», «Permitir una vez» y «En este chat», sin «Siempre…», con el motivo en español; el mismo chat no vuelve a preguntar y otro chat sí |
+| [question-steps](question-steps/scenario.cjs) | Tres preguntas: un solo botón «Continuar» / «Enviar respuestas», puntos de progreso, y la pregunta entra desde el lado hacia el que se avanzó (sin desplazarse con movimiento reducido) |
 | [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |
 
 ## Escribir un escenario

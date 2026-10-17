@@ -14,6 +14,8 @@ export function QuestionCard(props: { request: QuestionRequest; onResolved: () =
 function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onResolved: () => void }) {
   const { t } = useI18n()
   const [index, setIndex] = useState(0)
+  // Hacia dónde fue el último paso: la pregunta entra desde ese lado (#63).
+  const [direction, setDirection] = useState<'forward' | 'back' | null>(null)
   const [minimized, setMinimized] = useState(false)
   const [drafts, setDrafts] = useState<QuestionDrafts>({ selections: {}, customText: {} })
   const [sending, setSending] = useState(false)
@@ -43,8 +45,11 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   function go(next: number) {
     if (sendingRef.current) return
     focusRequested.current = true
-    indexRef.current = Math.max(0, Math.min(next, request.questions.length - 1))
-    setIndex(indexRef.current)
+    const target = Math.max(0, Math.min(next, request.questions.length - 1))
+    if (target === indexRef.current) return
+    setDirection(target > indexRef.current ? 'forward' : 'back')
+    indexRef.current = target
+    setIndex(target)
   }
   function choose(selection: QuestionSelection, detail: number) {
     if (!question || sendingRef.current || indexRef.current !== index || detail > 1) return
@@ -83,7 +88,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
       <h3 ref={heading} tabIndex={-1} aria-label={`${position}: ${question.title}`} className="font-semibold">{question.title}</h3>
       <button disabled={sending} aria-label={t('questions.minimize')} onClick={() => setMinimized(true)}><X size={16} /></button>
     </div>
-    <div key={question.id} role="radiogroup" aria-label={question.title} className="space-y-1">
+    <div key={question.id} role="radiogroup" aria-label={question.title} data-direction={direction ?? undefined} className="question-step space-y-1">
       {fixedOptions(question).map(({ option, index: optionIndex }) => {
         const checked = selected?.kind === 'option' && selected.optionIndex === optionIndex
         return <button key={optionIndex} role="radio" aria-checked={checked} disabled={sending}
@@ -104,16 +109,29 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
       value={drafts.customText[question.id] ?? ''} disabled={sending} maxLength={8000}
       onChange={event => setDrafts(current => ({ ...current, customText: { ...current.customText, [question.id]: event.target.value } }))}
       className="field-input mt-3 resize-none" />}
-    {other && !last && <button disabled={sending || !valid} onClick={() => go(index + 1)} className="btn btn-secondary btn-sm mt-2">{t('questions.continue')}</button>}
     <div className="mt-2 flex items-center gap-2">
       <button aria-label={t('questions.previous')} disabled={sending || index === 0} onClick={() => go(index - 1)}><ChevronLeft size={16} /></button>
       <span className="text-xs">{position}</span>
+      {request.questions.length > 1 && (
+        <span className="question-dots" aria-hidden="true">
+          {request.questions.map((item, at) => (
+            <span key={item.id} className="question-dot" data-state={at === index ? 'current' : selectionFor(item, drafts) ? 'answered' : 'pending'} />
+          ))}
+        </span>
+      )}
       <button aria-label={t('questions.next')} disabled={sending || last || !valid} onClick={() => go(index + 1)}><ChevronRight size={16} /></button>
       <span className="flex-1" />
       <button disabled={sending} onClick={() => void submit(true)} className="btn btn-quiet btn-sm">{t('questions.skip')}</button>
-      <button disabled={sending || !answers} onClick={() => void submit(false)} className="btn btn-primary btn-sm">
-        {t(sending ? 'questions.sending' : request.questions.length === 1 ? 'questions.send' : 'questions.sendMany')}
-      </button>
+      {/* Un solo botón principal (#37): «Continuar» mientras falten preguntas, «Enviar» en la última. */}
+      {last ? (
+        <button disabled={sending || !answers} onClick={() => void submit(false)} className="btn btn-primary btn-sm">
+          {t(sending ? 'questions.sending' : request.questions.length === 1 ? 'questions.send' : 'questions.sendMany')}
+        </button>
+      ) : (
+        <button disabled={sending || !valid} onClick={() => go(index + 1)} className="btn btn-primary btn-sm">
+          {t('questions.continue')}
+        </button>
+      )}
     </div>
   </section>
 }

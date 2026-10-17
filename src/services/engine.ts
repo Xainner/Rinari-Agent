@@ -840,6 +840,8 @@ export interface PermissionGrant {
   /** Raíz del proyecto, o "chats" para todas las conversaciones sueltas. */
   scope: string
   scope_kind: 'project' | 'chats'
+  /** Un antiguo «Siempre en los chats»: ya no se aplica, se lista para quitarlo (#56). */
+  legacy?: boolean
   scope_label: string
   capability: string
   rule_id: string | null

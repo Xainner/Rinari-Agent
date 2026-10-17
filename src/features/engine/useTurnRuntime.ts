@@ -16,6 +16,7 @@ import { applyTrustChangedEvent } from '../projects/trustWarning'
 import { markRenamedFromEvent } from '../../stores/titleMotion'
 import { onProfileEvent } from '../profiles/profileStore'
 import { applyFollowupEvent } from '../followups/followupStore'
+import { applyChildEvent } from '../children/childrenStore'
 import type { AttachmentRef } from '../../types'
 
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
@@ -70,6 +71,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       if (event.event === 'browser.external.changed') applyExternalBrowserEvent(event.payload)
       if (event.event === 'project.trust.changed') applyTrustChangedEvent(event.payload)
       applyFollowupEvent(event.event, event.payload)
+      applyChildEvent(event.event, event.payload)
       if (event.event === 'session.renamed') markRenamedFromEvent(event.payload)
       if (TRIGGERS_SESSION_REFRESH.has(event.event)) scheduleSessionsChanged()
     }).then((stop) => {

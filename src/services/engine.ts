@@ -850,6 +850,34 @@ export interface PermissionGrant {
   granted_at: string
 }
 
+/** A conversation another one opened for a separate piece of work (plan-sesiones-hijas 5). */
+export interface ChildSession {
+  child_session_id: string
+  parent_session_id: string
+  title?: string
+  /** start: the owner asked · offer: accepted offer · note / plan_step: a card the owner started. */
+  origin: 'start' | 'offer' | 'note' | 'plan_step'
+  context: 'brief' | 'fork'
+  isolation: 'same' | 'worktree'
+  worktree_path: string | null
+  branch: string | null
+  state: 'working' | 'completed' | 'failed' | 'cancelled' | 'waiting'
+  report: { summary?: string; text?: string; files?: string[]; terminal?: string; error?: string } | null
+  reported: boolean
+  resolution: 'integrated' | 'discarded' | null
+  busy?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ChildIntegrateResult {
+  child_session_id: string
+  integrated: boolean
+  conflicts: string[]
+  message?: string
+  files?: string[]
+}
+
 export type SteerResult =
   | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string; interrupted?: string[] }
   | { session_id: string; delivery: 'queued'; position: number }
@@ -957,8 +985,27 @@ export const engineApi = {
   followupDismiss: (suggestionId: string) =>
     platform().command<{ suggestion: FollowupSuggestion }>('followup_dismiss', { suggestion_id: suggestionId }),
   /** Opens a new conversation (same project and profile) that starts the task. */
-  followupAccept: (suggestionId: string) =>
-    platform().command<{ suggestion: FollowupSuggestion; session: SessionSummary; turn: { turn_id: string } | null; already_accepted: boolean }>('followup_accept', { suggestion_id: suggestionId }),
+  /** `context` / `isolation`: how the child opens, as chosen on the card (plan-sesiones-hijas 5.5). */
+  followupAccept: (suggestionId: string, options: { context?: 'brief' | 'fork'; isolation?: 'auto' | 'worktree' | 'same' } = {}) =>
+    platform().command<{ suggestion: FollowupSuggestion; session: SessionSummary; turn: { turn_id: string } | null; child?: ChildSession; already_accepted: boolean }>('followup_accept', {
+      suggestion_id: suggestionId,
+      ...(options.context ? { context: options.context } : {}),
+      ...(options.isolation ? { isolation: options.isolation } : {}),
+    }),
+  /** The owner opens a child by hand (a message's menu, /child): it starts now. */
+  sessionChildStart: (sessionId: string, prompt: string, title?: string) =>
+    platform().command<ChildSession & { title: string; turn_id?: string | null }>('session_child_start', { sessionId, prompt, ...(title ? { title } : {}) }),
+  /** The children this conversation opened. */
+  sessionChildrenList: (sessionId: string) =>
+    platform().command<{ session_id: string; children: ChildSession[] }>('session_children_list', { sessionId }),
+  /** Merge a child's branch into the project: the owner's decision, never the model's. */
+  sessionChildIntegrate: (childSessionId: string) =>
+    platform().command<ChildIntegrateResult>('session_child_integrate', { childSessionId }),
+  sessionChildDiscard: (childSessionId: string) =>
+    platform().command<{ child_session_id: string; discarded: boolean }>('session_child_discard', { childSessionId }),
+  /** «Use the same folder in this project» (or back to a branch per child). */
+  sessionChildrenIsolation: (sessionId: string, isolation: 'same' | 'worktree') =>
+    platform().command<{ session_id: string; isolation: string }>('session_children_isolation', { sessionId, isolation }),
   /** The live checklist of a conversation; null when there is none to show. */
   sessionChecklist: (sessionId: string) =>
     platform().command<{ checklist: Checklist | null }>('session_checklist_get', { sessionId }),

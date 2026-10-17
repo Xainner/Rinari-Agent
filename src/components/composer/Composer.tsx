@@ -124,6 +124,7 @@ const DROPPED_SLASH = new Set(['tasks'])
 
 /** Descripción localizada de los comandos integrados; el resto usa la del Engine. */
 const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
+  child: 'slash.child',
   help: 'slash.help',
   new: 'slash.new',
   plan: 'slash.plan',

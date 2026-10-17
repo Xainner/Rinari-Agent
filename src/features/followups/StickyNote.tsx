@@ -10,6 +10,9 @@ import type { FollowupSuggestion } from '../../types/protocol.generated'
 import { useFollowupStore } from './followupStore'
 
 type Leaving = 'dismiss' | 'accept' | null
+type Spawn = { context: 'brief' | 'fork'; isolation: 'auto' | 'worktree' | 'same' }
+type Note = FollowupSuggestion & { kind?: 'note' | 'plan_step'; context?: Spawn['context']; isolation?: Spawn['isolation'] }
+const ISOLATION_NEXT: Record<Spawn['isolation'], Spawn['isolation']> = { auto: 'same', same: 'worktree', worktree: 'auto' }
 
 const LEAVE_MS = { dismiss: 420, accept: 520 } as const
 /** Below this width the note would cover the conversation: it waits as a chip. */
@@ -39,6 +42,8 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
   const [open, setOpen] = useState(false)
   const host = useRef<HTMLDivElement>(null)
   const [roomy, setRoomy] = useState(true)
+  // How the child opens: the note's choice until the owner changes it here.
+  const [spawn, setSpawn] = useState<Spawn | null>(null)
 
   useEffect(() => {
     if (!sessionId || loaded) return
@@ -64,8 +69,8 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
     return () => observer.disconnect()
   }, [compact, notes?.length])
 
-  const note = notes?.[0]
-  useEffect(() => { setExpanded(false); setLeaving(null) }, [note?.id])
+  const note = notes?.[0] as Note | undefined
+  useEffect(() => { setExpanded(false); setLeaving(null); setSpawn(null) }, [note?.id])
   if (!note) return <div ref={host} hidden />
 
   const waiting = (notes?.length ?? 1) - 1
@@ -75,7 +80,7 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
     setBusy(true)
     try {
       if (kind === 'accept') {
-        const result = await engineApi.followupAccept(current.id)
+        const result = spawn ? await engineApi.followupAccept(current.id, spawn) : await engineApi.followupAccept(current.id)
         toast.success(t('followups.started', { title: result.session.title ?? current.title }))
       } else {
         await engineApi.followupDismiss(current.id)
@@ -105,7 +110,7 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
       <span className="sticky-note-tape" aria-hidden="true" />
       <span className="sticky-note-curl" aria-hidden="true" />
       <header className="sticky-note-head">
-        <span className="sticky-note-from">{t('followups.from')}</span>
+        <span className="sticky-note-from">{t(note.kind === 'plan_step' ? 'followups.planStep' : 'followups.from')}</span>
         {waiting > 0 && <span className="sticky-note-more" title={t('followups.more', { n: waiting })}>+{waiting}</span>}
         <button type="button" className="sticky-note-dismiss" disabled={busy || leaving !== null} onClick={() => void leave('dismiss', note)} aria-label={t('followups.dismiss')} title={t('followups.dismiss')}>
           <X size={13} aria-hidden="true" />
@@ -122,6 +127,16 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
       {note.external_content && (
         <p className="sticky-note-caution"><Globe size={11} aria-hidden="true" /> {t('followups.external')}</p>
       )}
+      <p className="sticky-note-spawn">
+        <button type="button" className="sticky-note-spawn-chip" data-testid="note-context" disabled={busy || leaving !== null}
+          onClick={() => setSpawn({ context: (spawn?.context ?? note.context ?? 'brief') === 'brief' ? 'fork' : 'brief', isolation: spawn?.isolation ?? note.isolation ?? 'auto' })}>
+          {t((spawn?.context ?? note.context ?? 'brief') === 'fork' ? 'children.context.fork' : 'children.context.brief')}
+        </button>
+        <button type="button" className="sticky-note-spawn-chip" data-testid="note-isolation" disabled={busy || leaving !== null}
+          onClick={() => setSpawn({ context: spawn?.context ?? note.context ?? 'brief', isolation: ISOLATION_NEXT[spawn?.isolation ?? note.isolation ?? 'auto'] })}>
+          {t(`children.isolation.${spawn?.isolation ?? note.isolation ?? 'auto'}`)}
+        </button>
+      </p>
       <div className="sticky-note-actions">
         <button type="button" className="sticky-note-accept" disabled={busy || leaving !== null} onClick={() => void leave('accept', note)}>
           <span>{t('followups.accept')}</span> <ArrowUpRight size={14} aria-hidden="true" />

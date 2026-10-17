@@ -18,6 +18,16 @@ const paragraphs = (count, line) => Array.from({ length: count }, (_, i) => line
 /** Texto de un mensaje de la API de chat (cadena o partes). */
 const contentText = (content) => typeof content === 'string' ? content : Array.isArray(content) ? content.map((part) => part?.text ?? '').join('') : ''
 /** Carril de cada petición: el título de la conversación, un subagente o el coordinador. */
+/** Carril de una petición con sesiones hijas: la hija, el informe a la madre o la madre. */
+function childLaneOf(body) {
+  const messages = body.messages ?? []
+  if (contentText(messages[0]?.content).includes('concise conversation title')) return 'title'
+  if (messages.some((m) => m.role === 'user' && contentText(m.content).includes('[A task from the conversation'))) return 'child'
+  const owner = messages.filter((m) => m.role === 'user' && !contentText(m.content).startsWith('<turn-context>'))
+  if (contentText(owner.at(-1)?.content).includes('reported back')) return 'report'
+  return 'main'
+}
+
 function laneOf(body) {
   const messages = body.messages ?? []
   if (contentText(messages[0]?.content).includes('concise conversation title')) return 'title'
@@ -173,6 +183,22 @@ export const scenarios = {
         { text: 'EXTRA' },
       ],
     }, laneOf, { held: ['main'] }),
+  },
+  'child-sessions': {
+    title: 'Sesiones hijas: abrir una a pedido, su informe en la madre con un turno corto, una oferta con «Hazlo aquí» y el encargo en la hija',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Docs' })),
+      main: [
+        { tool: 'session.start', args: { title: 'Revisar docs', prompt: 'Revisa la carpeta docs y arregla los enlaces rotos. Hecho cuando no quede ninguno.' }, say: 'La abro aparte.' },
+        { text: 'La abrí aparte.' },
+        { tool: 'session.offer', args: { title: 'Migrar pagos', prompt: 'Migra el módulo de pagos a la API nueva y verifica que pasan las pruebas.', reason: 'Es otro tema y puede ir en paralelo.' }, say: 'Te pregunto.' },
+        { text: 'Lo hago aquí.' },
+        { text: 'EXTRA' },
+      ],
+      child: [{ text: 'REPORTE: arreglé 2 enlaces rotos.' }, { text: 'EXTRA HIJA' }],
+      report: [{ text: 'INFORME LEÍDO: la sesión hija arregló 2 enlaces.' }, { text: 'EXTRA INFORME' }],
+    }, childLaneOf),
   },
   'steer-now': {
     title: 'Comando largo a segundo plano con su botón, y «Enviar ahora» (Ctrl+Enter) corta la respuesta en curso',

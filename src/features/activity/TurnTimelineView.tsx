@@ -49,6 +49,7 @@ import { MemoryActivityCard } from '../memory/MemoryActivityCard'
 import { SkillProposalCard } from '../skills/SkillProposalCard'
 import { InstructionsProposalCard } from '../projects/InstructionsProposalCard'
 import { AgentInstruction, useAgentLabel } from '../agents/agentLabel'
+import { TurnSessionContext } from './turnSession'
 import { PresentedFiles } from './PresentedFiles'
 import LiveText from './LiveText'
 import TurnStatusCard, { TurnDoneHeader } from './TurnStatusCard'
@@ -88,7 +89,7 @@ interface Props {
 
 const ActivityActive = createContext(true)
 /** Sesión del turno: «Ver en el panel» abre los Agentes de esa sesión. */
-const TurnSessionContext = createContext<string | null>(null)
+// The turn's conversation now lives in turnSession.ts (MessageBubble reads it too).
 
 const ICONS: Record<ToolCategory, typeof FileText> = {
   image: ImageIcon,

@@ -1362,6 +1362,43 @@
       ]
     },
     {
+      "command": "session_child_discard",
+      "kind": "engine",
+      "method": "session.child.discard",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_child_integrate",
+      "kind": "engine",
+      "method": "session.child.integrate",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_child_start",
+      "kind": "engine",
+      "method": "session.child.start",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_children_isolation",
+      "kind": "engine",
+      "method": "session.children.isolation",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_children_list",
+      "kind": "engine",
+      "method": "session.children.list",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "session_close",
       "kind": "engine",
       "method": "session.close",
@@ -2172,10 +2209,10 @@
     }
   ],
   "summary": {
-    "commands": 260,
-    "engine_backed": 254,
+    "commands": 265,
+    "engine_backed": 259,
     "host_only": 6,
     "manual_adapters": 10,
-    "without_callers": 89
+    "without_callers": 93
   }
 }

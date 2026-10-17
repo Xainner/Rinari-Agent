@@ -7,11 +7,15 @@ import { useI18n } from '../../i18n'
 import { refreshPendingQuestions, usePendingQuestions } from './usePendingQuestions'
 import { answerFor, answersFor, fixedOptions, isOther, selectionFor, type Question, type QuestionDrafts, type QuestionSelection } from './questionDrafts'
 import { useCalmMotion } from '../../lib/motion'
+import { OfferCard, offerOf } from '../children/OfferCard'
 
 /** Lo que la pregunta que se va tarda en salir; la que llega espera a que se marque la elegida. */
 const LEAVE_MS = 420
 
 export function QuestionCard(props: { request: QuestionRequest; onResolved: () => void }) {
+  // «¿Nueva sesión o aquí?» travels as a question the Engine marks as an offer.
+  const offer = offerOf(props.request)
+  if (offer) return <OfferCard key={props.request.request_id} request={props.request} offer={offer} onResolved={props.onResolved} />
   return <QuestionFlow key={props.request.request_id} {...props} />
 }
 

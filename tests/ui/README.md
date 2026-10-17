@@ -74,6 +74,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [steer-now](steer-now/scenario.cjs) | Un comando que no termina pasa a segundo plano con su botón y sigue vivo como proceso del chat; Ctrl+Enter manda un mensaje «ahora»: la respuesta en curso se corta, el turno lo lee y la burbuja dice «Interrumpió el paso» |
 | [approval-scopes](approval-scopes/scenario.cjs) | En un chat suelto la aprobación ofrece «Denegar», «Permitir una vez» y «En este chat», sin «Siempre…», con el motivo en español; el mismo chat no vuelve a preguntar y otro chat sí |
 | [question-steps](question-steps/scenario.cjs) | Tres preguntas: un solo botón «Continuar» / «Enviar respuestas», puntos de progreso, y la pregunta entra desde el lado hacia el que se avanzó (sin desplazarse con movimiento reducido) |
+| [child-sessions](child-sessions/scenario.cjs) | Sesiones hijas: pedir «en otra sesión» abre una hija anidada; su informe llega a la madre en una tarjeta y la madre hace un turno corto («Informe de…»); una oferta «¿Lo hago en una sesión nueva?» con «Hazlo aquí» no abre nada; la hija empieza con el encargo de su madre |
 | [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |
 
 ## Escribir un escenario

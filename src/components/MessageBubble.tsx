@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash } from 'lucide-react'
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, CornerDownRight, ClipboardList } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import { usePeerNavigation } from '../features/board/PeerNavigationContext'
@@ -13,6 +13,10 @@ import Markdown from './Markdown'
 import ImageViewer, { useImageViewer } from './image-viewer/ImageViewer'
 import { attachmentViewerImages, isImageAttachment } from './image-viewer/attachmentImages'
 import { RinariAvatar } from '../features/rinari/RinariAvatar'
+import { useOptionalEngineCommands, useOptionalEngineData } from '../features/engine/EngineContext'
+import { TurnSessionContext } from '../features/activity/turnSession'
+import { commandMessage } from '../services/engine'
+import { toast } from 'sonner'
 
 /** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
 function PlayableAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
@@ -127,6 +131,15 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return <PlanSeparator kind={message.origin.source === 'plan_adjust' ? 'adjust' : 'implement'} title={message.origin.plan_title ?? null} comment={message.origin.comment ?? null} />
   }
 
+  // A child session's brief, from the conversation that opened it (plan-sesiones-hijas 5.5).
+  if (message.role === 'user' && message.origin?.source === 'child_brief') {
+    return <BriefBubble message={message} />
+  }
+  // The mother's report turn: which children reported back.
+  if (message.role === 'user' && message.origin?.source === 'child_report') {
+    return <ChildReportSeparator names={message.content} />
+  }
+
   // A turn the goal started is not something the owner wrote: a separator.
   if (message.role === 'user' && message.origin?.source === 'goal') {
     return <GoalSeparator iteration={message.origin.iteration ?? null} />
@@ -141,9 +154,11 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     const text = command ? withoutCommand(message.content, command) : message.content
     const quotedSession = quoted && typeof quoted.session_id === 'string' ? quoted.session_id : null
     return (
-      <div data-testid="user-message-row" className="flex w-full min-w-0 flex-col items-end gap-1">
+      <div data-testid="user-message-row" className="group/user flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
+        <ChildFromMessage text={text} />
+        {message.origin?.source === 'parent_message' && <MotherBadge sessionId={(message.origin as { parent_session_id?: string }).parent_session_id ?? null} />}
         <div className="flex w-full min-w-0 justify-end">
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
@@ -296,6 +311,74 @@ function PlanSeparator({ kind, title, comment }: { kind: 'implement' | 'adjust';
   return (
     <div data-testid="plan-separator" data-kind={kind} className="goal-separator plan-separator" role="separator">
       <span title={text}>{kind === 'adjust' ? <PencilLine size={11} aria-hidden="true" /> : <Hammer size={11} aria-hidden="true" />}<span className="plan-separator-text">{text}</span></span>
+    </div>
+  )
+}
+
+/** «Hacer en sesión hija»: the owner's message, as the task of a child (plan-sesiones-hijas 5.4). */
+function ChildFromMessage({ text }: { text: string }) {
+  const { t } = useI18n()
+  const sessionId = useContext(TurnSessionContext)
+  const [busy, setBusy] = useState(false)
+  if (!sessionId || text.trim().length < 10) return null
+  const open = async () => {
+    setBusy(true)
+    try {
+      const opened = await engineApi.sessionChildStart(sessionId, text.trim())
+      toast(t('children.opened', { title: opened.title }))
+    } catch (error) {
+      toast.error(commandMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button type="button" data-testid="child-from-message" disabled={busy} onClick={() => void open()} title={t('children.fromMessageHint')}
+      className="inline-flex items-center gap-1 text-[10.5px] text-[var(--text-subtle)] opacity-0 transition-opacity group-hover/user:opacity-100 focus-visible:opacity-100 hover:text-[var(--text)]">
+      <GitBranchPlus size={11} aria-hidden="true" /> {t('children.fromMessage')}
+    </button>
+  )
+}
+
+function useSessionTitle(sessionId: string | null): string | null {
+  const data = useOptionalEngineData()
+  return sessionId ? data?.sessionsById[sessionId]?.title ?? null : null
+}
+
+function BriefBubble({ message }: { message: ChatMessage }) {
+  const { t } = useI18n()
+  const commands = useOptionalEngineCommands()
+  const motherId = (message.origin as { parent_session_id?: string } | undefined)?.parent_session_id ?? null
+  const mother = useSessionTitle(motherId)
+  return (
+    <div data-testid="child-brief" className="child-brief">
+      <p className="child-brief-from">
+        <GitBranchPlus size={12} aria-hidden="true" />
+        {mother && motherId
+          ? <>{t('children.briefFrom')} <button type="button" className="child-brief-mother" onClick={() => { void commands?.selectSession(motherId) }}>{mother}</button></>
+          : t('children.brief')}
+      </p>
+      <div className="child-brief-text">{message.content}</div>
+    </div>
+  )
+}
+
+function MotherBadge({ sessionId }: { sessionId: string | null }) {
+  const { t } = useI18n()
+  const mother = useSessionTitle(sessionId)
+  return (
+    <span data-testid="mother-badge" className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
+      <CornerDownRight size={11} aria-hidden="true" />
+      {mother ? t('children.fromMother', { title: mother }) : t('children.fromMotherPlain')}
+    </span>
+  )
+}
+
+function ChildReportSeparator({ names }: { names: string }) {
+  const { t } = useI18n()
+  return (
+    <div data-testid="child-report-separator" className="goal-separator" role="separator">
+      <span><ClipboardList size={11} aria-hidden="true" />{t('children.reportSeparator', { names })}</span>
     </div>
   )
 }

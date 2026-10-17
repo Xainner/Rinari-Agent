@@ -153,6 +153,15 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
     return label ? pick(label) : item.tool
   }
   if (item.tool === 'wait.for') return waitLabel(args, item.status, es)
+  // Child sessions (plan-sesiones-hijas 5): the title of the task names it.
+  if (item.tool === 'session.start' || item.tool === 'session.offer') {
+    const title = typeof args.title === 'string' ? args.title : ''
+    const opened = item.tool === 'session.start'
+    if (!title) return pick(opened ? ['Abrió una sesión hija', 'Opened a child session'] : ['Propuso una sesión nueva', 'Offered a new session'])
+    return opened ? (es ? `Abrió la sesión «${title}»` : `Opened the session “${title}”`) : (es ? `Propuso «${title}» en una sesión nueva` : `Offered “${title}” as a new session`)
+  }
+  if (item.tool === 'session.message') return pick(['Escribió a una sesión hija', 'Wrote to a child session'])
+  if (item.tool === 'session.children') return pick(['Revisó sus sesiones hijas', 'Checked its child sessions'])
   const target = basename(args.path ?? args.file ?? args.cwd)
   const query = String(args.query ?? args.pattern ?? '').trim()
   const site = host(args.url)

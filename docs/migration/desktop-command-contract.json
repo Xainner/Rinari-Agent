@@ -1678,6 +1678,16 @@
           "name": "suggestion_id",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "context",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "isolation",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -1688,6 +1698,16 @@
           "key": "suggestion_id",
           "from": "suggestion_id",
           "optional": false
+        },
+        {
+          "key": "context",
+          "from": "context",
+          "optional": true
+        },
+        {
+          "key": "isolation",
+          "from": "isolation",
+          "optional": true
         }
       ],
       "passthrough": null,
@@ -8159,6 +8179,151 @@
       "manual": false,
       "engine_method": "process.persistent.stop",
       "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_children_list",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.children.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_child_integrate",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "childSessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.child.integrate",
+      "engine_params": [
+        {
+          "key": "child_session_id",
+          "from": "childSessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_child_discard",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "childSessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.child.discard",
+      "engine_params": [
+        {
+          "key": "child_session_id",
+          "from": "childSessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_children_isolation",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "isolation",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.children.isolation",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "isolation",
+          "from": "isolation",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_child_start",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "prompt",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "title",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.child.start",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "prompt",
+          "from": "prompt",
+          "optional": false
+        },
+        {
+          "key": "title",
+          "from": "title",
+          "optional": true
+        }
+      ],
       "passthrough": null,
       "host_effects": []
     }

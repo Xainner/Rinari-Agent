@@ -78,6 +78,20 @@ async function init(deps: UiCommandDeps): Promise<boolean> {
   return true
 }
 
+/** `/child <tarea>`: la tarea va a una sesión hija que informa aquí (plan-sesiones-hijas 5.4). */
+async function child(text: string, deps: UiCommandDeps): Promise<boolean> {
+  if (!text.trim()) return false
+  const lang = useUIStore.getState().lang
+  const sessionId = deps.sessionId || (await deps.ensureSession?.()) || ''
+  if (!sessionId) {
+    toast(translate(lang, 'init.needsConversation'))
+    return true
+  }
+  const opened = await engineApi.sessionChildStart(sessionId, text.trim())
+  toast(translate(lang, 'children.opened', { title: opened.title }))
+  return true
+}
+
 export async function runUiCommand(name: string, text: string, deps: UiCommandDeps): Promise<boolean> {
   const workspace = (tab: WorkspaceTab) => {
     deps.reveal(deps.sessionId, 'workspace', { workspaceTab: tab })
@@ -109,6 +123,8 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         return await goal(deps.sessionId, text, deps.confirm)
       case 'init':
         return await init(deps)
+      case 'child':
+        return await child(text, deps)
       default:
         return false
     }

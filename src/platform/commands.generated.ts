@@ -165,6 +165,11 @@ export type DesktopCommand =
   | "session_checklist_clear"
   | "session_checklist_complete"
   | "session_checklist_get"
+  | "session_child_discard"
+  | "session_child_integrate"
+  | "session_child_start"
+  | "session_children_isolation"
+  | "session_children_list"
   | "session_close"
   | "session_create"
   | "session_delete"
@@ -427,6 +432,11 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_checklist_clear",
   "session_checklist_complete",
   "session_checklist_get",
+  "session_child_discard",
+  "session_child_integrate",
+  "session_child_start",
+  "session_children_isolation",
+  "session_children_list",
   "session_close",
   "session_create",
   "session_delete",
@@ -704,6 +714,11 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_checklist_clear",
   "session_checklist_complete",
   "session_checklist_get",
+  "session_child_discard",
+  "session_child_integrate",
+  "session_child_start",
+  "session_children_isolation",
+  "session_children_list",
   "session_close",
   "session_create",
   "session_delete",

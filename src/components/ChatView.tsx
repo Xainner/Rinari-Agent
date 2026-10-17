@@ -28,6 +28,7 @@ import { unreadResultCount, useBoardAttentionStore } from '../stores/boardAttent
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
 import { GoalDock } from '../features/goal/GoalDock'
+import { ChildrenDock } from '../features/children/ChildrenDock'
 import { StickyNote } from '../features/followups/StickyNote'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
@@ -594,6 +595,7 @@ function ChatView({
       {(presentation === 'empty' || presentation === 'conversation') && (
         <>
           {sessionId !== '' && <GoalDock key={`goal:${sessionId}`} sessionId={sessionId} onHint={(text) => void onSend(text)} />}
+          {sessionId !== '' && <ChildrenDock key={`children:${sessionId}`} sessionId={sessionId} />}
           {sessionId !== '' && <ChecklistDock key={`checklist:${sessionId}`} sessionId={sessionId} />}
           <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
           {queue}

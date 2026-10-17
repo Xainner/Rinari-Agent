@@ -1,10 +1,10 @@
 # Sesiones hijas
 
-Estado: **decidido**, sacado del plan de Boards el 2026-10-12 (no es de Boards: vive en la barra lateral y en el chat).
+Estado: **decidido; A1 hecho (bloque 13), A2 + A3 + ofertas en curso como tanda propia (2026-10-16)**. Sacado del plan de Boards el 2026-10-12 (no es de Boards: vive en la barra lateral y en el chat).
 
 **Versiones** (decisión del dueño, 2026-10-12):
 - **A1 entra en 0.4.0** ([plan-0.4.0.md](plan-0.4.0.md), #40): el vínculo madre → hija y la barra lateral anidada. Ya da valor con lo que existe, porque las notas aceptadas, los forks y las tareas programadas crean sesiones.
-- **A2 y A3, en la versión siguiente:** `session.start`, la herencia de permisos y la tarjeta de entrega; luego los mensajes a las hijas, los worktrees e «Integrar rama».
+- ~~A2 y A3, en la versión siguiente~~ → **cambio (dueño, 2026-10-16): A2 y A3 entran en 0.4.0 como tanda propia, antes de la 17**, junto con las ofertas al estilo Claude Code. El diseño que se implementa es el de la [sección 5](#5-diseño-que-se-implementa-decidido-2026-10-16); las secciones 2–4 quedan como historia de cómo se llegó.
 
 Boards no depende de las hijas por ahora ([plan-boards.md](plan-boards.md) quedó en limpieza y panel colapsado con estado). Si más adelante vuelven ideas aparcadas como «Abrir con sus hijas» o Comparar, usarían el linaje de A1 y los worktrees de A3. La comunicación entre agentes que no son madre e hija es de [Rinari Agency](idea-rinari-agency.md).
 
@@ -93,6 +93,69 @@ Rinari no tiene archivo de reglas: las aprobaciones de sesión («siempre en est
 
 ---
 
+## 5. Diseño que se implementa (decidido 2026-10-16)
+
+**Qué cambia respecto a A2/A3.** Además de que Rinari abra una hija cuando el dueño lo pide, Rinari puede **ofrecer** abrirla, como Claude Code: para un pedido del dueño que conviene hacer aparte, y para trabajo que se le ocurre a ella. Todo nace en el mismo proyecto (o en el mismo chat suelto) que la madre.
+
+### 5.1 Las tres formas de nacer (quién la quiere)
+
+| Cuándo | Herramienta | Qué ve el dueño |
+|---|---|---|
+| **El dueño lo pide** en palabras («ábrelo en otra sesión», «hazlo aparte») | `session.start` — empieza ya | La hija aparece bajo la madre y en el chat «Abrí *X*» con enlace |
+| **Un pedido del dueño** que conviene aparte (grande, de otro tema, en paralelo) | `session.offer` — **espera la respuesta** | Tarjeta «¿Nueva sesión o aquí?» con «Nueva sesión» / «Hazlo aquí»; si elige aquí, Rinari sigue en la madre |
+| **Idea de Rinari** (arreglo visto de paso, seguimiento, trabajo que su respuesta recomienda) | `followup.suggest` (la nota de hoy, mejorada) | Tarjeta que **inicia el dueño**; caduca (hoy 14 días) |
+| **Plan aprobado** con 2 o más pasos independientes | notas de tipo `plan_step` | Una tarjeta por paso (hasta 4), y Rinari empieza el suyo aquí; si el dueño inicia una, Rinari no hace ese paso |
+
+- `session.start` **solo** cuando el dueño lo pidió (A-1); `session.offer` solo para un pedido del dueño de este mensaje; lo que se le ocurre a Rinari va siempre como nota.
+- La oferta reutiliza el mediador de preguntas (`questions.py`): es una pregunta con `offer`, que la app pinta como tarjeta propia. Sin respuesta en el turno, caduca como una pregunta.
+
+### 5.2 Qué lleva cada hija
+- **Encargo** (`brief`): título, la tarea autocontenida (qué, dónde, cómo se sabe que está hecho). Va siempre, también con `context: "fork"`.
+- **Contexto**, lo elige Rinari y se ve en la tarjeta:
+  - `brief` (por defecto): solo el encargo;
+  - `fork`: la conversación de la madre copiada (como «Bifurcar») más el encargo. Para una subtarea del mismo tema mientras la conversación es corta.
+- **Carpeta** (decisión del dueño: **worktree por defecto**):
+  - si la hija va a escribir en el mismo repositorio git, trabaja en **su worktree** (`.rinari-worktrees/<rama>`, rama `rinari/<slug>`), reutilizando el `worktree_manager` de los subagentes;
+  - sin git, o si solo lee, en la misma carpeta;
+  - la **primera vez por proyecto**, la tarjeta de la hija lo dice y ofrece «Usar la misma carpeta en este proyecto» (queda como ajuste del proyecto);
+  - en la misma carpeta, nunca dos hijas escritoras a la vez sobre los mismos archivos: si hay otra escribiendo, la nueva va a worktree.
+- **Permisos** (A-2): el perfil de la madre y sus aprobaciones «en esta sesión» del momento en que nace (copiadas de `session_approval_grants`, #56; las de carpetas de la madre se trasladan al worktree). Nunca más que la madre; subirlo es del dueño, desde la hija. Las guardias (contenido externo, lista dura) siguen igual.
+- **Topes:** 4 hijas trabajando a la vez por madre y 2 niveles (una hija puede tener hijas; una nieta no). Al pasarse, un error claro que sugiere esperar o usar una nota.
+
+### 5.3 De vuelta a la madre
+- Cuando una hija **termina un turno que no lanzó el dueño** (el encargo, o un mensaje de la madre), la madre recibe un **informe**: el final de su último mensaje (≈400 caracteres), los archivos cambiados, la rama si usó worktree y su estado (terminó, falló, se detuvo, espera aprobación). Los turnos que el dueño lleva a mano dentro de la hija no avisan.
+- **En la madre:** tarjeta de entrega «Terminó *X*» con el resumen, los archivos, «Abrir», y si hay rama «Integrar rama» / «Descartar». El modelo de la madre ve los informes en su contexto del turno siguiente (segmento `task_state`).
+- **La madre continúa sola** (decisión del dueño, A-3) **si la hija la abrió Rinari** (`start`, `offer` o paso de plan) **y la madre está libre**: cuando ya no queda ninguna de esas hijas trabajando, la madre hace un turno corto con todos los informes nuevos: revisa el resultado (un informe no es prueba), sigue con lo que eso desbloquee de lo que el dueño pidió, o se lo cuenta en una o dos líneas. Las que nacen de una nota solo dejan la tarjeta. Nunca se encadena: un informe dispara a lo sumo un turno.
+- **Integrar rama** lo hace **solo el dueño** (botón), nunca el modelo: fusiona con el `worktree_manager`; si hay conflictos, la tarjeta los nombra y ofrece «Resolver en la hija» (un mensaje a la hija). «Descartar» borra el worktree y la rama, con confirmación.
+
+### 5.4 Después de nacer
+- `session.message({child, text})`: la madre le escribe a **una hija suya** (A-4). Si la hija trabaja, le llega como guía; si no, empieza un turno marcado «de *Madre*». Nada hacia otras conversaciones (eso es de la Agency).
+- `session.children()`: estado, rama y último informe de cada hija.
+- El dueño puede crear hijas a mano: «Abrir en sesión hija» en el menú de un mensaje y `/hija <tarea>` (equivalen a `session.start`); «Bifurcar» sigue igual, anidado.
+
+### 5.5 En la interfaz
+- Tarjeta de **oferta** («¿Nueva sesión o aquí?»), tarjeta de **hija iniciada** en el chat de la madre, tarjeta de **entrega**, y la **nota** con su contexto y carpeta visibles (se pueden cambiar antes de iniciarla).
+- Primer mensaje de la hija: «Encargo de *Madre*», con estilo propio, no burbuja del dueño.
+- Barra lateral: el estado de cada hija (trabajando, espera aprobación, terminó, falló) y el icono de rama si usa worktree.
+- Lo visual pasa por la sesión de pulido de UI.
+
+### 5.6 Motor (CLI)
+- Migración `0056_session_children`: tabla `session_children` (hija, madre, origen `start|offer|note|plan_step`, contexto, carpeta, ruta y rama del worktree, estado, último informe, si ya se informó, integrada/descartada) y `lineage_kind` acepta `delegated`, `offer` y `plan_step`.
+- `ChildSessions` (servicio): crear (sesión nueva o fork, worktree, permisos copiados, linaje, turno del encargo), informe al terminar (enganchado al final de `_run_turn`, como el `GoalRunner`), turno de la madre, integrar y descartar.
+- Herramientas `session.start`, `session.offer`, `session.children`, `session.message` y `followup.suggest` con `kind`, `context` y `isolation`. Se activan con el resto de herramientas de sesión para no cargar el contexto de cada turno.
+- Protocolo: `session.children.list`, `session.child.integrate`, `session.child.discard`, evento `session.child.updated`, y la capacidad `child_sessions_v1`.
+- Pruebas: los tres orígenes; worktree y misma carpeta; permisos heredados y nunca más; informe solo de turnos no llevados por el dueño; la madre continúa una sola vez y solo si está libre; topes; integrar con y sin conflicto; mensajes solo a hijas propias.
+
+### 5.7 Fases de la tanda
+| Fase | Qué |
+|---|---|
+| H1 | Motor: migración, `ChildSessions`, `session.start`, permisos, worktree, informe y turno de la madre, `session.children`, `session.message` |
+| H2 | Ofertas: `session.offer` (pregunta con `offer`), notas con contexto y carpeta, pasos de plan |
+| H3 | App: tarjetas (oferta, iniciada, entrega con integrar/descartar), nota mejorada, encargo, estados en la barra lateral, «Abrir en sesión hija» y `/hija`; escenarios |
+| H4 | Pulido de UI (sesión de pulido) y Nightly |
+
+---
+
 ## Decisiones
 
 | # | Decisión | Estado |
@@ -101,5 +164,8 @@ Rinari no tiene archivo de reglas: las aprobaciones de sesión («siempre en est
 | A-2 | La hija hereda el perfil y **las aprobaciones de sesión** de la madre, nunca más | Decidido |
 | A-3 | La madre retoma un turno corto cuando termina una hija que abrió Rinari (y no cuando nace de una nota) | Decidido |
 | A-4 | `session.message` solo de la madre a sus hijas, nada lateral | Decidido |
-| A-5 | Una hija que escribe en el mismo repo usa worktree por defecto | Decidido, preguntando la primera vez por proyecto |
-| V | A1 en 0.4.0; A2 y A3 en la versión siguiente | Decidido (2026-10-12) |
+| A-5 | Una hija que escribe en el mismo repo usa worktree por defecto | Decidido; la primera vez por proyecto la tarjeta ofrece usar la misma carpeta (2026-10-16) |
+| V | ~~A1 en 0.4.0; A2 y A3 en la versión siguiente~~ → todo en 0.4.0, como tanda propia antes de la 17 | Decidido (2026-10-12; cambiado 2026-10-16) |
+| A-6 | Rinari también **ofrece** hijas como Claude Code: `session.offer` para un pedido del dueño que conviene aparte (espera «Nueva sesión» / «Hazlo aquí»), y notas para sus propias ideas | Decidido (2026-10-16) |
+| A-7 | Al aprobar un plan con 2 o más pasos independientes, una tarjeta por paso (hasta 4) y Rinari empieza el suyo | Decidido (2026-10-16) |
+| A-8 | La madre continúa sola, una vez, cuando terminan las hijas que abrió Rinari y ella está libre | Decidido (2026-10-16) |

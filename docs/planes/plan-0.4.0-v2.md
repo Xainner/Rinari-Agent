@@ -11,8 +11,9 @@ Caso de origen: la conversación `ses_01M56Q2Z2R0BXGBN7EZ3EEZ43X`, «Imagen hipe
 | V2-1 | El servicio de imágenes configurado va primero | CLI (+ escenario de la app) |
 | V2-2 | Copiar de fuera hacia el chat no es «escribir fuera» | CLI |
 | V2-3 | Lo que se descarga queda en la conversación y se entrega con su tarjeta | CLI (+ escenario de la app) |
+| V2-4 | El título de la conversación se pide en paralelo y no retrasa el primer turno | CLI |
 
-Orden: V2-1, V2-3 y V2-2. Son independientes; el 3 quita la necesidad de copiar y el 2 corrige el clasificador para los demás casos.
+Orden: V2-1, V2-3, V2-2 y V2-4. Son independientes; el 3 quita la necesidad de copiar y el 2 corrige el clasificador para los demás casos.
 
 ## V2-1. El servicio de imágenes configurado va primero
 
@@ -69,6 +70,35 @@ Orden: V2-1, V2-3 y V2-2. Son independientes; el 3 quita la necesidad de copiar 
 - Unidad: una descarga `image/png` sin extensión queda como `….png` de la conversación, con `artifact://`, y `file.present` la acepta.
 - Las descargas viejas de `~/.rinari/artifacts` siguen leyéndose.
 - Escenario: descarga más tarjeta, sin aprobación.
+
+## V2-4. El título de la conversación se pide en paralelo
+
+**Qué se vio** (dueño, 2026-10-18): al empezar una conversación, «Preparando el turno…» duraba mucho. En `ses_01M56R9VJKVNJF28YDJDT7BSV1`, «Mythra hiperrealista de Xenoblade 2» con DeepSeek V4.1 Flash, el turno arrancó a los 9,6 s:
+- La preparación terminó en 0,64 s.
+- Los 8,9 s restantes fueron la llamada que genera el título.
+
+**Causa (validada).** En el primer turno, `name_from_first_message` (`cli/agent_runtime.py`, con `generate_title`) pide el título al modelo y espera la respuesta antes de la primera llamada del turno. Mientras tanto, la app sigue en «Preparando el turno…». No viene de la 0.4.0:
+- El texto existe desde 52714330 (2026-10-07).
+- La espera del título existe desde las primeras versiones del Engine.
+- Lo que varía es cuánto tarda el modelo en el título: casi siempre menos de 1 s, pero con Qwen ya hubo esperas de 8–9 s (11, 12 y 15 de octubre), y con DeepSeek hoy.
+
+**Decisión del dueño (2026-10-18):**
+- **En paralelo, sí.** El título se pide a la vez que el turno, sin frenarlo, y aparece cuando llega (`SessionRenamed`).
+- **No esperar a la primera respuesta.** Se descartó la idea de pedir el título al terminar la primera respuesta cuando el modelo comparte un único slot.
+- **El modelo auxiliar para títulos ya resuelve la velocidad.** El dueño probó GPT 6 Luna como modelo de títulos y DeepSeek para el chat, y todo fue rápido. El título usa el modelo auxiliar si está configurado (#80 del plan 0.4.0) y, si no, el de la conversación.
+- Con un modelo de un solo slot y sin auxiliar, el título y el turno se encolan en el mismo servidor. Se acepta: el arreglo para ese caso es configurar un modelo auxiliar.
+
+**Arreglo:**
+1. El título se genera en un hilo aparte que arranca con el turno. La primera llamada del modelo ya no lo espera.
+2. Cuenta en el presupuesto del turno igual que hoy, con un acceso seguro entre hilos. Si se cancela el turno, el título sigue o se descarta, pero sin bloquear la cancelación.
+3. Se mantiene todo lo de hoy: el título provisional, «NONE» para un saludo, los reintentos (`TITLE_ATTEMPTS`) y no pisar un nombre puesto a mano mientras se generaba.
+4. Opcional, si no cuesta: la llamada del título sin razonamiento cuando el proveedor lo permite.
+
+**Pruebas:**
+- Un modelo de títulos lento (con espera) no retrasa `model.started` del primer turno.
+- El título llega después y renombra la conversación.
+- Si el dueño la renombra antes de que llegue el título, gana su nombre.
+- Un error del título no toca el turno.
 
 ## Al terminar
 

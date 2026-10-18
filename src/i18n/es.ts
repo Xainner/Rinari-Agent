@@ -524,6 +524,7 @@ export const es = {
   'activity.parallelAgents': '{n} subagentes activos',
   'activity.parallelActions': '{n} acciones activas',
   'activity.live.thinking': 'Pensando…',
+  'activity.live.writingInput': 'Escribiendo {target}… {size}',
   'activity.live.responding': 'Respondiendo…',
   'activity.live.waiting': 'Esperando el siguiente paso…',
   'activity.live.recovering': 'Recuperando la ejecución…',

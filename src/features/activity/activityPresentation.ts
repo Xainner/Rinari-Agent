@@ -156,7 +156,7 @@ export function activityState(timeline: TurnTimeline) {
   const model = [...timeline.items].reverse().find(i => i.type === 'model')
   if (model?.type === 'model' && model.retry && !model.content && model.status === 'thinking') return { kind: 'retrying', retry: model.retry, parallel: agents } as const
   if (model?.type === 'model' && !model.outputKind && model.content && model.status !== 'failed') return { kind: 'responding', parallel: agents } as const
-  if (!model || model.status === 'thinking' || model.status === 'streaming') return { kind: 'thinking', parallel: agents } as const
+  if (!model || model.status === 'thinking' || model.status === 'streaming') return { kind: 'thinking', parallel: agents, input: model?.type === 'model' ? model.toolInput : undefined } as const
   return { kind: 'waiting', parallel: agents } as const
 }
 

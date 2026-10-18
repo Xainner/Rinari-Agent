@@ -30,6 +30,8 @@ export interface ModelTimelineItem extends TimelineItemBase {
   modelChange?: ModelChange
   /** `model.retrying`: la llamada falló de forma transitoria y se repite. */
   retry?: ModelRetry
+  /** `model.tool_input`: lo que lleva escrito de una llamada a herramienta larga (F26). */
+  toolInput?: { tool: string; chars: number; path?: string }
 }
 
 export interface ModelRetry {

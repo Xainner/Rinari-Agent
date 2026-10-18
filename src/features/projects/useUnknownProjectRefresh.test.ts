@@ -10,7 +10,7 @@ it('asks for the projects again when a conversation names one the app does not k
   const refresh = vi.fn(async () => {})
   const known = ['prj_a']
   const { rerender } = renderHook(({ sessions, enabled }) => useUnknownProjectRefresh(sessions, known, refresh, enabled), {
-    initialProps: { sessions: { s1: session('s1', 'prj_a'), s2: session('s2', 'prj_new') }, enabled: false },
+    initialProps: { sessions: { s1: session('s1', 'prj_a'), s2: session('s2', 'prj_new') } as Record<string, SessionSummary>, enabled: false },
   })
   expect(refresh).not.toHaveBeenCalled()
   rerender({ sessions: { s1: session('s1', 'prj_a'), s2: session('s2', 'prj_new') }, enabled: true })

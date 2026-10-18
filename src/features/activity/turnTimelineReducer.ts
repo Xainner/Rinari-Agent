@@ -341,6 +341,11 @@ function mergeEventItem(
   }
   if (event.startsWith('model.')) {
     const prior = current?.type === 'model' ? current : undefined
+    if (event === 'model.tool_input') {
+      // Un archivo largo dentro de los argumentos: la línea viva dice cuánto lleva (F26).
+      const base = prior ?? { id, type: 'model' as const, modelCallId: text(payload.model_call_id), activitySeq, occurredAt, status: 'thinking' as const, content: '' }
+      return { ...base, toolInput: { tool: text(payload.tool), chars: number(payload.chars) ?? 0, path: text(payload.path) || undefined } }
+    }
     if (event === 'model.retrying') {
       // El reintento vuelve a escribir su respuesta desde el principio.
       return {

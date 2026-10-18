@@ -521,6 +521,7 @@ export const en: Record<I18nKey, string> = {
   'activity.parallelAgents': '{n} active subagents',
   'activity.parallelActions': '{n} active actions',
   'activity.live.thinking': 'Thinking…',
+  'activity.live.writingInput': 'Writing {target}… {size}',
   'activity.live.responding': 'Responding…',
   'activity.live.waiting': 'Waiting for the next step…',
   'activity.live.recovering': 'Recovering execution…',

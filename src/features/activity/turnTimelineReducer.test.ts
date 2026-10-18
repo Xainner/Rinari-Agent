@@ -239,3 +239,18 @@ it('a stored page says its ids once per turn; each row gets them back (#91)', ()
   const row = state.timelines.t9.items.find((item) => item.type === 'context') as { sessionId?: string } | undefined
   expect(row?.sessionId).toBe('s9')
 })
+
+
+describe('long tool calls being written (F26, plan 0.4.0 v2)', () => {
+  it('says what the model is writing and how much, then goes back to normal', async () => {
+    const { liveActionLabel } = await import('./ActivityHeader')
+    const t = (key: string, vars?: Record<string, string | number>) => `${key}:${JSON.stringify(vars ?? {})}`
+    const ids = { turn_id: 't1', session_id: 's1' }
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
+    state = turnTimelineReducer(state, event('model.started', { ...ids, model_call_id: 'm1', activity_seq: 1 }))
+    state = turnTimelineReducer(state, event('model.tool_input', { ...ids, model_call_id: 'm1', activity_seq: 1, tool: 'fs.write', chars: 12_400, path: String.raw`C:\proj\calc\parser.py` }))
+    expect(liveActionLabel(state.timelines.t1, t as never)).toBe('activity.live.writingInput:{"target":"calc/parser.py","size":"12 KB"}')
+    state = turnTimelineReducer(state, event('model.tool_input', { ...ids, model_call_id: 'm1', activity_seq: 1, tool: 'shell.exec', chars: 3000 }))
+    expect(liveActionLabel(state.timelines.t1, t as never)).toBe('activity.live.writingInput:{"target":"shell.exec","size":"3 KB"}')
+  })
+})

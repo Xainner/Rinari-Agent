@@ -30,6 +30,12 @@ export function liveActionLabel(timeline: TurnTimeline, t: Translate): string {
     return t(item.type === 'context' ? 'activity.live.context' : 'activity.live.verification')
   }
   if (state.kind === 'retrying') return t('activity.live.retrying', { n: state.retry.attempt, total: state.retry.maxAttempts })
+  if (state.kind === 'thinking' && state.input) {
+    const parts = (state.input.path ?? '').split(/[\\/]/).filter(Boolean)
+    const target = parts.length ? parts.slice(-2).join('/') : state.input.tool
+    const size = state.input.chars >= 1024 ? `${Math.round(state.input.chars / 1024)} KB` : `${state.input.chars} B`
+    return t('activity.live.writingInput', { target, size })
+  }
   return t(`activity.live.${state.kind}` as I18nKey)
 }
 

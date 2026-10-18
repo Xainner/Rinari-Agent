@@ -51,6 +51,13 @@ Project headers collapse their sessions. Composer selectors close upon selection
   paleta, los atajos con un diálogo modal abierto.
 - `Ctrl+N` y `Ctrl+W` son contextuales: en Boards abren «Añadir panel» y quitan el
   panel enfocado sin cerrar su sesión; en Normal conservan su comportamiento.
+- Boards (plan-boards B.4.1): `Ctrl+1…9` va al panel N y pone el cursor en su
+  composer; si está plegado, lo enfoca sin desplegarlo y abre su vistazo.
+  `Ctrl+J` (configurable) va al siguiente panel que te necesita (aprobación,
+  pregunta o fallo) en orden de llegada, también con el vistazo si está
+  plegado; sin ninguno, avisa «Nada te necesita».
+- Una conversación de la barra lateral se arrastra al board (B.4.2): una guía
+  marca dónde cae, entre dos paneles o al final; si ya estaba, se mueve ahí.
 - Estado por sesión: el runtime del motor vive en un store con selectores por
   sesión (`sessionSelectors`), cada Composer trabaja sobre su propia clave de
   borrador y el razonamiento de la siguiente petición se guarda por sesión
@@ -69,14 +76,14 @@ Project headers collapse their sessions. Composer selectors close upon selection
   Un layout de una versión futura no se reescribe. Las escrituras se agrupan
   (250 ms) y se vuelcan al ocultar la ventana.
 - **Ajustar a la vista** reparte el espacio real entre los paneles expandidos,
-  descontando las tiras colapsadas y la columna Añadir panel. El layout flex
+  descontando los paneles plegados (columnas de 200 px o tiras de 48 px). El layout flex
   responde al tamaño del contenedor, la barra lateral y el zoom; no guarda
   mediciones ni cambia el foco, los borradores o las preferencias del dock.
   Mientras está activo se retiran los separadores manuales. Al apagarlo se
   recuperan los anchos guardados (480–1600 px); el reparto puede superar ese
   máximo. El modo persiste en schema 4 y los layouts anteriores abren en manual.
   Si no caben todos a una densidad compacta de 320 px, aparece un aviso y scroll
-  solo en la fila de paneles: Añadir panel permanece fuera del área desplazable.
+  solo en la fila de paneles; «Añadir panel» sigue en la barra.
   Colapsar todo y el modo foco conservan la preferencia de ajuste.
   Pulsar Ajustar a la vista expande todos los paneles y sale del modo foco,
   incluso si el ajuste ya estaba activo antes de colapsarlos. Solo vuelve al
@@ -209,14 +216,17 @@ Validación: `src/stores/boardAttention.test.ts`, `sessionSelectors.test.ts`
 - `Ctrl+Alt+]` expande el enfocado; sin foco, el último expandido o la primera
   tira. Los atajos son configurables (Ajustes › Atajos) y no tienen acelerador
   nativo duplicado.
-- Toolbar del board: conteos por **sesión** (trabajando / te necesitan / con
-  resultados sin leer), «Colapsar todo», «Expandir todo», «Colapsar terminados»
-  (solo `done`/`idle`/`cancelled`, sin pendientes, con disponibilidad
-  confirmada y nunca el enfocado; deshabilitado en modo foco), «Modo foco»
-  (snapshot de la composición, un único panel expandido; el alta durante el
-  modo enfoca el nuevo; colapsar el foco a mano sale del modo sin restaurar)
-  y «Marcar todos los resultados como leídos». Las mismas acciones existen en
-  la paleta de comandos (`Boards: …`).
+- Toolbar del board (B.4.3): a la vista, los conteos por **sesión**
+  (trabajando / te necesitan / con resultados sin leer), «Ajustar a la vista»
+  y «Añadir panel» (ya no hay columna fija al final del board). En el menú
+  «⋯»: «Colapsar terminados» (solo `done`/`idle`/`cancelled`, sin pendientes,
+  con disponibilidad confirmada y nunca el enfocado; deshabilitado en modo
+  foco), «Modo foco» (snapshot de la composición, un único panel expandido;
+  el alta durante el modo enfoca el nuevo; colapsar el foco a mano sale del
+  modo sin restaurar; activo, queda también un botón a la vista para salir),
+  «Marcar todos los resultados como leídos», «Colapsar todo», «Expandir todo»
+  y «Quitar todos». Las mismas acciones existen en la paleta de comandos
+  (`Boards: …`). Que aparezca un contador nunca cambia la altura de la barra.
 - Los estados que usa la toolbar y `collapseFinished` salen de la caché
   efímera `boardStatus` publicada por `BoardActivityController`, nunca de un
   mapa inventado por el componente.

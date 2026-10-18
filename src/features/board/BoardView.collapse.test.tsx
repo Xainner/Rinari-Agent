@@ -58,16 +58,19 @@ it('removes every pane after the app confirmation while preserving running sessi
     useBoardStore.getState().setFocusMode(true)
   })
   const runtime = engine.runtime.getState()
-  const button = screen.getByRole('button', { name: 'Quitar todos' })
-  expect(button.title).toContain('Las conversaciones y su trabajo en curso se conservan')
-  await userEvent.click(button)
+  // «Quitar todos» vive en el menú «⋯» de la barra (plan-boards B.4.3).
+  await userEvent.click(screen.getByRole('button', { name: 'Más acciones del board' }))
+  const item = await screen.findByRole('menuitem', { name: 'Quitar todos' })
+  expect(item.title).toContain('Las conversaciones y su trabajo en curso se conservan')
+  await userEvent.click(item)
   // Cancelar el diálogo de la app no toca el board.
   const dialog = await screen.findByRole('alertdialog')
   expect(dialog.textContent).toContain('¿Quitar los 3 paneles del board?')
   await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
   expect(useBoardStore.getState().panes).toHaveLength(3)
   expect(screen.queryByRole('alertdialog')).toBeNull()
-  await userEvent.click(screen.getByRole('button', { name: 'Quitar todos' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Más acciones del board' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Quitar todos' }))
   await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Quitar todos' }))
   await waitFor(() => expect(useBoardStore.getState().panes).toEqual([]))
   expect(screen.queryByTestId('board-toolbar')).toBeNull()
@@ -130,22 +133,32 @@ it('toolbar: counts by session, collapse finished, focus mode and expand all', a
   expect(within(toolbar).getByTestId('count-working').textContent).toBe('1 trabajando')
   expect(within(toolbar).getByTestId('count-unread').textContent).toBe('1 con resultados sin leer')
 
+  // In view: counters, «Ajustar a la vista» and «Añadir panel»; the rest in «⋯» (plan-boards B.4.3).
+  expect(within(toolbar).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual(['Ajustar a la vista', 'Más acciones del board', 'Añadir panel'])
+  const menu = async () => user.click(within(toolbar).getByRole('button', { name: 'Más acciones del board' }))
+
   // Collapse finished: only the idle/done, unfocused panes fold (ses_c is done but unread → still done kind, allowed; ses_b working stays).
-  await user.click(within(toolbar).getByRole('button', { name: 'Colapsar terminados' }))
+  await menu()
+  await user.click(await screen.findByRole('menuitem', { name: 'Colapsar terminados' }))
   let collapsed = useBoardStore.getState().panes.filter((pane) => pane.collapsed).map((pane) => pane.sessionId)
   expect(collapsed).toEqual(['ses_c'])
 
-  await user.click(within(toolbar).getByRole('button', { name: 'Modo foco' }))
+  await menu()
+  await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Modo foco' }))
   expect(useBoardStore.getState().focusMode).toBe(true)
   collapsed = useBoardStore.getState().panes.filter((pane) => pane.collapsed).map((pane) => pane.sessionId)
   expect(collapsed).toEqual(['ses_b', 'ses_c'])
-  expect(within(toolbar).getByRole('button', { name: 'Colapsar terminados' })).toHaveProperty('disabled', true)
+  // In focus mode a «Modo foco» button stays in view to leave it in one gesture.
+  expect(within(toolbar).getByRole('button', { name: 'Modo foco' }).getAttribute('aria-pressed')).toBe('true')
+  await menu()
+  expect((await screen.findByRole('menuitem', { name: 'Colapsar terminados' })).getAttribute('aria-disabled')).toBe('true')
 
-  await user.click(within(toolbar).getByRole('button', { name: 'Expandir todo' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Expandir todo' }))
   expect(useBoardStore.getState().focusMode).toBe(false)
   expect(useBoardStore.getState().panes.some((pane) => pane.collapsed)).toBe(false)
 
-  await user.click(within(toolbar).getByRole('button', { name: 'Marcar todos los resultados como leídos' }))
+  await menu()
+  await user.click(await screen.findByRole('menuitem', { name: 'Marcar todos los resultados como leídos' }))
   expect(within(toolbar).queryByTestId('count-unread')).toBeNull()
 })
 

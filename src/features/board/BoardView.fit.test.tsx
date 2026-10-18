@@ -40,7 +40,8 @@ it('toggles through the accessible toolbar without remounting composers or chang
   expect((composer as HTMLTextAreaElement).value).toBe('Borrador conservado')
   act(() => useBoardStore.getState().collapseAll())
   expect(container.querySelectorAll('[data-collapsed]')).toHaveLength(2)
-  expect(container.querySelector('.board-add-column button')).toBeTruthy()
+  // Sin la columna fija «Añadir panel» (plan-boards B.4.3): la barra ya lo tiene.
+  expect(container.querySelector('.board-add-column')).toBeNull()
   expect(useBoardStore.getState().fitToView).toBe(true)
   await user.click(toggle)
   expect(container.querySelectorAll('[data-collapsed]')).toHaveLength(0)

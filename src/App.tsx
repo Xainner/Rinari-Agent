@@ -405,6 +405,8 @@ function App() {
     if (action === 'expandPane') dispatchAction('expand-pane')
     // Abre el chip de proyecto del composer enfocado, si es una conversación nueva (#42).
     if (action === 'projectPicker') window.dispatchEvent(new Event(PROJECT_PICKER_EVENT))
+    // Boards: el siguiente panel que te necesita; fuera de Boards no hace nada.
+    if (action === 'nextNeedsYou' && view === 'board') dispatchAction('board-next-needs-you')
   })
 
   const desktopActionRef = useRef<(action: DesktopAction) => void>(() => {})

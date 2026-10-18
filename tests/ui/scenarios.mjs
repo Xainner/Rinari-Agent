@@ -244,6 +244,21 @@ export const scenarios = {
       return startFakeModel([{ text: 'HOLA' }])
     },
   },
+  'boards-shortcuts': {
+    title: 'Boards: Ctrl+1…9 y Ctrl+J, soltar una conversación de la barra lateral entre dos paneles y la barra limpia (B.4)',
+    phases: ['exercise'],
+  },
+  'boards-switch-blank': {
+    title: 'Boards: una conversación larga no queda en blanco al pasar de Normal a Boards a distintas alturas (C9)',
+    phases: ['exercise'],
+    // La misma conversación sembrada que large-history (#91).
+    model: (data) => {
+      const cli = resolve(process.env.RINARI_CLI ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'DEV', 'RInari-CLI'))
+      const seed = join(dirname(fileURLToPath(import.meta.url)), 'large-history', 'seed.py')
+      execFileSync('uv', ['run', 'python', seed, join(data, 'engine')], { cwd: cli, stdio: 'inherit', env: { ...process.env, RINARI_HOME: join(data, 'engine') } })
+      return startFakeModel([{ text: 'HOLA' }])
+    },
+  },
   'memory-places': {
     title: 'Memoria por lugares: conteo en cada pestaña, chip de lugar, barra de selección flotante que no mueve filas y «Mover a…»',
     phases: ['exercise'],

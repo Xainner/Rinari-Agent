@@ -106,7 +106,7 @@ interface BoardState extends PersistedBoard {
   paneErrors: Record<string, string>
   /** Última vez que no se pudo persistir (cuota/storage). */
   persistError: string | null
-  addPane: (sessionId: string, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
+  addPane: (sessionId: string, options?: { focus?: boolean; afterPaneId?: string; atIndex?: number }) => BoardPane
   /** Panel de una conversación nueva que aún no existe (se crea al enviar). */
   addDraftPane: (projectId: string | null, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
   updatePaneDraft: (paneId: string, patch: Partial<PaneDraft>) => void
@@ -117,6 +117,11 @@ interface BoardState extends PersistedBoard {
   removeAllPanes: () => void
   movePane: (paneId: string, toIndex: number) => void
   focusPane: (paneId: string | null) => void
+  /**
+   * Enfoca un panel sin desplegarlo (Ctrl+1…9 y Ctrl+J sobre uno plegado:
+   * plan-boards B.4.1). En modo foco no cambia nada: ahí enfocar es desplegar.
+   */
+  selectPane: (paneId: string) => void
   setPaneWidth: (paneId: string, width: number) => void
   setFitToView: (enabled: boolean) => void
   setSoftLimit: (limit: number) => void
@@ -393,11 +398,13 @@ function nearestNeighbor(panes: BoardPane[], paneId: string): string | null {
 
 export const useBoardStore = create<BoardState>((set, get) => {
   /** Inserta un panel (tras `afterPaneId` o al final) respetando foco y modo foco. */
-  function insertPane(pane: BoardPane, options: { focus?: boolean; afterPaneId?: string }): BoardPane {
+  function insertPane(pane: BoardPane, options: { focus?: boolean; afterPaneId?: string; atIndex?: number }): BoardPane {
     set((state) => {
       const panes = [...state.panes]
       const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1
-      if (at >= 0) panes.splice(at + 1, 0, pane)
+      // Soltar desde la barra lateral (B.4.2): en la posición exacta.
+      if (typeof options.atIndex === 'number') panes.splice(Math.max(0, Math.min(panes.length, options.atIndex)), 0, pane)
+      else if (at >= 0) panes.splice(at + 1, 0, pane)
       else panes.push(pane)
       const focus = options.focus !== false
       let next: Partial<BoardState> = { panes }
@@ -551,6 +558,11 @@ export const useBoardStore = create<BoardState>((set, get) => {
     }
     if (panes === state.panes && state.focusedPaneId === paneId) return state
     return { panes, focusedPaneId: paneId, lastExpandedPaneId: paneId }
+  }),
+
+  selectPane: (paneId) => set((state) => {
+    if (state.focusMode || state.focusedPaneId === paneId || !state.panes.some((item) => item.paneId === paneId)) return state
+    return { focusedPaneId: paneId }
   }),
 
   setFitToView: (enabled) => set({ fitToView: enabled }),

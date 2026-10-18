@@ -96,9 +96,12 @@ scenario(async () => {
   await wait(`Boolean(${q(a + ' [data-operation-group] details[open]')})`)
   // Boards se monta de nuevo al cambiar de vista; en una máquina lenta el texto llega un poco después.
   await wait(`${q(a)}.innerText.includes('PROGRESO 24')`)
-  await clickText('Colapsar todo')
+  // Colapsar / Expandir todo viven en el menú «⋯» de la barra (plan-boards B.4.3).
+  await click('.board-toolbar button[aria-label="Más acciones del board"]')
+  await clickText('Colapsar todo', '[role="menu"] [role="menuitem"]')
   assert.equal(await evaluate(`Boolean(${q(a + ' [data-operation-group] details')})`), false)
-  await clickText('Expandir todo')
+  await click('.board-toolbar button[aria-label="Más acciones del board"]')
+  await clickText('Expandir todo', '[role="menu"] [role="menuitem"]')
   // En el runner la ventana a veces no pinta y la animación de desplegar no
   // avanza: se congela aquí a propósito y el panel debe llegar igual a su ancho.
   // Solo las del plegado de paneles: `<html>` también lleva data-motion con

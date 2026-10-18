@@ -126,10 +126,10 @@ describe('column or strip', () => {
   const pane = (id: string, collapsed: boolean, width = 700): BoardPane => ({ paneId: id, sessionId: `ses_${id}`, width, collapsed })
   it('is a column when every collapsed pane fits beside the open ones, a strip otherwise', () => {
     const panes = [pane('a', false), pane('b', true), pane('c', true)]
-    expect(collapsedVariantFor(panes, true, 320 + 2 * COLUMN_WIDTH + 132)).toBe('column')
-    expect(collapsedVariantFor(panes, true, 320 + 2 * COLUMN_WIDTH + 131)).toBe('strip')
-    expect(collapsedVariantFor(panes, false, 700 + 2 * COLUMN_WIDTH + 132)).toBe('column')
-    expect(collapsedVariantFor(panes, false, 700 + 2 * COLUMN_WIDTH + 131)).toBe('strip')
+    expect(collapsedVariantFor(panes, true, 320 + 2 * COLUMN_WIDTH)).toBe('column')
+    expect(collapsedVariantFor(panes, true, 320 + 2 * COLUMN_WIDTH - 1)).toBe('strip')
+    expect(collapsedVariantFor(panes, false, 700 + 2 * COLUMN_WIDTH)).toBe('column')
+    expect(collapsedVariantFor(panes, false, 700 + 2 * COLUMN_WIDTH - 1)).toBe('strip')
     // Not measured yet: the strip, as before.
     expect(collapsedVariantFor(panes, true, 0)).toBe('strip')
   })

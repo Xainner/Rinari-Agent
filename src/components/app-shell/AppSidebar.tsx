@@ -66,6 +66,7 @@ import { inProfile, useProfileStore } from '../../features/profiles/profileStore
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
 import { TitleSwap } from '../TitleSwap'
 import { ResumeChip } from '../../features/resume/ResumeChip'
+import { SESSION_DRAG_TYPE } from '../../features/board/boardDrag'
 
 export interface AppSidebarProps {
   collapsed: boolean
@@ -352,6 +353,13 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => onSelectSession(session.id)}
+            // Se arrastra al board para añadirla como panel (plan-boards B.4.2).
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.setData(SESSION_DRAG_TYPE, session.id)
+              event.dataTransfer.setData('text/plain', session.title || session.id)
+              event.dataTransfer.effectAllowed = 'copyMove'
+            }}
             aria-current={active ? 'page' : undefined}
             className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left"
           >

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { Check, CheckCheck, ChevronsRight, CircleHelp, GitBranch, LoaderCircle, MoreHorizontal, ShieldAlert, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ProviderLogo from '../../components/ProviderLogo'
@@ -22,6 +22,7 @@ import { formatTokens } from '../activity/tokenUsage'
 import { shortElapsed } from '../activity/TurnStatusCard'
 import { firstLine, paneDigest } from './paneDigest'
 import { NeedsYouActions, PanePeek, usePeek } from './PanePeek'
+import { PANE_PEEK_EVENT } from './useBoardNavigation'
 
 export const STRIP_WIDTH = 48
 /** Columna plegada con su estado en vivo (plan-boards B.2). */
@@ -105,6 +106,17 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
   )
   const face = useMemo(() => paneFace(status.kind, session.timelines), [status.kind, session.timelines])
   const peek = usePeek()
+  const expandRef = useRef<HTMLButtonElement>(null)
+  // Ctrl+1…9 / Ctrl+J sobre un panel plegado: el foco y el vistazo, sin desplegarlo.
+  useEffect(() => {
+    const onPeek = (event: Event) => {
+      if ((event as CustomEvent<{ paneId?: string }>).detail?.paneId !== paneId) return
+      expandRef.current?.focus()
+      peek.show()
+    }
+    window.addEventListener(PANE_PEEK_EVENT, onPeek)
+    return () => window.removeEventListener(PANE_PEEK_EVENT, onPeek)
+  }, [paneId, peek.show])
   const column = variant === 'column'
   const width = column ? COLUMN_WIDTH : STRIP_WIDTH
   const branch = ownChild?.branch ?? gitStatus?.status.branch ?? null
@@ -141,6 +153,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
       {column ? (
         <>
           <button
+            ref={expandRef}
             type="button"
             className="pane-column-expand"
             aria-expanded={false}
@@ -201,6 +214,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
       ) : (
         <>
           <button
+            ref={expandRef}
             type="button"
             className="pane-strip-expand"
             aria-expanded={false}

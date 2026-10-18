@@ -124,6 +124,8 @@ Dentro de cada PR se trabaja **por bloques**: puntos que tocan el mismo código 
 
 **Bloques 25–29 (dueño, 2026-10-17):** Boards y multimedia entran en la 0.4.0 en este orden. Codex: primero se comprueba si el backend de la suscripción que ya usa el Engine (`CodexResponsesAdapter`) acepta generar imágenes; si no, el conector llama a Codex CLI, como el arte de Rinari. **Una sola Nightly al terminar del 25 al 29**, ninguna intermedia.
 
+**Cierre del 25 al 29 (2026-10-17).** Pulido visual de la sesión de UI en cfcc38c; «Añadir panel» recupera su nombre accesible (0da6e7a). `ui:e2e --all`: 70 de 73 a la primera; project-reveal se arregló con ese commit, y activity-text-shimmer (el ancho del texto cambia 0,17 px durante el brillo) y chat-follow-live (un aviso «ResizeObserver loop» mientras transmite) fallan igual con la app y el Engine de antes del bloque 25: no vienen de estos bloques y quedan por investigar. vitest 1738, CLI 3529. **Nightly 0.4.0-nightly.20261017.2028 instalada** (Agent 0da6e7a, CLI 8b0733a).
+
 ---
 
 ## CI. `boards-side-panel` rojo en `main`

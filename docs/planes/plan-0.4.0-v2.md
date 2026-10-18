@@ -1,12 +1,31 @@
 # Plan 0.4.0 v2: arreglos tras la Nightly final
 
-Estado: **anotado, sin empezar** (dueño, 2026-10-17 y 18). El dueño sigue anotando: no se empieza hasta que lo autorice.
+Estado: **hecho** (2026-10-18; el dueño autorizó «dale a la v2, nightly instalada al finalizar»). El avance de cada bloque está en la tabla de abajo; lo que quedó fuera, con su motivo.
 
 Origen:
 - Lo que el dueño vio al probar la Nightly 0.4.0-nightly.20261017.2028 (bloques 25–29 del [plan 0.4.0](plan-0.4.0.md)): V2-1 a V2-5.
 - La batería de uso real del 2026-10-18 (`C:\Users\Xainner\Documents\Proyectos\pruebas-040-1018\HALLAZGOS.md`): 35 sesiones con GPT 6.1 Sol, GPT 6 Luna, DeepSeek V4.1 Flash y Qwen 3.8 Flash Next. Los F-n del texto son sus hallazgos.
 
 Se trabaja en las ramas `0.4.0` con commits locales, y al terminar va una Nightly. Lo que es de servicios externos (Rinari Visual Lab, xAInner) está en [notas-servicios-externos.md](notas-servicios-externos.md) y no entra aquí.
+
+## Avance
+
+| Bloque | Estado |
+|---|---|
+| V2-7 | Hecho: CLI 622506d, Agent 757c6a7 (textos de la tarjeta). `ssh` con comando o sesión, `scp` y `rsync` preguntan en Proyecto (`shell_remote`); borrar en otro equipo está en la lista dura (`remote_destructive`); la lista catastrófica se aplica a lo que va entre comillas. |
+| V2-8 | Hecho: CLI 9b2a0c2. Solo el texto vacío `""` de un opcional cuenta como ausente (un `null` en un campo tipado sigue siendo inválido, por el contrato de `test_builtin_tool_validation`); `edits` como texto JSON; el `request_id` de un rechazo no se gasta. |
+| V2-9 | Hecho: CLI 74d2604. |
+| V2-10 | Hecho: CLI 30245f3. La sospecha anotada (devolver el razonamiento) era falsa: la prueba controlada contra la suscripción dio 0 % en 8 llamadas con y sin él, y 87–94 % con la cabecera `session_id` que manda Codex CLI. |
+| V2-6 y V2-1 | Hechos: CLI 8a2fa0a. Índice generado (unos 340 tokens con el catálogo base), instrucciones de cada MCP, sin las dos pistas a mano; un grupo con servicio configurado se carga y lo nombra. |
+| V2-3 | Hecho: CLI 0356734. `browser.screenshot` ya devolvía su `artifact://`. |
+| V2-2 | Hecho: CLI caaf92d. Los orígenes de una copia siguen pasando por la revisión de secretos (copiar `~/.ssh/id_rsa` al proyecto sigue preguntando). |
+| V2-5 | Hecho: CLI 4addfe2, con la prueba que recorre todas las herramientas nativas. |
+| V2-4 | Hecho: CLI 91810a1. En la app de escritorio; el CLI conserva el orden (una ejecución suelta puede terminar justo después de la respuesta). |
+| V2-11 | Hecho: CLI b4d7968. La app ya distinguía «sin dato» de 0 (no muestra la caché si no llega). |
+| V2-12 | Hecho: CLI fe3e567 (F38 `agent.wait`, F33 presupuesto de esquemas). F11 sin cambio: el coste venía de reenviar sin caché (V2-10), y asentar antes rompería la caché. |
+| V2-13 | Hecho en parte: CLI 806e731 (F15 la tarjeta muestra el script, F36 un parche sin archivo falla antes de preguntar). **F32 queda fuera**: saber qué proceso sirve una página local exige consultar al navegador a mitad de la decisión, y elegir «En este chat» una vez ya detiene las preguntas. |
+| V2-14 | Hecho en parte: CLI addaa97 (F2, F4/F27), ffefd08 (F19: Ctrl+Break primero, el árbol se limpia por su objeto de trabajo y nunca por PID), f417c26 (F39/F20 límites dichos en palabras, F13). **Quedan fuera**: F22 (no hay una carpeta de trabajo por sesión; darla es una función nueva con su permiso y su limpieza) y F35 (las capturas con el panel oculto dependen del host nativo, como en `ui-e2e-oclusion`). |
+| V2-15 | Hecho: Agent 6ba4576 (F3, F14, F5), CLI 8fd5640 (F6: regla en la constitución), CLI 9231110 y Agent 35203ad (F26: evento `model.tool_input` y la línea viva «Escribiendo calc/parser.py… 12 KB»). |
 
 ## Regla: cero hardcodeo (dueño, 2026-10-18)
 

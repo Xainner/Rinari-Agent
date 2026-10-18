@@ -20,7 +20,7 @@ import { useChildrenStore } from '../children/childrenStore'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { formatTokens } from '../activity/tokenUsage'
 import { shortElapsed } from '../activity/TurnStatusCard'
-import { firstLine, paneDigest } from './paneDigest'
+import { firstLine, paneDigest, pendingLabel } from './paneDigest'
 import { NeedsYouActions, PanePeek, usePeek } from './PanePeek'
 import { PANE_PEEK_EVENT } from './useBoardNavigation'
 
@@ -246,7 +246,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
           <div className="pane-strip-badges" role="group" aria-label={statusLabel}>
             {working && <LoaderCircle size={12} aria-hidden="true" className="text-[var(--accent-2)] motion-safe:animate-spin" />}
             {interventions > 0 && (
-              <span className="pane-strip-badge is-needs-you" role="status" aria-label={t('board.pane.pending', { n: interventions })} title={t('board.pane.pending', { n: interventions })}>
+              <span className="pane-strip-badge is-needs-you" role="status" aria-label={pendingLabel(t, interventions)} title={pendingLabel(t, interventions)}>
                 {approvals.length > 0 ? <ShieldAlert size={11} aria-hidden="true" /> : <CircleHelp size={11} aria-hidden="true" />}
                 {interventions}
               </span>

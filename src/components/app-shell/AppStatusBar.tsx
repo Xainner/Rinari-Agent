@@ -99,7 +99,7 @@ export default function AppStatusBar({
       </div>
       <div className="app-topbar-trailing">
         {attentionCount > 0 && (
-          <span className="app-topbar-summary" role="status" aria-live="polite">{t('topbar.attention', { n: attentionCount })}</span>
+          <span className="app-topbar-summary" role="status" aria-live="polite">{attentionCount === 1 ? t('topbar.attentionOne') : t('topbar.attention', { n: attentionCount })}</span>
         )}
         {attentionMenu}
         {!disabled && dockViews}

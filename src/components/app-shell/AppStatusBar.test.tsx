@@ -53,7 +53,7 @@ it('shows pending attention and context without an execution counter', () => {
   )
   const status = screen.getByRole('status').textContent ?? ''
   expect(status).not.toContain('en ejecución')
-  expect(status).toContain('1 pendientes de ti')
+  expect(status).toContain('1 pendiente de ti')
   expect(screen.getByText('Proyecto A')).toBeTruthy()
   expect(screen.getByRole('button', { name: /Boards · 1 paneles/ }).getAttribute('aria-pressed')).toBe('true')
 })

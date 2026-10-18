@@ -18,6 +18,7 @@ import { useSessionUiStore } from '../../stores/sessionUi'
 import { unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
 import { sessionForDraft, useConversationDraftStore, type ConversationDraft } from '../../stores/conversationDraft'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { useUnknownProjectRefresh } from '../projects/useUnknownProjectRefresh'
 
 export interface SendOptions {
   reasoningEffort?: ReasoningEffort
@@ -58,6 +59,8 @@ export function useEngineSession() {
   })
   const projects = useProjects({ engineReady: connection.ready })
   useProjectPromotionReveal(sessions.sessionsById, engineGeneration, projects.refreshProjects)
+  const knownProjectIds = useMemo(() => [...projects.projects, ...projects.archivedProjects].map((project) => project.id), [projects.projects, projects.archivedProjects])
+  useUnknownProjectRefresh(sessions.sessionsById, knownProjectIds, projects.refreshProjects, connection.ready)
   const catalog = useCatalog()
   const attachmentJobsRef = useRef(new Map<string, string>())
   /** Admisión de envío por sesión: dos clics antes del siguiente render no crean dos turnos. */

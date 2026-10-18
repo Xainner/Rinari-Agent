@@ -88,3 +88,8 @@ export function firstLine(text: string | null): string | null {
   const line = text.split('\n').map((value) => value.replace(/^[#>*\-\s`]+/, '').trim()).find(Boolean)
   return line ?? null
 }
+
+/** «1 pendiente de ti» / «N pendientes de ti» (F14, plan 0.4.0 v2). */
+export function pendingLabel(t: ReturnType<typeof useI18n>['t'], n: number): string {
+  return n === 1 ? t('board.pane.pendingOne') : t('board.pane.pending', { n })
+}

@@ -443,7 +443,8 @@ function FloatingSummary({ sessionId, record, open, focused, column, onClose }: 
 
 /** Una etapa del Flujo que te necesita enciende el botón Flujo en ámbar (#43). */
 function FlowSignals({ sessionId }: { sessionId: string }) {
-  const scope = useMemo(() => ({ kind: 'session' as const, id: sessionId }), [sessionId])
+  // Un borrador aún no tiene conversación: sin id no hay Flujo que pedir (F3, plan 0.4.0 v2).
+  const scope = useMemo(() => (sessionId ? { kind: 'session' as const, id: sessionId } : null), [sessionId])
   const flow = useFlow(scope)
   const publish = useDockSignalsStore((state) => state.publish)
   const needsYou = (flow.data?.stages ?? []).some((stage) => stage.status === 'needs_you')

@@ -29,6 +29,7 @@ import { rinariStateForTurn } from '../rinari/turnState'
 import { activityState, turnIsActive } from '../activity/activityPresentation'
 import type { TurnTimeline } from '../activity/types'
 import { TitleSwap } from '../../components/TitleSwap'
+import { pendingLabel } from './paneDigest'
 
 /** Expresión de Rinari en la cabecera del panel, según su estado real. */
 const STATUS_FACE: Record<PaneStatusKind, RinariState> = {
@@ -162,7 +163,7 @@ function PaneHeader({
           </span>
         )}
         {interventions > 0 && (
-          <span className="pane-header-badge" role="status" aria-label={t('board.pane.pending', { n: interventions })} title={t('board.pane.pending', { n: interventions })}>
+          <span className="pane-header-badge" role="status" aria-label={pendingLabel(t, interventions)} title={pendingLabel(t, interventions)}>
             {approvals.length > 0 ? <ShieldAlert size={12} aria-hidden="true" /> : <CircleHelp size={12} aria-hidden="true" />}
             {interventions}
           </span>

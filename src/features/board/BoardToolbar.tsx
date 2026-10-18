@@ -111,7 +111,7 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <button type="button" className="board-toolbar-button is-primary" onClick={onAddPane} title={t('board.toolbar.addPane')}>
+        <button type="button" className="board-toolbar-button is-primary" onClick={onAddPane} aria-label={t('board.toolbar.addPane')} title={t('board.toolbar.addPane')}>
           <Plus size={14} aria-hidden="true" /><span>{t('board.toolbar.addPane')}</span>
         </button>
       </div>

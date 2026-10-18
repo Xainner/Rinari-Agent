@@ -179,3 +179,34 @@ describe('#84 receipts that can always be cleared', () => {
     expect(unreadResultCount(sessions.ses_a) + unreadResultCount(sessions.ses_b)).toBe(0)
   })
 })
+
+describe('per Engine home (plan-boards C12)', () => {
+  it('the first home adopts what was saved before; another home starts clean; going back restores it', () => {
+    const store = useBoardAttentionStore.getState()
+    const base = store.profileKey
+    store.observeTerminal('ses_a', 't1', 'completed', 'live', 1)
+    flushAttentionPersistence()
+    expect(unreadResultCount(useBoardAttentionStore.getState().sessions.ses_a)).toBe(1)
+
+    store.setHomeId('home_one')
+    expect(useBoardAttentionStore.getState().profileKey).toBe(`${base}@home_one`)
+    expect(unreadResultCount(useBoardAttentionStore.getState().sessions.ses_a)).toBe(1)
+    // Adopted: the receipts left the key without a home.
+    expect(readPersistedAttention(base)).toEqual({})
+    expect(unreadResultCount(readPersistedAttention(`${base}@home_one`).ses_a)).toBe(1)
+
+    store.setHomeId('home_two')
+    expect(useBoardAttentionStore.getState().sessions).toEqual({})
+    useBoardAttentionStore.getState().observeTerminal('ses_b', 't9', 'failed', 'live', 2)
+    flushAttentionPersistence()
+
+    useBoardAttentionStore.getState().setHomeId('home_one')
+    const back = useBoardAttentionStore.getState().sessions
+    expect(unreadResultCount(back.ses_a)).toBe(1)
+    expect(back.ses_b).toBeUndefined()
+    expect(JSON.parse(window.localStorage.getItem(ATTENTION_STORAGE_KEY) ?? '{}').profiles[`${base}@home_two`].ses_b).toBeTruthy()
+
+    useBoardAttentionStore.getState().setHomeId(null)
+    expect(useBoardAttentionStore.getState().profileKey).toBe(base)
+  })
+})

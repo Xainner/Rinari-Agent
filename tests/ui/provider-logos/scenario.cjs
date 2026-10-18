@@ -118,7 +118,8 @@ scenario(async () => {
   await wait(`Boolean(document.querySelector('[data-pane-id="pane_1"] [data-provider-brand="lmstudio"]'))`)
   await healthy(); await screenshot('boards')
   await click('[data-pane-id="pane_0"] button[aria-label="Colapsar panel"]')
-  await wait(`Boolean(document.querySelector('.pane-strip [data-provider-brand="ollama"]'))`)
+  // Plegado es columna (si cabe) o tira: el logo va en las dos (plan-boards B.2).
+  await wait(`Boolean(document.querySelector('[data-collapsed] [data-provider-brand="ollama"]'))`)
   await healthy(); await screenshot('collapsed-board')
   // El Flujo vive en el panel lateral de la conversación (#43).
   await click('.view-switcher button[aria-label="Normal"]')

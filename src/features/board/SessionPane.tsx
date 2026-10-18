@@ -1,6 +1,6 @@
 import { runUiCommand } from '../engine/slashUi'
 import { useConfirm } from '../../components/ui/useConfirm'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
@@ -9,7 +9,7 @@ import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isDraftPane, useBoardStore, type BoardPane } from '../../stores/board'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
-import CollapsedPaneStrip from './CollapsedPaneStrip'
+import CollapsedPaneStrip, { COLUMN_WIDTH, STRIP_WIDTH } from './CollapsedPaneStrip'
 import PaneHeader from './PaneHeader'
 import SessionWorkspace from '../session/SessionWorkspace'
 import { usePaneSession } from './usePaneSession'
@@ -27,6 +27,8 @@ export interface SessionPaneProps {
   onOpenSingle: (sessionId: string) => void
   onRemove: (paneId: string) => void
   onOpenProviders: () => void
+  /** Cómo se ve plegado: columna con estado (si cabe) o tira de 48 px. */
+  collapsedVariant?: 'column' | 'strip'
 }
 
 /**
@@ -53,6 +55,7 @@ function LiveSessionPane({
   onOpenSingle,
   onRemove,
   onOpenProviders,
+  collapsedVariant = 'strip',
 }: SessionPaneProps) {
   const { t } = useI18n()
   const commands = useEngineCommands()
@@ -114,6 +117,7 @@ function LiveSessionPane({
         session={session}
         focused={focused}
         providers={data.providers}
+        variant={collapsedVariant}
         onExpand={() => expandPane(pane.paneId, { focus: true })}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
         onRemove={() => onRemove(pane.paneId)}
@@ -134,7 +138,7 @@ function LiveSessionPane({
       ref={measure}
       data-motion={fold.motion ?? undefined}
       onAnimationEnd={(event) => { if (event.target === event.currentTarget) endFold() }}
-      style={{ width: pane.width }}
+      style={{ width: pane.width, ...(fold.motion === 'expand' ? { '--unfold-from': `${collapsedVariant === 'column' ? COLUMN_WIDTH : STRIP_WIDTH}px` } : {}) } as CSSProperties}
       onPointerDownCapture={focus}
       onFocusCapture={focus}
     >

@@ -44,6 +44,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [activity-disclosure](activity-disclosure/README.md) | Avances visibles en vivo, operaciones plegadas y resumen al terminar en Normal y Boards |
 | [attention-taskbar](attention-taskbar/README.md) | Un resultado en otro chat de Normal sube el número de pendientes |
 | [boards-fit](boards-fit/README.md) | Ajustar a la vista en Boards |
+| [boards-collapsed-live](boards-collapsed-live/scenario.cjs) | Un panel plegado es una columna que sigue su lista, su paso y su resultado sin desplegarse; el vistazo tras una pausa; la tira de 48 px cuando no cabe (B.2) |
 | [boards-pane-quiet](boards-pane-quiet/scenario.cjs) | Enviar en un panel: ni «Preparando el turno…» ni la fila viva aparecen en ningún cuadro hasta que hay algo que contar (C1) |
 | [boards-remove-all](boards-remove-all/README.md) | Quitar todos los paneles, con confirmación |
 | [boards-side-panel](boards-side-panel/README.md) | Panel lateral cerrado por defecto en Boards |

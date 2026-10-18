@@ -2,13 +2,16 @@ import { create } from 'zustand'
 import { getProfileKey } from './profileKey'
 
 /**
- * Registro local de **reconocimiento del usuario** sobre resultados de turno y
- * mensajes de otros paneles. No es una segunda base de chat: guarda ids,
+ * Registro local de **reconocimiento del usuario** sobre resultados de turno.
+ * No es una segunda base de chat: guarda ids,
  * estados y tiempos, nunca contenido, rutas, tokens ni errores completos. La
  * proyección (qué turnos existen, qué terminaron) siempre puede reconstruirse
  * desde el timeline; aquí solo vive la voluntad "visto".
  *
- * Clave `rinari.board.attention.v1`, indexada por perfil local y sesión.
+ * Clave `rinari.board.attention.v1`, indexada por perfil local + home del
+ * Engine (`<perfil>@<home_id>`, plan-boards C12) y sesión: otro home con la
+ * misma instalación no comparte recibos. Lo guardado antes de conocer el home
+ * (o por una versión anterior) lo adopta el primer home que llega.
  */
 export const ATTENTION_STORAGE_KEY = 'rinari.board.attention.v1'
 export const ATTENTION_SCHEMA_VERSION = 1 as const
@@ -70,7 +73,7 @@ interface AttentionState {
   markTurnSeen: (sessionId: string, turnId: string) => void
   /** Este resultado y los anteriores de la sesión: ver uno posterior es haber pasado por ellos (#84). */
   markSeenThrough: (sessionId: string, turnId: string) => void
-  /** «Marcar todo como leído»: resultados y mensajes de pares de todas las sesiones (#84). */
+  /** «Marcar todo como leído»: los resultados de todas las sesiones (#84). */
   markAllSeen: () => void
   markSessionResultsSeen: (sessionId: string, turnIds: string[]) => void
   markAllBoardResultsSeen: (snapshot: Record<string, string[]>) => void
@@ -79,6 +82,8 @@ interface AttentionState {
   forgetSession: (sessionId: string) => void
   /** Tests y recuperación: sustituye el estado del perfil actual. */
   hydrate: (sessions: Record<string, SessionAttention>) => void
+  /** El `home_id` del hello: los recibos pasan a ser de ese home (C12). */
+  setHomeId: (homeId: string | null) => void
 }
 
 export interface TerminalObservation {
@@ -299,6 +304,31 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
   }),
 
   hydrate: (sessions) => set({ sessions }),
+
+  setHomeId: (homeId) => {
+    const base = get().profileKey.split('@')[0]
+    const next = homeId ? `${base}@${homeId}` : base
+    const current = get().profileKey
+    if (next === current) return
+    const document = loadAll()
+    const stored = document.profiles[next]
+    // Primera vez en este home: adopta lo guardado sin home (y lo quita de
+    // ahí, para que otro home no lo herede también).
+    const adopt = !stored && current === base
+    const sessions = stored ?? (adopt ? get().sessions : {})
+    if (adopt) delete document.profiles[base]
+    document.profiles[next] = sessions
+    if (typeof window !== 'undefined') {
+      try {
+        const payload = JSON.stringify(document)
+        window.localStorage.setItem(ATTENTION_STORAGE_KEY, payload)
+        lastSerialized = payload
+      } catch {
+        // Sin almacenamiento sigue en memoria; el próximo cambio reintenta.
+      }
+    }
+    set({ profileKey: next, sessions })
+  },
 }))
 
 // -- selectores puros -----------------------------------------------------------

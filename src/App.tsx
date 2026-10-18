@@ -47,6 +47,7 @@ import { requestDockToggle } from './features/session/SessionWorkspace'
 import { useTerminalStore } from './features/terminal/terminalStore'
 import { AGENT_TAB } from './features/terminal/agentTab'
 import { useSessionDockStore, viewForSurface, type DockSurface } from './stores/sessionDock'
+import { useBoardAttentionStore } from './stores/boardAttention'
 import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
@@ -477,6 +478,8 @@ function App() {
   const homeId = session.status?.home_id ?? null
   useEffect(() => {
     useSessionDockStore.getState().setHomeId(homeId)
+    // Los recibos de lectura también son de ese home (plan-boards C12).
+    useBoardAttentionStore.getState().setHomeId(homeId)
     // El alcance de Flujos es un id del Engine (proyecto o sesión) y se guarda
     // por el mismo motivo: en otro home ese id no existe o es otra cosa.
     useUIStore.getState().setFlowHomeId(homeId)

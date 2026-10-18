@@ -20,11 +20,30 @@ import AddPaneDialog from './AddPaneDialog'
 import BoardEmptyState from './BoardEmptyState'
 import BoardToolbar from './BoardToolbar'
 import SessionPane from './SessionPane'
+import { COLUMN_WIDTH } from './CollapsedPaneStrip'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export interface BoardActions {
   addPane: () => void
   removePane: () => void
+}
+
+/** Ancho mínimo de un panel desplegado con «Ajustar a la vista» (CSS `.is-fit-to-view`). */
+const FIT_MIN_PANE_WIDTH = 320
+/** La columna fija «Añadir panel» al final del board. */
+const ADD_COLUMN_WIDTH = 132
+
+/**
+ * Plegado, un panel es una columna con su estado (~200 px) si caben todas
+ * junto a los desplegados; si no, todos caen a la tira de 48 px (plan-boards
+ * B.2). Sin medida todavía (primer cuadro, jsdom), la tira de siempre.
+ */
+export function collapsedVariantFor(panes: BoardPane[], fitToView: boolean, available: number): 'column' | 'strip' {
+  const columns = panes.filter((pane) => pane.collapsed && !isDraftPane(pane)).length
+  if (columns === 0 || available <= 0) return 'strip'
+  const strips = panes.filter((pane) => pane.collapsed && isDraftPane(pane)).length * 48
+  const expanded = panes.filter((pane) => !pane.collapsed).reduce((sum, pane) => sum + (fitToView ? FIT_MIN_PANE_WIDTH : pane.width), 0)
+  return expanded + strips + columns * COLUMN_WIDTH + ADD_COLUMN_WIDTH <= available ? 'column' : 'strip'
 }
 
 function canonicalRoot(session: SessionSummary | undefined): string | null {
@@ -85,6 +104,18 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const canvasRef = useRef<HTMLDivElement>(null)
   const paneRowRef = useRef<HTMLDivElement>(null)
   const [fitOverflow, setFitOverflow] = useState(false)
+  const [canvasWidth, setCanvasWidth] = useState(0)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const measure = () => setCanvasWidth(canvas.clientWidth)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [])
+  const collapsedVariant = collapsedVariantFor(panes, fitToView, canvasWidth)
 
   // Flex reparte el espacio real después de reservar Añadir y las tiras. Solo
   // observamos si se alcanzó la densidad mínima: nunca persistimos geometría.
@@ -251,6 +282,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
                       onOpenSingle={openSingle}
                       onRemove={removePane}
                       onOpenProviders={() => goSettings('providers')}
+                      collapsedVariant={collapsedVariant}
                     />
                     {!pane.collapsed && !fitToView && <PaneResizer pane={pane} />}
                   </Fragment>

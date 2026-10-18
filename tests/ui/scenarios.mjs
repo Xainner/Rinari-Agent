@@ -463,6 +463,19 @@ export const scenarios = {
     title: 'Boards: Ajustar a la vista',
     phases: ['exercise'],
   },
+  'boards-collapsed-live': {
+    title: 'Boards: un panel plegado es una columna que sigue su estado en vivo (lista, paso, resultado) y cae a la tira si no cabe (B.2)',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Migrar pagos' })),
+      main: [
+        { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"in_progress"},{"id":"b","content":"Escribir el informe","status":"pending"},{"id":"c","content":"Revisar las cifras","status":"pending"}] }, say: 'Armo la lista.' },
+        { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"completed"},{"id":"b","content":"Escribir el informe","status":"in_progress","active_form":"Escribiendo el informe"},{"id":"c","content":"Revisar las cifras","status":"pending"}] }, say: 'Avanzo.' },
+        { tool: 'checklist.update', args: { items: [{"id":"a","content":"Reunir los datos","status":"completed"},{"id":"b","content":"Escribir el informe","status":"completed"},{"id":"c","content":"Revisar las cifras","status":"completed"}] }, say: 'Termino.' },
+        { text: 'PAGOS MIGRADOS\n\nLos webhooks quedaron en la versión nueva.' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'boards-pane-quiet': {
     title: 'Boards: la fila viva del turno no aparece en el panel mientras Rinari prepara o piensa (C1)',
     phases: ['exercise'],

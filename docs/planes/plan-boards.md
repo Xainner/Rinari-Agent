@@ -114,7 +114,7 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka,
 | C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Hecho (0.4.0 bloque 25, Agent 5ea71ed) |
 | C7 | Mensajes entre paneles «como subagentes» | Planka, Idea; triage I1 | Resuelto por decisión: la mensajería se quita (B.1) y la comunicación entre agentes pasa a [Rinari Agency](idea-rinari-agency.md) |
 | C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Hecho: la píldora se desliza entre las dos opciones (`WorkspaceViewSwitcher.tsx`, `layoutId`, 6a0b4069) |
-| C9 | Panel en blanco (0 filas) al pasar de Normal a Boards | Visto 3 veces en uso real; intermitente en el escenario `chat-interaction-fixes` | Abierto, sin causa confirmada. Hipótesis: Virtua con un ancla de scroll restaurada fuera de rango |
+| C9 | Panel en blanco (0 filas) al pasar de Normal a Boards | Visto 3 veces en uso real; intermitente en el escenario `chat-interaction-fixes` | No reproducido (0.4.0 bloque 27): `boards-switch-blank` lo busca en cada corrida |
 | C10 | Dos paneles escribiendo en la misma carpeta: el Engine no los serializa y el board solo avisa | `docs/debt.md` | Abierto. El chip con «Abrir en worktree» quedó aparcado (B.5) |
 | C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Hecho por otra vía: el snapshot del runtime (`active_turns`) restaura los turnos vivos de cualquier sesión; la columna plegada los lee (0.4.0 bloque 26) |
 | C12 | Los recibos de lectura se indexan por instalación, no por home del Engine | `docs/debt.md` | Hecho (0.4.0 bloque 26, Agent 9a4a95f): `<perfil>@<home_id>` |

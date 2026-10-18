@@ -11,6 +11,7 @@ const RULE_LABEL: Record<string, I18nKey> = {
   network_host: 'grants.rule.networkHost',
   write_outside_root: 'grants.rule.writeOutside',
   shell_external_mutation: 'grants.rule.shellOutside',
+  shell_remote: 'grants.rule.shellRemote',
   git_remote_mutation: 'grants.rule.gitPush',
   mcp_call: 'grants.rule.mcp',
   browser_interact: 'grants.rule.browser',

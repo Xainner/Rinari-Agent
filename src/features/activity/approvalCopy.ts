@@ -23,6 +23,9 @@ const RULE_TITLE: Record<string, I18nKey> = {
   read_only_command: 'approval.rule.readOnlyCommand',
   shell_cwd_outside: 'approval.rule.shellCwdOutside',
   shell_send: 'approval.rule.shellSend',
+  // Lo que corre por ssh o se copia con scp/rsync a otro equipo (plan 0.4.0 v2, V2-7).
+  shell_remote: 'approval.rule.shellRemote',
+  remote_destructive: 'approval.rule.remoteDelete',
   private_change_snapshot: 'approval.rule.privateSnapshot',
   // Crear o editar una imagen con un servicio (plan 0.4.0 #28): el destino trae servicio, modelo y costo.
   media_generate: 'approval.rule.media',

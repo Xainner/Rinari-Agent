@@ -67,7 +67,7 @@ function BoardToolbar({ onAddPane }: BoardToolbarProps) {
   return (
     <div className="board-toolbar" role="toolbar" aria-label={t('board.toolbar.label')} data-testid="board-toolbar">
       <div className="board-toolbar-counts">
-        <span className="board-toolbar-count">{t('board.toolbar.count', { n: paneCount })}</span>
+        <span className="board-toolbar-count">{paneCount === 1 ? t('board.toolbar.countOne') : t('board.toolbar.count', { n: paneCount })}</span>
         {counts.workingPaneCount > 0 && <span className="board-toolbar-count is-working" data-testid="count-working">{t('board.toolbar.working', { n: counts.workingPaneCount })}</span>}
         {counts.needsYouPaneCount > 0 && <span className="board-toolbar-count is-needs-you" data-testid="count-needs-you">{t('board.toolbar.needsYou', { n: counts.needsYouPaneCount })}</span>}
         {counts.unreadResultPaneCount > 0 && <span className="board-toolbar-count is-unread" data-testid="count-unread">{t('board.toolbar.unread', { n: counts.unreadResultPaneCount })}</span>}

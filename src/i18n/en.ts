@@ -2406,6 +2406,7 @@ export const en: Record<I18nKey, string> = {
   'board.peek.noResponse': 'No answer yet.',
   'board.toolbar.label': 'Board actions',
   'board.toolbar.count': '{n} panes',
+  'board.toolbar.countOne': '1 pane',
   'board.toolbar.working': '{n} working',
   'board.toolbar.needsYou': '{n} need you',
   'board.toolbar.unread': '{n} with unread results',

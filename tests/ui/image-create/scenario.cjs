@@ -7,7 +7,7 @@
 //    tarjeta de entrega; el servicio recibió la petición con su clave.
 const assert = require('node:assert/strict')
 const http = require('node:http')
-const { click, clickText, command, evaluate, input, key, reload, report, scenario, screenshot, settleAnimations, ui, until, useLocalModel, wait } = require('../harness.cjs')
+const { click, clickText, command, evaluate, input, key, menuShortcut, reload, report, scenario, screenshot, settleAnimations, ui, until, useLocalModel, wait } = require('../harness.cjs')
 
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAIAAABt+uBvAAAA1klEQVR4nO3SMRHAIAAEQYhKfCGYKIAzsNt+d/NzrzO4+x4bAjUPCgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaAgUBAoCBQECgIFgYJAQaDx9gOKaAKqWNjhsgAAAABJRU5ErkJggg=='
 const CARD = '.approval-card[data-state="open"]'
@@ -78,6 +78,13 @@ scenario(async () => {
     assert.equal(requests[0].body.quality, 'low')
     await settleAnimations()
     await screenshot('image-delivered')
+    // Ajustes → Visión e imágenes: el servicio en la lista y los demás como fichas con su logo.
+    await menuShortcut('settings', 'CmdOrCtrl+,')
+    await clickText('Visión e imágenes', 'nav button')
+    await wait(`Boolean(document.querySelector('[data-testid="image-creation-settings"] .image-kinds'))`)
+    await evaluate(`document.querySelector('[data-testid="image-creation-settings"]').scrollIntoView({ block: 'start' })`)
+    await settleAnimations()
+    await screenshot('image-settings')
     report({ passed: ['no service yet', 'key stored as a reference', 'approval with service and cost', 'image delivered with the card', 'service called with the key'], requests: requests.length })
   } finally {
     service.close()

@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
-import { Check, CheckCheck, ChevronsRight, CircleHelp, GitBranch, LoaderCircle, MoreHorizontal, ShieldAlert, X } from 'lucide-react'
+import { Check, CheckCheck, ChevronsRight, CircleHelp, GitBranch, LoaderCircle, MessageSquare, MoreHorizontal, ShieldAlert, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ProviderLogo from '../../components/ProviderLogo'
 import {
@@ -60,10 +60,13 @@ function StepsRing({ done, total }: { done: number; total: number }) {
   const r = 9
   const c = 2 * Math.PI * r
   const ratio = total > 0 ? done / total : 0
+  // Completa, el anillo se pone verde y lleva un check: no se lee como un círculo vacío.
+  const complete = total > 0 && done >= total
   return (
-    <svg className="pane-column-ring" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="pane-column-ring" data-complete={complete || undefined} width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r={r} className="pane-column-ring-track" />
       <circle cx="12" cy="12" r={r} className="pane-column-ring-fill" strokeDasharray={c} strokeDashoffset={c * (1 - ratio)} />
+      {complete && <path className="pane-column-ring-check" d="M8.2 12.4l2.6 2.6 5-5.4" />}
     </svg>
   )
 }
@@ -173,7 +176,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
                   <span className="truncate">{projectDisplayName(projectName)}{branch ? ` · ${branch}` : ''}</span>
                 </span>
               ) : (
-                <span className="pane-column-project">{t('board.column.loose')}</span>
+                <span className="pane-column-project"><MessageSquare size={11} aria-hidden="true" />{t('board.column.loose')}</span>
               )}
               {worktree && <span className="pane-column-chip">{t('board.column.worktree')}</span>}
             </span>
@@ -191,6 +194,10 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
             {digest.action && <span className="pane-column-now" data-testid="pane-column-now">{digest.action}</span>}
             {!digest.action && digest.children && (
               <span className="pane-column-now">{t('board.column.waitingChildren', { done: digest.children.done, total: digest.children.total })}</span>
+            )}
+            {/* Sin pasos, acción ni resultado, la columna dice al menos en qué está. */}
+            {!digest.steps && !digest.action && !digest.children && !resultLine && interventions === 0 && (
+              <span className="pane-column-idle" data-kind={status.kind}>{statusLabel}</span>
             )}
             {resultLine && (
               <span className="pane-column-result" data-kind={status.kind} data-testid="pane-column-result">
@@ -256,7 +263,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
     </section>
   )
 
-  return <PanePeek title={title} session={session} digest={digest} peek={peek} anchor={section} onExpand={onExpand} />
+  return <PanePeek title={title} face={face} session={session} digest={digest} peek={peek} anchor={section} onExpand={onExpand} />
 }
 
 function PaneMenu({ onExpand, onOpenSingle, onRemove, session, side }: { onExpand: () => void; onOpenSingle: () => void; onRemove: () => void; session: PaneSession; side: 'right' | 'bottom' }) {

@@ -2423,6 +2423,7 @@ export const es = {
   'board.peek.noResponse': 'Todavía no respondió.',
   'board.toolbar.label': 'Acciones del board',
   'board.toolbar.count': '{n} paneles',
+  'board.toolbar.countOne': '1 panel',
   'board.toolbar.working': '{n} trabajando',
   'board.toolbar.needsYou': '{n} te necesitan',
   'board.toolbar.unread': '{n} con resultados sin leer',

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Check, LoaderCircle, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, LoaderCircle, Plug, Plus, Trash2, TriangleAlert, Workflow, Zap, type LucideIcon } from 'lucide-react'
+import ProviderLogo from '../ProviderLogo'
+import { providerBrand, type ProviderBrandId } from '../../lib/providerBrand'
 import { engineApi, commandMessage } from '../../services/engine'
 import type { ImageConnector, ImageCreationSettings as Config } from '../../types/protocol.generated'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -50,6 +52,20 @@ const OPERATION_LABEL: Record<Operation, I18nKey> = {
   upscale: 'images.op.upscale',
   remove_background: 'images.op.remove_background',
 }
+/** La marca de cada servicio; los que no tienen logo llevan un icono. */
+const KIND_BRAND: Partial<Record<Kind, ProviderBrandId>> = { chatgpt: 'openai', openai: 'openai', google: 'gemini', openrouter: 'openrouter' }
+const KIND_ICON: Partial<Record<Kind, LucideIcon>> = { fal: Zap, comfyui: Workflow, mcp: Plug }
+
+function KindMark({ kind }: { kind: Kind }) {
+  const brand = KIND_BRAND[kind]
+  const Icon = KIND_ICON[kind] ?? Plug
+  return (
+    <span className="image-kind-mark" aria-hidden="true">
+      {brand ? <ProviderLogo brand={providerBrand(brand)} size={16} /> : <Icon size={15} />}
+    </span>
+  )
+}
+
 const EMPTY_DRAFT: Draft = { provider_id: '', api_key: '', model: '', endpoint: '', server: '', workflows: {}, tools: {}, prompt_arg: 'prompt', image_arg: 'image' }
 
 /** Un id corto y libre a partir del tipo: `chatgpt`, `chatgpt-2`, `openai`… */
@@ -216,6 +232,7 @@ export default function ImageCreationSettings() {
               const status = tests[item.id]
               return (
                 <li key={item.id} className="flex min-h-14 flex-wrap items-center gap-3 border-b border-[var(--border)] px-3 py-2 last:border-b-0" data-connector={item.id}>
+                  <KindMark kind={item.kind} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-[var(--text)]">{item.label}</span>
                     <span className="block text-xs text-[var(--text-subtle)]">
@@ -245,7 +262,7 @@ export default function ImageCreationSettings() {
 
         {adding ? (
           <div className="space-y-3 rounded-xl border border-[var(--border)] p-3" data-testid="image-connector-form" data-kind={adding}>
-            <p className="text-sm font-medium text-[var(--text)]">{label(adding)}</p>
+            <p className="flex items-center gap-2 text-sm font-medium text-[var(--text)]"><KindMark kind={adding} />{label(adding)}</p>
             {adding === 'chatgpt' && (subscriptions.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)]">{t('images.chatgptMissing')}</p>
             ) : (
@@ -329,10 +346,12 @@ export default function ImageCreationSettings() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="image-kinds">
             {KINDS.map((kind) => (
-              <button key={kind} type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(kind)}>
-                <Plus size={13} aria-hidden="true" /> {label(kind)}
+              <button key={kind} type="button" className="image-kind" data-kind={kind} onClick={() => setAdding(kind)}>
+                <KindMark kind={kind} />
+                <span className="min-w-0 flex-1 truncate">{label(kind)}</span>
+                <Plus size={13} className="image-kind-add" aria-hidden="true" />
               </button>
             ))}
           </div>

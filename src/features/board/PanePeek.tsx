@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
-import { CircleHelp, ShieldAlert } from 'lucide-react'
+import { ArrowRight, CircleHelp, ShieldAlert } from 'lucide-react'
+import { RinariAvatar, type RinariState } from '../rinari/RinariAvatar'
 import { useI18n } from '../../i18n'
 import type { PaneSession } from './usePaneSession'
 import type { PaneDigest } from './paneDigest'
@@ -71,6 +72,7 @@ export function NeedsYouActions({ session, onAnswer }: { session: PaneSession; o
  */
 export function PanePeek({
   title,
+  face,
   session,
   digest,
   peek,
@@ -78,6 +80,7 @@ export function PanePeek({
   onExpand,
 }: {
   title: string
+  face?: RinariState
   session: PaneSession
   digest: PaneDigest
   peek: ReturnType<typeof usePeek>
@@ -102,7 +105,10 @@ export function PanePeek({
           className="pane-peek r-pop z-50"
           data-testid="pane-peek"
         >
-          <p className="pane-peek-title">{title}</p>
+          <div className="pane-peek-head">
+            {face && <RinariAvatar state={face} size={24} />}
+            <p className="pane-peek-title">{title}</p>
+          </div>
           {(digest.steps?.current || digest.action) && (
             <p className="pane-peek-now">
               {digest.steps?.current && <span>{digest.steps.current} · {t('board.column.step', { n: digest.steps.index + 1, total: digest.steps.total })}</span>}
@@ -113,7 +119,7 @@ export function PanePeek({
           <div className="pane-peek-response">
             {digest.lastResponse ? <p>{digest.lastResponse}</p> : <p className="pane-peek-empty">{t('board.peek.noResponse')}</p>}
           </div>
-          <button type="button" className="pane-peek-all" onClick={() => { peek.hide(); onExpand() }}>{t('board.peek.seeAll')}</button>
+          <button type="button" className="pane-peek-all" onClick={() => { peek.hide(); onExpand() }}>{t('board.peek.seeAll')} <ArrowRight size={12} aria-hidden="true" /></button>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

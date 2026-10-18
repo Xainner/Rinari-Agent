@@ -106,12 +106,12 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka,
 
 | # | Qué | De dónde | Estado |
 |---|---|---|---|
-| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Causa verificada. En este plan, fase B1 (salió de 0.4.0) |
+| C1 | «Preparando el turno…» aparece un instante en el panel al enviar y luego desaparece (ver C.1) | Planka, Bug (2026-10-12) | Hecho (0.4.0 bloque 25, Agent 5ea71ed; escenario `boards-pane-quiet`) |
 | C2 | El composer le quitaba el foco al cajón del panel lateral (el rojo de `boards-side-panel` en `main`) | Plan 0.4.0, «CI» | Hecho en la rama `0.4.0` (0c7f34f, sin subir) |
 | C3 | La flecha de la lista de pasos apunta al revés; revisar que en los paneles (`density="pane"`) también esté anclada abajo | Plan 0.4.0, #22 | Decidido |
 | C4 | Los avisos de turno terminado solo existen para paneles del board. Se extienden a todas las conversaciones reutilizando `useBoardNotifications`, y sus preferencias pasan a Ajustes → Notificaciones | Plan 0.4.0, #33 | Decidido. Toca código de Boards: coordinar |
 | C5 | Pendientes de otros perfiles: agregar paneles filtra por el perfil activo y lo de otros perfiles no se ve | Plan 0.4.0, #34 | Decidido (depende de C4) |
-| C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Decidido (B.1, fase B1) |
+| C6 | Quitar «Quitar y cerrar sesión» y dejar solo «Quitar del board» | Planka, Needs Review | Hecho (0.4.0 bloque 25, Agent 5ea71ed) |
 | C7 | Mensajes entre paneles «como subagentes» | Planka, Idea; triage I1 | Resuelto por decisión: la mensajería se quita (B.1) y la comunicación entre agentes pasa a [Rinari Agency](idea-rinari-agency.md) |
 | C8 | Animación en la píldora al cambiar entre Normal y Boards | Planka, Para luego | Hecho: la píldora se desliza entre las dos opciones (`WorkspaceViewSwitcher.tsx`, `layoutId`, 6a0b4069) |
 | C9 | Panel en blanco (0 filas) al pasar de Normal a Boards | Visto 3 veces en uso real; intermitente en el escenario `chat-interaction-fixes` | Abierto, sin causa confirmada. Hipótesis: Virtua con un ancla de scroll restaurada fuera de rango |
@@ -119,7 +119,7 @@ Todo lo que ya está anotado sobre Boards en otros lados (el plan 0.4.0, Planka,
 | C11 | `busy` en `session.list`: tras un arranque en frío no se sabe si una sesión no abierta está trabajando hasta que llega un evento | `docs/debt.md` | Abierto. Lo necesita el panel colapsado con estado (B.2) |
 | C12 | Los recibos de lectura se indexan por instalación, no por home del Engine | `docs/debt.md` | Abierto |
 | C13 | Regla que se mantiene: que aparezca un contador en la barra de Boards nunca cambia su altura | 52530f7, comprobado en `boards-fit` | Vigente |
-| C14 | La confirmación de «¿Activar Acceso completo?» sale centrada en toda la ventana, no sobre el panel donde se cambió el permiso (Planka, Bug, 2026-10-14). Causa: `FullAccessDialog.tsx:36-37` usa `AlertDialog`, que se monta en `document.body` con `fixed` (`components/ui/alert-dialog.tsx:30-35`). Propuesta: `AlertDialogContent` acepta un `container`; en Boards se usa la sección del panel (`SessionPane.tsx:200`, `data-pane-id`) con `position: relative` y el diálogo se dibuja `absolute` dentro de ella, con el foco atrapado en el panel. |
+| C14 | La confirmación de «¿Activar Acceso completo?» sale centrada en toda la ventana, no sobre el panel donde se cambió el permiso (Planka, Bug, 2026-10-14). Causa: `FullAccessDialog.tsx:36-37` usa `AlertDialog`, que se monta en `document.body` con `fixed` (`components/ui/alert-dialog.tsx:30-35`). Propuesta: `AlertDialogContent` acepta un `container`; en Boards se usa la sección del panel (`SessionPane.tsx:200`, `data-pane-id`) con `position: relative` y el diálogo se dibuja `absolute` dentro de ella, con el foco atrapado en el panel. | Hecho (0.4.0 bloque 25, Agent 5ea71ed) |
 
 ### C.1 «Preparando el turno…» parpadea en el panel
 

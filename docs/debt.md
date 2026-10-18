@@ -9,7 +9,6 @@ Repasado entrada por entrada contra el código y el `git log` el 2026-10-12.
 
 ## Lo que sigue abierto
 
-- Recibos de lectura por instalación en vez de por home del Engine.
 - `mcp_get` en el inventario sin ningún llamador.
 - Concurrencia por cuenta en Claude Subscription.
 - El encabezado del grupo en el selector de modelos usa el alias técnico.
@@ -96,7 +95,7 @@ Repasado entrada por entrada contra el código y el `git log` el 2026-10-12.
   conversación y enlazando al turno original. Portarla a Electron sin uso era
   deuda pura; si alguna superficie de pendientes la necesita, se recupera del
   historial y se implementa con ese enlace.
-- **Recibos de lectura por instalación** — `OPEN` (revisado 2026-10-12).
+- **Recibos de lectura por instalación** — `DONE` (0.4.0 bloque 26): los recibos se guardan por perfil local + `home_id` del Engine (`<perfil>@<home_id>`); el primer home adopta lo guardado antes. Lo que sigue es el texto anterior.
   `src/stores/boardAttention.ts` sigue indexado por `rinari.profile.v1`
   (`src/stores/profileKey.ts`, un id local aleatorio): si el Agent apunta a
   otro home de Engine con la misma instalación, los recibos se comparten.

@@ -62,7 +62,7 @@ export default function SettingsView({
       {section === 'providers' && (
         <ProvidersView providers={providers} onChanged={onCatalogChanged} engineCapabilities={engineCapabilities} />
       )}
-      {section === 'vision' && <VisionSettings models={models} providers={providers} />}
+      {section === 'vision' && <VisionSettings models={models} providers={providers} imageCreation={engineCapabilities?.image_creation_v1 === true} />}
       {section === 'context' && <ContextSettings models={models} providers={providers} />}
       {section === 'memory' && <MemorySettings onOpenSession={onOpenSession} />}
       {section === 'dictation' && <DictationSettings />}

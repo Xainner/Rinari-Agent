@@ -445,6 +445,31 @@
       ]
     },
     {
+      "command": "images_connector_test",
+      "kind": "engine",
+      "method": "images.connector.test",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "images_settings_get",
+      "kind": "engine",
+      "method": "images.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "images_settings_set",
+      "kind": "engine",
+      "method": "images.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "initial_open_request",
       "kind": "host",
       "method": null,
@@ -2340,10 +2365,10 @@
     }
   ],
   "summary": {
-    "commands": 280,
-    "engine_backed": 274,
+    "commands": 283,
+    "engine_backed": 277,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 95
+    "without_callers": 96
   }
 }

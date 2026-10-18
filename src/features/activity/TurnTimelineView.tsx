@@ -12,6 +12,7 @@ import {
   FileText,
   Globe,
   Image as ImageIcon,
+  WandSparkles,
   GitBranch,
   ListTree,
   ArrowDownToLine,
@@ -97,6 +98,8 @@ const ActivityActive = createContext(true)
 
 const ICONS: Record<ToolCategory, typeof FileText> = {
   image: ImageIcon,
+  // Crear y editar imágenes (plan 0.4.0 #28).
+  create: WandSparkles,
   read: FileText,
   search: FileSearch,
   list: ListTree,

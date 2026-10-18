@@ -51,3 +51,13 @@ it('las esperas dicen qué esperaron y una relectura sin cambios se distingue', 
   const unchanged = { ...tool('fs.read', { path: 'src/app.ts' }), presentation: { kind: 'tool', data: { unchanged: true } } } as ToolTimelineItem
   expect(formatTool(unchanged, 'es')).toBe('Leyó app.ts (sin cambios)')
 })
+
+it('las herramientas de imágenes dicen qué hicieron, no su nombre técnico (plan 0.4.0 #28)', () => {
+  expect(toolCategory('image.generate')).toBe('create')
+  expect(formatTool(tool('image.generate'), 'es')).toBe('Creó una imagen')
+  expect(formatTool(tool('image.generate', {}, 'running'), 'es')).toBe('Creando una imagen…')
+  expect(formatTool(tool('image.remove_background'), 'en')).toBe('Removed an image background')
+  expect(formatTool(tool('image.upscale', {}, 'failed'), 'es')).toBe('No pudo ampliar la imagen')
+  // Leer una imagen sigue siendo leer.
+  expect(toolCategory('fs.read_image')).toBe('image')
+})

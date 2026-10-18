@@ -214,6 +214,12 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
             {report.tools.top.map((item) => <span key={item.tool} className="usage-report-tool"><span>{item.tool}</span> {item.count}</span>)}
           </p>
         )}
+        {(report.media?.images ?? 0) > 0 && (
+          <p className="usage-report-line" data-testid="usage-images">
+            {t('usage.imagesLine', { n: report.media!.images })}
+            {report.media!.cost ? ` · $${report.media!.cost.toFixed(2)}` : ''}
+          </p>
+        )}
       </div>
 
       <div className="usage-report-block" data-block="warnings">

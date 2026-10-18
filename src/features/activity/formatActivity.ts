@@ -11,6 +11,7 @@ import type { ToolTimelineItem } from './types'
  */
 export type ToolCategory =
   | 'image'
+  | 'create'
   | 'read'
   | 'search'
   | 'list'
@@ -43,6 +44,21 @@ const EXACT: Record<string, ToolCategory> = {
   'fs.diff': 'git',
   'shell.exec': 'command',
   'user.ask': 'ask',
+  // Crear y editar imágenes con un servicio (plan 0.4.0 #28).
+  'image.generate': 'create',
+  'image.edit': 'create',
+  'image.variations': 'create',
+  'image.upscale': 'create',
+  'image.remove_background': 'create',
+}
+
+/** Qué hizo cada herramienta de imágenes: terminado, en curso, fallido. */
+const CREATE: Record<string, [[string, string], [string, string], [string, string]]> = {
+  'image.generate': [['Creó una imagen', 'Created an image'], ['Creando una imagen…', 'Creating an image…'], ['No pudo crear la imagen', 'Could not create the image']],
+  'image.edit': [['Editó una imagen', 'Edited an image'], ['Editando una imagen…', 'Editing an image…'], ['No pudo editar la imagen', 'Could not edit the image']],
+  'image.variations': [['Creó variaciones de una imagen', 'Made variations of an image'], ['Creando variaciones…', 'Making variations…'], ['No pudo crear las variaciones', 'Could not make the variations']],
+  'image.upscale': [['Amplió una imagen', 'Upscaled an image'], ['Ampliando una imagen…', 'Upscaling an image…'], ['No pudo ampliar la imagen', 'Could not upscale the image']],
+  'image.remove_background': [['Quitó el fondo de una imagen', 'Removed an image background'], ['Quitando el fondo…', 'Removing the background…'], ['No pudo quitar el fondo', 'Could not remove the background']],
 }
 
 const FAMILY: Record<string, ToolCategory> = {
@@ -167,6 +183,11 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
   const site = host(args.url)
   const category = toolCategory(item.tool)
   switch (category) {
+    case 'create': {
+      const [done, running, failed] = CREATE[item.tool]
+      if (item.status === 'failed' || item.status === 'cancelled') return pick(failed)
+      return item.status === 'completed' ? pick(done) : pick(running)
+    }
     case 'image':
       if (item.status === 'failed' || item.status === 'cancelled') return pick(['No pudo ver la imagen', 'Could not view image'])
       return item.status === 'completed' ? pick(['Cargó una imagen', 'Loaded an image']) : pick(['Cargando una imagen…', 'Loading an image…'])

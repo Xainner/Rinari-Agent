@@ -46,6 +46,8 @@ export interface UsageReport {
   totals: Omit<UsageModelRow, 'model_id' | 'model_name' | 'provider_id' | 'provider_alias' | 'cache_percent'>
   tools: { total: number; ok: number; failed: number; top: Array<{ tool: string; count: number }> }
   compactions: number
+  /** Imágenes creadas con un servicio (plan 0.4.0 #28); ausente en un Engine anterior. */
+  media?: { images: number; batches: number; cost: number | null; by_connector: Array<{ connector: string; images: number; cost: number | null }> }
   warnings: UsageWarning[]
   time: { first_at: string | null; last_at: string | null; active_ms: number }
   /** Quién hizo el informe; falta en las fotos de antes de 0.4.0. */

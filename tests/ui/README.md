@@ -44,6 +44,7 @@ también `failure.png` y el final del texto visible en la consola.
 | [activity-disclosure](activity-disclosure/README.md) | Avances visibles en vivo, operaciones plegadas y resumen al terminar en Normal y Boards |
 | [attention-taskbar](attention-taskbar/README.md) | Un resultado en otro chat de Normal sube el número de pendientes |
 | [boards-fit](boards-fit/README.md) | Ajustar a la vista en Boards |
+| [image-create](image-create/scenario.cjs) | Crear imágenes con un servicio falso en loopback: la clave se guarda como referencia, Rinari pregunta con el servicio y el costo, y la imagen llega con su tarjeta (#28) |
 | [boards-shortcuts](boards-shortcuts/scenario.cjs) | Ctrl+1…9 (composer o vistazo si está plegado), Ctrl+J sin pendientes, soltar una conversación de la barra lateral entre dos paneles y la barra solo con contadores, ajuste, «⋯» y «Añadir panel» (B.4) |
 | [boards-switch-blank](boards-switch-blank/scenario.cjs) | Una conversación larga pasa de Normal a Boards 14 veces a distintas alturas y con cambio de tamaño: el panel nunca queda en blanco (C9) |
 | [boards-collapsed-live](boards-collapsed-live/scenario.cjs) | Un panel plegado es una columna que sigue su lista, su paso y su resultado sin desplegarse; el vistazo tras una pausa; la tira de 48 px cuando no cabe (B.2) |

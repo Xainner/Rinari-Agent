@@ -24,6 +24,8 @@ const RULE_TITLE: Record<string, I18nKey> = {
   shell_cwd_outside: 'approval.rule.shellCwdOutside',
   shell_send: 'approval.rule.shellSend',
   private_change_snapshot: 'approval.rule.privateSnapshot',
+  // Crear o editar una imagen con un servicio (plan 0.4.0 #28): el destino trae servicio, modelo y costo.
+  media_generate: 'approval.rule.media',
 }
 
 /** En un chat sin proyecto, «fuera del proyecto» es fuera de la carpeta del chat (#56). */

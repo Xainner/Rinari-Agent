@@ -2982,6 +2982,57 @@
       "host_effects": []
     },
     {
+      "command": "images_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "images.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "images_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "settings",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "images.settings.set",
+      "engine_params": [],
+      "passthrough": "settings",
+      "host_effects": []
+    },
+    {
+      "command": "images_connector_test",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "connector_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "images.connector.test",
+      "engine_params": [
+        {
+          "key": "connector_id",
+          "from": "connector_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "execution_settings_get",
       "module": "workspace",
       "args": [],

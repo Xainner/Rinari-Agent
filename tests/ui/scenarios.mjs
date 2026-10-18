@@ -244,6 +244,18 @@ export const scenarios = {
       return startFakeModel([{ text: 'HOLA' }])
     },
   },
+  'image-create': {
+    title: 'Crear imágenes: con un servicio de imágenes falso, Rinari pregunta con el costo, guarda la imagen y la entrega con su tarjeta (#28)',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 3 }, () => ({ text: 'Luna' })),
+      main: [
+        { tool: 'capability.search', args: { query: '+image.generate', limit: 2, load: true }, say: 'Busco cómo crear imágenes.' },
+        { tool: 'image.generate', args: { prompt: 'Una luna morada sobre fondo oscuro', quality: 'low', name: 'luna' }, say: 'La creo.' },
+        { text: 'LUNA LISTA' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'boards-shortcuts': {
     title: 'Boards: Ctrl+1…9 y Ctrl+J, soltar una conversación de la barra lateral entre dos paneles y la barra limpia (B.4)',
     phases: ['exercise'],

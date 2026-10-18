@@ -54,6 +54,9 @@ export type DesktopCommand =
   | "followup_accept"
   | "followup_dismiss"
   | "followup_list"
+  | "images_connector_test"
+  | "images_settings_get"
+  | "images_settings_set"
   | "initial_open_request"
   | "mcp_create"
   | "mcp_get"
@@ -336,6 +339,9 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "followup_accept",
   "followup_dismiss",
   "followup_list",
+  "images_connector_test",
+  "images_settings_get",
+  "images_settings_set",
   "initial_open_request",
   "mcp_create",
   "mcp_get",
@@ -634,6 +640,9 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "followup_accept",
   "followup_dismiss",
   "followup_list",
+  "images_connector_test",
+  "images_settings_get",
+  "images_settings_set",
   "mcp_create",
   "mcp_get",
   "mcp_list",

@@ -88,3 +88,12 @@ it('each warning has its one-tap fix: compact, or see the models', async () => {
   await userEvent.click(within(card.querySelector('[data-warning="no_cache"]') as HTMLElement).getByRole('button', { name: 'Ver modelos' }))
   expect(goSettings).toHaveBeenCalledWith('models')
 })
+
+it('counts the images created and what they cost (plan 0.4.0 #28)', () => {
+  const { unmount } = render(<I18nProvider lang="es"><UsageReportCard report={REPORT} sessionId="ses_a" /></I18nProvider>)
+  expect(screen.queryByTestId('usage-images')).toBeNull()
+  unmount()
+  const media = { images: 3, batches: 2, cost: 0.053, by_connector: [{ connector: 'openai', images: 1, cost: 0.053 }, { connector: 'codex', images: 2, cost: 0 }] }
+  render(<I18nProvider lang="es"><UsageReportCard report={{ ...REPORT, media }} sessionId="ses_a" /></I18nProvider>)
+  expect(screen.getByTestId('usage-images').textContent).toBe('Imágenes creadas: 3 · $0.05')
+})

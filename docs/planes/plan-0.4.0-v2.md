@@ -27,6 +27,8 @@ Se trabaja en las ramas `0.4.0` con commits locales, y al terminar va una Nightl
 | V2-14 | Hecho en parte: CLI addaa97 (F2, F4/F27), ffefd08 (F19: Ctrl+Break primero, el árbol se limpia por su objeto de trabajo y nunca por PID), f417c26 (F39/F20 límites dichos en palabras, F13). **Quedan fuera**: F22 (no hay una carpeta de trabajo por sesión; darla es una función nueva con su permiso y su limpieza) y F35 (las capturas con el panel oculto dependen del host nativo, como en `ui-e2e-oclusion`). |
 | V2-15 | Hecho: Agent 6ba4576 (F3, F14, F5), CLI 8fd5640 (F6: regla en la constitución), CLI 9231110 y Agent 35203ad (F26: evento `model.tool_input` y la línea viva «Escribiendo calc/parser.py… 12 KB»). |
 
+**Validación y entrega (2026-10-18).** CLI completo: 3733 pasan, 16 se saltan. vitest: 1740. `ui:e2e --all`: 71 de 73; activity-text-shimmer y chat-follow-live fallan igual que antes del bloque 25, por la misma causa. El error «session_id must not be empty» de F3 bajó de 140 apariciones a 0 en los registros de la batería. **Nightly 0.4.0-nightly.20261018.1050 instalada** (Agent 609e795, CLI 9231110).
+
 ## Regla: cero hardcodeo (dueño, 2026-10-18)
 
 Rinari es para usuarios que usan el proveedor, el modelo, el servidor, los MCP y las skills que quieran. Ningún arreglo de este plan puede depender de un caso concreto:

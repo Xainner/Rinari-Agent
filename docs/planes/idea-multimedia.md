@@ -1,6 +1,6 @@
 # Multimedia en Rinari Agent: crear y editar imágenes (y después audio y video)
 
-Estado: **entra en la 0.4.0** (Planka, Ideas-2, 2026-10-13; decisión del dueño, 2026-10-14), como bloques 28 y 29 del [plan 0.4.0](plan-0.4.0.md) (2026-10-17).
+Estado: **imágenes hechas en la 0.4.0** (bloques 28 y 29 del [plan 0.4.0](plan-0.4.0.md), 2026-10-17: CLI c4ac95f y 8b0733a, Agent f360102 y 3ec36ea). Audio y video (M3–M4), después.
 
 ## Qué se pidió
 

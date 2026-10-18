@@ -56,6 +56,22 @@ describe('TurnTimelineView', () => {
     expect(screen.queryByText('Completado')).toBeNull()
   })
 
+  it('a pane shows no live header while the turn only prepares; the chat does (plan-boards C1)', () => {
+    const preparing: TurnTimeline = { ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }
+    const pane = (timeline: TurnTimeline, now: number) => <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={now} surface="pane" onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>
+    // Long past the arrival and the 300 ms floor: a busy machine stays here.
+    const rendered = render(pane(preparing, 3_000))
+    expect(screen.queryByText('Preparando el turno…')).toBeNull()
+    expect(document.querySelector('[data-live-activity]')).toBeNull()
+    // Something to tell (an action) brings the header.
+    rendered.rerender(pane({ ...preparing, items: [...preparing.items, { id: 'tool:a', type: 'tool', activitySeq: 1, occurredAt: 2_900, toolCallId: 'a', tool: 'fs.read', status: 'running' }] }, 3_000))
+    expect(document.querySelector('[data-live-activity]')).not.toBeNull()
+    cleanup()
+    // The chat keeps «Preparando el turno…».
+    view(preparing, 3_000)
+    expect(screen.getByText('Preparando el turno…')).toBeTruthy()
+  })
+
   it('#51: with reduced motion the live header does not wait for the arrival', async () => {
     const { useUIStore } = await import('../../stores/ui')
     useUIStore.setState({ reduceMotion: true })

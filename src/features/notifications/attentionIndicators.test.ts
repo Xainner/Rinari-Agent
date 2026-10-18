@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { describeAttention, indicatorTexts, pendingBySession, summarizeAttention, type SessionPending } from './attentionIndicators'
 import { emptySessionAttention, type SessionAttention } from '../../stores/boardAttention'
 
-const session = (patch: Partial<SessionPending>): SessionPending => ({ sessionId: 's', needsYou: false, unread: [], unreadPeers: 0, working: false, ...patch })
+const session = (patch: Partial<SessionPending>): SessionPending => ({ sessionId: 's', needsYou: false, unread: [], working: false, ...patch })
 
 describe('summarizeAttention', () => {
   it('counts chats, not results, and working does not add to the number', () => {
@@ -19,10 +19,9 @@ describe('summarizeAttention', () => {
     expect(summarizeAttention([session({ sessionId: 'a', unread: ['completed'] }), session({ sessionId: 'b', unread: ['failed'] })]).category).toBe('failed')
   })
 
-  it('a question or a permission wins; stopped results and peer messages are "other"', () => {
+  it('a question or a permission wins; stopped results are "other"', () => {
     expect(summarizeAttention([session({ sessionId: 'a', unread: ['failed'] }), session({ sessionId: 'b', needsYou: true })]).category).toBe('needs_you')
     expect(summarizeAttention([session({ unread: ['stopped'] })]).category).toBe('other')
-    expect(summarizeAttention([session({ unreadPeers: 2 })]).category).toBe('other')
   })
 })
 

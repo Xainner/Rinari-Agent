@@ -3,7 +3,7 @@ import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Check, Columns3, FileText, Film, Image as ImageIcon, LoaderCircle, MessageSquareShare, MoreHorizontal, Music, Pause, Play, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Check, FileText, Film, Image as ImageIcon, LoaderCircle, MoreHorizontal, Music, Pause, Play, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
@@ -29,7 +29,6 @@ import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
 import { useChatFileReceiver } from './ChatFileDropZone'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
-import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
 import { useSlashCommands } from './useSlashCommands'
 import { SlashMenu, groupSlashCommands } from './SlashMenu'
@@ -103,13 +102,6 @@ interface ComposerProps {
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
   /**
-   * Paneles del board a los que se puede escribir con `@Panel mensaje`. Solo
-   * en Boards; sin lista no hay autocompletado ni envío directo.
-   */
-  mentionTargets?: readonly PaneMentionTarget[]
-  /** Envía `text` al panel `targetId` como tarea del usuario (reenvío manual). */
-  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
-  /**
    * Proyecto de una conversación nueva, elegible antes del primer envío (#42).
    * Solo en un borrador; sin él no hay chip.
    */
@@ -182,8 +174,6 @@ export default function Composer({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
-  mentionTargets,
-  onSendToTarget,
   draftProject,
 }: ComposerProps) {
   const { t } = useI18n()
@@ -245,6 +235,8 @@ export default function Composer({
   const [permissionOpen, setPermissionOpen] = useState(false)
   // «Acceso completo» se confirma en un diálogo antes de pedirlo.
   const [confirmFullAccess, setConfirmFullAccess] = useState(false)
+  // En un panel de Boards la confirmación sale sobre ese panel (plan-boards C14).
+  const [fullAccessHost, setFullAccessHost] = useState<HTMLElement | null>(null)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
   // El audio o video adjunto que suena bajo los chips (#57), uno a la vez.
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -276,15 +268,6 @@ export default function Composer({
   const setText = (value: string) => setTextFor(draftKey, value)
   const [fileMatches, setFileMatches] = useState<Array<{ path: string; relative_path: string; name: string }>>([])
   const mention = text.match(/(?:^|\s)@([^\s]*)$/)?.[1] ?? null
-  // Mensaje directo a otro panel: `@Panel texto` al inicio del mensaje.
-  const paneTargets = mentionTargets ?? []
-  const paneQuery = paneTargets.length > 0 ? paneMentionQuery(text) : null
-  const paneMatches = paneQuery !== null ? matchPaneTargets(paneQuery, paneTargets) : []
-  const paneMention = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(text, paneTargets) : null
-  const [paneHighlight, setPaneHighlight] = useState(0)
-  useEffect(() => {
-    setPaneHighlight(0)
-  }, [paneQuery])
   // Comandos `/`: el catálogo llega del Engine al escribir la primera barra.
   const [engineCommands, loadCommands] = useSlashCommands(sessionId)
   const wantsCommands = text.startsWith('/')
@@ -304,7 +287,7 @@ export default function Composer({
   useEffect(() => {
     setSlashHighlight(0)
   }, [slashQ])
-  const menuOpen = slashMatches.length > 0 || paneMatches.length > 0 || fileMatches.length > 0
+  const menuOpen = slashMatches.length > 0 || fileMatches.length > 0
   const menuRef = useRef<HTMLDivElement>(null)
   // Con las flechas, la opción elegida no se salía de la lista visible.
   useEffect(() => {
@@ -479,28 +462,6 @@ export default function Composer({
     const outgoing = current.attachments
     const attachmentIds = outgoing.map((item) => item.id)
     if (isStreaming || isSubmitting || visionUnavailable || outgoing.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && outgoing.length === 0)) return
-    const direct = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(content, paneTargets) : null
-    if (direct && onSendToTarget) {
-      // Mensaje directo a otro panel: solo texto; los adjuntos se quedan en el borrador.
-      if (!direct.message) return
-      armSendReset()
-      setTextFor(submissionSessionKey, '')
-      textareaRef.current?.focus()
-      setIsSubmitting(true)
-      try {
-        const ok = await onSendToTarget(direct.target.id, direct.message)
-        if (!ok) {
-          setTextFor(submissionSessionKey, content)
-          cancelSendReset()
-        }
-      } catch {
-        setTextFor(submissionSessionKey, content)
-        cancelSendReset()
-      } finally {
-        setIsSubmitting(false)
-      }
-      return
-    }
     // `/comando`: la interfaz lo resuelve aquí o viaja con el turno para que el
     // Engine lo expanda. Un texto que empieza por `/` sin ser comando (una
     // ruta) se envía tal cual.
@@ -585,7 +546,7 @@ export default function Composer({
     void handleSend()
   }
 
-  const canSend = paneMention ? paneMention.message.length > 0 : (!!text.trim() || attachments.length > 0)
+  const canSend = !!text.trim() || attachments.length > 0
 
   async function prepareOne(item: AttachmentRef) {
     if (!onPrepareAttachments) {
@@ -775,14 +736,6 @@ export default function Composer({
     })
   }
 
-  function choosePaneTarget(target: PaneMentionTarget) {
-    setText(`@${target.label} `)
-    setFileMatches([])
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus()
-    })
-  }
-
   // Del árbol de Archivos (#98): arrastrado o con «Mencionar en el chat», entra como «@archivo».
   const [treeDrag, setTreeDrag] = useState(false)
   function mentionTreeFile(file: TreeFileRef) {
@@ -897,13 +850,6 @@ export default function Composer({
         {playing && sessionId && <div className="mb-2 px-1"><AttachmentPlayer key={playing.id} sessionId={sessionId} attachment={playing} onClose={() => setPlayingId(null)} /></div>}
         {attachmentNotice && <div className="mb-2 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-2 text-[11px] text-[var(--danger)]">{attachmentNotice}</div>}
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-[var(--warning)]/30 p-2 text-xs">{visionRoute?.reason}</div>}
-        {paneMention && (
-          <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--accent-2)]" data-testid="pane-mention-chip">
-            <MessageSquareShare size={12} aria-hidden="true" />
-            <span>{t('composer.paneMention.direct', { label: paneMention.target.label })}</span>
-            <span className="text-[var(--text-subtle)]">· {paneMention.message ? t('composer.paneMention.hint') : t('composer.paneMention.empty')}</span>
-          </div>
-        )}
         {menuOpen && menuBox && createPortal(
           <div
             ref={menuRef}
@@ -913,24 +859,6 @@ export default function Composer({
           >
             {slashMatches.length > 0 && (
               <SlashMenu commands={slashMatches} highlight={slashHighlight} onHighlight={setSlashHighlight} onPick={pickSlash} descriptions={SLASH_DESCRIPTION_KEYS} />
-            )}
-            {paneMatches.length > 0 && (
-              <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">
-                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.paneMention.heading')}</p>
-                {paneMatches.map((target, index) => (
-                  <button
-                    key={target.id}
-                    type="button"
-                    role="option"
-                    aria-selected={index === paneHighlight}
-                    onMouseEnter={() => setPaneHighlight(index)}
-                    onClick={() => choosePaneTarget(target)}
-                    className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${index === paneHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
-                  >
-                    <Columns3 size={13} /><span className="truncate">{target.label}</span>
-                  </button>
-                ))}
-              </div>
             )}
             {fileMatches.map((file) => (
               <button key={file.path} type="button" onClick={() => chooseWorkspaceFile(file)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
@@ -957,12 +885,6 @@ export default function Composer({
               if (e.key === 'Tab') { e.preventDefault(); completeSlash(slashMatches[slashHighlight] ?? slashMatches[0]); return }
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pickSlash(slashMatches[slashHighlight] ?? slashMatches[0]); return }
               if (e.key === 'Escape') { e.preventDefault(); setText(''); return }
-            }
-            if (paneMatches.length > 0 && !e.nativeEvent.isComposing) {
-              if (e.key === 'ArrowDown') { e.preventDefault(); setPaneHighlight((index) => (index + 1) % paneMatches.length); return }
-              if (e.key === 'ArrowUp') { e.preventDefault(); setPaneHighlight((index) => (index - 1 + paneMatches.length) % paneMatches.length); return }
-              if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); choosePaneTarget(paneMatches[paneHighlight] ?? paneMatches[0]); return }
-              if (e.key === 'Escape') { e.preventDefault(); setText(text.replace(/^@/, '')); return }
             }
             const sendWithEnter = useUIStore.getState().enterToSend
             const mod = e.ctrlKey || e.metaKey
@@ -1022,8 +944,10 @@ export default function Composer({
               ] as const).map(([value, label, description]) => (
                 <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? t('perm.fullAccessNeedsUpdate') : undefined} onClick={() => {
                   setPermissionOpen(false)
-                  if (value === 'full-access' && permissionProfile !== 'full-access') setConfirmFullAccess(true)
-                  else onPermissionChange(value)
+                  if (value === 'full-access' && permissionProfile !== 'full-access') {
+                    setFullAccessHost(textareaRef.current?.closest<HTMLElement>('section[data-pane-id]') ?? null)
+                    setConfirmFullAccess(true)
+                  } else onPermissionChange(value)
                 }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
                   <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? t('perm.readModesHint') : description}</span></span>
                   {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
@@ -1033,6 +957,7 @@ export default function Composer({
           </Popover>
           <FullAccessDialog
             open={confirmFullAccess}
+            container={fullAccessHost}
             onCancel={() => setConfirmFullAccess(false)}
             onConfirm={() => { setConfirmFullAccess(false); onPermissionChange('full-access') }}
           />

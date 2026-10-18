@@ -791,58 +791,6 @@
       ]
     },
     {
-      "command": "peer_group_get",
-      "kind": "engine",
-      "method": "session.peer_group.get",
-      "manual": true,
-      "callers": [
-        "src/services/engine.ts"
-      ]
-    },
-    {
-      "command": "peer_group_revoke",
-      "kind": "engine",
-      "method": "session.peer_group.revoke",
-      "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
-    },
-    {
-      "command": "peer_group_set",
-      "kind": "engine",
-      "method": "session.peer_group.set",
-      "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
-    },
-    {
-      "command": "peer_message_cancel",
-      "kind": "engine",
-      "method": "session.peer_message.cancel",
-      "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
-    },
-    {
-      "command": "peer_message_forward",
-      "kind": "engine",
-      "method": "session.peer_message.forward",
-      "manual": true,
-      "callers": [
-        "src/services/engine.ts"
-      ]
-    },
-    {
-      "command": "peer_message_list",
-      "kind": "engine",
-      "method": "session.peer_message.list",
-      "manual": false,
-      "callers": []
-    },
-    {
       "command": "permission_grants_list",
       "kind": "engine",
       "method": "permission.grants.list",
@@ -2392,10 +2340,10 @@
     }
   ],
   "summary": {
-    "commands": 286,
-    "engine_backed": 280,
+    "commands": 280,
+    "engine_backed": 274,
     "host_only": 6,
-    "manual_adapters": 10,
-    "without_callers": 96
+    "manual_adapters": 8,
+    "without_callers": 95
   }
 }

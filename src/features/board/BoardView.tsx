@@ -5,20 +5,9 @@ import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, isCommandError, type SessionSummary } from '../../services/engine'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../components/ui/alert-dialog'
-import { useEngineCommands, useEngineData, useRuntimeStore } from '../engine/EngineContext'
+import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isSessionHidden } from '../engine/sessionVisibility'
 import { useUIStore } from '../../stores/ui'
-import { projectDisplayName } from '../projects/workspaceModel'
 import {
   PANE_MAX_WIDTH,
   PANE_MIN_WIDTH,
@@ -31,8 +20,6 @@ import AddPaneDialog from './AddPaneDialog'
 import BoardEmptyState from './BoardEmptyState'
 import BoardToolbar from './BoardToolbar'
 import SessionPane from './SessionPane'
-import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
-import { usePeerGroup } from './usePeerGroup'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export interface BoardActions {
@@ -82,7 +69,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const { t } = useI18n()
   const commands = useEngineCommands()
   const data = useEngineData()
-  const store = useRuntimeStore()
   const goNormal = useUIStore((state) => state.goNormal)
   const goSettings = useUIStore((state) => state.goSettings)
   const panes = useBoardStore((state) => state.panes)
@@ -95,10 +81,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const reconcile = useBoardStore((state) => state.reconcileResolvedSessions)
   const persistError = useBoardStore((state) => state.persistError)
   const attentionPersistError = useBoardAttentionStore((state) => state.persistError)
-  const boardId = useBoardStore((state) => state.boardId)
-  const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [closing, setClosing] = useState<{ paneId: string; sessionId: string } | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const paneRowRef = useRef<HTMLDivElement>(null)
   const [fitOverflow, setFitOverflow] = useState(false)
@@ -228,16 +211,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([root]) => root))
   }, [panes, data.sessionsById])
 
-  // -- quitar y cerrar --------------------------------------------------------
-  async function confirmClose() {
-    if (!closing) return
-    const { paneId, sessionId } = closing
-    setClosing(null)
-    const ok = await commands.closeSession(sessionId)
-    if (ok) removePane(paneId)
-  }
-  const closingBusy = closing ? store.getState().busySessions.has(closing.sessionId) : false
-
   const openSingle = useCallback((sessionId: string) => {
     void commands.selectSession(sessionId)
     goNormal()
@@ -245,35 +218,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
 
   const currentSessionOnBoard = data.activeSession !== '' && panes.some((pane) => pane.sessionId === data.activeSession)
 
-  // -- mensajería entre paneles (session_peer_messaging_v1) ------------------
-  const peerMessaging = data.status?.capabilities.session_peer_messaging_v1 === true
-  const peerLabelFor = useCallback((sessionId: string): string | null => {
-    if (!panes.some((pane) => pane.sessionId === sessionId)) return null
-    const record = data.sessionsById[sessionId]
-    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
-  }, [panes, data.sessionsById, t])
-  const focusSessionPane = useCallback((sessionId: string): boolean => {
-    const pane = useBoardStore.getState().panes.find((item) => item.sessionId === sessionId)
-    if (!pane) return false
-    focusPane(pane.paneId)
-    return true
-  }, [focusPane])
-  const peerNavigation = useMemo<PeerNavigation>(
-    () => ({ labelFor: peerLabelFor, focusSession: focusSessionPane }),
-    [peerLabelFor, focusSessionPane],
-  )
-  usePeerGroup({
-    boardId,
-    panes,
-    sessionsById: data.sessionsById,
-    messagingEnabled,
-    supported: peerMessaging,
-    engineReady: data.ready && data.sessionsLoaded,
-    engineGeneration,
-  })
-
   return (
-    <PeerNavigationProvider value={peerNavigation}>
     <div className={fitToView ? 'board-root is-fit-to-view' : 'board-root'}>
       {persistError && (
         <div role="alert" className="board-banner">{t('board.persistError')}</div>
@@ -305,10 +250,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
                       onFocus={focusPane}
                       onOpenSingle={openSingle}
                       onRemove={removePane}
-                      onRemoveAndClose={(paneId, sessionId) => setClosing({ paneId, sessionId })}
                       onOpenProviders={() => goSettings('providers')}
-                      peerMessaging={peerMessaging}
-                      peerLabelFor={peerLabelFor}
                     />
                     {!pane.collapsed && !fitToView && <PaneResizer pane={pane} />}
                   </Fragment>
@@ -325,21 +267,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
         )}
       </div>
       <AddPaneDialog open={dialogOpen} onOpenChange={setDialogOpen} onAdded={addSession} onAddDraft={addDraft} />
-      <AlertDialog open={closing !== null} onOpenChange={(next) => { if (!next) setClosing(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('board.pane.removeAndClose')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {closingBusy ? t('board.pane.removeAndClose.busy') : t('board.pane.removeAndClose.confirm')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('board.sameProject.cancel')}</AlertDialogCancel>
-            <AlertDialogAction disabled={closingBusy} onClick={() => void confirmClose()}>{t('board.pane.removeAndClose')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
-    </PeerNavigationProvider>
   )
 }

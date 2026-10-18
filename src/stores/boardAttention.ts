@@ -36,8 +36,6 @@ export interface SessionAttention {
   /** Turnos activos vistos por este cliente: si terminan sin que lo veamos, quedan unread. */
   trackedActiveTurnIds: string[]
   turns: Record<string, TurnReadReceipt>
-  /** Mensajes de otros paneles aceptados y aún no reconocidos (por messageId). */
-  unreadPeerMessageIds: string[]
 }
 
 interface PersistedAttention {
@@ -77,8 +75,6 @@ interface AttentionState {
   markSessionResultsSeen: (sessionId: string, turnIds: string[]) => void
   markAllBoardResultsSeen: (snapshot: Record<string, string[]>) => void
   claimNotification: (sessionId: string, turnId: string, key: string) => boolean
-  observePeerMessage: (sessionId: string, messageId: string) => void
-  markPeerMessagesSeen: (sessionId: string, messageIds: string[]) => void
   /** Solo ante eliminación autoritativa de la sesión (no al quitarla del layout). */
   forgetSession: (sessionId: string) => void
   /** Tests y recuperación: sustituye el estado del perfil actual. */
@@ -95,7 +91,7 @@ export interface TerminalObservation {
 const OUTCOMES: readonly TerminalOutcome[] = ['completed', 'failed', 'cancelled', 'stopped']
 
 export function emptySessionAttention(): SessionAttention {
-  return { initialized: false, lastSeenTurnId: null, trackedActiveTurnIds: [], turns: {}, unreadPeerMessageIds: [] }
+  return { initialized: false, lastSeenTurnId: null, trackedActiveTurnIds: [], turns: {} }
 }
 
 function isOutcome(value: unknown): value is TerminalOutcome {
@@ -129,7 +125,6 @@ function sanitizeSession(input: unknown): SessionAttention | null {
     lastSeenTurnId: typeof raw.lastSeenTurnId === 'string' && raw.lastSeenTurnId ? raw.lastSeenTurnId : null,
     trackedActiveTurnIds: ids(raw.trackedActiveTurnIds),
     turns,
-    unreadPeerMessageIds: ids(raw.unreadPeerMessageIds),
   }
 }
 
@@ -262,8 +257,7 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
   markAllSeen: () => set((state) => {
     let sessions = state.sessions
     for (const [sessionId, current] of Object.entries(state.sessions)) {
-      const read = seen(current, unreadTurnIds(current))
-      const next = read.unreadPeerMessageIds.length > 0 ? { ...read, unreadPeerMessageIds: [] } : read
+      const next = seen(current, unreadTurnIds(current))
       if (next === current) continue
       if (sessions === state.sessions) sessions = { ...sessions }
       sessions[sessionId] = next
@@ -297,17 +291,6 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
     return true
   },
 
-  observePeerMessage: (sessionId, messageId) => set((state) => withSession(state, sessionId, (session) => {
-    if (session.unreadPeerMessageIds.includes(messageId)) return session
-    return { ...session, unreadPeerMessageIds: [...session.unreadPeerMessageIds, messageId] }
-  })),
-
-  markPeerMessagesSeen: (sessionId, messageIds) => set((state) => withSession(state, sessionId, (session) => {
-    const drop = new Set(messageIds)
-    const remaining = session.unreadPeerMessageIds.filter((id) => !drop.has(id))
-    return remaining.length === session.unreadPeerMessageIds.length ? session : { ...session, unreadPeerMessageIds: remaining }
-  })),
-
   forgetSession: (sessionId) => set((state) => {
     if (!state.sessions[sessionId]) return state
     const sessions = { ...state.sessions }
@@ -327,10 +310,6 @@ export function unreadTurnIds(session: SessionAttention | undefined): string[] {
 
 export function unreadResultCount(session: SessionAttention | undefined): number {
   return unreadTurnIds(session).length
-}
-
-export function unreadPeerCount(session: SessionAttention | undefined): number {
-  return session?.unreadPeerMessageIds.length ?? 0
 }
 
 // -- persistencia agrupada: solo al cambiar recibos, nunca por token ---------

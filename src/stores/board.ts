@@ -40,8 +40,6 @@ export interface BoardPane {
   sessionId: string
   width: number
   collapsed: boolean
-  peerReceive: boolean
-  peerSend: boolean
   /**
    * Conversación nueva pendiente: el panel tiene composer, pero la sesión se
    * crea con su primer mensaje. Un borrador nunca viaja al Engine como sesión.
@@ -86,7 +84,6 @@ export interface PersistedBoard {
   fitToView: boolean
   focusModeSnapshot: Record<string, boolean> | null
   softLimit: number
-  messagingEnabled: boolean
   notifications: BoardNotificationPrefs
 }
 
@@ -123,8 +120,6 @@ interface BoardState extends PersistedBoard {
   setPaneWidth: (paneId: string, width: number) => void
   setFitToView: (enabled: boolean) => void
   setSoftLimit: (limit: number) => void
-  setPeerFlags: (paneId: string, flags: Partial<Pick<BoardPane, 'peerReceive' | 'peerSend'>>) => void
-  setMessagingEnabled: (enabled: boolean) => void
   // -- colapso y modo foco (§7.6): presentación, nunca la vida de la sesión --
   setCollapsed: (paneId: string, collapsed: boolean) => void
   /** Expande sin robar foco (fuera de modo foco); en modo foco equivale a enfocar. */
@@ -208,8 +203,6 @@ function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
       sessionId: '',
       width: clamp(item.width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, PANE_DEFAULT_WIDTH),
       collapsed: bool(item.collapsed, false),
-      peerReceive: bool(item.peerReceive, true),
-      peerSend: bool(item.peerSend, true),
       draft,
     }
   }
@@ -222,8 +215,6 @@ function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
     sessionId: item.sessionId,
     width: clamp(item.width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, PANE_DEFAULT_WIDTH),
     collapsed: bool(item.collapsed, false),
-    peerReceive: bool(item.peerReceive, true),
-    peerSend: bool(item.peerSend, true),
   }
 }
 
@@ -254,7 +245,6 @@ export function defaultBoard(): PersistedBoard {
     fitToView: true,
     focusModeSnapshot: null,
     softLimit: SOFT_LIMIT_DEFAULT,
-    messagingEnabled: true,
     notifications: { ...DEFAULT_NOTIFICATIONS },
   }
 }
@@ -313,7 +303,6 @@ export function normalizeBoard(raw: unknown): PersistedBoard {
     fitToView: bool(input.fitToView, base.fitToView),
     focusModeSnapshot,
     softLimit: clamp(input.softLimit, 0, 100, SOFT_LIMIT_DEFAULT),
-    messagingEnabled: bool(input.messagingEnabled, true),
     notifications: {
       toasts: bool(notificationsInput.toasts, DEFAULT_NOTIFICATIONS.toasts),
       system: bool(notificationsInput.system, DEFAULT_NOTIFICATIONS.system),
@@ -338,7 +327,6 @@ export function serializeBoardLayout(state: PersistedBoard): PersistedBoard {
     fitToView: state.fitToView,
     focusModeSnapshot: state.focusModeSnapshot ? { ...state.focusModeSnapshot } : null,
     softLimit: state.softLimit,
-    messagingEnabled: state.messagingEnabled,
     notifications: { ...state.notifications },
   }
 }
@@ -444,8 +432,6 @@ export const useBoardStore = create<BoardState>((set, get) => {
       sessionId,
       width: PANE_DEFAULT_WIDTH,
       collapsed: false,
-      peerReceive: true,
-      peerSend: true,
     }
     // Sin preferencias, el lateral empieza cerrado. Una sesión con layout
     // propio (Normal o un panel anterior) lo conserva, abierto o cerrado.
@@ -467,8 +453,6 @@ export const useBoardStore = create<BoardState>((set, get) => {
       sessionId: '',
       width: PANE_DEFAULT_WIDTH,
       collapsed: false,
-      peerReceive: true,
-      peerSend: true,
       draft: { projectId, mode: 'build', permissionProfile: 'workspace' },
     }
     return insertPane(pane, options)
@@ -576,10 +560,6 @@ export const useBoardStore = create<BoardState>((set, get) => {
       : pane),
   })),
   setSoftLimit: (limit) => set({ softLimit: clamp(limit, 0, 100, SOFT_LIMIT_DEFAULT) }),
-  setPeerFlags: (paneId, flags) => set((state) => ({
-    panes: state.panes.map((pane) => (pane.paneId === paneId ? { ...pane, ...flags } : pane)),
-  })),
-  setMessagingEnabled: (enabled) => set({ messagingEnabled: enabled }),
   setNotifications: (patch) => set((state) => ({ notifications: { ...state.notifications, ...patch } })),
 
   setCollapsed: (paneId, collapsed) => set((state) => {

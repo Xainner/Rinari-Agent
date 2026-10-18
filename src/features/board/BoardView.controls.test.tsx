@@ -116,21 +116,22 @@ it('UX-02: changing the mode in pane B while A is running only touches B', async
   expect(engine.useModel).not.toHaveBeenCalled()
 })
 
-it('"Configurar siguiente mensaje" focuses the pane composer instead of opening another editor', async () => {
+it('the pane menu is short: single view, move and remove from the board (plan-boards B.1b)', async () => {
   const engine = engineFixture({ sessions, models })
   useBoardStore.getState().addPane('ses_a')
   useBoardStore.getState().addPane('ses_b')
   render(<BoardHarness engine={engine}><BoardView /></BoardHarness>)
   const user = userEvent.setup()
   const paneA = screen.getByRole('region', { name: 'Backend API' })
-  // B holds focus (last added pane); the request must reach A's own composer.
-  expect(screen.getByRole('region', { name: 'Docs' }).getAttribute('data-focused')).toBe('true')
+  // No status dot next to the title: Rinari's face says it.
+  expect(paneA.querySelector('.pane-header-status-dot')).toBeNull()
   await user.click(within(paneA).getByRole('button', { name: 'Opciones del panel' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Configurar siguiente mensaje' }))
+  await screen.findByRole('menuitem', { name: 'Abrir en vista única' })
+  expect(screen.getAllByRole('menuitem').map((item) => item.textContent?.trim())).toEqual([
+    'Abrir en vista única',
+    'Mover a la izquierda',
+    'Mover a la derecha',
+    'Quitar del board',
+  ])
   await act(async () => {})
-  expect(document.activeElement).toBe(within(paneA).getByRole('textbox', { name: 'Mensaje' }))
-  expect(paneA.getAttribute('data-focused')).toBe('true')
-  // No second editable surface appeared anywhere.
-  expect(screen.getAllByRole('group', { name: 'Modo' })).toHaveLength(2)
-  expect(screen.getAllByTitle('Elegir modelo')).toHaveLength(2)
 })

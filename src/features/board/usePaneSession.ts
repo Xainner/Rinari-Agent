@@ -16,7 +16,7 @@ import {
   type PaneAvailabilityState,
   type PaneStatus,
 } from '../engine/sessionSelectors'
-import { unreadPeerCount, unreadResultCount, unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
+import { unreadResultCount, unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
 import { useProjectRootWatch } from '../projects/useProjectRootWatch'
 import { usePendingQuestions } from '../questions/usePendingQuestions'
 import { selectReasoning, useSessionUiStore } from '../../stores/sessionUi'
@@ -166,7 +166,6 @@ export function usePaneSession(sessionId: string): PaneSession {
       pendingApprovals: approvals.length,
       pendingQuestions: questions.length,
       unreadResultCount: unreadResultCount(attention),
-      unreadPeerCount: unreadPeerCount(attention),
       availability: availabilityState,
     })
     if (samePaneStatus(previousStatus.current, next)) return previousStatus.current as PaneStatus

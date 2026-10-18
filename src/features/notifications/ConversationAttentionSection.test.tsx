@@ -15,9 +15,9 @@ beforeEach(() => {
   useBoardAttentionStore.getState().observeTerminal('ses_b', 't7', 'completed', 'live', 1)
   useSessionPendingStore.setState({
     bySession: {
-      ses_a: { sessionId: 'ses_a', needsYou: true, unread: [], unreadPeers: 0, working: true },
-      ses_b: { sessionId: 'ses_b', needsYou: false, unread: ['completed'], unreadPeers: 0, working: false },
-      ses_board: { sessionId: 'ses_board', needsYou: false, unread: ['failed'], unreadPeers: 0, working: false },
+      ses_a: { sessionId: 'ses_a', needsYou: true, unread: [], working: true },
+      ses_b: { sessionId: 'ses_b', needsYou: false, unread: ['completed'], working: false },
+      ses_board: { sessionId: 'ses_board', needsYou: false, unread: ['failed'], working: false },
     },
   })
   useBoardStore.getState().addPane('ses_board')

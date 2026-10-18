@@ -17,7 +17,6 @@ export interface SessionPending {
   needsYou: boolean
   /** Resultado de cada turno terminado y todavía sin leer. */
   unread: TerminalOutcome[]
-  unreadPeers: number
   working: boolean
   /** Perfil de Rinari de la conversación, si se conoce (#34). */
   profileId?: string | null
@@ -50,7 +49,7 @@ export function summarizeAttention(sessions: SessionPending[]): AttentionSummary
   let done = false
   for (const session of sessions) {
     if (session.working) working += 1
-    const pending = session.needsYou || session.unread.length > 0 || session.unreadPeers > 0
+    const pending = session.needsYou || session.unread.length > 0
     if (!pending) continue
     count += 1
     pendingIds.push(session.sessionId)
@@ -85,12 +84,11 @@ export function indicatorTexts(
 /** Una línea para `app.log` cuando cambia el número: ids y estados, nunca contenido (#84). */
 export function describeAttention(sessions: SessionPending[]): string {
   const parts = sessions
-    .filter((session) => session.needsYou || session.unread.length > 0 || session.unreadPeers > 0)
+    .filter((session) => session.needsYou || session.unread.length > 0)
     .map((session) => {
       const states = [
         session.needsYou ? 'needs_you' : null,
         session.unread.length > 0 ? `unread(${session.unread.join(',')})` : null,
-        session.unreadPeers > 0 ? `peers(${session.unreadPeers})` : null,
       ].filter(Boolean)
       return `${session.sessionId} ${states.join(' ')}`
     })
@@ -117,7 +115,7 @@ export function pendingBySession(
     if (ACTIVE.has(timeline.status)) working.add(timeline.sessionId)
   }
   for (const [sessionId, receipts] of Object.entries(attention)) {
-    if (unreadOutcomes(receipts).length > 0 || receipts.unreadPeerMessageIds.length > 0) ids.add(sessionId)
+    if (unreadOutcomes(receipts).length > 0) ids.add(sessionId)
   }
   const approvals = new Set<string>()
   for (const item of runtime.approvals) if (item.status !== 'resolving' && item.session_id) approvals.add(item.session_id)
@@ -126,7 +124,6 @@ export function pendingBySession(
     sessionId,
     needsYou: approvals.has(sessionId) || questions(sessionId) > 0,
     unread: unreadOutcomes(attention[sessionId]),
-    unreadPeers: attention[sessionId]?.unreadPeerMessageIds.length ?? 0,
     working: working.has(sessionId),
   }))
 }
@@ -138,7 +135,7 @@ export function signalOf(session: SessionPending | undefined): SessionSignal | n
   if (!session) return null
   if (session.needsYou) return 'needs_you'
   if (session.unread.includes('failed')) return 'failed'
-  if (session.unread.length > 0 || session.unreadPeers > 0) return 'unread'
+  if (session.unread.length > 0) return 'unread'
   return null
 }
 
@@ -159,7 +156,7 @@ export function strongestSignal(signals: Array<SessionSignal | null | undefined>
 export const useSessionPendingStore = create<{ bySession: Record<string, SessionPending> }>(() => ({ bySession: {} }))
 
 function samePending(a: SessionPending | undefined, b: SessionPending): boolean {
-  return Boolean(a) && a!.needsYou === b.needsYou && a!.unreadPeers === b.unreadPeers && a!.working === b.working && a!.unread.join() === b.unread.join() && a!.profileId === b.profileId
+  return Boolean(a) && a!.needsYou === b.needsYou && a!.working === b.working && a!.unread.join() === b.unread.join() && a!.profileId === b.profileId
 }
 
 function publishPending(sessions: SessionPending[]): void {
@@ -167,7 +164,7 @@ function publishPending(sessions: SessionPending[]): void {
   const next: Record<string, SessionPending> = {}
   let changed = false
   for (const session of sessions) {
-    const pending = session.needsYou || session.unread.length > 0 || session.unreadPeers > 0
+    const pending = session.needsYou || session.unread.length > 0
     if (!pending) continue
     next[session.sessionId] = samePending(current[session.sessionId], session) ? current[session.sessionId] : session
     if (next[session.sessionId] !== current[session.sessionId]) changed = true

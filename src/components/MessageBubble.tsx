@@ -1,10 +1,9 @@
 import { seqOfMessage, useReviewExport } from '../features/review/ReviewExportDialog'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight, PackageOpen } from 'lucide-react'
+import { Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight, PackageOpen } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import type { I18nKey } from '../i18n/es'
-import { usePeerNavigation } from '../features/board/PeerNavigationContext'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
 import { AttachmentPreview } from './AttachmentPreview'
@@ -215,17 +214,15 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 /**
- * Mensaje recibido del agente de otro panel. Va a la izquierda, con marco
- * propio y atribución: el usuario debe distinguirlo de su propio prompt. Es
- * dato no confiable para el modelo; el runtime del Engine ya lo limita.
+ * Mensaje recibido del agente de otro panel (historial: la mensajería entre
+ * paneles se retiró en 0.4.0). Va a la izquierda, con marco propio y
+ * atribución, para distinguirlo de un prompt del usuario.
  */
 function PeerBubble({ message }: { message: ChatMessage }) {
   const { t } = useI18n()
-  const navigation = usePeerNavigation()
   const origin = message.origin!
   const sourceId = origin.source_session_id ?? null
-  const label = (sourceId && navigation?.labelFor(sourceId)) || origin.source_label || sourceId || t('board.peers.unknown')
-  const canNavigate = Boolean(sourceId && navigation?.labelFor(sourceId))
+  const label = origin.source_label || sourceId || t('board.peers.unknown')
   return (
     <div className="flex w-full min-w-0 justify-start" data-testid="peer-bubble">
       <div className="w-fit min-w-0 max-w-[85%] [overflow-wrap:anywhere] rounded-2xl rounded-bl-md border border-[var(--accent-2)]/40 bg-[var(--accent-2)]/10 px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text)]">
@@ -236,15 +233,6 @@ function PeerBubble({ message }: { message: ChatMessage }) {
             <span className="rounded-full bg-[var(--accent-2)]/15 px-1.5 py-0.5 font-mono text-[10px] normal-case" title={t('board.peers.hopHint')}>
               {t('board.peers.hop', { n: origin.hop })}
             </span>
-          )}
-          {canNavigate && sourceId && (
-            <button
-              type="button"
-              onClick={() => navigation?.focusSession(sourceId)}
-              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 normal-case text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-            >
-              {t('board.peers.goToPane')} <ArrowUpRight size={11} aria-hidden="true" />
-            </button>
           )}
         </div>
         <div className="whitespace-pre-wrap">{message.content}</div>
@@ -297,8 +285,7 @@ function ScheduledBadge() {
 
 function ForwardedBadge({ sessionId }: { sessionId: string }) {
   const { t } = useI18n()
-  const navigation = usePeerNavigation()
-  const label = navigation?.labelFor(sessionId) ?? sessionId
+  const label = sessionId
   return (
     <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
       <MessageSquareShare size={11} aria-hidden="true" />

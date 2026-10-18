@@ -25,8 +25,6 @@ export default function GeneralSettings({
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const softLimit = useBoardStore((s) => s.softLimit)
   const setSoftLimit = useBoardStore((s) => s.setSoftLimit)
-  const messagingEnabled = useBoardStore((s) => s.messagingEnabled)
-  const setMessagingEnabled = useBoardStore((s) => s.setMessagingEnabled)
 
   return (
     <div className="space-y-6">
@@ -109,17 +107,6 @@ export default function GeneralSettings({
               onChange={(event) => setSoftLimit(Number(event.target.value))}
               aria-label={t('settings.general.board.softLimit')}
               className={`${inputClass} w-24`}
-            />
-          }
-        />
-        <Row
-          title={t('board.peers.boardToggle')}
-          desc={t('board.peers.boardToggleHint')}
-          control={
-            <Switch
-              checked={messagingEnabled}
-              onCheckedChange={setMessagingEnabled}
-              aria-label={t('board.peers.boardToggle')}
             />
           }
         />

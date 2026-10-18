@@ -6,10 +6,10 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **286**
-- Respaldados por Engine: **280**
+- Comandos: **280**
+- Respaldados por Engine: **274**
 - Resueltos por el host: **6**
-- Adaptadores manuales fail-closed: **10**
+- Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
 
 | Comando | Dueño | Método Engine | Llamadores |
@@ -106,12 +106,6 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `network_settings_get` | engine | `network.settings.get` | `src/services/engine.ts` |
 | `network_settings_set` | engine | `network.settings.set` | `src/services/engine.ts` |
 | `network_test` | engine | `network.test` | `src/services/engine.ts` |
-| `peer_group_get` | engine | `session.peer_group.get` | `src/services/engine.ts` |
-| `peer_group_revoke` | engine | `session.peer_group.revoke` | `src/services/engine.ts` |
-| `peer_group_set` | engine | `session.peer_group.set` | `src/services/engine.ts` |
-| `peer_message_cancel` | engine | `session.peer_message.cancel` | `src/services/engine.ts` |
-| `peer_message_forward` | engine | `session.peer_message.forward` | `src/services/engine.ts` |
-| `peer_message_list` | engine | `session.peer_message.list` | **ninguno** |
 | `permission_grants_list` | engine | `permission.grants.list` | `src/services/engine.ts` |
 | `permission_grants_revoke` | engine | `permission.grants.revoke` | **ninguno** |
 | `plugin_diagnostics` | engine | `plugin.diagnostics` | **ninguno** |

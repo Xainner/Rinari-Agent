@@ -12,9 +12,6 @@ import type {
   ProjectSummary as ProtocolProjectSummary,
   SessionSummary as ProtocolSessionSummary,
   MessageOrigin,
-  PeerGroup,
-  PeerGroupMember,
-  PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
 import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
@@ -1564,8 +1561,7 @@ export const engineApi = {
       session_id: string
       queue: string[]
       pending: number
-      // Typed entries (manual + peer inbox); absent on engines without
-      // `session_peer_messaging_v1`.
+      // Typed entries; absent on older engines.
       entries?: QueuedPromptEntry[]
     }>("queue_list", {
       session_id,
@@ -1574,44 +1570,6 @@ export const engineApi = {
     platform().command<{ session_id: string; removed: number }>("queue_clear", { session_id }),
   queueResume: (session_id: string) =>
     platform().command<{ session_id: string; resumed: number }>("queue_resume", { session_id }),
-  // -- peer messaging between the sessions of a board ------------------------
-  peerGroupSet: (input: {
-    board_id: string
-    group_id?: string | null
-    expected_revision: number
-    enabled: boolean
-    members: PeerGroupMember[]
-  }) =>
-    platform().command<PeerGroup & { warnings?: string[] }>("peer_group_set", {
-      board_id: input.board_id,
-      group_id: input.group_id ?? null,
-      expected_revision: input.expected_revision,
-      enabled: input.enabled,
-      members: input.members,
-    }),
-  peerGroupGet: (selector: { board_id?: string; session_id?: string; group_id?: string }) =>
-    platform().command<{ group: PeerGroup | null }>("peer_group_get", {
-      board_id: selector.board_id ?? null,
-      session_id: selector.session_id ?? null,
-      group_id: selector.group_id ?? null,
-    }),
-  peerGroupRevoke: (group_id: string) => platform().command<PeerGroup>("peer_group_revoke", { group_id }),
-  peerMessageList: (session_id: string) =>
-    platform().command<{ session_id: string; messages: PeerMessage[] }>("peer_message_list", { session_id }),
-  peerMessageCancel: (message_id: string) =>
-    platform().command<PeerMessage>("peer_message_cancel", { message_id }),
-  peerMessageForward: (input: {
-    target_session_id: string
-    message: string
-    source_session_id?: string | null
-    quoted_source?: Record<string, unknown> | null
-  }) =>
-    platform().command<PeerMessage>("peer_message_forward", {
-      target_session_id: input.target_session_id,
-      message: input.message,
-      source_session_id: input.source_session_id ?? null,
-      quoted_source: input.quoted_source ?? null,
-    }),
   bundleList: () => platform().command<{ profiles: ProfileBundle[]; active_id?: string }>("bundle_list"),
   bundleActive: () => platform().command<{ active_id: string; profile: ProfileBundle }>('bundle_active'),
   /** Switch the workspace: new work goes there and the lists show its work. */
@@ -2054,4 +2012,4 @@ export function onEngineEvent(callback: (event: EngineEventMsg) => void): Promis
   return platform().events.onEngineEvent(callback);
 }
 
-export type { FlowResult, FlowStage, FlowSummary, MessageOrigin, PeerGroup, PeerGroupMember, PeerMessage, QueuedPromptEntry }
+export type { FlowResult, FlowStage, FlowSummary, MessageOrigin, QueuedPromptEntry }

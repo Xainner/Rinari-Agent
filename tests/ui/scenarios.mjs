@@ -463,6 +463,11 @@ export const scenarios = {
     title: 'Boards: Ajustar a la vista',
     phases: ['exercise'],
   },
+  'boards-pane-quiet': {
+    title: 'Boards: la fila viva del turno no aparece en el panel mientras Rinari prepara o piensa (C1)',
+    phases: ['exercise'],
+    model: () => heldModel([{ text: 'RESPUESTA DEL PANEL' }]),
+  },
   'boards-remove-all': {
     title: 'Boards: Quitar todos',
     phases: ['exercise', 'restart'],

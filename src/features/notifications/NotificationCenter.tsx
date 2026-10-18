@@ -62,7 +62,7 @@ export default function NotificationCenter({ labelFor, projectFor, goBoard, onOp
   const dismiss = useNotificationCenter((state) => state.dismiss)
   // Conversaciones que piden algo (todas, también las de Boards) + avisos sin leer.
   const conversationsTotal = useConversationAttentionTotal()
-  const unreadResults = useBoardAttentionStore((state) => Object.values(state.sessions).some((session) => session.unreadPeerMessageIds.length > 0 || Object.values(session.turns).some((receipt) => receipt.state === 'unread')))
+  const unreadResults = useBoardAttentionStore((state) => Object.values(state.sessions).some((session) => Object.values(session.turns).some((receipt) => receipt.state === 'unread')))
   const total = conversationsTotal + unread
 
   // Abrir la campana es verlas: al cerrarla, por la vía que sea, quedan leídas.

@@ -94,12 +94,6 @@ export type DesktopCommand =
   | "network_settings_get"
   | "network_settings_set"
   | "network_test"
-  | "peer_group_get"
-  | "peer_group_revoke"
-  | "peer_group_set"
-  | "peer_message_cancel"
-  | "peer_message_forward"
-  | "peer_message_list"
   | "permission_grants_list"
   | "permission_grants_revoke"
   | "plugin_diagnostics"
@@ -382,12 +376,6 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "network_settings_get",
   "network_settings_set",
   "network_test",
-  "peer_group_get",
-  "peer_group_revoke",
-  "peer_group_set",
-  "peer_message_cancel",
-  "peer_message_forward",
-  "peer_message_list",
   "permission_grants_list",
   "permission_grants_revoke",
   "plugin_diagnostics",
@@ -685,12 +673,6 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "network_settings_get",
   "network_settings_set",
   "network_test",
-  "peer_group_get",
-  "peer_group_revoke",
-  "peer_group_set",
-  "peer_message_cancel",
-  "peer_message_forward",
-  "peer_message_list",
   "permission_grants_list",
   "permission_grants_revoke",
   "plugin_diagnostics",

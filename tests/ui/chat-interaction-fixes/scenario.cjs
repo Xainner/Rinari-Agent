@@ -42,15 +42,16 @@ async function fits(prefix = '') {
 }
 async function checkpointError(prefix = '') {
   // Checkpoints vive al pie de Cambios (#47); la barra de título actúa sobre la sesión destino.
+  // El código crudo (INVALID_USAGE) ya no se ve (#68): queda la explicación del Engine.
   // Un panel que se abre con su botón trae su última vista; si ya es Cambios, no se pulsa otra vez.
   if (!(await evaluate(`Boolean(${q(prefix + ' [data-dock-view="changes"]')})`))) await click('.dock-view-bar button[data-view="changes"]')
   await clickText('Checkpoints', prefix + ' .dock-section-head')
-  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('INVALID_USAGE')`)
+  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('Checkpoints require a Git repository')`)
   assert.equal(await evaluate(`(${q(prefix + ' .session-dock')}.innerText.match(/Checkpoints require a Git repository/g)||[]).length`), 1)
   assert.equal(await evaluate(`document.querySelectorAll('[data-sonner-toast]').length`), 0)
   assert.equal(await evaluate(`${q(prefix + ' .session-dock')}.innerText.includes('Sin checkpoints.')`), false)
   await clickText('Reintentar', prefix + ' .session-dock button')
-  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('INVALID_USAGE')`)
+  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('Checkpoints require a Git repository')`)
   assert.equal(await evaluate(`document.querySelectorAll('[data-sonner-toast]').length`), 0)
   await screenshot(prefix ? 'boards-checkpoints' : 'normal-checkpoints')
   await click(prefix + ' button[aria-label="Cerrar Cambios"]')

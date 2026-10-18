@@ -56,3 +56,19 @@ it('does not ask to lower the access or to pick it again', async () => {
   expect(screen.queryByTestId('full-access-dialog')).toBeNull()
   expect(change).toHaveBeenCalledExactlyOnceWith('workspace')
 })
+
+it('inside a board pane the question covers that pane, not the whole window (plan-boards C14)', async () => {
+  const onPermissionChange = vi.fn()
+  render(<I18nProvider lang="es"><section data-pane-id="pane_a" aria-label="Panel A"><Composer placement="bottom" onSend={vi.fn()} isStreaming={false}
+    onStop={vi.fn()} models={[]} activeAlias="Modelo" activeModel={{ id: 'main', capabilities: {} } as unknown as ModelSummary}
+    onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} sessionMode="build"
+    onModeChange={vi.fn()} reasoningEffort="off" onReasoningChange={vi.fn()} permissionProfile="workspace"
+    effectivePermissionProfile="workspace" permissionProfilesV2 onPermissionChange={onPermissionChange}
+    onSearchFiles={async () => ({ root: '/', files: [] })} /></section></I18nProvider>)
+  await chooseFullAccess()
+  const dialog = await screen.findByTestId('full-access-dialog')
+  expect(dialog.closest('section[data-pane-id="pane_a"]')).not.toBeNull()
+  expect(dialog.dataset.scope).toBe('container')
+  await userEvent.click(screen.getByRole('button', { name: /Activar acceso completo/ }))
+  expect(onPermissionChange).toHaveBeenCalledExactlyOnceWith('full-access')
+})

@@ -88,19 +88,6 @@ describe('casos que no son un mapeo de claves', () => {
       params: settings,
     })
   })
-
-  it('peer_group_get manda una sola clave, por precedencia', () => {
-    // El host anterior usa `else if`: group_id gana a session_id y este a
-    // board_id. Mandar las tres cambiaría a qué grupo resuelve el Engine.
-    expect(translateCommand('peer_group_get', { board_id: 'b1', session_id: 's1', group_id: 'g1' })).toEqual({
-      method: 'session.peer_group.get',
-      params: { group_id: 'g1' },
-    })
-    expect(translateCommand('peer_group_get', { board_id: 'b1', session_id: 's1' }).params).toEqual({
-      session_id: 's1',
-    })
-    expect(translateCommand('peer_group_get', { board_id: 'b1' }).params).toEqual({ board_id: 'b1' })
-  })
 })
 
 describe('sondeo de runtimes externos', () => {

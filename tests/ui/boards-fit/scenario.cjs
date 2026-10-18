@@ -59,7 +59,7 @@ scenario(async () => {
   async function load(count, collapsed = [], fitToView = true, version = 4) {
     const layout = { version, boardId: 'boards_fit_acceptance', fitToView,
       panes: ids.slice(0, count).map((sessionId, i) => ({ paneId: `pane_${i}`, sessionId, width: 650 + i * 50, collapsed: collapsed.includes(i) })),
-      focusedPaneId: 'pane_0', messagingEnabled: false }
+      focusedPaneId: 'pane_0' }
     if (version < 4) delete layout.fitToView
     await seedBoard(layout)
     await delay(450)

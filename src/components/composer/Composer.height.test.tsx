@@ -55,10 +55,10 @@ it('restores the steering action and draft after a refused delivery', async () =
   expect(screen.getByRole('button', { name: 'Enviar ahora, sin detenerla' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Detener generación' })).toBeNull()
 })
-it.each([false,true])('resets the committed empty textarea for normal/direct sends (direct=%s)',async direct=>{
+it('resets the committed empty textarea after a send',async()=>{
   const send=vi.fn(()=>new Promise<boolean>(()=>{}))
-  const {el}=setup(direct?{mentionTargets:[{id:'b',label:'Docs'}],onSendToTarget:send}:{onSend:send})
-  fireEvent.change(el,{target:{value:(direct?'@Docs ':'')+long}})
+  const {el}=setup({onSend:send})
+  fireEvent.change(el,{target:{value:long}})
   expect(el.style.height).toBe('240px')
   fireEvent.click(screen.getByRole('button',{name:'Enviar mensaje'}))
   expect(el.value).toBe('')

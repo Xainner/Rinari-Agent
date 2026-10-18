@@ -16,7 +16,6 @@ import { useI18n } from '../i18n'
 import { useUIStore } from '../stores/ui'
 import Composer from './composer/Composer'
 import { ChatFileDropZone } from './composer/ChatFileDropZone'
-import type { PaneMentionTarget } from './composer/paneMention'
 import HomeWelcome from '../features/home/HomeWelcome'
 import type { HomeContext } from '../features/home/suggestions'
 import Questions from '../features/questions/Questions'
@@ -106,9 +105,6 @@ interface ChatViewProps {
    * duplica: Normal y Boards comparten `TurnResult`/`TurnMeta`.
    */
   onReviewChanges?: (timeline: TurnTimeline) => void
-  /** Paneles a los que se puede escribir con `@Panel mensaje` (solo Boards). */
-  mentionTargets?: readonly PaneMentionTarget[]
-  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
   /** Clave del borrador del composer cuando aún no hay sesión (conversación nueva). */
   composerDraftKey?: string
   /** Proyecto elegible de la conversación nueva (#42); solo sin sesión. */
@@ -159,8 +155,6 @@ function ChatView({
   composerAcceptsGlobalFocus = true,
   homeVariant = 'home',
   onReviewChanges,
-  mentionTargets,
-  onSendToTarget,
   composerDraftKey,
   draftProject,
 }: ChatViewProps) {
@@ -533,8 +527,6 @@ function ChatView({
       permissionProfilesV2={permissionProfilesV2}
       onPermissionChange={onPermissionChange}
       onSearchFiles={onSearchFiles}
-      mentionTargets={mentionTargets}
-      onSendToTarget={onSendToTarget}
     />
   )
 

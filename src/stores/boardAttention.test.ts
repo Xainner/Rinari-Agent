@@ -105,16 +105,6 @@ describe('terminals and reading', () => {
     expect(store.claimNotification('ses_a', 't1', 'k1')).toBe(false)
     expect(store.claimNotification('ses_a', 'unknown', 'k1')).toBe(false)
   })
-
-  it('tracks peer messages separately from results', () => {
-    const store = useBoardAttentionStore.getState()
-    store.observePeerMessage('ses_a', 'msg_1')
-    store.observePeerMessage('ses_a', 'msg_1')
-    store.observePeerMessage('ses_a', 'msg_2')
-    expect(useBoardAttentionStore.getState().sessions.ses_a.unreadPeerMessageIds).toEqual(['msg_1', 'msg_2'])
-    store.markPeerMessagesSeen('ses_a', ['msg_1'])
-    expect(useBoardAttentionStore.getState().sessions.ses_a.unreadPeerMessageIds).toEqual(['msg_2'])
-  })
 })
 
 describe('persistence', () => {
@@ -178,16 +168,14 @@ describe('#84 receipts that can always be cleared', () => {
     expect(unreadTurnIds(useBoardAttentionStore.getState().sessions.ses_a)).toEqual(['t3'])
   })
 
-  it('markAllSeen clears results and peer messages of every session', () => {
+  it('markAllSeen clears the results of every session', () => {
     const store = useBoardAttentionStore.getState()
     store.initializeSessionAttention('ses_a', [])
     store.initializeSessionAttention('ses_b', [])
     store.observeTerminal('ses_a', 't1', 'completed', 'live', 1)
     store.observeTerminal('ses_b', 't2', 'failed', 'live', 2)
-    store.observePeerMessage('ses_b', 'msg_1')
     store.markAllSeen()
     const sessions = useBoardAttentionStore.getState().sessions
     expect(unreadResultCount(sessions.ses_a) + unreadResultCount(sessions.ses_b)).toBe(0)
-    expect(sessions.ses_b?.unreadPeerMessageIds).toEqual([])
   })
 })

@@ -23,10 +23,6 @@ describe('notification channel policy', () => {
     expect(decideChannels({ kind: 'terminal', prefs, windowAttended: false, targetVisible: false, support: unsupported, permission: 'granted' })).toEqual({ toast: true, system: false })
   })
 
-  it('peer events never use these channels (they have their own toast)', () => {
-    expect(decideChannels({ kind: 'peer', prefs, windowAttended: false, targetVisible: false, support: supported, permission: 'granted' })).toEqual({ toast: false, system: false })
-  })
-
   it('native bodies stay generic unless details are enabled, and never carry content', () => {
     expect(nativeBody('terminal', { label: 'Backend', provider: 'openai', model: 'gpt' }, false)).toBe('Un panel necesita revisión')
     expect(nativeBody('intervention', null, true)).toBe('Un panel necesita tu intervención')

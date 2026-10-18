@@ -42,7 +42,6 @@ import type { ChatMessage } from '../../types'
 import Markdown from '../../components/Markdown'
 import { FileLink } from '../files/FileWorkspace'
 import MessageBubble from '../../components/MessageBubble'
-import { usePeerNavigation } from '../board/PeerNavigationContext'
 import TurnMeta from './TurnMeta'
 import CompactionDetails from '../context/CompactionDetails'
 import { turnRailNodes, useRailTrack } from './railTrack'
@@ -279,7 +278,6 @@ const shownDuration = (ms: number | undefined): ms is number => ms !== undefined
 
 function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, { type: 'model' }>; onResolveApproval: (id: string, decision: string) => void }) {
   const { t, lang } = useI18n()
-  const peerNavigation = usePeerNavigation()
   const active = useContext(ActivityActive)
   const technical = useUIStore((state) => state.showTechnicalActivityNames)
   if (item.type === 'vision' && item.fallback === 'without_images') {
@@ -384,7 +382,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
         {copy.note && <div className="mt-2 text-[12px] text-[var(--warning)]">{copy.note}</div>}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text-subtle)]">
           <span>{t('approval.riskLabel')} <b className="font-semibold text-[var(--warning)]">{copy.risk}</b></span>
-          {item.target && <span className="min-w-0 break-all font-mono">{item.capability === 'session.message' && peerNavigation?.labelFor(item.target) ? t('board.peers.approvalTarget', { label: peerNavigation.labelFor(item.target) ?? item.target }) : item.target}</span>}
+          {item.target && <span className="min-w-0 break-all font-mono">{item.target}</span>}
         </div>
         {open && (
           <div className="mt-3.5 flex flex-wrap gap-2">
@@ -889,10 +887,12 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const systemReducedMotion = useReducedMotion()
   const appReducedMotion = useUIStore(s => s.reduceMotion)
   const reducedMotion = appReducedMotion || Boolean(systemReducedMotion)
-  // En un panel, «pensando» (sin acciones ni texto aún) ya lo dice la cabecera
-  // del panel con la cara de Rinari: la fila viva aparece cuando hay algo que
-  // contar (una acción, la respuesta, un reintento, la cancelación).
-  const paneThinking = surface === 'pane' && state.kind === 'thinking' && timeline.status !== 'cancelling'
+  // En un panel, «pensando» y «preparando el turno» (sin acciones ni texto aún)
+  // ya lo dice la cabecera del panel con la cara de Rinari: la fila viva
+  // aparece cuando hay algo que contar (una acción, la respuesta, un
+  // reintento, la cancelación). `preparing` pasaba de 300 ms en un equipo
+  // ocupado y la fila salía un instante (plan-boards C1).
+  const paneThinking = surface === 'pane' && (state.kind === 'thinking' || state.kind === 'preparing') && timeline.status !== 'cancelling'
   // Primero llega tu mensaje, después aparece Rinari (#51): la cabecera viva
   // espera a que termine la subida de la burbuja (`rinari-send`, 500 ms; nada
   // con movimiento reducido), y `turn.preparing` no cuenta como algo que

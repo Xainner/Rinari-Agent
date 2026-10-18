@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from 'react'
-import { CheckCheck, ChevronsRight, CircleHelp, LoaderCircle, MessageSquareShare, MoreHorizontal, ShieldAlert, X } from 'lucide-react'
+import { CheckCheck, ChevronsRight, CircleHelp, LoaderCircle, MoreHorizontal, ShieldAlert, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ProviderLogo from '../../components/ProviderLogo'
 import {
@@ -50,7 +50,6 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onO
   const modelLabel = activeModel ? `${activeModel.provider} › ${activeModel.alias}` : record?.model_id ?? t('board.pane.modelMissing')
   const summary = [title, projectName, modelLabel, statusLabel].filter(Boolean).join(' · ')
   const working = status.kind === 'working' || status.kind === 'cancelling'
-  const peerUnread = status.unreadPeerCount ?? 0
 
   return (
     <section
@@ -91,11 +90,6 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, onExpand, onO
         {status.unreadResultCount > 0 && (
           <span className="pane-strip-badge is-unread" role="status" aria-label={t('board.status.unreadCount', { n: status.unreadResultCount })} title={t('board.status.unreadCount', { n: status.unreadResultCount })}>
             {status.unreadResultCount}
-          </span>
-        )}
-        {peerUnread > 0 && (
-          <span className="pane-strip-badge is-peer" role="status" aria-label={t('board.strip.peerUnread', { n: peerUnread })} title={t('board.strip.peerUnread', { n: peerUnread })}>
-            <MessageSquareShare size={11} aria-hidden="true" />{peerUnread}
           </span>
         )}
       </div>

@@ -13,12 +13,12 @@ import {
 } from '../engine/sessionSelectors'
 import type { TurnTimeline } from '../activity/types'
 import { isDraftPane, useBoardStore } from '../../stores/board'
-import { unreadPeerCount, unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
+import { unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
 import { useBoardStatusStore } from '../../stores/boardStatus'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 import { useAttentionIndicators } from '../notifications/attentionIndicators'
 import { useUIStore } from '../../stores/ui'
-import { getWindowAttention, useWindowAttention } from '../../hooks/useWindowAttention'
+import { getWindowAttention } from '../../hooks/useWindowAttention'
 import { hasResultBlock } from '../activity/resultBlock'
 import { lookupSession } from '../notifications/sessionDirectory'
 import { switchToProfileOf } from '../profiles/useProfileWorkspace'
@@ -26,7 +26,6 @@ import { useWindowTitle } from '../../hooks/useWindowTitle'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useI18n } from '../../i18n'
 import { useBoardNotifications, type ConversationTarget } from './useBoardNotifications'
-import { usePeerNotifications } from './usePeerNotifications'
 import { useCallback } from 'react'
 
 const ACTIVE = new Set(['running', 'approval', 'cancelling'])
@@ -187,7 +186,6 @@ export default function BoardActivityController() {
           pendingApprovals: selectSessionApprovals(runtime, pane.sessionId).length,
           pendingQuestions: getPendingQuestions(pane.sessionId).length,
           unreadResultCount: unreadResultCount(receipts),
-          unreadPeerCount: unreadPeerCount(receipts),
           availability: !data.ready ? 'disconnected' : data.sessionsById[pane.sessionId] ? 'ready' : 'loading',
         })
         const before = previous[pane.paneId] ?? null
@@ -207,24 +205,8 @@ export default function BoardActivityController() {
     }
   }, [store, memberKey, data.ready, data.sessionsById])
 
-  // -- avisos, título de ventana y lectura de mensajes de pares -----------------
+  // -- avisos y título de ventana -------------------------------------------------
   const { t } = useI18n()
-  const labelFor = useCallback((sessionId: string): string | null => {
-    if (!useBoardStore.getState().panes.some((pane) => pane.sessionId === sessionId)) return null
-    const record = data.sessionsById[sessionId]
-    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
-  }, [data.sessionsById, t])
-  const focusSession = useCallback((sessionId: string): boolean => {
-    const pane = useBoardStore.getState().panes.find((item) => item.sessionId === sessionId)
-    if (!pane) return false
-    useUIStore.getState().goBoard()
-    useBoardStore.getState().expandPane(pane.paneId, { focus: true })
-    return true
-  }, [])
-  const view = useUIStore((state) => state.view)
-  const focusedPaneId = useBoardStore((state) => state.focusedPaneId)
-  const focusedPane = members.find((pane) => pane.paneId === focusedPaneId) ?? null
-  const focusedSessionId = view === 'board' && focusedPane && !focusedPane.collapsed ? focusedPane.sessionId : null
   // Avisos de todas las conversaciones (#33): nombre de cualquiera, preguntas
   // de las que tienen un turno vivo, y «Ir» abre la conversación en el turno.
   const titleFor = useCallback((sessionId: string): string | null => {
@@ -287,12 +269,6 @@ export default function BoardActivityController() {
     }).then(keep).catch(() => undefined)
     return () => { disposed = true; for (const stop of stops.splice(0)) stop() }
   }, [])
-  usePeerNotifications({
-    supported: data.status?.capabilities.session_peer_messaging_v1 === true,
-    labelFor,
-    focusedSessionId,
-    focusSession,
-  })
   // Una sola cuenta para el título, la barra de tareas y la bandeja.
   const { lang } = useI18n()
   const liveSessionIds = useMemo(
@@ -305,21 +281,6 @@ export default function BoardActivityController() {
   }, [data.sessionsById])
   const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds, titleFor, profileFor })
   useWindowTitle(summary.count)
-
-  // Mensajes de pares: se reconocen al atender el panel (expandido, enfocado,
-  // ventana con foco) durante un instante; abrir un resultado no los marca.
-  const attention = useWindowAttention()
-  const attendedSession = attention.attended
-    ? (view === 'board' ? focusedSessionId : view === 'chat' ? data.activeSession || null : null)
-    : null
-  const attendedPeerIds = useBoardAttentionStore((state) => (attendedSession ? state.sessions[attendedSession]?.unreadPeerMessageIds : undefined))
-  useEffect(() => {
-    if (!attendedSession || !attendedPeerIds || attendedPeerIds.length === 0) return
-    const timer = window.setTimeout(() => {
-      useBoardAttentionStore.getState().markPeerMessagesSeen(attendedSession, attendedPeerIds)
-    }, 500)
-    return () => window.clearTimeout(timer)
-  }, [attendedSession, attendedPeerIds])
 
   return null
 }

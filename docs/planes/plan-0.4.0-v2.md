@@ -116,6 +116,12 @@ Orden: V2-1, V2-3, V2-2, V2-4 y V2-5. Son independientes; el 3 quita la necesida
    - es libre dentro y fuera del proyecto;
    - siguen protegidos los secretos del sistema y las carpetas privadas;
    - en Solo lectura también se permite, porque no cambia nada.
+**Auditoría (2026-10-18), además del historial.** Pasé por la política real, en los tres perfiles y con un `RINARI_HOME` temporal, todas las herramientas que el Engine registra:
+- Las 144 del catálogo base (`builtin_catalog`): solo `audio.transcribe` cae sin regla. Deniega en Solo lectura, pregunta en Proyecto y se permite en Acceso completo.
+- Los 31 de los paquetes con host (skills, tareas programadas, introspección, imágenes, subagentes, hijas y búsqueda de capacidades): todos tienen regla.
+- MCP: `mcp.read`/`mcp.call` tienen regla. OpenAPI y SSH declaran `network.outbound`, que va por las reglas de red.
+- Plugins: una herramienta de plugin que no declara capacidad cae en la regla general y pregunta en Proyecto. Es a propósito: es código de terceros sin declarar qué hace. En el plugin del dueño, `maestro-dashboard.open` y `.status` declaran `network.outbound`; `maestro-dashboard.stop` no declara nada, así que preguntaría. Se arregla en el plugin (declarar lo que hace), no en el Engine.
+
 2. Una prueba que recorra todas las herramientas nativas registradas y falle si alguna cae en `unknown_capability` en el perfil Proyecto. Así la próxima herramienta nueva sin regla se ve en las pruebas y no en la app del dueño.
 
 **Pruebas:**

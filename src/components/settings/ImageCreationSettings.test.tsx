@@ -76,3 +76,39 @@ it('appears in Visión e imágenes only when the Engine announces it', async () 
   render(<I18nProvider lang="es"><VisionSettings models={[]} providers={[]} imageCreation /></I18nProvider>)
   expect(await screen.findByTestId('image-creation-settings')).toBeTruthy()
 })
+
+it('adds a local ComfyUI with a workflow, an MCP server mapped by operation and OpenRouter through the provider (block 29)', async () => {
+  vi.spyOn(engineApi, 'imagesSettingsGet').mockResolvedValue({
+    ...empty,
+    openrouter_providers: [{ provider_id: 'prov_or', name: 'OpenRouter' }],
+    mcp_servers: ['visual-lab'],
+  })
+  const set = vi.spyOn(engineApi, 'imagesSettingsSet').mockImplementation(async (value) => ({ ...empty, openrouter_providers: [{ provider_id: 'prov_or', name: 'OpenRouter' }], mcp_servers: ['visual-lab'], ...value }))
+  mount()
+  const user = userEvent.setup()
+
+  await user.click(await screen.findByRole('button', { name: /ComfyUI \(local\)/ }))
+  let form = screen.getByTestId('image-connector-form')
+  expect(within(form).getByRole('button', { name: 'Agregar' })).toHaveProperty('disabled', true)
+  expect(form.textContent).toContain('«{{prompt}}»')
+  const workflow = new File([JSON.stringify({ '3': { inputs: { text: '{{prompt}}' } } })], 'upscale.json', { type: 'application/json' })
+  await user.upload(within(form).getByLabelText('Workflow para Ampliar'), workflow)
+  await waitFor(() => expect(within(form).getByRole('button', { name: 'Agregar' })).toHaveProperty('disabled', false))
+  await user.click(within(form).getByRole('button', { name: 'Agregar' }))
+  await waitFor(() => expect(set).toHaveBeenCalledTimes(1))
+  expect(set.mock.calls[0][0].connectors[0]).toMatchObject({ kind: 'comfyui', endpoint: 'http://127.0.0.1:8188', workflows: { upscale: { '3': { inputs: { text: '{{prompt}}' } } } } })
+
+  await user.click(screen.getByRole('button', { name: /Servidor MCP/ }))
+  form = screen.getByTestId('image-connector-form')
+  await user.type(within(form).getByRole('textbox', { name: 'Crear' }), 'make_image')
+  await user.click(within(form).getByRole('button', { name: 'Agregar' }))
+  await waitFor(() => expect(set).toHaveBeenCalledTimes(2))
+  expect(set.mock.calls[1][0].connectors.at(-1)).toMatchObject({ kind: 'mcp', server: 'visual-lab', tools: { generate: { tool: 'make_image', prompt_arg: 'prompt' } } })
+
+  await user.click(screen.getByRole('button', { name: /^OpenRouter$/ }))
+  form = screen.getByTestId('image-connector-form')
+  await user.click(within(form).getByRole('button', { name: 'Agregar' }))
+  await waitFor(() => expect(set).toHaveBeenCalledTimes(3))
+  expect(set.mock.calls[2][0].connectors.at(-1)).toMatchObject({ kind: 'openrouter', provider_id: 'prov_or' })
+  expect(set.mock.calls[2][0].connectors.at(-1)).not.toHaveProperty('api_key')
+})

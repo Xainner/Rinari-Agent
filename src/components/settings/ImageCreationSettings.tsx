@@ -3,10 +3,54 @@ import { toast } from 'sonner'
 import { Check, LoaderCircle, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { engineApi, commandMessage } from '../../services/engine'
 import type { ImageConnector, ImageCreationSettings as Config } from '../../types/protocol.generated'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, Section } from './parts'
 
 type Kind = ImageConnector['kind']
+type Operation = 'generate' | 'edit' | 'variations' | 'upscale' | 'remove_background'
+type Draft = {
+  provider_id: string
+  api_key: string
+  model: string
+  endpoint: string
+  server: string
+  /** ComfyUI: un workflow (formato API) por operación. */
+  workflows: Partial<Record<Operation, Record<string, unknown>>>
+  /** MCP: la herramienta de cada operación. */
+  tools: Partial<Record<Operation, string>>
+  prompt_arg: string
+  image_arg: string
+}
+
+const KINDS: readonly Kind[] = ['chatgpt', 'openai', 'fal', 'google', 'openrouter', 'comfyui', 'mcp']
+const OPERATIONS: readonly Operation[] = ['generate', 'edit', 'variations', 'upscale', 'remove_background']
+const KEYED: ReadonlySet<Kind> = new Set<Kind>(['openai', 'fal', 'google', 'openrouter'])
+const KIND_LABEL: Record<Kind, I18nKey> = {
+  chatgpt: 'images.kind.chatgpt',
+  openai: 'images.kind.openai',
+  fal: 'images.kind.fal',
+  google: 'images.kind.google',
+  openrouter: 'images.kind.openrouter',
+  comfyui: 'images.kind.comfyui',
+  mcp: 'images.kind.mcp',
+}
+const KIND_COST: Record<Kind, I18nKey> = {
+  chatgpt: 'images.cost.included',
+  openai: 'images.cost.perImage',
+  fal: 'images.cost.perImage',
+  google: 'images.cost.perImage',
+  openrouter: 'images.cost.byModel',
+  comfyui: 'images.cost.local',
+  mcp: 'images.cost.byServer',
+}
+const OPERATION_LABEL: Record<Operation, I18nKey> = {
+  generate: 'images.op.generate',
+  edit: 'images.op.edit',
+  variations: 'images.op.variations',
+  upscale: 'images.op.upscale',
+  remove_background: 'images.op.remove_background',
+}
+const EMPTY_DRAFT: Draft = { provider_id: '', api_key: '', model: '', endpoint: '', server: '', workflows: {}, tools: {}, prompt_arg: 'prompt', image_arg: 'image' }
 
 /** Un id corto y libre a partir del tipo: `chatgpt`, `chatgpt-2`, `openai`… */
 function nextId(kind: Kind, taken: ReadonlyArray<ImageConnector>): string {
@@ -16,10 +60,10 @@ function nextId(kind: Kind, taken: ReadonlyArray<ImageConnector>): string {
 }
 
 /**
- * Ajustes → Visión e imágenes → Creación de imágenes (plan 0.4.0 #28): con
- * qué servicio crea y edita imágenes Rinari. Sin conector, Rinari lo dice y
- * no improvisa (decisión del dueño). Las claves nunca vuelven del Engine:
- * solo `has_key`.
+ * Ajustes → Visión e imágenes → Creación de imágenes (plan 0.4.0 #28 y bloque
+ * 29): con qué servicio crea y edita imágenes Rinari. Sin conector, Rinari lo
+ * dice y no improvisa (decisión del dueño). Las claves nunca vuelven del
+ * Engine: solo `has_key`.
  */
 export default function ImageCreationSettings() {
   const { t } = useI18n()
@@ -27,7 +71,7 @@ export default function ImageCreationSettings() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [adding, setAdding] = useState<Kind | null>(null)
-  const [draft, setDraft] = useState({ provider_id: '', api_key: '', model: '' })
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [tests, setTests] = useState<Record<string, { ok: boolean; message?: string; running?: boolean }>>({})
   const [budget, setBudget] = useState('')
 
@@ -64,20 +108,50 @@ export default function ImageCreationSettings() {
 
   // El generador no tipa objetos anidados sin nombre: aquí sí se sabe su forma.
   const subscriptions = (config.subscriptions ?? []) as Array<{ provider_id: string; name: string }>
-  const label = (kind: Kind) => (kind === 'chatgpt' ? t('images.kind.chatgpt') : t('images.kind.openai'))
+  const routers = (config.openrouter_providers ?? []) as Array<{ provider_id: string; name: string }>
+  const servers = config.mcp_servers ?? []
+  const label = (kind: Kind) => t(KIND_LABEL[kind])
+  const mcpTools = Object.entries(draft.tools).filter(([, tool]) => tool && tool.trim())
+
+  const connectorFromDraft = (kind: Kind, id: string): ImageConnector & { api_key?: string } => {
+    const base = { id, kind, label: label(kind) }
+    switch (kind) {
+      case 'chatgpt':
+        return { ...base, provider_id: draft.provider_id || subscriptions[0]?.provider_id, model: draft.model }
+      case 'openai':
+        return { ...base, api_key: draft.api_key.trim(), model: draft.model || 'gpt-image-1' }
+      case 'fal':
+      case 'google':
+        return { ...base, api_key: draft.api_key.trim(), model: draft.model.trim() }
+      case 'openrouter':
+        return draft.api_key.trim()
+          ? { ...base, api_key: draft.api_key.trim(), model: draft.model.trim() }
+          : { ...base, provider_id: draft.provider_id || routers[0]?.provider_id, model: draft.model.trim() }
+      case 'comfyui':
+        return { ...base, endpoint: draft.endpoint.trim() || 'http://127.0.0.1:8188', workflows: draft.workflows as Record<string, Record<string, unknown>> }
+      case 'mcp':
+        return {
+          ...base,
+          label: `${label('mcp')} · ${draft.server || servers[0]}`,
+          server: draft.server || servers[0],
+          tools: Object.fromEntries(mcpTools.map(([op, tool]) => [op, {
+            tool: tool!.trim(),
+            ...(draft.prompt_arg.trim() ? { prompt_arg: draft.prompt_arg.trim() } : {}),
+            ...(op !== 'generate' && draft.image_arg.trim() ? { image_arg: draft.image_arg.trim() } : {}),
+          }])),
+        }
+    }
+  }
 
   const add = async () => {
     if (!adding) return
     const id = nextId(adding, config.connectors)
-    const connector: ImageConnector & { api_key?: string } = adding === 'chatgpt'
-      ? { id, kind: 'chatgpt', label: label('chatgpt'), provider_id: draft.provider_id || subscriptions[0]?.provider_id, model: draft.model }
-      : { id, kind: 'openai', label: label('openai'), api_key: draft.api_key.trim(), model: draft.model || 'gpt-image-1' }
-    const connectors = [...config.connectors, connector]
+    const connectors = [...config.connectors, connectorFromDraft(adding, id)]
     // El primero queda como el de por defecto: si no, las herramientas no tendrían con qué.
     const ok = await save({ connectors, default_connector: config.default_connector ?? id })
     if (ok) {
       setAdding(null)
-      setDraft({ provider_id: '', api_key: '', model: '' })
+      setDraft(EMPTY_DRAFT)
     }
   }
 
@@ -107,7 +181,28 @@ export default function ImageCreationSettings() {
     void save({ session_budget_usd: value })
   }
 
-  const canAdd = adding === 'chatgpt' ? subscriptions.length > 0 : adding === 'openai' ? draft.api_key.trim().length > 0 : false
+  const loadWorkflow = async (op: Operation, file: File | undefined) => {
+    if (!file) return
+    try {
+      const graph = JSON.parse(await file.text()) as unknown
+      if (!graph || typeof graph !== 'object' || Array.isArray(graph)) throw new Error('not an object')
+      setDraft((current) => ({ ...current, workflows: { ...current.workflows, [op]: graph as Record<string, unknown> } }))
+      setError('')
+    } catch {
+      setError(t('images.workflowInvalid', { name: file.name }))
+    }
+  }
+
+  const canAdd = (() => {
+    switch (adding) {
+      case 'chatgpt': return subscriptions.length > 0
+      case 'openai': case 'fal': case 'google': return draft.api_key.trim().length > 0
+      case 'openrouter': return draft.api_key.trim().length > 0 || routers.length > 0
+      case 'comfyui': return Object.keys(draft.workflows).length > 0
+      case 'mcp': return servers.length > 0 && mcpTools.length > 0
+      default: return false
+    }
+  })()
 
   return (
     <Section title={t('images.title')} desc={t('images.intro')}>
@@ -124,9 +219,9 @@ export default function ImageCreationSettings() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-[var(--text)]">{item.label}</span>
                     <span className="block text-xs text-[var(--text-subtle)]">
-                      {item.kind === 'chatgpt' ? t('images.cost.included') : t('images.cost.perImage')}
+                      {t(KIND_COST[item.kind])}
                       {item.model ? ` · ${item.model}` : ''}
-                      {item.kind === 'openai' && item.has_key === false ? ` · ${t('images.noKey')}` : ''}
+                      {KEYED.has(item.kind) && !item.provider_id && item.has_key === false ? ` · ${t('images.noKey')}` : ''}
                     </span>
                   </span>
                   {status && !status.running && (
@@ -149,40 +244,93 @@ export default function ImageCreationSettings() {
         )}
 
         {adding ? (
-          <div className="space-y-3 rounded-xl border border-[var(--border)] p-3" data-testid="image-connector-form">
+          <div className="space-y-3 rounded-xl border border-[var(--border)] p-3" data-testid="image-connector-form" data-kind={adding}>
             <p className="text-sm font-medium text-[var(--text)]">{label(adding)}</p>
-            {adding === 'chatgpt' ? (
-              subscriptions.length === 0 ? (
-                <p className="text-xs text-[var(--text-muted)]">{t('images.chatgptMissing')}</p>
-              ) : (
+            {adding === 'chatgpt' && (subscriptions.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">{t('images.chatgptMissing')}</p>
+            ) : (
+              <label className="block text-xs text-[var(--text-muted)]">
+                {t('images.subscription')}
+                <select className={inputClass} value={draft.provider_id || subscriptions[0].provider_id} onChange={(event) => setDraft({ ...draft, provider_id: event.target.value })}>
+                  {subscriptions.map((item) => <option key={item.provider_id} value={item.provider_id}>{item.name}</option>)}
+                </select>
+              </label>
+            ))}
+            {adding === 'openrouter' && routers.length > 0 && !draft.api_key.trim() && (
+              <label className="block text-xs text-[var(--text-muted)]">
+                {t('images.openrouterProvider')}
+                <select className={inputClass} value={draft.provider_id || routers[0].provider_id} onChange={(event) => setDraft({ ...draft, provider_id: event.target.value })}>
+                  {routers.map((item) => <option key={item.provider_id} value={item.provider_id}>{item.name}</option>)}
+                </select>
+              </label>
+            )}
+            {KEYED.has(adding) && (
+              <label className="block text-xs text-[var(--text-muted)]">
+                {adding === 'openrouter' && routers.length > 0 ? t('images.apiKeyOptional') : t('images.apiKey')}
+                <input type="password" autoComplete="off" spellCheck={false} className={inputClass} value={draft.api_key} onChange={(event) => setDraft({ ...draft, api_key: event.target.value })} />
+              </label>
+            )}
+            {KEYED.has(adding) && (
+              <label className="block text-xs text-[var(--text-muted)]">
+                {t('images.model')}
+                <input className={inputClass} placeholder={adding === 'openai' ? 'gpt-image-1' : adding === 'fal' ? 'fal-ai/flux/schnell' : adding === 'google' ? 'gemini-2.5-flash-image' : 'google/gemini-2.5-flash-image'} value={draft.model} onChange={(event) => setDraft({ ...draft, model: event.target.value })} />
+              </label>
+            )}
+            {adding === 'comfyui' && (
+              <>
                 <label className="block text-xs text-[var(--text-muted)]">
-                  {t('images.subscription')}
-                  <select className={inputClass} value={draft.provider_id || subscriptions[0].provider_id} onChange={(event) => setDraft({ ...draft, provider_id: event.target.value })}>
-                    {subscriptions.map((item) => <option key={item.provider_id} value={item.provider_id}>{item.name}</option>)}
-                  </select>
+                  {t('images.endpoint')}
+                  <input className={inputClass} placeholder="http://127.0.0.1:8188" value={draft.endpoint} onChange={(event) => setDraft({ ...draft, endpoint: event.target.value })} />
                 </label>
-              )
+                <p className="text-xs text-[var(--text-subtle)]">{t('images.workflowHint')}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {OPERATIONS.map((op) => (
+                    <label key={op} className="block text-xs text-[var(--text-muted)]">
+                      {t(OPERATION_LABEL[op])}{draft.workflows[op] ? ' ✓' : ''}
+                      <input type="file" accept=".json,application/json" className="mt-1 block w-full text-xs" aria-label={t('images.workflowFor', { op: t(OPERATION_LABEL[op]) })} onChange={(event) => void loadWorkflow(op, event.target.files?.[0])} />
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+            {adding === 'mcp' && (servers.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">{t('images.mcpMissing')}</p>
             ) : (
               <>
                 <label className="block text-xs text-[var(--text-muted)]">
-                  {t('images.apiKey')}
-                  <input type="password" autoComplete="off" spellCheck={false} className={inputClass} value={draft.api_key} onChange={(event) => setDraft({ ...draft, api_key: event.target.value })} />
+                  {t('images.mcpServer')}
+                  <select className={inputClass} value={draft.server || servers[0]} onChange={(event) => setDraft({ ...draft, server: event.target.value })}>
+                    {servers.map((name) => <option key={name} value={name}>{name}</option>)}
+                  </select>
                 </label>
-                <label className="block text-xs text-[var(--text-muted)]">
-                  {t('images.model')}
-                  <input className={inputClass} placeholder="gpt-image-1" value={draft.model} onChange={(event) => setDraft({ ...draft, model: event.target.value })} />
-                </label>
-                <p className="text-xs text-[var(--text-subtle)]">{t('images.cost.perImageHint')}</p>
+                <p className="text-xs text-[var(--text-subtle)]">{t('images.mcpHint')}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {OPERATIONS.map((op) => (
+                    <label key={op} className="block text-xs text-[var(--text-muted)]">
+                      {t(OPERATION_LABEL[op])}
+                      <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} value={draft.tools[op] ?? ''} onChange={(event) => setDraft({ ...draft, tools: { ...draft.tools, [op]: event.target.value } })} />
+                    </label>
+                  ))}
+                  <label className="block text-xs text-[var(--text-muted)]">
+                    {t('images.mcpPromptArg')}
+                    <input className={inputClass} value={draft.prompt_arg} onChange={(event) => setDraft({ ...draft, prompt_arg: event.target.value })} />
+                  </label>
+                  <label className="block text-xs text-[var(--text-muted)]">
+                    {t('images.mcpImageArg')}
+                    <input className={inputClass} value={draft.image_arg} onChange={(event) => setDraft({ ...draft, image_arg: event.target.value })} />
+                  </label>
+                </div>
               </>
-            )}
+            ))}
+            <p className="text-xs text-[var(--text-subtle)]">{t(KIND_COST[adding])}{adding === 'openai' || adding === 'fal' || adding === 'google' ? ` · ${t('images.cost.perImageHint')}` : ''}</p>
             <div className="flex justify-end gap-2">
-              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setAdding(null)}>{t('common.cancel')}</button>
+              <button type="button" className="btn btn-quiet btn-sm" onClick={() => { setAdding(null); setDraft(EMPTY_DRAFT) }}>{t('common.cancel')}</button>
               <button type="button" className="btn btn-primary btn-sm" disabled={!canAdd || busy} onClick={() => void add()}>{t('images.add')}</button>
             </div>
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {(['chatgpt', 'openai'] as const).map((kind) => (
+            {KINDS.map((kind) => (
               <button key={kind} type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(kind)}>
                 <Plus size={13} aria-hidden="true" /> {label(kind)}
               </button>

@@ -12,8 +12,9 @@ Caso de origen: la conversación `ses_01M56Q2Z2R0BXGBN7EZ3EEZ43X`, «Imagen hipe
 | V2-2 | Copiar de fuera hacia el chat no es «escribir fuera» | CLI |
 | V2-3 | Lo que se descarga queda en la conversación y se entrega con su tarjeta | CLI (+ escenario de la app) |
 | V2-4 | El título de la conversación se pide en paralelo y no retrasa el primer turno | CLI |
+| V2-5 | `audio.transcribe` no pide permiso: es una lectura local | CLI |
 
-Orden: V2-1, V2-3, V2-2 y V2-4. Son independientes; el 3 quita la necesidad de copiar y el 2 corrige el clasificador para los demás casos.
+Orden: V2-1, V2-3, V2-2, V2-4 y V2-5. Son independientes; el 3 quita la necesidad de copiar y el 2 corrige el clasificador para los demás casos.
 
 ## V2-1. El servicio de imágenes configurado va primero
 
@@ -99,6 +100,28 @@ Orden: V2-1, V2-3, V2-2 y V2-4. Son independientes; el 3 quita la necesidad de c
 - El título llega después y renombra la conversación.
 - Si el dueño la renombra antes de que llegue el título, gana su nombre.
 - Un error del título no toca el turno.
+
+## V2-5. `audio.transcribe` no pide permiso: es una lectura local
+
+**Qué se vio** (dueño, 2026-10-18). En `ses_01M56S9J197QMF409NR1QHS2JC`, «Opinión sobre letra de canción» (proyecto `032`, permisos «Proyecto»), Rinari pidió autorización con riesgo bajo para «Usar audio.transcribe» al escuchar `C:\Users\Xainner\Downloads\Saga Omar\Bring Me To Life (Cover Omar).mp3`.
+
+**Causa (validada).**
+- La herramienta (`tools/native/audio.py`, #36) no declara capacidad ni `classify`. Por eso `classify_action` (`tools/definition.py`) la deja con su propio nombre.
+- La política no tiene regla para `audio.transcribe`: cae en el último recurso, «capability 'audio.transcribe' is not covered by a built-in rule» (`rule_id=unknown_capability`), que en Solo lectura deniega y en Proyecto pregunta.
+- Pero la herramienta es solo una lectura local: whisper.cpp, el mismo modelo del dictado, sin red y sin escribir nada.
+- En todo el historial del dueño, las únicas herramientas que cayeron en esa regla fueron `capability.activate`/`deactivate` (hasta el 2026-09-25) y `file.present` (2026-10-16), ya arregladas, y ahora `audio.transcribe`.
+
+**Arreglo:**
+1. `audio.transcribe` se clasifica como `fs.read` sobre su `path`. Así sigue las mismas reglas que leer un archivo:
+   - es libre dentro y fuera del proyecto;
+   - siguen protegidos los secretos del sistema y las carpetas privadas;
+   - en Solo lectura también se permite, porque no cambia nada.
+2. Una prueba que recorra todas las herramientas nativas registradas y falle si alguna cae en `unknown_capability` en el perfil Proyecto. Así la próxima herramienta nueva sin regla se ve en las pruebas y no en la app del dueño.
+
+**Pruebas:**
+- `audio.transcribe` sobre un archivo de Descargas no pregunta en Proyecto ni en Solo lectura.
+- Sobre un secreto del sistema, sigue la regla de lectura de secretos.
+- La prueba del recorrido pasa.
 
 ## Al terminar
 

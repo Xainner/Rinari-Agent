@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, ChevronDown, FileText, GitBranch, GitBranchPlus, GitMerge, Hand, LoaderCircle, Trash2, TriangleAlert, X } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, FileText, GitBranch, GitBranchPlus, GitMerge, Hand, LoaderCircle, MessagesSquare, Trash2, TriangleAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, type ChildSession } from '../../services/engine'
@@ -180,7 +180,7 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
               ? <Hand size={13} />
               : child.state === 'failed'
                 ? <X size={13} />
-                : <GitBranchPlus size={13} />}
+                : child.branch ? <GitBranchPlus size={13} /> : <MessagesSquare size={13} />}
         </span>
         <button type="button" className="child-row-title" onClick={open} title={t('children.open')}>
           <span className="child-row-name">{title}</span>

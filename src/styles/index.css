@@ -779,6 +779,10 @@ input[type='password']::-ms-clear {
 .sticky-note-spawn-chip:hover:not(:disabled) { border-style: solid; color: var(--note-ink); background: color-mix(in srgb, var(--note-ink) 8%, transparent); }
 .sticky-note-spawn-chip::after { content: '⇄'; font-size: 9px; opacity: 0.6; }
 .children-dock { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+/* Las sesiones que abrió un turno (v3 P8): filas fijas entre el resultado y su línea de datos, con
+   el mismo aire que los demás bloques del turno y un fondo más suave que el de un aviso. */
+.opened-sessions { margin-bottom: 12px; }
+.opened-sessions .child-row { background: rgb(16 12 27 / 0.3); }
 /* «Informe recibido de X ›», «Encargo recibido de X ›», «Mensaje recibido de X ›» (como la línea de Claude
    Code, con lo nuestro): texto gris, el título subrayado con el acento que abre esa conversación y un ›
    que gira y despliega el texto (y lo repliega) con movimiento. */
@@ -1959,6 +1963,8 @@ html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none;
 .steer-send-now { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; background: none; font: inherit; color: var(--accent-2); cursor: pointer; }
 .steer-send-now:hover:not(:disabled) { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 .steer-send-now:disabled { opacity: 0.5; cursor: default; }
+.steer-send-now { font-weight: 500; border-radius: 4px; }
+.steer-send-now:focus-visible { outline: 1px solid var(--accent-2); outline-offset: 2px; }
 .steer-note { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-subtle); }
 /* «Enviar ahora» (#31): la burbuja que cortó el paso lleva un rayo y un filo de acento; mientras
    espera a que el paso se corte, el rayo late (sigue en curso). */

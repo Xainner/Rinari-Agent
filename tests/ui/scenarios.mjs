@@ -202,6 +202,30 @@ export const scenarios = {
       report: [{ text: 'INFORME LEÍDO: la sesión hija arregló 2 enlaces.' }, { text: 'EXTRA INFORME' }],
     }, childLaneOf),
   },
+  'opened-sessions': {
+    title: 'v3 P7/P8: la fila de la sesión que abrió un turno, la nieta bajo la raíz en la barra lateral y «Enviar ahora» en la nota del mensaje en espera',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 6 }, () => ({ text: 'Docs' })),
+      main: [
+        { tool: 'session.start', args: { title: 'Revisar docs', prompt: 'Revisa la carpeta docs y arregla los enlaces rotos. Hecho cuando no quede ninguno.' }, say: 'La abro aparte.' },
+        { text: 'La abrí aparte.' },
+        { text: 'TEXTO QUE NO SE VE' },
+        { text: 'LEÍ EL MENSAJE: empiezo por la 0.4.' },
+        { text: 'EXTRA' },
+        { text: 'EXTRA' },
+      ],
+      child: [
+        { tool: 'session.start', args: { title: 'Arreglar enlaces', prompt: 'Arregla los enlaces rotos de docs/guia. Hecho cuando no quede ninguno.' }, say: 'Lo abro aparte.' },
+        { text: 'REPORTE: abrí una sesión para los enlaces.' },
+        { text: 'REPORTE: arreglé 2 enlaces rotos.' },
+        { text: 'EXTRA HIJA' },
+        { text: 'EXTRA HIJA' },
+        { text: 'EXTRA HIJA' },
+      ],
+      report: Array.from({ length: 4 }, () => ({ text: 'INFORME LEÍDO: la sesión hija revisó los docs.' })),
+    }, childLaneOf, { held: ['main'] }),
+  },
   'steer-now': {
     title: 'Comando largo a segundo plano con su botón, y «Enviar ahora» (Ctrl+Enter) corta la respuesta en curso',
     phases: ['exercise'],

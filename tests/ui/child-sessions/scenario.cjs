@@ -29,10 +29,10 @@ scenario(async () => {
   await send('Revisa los docs en otra sesión')
   await wait(text('La abrí aparte.'))
   await wait(`[...document.querySelectorAll('aside li')].some((li) => li.textContent.includes('Revisar docs'))`)
-  // The child is not a row in the mother's chat: it lives in the sidebar and
-  // the mother tells its report.
+  // The child is a fixed row under the turn that opened it (v3 P8), not a
+  // dock above the composer; the mother tells its report.
   await wait(`document.querySelector('[data-testid="child-report-separator"]')?.textContent.includes('Revisar docs')`)
-  assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="child-card"]'))`), false, 'no child row in the chat')
+  assert.equal(await evaluate(`[...document.querySelectorAll('[data-testid="child-card"]')].every((card) => card.closest('[data-testid="opened-sessions"]'))`), true, 'the child row lives in its turn')
   await wait(text('INFORME LEÍDO'))
   await settleAnimations()
   await screenshot('mother-with-report')

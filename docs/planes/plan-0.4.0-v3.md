@@ -1,6 +1,6 @@
 # Plan 0.4.0 v3: caché y Set 2 de la batería
 
-Estado: **en revisión con el dueño, hallazgo por hallazgo** (desde 2026-10-19). No se escribe código hasta que el dueño lo autorice.
+Estado: **en curso** (el dueño autorizó «iniciar la v3 con la Nightly instalada al terminar», 2026-10-19). Lo que toca UI lo implemento yo y la sesión de pulido lo pule; P9 lo hace la sesión de pulido.
 
 Origen: el «Set 2 (caché)» de la batería de uso real (`C:\Users\Xainner\Documents\Proyectos\pruebas-040-1018\HALLAZGOS.md`), corrido con la Nightly que lleva el Engine 9231110 (la del [plan v2](plan-0.4.0-v2.md)). Los F-n son sus hallazgos.
 
@@ -8,15 +8,18 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 
 ## Avance
 
-| Hallazgo | Estado |
+| Bloque | Estado |
 |---|---|
-| F45 | Decidido (abajo). |
-| F42 | Decidido (abajo): como los grandes. |
-| F41, F43, F44, F27 bis | Propuesta lista (abajo). |
+| F41, F44, F27 bis, P1b, P2 | Hecho: CLI ecdf600. |
+| P1, P3, P4 | Hecho: CLI 8423ba9. La imagen ya no se entrega sola: el modelo la mira y la presenta; si no la presenta, sale al terminar el turno. |
+| P5, P6 | Hecho: CLI 8ea9101, Agent bfd8259. |
+| P7 | Hecho: CLI 0e397ca, Agent 50ce318. «Enviar ahora» corta el stream del proveedor (token propio por llamada) haga lo que haga el modelo. Una llamada MCP en curso termina con su plazo antes de leer el mensaje (el cliente MCP no cancela a mitad). |
+| P8, P10 | Hecho: Agent 50ce318. Las sesiones nacidas de una nota ya informan a la madre por el mismo camino que las hijas (`children.create`, origen `note`): sin cambio en el Engine. |
+| P9 | Hecho por la sesión de pulido: Agent 06fc235. |
+| F45 | Hecho (commit con F43). |
+| F43 | Hecho (commit con F45). |
+| F42 | **Bloqueado, pendiente del dueño**: ver «Hallazgo al implementar» en F42. |
 | F46 | Fuera: nota externa. |
-| P1, P1b, P7, P8 | Decididos con el dueño (cards de Planka, abajo). |
-| P2–P6, P10 | Propuesta lista (cards de Planka, abajo). |
-| P9 | A la sesión de pulido de UI (diseño visual). |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
 
@@ -40,6 +43,8 @@ Nadie grande usa una herramienta despachadora del tipo «llamar herramienta»; e
 Así, `capability.activate` deja de cambiar la lista a mitad de la conversación. Las nativas que hoy son bajo demanda suman unos 8,7 mil tokens: se pagan una vez y después salen de caché.
 
 **Validación.** La batería del Set 2 en los dos modos, con GPT por la suscripción (diferido nativo), DeepSeek y Qwen local (todo desde el inicio). Se mide la caché llamada a llamada en conversaciones largas y con activaciones, y se compara con las cifras de hoy: luna congelada en 14.080, y entre vueltas 9.088.
+
+**Hallazgo al implementar (2026-10-19).** Rinari registra 144 herramientas nativas (75 núcleo + 69 bajo demanda, ~18,8 mil tokens) y OpenAI Chat Completions rechaza más de 128 por petición (`'$.tools' is too long. Maximum length is 128`); DeepSeek y muchos compatibles copian ese tope. El modo 2 («todas desde el inicio») no cabe en esos proveedores. Los grandes no lo sufren porque tienen pocas herramientas anchas. Se consulta al dueño antes de seguir.
 
 ## Set 2: F41, F43, F44 y F27 bis
 

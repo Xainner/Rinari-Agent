@@ -262,6 +262,7 @@ export type DesktopCommand =
   | "turn_steer"
   | "turn_steer_cancel"
   | "turn_steer_now"
+  | "turn_steer_promote"
   | "turn_steer_update"
   | "usage_get"
   | "usage_report"
@@ -547,6 +548,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "turn_steer",
   "turn_steer_cancel",
   "turn_steer_now",
+  "turn_steer_promote",
   "turn_steer_update",
   "usage_get",
   "usage_report",
@@ -847,6 +849,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "turn_steer",
   "turn_steer_cancel",
   "turn_steer_now",
+  "turn_steer_promote",
   "turn_steer_update",
   "usage_get",
   "usage_report",

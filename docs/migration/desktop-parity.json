@@ -2167,6 +2167,13 @@
       ]
     },
     {
+      "command": "turn_steer_promote",
+      "kind": "engine",
+      "method": "session.turn.steer.promote",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "turn_steer_update",
       "kind": "engine",
       "method": "session.turn.steer.update",
@@ -2365,10 +2372,10 @@
     }
   ],
   "summary": {
-    "commands": 283,
-    "engine_backed": 277,
+    "commands": 284,
+    "engine_backed": 278,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 96
+    "without_callers": 97
   }
 }

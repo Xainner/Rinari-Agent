@@ -59,7 +59,7 @@ export default function SingleSessionView({
   const gitStatus = projectRoot ? (data.projectStatusByRoot[projectRoot] ?? null) : null
 
   return (
-    <ReadTrackingContext.Provider value={sessionId ? { sessionId, visible: true } : null}>
+    <ReadTrackingContext.Provider value={sessionId ? { sessionId, visible: true, returnMark: false } : null}>
     <SessionWorkspace
       sessionId={sessionId}
       record={record}

@@ -71,3 +71,19 @@ it('ya leído no ofrece editar ni borrar', () => {
   expect(screen.queryByRole('button', { name: 'Borrar' })).toBeNull()
   expect(screen.getByText('Enviado mientras trabajaba')).toBeTruthy()
 })
+
+it('«Enviar ahora» bajo un mensaje que espera lo adelanta (P7)', async () => {
+  const promote = vi.spyOn(engineApi, 'turnSteerPromote').mockResolvedValue({ status: 'promoted', steer_id: 't1:steer_1', interrupted: ['answer'] })
+  mount()
+  expect(screen.getByText('Lo leerá al terminar el paso actual')).toBeTruthy()
+  await userEvent.click(screen.getByTestId('steer-send-now'))
+  expect(promote).toHaveBeenCalledWith('s1', 't1:steer_1')
+})
+
+it('no ofrece «Enviar ahora» si ya se leyó o si ya cortó el paso', () => {
+  mount(item('applied'))
+  expect(screen.queryByTestId('steer-send-now')).toBeNull()
+  cleanup()
+  mount({ ...item(), interrupted: true } as SteerTimelineItem)
+  expect(screen.queryByTestId('steer-send-now')).toBeNull()
+})

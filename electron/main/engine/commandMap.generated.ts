@@ -271,6 +271,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "turn_steer": {"method":"session.turn.steer","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"message","from":"message","optional":false},{"key":"attachments","from":"attachments","optional":true}]},
   "turn_steer_cancel": {"method":"session.turn.steer.cancel","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"steer_id","from":"steer_id","optional":false}]},
   "turn_steer_now": {"method":"session.turn.steer_now","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"message","from":"message","optional":false},{"key":"attachments","from":"attachments","optional":true}]},
+  "turn_steer_promote": {"method":"session.turn.steer.promote","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"steer_id","from":"steer_id","optional":false}]},
   "turn_steer_update": {"method":"session.turn.steer.update","params":[{"key":"session_id","from":"session_id","optional":false},{"key":"steer_id","from":"steer_id","optional":false},{"key":"message","from":"message","optional":false}]},
   "usage_get": {"method":"usage.get","params":[{"key":"ref","from":"reference","optional":true}]},
   "usage_report": {"method":"usage.report","params":[{"key":"scope","from":"scope","optional":false},{"key":"ref","from":"ref","optional":true},{"key":"save","from":"save","optional":true},{"key":"session_id","from":"session_id","optional":true},{"key":"app_version","from":"app_version","optional":true}]},

@@ -99,7 +99,7 @@ describe('composer while Rinari works', () => {
     renderComposer({ onSteer, onQueue })
     const box = screen.getByRole('textbox', { name: /mensaje/i })
     fireEvent.change(box, { target: { value: 'solo los .py' } })
-    expect(screen.getByRole('button', { name: 'Enviar ahora, sin detenerla' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Enviar sin detenerla: lo leerá al terminar el paso' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Detener generación' })).toBeNull()
     fireEvent.keyDown(box, { key: 'Enter' })
     await vi.waitFor(() => expect(onSteer).toHaveBeenCalledWith('solo los .py', []))
@@ -142,7 +142,17 @@ describe('composer while Rinari works', () => {
 
   it('without steering support it only offers Stop', () => {
     renderComposer({})
-    expect(screen.queryByRole('button', { name: 'Enviar ahora, sin detenerla' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Enviar sin detenerla: lo leerá al terminar el paso' })).toBeNull()
     expect(screen.getByRole('textbox', { name: /mensaje/i }).getAttribute('placeholder')).toBe('Rinari está trabajando… puedes ir escribiendo')
+  })
+})
+
+describe('«Enviar ahora» on a waiting message (P7)', () => {
+  it('steer.updated with interrupt marks the bubble as cutting the step, keeping its text', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
+    state = turnTimelineReducer(state, { type: 'steer/sent', sessionId: 's1', turnId: 't1', steerId: 't1:steer_1', content: '¿y mi imagen?', now: NOW })
+    state = turnTimelineReducer(state, event('steer.updated', { ...ids, steer_id: 't1:steer_1', interrupt: true }))
+    const steer = state.timelines.t1.items.find((item) => item.type === 'steer')
+    expect(steer).toMatchObject({ content: '¿y mi imagen?', interrupted: true, status: 'pending' })
   })
 })

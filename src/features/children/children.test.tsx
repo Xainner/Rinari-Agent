@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi, type ChildSession } from '../../services/engine'
 import { desktopApi, type QuestionRequest } from '../../services/desktop'
-import { ChildRow, useSessionChildren } from './ChildrenDock'
+import { ChildRow, OpenedSessions, childrenByTurn, useSessionChildren } from './ChildrenDock'
 import { OfferCard, offerOf } from './OfferCard'
 import { applyChildEvent, useChildrenStore } from './childrenStore'
 
@@ -193,4 +193,25 @@ it('a report keeps what that child said then, and one read mid-turn shows as the
   expect(screen.queryByTestId('steer-message')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Desplegar' }))
   expect(screen.getByText('Lo leí a mitad de turno.')).toBeTruthy()
+})
+
+
+it('cada sesión abierta va en el turno donde nació (P8)', () => {
+  const turns = [{ turnId: 't1', startedAt: Date.parse('2026-10-19T10:00:00Z') }, { turnId: 't2', startedAt: Date.parse('2026-10-19T11:00:00Z') }]
+  const early = child({ child_session_id: 'a', created_at: '2026-10-19T10:05:00Z' })
+  const late = child({ child_session_id: 'b', created_at: '2026-10-19T11:30:00Z' })
+  // Accepted before any turn we know of: it goes with the first one.
+  const before = child({ child_session_id: 'c', created_at: '2026-10-19T09:00:00Z' })
+  const placed = childrenByTurn([early, late, before], turns)
+  expect(placed.get('t1')?.map((c) => c.child_session_id)).toEqual(['a', 'c'])
+  expect(placed.get('t2')?.map((c) => c.child_session_id)).toEqual(['b'])
+  expect(childrenByTurn([early], []).size).toBe(0)
+})
+
+it('la fila fija de una sesión abierta muestra su estado y «Abrir», sin decisiones de rama (P8)', () => {
+  render(<I18nProvider lang="es"><OpenedSessions children={[child({ state: 'completed', branch: 'rinari/x', resolution: null })]} /></I18nProvider>)
+  const row = screen.getByTestId('child-card')
+  expect(row.dataset.state).toBe('completed')
+  expect(screen.getAllByText(/Abrir/).length).toBeGreaterThan(0)
+  expect(screen.queryByText(/Integrar/)).toBeNull()
 })

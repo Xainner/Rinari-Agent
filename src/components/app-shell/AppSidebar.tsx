@@ -68,6 +68,13 @@ import { TitleSwap } from '../TitleSwap'
 import { ResumeChip } from '../../features/resume/ResumeChip'
 import { SESSION_DRAG_TYPE } from '../../features/board/boardDrag'
 
+/**
+ * Niveles de sangría del árbol de sesiones: el Engine deja abrir hijas hasta
+ * dos niveles por debajo de la raíz (`children/store.py` DEPTH_LIMIT), y el
+ * árbol nunca se adentra más aunque llegara un dato raro.
+ */
+const MAX_TREE_DEPTH = 3
+
 export interface AppSidebarProps {
   collapsed: boolean
   onSearch: () => void
@@ -322,21 +329,27 @@ export function AppSidebar({
     for (const list of Object.values(childrenByParent)) for (const child of list) if (child.branch && child.resolution !== 'discarded') branches.set(child.child_session_id, child.branch)
     return branches
   }, [childrenByParent])
-  /** Una sesión con sus hijas debajo, con sangría y siempre a la vista (#40). */
+  /**
+   * Una sesión con sus hijas debajo, con sangría y siempre a la vista (#40).
+   * Recursivo (P8): la sesión que abrió una hija (una nieta) cuelga de esa hija;
+   * antes no salía en ningún lado, porque ya no estaba entre las de arriba.
+   */
   const tree = (list: SessionSummary[], opts?: { travel?: boolean }, nest?: ReturnType<typeof nestSessions>) => {
     const { tops, children } = nest ? { tops: list, children: nest.children } : nestSessions(list)
-    return tops.map((session) => {
-      const kids = children.get(session.id) ?? []
-      if (kids.length === 0) return row(session, opts)
+    const branch = (session: SessionSummary, depth: number): ReactNode => {
+      const own = depth === 0 ? opts : { child: true }
+      const kids = depth < MAX_TREE_DEPTH ? children.get(session.id) ?? [] : []
+      if (kids.length === 0) return row(session, own)
       return row(session, {
-        ...opts,
+        ...own,
         nested: (
-          <ul className="sidebar-tree sidebar-children mt-0.5 ml-3.5 space-y-0.5 pl-1" data-testid="session-children">
-            {kids.map((kid) => row(kid, { child: true }))}
+          <ul className="sidebar-tree sidebar-children mt-0.5 ml-3.5 space-y-0.5 pl-1" data-testid="session-children" data-depth={depth + 1}>
+            {kids.map((kid) => branch(kid, depth + 1))}
           </ul>
         ),
       })
-    })
+    }
+    return tops.map((session) => branch(session, 0))
   }
 
   const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; nested?: ReactNode }) => {

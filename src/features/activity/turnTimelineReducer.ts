@@ -938,11 +938,12 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       // Borrado antes de que Rinari lo leyera (#54).
       timeline = { ...timeline, items: timeline.items.filter((item) => item.id !== `steer:${text(payload.steer_id)}`) }
     } else if (event === 'steer.updated') {
-      // Editado antes de que Rinari lo leyera (#54).
+      // Editado antes de que Rinari lo leyera (#54), o adelantado con «Enviar
+      // ahora» (P7): entonces corta el paso y la burbuja lo dice.
       timeline = {
         ...timeline,
         items: timeline.items.map((item) => item.type === 'steer' && item.id === `steer:${text(payload.steer_id)}` && item.status === 'pending'
-          ? { ...item, content: text(payload.message) || item.content }
+          ? { ...item, content: text(payload.message) || item.content, ...(payload.interrupt === true ? { interrupted: true } : {}) }
           : item),
       }
     } else {

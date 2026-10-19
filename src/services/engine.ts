@@ -1550,6 +1550,13 @@ export const engineApi = {
       message,
       attachments: attachments.length ? attachmentInputs(attachments) : null,
     }),
+  /**
+   * «Enviar ahora» sobre un mensaje que ya espera (P7, como Claude Code): el
+   * Engine corta el paso en seco —la respuesta, la llamada que escribe, la
+   * herramienta o la espera en curso— y lo lee ya. STEER_ALREADY_READ si lo leyó.
+   */
+  turnSteerPromote: (session_id: string, steer_id: string) =>
+    platform().command<{ status: 'promoted'; steer_id: string; interrupted: string[] }>("turn_steer_promote", { session_id, steer_id }),
   /** Move a foreground command of this session to the background (#32). */
   /** La salida entera de un comando que el historial recortó (#91). */
   toolOutput: (session_id: string, tool_call_id: string) =>

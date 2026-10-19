@@ -30,7 +30,7 @@ import { unreadResultCount, useBoardAttentionStore } from '../stores/boardAttent
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
 import { GoalDock } from '../features/goal/GoalDock'
-import { ChildDecisions } from '../features/children/ChildrenDock'
+import { ChildDecisions, OpenedSessions, childrenByTurn, useSessionChildren } from '../features/children/ChildrenDock'
 import { StickyNote } from '../features/followups/StickyNote'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
@@ -178,6 +178,14 @@ function ChatView({
   const stream = useMemo(
     () => buildChatStream(messages, timelines, sessionId, reports),
     [messages, timelines, sessionId, reports],
+  )
+  const sessionChildren = useSessionChildren(sessionId)
+  const openedByTurn = useMemo(
+    () => childrenByTurn(
+      sessionChildren,
+      Object.values(timelines).filter((turn) => turn.sessionId === sessionId),
+    ),
+    [sessionChildren, timelines, sessionId],
   )
   const presentation = conversationPresentation(historyPhase, stream.length)
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
@@ -557,6 +565,7 @@ function ChatView({
                       now={now}
                       onResolveApproval={onResolveApproval}
                       onReviewChanges={onReviewChanges ? () => onReviewChanges(row.timeline) : undefined}
+                      opened={<OpenedSessions children={openedByTurn.get(row.timeline.turnId) ?? []} />}
                       planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <><span className="plan-card-question">{t('plan.implementQuestion')}</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="btn btn-quiet btn-sm">{t('plan.notNow')}</button><button type="button" disabled={planStarting} className="btn btn-primary btn-sm" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? t('plan.starting') : t('plan.implement')}</button></> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}

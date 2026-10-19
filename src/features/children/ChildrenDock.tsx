@@ -57,7 +57,46 @@ export function ChildDecisions({ sessionId }: { sessionId: string }) {
   )
 }
 
-export function ChildRow({ child }: { child: ChildSession }) {
+/**
+ * En qué turno de la madre va la fila de cada hija (P8, como Claude Code): en
+ * el último turno que empezó antes de que la hija naciera. Una nota aceptada
+ * después de terminar el turno queda en ese mismo turno, donde se sugirió.
+ */
+export function childrenByTurn(
+  children: readonly ChildSession[],
+  turns: ReadonlyArray<{ turnId: string; startedAt: number }>,
+): Map<string, ChildSession[]> {
+  const ordered = [...turns].sort((a, b) => a.startedAt - b.startedAt)
+  const placed = new Map<string, ChildSession[]>()
+  if (ordered.length === 0) return placed
+  for (const child of children) {
+    const born = Date.parse(child.created_at)
+    let turn = ordered[0]
+    for (const candidate of ordered) {
+      if (Number.isFinite(born) && candidate.startedAt <= born) turn = candidate
+    }
+    const list = placed.get(turn.turnId) ?? []
+    list.push(child)
+    placed.set(turn.turnId, list)
+  }
+  return placed
+}
+
+/**
+ * Las sesiones que abrió este turno, como filas fijas (P8): título, estado en
+ * vivo y «Abrir», como en Claude Code. No se van cuando la sesión termina. Las
+ * decisiones de rama siguen arriba del composer (`ChildDecisions`).
+ */
+export function OpenedSessions({ children }: { children: readonly ChildSession[] }) {
+  if (children.length === 0) return null
+  return (
+    <section className="children-dock opened-sessions" data-testid="opened-sessions">
+      {children.map((child) => <ChildRow key={child.child_session_id} child={child} decisions={false} />)}
+    </section>
+  )
+}
+
+export function ChildRow({ child, decisions = true }: { child: ChildSession; decisions?: boolean }) {
   const { t } = useI18n()
   const commands = useOptionalEngineCommands()
   const data = useOptionalEngineData()
@@ -67,7 +106,7 @@ export function ChildRow({ child }: { child: ChildSession }) {
   const title = data?.sessionsById[child.child_session_id]?.title || child.title || t('children.untitled')
   const working = child.state === 'working' || child.state === 'waiting'
   const files = child.report?.files ?? []
-  const decide = Boolean(child.branch) && !child.resolution && !working
+  const decide = decisions && Boolean(child.branch) && !child.resolution && !working
   const open = () => { void commands?.selectSession(child.child_session_id) }
   const confirm = useConfirm()
   // Entra solo la que acaba de nacer; al volver a la madre, las filas aparecen quietas.

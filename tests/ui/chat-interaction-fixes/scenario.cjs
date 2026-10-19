@@ -3,7 +3,7 @@ const { click, clickText, command, evaluate, input, key, panesFor, q, reload, re
 const scroller = '.conversation-enter > .overflow-y-auto'
 const arrow = 'button[aria-label="Ir al final"]'
 const stop = 'button[aria-label="Detener generación"]'
-const steer = 'button[aria-label="Enviar ahora, sin detenerla"]'
+const steer = 'button[aria-label="Enviar sin detenerla: lo leerá al terminar el paso"]'
 const show = 'button[aria-label="Ver actividad del turno"]'
 const hide = 'button[aria-label="Ocultar actividad del turno"]'
 const operations = '[data-activity-disclosure="operations"] > div > button[aria-expanded]'

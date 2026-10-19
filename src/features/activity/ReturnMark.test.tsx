@@ -70,3 +70,15 @@ it('ya leído, o sin haber estado fuera, no lleva marca', () => {
   mount()
   expect(screen.getByTestId('probe').dataset.return).toBe('none')
 })
+
+it('en el chat que se está mirando no sale la marca (P10); en Boards sí', () => {
+  receipt({})
+  render(
+    <I18nProvider lang="es"><ReadTrackingContext.Provider value={{ sessionId: 's1', visible: true, returnMark: false }}><Probe /></ReadTrackingContext.Provider></I18nProvider>,
+  )
+  expect(screen.getByTestId('probe').dataset.return).toBe('none')
+  expect(screen.queryByTestId('turn-return')).toBeNull()
+  cleanup()
+  mount()
+  expect(screen.getByTestId('probe').dataset.return).toBe('unread')
+})

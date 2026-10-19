@@ -83,6 +83,8 @@ interface Props {
   onResolveApproval: (id: string, decision: string) => void
   onContinue?: () => void
   planActions?: ReactNode
+  /** Las sesiones que abrió este turno, como filas fijas debajo del resultado (P8). */
+  opened?: ReactNode
   /** Abre la superficie de cambios de la sesión (fila de metadatos del turno). */
   onReviewChanges?: () => void
   /**
@@ -878,7 +880,7 @@ export default function TurnTimelineView(props: Props) {
 /** La subida del mensaje recién enviado (`.user-bubble.is-fresh`, `rinari-send 0.5s`). */
 const SEND_ARRIVAL_MS = 500
 
-function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, onReviewChanges, surface = 'chat' }: Props) {
+function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, opened, onReviewChanges, surface = 'chat' }: Props) {
   const { t } = useI18n()
   const home = useUIStore(s => s.flowHomeId)
   const technical = useUIStore(s => s.showTechnicalActivityNames)
@@ -945,6 +947,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {projection.presented.map(item => <PresentedFiles key={item.id} item={item} />)}
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
+      {opened}
       <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />
     </ActivityTransition></ActivityActive.Provider></ActivityMotion.Provider>
   )

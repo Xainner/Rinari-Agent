@@ -15,9 +15,10 @@ export type ReturnState = 'unread' | 'fading' | null
  * resultado que ya estaba leído al montarse no se marca.
  */
 export function useReturnMark(turnId: string, calm: boolean): { state: ReturnState; outcome?: TerminalOutcome; completedAt?: number } {
-  const sessionId = useReadTracking()?.sessionId ?? null
+  const tracking = useReadTracking()
+  const sessionId = tracking?.sessionId ?? null
   const receipt = useBoardAttentionStore((store) => (sessionId ? store.sessions[sessionId]?.turns[turnId] : undefined))
-  const marked = receipt?.away === true && receipt.state === 'unread'
+  const marked = tracking?.returnMark !== false && receipt?.away === true && receipt.state === 'unread'
   const wasMarked = useRef(marked)
   const [fading, setFading] = useState(false)
   useEffect(() => {

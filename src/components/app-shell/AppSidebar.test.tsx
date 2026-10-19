@@ -551,6 +551,19 @@ describe('child sessions under their mother (#40)', () => {
     expect(screen.getByText('Parser').closest('li')?.textContent).not.toMatch(/\d\/\d/)
   })
 
+  it('a grandchild hangs from its mother, one level deeper (P8)', () => {
+    // A session opened from a child used to vanish: it was no longer a top row
+    // and only one level of children was drawn.
+    renderSidebar({
+      sessions: [session('root', 'Raíz'), child('ses_01_h', 'Hija', 'root'), child('ses_02_n', 'Nieta', 'ses_01_h')],
+      activeId: 'root',
+    })
+    const levels = screen.getAllByTestId('session-children')
+    expect(levels.map((level) => level.dataset.depth)).toEqual(['1', '2'])
+    expect(within(levels[1]).getByText('Nieta')).toBeTruthy()
+    expect(within(levels[0]).getByText('Hija')).toBeTruthy()
+  })
+
   it('a child whose mother is not in the list stays on its own', () => {
     renderSidebar({ sessions: [child('ses_03_c', 'Huérfana', 'gone')], activeId: 'ses_03_c' })
     expect(screen.queryByTestId('session-children')).toBeNull()

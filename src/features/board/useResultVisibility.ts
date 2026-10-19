@@ -36,6 +36,12 @@ export interface ReadTracking {
   sessionId: string
   /** Superficie realmente visible: panel expandido / Normal con esa sesión. */
   visible: boolean
+  /**
+   * Si esta superficie lleva la marca «Nuevo · terminó hace…» (P10). El chat
+   * que se está mirando no la necesita: la marca avisa en Boards y la barra
+   * lateral, donde no se ve la conversación. El recibo de leído sigue igual.
+   */
+  returnMark?: boolean
 }
 
 export const ReadTrackingContext = createContext<ReadTracking | null>(null)

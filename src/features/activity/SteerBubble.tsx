@@ -61,6 +61,18 @@ function OwnerSteerBubble({ item, sessionId }: { item: SteerTimelineItem; sessio
     }
   }
 
+  const sendNow = async () => {
+    if (!sessionId || busy) return
+    setBusy(true)
+    try {
+      await engineApi.turnSteerPromote(sessionId, item.steerId)
+    } catch (error) {
+      failed(error)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const remove = async () => {
     if (!sessionId || busy) return
     setBusy(true)
@@ -114,6 +126,14 @@ function OwnerSteerBubble({ item, sessionId }: { item: SteerTimelineItem; sessio
           : item.interrupted
             ? t(pending ? 'steer.interrupting' : 'steer.interrupted')
             : t(pending ? 'steer.pending' : 'steer.applied')}
+        {canChange && !editing && !item.interrupted && (
+          <>
+            <span aria-hidden="true">·</span>
+            <button type="button" className="steer-send-now" data-testid="steer-send-now" disabled={busy} title={t('steer.sendNowHint')} onClick={() => void sendNow()}>
+              <Zap size={10} aria-hidden="true" />{t('steer.sendNow')}
+            </button>
+          </>
+        )}
       </span>
     </div>
   )

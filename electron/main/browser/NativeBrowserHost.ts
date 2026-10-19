@@ -26,7 +26,9 @@ import {
   hostRequestOf,
   isHostChannelEvent,
   isNavigableUrl,
+  missingTargetMessage,
   resolveOperation,
+  withCaptureRetries,
   type HostRequest,
 } from './operations'
 import { verifyUploadFile } from './uploadProvenance'
@@ -93,6 +95,25 @@ class OperationError extends Error {
   ) {
     super(message)
   }
+}
+
+/** Sin pestaña donde operar (P6): el mensaje dice cómo seguir. */
+function missingTarget(context: { targets: Map<string, unknown> }, targetId: string | null): OperationError {
+  return new OperationError('TARGET_NOT_FOUND', missingTargetMessage(targetId, context.targets.size))
+}
+
+/** `capturePage` con reintentos ante un fallo pasajero del compositor (P5). */
+async function capturePageRetrying(contents: Electron.WebContents): Promise<Electron.NativeImage> {
+  const outcome = await withCaptureRetries(() => contents.capturePage(), {
+    repaint: () => contents.invalidate(),
+    stillThere: () => !contents.isDestroyed(),
+  })
+  if (outcome.ok) return outcome.value
+  throw new OperationError(
+    'CAPTURE_TRANSIENT',
+    `the page could not be copied right now (${messageOf(outcome.error)}); try again in a moment`,
+    true,
+  )
 }
 
 export class NativeBrowserHost {
@@ -679,7 +700,7 @@ export class NativeBrowserHost {
         // tiene que seguir funcionando con el panel oculto o sin abrir (§8.3).
         const entry = registry.target(context.contextId, request.target_id)
         if (!entry || entry.view.webContents.isDestroyed()) {
-          throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
+          throw missingTarget(context, request.target_id)
         }
         // Se comprueba **antes** de pedirla. Con el contenedor a cero,
         // `capturePage` bloquea el proceso principal entero y ni un plazo en
@@ -695,7 +716,7 @@ export class NativeBrowserHost {
         // captura grande por `capturePage` frenaba la ventana entera.
         const live = await this.captureByCdp(context, entry)
         if (live) return { data: live }
-        const image = await entry.view.webContents.capturePage()
+        const image = await capturePageRetrying(entry.view.webContents)
         const png = image.toPNG()
         // Una captura vacía no es una captura. `capturePage` resuelve tan
         // contento con cero bytes cuando la vista no llegó a componerse, y
@@ -727,7 +748,7 @@ export class NativeBrowserHost {
         // para que la herramienta no note de dónde vinieron.
         const entry = registry.target(context.contextId, request.target_id)
         if (!entry || entry.view.webContents.isDestroyed()) {
-          throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
+          throw missingTarget(context, request.target_id)
         }
         await registry.attach(entry)
         const limit = Number(request.params.limit)
@@ -767,7 +788,7 @@ export class NativeBrowserHost {
 
         const entry = registry.target(context.contextId, request.target_id)
         if (!entry || entry.view.webContents.isDestroyed()) {
-          throw new OperationError('TARGET_NOT_FOUND', 'the page is gone or never existed here')
+          throw missingTarget(context, request.target_id)
         }
         await registry.attach(entry)
         const debug = entry.view.webContents.debugger

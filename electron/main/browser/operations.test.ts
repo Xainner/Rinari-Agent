@@ -18,7 +18,10 @@ import {
   isHostRequest,
   FALLBACK_DOWNLOAD_NAME,
   isNavigableUrl,
+  CAPTURE_ATTEMPTS,
+  missingTargetMessage,
   resolveOperation,
+  withCaptureRetries,
   safeDownloadName,
   type HostRequest,
 } from './operations'
@@ -423,5 +426,62 @@ describe('el nombre de una descarga viene de la página, así que es hostil', ()
   it('un nombre normal se respeta', () => {
     expect(safeDownloadName('informe 2024.pdf')).toBe('informe 2024.pdf')
     expect(safeDownloadName('datos-final_v2.csv')).toBe('datos-final_v2.csv')
+  })
+})
+
+describe('sin pestaña donde operar (P6)', () => {
+  it('sin target y sin pestañas dice que se abra una, no que la página se fue', () => {
+    expect(missingTargetMessage(null, 0)).toContain('browser.open')
+    expect(missingTargetMessage(null, 0)).not.toContain('gone')
+  })
+
+  it('con un id que ya no está dice cómo listar las que hay', () => {
+    expect(missingTargetMessage('t9', 2)).toContain('browser.tabs')
+    expect(missingTargetMessage(null, 2)).toContain('no active tab')
+  })
+})
+
+describe('captura con reintentos (P5)', () => {
+  const noWait = () => Promise.resolve()
+
+  it('un fallo pasajero se reintenta con repintado y la captura sale', async () => {
+    let calls = 0
+    let repaints = 0
+    const outcome = await withCaptureRetries(
+      async () => {
+        calls += 1
+        if (calls < 3) throw new Error('UnknownVizError')
+        return 'png'
+      },
+      { repaint: () => (repaints += 1), stillThere: () => true, wait: noWait },
+    )
+    expect(outcome).toEqual({ ok: true, value: 'png' })
+    expect(calls).toBe(3)
+    expect(repaints).toBe(2)
+  })
+
+  it('si todos fallan devuelve el último error, sin esperar después del último', async () => {
+    let waits = 0
+    const outcome = await withCaptureRetries(
+      async () => {
+        throw new Error('still failing')
+      },
+      { repaint: () => {}, stillThere: () => true, wait: async () => { waits += 1 } },
+    )
+    expect(outcome.ok).toBe(false)
+    expect(waits).toBe(CAPTURE_ATTEMPTS - 1)
+  })
+
+  it('una vista destruida no se reintenta', async () => {
+    let calls = 0
+    const outcome = await withCaptureRetries(
+      async () => {
+        calls += 1
+        throw new Error('gone')
+      },
+      { repaint: () => {}, stillThere: () => false, wait: noWait },
+    )
+    expect(outcome.ok).toBe(false)
+    expect(calls).toBe(1)
   })
 })

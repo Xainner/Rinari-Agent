@@ -551,17 +551,18 @@ describe('child sessions under their mother (#40)', () => {
     expect(screen.getByText('Parser').closest('li')?.textContent).not.toMatch(/\d\/\d/)
   })
 
-  it('a grandchild hangs from its mother, one level deeper (P8)', () => {
-    // A session opened from a child used to vanish: it was no longer a top row
-    // and only one level of children was drawn.
+  it('a grandchild hangs from the same root as its mother, one indent only (P8, like Claude Code)', () => {
+    // A session opened from a child used to vanish. Chains do not indent
+    // further: every descendant sits one level under the root, by birth.
     renderSidebar({
-      sessions: [session('root', 'Raíz'), child('ses_01_h', 'Hija', 'root'), child('ses_02_n', 'Nieta', 'ses_01_h')],
+      sessions: [session('root', 'Raíz'), child('ses_01_h', 'Hija', 'root'), child('ses_02_n', 'Nieta', 'ses_01_h'), child('ses_03_b', 'Bisnieta', 'ses_02_n')],
       activeId: 'root',
     })
     const levels = screen.getAllByTestId('session-children')
-    expect(levels.map((level) => level.dataset.depth)).toEqual(['1', '2'])
-    expect(within(levels[1]).getByText('Nieta')).toBeTruthy()
-    expect(within(levels[0]).getByText('Hija')).toBeTruthy()
+    expect(levels).toHaveLength(1)
+    expect(within(levels[0]).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Hija'), expect.stringContaining('Nieta'), expect.stringContaining('Bisnieta'),
+    ])
   })
 
   it('a child whose mother is not in the list stays on its own', () => {

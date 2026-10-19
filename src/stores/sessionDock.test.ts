@@ -5,6 +5,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   DOCK_MIN_WIDTH,
+  FILES_TREE_DEFAULT_WIDTH,
+  FILES_TREE_MAX_WIDTH,
+  FILES_TREE_MIN_WIDTH,
   MAX_VIEWS,
   SESSION_DOCK_STORAGE_KEY,
   dockNamespaceKey,
@@ -193,5 +196,25 @@ describe('Resumen (#82)', () => {
     expect(JSON.stringify(dock().layoutFor('ses_a'))).not.toContain('summary')
     expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: [], summary: true })).toMatchObject({ visible: false, views: [] })
     expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['files'], summary: true })).toMatchObject({ visible: true, views: ['files'] })
+  })
+})
+
+describe('files tree column (P9)', () => {
+  it('starts shown at the default width, keeps the width per session and clamps it', () => {
+    expect(dock().layoutFor('ses_a').tree).toEqual({ open: true, widthPx: FILES_TREE_DEFAULT_WIDTH })
+    dock().setFilesTree('ses_a', { widthPx: 333 })
+    dock().setFilesTree('ses_a', { open: false })
+    expect(dock().layoutFor('ses_a').tree).toEqual({ open: false, widthPx: 333 })
+    expect(dock().layoutFor('ses_b').tree).toEqual({ open: true, widthPx: FILES_TREE_DEFAULT_WIDTH })
+    const stored = JSON.parse(window.localStorage.getItem(SESSION_DOCK_STORAGE_KEY) ?? '{}')
+    expect(stored[dockNamespaceKey(null, 'ses_a')].tree).toEqual({ open: false, widthPx: 333 })
+    dock().setFilesTree('ses_a', { widthPx: 9000 })
+    expect(dock().layoutFor('ses_a').tree.widthPx).toBe(FILES_TREE_MAX_WIDTH)
+    dock().setFilesTree('ses_a', { widthPx: 10 })
+    expect(dock().layoutFor('ses_a').tree.widthPx).toBe(FILES_TREE_MIN_WIDTH)
+  })
+  it('a layout saved before the column exists gets it shown at the default width', () => {
+    expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['files'] })?.tree).toEqual({ open: true, widthPx: FILES_TREE_DEFAULT_WIDTH })
+    expect(normalizeDockLayout({ schemaVersion: 2, visible: true, views: ['files'], tree: { open: 'no', widthPx: 'x' } })?.tree).toEqual({ open: true, widthPx: FILES_TREE_DEFAULT_WIDTH })
   })
 })

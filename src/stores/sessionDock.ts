@@ -47,7 +47,11 @@ export interface SessionDockLayout {
   amp: DockAmp
   /** La última vista abierta: la abre el botón de un panel sin vistas, o Ctrl+B. */
   lastView: DockView | null
+  /** La columna del árbol en la vista Archivos, a la derecha del visor cuando cabe (P9). */
+  tree: FilesTreeLayout
 }
+
+export interface FilesTreeLayout { open: boolean; widthPx: number }
 
 export type DockAmp = DockView | 'all' | null
 
@@ -64,12 +68,17 @@ export const DOCK_MAX_WIDTH = 4000
 export const CHAT_MIN_DOCKED_WIDTH = 300
 /** Por debajo de este ancho de panel, el mosaico pasa a una sola columna. */
 export const MOSAIC_MIN_WIDTH = 640
+/** Desde este ancho de la vista Archivos, el árbol va en una columna a la derecha del visor. */
+export const FILES_SIDE_MIN_WIDTH = 600
+export const FILES_TREE_MIN_WIDTH = 180
+export const FILES_TREE_MAX_WIDTH = 640
+export const FILES_TREE_DEFAULT_WIDTH = 260
 const SPLIT_MIN = 0.15
 const DEFAULT_SPLIT: DockSplit = { col: 0.5, left: 0.5, right: 0.5 }
 const DEFAULT_HOME = 'default'
 
 export function defaultDockLayout(): SessionDockLayout {
-  return { schemaVersion: SESSION_DOCK_SCHEMA_VERSION, visible: false, views: [], widthPx: DOCK_DEFAULT_WIDTH, split: { ...DEFAULT_SPLIT }, stack: [], amp: null, lastView: null }
+  return { schemaVersion: SESSION_DOCK_SCHEMA_VERSION, visible: false, views: [], widthPx: DOCK_DEFAULT_WIDTH, split: { ...DEFAULT_SPLIT }, stack: [], amp: null, lastView: null, tree: { open: true, widthPx: FILES_TREE_DEFAULT_WIDTH } }
 }
 
 const clampFraction = (value: unknown, fallback: number) =>
@@ -77,6 +86,14 @@ const clampFraction = (value: unknown, fallback: number) =>
 
 function clampWidth(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, Math.round(value))) : fallback
+}
+
+function normalizeTree(raw: unknown): FilesTreeLayout {
+  const item = (raw && typeof raw === 'object' ? raw : {}) as Partial<FilesTreeLayout>
+  const width = typeof item.widthPx === 'number' && Number.isFinite(item.widthPx)
+    ? Math.min(FILES_TREE_MAX_WIDTH, Math.max(FILES_TREE_MIN_WIDTH, Math.round(item.widthPx)))
+    : FILES_TREE_DEFAULT_WIDTH
+  return { open: item.open !== false, widthPx: width }
 }
 
 const isView = (value: unknown): value is DockView => DOCK_VIEWS.includes(value as DockView)
@@ -120,6 +137,7 @@ export function normalizeDockLayout(raw: unknown): SessionDockLayout | null {
     stack: fitStack(item.stack, views.length),
     amp: item.amp === 'all' && views.length > 0 ? 'all' : isView(item.amp) && views.includes(item.amp) ? item.amp : null,
     lastView: isView(item.lastView) ? item.lastView : item.lastView === null ? null : views.at(-1) ?? null,
+    tree: normalizeTree(item.tree),
   }
 }
 
@@ -265,6 +283,8 @@ export interface SessionDockState {
   setSplit: (sessionId: string, patch: Partial<DockSplit>) => void
   setStack: (sessionId: string, stack: number[]) => void
   setAmp: (sessionId: string, amp: DockAmp) => void
+  /** El árbol de la vista Archivos: mostrarlo u ocultarlo y su ancho. */
+  setFilesTree: (sessionId: string, patch: Partial<FilesTreeLayout>) => void
   /** Abre el panel en una vista concreta (enlace de archivo, browser del Engine, «Revisar cambios»). Acepta los nombres de antes. */
   reveal: (sessionId: string, surface: DockSurface, options?: { workspaceTab?: WorkspaceTab }) => void
   /** Adopta un layout inicial (panel nuevo, migración del schema 2 del board) solo si la sesión no tiene uno propio. */
@@ -420,6 +440,7 @@ export const useSessionDockStore = create<SessionDockState>((set, get) => {
     setSplit: (sessionId, patch) => change(sessionId, (layout) => ({ ...layout, split: { ...layout.split, ...patch } })),
     setStack: (sessionId, stack) => change(sessionId, (layout) => ({ ...layout, stack })),
     setAmp: (sessionId, amp) => change(sessionId, (layout) => ({ ...layout, amp: amp === 'all' || (amp && layout.views.includes(amp)) ? amp : null })),
+    setFilesTree: (sessionId, patch) => change(sessionId, (layout) => ({ ...layout, tree: { ...layout.tree, ...patch } })),
     reveal: (sessionId, surface, options = {}) => {
       const { view, section } = viewForSurface(surface, options.workspaceTab)
       get().openView(sessionId, view, { section })

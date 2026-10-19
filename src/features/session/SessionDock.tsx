@@ -1,4 +1,5 @@
-import { Maximize2, Minimize2, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ListTree, Maximize2, Minimize2, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { useI18n } from '../../i18n'
 import type { SessionSummary } from '../../services/engine'
@@ -16,7 +17,12 @@ import PlanView from '../plan/PlanView'
 import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
 import {
   DOCK_VIEWS,
+  FILES_SIDE_MIN_WIDTH,
+  FILES_TREE_DEFAULT_WIDTH,
+  FILES_TREE_MAX_WIDTH,
+  FILES_TREE_MIN_WIDTH,
   dockNamespaceKey,
+  selectDockLayout,
   mosaicGeometry,
   mosaicShape,
   type DockBox,
@@ -307,6 +313,7 @@ export default function SessionDock({
                 busy={busy}
                 terminalEnabled={terminalEnabled}
                 shown={box !== undefined}
+                width={box?.width ?? null}
               />
             </DockTile>
           )
@@ -452,6 +459,7 @@ function DockTile({ sessionId, view, box, amplified, dropTarget, lifted, onHeade
         <Icon size={14} aria-hidden="true" className="dock-tile-icon" />
         <h2 className="dock-tile-title">{label}</h2>
         <span className="flex-1" />
+        {view === 'files' && box && box.width >= FILES_SIDE_MIN_WIDTH && <FilesTreeToggle sessionId={sessionId} />}
         <button
           type="button"
           className="pane-header-icon"
@@ -472,7 +480,7 @@ function DockTile({ sessionId, view, box, amplified, dropTarget, lifted, onHeade
 }
 
 /** Lo que muestra cada vista. Checkpoints va al pie de Cambios y Artefactos al pie de Archivos (#47). */
-function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, terminalEnabled, shown }: {
+function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, terminalEnabled, shown, width }: {
   view: DockView
   sessionId: string
   session: SessionSummary | null
@@ -482,6 +490,8 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
   terminalEnabled: boolean
   /** A la vista (no oculta detrás de otra ampliada). */
   shown: boolean
+  /** Ancho de su caja en el mosaico; sin caja, null. */
+  width: number | null
 }) {
   const { t } = useI18n()
   const overlayDepth = useOverlayStore(selectOverlayDepth)
@@ -509,15 +519,7 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
     case 'agents':
       return <AgentsPanel sessionId={sessionId} />
     case 'files':
-      return (
-        <div className="dock-stack">
-          <FileTreeSection sessionId={sessionId} />
-          <FileViewer className="dock-stack-main" />
-          <DockSection sessionId={sessionId} view="files" section="artifacts" title={t('workspace.tab.artifacts')}>
-            <ArtifactsPanel sessionId={sessionId} />
-          </DockSection>
-        </div>
-      )
+      return <FilesView sessionId={sessionId} width={width} />
     case 'changes':
       return path === null ? <TurnChangesView sessionId={sessionId} path={null} /> : (
         <div className="dock-stack">
@@ -535,10 +537,158 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
   void sharedRoot
 }
 
-/** Sección plegable al pie de una vista; se abre sola si la revelaron hacia ella. */
+/** El visor no baja de aquí con el árbol al lado. */
+const FILES_VIEWER_MIN = 320
+const TREE_STEP = 16
+const TREE_EASE = { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const }
+
 /**
- * El árbol del proyecto encima del archivo abierto (#98): desplegado mientras
- * no hay nada abierto; con un archivo abierto se puede plegar.
+ * La vista Archivos (P9): con ancho de sobra, el visor a la izquierda y el
+ * árbol del proyecto en una columna a la derecha, como en Claude Code. Su
+ * borde se arrastra (el ancho se guarda por sesión) y el botón de la cabecera
+ * la pliega. Angosta, el árbol va encima del visor. Artefactos sigue al pie
+ * del visor en los dos casos.
+ */
+function FilesView({ sessionId, width }: { sessionId: string; width: number | null }) {
+  const { t } = useI18n()
+  const calm = useCalmMotion()
+  const tree = useSessionDockStore((state) => selectDockLayout(sessionId)(state).tree)
+  const setFilesTree = useSessionDockStore((state) => state.setFilesTree)
+  const [draft, setDraft] = useState<number | null>(null)
+  // Solo mostrar u ocultar la columna se anima; un cambio de ancho del panel la sigue al momento.
+  const [seenOpen, setSeenOpen] = useState(tree.open)
+  const [opening, setOpening] = useState(false)
+  if (seenOpen !== tree.open) {
+    setSeenOpen(tree.open)
+    setOpening(tree.open)
+  }
+  const artifacts = (
+    <DockSection sessionId={sessionId} view="files" section="artifacts" title={t('workspace.tab.artifacts')}>
+      <ArtifactsPanel sessionId={sessionId} />
+    </DockSection>
+  )
+  if (width === null || width < FILES_SIDE_MIN_WIDTH) {
+    return (
+      <div className="dock-stack">
+        <FileTreeSection sessionId={sessionId} />
+        <FileViewer className="dock-stack-main" />
+        {artifacts}
+      </div>
+    )
+  }
+  const max = Math.max(FILES_TREE_MIN_WIDTH, Math.min(FILES_TREE_MAX_WIDTH, width - FILES_VIEWER_MIN))
+  const fit = (value: number) => Math.round(Math.min(max, Math.max(FILES_TREE_MIN_WIDTH, value)))
+  const treeWidth = fit(draft ?? tree.widthPx)
+
+  function startResize(event: PointerEvent<HTMLElement>) {
+    if (event.button !== 0) return
+    const aside = event.currentTarget.parentElement
+    if (!aside) return
+    event.preventDefault()
+    const pointerId = event.pointerId
+    const right = aside.getBoundingClientRect().right
+    const handle = event.currentTarget
+    handle.dataset.dragging = 'true'
+    useDockDragStore.getState().begin()
+    let latest: number | null = null
+    const move = (moveEvent: globalThis.PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return
+      latest = fit(right - moveEvent.clientX)
+      setDraft(latest)
+    }
+    const end = (commit: boolean) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', cancel)
+      useDockDragStore.getState().end()
+      delete handle.dataset.dragging
+      if (commit && latest !== null) setFilesTree(sessionId, { widthPx: latest })
+      setDraft(null)
+    }
+    const up = () => end(true)
+    const cancel = () => end(false)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', cancel)
+  }
+
+  function keyResize(event: KeyboardEvent<HTMLElement>) {
+    // La columna está a la derecha: la flecha izquierda la ensancha.
+    const delta = event.key === 'ArrowLeft' ? TREE_STEP : event.key === 'ArrowRight' ? -TREE_STEP : 0
+    if (!delta) return
+    event.preventDefault()
+    setFilesTree(sessionId, { widthPx: fit(treeWidth + delta) })
+  }
+
+  return (
+    <div className="files-split">
+      <div className="dock-stack files-split-main">
+        <FileViewer className="dock-stack-main" />
+        {artifacts}
+      </div>
+      <AnimatePresence initial={false}>
+        {tree.open && (
+          <motion.aside
+            key="tree"
+            className="files-side"
+            data-testid="files-side"
+            aria-label={t('files.tree.title')}
+            initial={{ width: 0 }}
+            animate={{ width: treeWidth }}
+            exit={{ width: 0, transition: calm ? { duration: 0 } : TREE_EASE }}
+            transition={opening && !calm ? TREE_EASE : { duration: 0 }}
+            onAnimationComplete={() => setOpening(false)}
+          >
+            <div
+              role="separator"
+              tabIndex={0}
+              aria-label={t('files.tree.resize')}
+              aria-orientation="vertical"
+              aria-valuemin={FILES_TREE_MIN_WIDTH}
+              aria-valuemax={max}
+              aria-valuenow={treeWidth}
+              title={t('files.tree.resizeHint')}
+              className="dock-splitter files-side-divider"
+              data-axis="x"
+              onPointerDown={startResize}
+              onKeyDown={keyResize}
+              onDoubleClick={() => setFilesTree(sessionId, { widthPx: FILES_TREE_DEFAULT_WIDTH })}
+            />
+            <div className="files-side-scroll" style={{ width: treeWidth }}>
+              <FileTree sessionId={sessionId} />
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/** El botón de la cabecera de Archivos que muestra u oculta la columna del árbol. */
+function FilesTreeToggle({ sessionId }: { sessionId: string }) {
+  const { t } = useI18n()
+  const open = useSessionDockStore((state) => selectDockLayout(sessionId)(state).tree.open)
+  const setFilesTree = useSessionDockStore((state) => state.setFilesTree)
+  const label = t(open ? 'files.tree.hide' : 'files.tree.show')
+  return (
+    <button
+      type="button"
+      className="pane-header-icon"
+      data-testid="files-tree-toggle"
+      aria-label={label}
+      title={label}
+      aria-pressed={open}
+      onClick={() => setFilesTree(sessionId, { open: !open })}
+    >
+      <ListTree size={14} />
+    </button>
+  )
+}
+
+/**
+ * El árbol del proyecto encima del archivo abierto (#98), en la vista
+ * angosta: desplegado mientras no hay nada abierto; con un archivo abierto
+ * se puede plegar.
  */
 function FileTreeSection({ sessionId }: { sessionId: string }) {
   const { t } = useI18n()
@@ -554,6 +704,7 @@ function FileTreeSection({ sessionId }: { sessionId: string }) {
   )
 }
 
+/** Sección plegable al pie de una vista; se abre sola si la revelaron hacia ella. */
 function DockSection({ sessionId, view, section, title, children }: { sessionId: string; view: DockView; section: DockSection; title: string; children: ReactNode }) {
   const hint = useSessionDockStore((state) => state.sections[dockNamespaceKey(state.homeId, sessionId)])
   const [open, setOpen] = useState(false)

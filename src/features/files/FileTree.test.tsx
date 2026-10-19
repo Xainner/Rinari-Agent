@@ -8,7 +8,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
-import FileTree from './FileTree'
+import FileTree, { resetFileTreeCacheForTests } from './FileTree'
 
 const open = vi.fn()
 vi.mock('./FileWorkspace', () => ({ useFileWorkspace: () => ({ open, selected: undefined }) }))
@@ -26,6 +26,7 @@ const LISTINGS: Record<string, unknown[]> = {
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetFileTreeCacheForTests()
   host.invoke.mockImplementation(async (name: string, args: Record<string, unknown> = {}) => {
     if (name === 'workspace_dir_list') return { root: ROOT, path: args.path ?? '', entries: LISTINGS[String(args.path ?? '')] ?? [], truncated: false, git: true }
     if (name === 'workspace_file_search') return { root: ROOT, files: [{ path: `${ROOT}/src/app.ts`, relative_path: 'src/app.ts', name: 'app.ts' }] }
@@ -85,4 +86,14 @@ it('a file dragged from the tree carries what the composer needs for Â«@archivoÂ
   const { fireEvent } = await import('@testing-library/react')
   fireEvent.dragStart(readme, { dataTransfer: { setData: (type: string, value: string) => data.set(type, value), effectAllowed: '' } })
   expect(JSON.parse(data.get('application/x-rinari-file')!)).toMatchObject({ sessionId: 'ses_a', relative_path: 'README.md' })
+})
+
+it('mounted again (it moves within the Files view) it shows the last listing at once without asking again', async () => {
+  const first = view()
+  expect(await screen.findByText('README.md')).toBeTruthy()
+  first.unmount()
+  view()
+  expect(screen.getByText('README.md')).toBeTruthy()
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  expect(listed('')).toBe(1)
 })

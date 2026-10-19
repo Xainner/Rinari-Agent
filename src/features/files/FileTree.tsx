@@ -37,6 +37,17 @@ function FileIcon({ name }: { name: string }) {
   return <Icon size={14} aria-hidden="true" className="file-tree-icon" />
 }
 
+/**
+ * Lo último listado de cada conversación. El árbol se vuelve a montar al
+ * cambiar de sitio en la vista Archivos (encima del visor o a su derecha):
+ * se ve al momento y, si el listado es reciente, no se le vuelve a pedir al
+ * Engine (cada listado puede tardar segundos y retrasa abrir un archivo).
+ */
+const listed = new Map<string, { children: Record<string, WorkspaceDirEntry[]>; root: string; at: number }>()
+const FRESH_MS = 15_000
+/** Solo tests. */
+export function resetFileTreeCacheForTests(): void { listed.clear() }
+
 /** Desde cuántas filas visibles el árbol se dibuja como lista virtual. */
 const VIRTUAL_FROM = 120
 
@@ -53,14 +64,14 @@ interface Row { entry: WorkspaceDirEntry; depth: number; label: string }
 export default function FileTree({ sessionId }: { sessionId: string }) {
   const { t } = useI18n()
   const files = useFileWorkspace()
-  const [children, setChildren] = useState<Record<string, WorkspaceDirEntry[]>>({})
+  const [children, setChildren] = useState<Record<string, WorkspaceDirEntry[]>>(() => listed.get(sessionId)?.children ?? {})
   const [loading, setLoading] = useState<Set<string>>(() => new Set())
   const [open, setOpen] = useState<Set<string>>(() => readOpen(sessionId))
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{ path: string; relative_path: string; name: string }[] | null>(null)
   const [focused, setFocused] = useState<string | null>(null)
-  const [root, setRoot] = useState('')
+  const [root, setRoot] = useState(() => listed.get(sessionId)?.root ?? '')
   const listRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async (path: string): Promise<WorkspaceDirEntry[]> => {
@@ -68,6 +79,8 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
     try {
       const listing = await engineApi.workspaceDirList(sessionId, path)
       setChildren((current) => ({ ...current, [path]: listing.entries }))
+      const cached = listed.get(sessionId)
+      listed.set(sessionId, { children: { ...cached?.children, [path]: listing.entries }, root: path === '' ? listing.root : cached?.root ?? '', at: Date.now() })
       if (path === '') setRoot(listing.root)
       setError('')
       return listing.entries
@@ -81,9 +94,12 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
 
   // The root, and the folders that were open last time.
   useEffect(() => {
-    setChildren({})
+    const cached = listed.get(sessionId)
+    setChildren(cached?.children ?? {})
+    setRoot(cached?.root ?? '')
     const remembered = readOpen(sessionId)
     setOpen(remembered)
+    if (cached && Date.now() - cached.at < FRESH_MS) return
     void load('')
     for (const path of remembered) void load(path)
   }, [sessionId, load])
@@ -171,7 +187,7 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
   const [scroller, setScroller] = useState<HTMLElement | null>(null)
   const scrollRef = useRef<HTMLElement | null>(null)
   useLayoutEffect(() => {
-    const parent = listRef.current?.closest<HTMLElement>('.dock-section') ?? null
+    const parent = listRef.current?.closest<HTMLElement>('.dock-section, .files-side-scroll') ?? null
     scrollRef.current = parent
     setScroller(parent)
   }, [results])

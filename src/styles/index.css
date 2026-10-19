@@ -1955,6 +1955,10 @@ html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none;
 .steer-row:hover .steer-actions, .steer-row:focus-within .steer-actions { opacity: 1; }
 @media (hover: none) { .steer-actions { opacity: 1; } }
 .steer-delete:hover:not(:disabled) { color: var(--danger); }
+/* «Enviar ahora» bajo un mensaje que espera (P7): un enlace discreto en la nota. */
+.steer-send-now { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; background: none; font: inherit; color: var(--accent-2); cursor: pointer; }
+.steer-send-now:hover:not(:disabled) { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.steer-send-now:disabled { opacity: 0.5; cursor: default; }
 .steer-note { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-subtle); }
 /* «Enviar ahora» (#31): la burbuja que cortó el paso lleva un rayo y un filo de acento; mientras
    espera a que el paso se corte, el rayo late (sigue en curso). */
@@ -3137,6 +3141,14 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 /* Árbol de la vista Archivos (plan 0.4.0 #98), al estilo de Claude Code. */
 .file-tree-section { border-top: 0; border-bottom: 1px solid var(--line-1); }
 .file-tree-section[data-full] { flex: 1; max-height: none; }
+/* Archivos con ancho de sobra (P9): el visor a la izquierda y el árbol en una columna a la derecha. */
+.files-split { display: flex; min-width: 0; min-height: 0; }
+.files-split-main { flex: 1 1 auto; min-width: 0; }
+.files-side { position: relative; display: flex; flex-shrink: 0; min-height: 0; border-left: 1px solid var(--line-1); background: color-mix(in srgb, var(--bg-elevated) 35%, transparent); }
+.files-side-divider { top: 0; bottom: 0; left: -5px; width: 9px; }
+.files-side-scroll { flex-shrink: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; }
+.files-side .file-tree { padding-top: 6px; }
+.files-side .file-tree-head { top: 0; background: color-mix(in srgb, var(--bg-elevated) 85%, transparent); }
 .file-tree { display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; }
 .file-tree-head { display: flex; align-items: center; gap: 4px; position: sticky; top: 33px; z-index: 1; padding: 4px 0; background: var(--bg-panel, var(--bg)); }
 .file-tree-list, .file-tree-results { display: flex; flex-direction: column; }

@@ -11,13 +11,43 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | Hallazgo | Estado |
 |---|---|
 | F45 | Decidido (abajo). |
-| F41 | Por revisar. |
-| F42 | Por revisar. |
-| F43 | Por revisar. |
-| F44 | Por revisar. |
-| F27 bis | Por revisar. |
+| F42 | Decidido (abajo): como los grandes. |
+| F41, F43, F44, F27 bis | Propuesta lista (abajo). |
 | F46 | Fuera: nota externa. |
-| P1–P10 | Analizadas (cards de Planka, abajo). Propuestas por revisar con el dueño. |
+| P1, P1b, P7, P8 | Decididos con el dueño (cards de Planka, abajo). |
+| P2–P6, P10 | Propuesta lista (cards de Planka, abajo). |
+| P9 | A la sesión de pulido de UI (diseño visual). |
+
+## F42: la lista de herramientas no cambia a mitad de la conversación
+
+**Qué pasa.** Medido contra la suscripción de ChatGPT con el runtime real: basta con que la lista de herramientas cambie una vez a mitad de la conversación (por ejemplo, de 74 a 76 al activar algo) para que el backend deje de cachear hasta el final. Solo reutiliza las instrucciones, las herramientas y el primer mensaje (~12,5–14 mil tokens), aunque después la lista vuelva a ser estable. En la batería se congela justo después de `skills.activate`. Descartado con pruebas: el razonamiento devuelto, la nota de contexto, los `id`/`status` de los elementos y una clave de sesión por conjunto de herramientas. En chat completions con modelo local es el mismo daño por otra vía: las herramientas van al principio del prompt, así que cambiarlas obliga a releer todo.
+
+**Lo que hacen los grandes** (decidido con el dueño, 2026-10-19). Ninguno cambia la lista a mitad de la conversación:
+
+| | Con diferido nativo | Sin diferido nativo |
+|---|---|---|
+| Claude Code | MCP diferidos (Anthropic `defer_loading`; la definición encontrada entra a la conversación como `tool_reference`) | Todo desde el inicio (Haiku y Vertex no lo soportan) |
+| Codex | Búsqueda de herramientas MCP (Responses `tool_search` + `defer_loading`) | Todo desde el inicio |
+| Copilot CLI | Búsqueda de herramientas | La documentación oficial dice que, en cualquier otro modelo, todas se cargan desde el inicio |
+| Hermes / OpenCode | — | Todo desde el inicio, con filtros por servidor MCP |
+
+Nadie grande usa una herramienta despachadora del tipo «llamar herramienta»; eso solo lo hacen pasarelas MCP de la comunidad. Queda descartado.
+
+**Cambio.** Dos modos, según el protocolo y no según el modelo o el proveedor:
+1. **Con diferido nativo** (Anthropic Messages, OpenAI Responses, suscripción de ChatGPT): las nativas van siempre desde el inicio. Los MCP grandes van con `defer_loading` y se descubren con el mecanismo del proveedor. En Responses, el modo en que la búsqueda la ejecuta el cliente encaja con `capability.search`. Si el modelo no soporta el diferido, se pasa al modo 2.
+2. **Sin diferido nativo** (chat completions: DeepSeek, OpenCode, llama.cpp, Strata, Ollama…): todas las herramientas desde el inicio y fijas toda la conversación. Quien tenga MCP enormes los filtra por servidor.
+
+Así, `capability.activate` deja de cambiar la lista a mitad de la conversación. Las nativas que hoy son bajo demanda suman unos 8,7 mil tokens: se pagan una vez y después salen de caché.
+
+**Validación.** La batería del Set 2 en los dos modos, con GPT por la suscripción (diferido nativo), DeepSeek y Qwen local (todo desde el inicio). Se mide la caché llamada a llamada en conversaciones largas y con activaciones, y se compara con las cifras de hoy: luna congelada en 14.080, y entre vueltas 9.088.
+
+## Set 2: F41, F43, F44 y F27 bis
+
+- **F41, `fs.patch` con las dos formas.** Hoy, si el modelo manda la forma simple y `files` llenas y coherentes, se rechaza; GPT lo repite hasta que el vigilante corta el turno. **Cambio:** si la forma simple coincide con una entrada de `files`, se acepta. Si no coincide, se usa `files` y el resultado avisa que la forma simple se ignoró.
+- **F43, skills que cambian el prompt del sistema.** Activar una skill marca `[active]` en el catálogo y mete su contenido en el sistema, así que la caché se rompe a mitad del sistema (por eso entre vueltas queda en 9.088 < 14.080). **Cambio:** el catálogo no cambia nunca, y la skill activada entra como mensaje añadido a la conversación, como en Claude Code.
+- **F44, trabajo reutilizado sin decirlo.** El modelo copió la solución de otra carpeta y dijo «Corregí los bugs». **Cambio:** una regla general en la constitución: si reutilizas trabajo que ya existía, dilo. La contaminación de la batería (varias tareas en el mismo proyecto) es del montaje de la prueba, no de Rinari.
+- **F27 bis (a), salidas distintas de cero que son éxito.** robocopy sale con 1 cuando copió bien, y cuenta como fallo. **Cambio, genérico:** la descripción de `shell` explica que hay programas que usan códigos distintos de cero para el éxito y que para eso está `expect_exit`. No se nombra ningún programa.
+- **F27 bis (b), `verify.evaluate` con ids del checklist.** Recibe ids del checklist donde espera ids de tareas y responde `INVALID_ARGUMENT`. **Cambio:** aceptar los ids del checklist, o como mínimo que el error explique la diferencia y diga qué ids usar.
 
 ## F45: asentar las salidas viejas por presión, no por rondas
 
@@ -56,8 +86,8 @@ Revisadas el 2026-10-19: 7 de Bug y 3 de Ideas-2, sin comentarios. Los datos sal
 
 | # | Card | Qué pasa | Causa | Propuesta |
 |---|---|---|---|---|
-| P1 | Duplicar imagen (`ses_01M58KRZ…`) | Dos tarjetas «Entregado» con el mismo PNG. | `image.generate` entrega la imagen solo (`tools/native/image_create.py:241`), y su nota le dice al modelo «mírala antes de entregarla» (`:50`). El modelo entiende que entregar le toca a él y llama a `file.present`. La app separa las tarjetas por `present_id`, así que no las junta. Es del bloque 28, no de v2. | Un solo dueño de la entrega: o la herramienta no entrega y el modelo presenta después de revisar, o el resultado dice «ya se le mostró al dueño, no la presentes otra vez». Además, juntar los `file.presented` con el mismo `uri`/sha256 dentro de un turno, quedándose con el último pie de foto. |
-| P1b | (misma card) «Sin evidencia de que funcione» | El aviso de verificación sale en turnos que solo generan imágenes o capturas. | `_turn_requested_mutation` (`cli/agent_runtime.py:2068`) manda al control de cierre cualquier herramienta con `side_effects != NONE`: `image.generate` es remota reversible y `browser.screenshot` es local reversible. Sin registros, el control dice «implementado sin verificar». El modelo sí miró la imagen, pero eso no cuenta como evidencia. | Pasar por el control solo si el turno cambió el espacio de trabajo (su changeset tiene archivos). O contar como evidencia los píxeles vistos de lo entregado. |
+| P1 | Duplicar imagen (`ses_01M58KRZ…`) | Dos tarjetas «Entregado» con el mismo PNG. | `image.generate` entrega la imagen solo (`tools/native/image_create.py:241`), y su nota le dice al modelo «mírala antes de entregarla» (`:50`). El modelo entiende que entregar le toca a él y llama a `file.present`. La app separa las tarjetas por `present_id`, así que no las junta. Es del bloque 28, no de v2. | **Decidido con el dueño (2026-10-19), como con MCP:** `image.generate` ya no entrega la imagen sola. El modelo la mira y después la presenta con `file.present`, así queda una sola tarjeta y siempre revisada. La nota de revisión lo dice así. Además, se juntan los `file.presented` con el mismo `uri`/sha256 dentro de un turno, quedándose con el último pie de foto, por si un modelo la presenta dos veces. |
+| P1b | (misma card) «Sin evidencia de que funcione» | El aviso de verificación sale en turnos que solo generan imágenes o capturas. | `_turn_requested_mutation` (`cli/agent_runtime.py:2068`) manda al control de cierre cualquier herramienta con `side_effects != NONE`: `image.generate` es remota reversible y `browser.screenshot` es local reversible. Sin registros, el control dice «implementado sin verificar». El modelo sí miró la imagen, pero eso no cuenta como evidencia. | **Decidido con el dueño (2026-10-19):** el control de cierre solo corre si el turno cambió archivos del proyecto (su changeset tiene archivos). Generar una imagen, hacer una captura o cualquier efecto fuera del proyecto ya no dispara «Sin evidencia de que funcione». |
 | P2 | Quitar permisos de herramientas de imagen (`ses_01M58KRZ…`) | `image.generate` pide permiso con la suscripción de ChatGPT, aunque diga «included in the subscription». | `policy/engine.py:690-706` (`media_generate`) solo deja pasar en acceso total. La política recibe el costo como texto de pantalla, no como dato. El costo estructurado ya existe (`CostEstimate.basis` en `images/connectors.py:85`: incluido, local, por imagen o desconocido). Una herramienta de imagen MCP no pregunta (`engine.py:671`), así que la nativa es más estricta que MCP. | Pasar `cost_basis` a la acción clasificada. Si no hay gasto extra (`included` o `local`), no preguntar. Preguntar solo con costo de pago o desconocido. El precheck `over_budget` sigue siendo la guarda del dinero. Es genérico: depende de lo que el servicio declara, no de cuál es. |
 | P3 | No se ve la imagen (`ses_01M58KZP…`) | La tarjeta de una imagen bajada del Lab sale sin vista previa: «No hay permiso para hacer esto: Engine-private file». | **v2 lo causó (V2-3).** `web.download` guarda en `~/.rinari/artifacts/<ses>/downloads/` y devuelve `path` y `uri`. El modelo pasa el `path` absoluto a `file.present`, que solo pone `uri` cuando recibe un `artifact://` (`tools/native/present.py:143`). La app pide esa ruta y `engine_protocol/desktop.py:384` la rechaza por estar en `~/.rinari`. El Engine deja leer esa ruta al modelo y el escritorio no: las dos reglas no coinciden. Pasa igual con capturas y con `image.generate`. | `file.present` traduce cualquier ruta del almacén de artefactos a su `artifact://`. Las herramientas que crean artefactos dan el `uri` como identificador principal y no exponen la ruta interna. |
 | P4 | No usó la presentación de archivos para la imagen (`ses_01M5AC0T…`) | 75 capturas y ningún `file.present`. A veces la imagen va como markdown en la respuesta, otras no se muestra. | El modelo siguió la descripción de `browser.screenshot`, que dice que la muestre incluyendo el `markdown` que devuelve (`tools/native/browse.py:1047`, desde d2c3ecc). `file.present` habla de «entregables que hiciste», no de capturas. | Una sola regla para toda herramienta que produce algo visual (captura, imagen, descarga): para mostrárselo al dueño, `file.present` con el `uri`. Quitar la instrucción del markdown y el campo `markdown`, o que el Engine convierta un `![](artifact://…)` en tarjeta. |

@@ -196,10 +196,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
   /**
    * Cambia el guion del modelo falso para el siguiente turno.
    *
-   * Cada guion empieza activando las herramientas del browser: son de origen
-   * lazy y no están expuestas al modelo hasta que alguien las pide. Eso es
-   * parte del pipeline real —el §3 pide ejercitarlo, no esquivarlo—, así que
-   * el modelo falso hace lo mismo que haría uno de verdad.
+   * Cada guion empieza pidiendo las herramientas del browser: son bajo
+   * demanda y no están en la lista fija de la conversación (F42), así que el
+   * modelo pide su llamada exacta antes de usarlas. Eso es parte del pipeline
+   * real —el §3 pide ejercitarlo, no esquivarlo—, así que el modelo falso hace
+   * lo mismo que haría uno de verdad; el Engine ejecuta por nombre aunque la
+   * herramienta no esté en la lista.
    */
   const script = async (entries: unknown[]) => {
     const withActivation = [

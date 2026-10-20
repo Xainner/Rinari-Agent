@@ -18,7 +18,7 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | P9 | Hecho por la sesión de pulido: Agent 06fc235. |
 | F45 | Hecho (commit con F43). |
 | F43 | Hecho (commit con F45). |
-| F42 | Acordado entre sesiones; pendiente del visto bueno del dueño. Sin código. |
+| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha, sin llamadas: CLI bb2b1ab. Falta la fase 2 (3–4 llamadas que el dueño apruebe antes) y la 3. |
 | F46 | Fuera: nota externa. |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
@@ -62,6 +62,16 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 1. **Sin llamadas:** código, fixtures y la prueba byte a byte por protocolo. Coste cero.
 2. **3–4 llamadas en vivo**, aprobadas una por una antes de lanzarlas.
 3. **La batería** con su aprobación previa de destinos y volumen: la batería del Set 2 con GPT por la suscripción, DeepSeek y Qwen local: caché llamada a llamada en C1 (3 vueltas) y en tareas con activaciones. Se espera que luna crezca en cada llamada como DeepSeek (82 → 95 %) en vez de quedarse en 14.080, que entre vueltas se reutilice casi toda la conversación anterior, y que qwen deje de releer el prompt al activar herramientas. Referencia de hoy: luna C1 1,97 M de entrada con 40 % de caché.
+
+**Fase 1, cómo quedó (CLI bb2b1ab, sin llamadas a proveedores).**
+- **Dónde vive la lista.** `tools/exposure.py` la decide en la primera petición y la guarda con la sesión en `~/.rinari/sessions/<id>.state.json`, con una clave (modelo, revisión de la compactación y versión del Engine). El escritorio arma un runtime por turno; cada turno manda la lista guardada tal cual. Si la clave cambia, la lista se decide otra vez en esa misma petición, así que solo hay un corte de caché. Se borra con la sesión.
+- **Núcleo: de 74 a 53 herramientas, puerta incluida.** Salen las especializadas: búsqueda de código (`search.files`, `.hybrid`, `.references`, `.symbols`), lectura web fina (`web.extract_*`, `.links`, `.cite`, `.find`, `.sources`), `http.sse`, historial de git (`git.log`, `.show`, `.branch`), mantenimiento de memoria (`memory.forget`, `.update`), `project.instructions.propose`, `fs.diff` y `capability.deactivate`. En las sesiones del dueño son el 0,47 % de las llamadas (62 en 27 sesiones). `audio.transcribe` y `fs.read_pdf_pages` se quedan, porque los adjuntos las nombran.
+- **Herramientas que un turno necesita y no están en la lista.** Son las de `/init`, las de una skill fijada desde la app y las que se vuelven disponibles después (un objetivo puesto más tarde). Van en una nota justo después del mensaje del dueño, con su `tool.call` exacta. El texto es siempre igual y se dice una vez por conversación.
+- **El índice de lo conectado** (MCP, OpenAPI y plugins) pasó del prompt del sistema a la nota del turno. El de los paquetes nativos bajo demanda sigue en el sistema.
+- **Guardas.**
+  - `tests/unit/test_cache_prefix.py` pasa una conversación con activación, puerta y vuelta nueva por los adaptadores de Chat Completions, Responses y Anthropic. Exige las mismas herramientas y el mismo prefijo en cada petición.
+  - Cada petición lleva el hash de sistema y herramientas en `BeforeModel`. Si cambia, `rinari.cache` lo registra: aviso si nadie lo esperaba, info si fue por otro modelo o una compactación.
+- **De paso, F45.** El corte de `settle` se guardaba solo en memoria, así que en el escritorio se decidía de nuevo en cada turno. Ahora se guarda con la sesión, con el id del mensaje como ancla.
 
 ## Set 2: F41, F43, F44 y F27 bis
 

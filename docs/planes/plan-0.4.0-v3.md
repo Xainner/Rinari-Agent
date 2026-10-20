@@ -18,25 +18,36 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | P9 | Hecho por la sesión de pulido: Agent 06fc235. |
 | F45 | Hecho (commit con F43). |
 | F43 | Hecho (commit con F45). |
-| F42 | **Decidido de nuevo** (dueño, 2026-10-19): lista fija por conversación y una puerta `tool.call` para lo bajo demanda. Pendiente de implementar. |
+| F42 | Acordado entre sesiones; pendiente del visto bueno del dueño. Sin código. |
 | F46 | Fuera: nota externa. |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
 
 **Qué pasa.** Medido contra la suscripción de ChatGPT con el runtime real: basta con que la lista de herramientas cambie una vez a mitad de la conversación (por ejemplo, de 74 a 76 al activar algo) para que el backend deje de cachear hasta el final. Solo reutiliza las instrucciones, las herramientas y el primer mensaje (~12,5–14 mil tokens), aunque después la lista vuelva a ser estable. En la batería se congela justo después de `skills.activate`. Descartado con pruebas: el razonamiento devuelto, la nota de contexto, los `id`/`status` de los elementos y una clave de sesión por conjunto de herramientas. En chat completions con modelo local es el mismo daño por otra vía: las herramientas van al principio del prompt, así que cambiarlas obliga a releer todo.
 
-**Por qué no basta con «todas desde el inicio».** Rinari registra 144 herramientas nativas (75 núcleo + 69 bajo demanda, ~18,8 mil tokens) y OpenAI Chat Completions rechaza más de 128 por petición (`'$.tools' is too long. Maximum length is 128`); DeepSeek y muchos compatibles copian ese tope. Además, mandarlas todas sube el coste fijo de cada llamada.
+**Por qué no basta con «todas desde el inicio».** Rinari registra 144 herramientas nativas (75 núcleo + 69 bajo demanda, ~18,8 mil tokens) y el tope de herramientas por petición depende del servidor, no del modelo: OpenAI Chat Completions pone 128 según su documentación (no lo hemos medido en vivo) y la API propia de DeepSeek también documenta 128, mientras que DeepSeek y GLM por opencode-go-2 y Qwen local por llama.cpp aceptaron 139 (medido 2026-10-19). Como no se puede saber el tope de cada servidor sin una tabla por proveedor (regla de cero hardcodeo), hay que quedar por debajo de 128 en todos. Además, mandarlas todas sube el coste fijo de cada llamada.
 
 **Decisión (dueño, 2026-10-19).** Sustituye a la versión anterior de F42 (dos modos según el protocolo, con todas las herramientas desde el inicio donde no hay diferido nativo; ver daeef75), que no cabe en el tope de 128. Esa versión descartaba una herramienta despachadora porque los agentes grandes no la usan; el dueño la elige porque es la única forma que funciona igual en todos los protocolos.
 
+**Acuerdo entre sesiones (2026-10-19).** La sesión que implementa la v3 y la de la batería de uso real revisaron esta versión y cerraron los huecos de abajo (MCP, cuándo se rehace la lista, skills, `capability.activate`, errores de la puerta y validación por fases). Falta el visto bueno del dueño; no hay código.
+
 **Cambio.**
-1. **Lista fija por conversación.** La lista de herramientas se decide al empezar la conversación y no cambia nunca: ni se añade, ni se quita, ni se reordena, en ningún turno. `capability.activate` deja de tocarla, y la cola de recientes de `tools/exposure.py` (que hoy mueve al final cada herramienta usada) no afecta ni al orden ni al contenido.
+1. **Lista fija por conversación.** La lista de herramientas se decide al empezar la conversación y no cambia nunca: ni se añade, ni se quita, ni se reordena, en ningún turno. `capability.activate` deja de tocarla, y la cola de recientes de `tools/exposure.py` (que hoy mueve al final cada herramienta usada) no afecta ni al orden ni al contenido. El orden es el de registro, siempre el mismo, nunca por uso.
+   - **Contenido:** solo el núcleo nativo más la puerta. Las herramientas de MCP y conectores van siempre por la puerta: un servidor grande nos pasaría del tope y conectarlo a mitad de la conversación cambiaría la lista. La lista de servidores conectados va en la nota de contexto del turno (al final, fuera del prefijo), no en las herramientas.
+   - **Cuándo se rehace:** solo en puntos donde la caché se pierde igualmente: al cambiar de modelo o de proveedor y al compactar. Un cambio de modo o de permisos no la toca; solo cambia la política.
+   - **Herramienta desactivada a mitad de conversación** (en Ajustes): no se quita de la lista; la política la rechaza con un mensaje claro y desaparece en el siguiente punto de rehacer.
+   - **Subagentes:** cada uno tiene su propia lista fija, porque es su propia conversación, con el mismo núcleo para compartir prefijo donde el servidor lo permita.
 2. **Una puerta fija para lo bajo demanda.** Una herramienta más, siempre presente, del estilo `tool.call(name, arguments)`. `capability.search` (o `capability.activate`) devuelve en su resultado el esquema completo de la herramienta encontrada y la llamada exacta lista para copiar; el modelo la usa con `tool.call`, y el Engine valida `arguments` con el esquema real de esa herramienta (el mismo validador y normalizador de hoy) y la ejecuta. El esquema viaja en el historial, que solo crece por el final, así que no rompe la caché.
    - `arguments` va como texto JSON: el modo estricto de OpenAI no admite objetos libres, y el Engine ya acepta argumentos como texto desde V2-8.
    - Permisos, aprobaciones, timeline y registro usan el nombre real (`documents.create`), no `tool.call`: la puerta solo es el transporte.
-   - Si el modelo llama directamente por su nombre a una herramienta registrada que no está en la lista, el Engine la enruta igual (la misma tolerancia que con nombres y parámetros alternativos).
+   - Si el modelo llama directamente por su nombre a una herramienta registrada que no está en la lista, el Engine la enruta igual (la misma tolerancia que con nombres y parámetros alternativos). Con proveedores estrictos esa llamada directa puede no salir, por eso la puerta es el camino documentado.
+   - `tool.call` sobre una herramienta que ya está en la lista se ejecuta igual, sin error.
+   - `tool.call` con un nombre que no existe o con `arguments` que no es JSON válido devuelve un error recuperable con las 3 coincidencias más cercanas de la búsqueda y el esquema correcto, para no gastar una vuelta en buscar. La guarda de bucles no lo cuenta como repetición del mismo fallo si el modelo corrige.
+   - `capability.search` encuentra también las herramientas MCP, con el servidor en el resultado.
+   - `capability.activate` se queda como alias de buscar: devuelve el esquema y la llamada lista para copiar, sin cambiar la lista, para no romper instrucciones ni skills que la nombran.
+   - **Skills:** el mensaje de la skill activada (F43, ya va en el historial) incluye la llamada `tool.call` exacta de cada herramienta suya que no está en la lista. Ese texto es determinista (sin ids ni horas), para que dos activaciones iguales den lo mismo.
 3. **Núcleo más pequeño, elegido por categoría y comprobado con datos.** El núcleo se define por lo que necesita cualquier sesión del modo (código, chat…), nunca por los hábitos de una cuenta (regla de cero hardcodeo). Referencia con las 183 sesiones del dueño (12.884 llamadas): 20 herramientas cubren el 77 % de las llamadas, 40 el 90 % y 60 el 95 %. Un núcleo de ~40–60 más la puerta queda muy por debajo de 128 y manda menos tokens de esquemas que hoy.
-4. **Diferido nativo, solo como optimización.** Donde el protocolo tenga un mecanismo propio que no rompa la caché (Anthropic `defer_loading`, Responses `tool_search`), se puede usar encima; la puerta funciona sin él y es el camino por defecto.
+4. **Diferido nativo, solo como optimización.** Donde el protocolo tenga un mecanismo propio que no rompa la caché (Anthropic `defer_loading`, Responses `tool_search`), se puede usar encima; la puerta funciona sin él y es el camino por defecto. Medido 2026-10-19 en Responses (suscripción ChatGPT): 139 herramientas con 64 diferidas y `{"type":"tool_search"}` se aceptaron, el modelo buscó y llamó una diferida, y la caché quedó en 97 %.
 5. **Prefijo estable también entre vueltas.** Ya resuelto con F43 (el catálogo de skills no cambia y la skill activada entra como mensaje) y F45 (asentar por presión). F42 no lo vuelve a tocar.
 
 **Guardas contra regresiones.**
@@ -45,7 +56,12 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 
 **Riesgos.** Un modelo flojo puede liarse con la indirección: se mitiga con la llamada exacta en el resultado de la búsqueda y con un núcleo que cubra la mayoría de los casos sin pasar por la puerta. Lo poco común cuesta una vuelta extra (buscar y llamar), igual que hoy (buscar y activar). Los argumentos mal escapados se cubren con el normalizador actual y con errores que muestran el esquema.
 
-**Validación.** La batería del Set 2 con GPT por la suscripción, DeepSeek y Qwen local: caché llamada a llamada en C1 (3 vueltas) y en tareas con activaciones. Se espera que luna crezca en cada llamada como DeepSeek (82 → 95 %) en vez de quedarse en 14.080, que entre vueltas se reutilice casi toda la conversación anterior, y que qwen deje de releer el prompt al activar herramientas. Referencia de hoy: luna C1 1,97 M de entrada con 40 % de caché.
+**Fuera de F42.** El enum sin `type` que Kimi rechaza (`status` de `checklist.update`) ya existía y se arregla aparte, como corrección de esquema propio.
+
+**Validación, por fases.** El dueño aprueba antes la lista exacta de destinos y el número de llamadas de cada fase con proveedores.
+1. **Sin llamadas:** código, fixtures y la prueba byte a byte por protocolo. Coste cero.
+2. **3–4 llamadas en vivo**, aprobadas una por una antes de lanzarlas.
+3. **La batería** con su aprobación previa de destinos y volumen: la batería del Set 2 con GPT por la suscripción, DeepSeek y Qwen local: caché llamada a llamada en C1 (3 vueltas) y en tareas con activaciones. Se espera que luna crezca en cada llamada como DeepSeek (82 → 95 %) en vez de quedarse en 14.080, que entre vueltas se reutilice casi toda la conversación anterior, y que qwen deje de releer el prompt al activar herramientas. Referencia de hoy: luna C1 1,97 M de entrada con 40 % de caché.
 
 ## Set 2: F41, F43, F44 y F27 bis
 

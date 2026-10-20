@@ -1,6 +1,6 @@
 # Plan de conectores
 
-Estado: **C0 hecho; C1 y C2 en revisión** en el PR [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74), contra `0.4.0` (2026-10-19). Falta probar con servicios reales y las cuentas del dueño. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
+Estado: **C0 hecho; C1, C2, C4 (Engine), C5, C6 y C7 en revisión** en el PR [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74); **C3 en curso** en el PR [Xainner/Rinari-Agent#113](https://github.com/Xainner/Rinari-Agent/pull/113), los dos contra `0.4.0` (2026-10-20). **C8 espera a que exista la Agency** (dueño, 2026-10-20). Falta probar con servicios reales y las cuentas del dueño. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
 
 Sale de la tarjeta de Planka «Herramientas para docker, además validar herramientas que se le puede dar de servicios populares o de uso profesional» (Agent → Para luego) y de la fila «Después» del [plan 0.4.0](plan-0.4.0.md), que el dueño mete ahora en la 0.4.0.
 
@@ -67,9 +67,9 @@ Rehecho en C0 sobre lo que dejó F42 del [plan 0.4.0 v3](plan-0.4.0-v3.md) (la l
 | C5 | Permisos por conector y por herramienta | CLI + Agent | C2 |
 | C6 | El modelo sabe qué conectores tiene | CLI | C2 |
 | C7 | Docker: reglas en la política y entrada en el catálogo | CLI (+ catálogo) | C4 para la entrada |
-| C8 | Lo que necesita la Agency | CLI + Agent | C1, C5 |
+| C8 | Lo que necesita la Agency (**espera a la Agency**) | CLI + Agent | C1, C5, la Agency |
 
-Orden propuesto: C0; después C1 y C2 a la vez (no tocan los mismos archivos: `http_transport.py` y un `oauth.py` nuevo contra `service.py` y `agent_runtime.py`); C5 y C6; C3 con C4; C7; C8. La Agency se prueba cuando esté completa (dueño, 2026-10-18), así que C8 no adelanta a nadie: va al final y tiene que estar listo antes de esa prueba.
+Orden propuesto: C0; después C1 y C2 a la vez (no tocan los mismos archivos: `http_transport.py` y un `oauth.py` nuevo contra `service.py` y `agent_runtime.py`); C5 y C6; C3 con C4; C7; C8. C8 espera a que exista la Agency (dueño, 2026-10-20).
 
 Lo del Gateway (el mismo catálogo y OAuth en el servidor Linux) está en [plan-gateway.md](plan-gateway.md): primero se depura aquí.
 
@@ -274,7 +274,9 @@ La Agency ([idea-rinari-agency.md](idea-rinari-agency.md)) se va a probar pronto
 - **El disparador «reloj + MCP»** (punto 9 de la Agency): con una regla exacta, el motor llama a la herramienta del conector con datos fijos, sin modelo.
 - **Acceso completo** en un agente no pregunta por sus conectores; lo bloqueado a mano (C5) sigue bloqueado.
 
-**Cuándo:** la Agency se prueba cuando esté completa, no por fases (dueño, 2026-10-18). C8 va al final de este plan y debe estar listo para esa prueba.
+**Cuándo:** **cuando exista la Agency** (dueño, 2026-10-20). Hoy no hay equipos, puestos ni oficinas en el código, y el plan de la Agency la deja fuera de la 0.4.0. C8 se hace junto con ella, sobre sus entidades reales, y no como bases genéricas por adelantado. Debe estar listo antes de la prueba completa de la Agency (dueño, 2026-10-18).
+
+Lo que se pensó como base genérica y queda para entonces: conectores permitidos por agente (sobre `agents/definition.py`), un dueño por servidor con dos cuentas del mismo servicio, renovación proactiva del token y aviso de «reconectar» sin pantalla, y una acción de `schedule/` que llama a una herramienta MCP con datos fijos respetando C5. C1 ya renueva el token al usarlo y ante un 401, y C5 ya bloquea lo bloqueado a mano en cualquier modo.
 
 ## Decisiones (dueño, 2026-10-18)
 
@@ -288,7 +290,7 @@ La Agency ([idea-rinari-agency.md](idea-rinari-agency.md)) se va a probar pronto
 | Google | Cliente OAuth propio de cada usuario, con guía paso a paso (C0, C3). |
 | Importar | Como Claude Code: `.mcp.json` de un proyecto de confianza con pregunta por servidor, «Importar de otra app» y pegar JSON; nada automático (C4). |
 | Gateway | Va en [plan-gateway.md](plan-gateway.md), después de depurar aquí. |
-| Agency | Lo que necesita de los conectores es el bloque C8 de este plan. La Agency se prueba completa, así que C8 va al final y listo antes de esa prueba. |
+| Agency | Lo que necesita de los conectores es el bloque C8 de este plan. **C8 espera a que exista la Agency** (2026-10-20) y se hace con ella, lista antes de su prueba completa. |
 
 ## Cómo se trabaja
 

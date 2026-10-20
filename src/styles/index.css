@@ -3618,3 +3618,53 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .image-kind:hover .image-kind-add { color: var(--accent-2); }
 .image-kind-mark { display: inline-flex; width: 28px; height: 28px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid var(--line-1); border-radius: 8px; background: rgb(255 255 255 / 0.04); color: var(--violet-300); }
 @media (prefers-reduced-motion: reduce) { .pane-column.is-working .pane-column-now::before, .board-toolbar-count.is-working::before { animation: none; } }
+
+/* -- Rinari Agency (A1) ------------------------------------------------------------
+   La tarjeta encima de Ajustes, la barra lateral de la Agency, su inicio, la ficha
+   de un agente y el tutorial. Pasa por la sesión de pulido de UI (D-22). */
+.agency-card { position: relative; display: flex; width: 100%; min-width: 0; align-items: center; gap: 10px; margin: 0 0 6px; padding: 8px 10px 8px 8px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-elevated); text-align: left; box-shadow: var(--inset-hi); transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-card:hover { border-color: var(--line-3); background: var(--bg-hover); }
+.agency-card-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--r-sm); object-fit: cover; }
+.agency-card-back { display: grid; width: 36px; height: 36px; flex-shrink: 0; place-items: center; border-radius: var(--r-sm); background: var(--bg-inset); color: var(--accent-2); }
+.agency-card-text { display: grid; min-width: 0; gap: 2px; }
+.agency-card-title { overflow: hidden; font-size: 13px; font-weight: 600; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.agency-card-line { overflow: hidden; font-size: 11.5px; color: var(--text-subtle); text-overflow: ellipsis; white-space: nowrap; }
+.agency-card-line.is-attention { color: var(--warning); }
+.agency-card-compact { width: 44px; height: 44px; justify-content: center; margin: 0 0 4px; padding: 4px; }
+.agency-card-compact .agency-card-icon { width: 32px; height: 32px; }
+.agency-card-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 999px; background: var(--warning); box-shadow: 0 0 0 2px var(--bg-sidebar); }
+.agency-view-switch { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg-inset); }
+.agency-view-option { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 6px; min-height: 30px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.agency-view-option.is-active { background: var(--bg-active); color: var(--text); }
+.agency-view-option[aria-disabled='true'] { cursor: default; color: var(--text-subtle); }
+.agency-soon { padding: 1px 6px; border-radius: 999px; background: var(--bg-elevated); font-size: 10px; font-weight: 600; color: var(--text-subtle); }
+.agency-agent-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 9px; padding: 6px 8px; border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.agency-agent-row:hover { background: var(--bg-hover); color: var(--text); }
+.agency-agent-row.is-active { background: var(--bg-active); color: var(--text); }
+.agency-agent-avatar { width: 26px; height: 26px; flex-shrink: 0; border-radius: 7px; object-fit: cover; }
+.agency-working-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 999px; background: var(--agent); animation: agency-pulse 1.6s var(--ease-out) infinite; }
+@keyframes agency-pulse { 50% { opacity: 0.35; } }
+.agency-empty { display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px; }
+.agency-empty-art { width: 168px; height: 168px; object-fit: contain; }
+.agency-home { height: 100%; overflow-y: auto; padding: 28px 32px; }
+.agency-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 18px 0 0; padding: 0; list-style: none; }
+.agency-tile { padding: 14px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: var(--bg-subtle); }
+.agency-tile-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-sm); object-fit: cover; }
+.agency-form-page { height: 100%; overflow-y: auto; padding: 28px 32px 40px; }
+.agency-form { display: grid; max-width: 720px; gap: 18px; margin: 0 auto; }
+.agency-form-head { display: flex; align-items: center; gap: 14px; }
+.agency-form-icon { width: 56px; height: 56px; flex-shrink: 0; border-radius: var(--r-md); object-fit: cover; }
+.agency-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.agency-choice { display: flex; flex-wrap: wrap; gap: 6px; }
+.agency-choice-option { padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
+.agency-choice-option:hover { border-color: var(--line-3); color: var(--text); }
+.agency-choice-option.is-active { border-color: var(--accent-2); background: var(--bg-active); color: var(--text); }
+.agency-connectors { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
+.agency-connector { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line-1); border-radius: var(--r-sm); font-size: 13px; color: var(--text); }
+.agency-form-actions { display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line-1); }
+.agency-tutorial-office { background-position: 50% 40%; }
+.agency-tutorial-preview { display: grid; gap: 8px; margin: 18px 0 0; }
+.agency-tutorial-preview img { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-md); image-rendering: auto; }
+.agency-tutorial-preview figcaption { font-size: 12px; line-height: 1.5; color: var(--text-subtle); }
+@media (prefers-reduced-motion: reduce) { .agency-working-dot { animation: none; } }
+:root[data-motion='reduced'] .agency-working-dot { animation: none; }

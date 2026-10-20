@@ -676,6 +676,11 @@
           "name": "limit",
           "type": "Option<u32>",
           "optional": true
+        },
+        {
+          "name": "agent_id",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -706,6 +711,11 @@
         {
           "key": "limit",
           "from": "limit",
+          "optional": true
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
           "optional": true
         }
       ],
@@ -7493,6 +7503,174 @@
         {
           "key": "session_id",
           "from": "session_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "include_archived",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.list",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        },
+        {
+          "key": "include_archived",
+          "from": "include_archived",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_get",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.get",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.create",
+      "engine_params": [
+        {
+          "key": "agent",
+          "from": "agent",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_update",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "patch",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.update",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        },
+        {
+          "key": "patch",
+          "from": "patch",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_archive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.archive",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_status",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.status",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
           "optional": true
         }
       ],

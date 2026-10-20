@@ -27,6 +27,8 @@ interface AppStatusBarProps {
    * la abierta en Normal, el panel enfocado en Boards. Sin conversación, nada.
    */
   dockViews?: ReactNode
+  /** Rinari Agency: tiene su propio Normal | Agencia en la barra lateral; aquí no va Normal | Boards. */
+  hideViewSwitcher?: boolean
   /** Durante el splash la barra puede pintarse con controles deshabilitados. */
   disabled?: boolean
   /** Lista de pendientes del board (menú accesible), junto al resumen. */
@@ -60,6 +62,7 @@ export default function AppStatusBar({
   toggleShortcut,
   attentionCount,
   boardAttentionCount = 0,
+  hideViewSwitcher = false,
   onOpenMobileSidebar,
   onToggleSidebar,
   sidebarCollapsed,
@@ -89,13 +92,15 @@ export default function AppStatusBar({
         <div className="app-topbar-context">{context}</div>
       </div>
       <div className="app-topbar-center">
-        <WorkspaceViewSwitcher
-          selected={selectedView}
-          onSelect={onSelectView}
-          toggleShortcut={toggleShortcut}
-          attentionCount={boardAttentionCount}
-          disabled={disabled}
-        />
+        {!hideViewSwitcher && (
+          <WorkspaceViewSwitcher
+            selected={selectedView}
+            onSelect={onSelectView}
+            toggleShortcut={toggleShortcut}
+            attentionCount={boardAttentionCount}
+            disabled={disabled}
+          />
+        )}
       </div>
       <div className="app-topbar-trailing">
         {attentionCount > 0 && (

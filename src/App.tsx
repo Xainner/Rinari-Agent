@@ -69,6 +69,15 @@ import { useProfileMoves } from './features/profiles/useProfileMoves'
 import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
 import { useCreateProjectStore } from './features/projects/createProjectStore'
 import { PROJECT_PICKER_EVENT } from './components/composer/ProjectChip'
+import { useAgencyStore, agencyTutorialSeen, markAgencyTutorialSeen } from './stores/agency'
+import { useAgency } from './features/agency/useAgency'
+import AgencyCard from './features/agency/AgencyCard'
+import AgencySidebar from './features/agency/AgencySidebar'
+import AgencyHome from './features/agency/AgencyHome'
+import AgentForm from './features/agency/AgentForm'
+import AgencyTutorial from './features/agency/AgencyTutorial'
+import type { AgencyAgent } from './features/agency/types'
+import { useProfileStore } from './features/profiles/profileStore'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
@@ -502,6 +511,40 @@ function App() {
     void session.selectSession(id)
     goChat()
   }
+  // -- Rinari Agency (A1) ---------------------------------------------------------
+  // Un espacio aparte: con la Agency abierta cambia la barra lateral entera y
+  // la vista Normal muestra sus páginas. Sin `agency_agents_v1` no se ofrece.
+  const agencyEnabled = session.status?.capabilities.agency_agents_v1 === true
+  const agencySpace = useAgencyStore((s) => s.space)
+  const agencyPage = useAgencyStore((s) => s.page)
+  const agency = useAgency(agencyEnabled)
+  const activeProfileId = useProfileStore((s) => s.activeId)
+  const [agencyTutorialOpen, setAgencyTutorialOpen] = useState(false)
+  // La conversación de Rinari que estaba abierta al entrar: se recupera al salir.
+  const rinariSessionRef = useRef<string | null>(null)
+  const inAgency = agencyEnabled && agencySpace === 'agency'
+  const enterAgency = () => {
+    rinariSessionRef.current = session.activeSession || null
+    useAgencyStore.getState().enter()
+    goChat()
+    if (!agencyTutorialSeen(activeProfileId)) setAgencyTutorialOpen(true)
+  }
+  const leaveAgency = () => {
+    useAgencyStore.getState().leave()
+    const previous = rinariSessionRef.current
+    if (previous && session.sessionsById[previous]) void session.selectSession(previous)
+    else session.openDraft()
+    goChat()
+  }
+  const openAgentChat = (agent: AgencyAgent) => {
+    useAgencyStore.getState().openAgent(agent.id)
+    if (agent.session_id) void session.selectSession(agent.session_id)
+    goChat()
+  }
+  const activeAgentId = agencyPage.kind === 'agent' || agencyPage.kind === 'edit-agent' ? agencyPage.agentId : null
+  const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
+  const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent'
+
   const openInBoard = (id: string) => {
     const existing = useBoardStore.getState().paneForSession(id)
     if (existing) boardFocusPane(existing.paneId)
@@ -679,9 +722,23 @@ function App() {
             </button>
           </div>
         )}
-        sidebar={
+        sidebar={inAgency ? (
+          <AgencySidebar
+            agents={agency.agents}
+            status={agency.status}
+            activeAgentId={activeAgentId}
+            creating={agencyPage.kind === 'new-agent'}
+            onOpenAgent={openAgentChat}
+            onNewAgent={() => { useAgencyStore.getState().newAgent(); goChat() }}
+            onTutorial={() => setAgencyTutorialOpen(true)}
+            onLeave={leaveAgency}
+          />
+        ) : (
           <AppSidebar
             collapsed={sidebarCollapsed}
+            agencyCard={agencyEnabled
+              ? (compact) => <AgencyCard mode="enter" status={agency.status} onClick={enterAgency} compact={compact} />
+              : undefined}
             onSearch={() => setPaletteOpen(true)}
             onOpenSettings={() => goSettings()}
             onOpenEngine={goEngine}
@@ -731,7 +788,7 @@ function App() {
               : undefined}
             approvals={session.approvals}
           />
-        }
+        )}
         topbar={
           <AppStatusBar
             context={
@@ -743,6 +800,7 @@ function App() {
             }
             selectedView={view === 'chat' || view === 'board' ? view : null}
             onSelectView={(next) => (next === 'board' ? goBoard() : goNormal())}
+            hideViewSwitcher={inAgency}
             toggleShortcut={shortcutBindings.boards}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
@@ -781,7 +839,33 @@ function App() {
         {/* Cada vista entra con un fundido corto (solo opacidad: un transform
             movería el rectángulo del navegador nativo durante la entrada). */}
         <div key={view} className="view-stage">
-        {view === 'chat' && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />}
+        {view === 'chat' && !agencyMain && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />}
+        {agencyMain && agencyPage.kind === 'home' && (
+          <AgencyHome
+            agents={agency.agents}
+            status={agency.status}
+            loaded={agency.loaded}
+            onOpenAgent={openAgentChat}
+            onEditAgent={(agent) => useAgencyStore.getState().editAgent(agent.id)}
+            onNewAgent={() => useAgencyStore.getState().newAgent()}
+          />
+        )}
+        {agencyMain && (agencyPage.kind === 'new-agent' || agencyPage.kind === 'edit-agent') && (
+          <AgentForm
+            key={agencyPage.kind === 'edit-agent' ? agencyPage.agentId : 'new'}
+            agent={editingAgent}
+            onSaved={(agent, created) => {
+              void agency.reload()
+              if (created) openAgentChat(agent)
+              else useAgencyStore.getState().goHome()
+            }}
+            onArchived={() => {
+              void agency.reload()
+              useAgencyStore.getState().goHome()
+            }}
+            onCancel={() => useAgencyStore.getState().goHome()}
+          />
+        )}
         {view === 'board' && (
           <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
             <BoardView actionsRef={boardActionsRef} />
@@ -855,6 +939,16 @@ function App() {
       </AppShell>
 
       <ReviewExportDialog />
+
+      <AgencyTutorial
+        open={agencyTutorialOpen}
+        onClose={(next) => {
+          // Visto o saltado, no vuelve solo en este perfil (D-20).
+          markAgencyTutorialSeen(activeProfileId)
+          setAgencyTutorialOpen(false)
+          if (next === 'create') useAgencyStore.getState().newAgent()
+        }}
+      />
 
       <WelcomeDialog
         open={welcomeOpen}

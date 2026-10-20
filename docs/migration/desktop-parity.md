@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **298**
-- Respaldados por Engine: **292**
+- Comandos: **304**
+- Respaldados por Engine: **298**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -16,6 +16,12 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 |---|---|---|---|
 | `advanced_settings_get` | engine | `advanced.settings.get` | `src/services/engine.ts` |
 | `advanced_settings_set` | engine | `advanced.settings.set` | `src/services/engine.ts` |
+| `agency_agent_archive` | engine | `agency.agent.archive` | `src/services/engine.ts` |
+| `agency_agent_create` | engine | `agency.agent.create` | `src/services/engine.ts` |
+| `agency_agent_get` | engine | `agency.agent.get` | **ninguno** |
+| `agency_agent_list` | engine | `agency.agent.list` | `src/services/engine.ts` |
+| `agency_agent_update` | engine | `agency.agent.update` | `src/services/engine.ts` |
+| `agency_status` | engine | `agency.status` | `src/services/engine.ts` |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |
 | `agent_config_set` | engine | `agent.config.set` | `src/services/engine.ts` |
 | `agent_list` | engine | `agent.list` | `src/services/engine.ts` |

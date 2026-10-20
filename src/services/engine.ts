@@ -16,6 +16,7 @@ import type {
 } from '../types/protocol.generated'
 import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
 import type { AttachmentRef, Language } from '../types'
+import type { AgencyAgent, AgencyAgentInput, AgencyStatus } from '../features/agency/types'
 
 import { platform, type Unsubscribe } from '../platform'
 import { hasTranslation, translate, type I18nKey } from '../i18n'
@@ -746,6 +747,8 @@ export interface McpServer {
   scope: string;
   /** Carpeta del proyecto al que pertenece (C4); null: cualquier proyecto de confianza. */
   project_root?: string | null;
+  /** Rinari Agency (C8): `agent:ID` cuando la cuenta es de un agente; null: de todos. */
+  owner?: string | null;
   enabled: boolean;
   connected: boolean;
   updated_at: string | null;
@@ -1654,6 +1657,27 @@ export const engineApi = {
   ptyTerminate: (ptyId: string) =>
     platform().command<{ pty_id: string; alive: boolean; exit_code: number | null }>('pty_terminate', { pty_id: ptyId }),
   // Tareas programadas: las corre el Engine, con la app abierta o en la bandeja.
+  // Rinari Agency (agency_agents_v1): agentes del perfil activo y su tarjeta.
+  agencyAgents: (options?: { includeArchived?: boolean }) =>
+    platform().command<{ agents: AgencyAgent[] }>('agency_agent_list', {
+      rinari_profile_id: 'active',
+      include_archived: options?.includeArchived ?? null,
+    }),
+  agencyAgent: (agentId: string) =>
+    platform().command<{ agent: AgencyAgent; sessions: SessionSummary[] }>('agency_agent_get', { agent_id: agentId }),
+  agencyCreateAgent: (agent: AgencyAgentInput) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_create', {
+      agent: agent as unknown as Record<string, unknown>,
+      rinari_profile_id: null,
+    }),
+  agencyUpdateAgent: (agentId: string, patch: Partial<AgencyAgentInput>) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_update', {
+      agent_id: agentId,
+      patch: patch as unknown as Record<string, unknown>,
+    }),
+  agencyArchiveAgent: (agentId: string) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_archive', { agent_id: agentId }),
+  agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
   scheduleList: () => platform().command<{ tasks: ScheduledTask[]; now: number }>('schedule_list'),
   scheduleGet: (taskId: string) =>
     platform().command<{ task: ScheduledTask; runs: ScheduledRun[] }>('schedule_get', { task_id: taskId }),

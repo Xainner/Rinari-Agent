@@ -4182,6 +4182,7 @@ export const en: Record<I18nKey, string> = {
   'connectors.import.warning.cwd_ignored': 'Its working folder is ignored.',
   'connectors.import.warning.env_file_ignored': 'Its environment file is ignored.',
   'connectors.offers.title': 'This folder brings {n} MCP servers',
+  'connectors.offers.titleOne': 'This folder brings 1 MCP server',
   'connectors.offers.intro': 'Use them in this project? They only work here. Rinari asks once about each one.',
   'connectors.offers.list': 'Project servers',
   'connectors.offers.accept': 'Use in this project',

@@ -77,7 +77,7 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
         {offers && (
           <>
             <DialogHeader>
-              <DialogTitle>{t('connectors.offers.title', { n: offers.offers.length })}</DialogTitle>
+              <DialogTitle>{offers.offers.length === 1 ? t('connectors.offers.titleOne') : t('connectors.offers.title', { n: offers.offers.length })}</DialogTitle>
               <DialogDescription>{t('connectors.offers.intro')}</DialogDescription>
             </DialogHeader>
             <p className="font-mono text-[12px] text-[var(--text-subtle)] break-all">{offers.project}</p>

@@ -4200,6 +4200,7 @@ export const es = {
   'connectors.import.warning.cwd_ignored': 'Su carpeta de trabajo se ignora.',
   'connectors.import.warning.env_file_ignored': 'Su archivo de entorno se ignora.',
   'connectors.offers.title': 'Esta carpeta trae {n} servidores MCP',
+  'connectors.offers.titleOne': 'Esta carpeta trae 1 servidor MCP',
   'connectors.offers.intro': '¿Usarlos en este proyecto? Solo funcionarán aquí. Rinari pregunta una vez por cada uno.',
   'connectors.offers.list': 'Servidores del proyecto',
   'connectors.offers.accept': 'Usar en este proyecto',

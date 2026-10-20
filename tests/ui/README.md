@@ -83,6 +83,8 @@ también `failure.png` y el final del texto visible en la consola.
 | [question-steps](question-steps/scenario.cjs) | Tres preguntas: un solo botón «Continuar» / «Enviar respuestas», puntos de progreso, y la pregunta entra desde el lado hacia el que se avanzó (sin desplazarse con movimiento reducido) |
 | [child-sessions](child-sessions/scenario.cjs) | Sesiones hijas: pedir «en otra sesión» abre una hija anidada; su informe llega a la madre en una tarjeta y la madre hace un turno corto («Informe de…»); una oferta «¿Lo hago en una sesión nueva?» con «Hazlo aquí» no abre nada; la hija empieza con el encargo de su madre |
 | [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |
+| [connectors-oauth](connectors-oauth/README.md) | Conectores: catálogo, OAuth con un servidor falso en loopback (el navegador del equipo no se abre), permisos por herramienta, reconectar y desconectar la cuenta |
+| [connectors-import](connectors-import/README.md) | Conectores: importar de Codex y pegar JSON sin mostrar secretos, la pregunta del .mcp.json de un proyecto de confianza una sola vez, y su ámbito con la confianza |
 
 ## Escribir un escenario
 

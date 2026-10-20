@@ -199,12 +199,14 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 
 ### 10.2 De una reunión a una producción que corre sola
 
-**El caso del dueño.** Los agentes *Images*, *Audio*, *Video*, *Writer* y *Content_Manager* se reúnen **frente a la pizarra** con el MCP **Rinari Visual Lab**. El dueño les explica el trabajo:
+> **Es un ejemplo, no la especificación** (dueño, 2026-10-20, D-26): las producciones son genéricas, para cualquier uso. El diseño que se construye está en la [sección 17](#17-a3-producciones-diseño-2026-10-20).
+
+**El caso del dueño (ejemplo).** Los agentes *Images*, *Audio*, *Video*, *Writer* y *Content_Manager* se reúnen **frente a la pizarra** con un MCP de imagen, video y audio (uno cualquiera: no hay ninguno fijado). El dueño les explica el trabajo:
 - **Objetivo:** gestionar un canal de YouTube. La credencial la tiene *Content_Manager*.
 - **Writer** escribe historias de 30 segundos para niños, con un personaje bien descrito. Única regla: animales 3D infantiles.
 - **Images** genera la imagen de cada personaje.
-- **Video** recibe la historia (de Writer) y la imagen (de Images), y hace el video con la guía del Visual Lab.
-- **Audio**, si hace falta, genera música de fondo con el Visual Lab (Yue2 3B).
+- **Video** recibe la historia (de Writer) y la imagen (de Images), y hace el video con su conector.
+- **Audio**, si hace falta, genera música de fondo con su conector.
 - **Calendario:** 10 historias al día, todos los días, desde las 17:00 (hora de Costa Rica).
 
 **Cómo lo vería Rinari.**
@@ -223,7 +225,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
    - El dueño aprueba la producción una vez, como cualquier regla permanente.
 3. **Ensayo antes de salir.** La primera vez corre **1 historia completa en modo ensayo**, sin publicar. El dueño ve el resultado de cada paso y ajusta. Después se activa el calendario.
 4. **Cada día, a las 17:00:**
-   - corren las 10 en paralelo, hasta donde dé la cola de GPU de Saturno, con reintentos y un presupuesto por día;
+   - corren las 10, con reintentos y un presupuesto por día;
    - *Content_Manager* revisa cada video antes de subirlo (duración, que no tenga texto roto, que cumpla la regla «animales 3D»);
    - al final, el resumen del día llega a Telegram: 10/10 publicados, lo que costó y lo que falló.
 
@@ -231,7 +233,6 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 - **Credenciales.** La clave de YouTube **no se pega en la conversación.** Se guarda en el almacén de credenciales de Rinari, asignada al equipo (o a *Content_Manager*), y se le da al MCP que sube los videos, nunca al modelo. Si el dueño la escribe en el chat, Rinari avisa que ya salió y recomienda cambiarla (sección 8).
 - **Publicar es hacia fuera.** Con Acceso completo, *Content_Manager* publica sin preguntar (D-5). Lo que protege es el **ensayo** antes de activar la producción, el presupuesto del día, el registro y el resumen diario; si el dueño no quiere que publique solo, el agente va en modo Proyecto.
 - **Contenido para niños.** YouTube exige marcar los videos «para niños», y eso tiene reglas (comentarios, anuncios). *Content_Manager* debe tenerlo como regla fija de la producción.
-- **Capacidad.** 10 videos con imagen, video y música cada día es trabajo de GPU real. La producción debe conocer la cola del Visual Lab y repartir, no lanzar todo de golpe.
 
 ### 10.3 La oficina de 8 bits: estados y animaciones
 
@@ -285,7 +286,7 @@ Así, las tuberías simples y el trabajo en equipo usan el mismo vocabulario.
 - **Vista general:** el edificio de noche con las ventanas encendidas donde hay trabajo, y una insignia «!» en el piso que necesita al dueño.
 
 **Límites y escala:**
-- Cuántos agentes pueden trabajar **a la vez** lo decide la capacidad real: modelos, GPU (por ejemplo, la cola del Visual Lab en Saturno) y el presupuesto. Un planificador reparte por prioridad entre equipos, en lugar de lanzar todo a la vez.
+- Cuántos agentes trabajan **a la vez** lo limitan los topes de los subagentes y el presupuesto. No hay reparto de capacidad por máquina (dueño, 2026-10-20, D-26): un MCP es un MCP como cualquier otro.
 - Los equipos sin actividad no consumen nada: duermen hasta su próximo disparador.
 
 ### 10.5 Ejemplos de uso
@@ -322,7 +323,7 @@ Respondidas por el dueño (2026-10-15):
 |---|---|---|---|
 | A1 | **Agentes solos + reglas y reloj:** la tarjeta y el espacio Agency con su vista Normal; el tutorial de la primera vez (2.1); «Nuevo agente» (formulario y «Créalo con Rinari»); chat directo; memoria propia; modelo por defecto; credenciales con dueño; reglas permanentes con reloj, archivos, CI y MCP, sin modelo cuando son exactas; presupuesto por agente. **C8 del agente:** conectores permitidos por agente, cuentas con dueño agente, la acción de `schedule/` que llama a una herramienta MCP sin modelo y el aviso de «reconectar» sin pantalla. Con esto ya podría funcionar el agente *Emails* con el MCP de Gmail, pero se prueba con todo lo demás (D-13). | L | Permisos v4 y #50, hechos; conectores C1–C7 fusionados en `0.4.0` |
 | A2 | **Equipos:** oficinas, puestos, jefe, chat de oficina con @menciones y topes, pizarra como cola, recados como subagentes del puesto, memoria y credenciales del equipo, presupuesto del equipo y global, plantillas. **C8 del equipo:** conectores y cuentas con dueño equipo, que un puesto solo ve los de su equipo. | L | A1 |
-| A3 | **Producciones** (10.2): la reunión con acta, el flujo con entregas con contrato, el ensayo antes de activar, el calendario y el reparto según la capacidad (por ejemplo, la cola de GPU del Visual Lab). Es la pieza menos definida: se diseña con el dueño antes de construirla. | L–XL | A2 |
+| A3 | **Producciones** (sección 17): un trabajo que se repite y pasa por varios agentes del equipo en orden; nace de una reunión en el chat o de un formulario, con entregas como recados con su lista, la aprobación que el dueño elija por paso, ensayo opcional y calendario. Genérica, para cualquier uso. | L | A2 |
 | A4 | **La vista Agencia:** el edificio y las oficinas de 8 bits con eventos reales, y el HUD para editar. **Sin fecha hasta que el arte esté decidido** (6.1). | L | A2; el arte |
 
 ## 13. Depuración del plan (2026-10-16)
@@ -354,6 +355,9 @@ El dueño revisó el plan con Claude, una decisión a la vez, contra el código 
 | D-21 | **(2026-10-20)** El selector Normal \| Agencia está desde el principio; Agencia sale deshabilitada con «Pronto» hasta A4. | 2 |
 | D-22 | **(2026-10-20)** Ramas `feat/agency` en la CLI y en la app, encima de las de conectores, con commits por fase y **un PR por repo al final**. La CLI se fusiona primero y después se fija su commit en la app. La descripción del PR de la app dice que **todas las pantallas que toca pasan por una sesión de pulido de UI**. A3 se diseña con el dueño antes de construirla. | 12 |
 | D-23 | **(2026-10-20)** Por ahora todos los agentes usan el ícono de la Agency. El arte por agente (atuendos por oficio) se genera después; Codex queda para lo urgente. | 5, 6.1 |
+| D-24 | **(2026-10-20)** La memoria propia de cada agente se ve y se edita en una pantalla **Ajustes de la Agency**, dentro de la Agency (no en los Ajustes de Rinari). | 3, 16 |
+| D-26 | **(2026-10-20)** A3 es genérica, para cualquier uso: el canal infantil es un ejemplo. Una producción nace de una reunión en el chat o de un formulario (Rinari pregunta cuál); sin reparto de capacidad ni nada fijado a un MCP (el Visual Lab es un MCP como cualquier otro); la aprobación se elige por paso; las entregas son recados con su lista. | 10.2, 12, 17 |
+| D-25 | **(2026-10-20)** A2 (equipos) se hace, completa y claramente. A3 se diseña con el dueño antes de construirla. A4 sigue fuera por ahora. Antes de A2 se cierran los huecos de A1: D-6 en los turnos, conectar una cuenta a nombre de un agente, «Detener a todos», el aviso de una clave pegada en el chat y la memoria en Ajustes de la Agency. | 12, 16 |
 
 **Lo que ya existe y la Agency reutiliza** (rutas del repo de la CLI):
 - Subagentes, para los recados: `agents/orchestrator.py` (lanzar, esperar, `agent.message`, unir resultados antes de cerrar el turno) y sus topes en `agents/definition.py:20-22`.
@@ -433,3 +437,29 @@ Ramas `feat/agency`, locales y sin subir: CLI en `Rinari-CLI-worktrees/agency` (
 - Fusionar primero la CLI y fijar su commit en `engine-manifest.json` (no se tocó).
 - Una prueba real de una regla con conectores reales (Gmail, Telegram): la copia del home no tenía esos conectores.
 - A2 (equipos) y el diseño de A3 con el dueño.
+
+## 17. A3, producciones: diseño (2026-10-20)
+
+Decidido con el dueño (D-26). Genérico: sirve para un canal de videos, un informe semanal, mantener un repo o lo que el dueño quiera.
+
+**Qué es.** Una producción es un trabajo que **se repite** y **pasa por varios agentes de un equipo en orden**, cada uno haciendo su parte. Es del equipo (A2) y vive en su oficina.
+
+**Cómo nace (las dos formas).** Al crear una producción, Rinari pregunta cuál usar:
+- **Reunión en el chat del equipo:** el dueño explica el trabajo; los agentes mencionados preguntan lo suyo; Rinari arma el flujo y lo propone como tarjeta. Nada se crea hasta que el dueño la aprueba.
+- **Formulario:** el dueño arma los pasos a mano.
+
+Las dos terminan en la misma producción, que después se edita en su ficha.
+
+**Qué tiene una producción:**
+- **Pasos en orden:** cada paso es un agente del equipo y qué hace. Un paso puede usar lo que entregaron uno o varios pasos anteriores (Video usa la historia y la imagen).
+- **Entregas:** cada paso termina con un **recado de la pizarra** (A2) que lleva lo que produjo (texto o archivos) y una **lista simple de «cómo sé que está bien»**. El paso siguiente la revisa antes de seguir; si no se cumple, el recado vuelve con el motivo.
+- **Aprobación, elegida por paso:** ninguna (sigue solo), **el dueño aprueba** antes de seguir, o **un agente revisor** del equipo con su lista. Lo que sale hacia fuera (publicar, enviar) se marca y el dueño decide su aprobación; nada está fijado para un caso.
+- **Ensayo (opcional):** correr una vez completa sin los pasos que salen hacia fuera, para revisar el resultado antes de activarla.
+- **Cuándo:** a mano, con un horario (las tareas programadas del #50) o con una regla (A1), y cuántas veces por corrida (por ejemplo, 10 historias).
+- **Presupuesto:** por corrida y por día, además del del equipo y el global.
+- **Al terminar:** un resumen de la corrida (cuántas salieron bien, qué falló y lo que costó) que llega como aviso y, si el dueño quiere, a un destino de una regla.
+
+**Lo que no tiene (a propósito):** reparto de capacidad por máquina ni nada fijado a un MCP o a un servicio. Un MCP es un MCP como cualquier otro, con sus permisos (C5).
+
+**Cómo encaja con lo que existe:** una corrida es una tarea programada del equipo; cada paso, un recado de la pizarra que toma el puesto de ese agente (D-4, subagente del puesto); la aprobación del dueño es la misma tarjeta de «te necesita»; el resumen usa el centro de avisos.
+

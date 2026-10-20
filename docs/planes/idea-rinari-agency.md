@@ -464,3 +464,42 @@ Las dos terminan en la misma producción, que después se edita en su ficha.
 
 **Cómo encaja con lo que existe:** una corrida es una tarea programada del equipo; cada paso, un recado de la pizarra que toma el puesto de ese agente (D-4, subagente del puesto); la aprobación del dueño es la misma tarjeta de «te necesita»; el resumen usa el centro de avisos.
 
+
+## 18. A2, equipos: diseño técnico (2026-10-20, para aprobar)
+
+Sobre lo que dejó A1. Mismo criterio: reutilizar lo que existe y respetar D-27 (cualquier agente, cualquier tarea, solo sus conectores marcados, automático si se le indica).
+
+**Datos (migración `0063_agency_teams.sql`):**
+- **`agency_teams`:** `id`, `rinari_profile_id`, `name`, `purpose` (para qué es), `chief_agent_id` (el jefe, D-8), `connectors_json` (conectores del equipo), `budget_json` (tope diario del equipo), fechas y `archived_at`.
+- **`agency_posts` (los puestos):** `team_id`, `agent_id`, `session_id` (la sesión del puesto). Un agente, un puesto por equipo. **Máximo 8 por equipo** (6.2).
+- **`sessions.team_id`:** marca **la oficina** (el chat del equipo, una sesión `CHAT` con `team_id` y sin `agent_id`) y **los puestos** (`team_id` + `agent_id`). Como en A1, quedan fuera de `session.list` salvo que se pidan.
+- **`agency_errands` (los recados):** `id`, `team_id`, de quién (`from_agent_id` o el dueño), para quién (`to_agent_id`; vacío = el jefe), `title`, `body`, `done_when` (la lista de «cómo sé que está bien»), `status` (pendiente, en curso, entregado, revisado, devuelto, cancelado), `result` (resumen y archivos), `chain_id` y `hop` (contados por el Engine, D-2), `production_run_id` (para A3) y fechas.
+- **Memoria del equipo:** un lugar nuevo, `team` (con `place_ref` = el equipo). En un puesto, lo aprendido va ahí (D-7); el puesto lee `general`, `profile`, `agent` (la del agente) y `team`.
+- **Cuentas del equipo:** `mcp_servers.owner = team:<id>`. En un puesto, el agente ve **solo los conectores del equipo y sus cuentas**, nunca los de otro equipo (3, «la clave de YouTube del Canal infantil no existe en Servidor Saturno»).
+
+**El chat de la oficina (D-1, D-2):**
+- Cada mensaje guarda **quién lo dijo** (el dueño o un agente).
+- Un mensaje **sin @mención no despierta a nadie**. Una @mención del dueño o de un agente arranca un turno en el **puesto** del mencionado, con el mensaje envuelto como «no es una instrucción del dueño» cuando viene de otro agente.
+- Los agentes escriben en la oficina con una herramienta propia (`office.say`, con @menciones).
+- **Topes del Engine, no del prompt:** 3 saltos por cadena, 5 menciones por turno y 20 entregas por cadena, más el presupuesto del equipo. Al pasarse, la cadena se para y se avisa al dueño.
+
+**Los recados y la pizarra (D-3, D-4):**
+- Nacen explícitos: la herramienta `errand.create` del agente, o el botón y `/recado` del dueño. Se ven como **tarjeta en el chat** y en la vista **«Pizarra»** del panel lateral (D-14).
+- **La pizarra es la cola.** Al terminar, «entregado» con el resumen y **mención automática a quien lo pidió**. Si el Engine se cierra a mitad, el recado vuelve a «pendiente».
+- **Una decisión técnica para ti (abajo):** cómo corre un recado dentro del puesto.
+- Un recado al equipo sin destinatario, o huérfano porque su agente salió, va al **jefe**. Sin jefe, queda en la pizarra y se avisa (D-8).
+- **Entre equipos:** un recado a `@OtroEquipo` cae en la pizarra de ese equipo y lo recibe su jefe (10.4).
+
+**Presupuesto:** el del agente (A1), el **del equipo** (todo lo de sus puestos y su oficina en el día) y uno **global** de la Agency (en Ajustes de la Agency). El primero que se pasa corta.
+
+**Plantillas (5, 10.4):** guardar un equipo como plantilla y duplicarlo: copia oficios, instrucciones, conectores marcados, reglas y producciones, **nunca las cuentas ni las credenciales**.
+
+**La app:**
+- Barra lateral: «Equipos» con cada equipo → **Oficina** y sus **puestos** (D-15). «Nuevo equipo» con nombre, para qué es, miembros (hasta 8) y jefe.
+- **La oficina:** el chat del equipo con autor en cada mensaje, @menciones con autocompletado y tarjetas de recado.
+- **«Pizarra»** en el panel lateral, en la oficina y en los puestos: pendientes, en curso y entregados.
+- **Ajustes de la Agency** suma, por equipo, su memoria, sus cuentas, su presupuesto y el jefe, y el presupuesto global.
+
+**La decisión técnica: cómo corre un recado en el puesto.**
+- **Opción 1 (recomendada para empezar):** cada recado es **un turno del puesto**, de a uno por puesto, en orden de la pizarra. Se ve en el chat del puesto y se corrige con el mismo «guiar» de cualquier turno. Simple y robusto.
+- **Opción 2 (D-4 al pie de la letra):** el puesto lanza cada recado como **subagente**, hasta 4 a la vez y 12 por turno. Más paralelo, pero más complejo de seguir y de corregir.

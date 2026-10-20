@@ -423,10 +423,13 @@ Ramas `feat/agency`, locales y sin subir: CLI en `Rinari-CLI-worktrees/agency` (
 
 **Comprobado:** pytest completo de la CLI en verde (4028 pasadas, antes de los últimos commits; se repite al cerrar), `ruff`; en la app, `tsc`, `typecheck:electron`, `build`, `protocol:check` y `parity:check` (con el schema de la rama de la CLI), y vitest de los módulos tocados. En vitest completo, los únicos fallos fueron por tiempo con la máquina cargada (`bump-version`, `BoardView.fit`): pasan solos y fallan igual en la base.
 
+**Después (2026-10-20, tarde):** el ensayo de una regla, «Probar» (CLI c4cf64f, app 7e72c52): solo llama a la primera herramienta si es de solo lectura y nunca envía la entrega; la huella de las carpetas vigiladas se guarda con la tarea y sobrevive a un reinicio (c4cf64f, que arregla además que el runner pisaba la huella con la copia vieja de la tarea); el escenario `tests/ui/agency` y su parada en `ui-tour`, en verde también con movimiento reducido, con el Engine de la rama (app 088cefe). El escenario encontró tres fallos, ya arreglados: «Nuevo agente» ocupaba media barra, «Reglas» no aparecía en el chat vacío de un agente y el inicio de la Agency mostraba el título y los botones de la conversación de Rinari abierta. Suite completa de la CLI: 4038 pasadas.
+
+**Prueba real con el modelo del dueño** (Xainner, qwen3.8-flash-next q4, sobre una copia del home; el home real no se tocó): «Créalo con Rinari» devolvió en 5,5 s una ficha buena, con `read-only` elegido solo; el agente se creó, su chat quedó fuera de la lista de Rinari, respondió un turno real en 23,5 s como «Facturas al Día», y su gasto fue 15 607 tokens con coste desconocido (el provider custom no tiene precio en el catálogo), como se espera.
+
+**Para la sesión de pulido de UI** (no la hacemos nosotros, va anotada en el PR, D-22): el chat vacío de un agente usa el saludo genérico de Rinari y no muestra el nombre del agente arriba hasta el primer mensaje; el resto de las pantallas de la Agency y «Reglas» entran funcionales y dentro del sistema, sin el detalle visual fino.
+
 **Falta antes del PR:**
-- Los escenarios de `tests/ui` de la Agency y `ui-tour` con capturas: no se corrieron (piden el Engine de la rama de la CLI en marcha).
-- La prueba con servicios reales y el modelo del dueño para «Créalo con Rinari».
-- La sesión de pulido de UI de todas las pantallas tocadas (D-22).
 - Fusionar primero la CLI y fijar su commit en `engine-manifest.json` (no se tocó).
-- El ensayo de una regla antes de activarla («de los últimos 50 habría reenviado 3», 10.1.3) no está: hoy se revisa la tarjeta y se activa. Las huellas de las carpetas vigiladas viven en memoria: tras reiniciar el Engine, la primera revisión solo vuelve a tomar la huella.
+- Una prueba real de una regla con conectores reales (Gmail, Telegram): la copia del home no tenía esos conectores.
 - A2 (equipos) y el diseño de A3 con el dueño.

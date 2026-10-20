@@ -17,6 +17,8 @@ export type NotificationTarget =
   | { kind: 'providers' }
   /** Ajustes > Acerca de, con la versión ofrecida y su acción. */
   | { kind: 'update' }
+  /** Ajustes > Conectores con el detalle de ese conector (p. ej. «hay que reconectar»). */
+  | { kind: 'connector'; name: string }
 
 export interface CenterNotification {
   id: string

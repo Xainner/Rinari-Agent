@@ -3992,6 +3992,8 @@ export const es = {
   'connectors.action.enable': 'Activar',
   'connectors.action.disable': 'Desactivar',
   'connectors.hint.oauth_required': 'Este servicio pide iniciar sesión con tu cuenta. Pulsa «Iniciar sesión».',
+  'connectors.reauthNotice.title': 'Hay que reconectar {name}',
+  'connectors.reauthNotice.body': 'Su sesión venció y no se pudo renovar. Reconéctalo en Ajustes → Conectores para que tus agentes, sus reglas y las tareas lo vuelvan a usar.',
   'connectors.hint.reauth_required': 'La sesión venció y no se pudo renovar. Vuelve a iniciar sesión con «Reconectar».',
   'connectors.hint.unknown': 'Prueba de nuevo; si sigue, revisa la configuración del conector.',
   'connectors.account.signedIn': 'Sesión iniciada',

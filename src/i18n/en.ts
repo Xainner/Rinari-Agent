@@ -3974,6 +3974,8 @@ export const en: Record<I18nKey, string> = {
   'connectors.action.enable': 'Enable',
   'connectors.action.disable': 'Disable',
   'connectors.hint.oauth_required': 'This service asks you to sign in with your account. Press Sign in.',
+  'connectors.reauthNotice.title': '{name} needs to reconnect',
+  'connectors.reauthNotice.body': 'Its sign-in expired and could not be renewed. Reconnect it in Settings → Connectors so your agents, their rules and scheduled tasks can use it again.',
   'connectors.hint.reauth_required': 'The sign-in expired and could not be renewed. Sign in again with Reconnect.',
   'connectors.hint.unknown': 'Try again; if it keeps failing, check the connector settings.',
   'connectors.account.signedIn': 'Signed in',

@@ -78,6 +78,7 @@ import AgentForm from './features/agency/AgentForm'
 import AgencyTutorial from './features/agency/AgencyTutorial'
 import type { AgencyAgent } from './features/agency/types'
 import { useProfileStore } from './features/profiles/profileStore'
+import ReconnectNotifier from './features/connectors/ReconnectNotifier'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
@@ -698,6 +699,7 @@ function App() {
       <UpdateNotifier lang={lang} />
       <SkillLearnedNotifier />
       {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
+      {session.status?.capabilities.mcp_background_connect_v1 === true && <ReconnectNotifier />}
       <ScheduleForm />
       <DesktopContextMenu />
       <ProcessRuntimeProvider
@@ -838,6 +840,7 @@ function App() {
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
                   else if (target.kind === 'update') goSettings('about')
+                  else if (target.kind === 'connector') useUIStore.getState().openConnector(target.name)
                   else if (target.skill) useUIStore.getState().openSkill(target.skill)
                   else goSettings('skills')
                 }}

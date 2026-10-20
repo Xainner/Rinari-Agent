@@ -22,7 +22,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 - **Dentro de la Agency hay dos vistas**, como hoy Normal | Boards:
   - **Normal:** la vista de trabajo, por chats. Cada agente con su chat directo, el chat de cada oficina, los recados y las sesiones. Es la interfaz de siempre adaptada a la Agency.
   - **Agencia:** el edificio en 8 bits, sobre los mismos datos. Es la vista espectacular; nunca es obligatoria para trabajar.
-  - **Hasta A4 no hay selector:** solo existe Normal, y una opción que no funciona no se ofrece ([obsidiana-neon.md](../design/obsidiana-neon.md) §7).
+  - **Hasta A4, «Agencia» sale deshabilitada con «Pronto»** (dueño, 2026-10-20, D-21): el selector Normal | Agencia está, pero Agencia no se puede elegir y lo dice. No se ofrece como si funcionara (AGENTS.md, «Diseño de la interfaz»).
 - **La primera vez que se entra, un tutorial por pasos** (D-20, sección 2.1).
 - **Por dentro, la Agency es un espacio aparte, no una vista más** junto a Normal | Boards (`WorkspaceViewSwitcher`): cambia la barra lateral entera y tiene sus propias vistas. La tarjeta va en `AppSidebar.tsx`, encima de `<SidebarFooter />`.
 
@@ -70,7 +70,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 
 ## 5. Crear un agente
 
-- **Formulario:** ícono (elegir entre atuendos de Rinari o generarlo), nombre, oficio, instrucciones, modelo por defecto, herramientas y MCP permitidos, autonomía y presupuesto. Ocupa la vista principal, no un diálogo (D-16): las instrucciones son largas y «Créalo con Rinari» necesita espacio.
+- **Formulario:** ícono (elegir entre atuendos de Rinari o generarlo; **por ahora todos los agentes usan el ícono de la Agency**, D-23, y el arte por agente se genera después), nombre, oficio, instrucciones, modelo por defecto, herramientas y MCP permitidos, autonomía y presupuesto. Ocupa la vista principal, no un diálogo (D-16): las instrucciones son largas y «Créalo con Rinari» necesita espacio.
 - **«Créalo con Rinari»:** el dueño describe el agente en una frase y Rinari llena el formulario, que el dueño ajusta antes de crear.
 - **Plantillas de equipo** («Mantenimiento de repo», «Contenido», «Servidor») para empezar en un clic, con la opción de agregar o quitar agentes antes de crear. Se copian oficios, flujo y reglas, **nunca las credenciales**.
 
@@ -351,6 +351,9 @@ El dueño revisó el plan con Claude, una decisión a la vez, contra el código 
 | D-18 | **(2026-10-20)** Las reglas permanentes se ven y se pausan en una vista «Reglas» del panel lateral; se crean desde el chat como una tarjeta. | 10.1 |
 | D-19 | **(2026-10-20)** La Agency se construye sobre los conectores C1–C7, y C8 se hace dentro de A1 (lo del agente) y A2 (lo del equipo), sobre las entidades reales. | Intro, 12, 14 |
 | D-20 | **(2026-10-20)** La primera vez que se abre la Agency, un tutorial de 5 pasos con Rinari de pie y una imagen temporal de la oficina sacada del prototipo (rehecha con Codex: `agency-office.png`), una vez por perfil. Va en A1. | 2.1, 12 |
+| D-21 | **(2026-10-20)** El selector Normal \| Agencia está desde el principio; Agencia sale deshabilitada con «Pronto» hasta A4. | 2 |
+| D-22 | **(2026-10-20)** Ramas `feat/agency` en la CLI y en la app, encima de las de conectores, con commits por fase y **un PR por repo al final**. La CLI se fusiona primero y después se fija su commit en la app. La descripción del PR de la app dice que **todas las pantallas que toca pasan por una sesión de pulido de UI**. A3 se diseña con el dueño antes de construirla. | 12 |
+| D-23 | **(2026-10-20)** Por ahora todos los agentes usan el ícono de la Agency. El arte por agente (atuendos por oficio) se genera después; Codex queda para lo urgente. | 5, 6.1 |
 
 **Lo que ya existe y la Agency reutiliza** (rutas del repo de la CLI):
 - Subagentes, para los recados: `agents/orchestrator.py` (lanzar, esperar, `agent.message`, unir resultados antes de cerrar el turno) y sus topes en `agents/definition.py:20-22`.

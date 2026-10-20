@@ -412,3 +412,21 @@ Sobre lo que ya hay en la CLI (`feat/agency`, encima de `feat/conectores-c1-c2` 
 - Evento `agency.agent.changed`. Las reglas usan `schedule.*` con `agent_id`.
 
 **Pruebas:** unitarias por servicio (ficha, filtro de conectores, gasto y corte, regla `tool` sin modelo con grants), `test_cache_prefix.py` con un agente (el prefijo no cambia por filtrar conectores) y la migración en `test_migrations.py`.
+
+## 16. Estado de A1 (2026-10-20)
+
+Ramas `feat/agency`, locales y sin subir: CLI en `Rinari-CLI-worktrees/agency` (encima de `feat/conectores-c1-c2` f625e9d) y app en este checkout (encima de `docs/agency-plan`, que va sobre `docs/conectores-c0-c2`).
+
+**Hecho en la CLI:** agentes con ficha y chat directo, fuera de `session.list` (3366901); memoria propia, lugar `agent` (6df0339); turnos con la ficha, solo sus conectores y cuentas propias (`mcp_servers.owner`), corte por presupuesto, y reglas sin modelo de tipo `tool` (707f579); prueba de caché con un agente en los tres formatos (9aedcbb); un agente solo **propone** sus reglas (26d68bd); «Créalo con Rinari» en segundo plano, con evento (1667ed2); reglas que vigilan una carpeta y condición exacta sobre el resultado, que cubre el CI con el conector de GitHub (ad431f3). Capacidades `agency_agents_v1` y `agency_draft_v1`. Migración `0062`.
+
+**Hecho en la app:** la tarjeta, la barra lateral de la Agency con Agencia deshabilitada y «Pronto», el inicio, la ficha y el tutorial (6b93cbe); la vista «Reglas» del panel lateral, donde esperan las reglas propuestas (5da73ff); «Créalo con Rinari» en la ficha (0eab451); el aviso de «reconectar» sin pantalla (719961f); «Reglas» muestra la carpeta y la condición (3251150).
+
+**Comprobado:** pytest completo de la CLI en verde (4028 pasadas, antes de los últimos commits; se repite al cerrar), `ruff`; en la app, `tsc`, `typecheck:electron`, `build`, `protocol:check` y `parity:check` (con el schema de la rama de la CLI), y vitest de los módulos tocados. En vitest completo, los únicos fallos fueron por tiempo con la máquina cargada (`bump-version`, `BoardView.fit`): pasan solos y fallan igual en la base.
+
+**Falta antes del PR:**
+- Los escenarios de `tests/ui` de la Agency y `ui-tour` con capturas: no se corrieron (piden el Engine de la rama de la CLI en marcha).
+- La prueba con servicios reales y el modelo del dueño para «Créalo con Rinari».
+- La sesión de pulido de UI de todas las pantallas tocadas (D-22).
+- Fusionar primero la CLI y fijar su commit en `engine-manifest.json` (no se tocó).
+- El ensayo de una regla antes de activarla («de los últimos 50 habría reenviado 3», 10.1.3) no está: hoy se revisa la tarjeta y se activa. Las huellas de las carpetas vigiladas viven en memoria: tras reiniciar el Engine, la primera revisión solo vuelve a tomar la huella.
+- A2 (equipos) y el diseño de A3 con el dueño.

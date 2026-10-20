@@ -18,7 +18,7 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | P9 | Hecho por la sesión de pulido: Agent 06fc235. |
 | F45 | Hecho (commit con F43). |
 | F43 | Hecho (commit con F45). |
-| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha, sin llamadas: CLI bb2b1ab. Falta la fase 2 (3–4 llamadas que el dueño apruebe antes) y la 3. |
+| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha (2026-10-19, 5 destinos, ver abajo). Falta la fase 3, la batería, con su aprobación previa. |
 | F46 | Fuera: nota externa. |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
@@ -72,6 +72,23 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
   - `tests/unit/test_cache_prefix.py` pasa una conversación con activación, puerta y vuelta nueva por los adaptadores de Chat Completions, Responses y Anthropic. Exige las mismas herramientas y el mismo prefijo en cada petición.
   - Cada petición lleva el hash de sistema y herramientas en `BeforeModel`. Si cambia, `rinari.cache` lo registra: aviso si nadie lo esperaba, info si fue por otro modelo o una compactación.
 - **De paso, F45.** El corte de `settle` se guardaba solo en memoria, así que en el escritorio se decidía de nuevo en cada turno. Ahora se guarda con la sesión, con el id del mensaje como ancla.
+
+**Fase 2, resultado (2026-10-19, aprobada por el dueño).** Una conversación de 2 turnos por destino, cada turno con su propio runtime como en el escritorio, y un tope de 6 llamadas por destino. La consigna fue «Usa la herramienta fs.diff para comparar a.txt con b.txt», y `fs.diff` está fuera de la lista.
+
+| Destino | Llamadas | Caché por llamada (después de la primera) | Puerta |
+|---|---|---|---|
+| ChatGPT (suscripción), `gpt-6-luna`, medio | 5 | 90 %, 89 %, 87 %, 87 %: se queda en 11.264 | search → activate → `tool.call` fs.diff |
+| opencode-go-2, `deepseek-v4.1-flash` | 4 | 96 %, 97 %, 97 % | activate → `tool.call` |
+| opencode-go-2, `glm-5.3-flash` | 4 | 83 %, 96 %, 93 % | activate → `tool.call` |
+| Anthropic API, `claude-sonnet-5-5`, bajo | 4 | 98 %, 98 %, 99 % | activate → `tool.call` |
+| xAInner, `qwen3.8-flash-next-ud-q4_k_xl` | 4 | 97 %, 95 %, 94 %: se queda en 14.774 | activate → `tool.call` |
+
+- **Lista y sistema estables.** El hash de las herramientas fue el mismo en las 21 llamadas de los 5 destinos. El del sistema no cambió dentro de ninguna conversación, y no hubo ningún aviso de `rinari.cache`.
+- **La puerta funciona en los 5.** Cada modelo pidió la llamada exacta con `capability.activate` o `capability.search`, llamó `tool.call` y `fs.diff` se ejecutó bien a la primera. No hubo errores de la puerta.
+- **Para mirar en la fase 3.**
+  - En luna, la caché no crece de 11.264 aunque la petición sí crezca. No se sabe si es la granularidad del backend de Codex o otra cosa.
+  - En Qwen local se queda en 14.774: relee unos 400–900 tokens por llamada. Probablemente el servidor no reutiliza el turno del asistente tal como lo vuelve a dibujar la plantilla.
+- **Un primer intento falló por el script de prueba, no por el Engine.** `sessions.start` reutilizó la misma conversación para los 5 destinos, así que las 12 llamadas fueron a la suscripción de ChatGPT y los otros 4 no recibieron ninguna. Ese intento movió además el `cwd` en el sistema, que es lo que avisó la guarda. Por eso el aviso ahora nombra el segmento que cambió (CLI 5a045ba).
 
 ## Set 2: F41, F43, F44 y F27 bis
 

@@ -4,7 +4,9 @@ Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño l
 
 Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-boards.md)): la comunicación entre agentes se piensa aquí, desde cero. Los permisos de toda la app se rehacen en su propio plan ([plan-permisos-v4.md](plan-permisos-v4.md)), y el Gateway tiene el suyo ([plan-gateway.md](plan-gateway.md)).
 
-**Para quien se suma:** el primer prototipo de la oficina de 8 bits está en `Documents/Proyectos/rinari-familiars-proto` (`index.html`); al dueño le encantó y la Rinari de ese mockup es la que mejor quedó. La base de arte posterior está en `Documents/Proyectos/rinari-agency-8bit` (y `-v96`): su mundo le gustó, su Rinari no del todo (ver 6.1).
+**Se construye sobre los conectores** (dueño, 2026-10-20): la base es lo que dejan C1–C7 de [plan-conectores.md](plan-conectores.md), en revisión en [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74) (`feat/conectores-c1-c2`) y [Xainner/Rinari-Agent#113](https://github.com/Xainner/Rinari-Agent/pull/113) (`docs/conectores-c0-c2`). **C8, lo que la Agency necesita de los conectores, se hace junto con la Agency** sobre sus entidades reales, no como base genérica por adelantado (decisión del dueño en el plan de conectores, 2026-10-20). Lo que hay y lo que falta está en la [sección 14](#14-sobre-los-conectores-2026-10-20).
+
+**Para quien se suma:** el arte está en `Documents/Proyectos/Rinari/Proyectos/` (fuera del repo). El primer prototipo de la oficina de 8 bits es `rinari-familiars-proto` (`index.html`); al dueño le encantó y la Rinari de ese mockup es la que mejor quedó. La base de arte posterior es `rinari-agency-8bit` (y `rinari-agency-128`): su mundo le gustó, su Rinari no del todo (ver 6.1). El ícono de la tarjeta es `agency-icon/agency-icon.png` (1024×1024 a sangre, rehecho con Codex el 2026-10-19 desde `Agency.png`). El canon de Rinari (cuerpo entero y medio cuerpo) está en `Pictures/Rinari/Canon/`.
 
 ---
 
@@ -14,11 +16,34 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 
 ## 2. Cómo se entra: la tarjeta y las dos vistas
 
-- **La tarjeta «Rinari Agency»** vive abajo a la izquierda, a lo ancho, **encima de Ajustes**, con el arte del ícono de la Agency (Rinari chibi con orejas de gato y auriculares, fondo morado) y una línea de estado en vivo: «3 trabajando · 1 te necesita».
-- **Al pulsarla, cambia toda la interfaz** (con la cámara entrando al edificio): desaparecen proyectos y conversaciones; la barra lateral muestra equipos y agentes; el «+» pasa a ser **«Nuevo agente»**. La misma tarjeta pasa a decir «Volver a Rinari».
+- **La tarjeta «Rinari Agency»** vive abajo a la izquierda, a lo ancho, **encima de Ajustes**, con el arte del ícono de la Agency (Rinari chibi con orejas de gato y auriculares, fondo morado) y una línea de estado en vivo: «3 trabajando · 1 te necesita». Sin trabajo dice cuántos agentes hay («5 agentes · en calma»), y sin agentes, «Crea tu primer agente» (D-17).
+- **Al pulsarla, cambia toda la interfaz** (con la cámara entrando al edificio cuando exista la vista de 8 bits, A4; antes, con la transición de vista de siempre): desaparecen proyectos y conversaciones; la barra lateral muestra equipos y agentes; el «+» pasa a ser **«Nuevo agente»**. La misma tarjeta pasa a decir «Volver a Rinari».
+- **La barra lateral de la Agency** (D-15) tiene dos secciones. **Agentes** lista a todos, y cada uno abre su chat directo. **Equipos** muestra cada equipo con su oficina y sus puestos. Un agente con puestos en dos equipos sale una vez en Agentes y una vez en cada equipo.
 - **Dentro de la Agency hay dos vistas**, como hoy Normal | Boards:
   - **Normal:** la vista de trabajo, por chats. Cada agente con su chat directo, el chat de cada oficina, los recados y las sesiones. Es la interfaz de siempre adaptada a la Agency.
   - **Agencia:** el edificio en 8 bits, sobre los mismos datos. Es la vista espectacular; nunca es obligatoria para trabajar.
+  - **Hasta A4 no hay selector:** solo existe Normal, y una opción que no funciona no se ofrece ([obsidiana-neon.md](../design/obsidiana-neon.md) §7).
+- **La primera vez que se entra, un tutorial por pasos** (D-20, sección 2.1).
+- **Por dentro, la Agency es un espacio aparte, no una vista más** junto a Normal | Boards (`WorkspaceViewSwitcher`): cambia la barra lateral entera y tiene sus propias vistas. La tarjeta va en `AppSidebar.tsx`, encima de `<SidebarFooter />`.
+
+### 2.1 El tutorial de la primera vez
+
+**Pedido del dueño (2026-10-20):** al abrir la Agency por primera vez, un tutorial por pasos con arte de Rinari y una imagen de la oficina sacada del prototipo de 8 bits, para que la vista de 8 bits que todavía no existe (A4) no deje un hueco.
+
+**Cómo se hace:** igual que la bienvenida de primer uso (`src/features/welcome/WelcomeDialog.tsx`, #71): un diálogo con pasos, puntos de progreso y «n/total», Atrás / Siguiente / «Saltar», y Rinari de pie (`art.standing()`: `hello`, `think`, `wink`, `wait`, `happy`) cruzada por opacidad entre pasos. En vez del cuarto (`art.room()`), el fondo es la imagen de la oficina.
+
+| Paso | Pose | Qué dice |
+|---|---|---|
+| 1. Tu Agency | `hello` | Agentes que trabajan por ti, solos o en equipo, mientras Rinari está abierta o en la bandeja. La imagen de la oficina, con la línea «Así se verá tu oficina más adelante; por ahora todo se hace desde los chats». |
+| 2. Tus agentes | `think` | Cada agente tiene oficio, instrucciones, modelo, conectores y presupuesto, y su chat directo para hablarle a solas. |
+| 3. Equipos | `wink` | Un equipo es una oficina: su chat con @menciones, los recados y la pizarra en el panel lateral. |
+| 4. Reglas | `wait` | Reglas que trabajan solas (una hora, un archivo, el CI, un conector). Tú apruebas cada regla antes de activarla, y todo queda registrado y con presupuesto. |
+| 5. Empieza | `happy` | «Créalo con Rinari», «Usar una plantilla» o «Lo hago después». |
+
+- **Una vez por perfil**, porque cada perfil tiene su Agency: la marca de «visto» va con la clave del perfil (`stores/profileKey.ts`), no global como `rinari.welcome.seen`. Respondido o saltado, no vuelve solo; se puede repetir desde un «?» de la barra lateral de la Agency.
+- **No exagera:** la imagen de la oficina se presenta como lo que viene, nunca como algo que ya se puede usar ni como botón. Cuando llegue A4, el paso 1 muestra la oficina de verdad.
+- **Imagen temporal** (elegida por el dueño, 2026-10-20): la escena «reunión en la pizarra» de `rinari-familiars-proto`, **rehecha con Codex** limpia, sin texto ni interfaz y con Rinari según el canon: `Documents/Proyectos/Rinari/Proyectos/agency-office/agency-office.png` (1659×948, pixel art detallado; el trabajo y sus referencias están en esa carpeta). Revisada a mano: sin letras ni números, las cinco con pelo negro y puntas violeta, pinzas del lado correcto y la ropa del canon. Al entrar a la app se exporta a WebP en `src/assets/` como el resto del arte (`art-v2/export.py`).
+- Movimiento reducido, teclado, i18n en los dos idiomas y un escenario en `tests/ui`, como la bienvenida.
 
 ## 3. El modelo: agentes, equipos y puestos
 
@@ -37,6 +62,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 - **Solo responde quien es mencionado** (D-1). Un mensaje en el chat no despierta a nadie; una @mención (del dueño o de otro agente) despierta a ese agente. Topes del motor, no del prompt: **3 saltos por cadena, 5 menciones por turno y 20 entregas por cadena**, más el presupuesto del equipo. Al pasarse, la cadena se para y se avisa al dueño.
 - **Las reglas del buzón de Boards se copian** (D-2). El `PeerBroker` (`engine_protocol/peers.py`) ya se retiró con la mensajería de Boards ([plan-boards.md](plan-boards.md), C-2; CLI 2d52817), pero el chat de la oficina copia sus reglas: los topes de arriba; lo que llega de otro agente va envuelto como «no es una instrucción del dueño»; el destino se vuelve a comprobar al entregar, no solo al pedir; y la cadena y el salto los cuenta el motor desde el turno que envía, nunca desde los argumentos del modelo. El código se consulta en la historia de git del repo de la CLI: `git show 2d52817^:src/rinari/engine_protocol/peers.py`.
 - **El chat es la cara humana de la pizarra.** Un **recado** tiene dueño, estado (pendiente, en curso, entregado, revisado) y cierre. Así no se pierde en el chat qué pidió quién ni qué falta.
+- **La pizarra es una vista del panel lateral** (D-14), no una columna fija del chat: un `DockView` nuevo en `stores/sessionDock.ts`, con su ícono y su nombre en `features/session/dockViews.tsx`. Como la vista «Plan», solo tiene botón donde aplica (el chat de la oficina y los puestos de ese equipo), y cuenta para el límite de 4 vistas. En el chat, los recados se ven como tarjetas.
 - **Los recados siempre nacen explícitos** (D-3): un agente usa la herramienta «crear recado» (para quién, qué, cómo se sabe que está hecho) y el dueño un botón o `/recado`. El recado se ve como tarjeta en el chat. Una mención sin eso es solo conversación: nada se adivina.
 - **La pizarra es la cola** (D-4). Cada puesto trabaja hasta **4 recados a la vez y 12 por turno** (los topes de los subagentes, `agents/definition.py:20-22`); los demás esperan en la pizarra, en orden. Al terminar, el recado pasa a «entregado» con el resumen y **quien lo pidió recibe una mención automática** (cuenta dentro de los topes). Si el Engine se cierra a mitad de un recado, el subagente muere con él y el recado **vuelve a «pendiente»** para tomarse de nuevo.
 - **La labor de cada agente** se define en su ficha (oficio, instrucciones, qué recados toma) y se ajusta desde el mismo chat («@video: desde hoy también haces las miniaturas»), con confirmación del cambio.
@@ -44,7 +70,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 
 ## 5. Crear un agente
 
-- **Formulario:** ícono (elegir entre atuendos de Rinari o generarlo), nombre, oficio, instrucciones, modelo por defecto, herramientas y MCP permitidos, autonomía y presupuesto.
+- **Formulario:** ícono (elegir entre atuendos de Rinari o generarlo), nombre, oficio, instrucciones, modelo por defecto, herramientas y MCP permitidos, autonomía y presupuesto. Ocupa la vista principal, no un diálogo (D-16): las instrucciones son largas y «Créalo con Rinari» necesita espacio.
 - **«Créalo con Rinari»:** el dueño describe el agente en una frase y Rinari llena el formulario, que el dueño ajusta antes de crear.
 - **Plantillas de equipo** («Mantenimiento de repo», «Contenido», «Servidor») para empezar en un clic, con la opción de agregar o quitar agentes antes de crear. Se copian oficios, flujo y reglas, **nunca las credenciales**.
 
@@ -118,7 +144,7 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 - **Permisos v4 va antes que la Agency:** ya está hecho (tanda 17 de 0.4.0, ver [plan-permisos-v4.md](plan-permisos-v4.md)); el interruptor de destinos nuevos de D-6 es `permissions.ask_new_destinations` de la configuración del Engine.
 - **Lo que no se negocia, en cualquier modo:**
   - lo que dice otro agente o un recado es **dato, no instrucción**; un recado solo da los permisos de quien lo toma y nunca más de lo que el dueño autorizó para ese agente y ese equipo;
-  - **credenciales** (D-11): se usa el almacén que ya existe, que guarda referencias y nunca el valor (`application/credentials.py`), con **un dueño por credencial** (un equipo o un agente): un puesto solo usa las de su equipo. Las credenciales se le dan a **las herramientas** (el MCP de YouTube, el destino SSH), nunca al modelo, y se cargan desde un formulario en la ficha del equipo o del agente. Si el dueño pega una en el chat, Rinari avisa: «parece una clave; ya se envió al proveedor del modelo, te recomiendo cambiarla», con un botón para guardarla en el almacén (no se puede prometer borrarla: ya salió);
+  - **credenciales** (D-11): se usa el almacén que ya existe, que guarda referencias y nunca el valor (`application/credentials.py`), con **un dueño por credencial** (un equipo o un agente): un puesto solo usa las de su equipo. Las credenciales se le dan a **las herramientas** (el MCP de YouTube, el destino SSH), nunca al modelo, y se cargan desde un formulario en la ficha del equipo o del agente. Una cuenta de un conector con OAuth (C1) ya vive en ese almacén, bajo `mcp/<id>/oauth`; cómo se le pone dueño está en la sección 14. Si el dueño pega una en el chat, Rinari avisa: «parece una clave; ya se envió al proveedor del modelo, te recomiendo cambiarla», con un botón para guardarla en el almacén (no se puede prometer borrarla: ya salió);
   - **presupuesto** por agente, por equipo y global, que se corta solo;
   - **todo queda registrado:** quién pidió qué, con qué permisos, qué hizo y cuánto costó;
   - **«Detener a todos»**, desde la app (desde Telegram, con el Gateway).
@@ -128,7 +154,8 @@ Viene de quitar la mensajería entre paneles de Boards ([plan-boards.md](plan-bo
 Cada fuente es un conector con su propia autorización, visible y pausable. **Dónde vive cada una** (D-9):
 - **En la PC (este plan):** el **reloj** (las tareas programadas con cron del 0.4.0 #50, `schedule.py`), los **cambios en archivos** y el **CI** de GitHub.
 - **Con el Gateway** ([plan-gateway.md](plan-gateway.md)): correo, Telegram y webhooks. Un webhook necesita una dirección pública, y un mismo bot de Telegram solo admite un programa que reciba sus mensajes: si ya escucha el Gateway, la PC no puede escuchar el mismo bot.
-- **Reloj + MCP, el camino en la PC:** un MCP (por ejemplo, el de Gmail) y una hora («lee el correo a las 8:00 y haz X»). No es al instante: revisa a la hora fijada o cada N minutos. Si la regla es exacta (remitente, asunto), corre **sin modelo**: el motor llama a la herramienta del MCP con datos fijos («correos de x@patito.com desde la última revisión») y suelta el resultado en su destino. Si es difusa («si parece una factura»), entra el modelo (10.1).
+- **Reloj + MCP, el camino en la PC:** un MCP (por ejemplo, el de Gmail) y una hora («lee el correo a las 8:00 y haz X»). No es al instante: revisa a la hora fijada o cada N minutos. Si la regla es exacta (remitente, asunto), corre **sin modelo**: el motor llama a la herramienta del MCP con datos fijos («correos de x@patito.com desde la última revisión») y suelta el resultado en su destino. Si es difusa («si parece una factura»), entra el modelo (10.1). Los permisos por herramienta de C5 (Permitir / Preguntar / Bloquear) también valen aquí; qué pasa con «Preguntar» cuando no hay turno ni pantalla está en la sección 14.
+- **«En la PC» es con Rinari abierta o en la bandeja**, como las tareas programadas del #50. Con la app cerrada del todo no corre nada: eso es el Gateway.
 
 ## 10. Ideas de la v1 que siguen vigentes
 
@@ -156,6 +183,7 @@ La pizarra sirve para trabajo que se reparte y se revisa. Pero mucho del día a 
    - El modelo entra solo si la regla lo necesita: una condición difusa («si parece una factura») o una transformación («resúmelo»).
    - Aun así, lo que decide el modelo **no puede cambiar la regla ni el destino**.
 5. **Queda en un registro:** cada ejecución con qué llegó, qué se soltó, a dónde y cuánto costó. Hay «Pausar», «Deshacer el último» si el destino lo permite, y «Detener todas».
+6. **Dónde se ven** (D-18): en una vista «Reglas» del panel lateral, como la pizarra, con las reglas del agente o del equipo que tienes abierto, su registro y los botones de arriba. Se crean desde el chat, como una tarjeta que se ensaya y se activa.
 
 **Destinos con `@`.** Agentes, canales (Telegram, Discord, WhatsApp, correo) y la pizarra se direccionan igual: `@Telegram`, `@QA`, `@Pizarra`. Una regla puede:
 - **soltar en un canal** (avisar o reenviar);
@@ -286,14 +314,14 @@ Respondidas por el dueño (2026-10-15):
 
 ## 12. Fases (reordenadas por el dueño, 2026-10-16)
 
-**Antes de todo: permisos v4** ([plan-permisos-v4.md](plan-permisos-v4.md)), porque la autonomía de cada agente y cada equipo usa sus tres modos; **ya está hecho**, igual que las tareas programadas con comandos y cron (0.4.0 #50). Lo que la Agency necesita de los conectores (cuentas con dueño, conectores sin la app abierta, el disparador «reloj + MCP») es el bloque C8 de [plan-conectores.md](plan-conectores.md). El servidor (24/7, correo, Telegram, webhooks, la app conectada a un Engine remoto) no es una fase de este plan: va en [plan-gateway.md](plan-gateway.md) (D-9). El arte de 8 bits sigue en paralelo, fuera de las fases.
+**Antes de todo: permisos v4** ([plan-permisos-v4.md](plan-permisos-v4.md)), porque la autonomía de cada agente y cada equipo usa sus tres modos; **ya está hecho**, igual que las tareas programadas con comandos y cron (0.4.0 #50). La Agency se construye sobre los conectores C1–C7 (en revisión, PR CLI#74 y Agent#113), y **su C8 se hace dentro de las fases A1 y A2** (sección 14). El servidor (24/7, correo, Telegram, webhooks, la app conectada a un Engine remoto) no es una fase de este plan: va en [plan-gateway.md](plan-gateway.md) (D-9). El arte de 8 bits sigue en paralelo, fuera de las fases.
 
-**Se prueba completa** (dueño, 2026-10-19, D-13): las fases son el orden en que se construye, no entregas que se prueban una a una. La prueba es una sola, cuando A1–A3 y el C8 de conectores estén listos. A4 no la espera, porque no tiene fecha hasta que el arte esté decidido.
+**Se prueba completa** (dueño, 2026-10-19, D-13): las fases son el orden en que se construye, no entregas que se prueban una a una. La prueba es una sola, cuando A1–A3 (con su parte de C8) estén listas. A4 no la espera, porque no tiene fecha hasta que el arte esté decidido.
 
 | Fase | Qué | Tamaño | Depende de |
 |---|---|---|---|
-| A1 | **Agentes solos + reglas y reloj:** la tarjeta y el espacio Agency con su vista Normal; «Nuevo agente» (formulario y «Créalo con Rinari»); chat directo; memoria propia; modelo por defecto; credenciales con dueño; reglas permanentes con reloj, archivos, CI y MCP, sin modelo cuando son exactas; presupuesto por agente. Con esto ya podría funcionar el agente *Emails* con el MCP de Gmail, pero se prueba con todo lo demás (D-13). | L | Permisos v4 y tareas programadas con cron (0.4.0 #50), hechos; C8 de conectores |
-| A2 | **Equipos:** oficinas, puestos, jefe, chat de oficina con @menciones y topes, pizarra como cola, recados como subagentes del puesto, memoria y credenciales del equipo, presupuesto del equipo y global, plantillas | L | A1 |
+| A1 | **Agentes solos + reglas y reloj:** la tarjeta y el espacio Agency con su vista Normal; el tutorial de la primera vez (2.1); «Nuevo agente» (formulario y «Créalo con Rinari»); chat directo; memoria propia; modelo por defecto; credenciales con dueño; reglas permanentes con reloj, archivos, CI y MCP, sin modelo cuando son exactas; presupuesto por agente. **C8 del agente:** conectores permitidos por agente, cuentas con dueño agente, la acción de `schedule/` que llama a una herramienta MCP sin modelo y el aviso de «reconectar» sin pantalla. Con esto ya podría funcionar el agente *Emails* con el MCP de Gmail, pero se prueba con todo lo demás (D-13). | L | Permisos v4 y #50, hechos; conectores C1–C7 fusionados en `0.4.0` |
+| A2 | **Equipos:** oficinas, puestos, jefe, chat de oficina con @menciones y topes, pizarra como cola, recados como subagentes del puesto, memoria y credenciales del equipo, presupuesto del equipo y global, plantillas. **C8 del equipo:** conectores y cuentas con dueño equipo, que un puesto solo ve los de su equipo. | L | A1 |
 | A3 | **Producciones** (10.2): la reunión con acta, el flujo con entregas con contrato, el ensayo antes de activar, el calendario y el reparto según la capacidad (por ejemplo, la cola de GPU del Visual Lab). Es la pieza menos definida: se diseña con el dueño antes de construirla. | L–XL | A2 |
 | A4 | **La vista Agencia:** el edificio y las oficinas de 8 bits con eventos reales, y el HUD para editar. **Sin fecha hasta que el arte esté decidido** (6.1). | L | A2; el arte |
 
@@ -315,13 +343,21 @@ El dueño revisó el plan con Claude, una decisión a la vez, contra el código 
 | D-10 | La vista Agencia de 8 bits todavía no: va al final y sin fecha. El tamaño del sprite está en revisión (128×128 como el primer mockup, frente a la demo de 192×256). | 6, 6.1, 12 |
 | D-11 | Credenciales: el almacén que ya existe, con un dueño por credencial (equipo o agente), entregadas a las herramientas y nunca al modelo; aviso con «cámbiala» si se pega una en el chat. | 8, 10.2 |
 | D-12 | Orden de fases: permisos v4 antes; A1 agentes solos + reglas y reloj → A2 equipos → A3 producciones → A4 vista de 8 bits. | 12 |
-| D-13 | **(2026-10-19)** La Agency se prueba completa, no por fases, como dice [plan-conectores.md](plan-conectores.md) (2026-10-18). Las fases son el orden de construcción; la prueba es una sola, con A1–A3 y el C8 de conectores listos. | Estado, 12 |
+| D-13 | **(2026-10-19)** La Agency se prueba completa, no por fases, como dice [plan-conectores.md](plan-conectores.md) (2026-10-18). Las fases son el orden de construcción; la prueba es una sola, con A1–A3 listas. | Estado, 12 |
+| D-14 | **(2026-10-19)** La pizarra se abre como una vista del panel lateral que ya existe (`SessionDock`), no como una columna fija del chat de la oficina. | 4 |
+| D-15 | **(2026-10-20)** Barra lateral de la Agency: «Agentes» (todos, con su chat directo) y «Equipos» (oficina y puestos de cada uno). | 2 |
+| D-16 | **(2026-10-20)** «Nuevo agente» se abre en la vista principal, no en un diálogo. | 5 |
+| D-17 | **(2026-10-20)** Sin trabajo, la tarjeta dice cuántos agentes hay («5 agentes · en calma»); sin agentes, «Crea tu primer agente». | 2 |
+| D-18 | **(2026-10-20)** Las reglas permanentes se ven y se pausan en una vista «Reglas» del panel lateral; se crean desde el chat como una tarjeta. | 10.1 |
+| D-19 | **(2026-10-20)** La Agency se construye sobre los conectores C1–C7, y C8 se hace dentro de A1 (lo del agente) y A2 (lo del equipo), sobre las entidades reales. | Intro, 12, 14 |
+| D-20 | **(2026-10-20)** La primera vez que se abre la Agency, un tutorial de 5 pasos con Rinari de pie y una imagen temporal de la oficina sacada del prototipo (rehecha con Codex: `agency-office.png`), una vez por perfil. Va en A1. | 2.1, 12 |
 
 **Lo que ya existe y la Agency reutiliza** (rutas del repo de la CLI):
 - Subagentes, para los recados: `agents/orchestrator.py` (lanzar, esperar, `agent.message`, unir resultados antes de cerrar el turno) y sus topes en `agents/definition.py:20-22`.
 - La ficha del agente: `AgentDefinition` (`agents/definition.py:41-50`: nombre, objetivo, herramientas permitidas, perfil y presupuesto), el modelo por agente (`agents/config.py`) y las Souls personalizadas (`soul/store.py`).
 - Reglas y reloj: las tareas programadas con cron y las tareas «Comando» sin modelo (`engine_protocol/schedule.py`, 0.4.0 #50).
 - Credenciales: `application/credentials.py` (referencias, nunca valores), que los MCP ya usan.
+- Conectores: lo que dejan C1–C7, en la sección 14.
 - Las reglas de seguridad del buzón de Boards: `engine_protocol/peers.py`, ya retirado; en la historia de git (`git show 2d52817^:src/rinari/engine_protocol/peers.py`).
 - Las sesiones hijas (`engine_protocol/children.py`) ya no son la base de los recados (D-4); sirven si el chat directo de un agente abre trabajo aparte, como cualquier conversación.
 
@@ -330,3 +366,23 @@ El dueño revisó el plan con Claude, una decisión a la vez, contra el código 
 - El tamaño del sprite y las 14 preguntas del README de `rinari-agency-8bit` (antes de A4).
 - El diseño de las producciones (A3): el formato de una entrega con contrato, cómo se ensaya y cómo se reparte la capacidad.
 - El presupuesto entre sesiones (por agente, por equipo y global) necesita una cuenta de gasto que hoy no existe: hoy el presupuesto es por turno.
+
+## 14. Sobre los conectores (2026-10-20)
+
+Revisado contra las ramas de los conectores: CLI `feat/conectores-c1-c2` (f625e9d, PR [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74)) y Agent `docs/conectores-c0-c2` (da83d13, PR [Xainner/Rinari-Agent#113](https://github.com/Xainner/Rinari-Agent/pull/113)). Están **en revisión, no fusionados**, y nada se probó con servicios reales.
+
+**Lo que ya dejan y la Agency usa:**
+- **Conexión en el Engine (C2):** los servidores conectan en el proceso del Engine, en paralelo y en segundo plano; los globales al arrancar el Engine. Cada uno tiene estado (`idle`, `connecting`, `connected`, `reauth_required`, `error`, `disabled`), con el evento `mcp.status.changed` y `mcp.reconnect`. Un turno nunca espera a un servidor. Es lo que necesita un agente que trabaja solo: sus conectores ya están listos cuando le toca.
+- **OAuth (C1):** `mcp/oauth.py`, tokens en el almacén bajo `mcp/<id>/oauth`, renovación al usarlo y ante un 401. Si falla, el servidor pasa a `reauth_required`, que no se reintenta con temporizador.
+- **Permisos por herramienta (C5):** Permitir / Preguntar / Bloquear por herramienta en el `config_json` del servidor, encima del modo. Bloquear vale en todos los modos, y Acceso completo no pregunta nada más (igual que D-5). La guardia de contenido externo recuerda de dónde vino lo leído (`origins` en `tools/definition.py`, que llega a la política como `external_origins`, `policy/engine.py:135`): leer un conector y volver a llamarlo no pregunta; pasar datos a otro conector sí.
+- **Lo que sabe el modelo (C6):** el índice de conectores de la nota del turno sale del estado real, por petición (`connectors_for`), con una frase de para qué sirve cada uno y si hay que reconectarlo.
+- **Servidores de un proyecto (C4):** la migración `0061` añade `mcp_servers.project_root`, y un servidor de proyecto solo se ve en su carpeta. **Es el mismo patrón que necesita un dueño agente o equipo.**
+- **La pantalla «Conectores» (C3):** `src/features/connectors/` (tarjetas, detalle con permisos por herramienta, catálogo, inicio de sesión). La ficha de un agente o de un equipo puede reutilizar sus piezas para elegir conectores; pasa por una tanda de pulido de UI.
+
+**Lo que falta, y se hace como C8 dentro de A1 y A2:**
+1. **Dos cuentas del mismo servicio.** Hoy una cuenta es un servidor: el token va en `mcp/<id>/oauth` y la conexión se guarda por nombre (`McpService._clients`). Propuesta: **cada cuenta con dueño es su propia fila de servidor**, con una columna de dueño (`agent:<id>` o `team:<id>`) como `project_root`. Así el token, la conexión y el proceso local (con sus secretos) ya quedan aparte sin tocar C1 ni C2.
+2. **Qué ve cada agente.** `connectors_for` y `capability.search` filtran hoy por proyecto; tienen que filtrar también por los conectores del agente o del puesto. Para el filtro de herramientas ya existe `AgentDefinition.tool_allowlist`, pero las herramientas MCP se llaman por la puerta `tool.call`: **hay que comprobar** que el filtro mira el nombre real (`mcp.<servidor>.<herramienta>`), no `tool.call`, también en los subagentes de los recados. **Hay que comprobar** que no rompe la caché de F42: la lista del modelo no cambia (las herramientas MCP van por la puerta `tool.call`), así que filtrar el índice y la búsqueda no debería tocar el prefijo; `test_cache_prefix.py` lo tiene que cubrir.
+3. **Reglas sin modelo y «Preguntar».** Una regla de reloj + MCP corre sin turno y sin pantalla. Propuesta: **activar la regla es el permiso** para esa herramienta y ese destino; una herramienta en Bloquear no se puede usar en una regla (se avisa al crearla), y una en Preguntar la pregunta al activar la regla, no en cada ejecución.
+4. **Destinos nuevos (D-6) y C5.** Gmail → Telegram es pasar datos de un conector a otro, y C5 lo trata como destino nuevo. Para una regla aprobada por el dueño, el destino ya está autorizado: la ejecución no pregunta. En un turno de un agente con el interruptor de D-6 encendido, sí.
+5. **«Reconectar» sin pantalla.** Con la app en la bandeja, un `reauth_required` tiene que llegar como notificación del sistema y quedar en la ficha del agente y en la vista «Reglas».
+6. **La cuenta conectada** no la informa el Engine (C3 muestra el servidor de autorización). En la ficha de un agente hace falta saber qué cuenta usa: depende del servicio.

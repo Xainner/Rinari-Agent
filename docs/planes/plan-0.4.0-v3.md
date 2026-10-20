@@ -18,7 +18,7 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | P9 | Hecho por la sesión de pulido: Agent 06fc235. |
 | F45 | Hecho (commit con F43). |
 | F43 | Hecho (commit con F45). |
-| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha (2026-10-19, 5 destinos, ver abajo). Falta la fase 3, la batería, con su aprobación previa. |
+| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha. Fase 2b hecha, con un A/B de la nota del turno: gana B, ver abajo (CLI 301392a, b161ffa). Pendiente: decidir si B pasa a ser el comportamiento normal, y la fase 3. |
 | F46 | Fuera: nota externa. |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
@@ -89,6 +89,31 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
   - En luna, la caché no crece de 11.264 aunque la petición sí crezca. No se sabe si es la granularidad del backend de Codex o otra cosa.
   - En Qwen local se queda en 14.774: relee unos 400–900 tokens por llamada. Probablemente el servidor no reutiliza el turno del asistente tal como lo vuelve a dibujar la plantilla.
 - **Un primer intento falló por el script de prueba, no por el Engine.** `sessions.start` reutilizó la misma conversación para los 5 destinos, así que las 12 llamadas fueron a la suscripción de ChatGPT y los otros 4 no recibieron ninguna. Ese intento movió además el `cwd` en el sistema, que es lo que avisó la guarda. Por eso el aviso ahora nombra el segmento que cambió (CLI 5a045ba).
+
+**Investigación sin llamadas (CLI 301392a).**
+- **Rinari reenvía bien la conversación.** Se probó una conversación con la forma del escritorio: runtime nuevo por turno, guardar y recargar, y continuaciones de Responses y de Chat con razonamiento. Cada petición repite tal cual los mensajes anteriores, razonamiento incluido. La guarda ahora lleva también un hash por mensaje y avisa en el primero que se reenvíe distinto.
+- **La plantilla de Qwen no es la causa.** La plantilla pública de Qwen3-Next, renderizada con jinja2, da peticiones que empiezan igual que la anterior hasta donde estaba su nota.
+- **La diferencia con codex-rs es la nota.** Los campos del payload son los mismos que los nuestros. Pero Codex guarda sus recordatorios en el historial (`record_conversation_items`), así que cada petición es una extensión pura de la anterior. Rinari ponía la nota del turno al final y la quitaba en la siguiente petición.
+
+**Fase 2b: A/B de la nota del turno (2026-10-19, aprobada por el dueño).**
+- **A:** la nota va al final de cada petición, como hasta ahora.
+- **B:** la nota entra en el historial cuando cambia y se queda allí (`RINARI_EXPERIMENT_TURN_STATE=history`, CLI b161ffa).
+
+Cada brazo fue una conversación nueva: un turno leyendo 6 archivos de uno en uno y otro con una pregunta. En total, 81 llamadas, porque DeepSeek A usó 9.
+
+La tabla da cache(k) − entrada(k−1) de las llamadas 2 a 8. Un valor cerca de 0 significa que reutiliza toda la petición anterior.
+
+| Modelo | A (nota al final) | B (nota en el historial) |
+|---|---|---|
+| `gpt-6-luna` (suscripción) | −199 a −801, por escalones (11.136 → 11.904) | −86 a −202, crece en cada llamada |
+| `qwen3.8-flash-next` (local) | −160 a −1.464, plano en 14.773 | +42 a +139, crece en cada llamada |
+| `deepseek-v4.1-flash` | −110 a −210 | −17 a −124 |
+| `glm-5.3-flash` | −356 a −722 (y −6.216 en la 2ª) | −1 a −56 |
+| `claude-sonnet-5-5` | −135 a −137 | −2 |
+
+- **B mejora los 5 modelos.** En luna y en Qwen arregla la meseta. En los demás reutiliza también los ~130 tokens de la nota.
+- **En Qwen se confirma la causa.** Es un modelo híbrido con capas recurrentes: llama.cpp no puede recortar el final del caché y vuelve a un checkpoint. Con B nunca hay nada que recortar.
+- **Sin efectos secundarios.** Las 6 lecturas salieron bien en los 10 brazos, y no hubo ningún aviso de `rinari.cache`.
 
 ## Set 2: F41, F43, F44 y F27 bis
 

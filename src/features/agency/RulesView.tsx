@@ -12,14 +12,17 @@ interface RulesViewProps {
 }
 
 /** Las partes de una regla, como en la sección 10.1 del plan: cuándo, qué, a dónde, límites. */
-function RuleParts({ rule }: { rule: Pick<ScheduledTaskInput, 'schedule' | 'tool' | 'prompt'> }) {
+function RuleParts({ rule }: { rule: Pick<ScheduledTaskInput, 'schedule' | 'tool' | 'prompt' | 'watch'> }) {
   const { t, lang } = useI18n()
   const tool: ScheduledToolSpec | null | undefined = rule.tool
   const locale = lang === 'es' ? 'es' : 'en'
   return (
     <dl className="agency-rule-parts">
       <dt>{t('agency.rules.when')}</dt>
-      <dd>{describeSchedule(rule.schedule, t, locale)}</dd>
+      <dd>
+        {describeSchedule(rule.schedule, t, locale)}
+        {rule.watch && <span className="text-[var(--text-muted)]">{t('agency.rules.watch', { path: rule.watch.path })}</span>}
+      </dd>
       {tool ? (
         <>
           <dt>{t('agency.rules.what')}</dt>
@@ -35,6 +38,12 @@ function RuleParts({ rule }: { rule: Pick<ScheduledTaskInput, 'schedule' | 'tool
               ? <code>{tool.deliver.server} · {tool.deliver.tool}</code>
               : t(`agency.rules.onResult.${tool.on_result}` as I18nKey)}
           </dd>
+          {tool.only_if_contains ? (
+            <>
+              <dt>{t('agency.rules.if')}</dt>
+              <dd>{t('agency.rules.onlyIf', { text: tool.only_if_contains })}</dd>
+            </>
+          ) : null}
           {tool.max_per_day ? (
             <>
               <dt>{t('agency.rules.limits')}</dt>

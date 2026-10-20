@@ -469,6 +469,8 @@ export interface ScheduledToolSpec extends ScheduledToolCall {
   on_result: 'nothing' | 'notify' | 'agent' | 'deliver'
   deliver?: ScheduledToolCall
   max_per_day?: number | null
+  /** Condición exacta sobre el resultado (CI: «failure»), sin modelo. */
+  only_if_contains?: string | null
 }
 
 export interface ScheduledTaskInput {
@@ -479,6 +481,8 @@ export interface ScheduledTaskInput {
   command?: ScheduledCommand | null
   /** Rinari Agency: la regla de un agente. */
   tool?: ScheduledToolSpec | null
+  /** Rinari Agency: corre solo si esta carpeta cambió desde la última revisión. */
+  watch?: { path: string } | null
   agent_id?: string | null
   project_id?: string | null
   mode?: 'plan' | 'build' | 'review'
@@ -490,10 +494,11 @@ export interface ScheduledTaskInput {
   enabled?: boolean
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id'>> {
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch'>> {
   id: string
   command?: ScheduledCommand | null
   tool?: ScheduledToolSpec | null
+  watch?: { path: string } | null
   agent_id?: string | null
   permission_profile?: ScheduledTaskInput['permission_profile']
   project_id: string | null

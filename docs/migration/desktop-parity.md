@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **305**
-- Respaldados por Engine: **299**
+- Comandos: **306**
+- Respaldados por Engine: **300**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -200,6 +200,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `schedule_get` | engine | `schedule.get` | **ninguno** |
 | `schedule_grant` | engine | `schedule.grant` | `src/services/engine.ts` |
 | `schedule_list` | engine | `schedule.list` | **ninguno** |
+| `schedule_rehearse` | engine | `schedule.rehearse` | **ninguno** |
 | `schedule_run_now` | engine | `schedule.run_now` | `src/services/engine.ts` |
 | `schedule_runs` | engine | `schedule.runs` | **ninguno** |
 | `schedule_update` | engine | `schedule.update` | `src/services/engine.ts` |

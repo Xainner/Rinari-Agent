@@ -5,6 +5,7 @@ import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent, type ScheduledTask, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
 import { describeSchedule, formatWhen, SCHEDULES_CHANGED_EVENT } from '../schedules/scheduleModel'
 import { useAgencyStore } from '../../stores/agency'
+import { useOptionalEngineData } from '../engine/EngineContext'
 
 interface RulesViewProps {
   /** El chat directo abierto; su agente sale del store de la Agency. */
@@ -61,6 +62,67 @@ function RuleParts({ rule }: { rule: Pick<ScheduledTaskInput, 'schedule' | 'tool
   )
 }
 
+interface Rehearsal {
+  outcome: 'nothing_new' | 'condition_not_met' | 'would_run' | 'blocked' | 'not_rehearsable' | 'failed'
+  reason?: string
+  result?: string
+  delivery?: { server: string; tool: string; arguments: Record<string, unknown> }
+}
+
+/** «Probar»: lo que la regla haría ahora, sin enviar nada (Agency 10.1.3). */
+function RehearseButton({ proposal }: { proposal: ScheduledTaskInput }) {
+  const { t } = useI18n()
+  const [job, setJob] = useState<string | null>(null)
+  const [result, setResult] = useState<Rehearsal | null>(null)
+
+  useEffect(() => {
+    if (!job) return
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      const payload = event.payload as Rehearsal & { job_id?: string }
+      if (event.event !== 'schedule.rehearsed' || payload.job_id !== job) return
+      setResult(payload)
+      setJob(null)
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [job])
+
+  const start = async () => {
+    setResult(null)
+    try {
+      const started = await engineApi.scheduleRehearse(proposal)
+      setJob(started.job_id)
+    } catch (error) {
+      toast.error(commandMessage(error))
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="btn btn-ghost btn-sm" disabled={job !== null} onClick={() => void start()} data-testid="agency-rule-rehearse">
+        {job ? t('agency.rules.rehearsing') : t('agency.rules.rehearse')}
+      </button>
+      {result && (
+        <div className="agency-rehearsal" role="status" data-testid="agency-rule-rehearsal" data-outcome={result.outcome}>
+          <p className="font-semibold">{t(`agency.rules.rehearsal.${result.outcome}` as I18nKey)}</p>
+          {result.reason && <p className="field-hint">{result.reason}</p>}
+          {result.delivery && (
+            <code className="agency-rule-args">{result.delivery.server} · {result.delivery.tool} {JSON.stringify(result.delivery.arguments)}</code>
+          )}
+          {!result.delivery && result.result ? <code className="agency-rule-args">{result.result}</code> : null}
+        </div>
+      )}
+    </>
+  )
+}
+
 /**
  * La vista «Reglas» del panel lateral (D-18): las reglas permanentes del
  * agente cuyo chat está abierto, las que propuso y esperan al dueño, y sus
@@ -74,6 +136,7 @@ export default function RulesView({ sessionId }: RulesViewProps) {
   const proposals = useAgencyStore((state) => state.proposals).filter((item) => item.agent_id === agentId)
   const dropProposal = useAgencyStore((state) => state.dropProposal)
   const [rules, setRules] = useState<ScheduledTask[]>([])
+  const canRehearse = useOptionalEngineData()?.status?.capabilities?.agency_rule_rehearsal_v1 === true
 
   const reload = useCallback(async () => {
     if (!agentId) return
@@ -127,6 +190,8 @@ export default function RulesView({ sessionId }: RulesViewProps) {
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => dropProposal(proposal)}>
               {t('agency.rules.discard')}
             </button>
+            <span className="flex-1" />
+            {canRehearse && proposal.kind === 'tool' && <RehearseButton proposal={proposal} />}
             <button
               type="button"
               className="btn btn-primary btn-sm"

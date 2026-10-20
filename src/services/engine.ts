@@ -1714,6 +1714,9 @@ export const engineApi = {
     platform().command<{ task: ScheduledTask }>('schedule_update', { task_id: taskId, patch: patch as unknown as Record<string, unknown> }),
   scheduleDelete: (taskId: string) =>
     platform().command<{ deleted: boolean }>('schedule_delete', { task_id: taskId }),
+  /** «Probar» una regla propuesta: responde con un job; el resultado llega como `schedule.rehearsed`. */
+  scheduleRehearse: (task: ScheduledTaskInput) =>
+    platform().command<{ status: 'started'; job_id: string }>('schedule_rehearse', { task: task as unknown as Record<string, unknown> }),
   scheduleRunNow: (taskId: string) =>
     platform().command<{ run: ScheduledRun }>('schedule_run_now', { task_id: taskId }),
   /** «Permitir para esta tarea»: por tarea o por la sesión de la ejecución. */

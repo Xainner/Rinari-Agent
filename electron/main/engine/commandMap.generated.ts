@@ -197,6 +197,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "schedule_get": {"method":"schedule.get","params":[{"key":"task_id","from":"task_id","optional":false}]},
   "schedule_grant": {"method":"schedule.grant","params":[{"key":"capability","from":"capability","optional":false},{"key":"target","from":"target","optional":true},{"key":"task_id","from":"task_id","optional":true},{"key":"session_id","from":"session_id","optional":true}]},
   "schedule_list": {"method":"schedule.list","params":[]},
+  "schedule_rehearse": {"method":"schedule.rehearse","params":[{"key":"task","from":"task","optional":false}]},
   "schedule_run_now": {"method":"schedule.run_now","params":[{"key":"task_id","from":"task_id","optional":false}]},
   "schedule_runs": {"method":"schedule.runs","params":[{"key":"task_id","from":"task_id","optional":false},{"key":"limit","from":"limit","optional":true}]},
   "schedule_update": {"method":"schedule.update","params":[{"key":"task_id","from":"task_id","optional":false},{"key":"patch","from":"patch","optional":false}]},

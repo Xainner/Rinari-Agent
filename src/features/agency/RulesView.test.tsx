@@ -10,6 +10,8 @@ import type { ScheduledTask, ScheduledTaskInput } from '../../services/engine'
 const tasks: ScheduledTask[] = []
 const scheduleCreate = vi.fn(async (task: unknown) => ({ task }))
 const scheduleUpdate = vi.fn(async (id: string, patch: unknown) => ({ task: { id, ...(patch as object) } }))
+const scheduleRehearse = vi.fn(async (_task: unknown) => ({ status: 'started', job_id: 'reh_1' }))
+let engineListener: ((event: { event: string; payload: unknown }) => void) | null = null
 vi.mock('../../services/engine', () => ({
   engineApi: {
     scheduleList: vi.fn(async () => ({ tasks, now: 0 })),
@@ -17,11 +19,18 @@ vi.mock('../../services/engine', () => ({
     scheduleUpdate: (id: string, patch: unknown) => scheduleUpdate(id, patch),
     scheduleDelete: vi.fn(),
     scheduleRunNow: vi.fn(),
+    scheduleRehearse: (task: unknown) => scheduleRehearse(task),
   },
-  onEngineEvent: vi.fn(async () => () => {}),
+  onEngineEvent: vi.fn(async (listener: (event: { event: string; payload: unknown }) => void) => {
+    engineListener = listener
+    return () => {}
+  }),
   commandMessage: String,
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('../engine/EngineContext', () => ({
+  useOptionalEngineData: () => ({ status: { capabilities: { agency_rule_rehearsal_v1: true } } }),
+}))
 
 import RulesView from './RulesView'
 import { useAgencyStore } from '../../stores/agency'
@@ -87,4 +96,25 @@ it('an active rule of the agent can be paused', async () => {
   await waitFor(() => expect(screen.getAllByTestId('agency-rule')).toHaveLength(1))
   await userEvent.click(screen.getByRole('button', { name: /Pausar/ }))
   await waitFor(() => expect(scheduleUpdate).toHaveBeenCalledWith('sch_1', { enabled: false }))
+})
+
+it('«Probar» shows what the rule would send now, and creates nothing', async () => {
+  const proposal = rule()
+  act(() => useAgencyStore.getState().addProposal(proposal))
+  render(<I18nProvider lang="es"><RulesView sessionId="ses_1" /></I18nProvider>)
+  await userEvent.click(screen.getByTestId('agency-rule-rehearse'))
+  expect(scheduleRehearse).toHaveBeenCalledWith(proposal)
+  act(() => engineListener!({
+    event: 'schedule.rehearsed',
+    payload: {
+      job_id: 'reh_1',
+      outcome: 'would_run',
+      result: 'Factura 42',
+      delivery: { server: 'telegram', tool: 'send_message', arguments: { text: 'Factura 42' } },
+    },
+  }))
+  const box = await screen.findByTestId('agency-rule-rehearsal')
+  expect(box.getAttribute('data-outcome')).toBe('would_run')
+  expect(box.textContent).toContain('telegram · send_message')
+  expect(scheduleCreate).not.toHaveBeenCalled()
 })

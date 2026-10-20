@@ -1567,6 +1567,13 @@
       "callers": []
     },
     {
+      "command": "schedule_rehearse",
+      "kind": "engine",
+      "method": "schedule.rehearse",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "schedule_run_now",
       "kind": "engine",
       "method": "schedule.run_now",
@@ -2557,10 +2564,10 @@
     }
   ],
   "summary": {
-    "commands": 305,
-    "engine_backed": 299,
+    "commands": 306,
+    "engine_backed": 300,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 99
+    "without_callers": 100
   }
 }

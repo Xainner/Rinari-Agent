@@ -7510,6 +7510,29 @@
       "host_effects": []
     },
     {
+      "command": "schedule_rehearse",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.rehearse",
+      "engine_params": [
+        {
+          "key": "task",
+          "from": "task",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "agency_agent_list",
       "module": "agency",
       "args": [

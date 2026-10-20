@@ -188,6 +188,7 @@ export type DesktopCommand =
   | "schedule_get"
   | "schedule_grant"
   | "schedule_list"
+  | "schedule_rehearse"
   | "schedule_run_now"
   | "schedule_runs"
   | "schedule_update"
@@ -495,6 +496,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "schedule_get",
   "schedule_grant",
   "schedule_list",
+  "schedule_rehearse",
   "schedule_run_now",
   "schedule_runs",
   "schedule_update",
@@ -817,6 +819,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "schedule_get",
   "schedule_grant",
   "schedule_list",
+  "schedule_rehearse",
   "schedule_run_now",
   "schedule_runs",
   "schedule_update",

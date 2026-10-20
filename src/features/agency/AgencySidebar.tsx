@@ -1,4 +1,4 @@
-import { CircleHelp, MessageSquare, Building2, UserPlus } from 'lucide-react'
+import { CircleHelp, MessageSquare, Building2, OctagonX, Settings2, UserPlus } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
@@ -16,6 +16,11 @@ interface AgencySidebarProps {
   onNewAgent: () => void
   onTutorial: () => void
   onLeave: () => void
+  /** Ajustes de la Agency (D-24). */
+  onSettings?: () => void
+  /** «Detener a todos» (sección 8); ausente sin `agency_stop_all_v1`. */
+  onStopAll?: () => void
+  settingsOpen?: boolean
 }
 
 /**
@@ -33,6 +38,9 @@ export default function AgencySidebar({
   onNewAgent,
   onTutorial,
   onLeave,
+  onSettings,
+  onStopAll,
+  settingsOpen = false,
 }: AgencySidebarProps) {
   const { t } = useI18n()
   const working = new Set(status?.agent_ids.working ?? [])
@@ -109,6 +117,18 @@ export default function AgencySidebar({
         <p className="px-2 text-[12px] leading-relaxed text-[var(--text-subtle)]">{t('agency.sidebar.teamsSoon')}</p>
       </div>
 
+      {onStopAll && (agents.length > 0) && (
+        <button type="button" className="sidebar-link agency-stop-all" onClick={onStopAll} data-testid="agency-stop-all">
+          <OctagonX size={15} aria-hidden="true" />
+          <span className="truncate">{t('agency.sidebar.stopAll')}</span>
+        </button>
+      )}
+      {onSettings && (
+        <button type="button" className={cn('sidebar-link', settingsOpen && 'is-active')} onClick={onSettings} aria-current={settingsOpen ? 'page' : undefined} data-testid="agency-settings-link">
+          <Settings2 size={15} aria-hidden="true" />
+          <span className="truncate">{t('agency.sidebar.settings')}</span>
+        </button>
+      )}
       <button type="button" className="sidebar-link mb-2" onClick={onTutorial}>
         <CircleHelp size={15} aria-hidden="true" />
         <span className="truncate">{t('agency.sidebar.tutorial')}</span>

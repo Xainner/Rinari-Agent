@@ -17,6 +17,7 @@ import type {
 import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
 import type { AttachmentRef, Language } from '../types'
 import type { AgencyAgent, AgencyAgentInput, AgencyStatus } from '../features/agency/types'
+import type { MemoryRecord } from '../features/memory/types'
 
 import { platform, type Unsubscribe } from '../platform'
 import { hasTranslation, translate, type I18nKey } from '../i18n'
@@ -918,6 +919,8 @@ export interface McpCatalogEntry {
 export interface McpCatalogAddInput {
   id: string;
   name?: string;
+  /** Rinari Agency (C8): `agent:ID` para que la cuenta sea solo de ese agente. */
+  owner?: string;
   client_id?: string;
   client_secret?: string;
   redirect_port?: number;
@@ -1702,6 +1705,14 @@ export const engineApi = {
   agencyArchiveAgent: (agentId: string) =>
     platform().command<{ agent: AgencyAgent }>('agency_agent_archive', { agent_id: agentId }),
   agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
+  /** «Detener a todos»: corta los turnos de los agentes y pausa sus reglas activas. */
+  agencyStopAll: () =>
+    platform().command<{ cancelled_turns: number; paused_rules: number }>('agency_stop_all', { rinari_profile_id: 'active' }),
+  /** La memoria propia de un agente (D-24); se edita y olvida con memoryApi. */
+  agencyAgentMemory: (agentId: string) =>
+    platform().command<{ records: MemoryRecord[]; count: number }>('agency_agent_memory_list', { agent_id: agentId }),
+  agencyAgentRemember: (agentId: string, topic: string, text: string) =>
+    platform().command<{ record: MemoryRecord }>('agency_agent_memory_add', { agent_id: agentId, topic, text, kind: null }),
   /** «Créalo con Rinari»: responde con un job; el borrador llega como `agency.draft.ready`. */
   agencyDraft: (description: string) =>
     platform().command<{ status: 'started'; job_id: string }>('agency_agent_draft', { description }),

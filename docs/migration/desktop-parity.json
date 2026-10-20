@@ -68,6 +68,22 @@
       ]
     },
     {
+      "command": "agency_agent_memory_add",
+      "kind": "engine",
+      "method": "agency.agent.memory.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_memory_list",
+      "kind": "engine",
+      "method": "agency.agent.memory.list",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agency_agent_update",
       "kind": "engine",
       "method": "agency.agent.update",
@@ -84,6 +100,13 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "agency_stop_all",
+      "kind": "engine",
+      "method": "agency.stop_all",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "agent_config_get",
@@ -2564,10 +2587,10 @@
     }
   ],
   "summary": {
-    "commands": 306,
-    "engine_backed": 300,
+    "commands": 309,
+    "engine_backed": 303,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 100
+    "without_callers": 102
   }
 }

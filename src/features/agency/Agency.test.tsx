@@ -154,6 +154,7 @@ it('the card form offers only everyone\'s connectors and sends what the owner wr
     instructions: '',
     model: null,
     permission_profile: 'full-access',
+    ask_new_destinations: null,
     connectors: ['gmail'],
     budget: { daily_tokens: 50000 },
   })

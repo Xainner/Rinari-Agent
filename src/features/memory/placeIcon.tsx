@@ -1,4 +1,4 @@
-import { Brain, FolderOpen, MessageSquare, UserRound, type LucideIcon } from 'lucide-react'
+import { Bot, Brain, FolderOpen, MessageSquare, UserRound, type LucideIcon } from 'lucide-react'
 import type { MemoryPlace } from './types'
 
 /** Un icono por lugar de la memoria (#75): se reconoce dónde vive un recuerdo sin leerlo. */
@@ -7,6 +7,8 @@ export const PLACE_ICONS: Record<MemoryPlace, LucideIcon> = {
   profile: UserRound,
   project: FolderOpen,
   chat: MessageSquare,
+  // Rinari Agency: la memoria propia de un agente (D-24).
+  agent: Bot,
 }
 
 export function PlaceIcon({ place, size = 12 }: { place: MemoryPlace; size?: number }) {

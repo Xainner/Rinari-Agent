@@ -16,6 +16,8 @@ export type AgencyPage =
   | { kind: 'agent'; agentId: string }
   | { kind: 'new-agent' }
   | { kind: 'edit-agent'; agentId: string }
+  /** Ajustes de la Agency (D-24), con el agente que estaba abierto si había uno. */
+  | { kind: 'settings'; agentId: string | null }
 
 interface AgencyState {
   space: AgencySpace
@@ -25,6 +27,7 @@ interface AgencyState {
   openAgent: (agentId: string) => void
   newAgent: () => void
   editAgent: (agentId: string) => void
+  openSettings: (agentId?: string | null) => void
   goHome: () => void
   /**
    * Reglas que un agente propuso en su chat y esperan al dueño (D-18): una
@@ -47,6 +50,7 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   openAgent: (agentId) => set({ space: 'agency', page: { kind: 'agent', agentId } }),
   newAgent: () => set({ space: 'agency', page: { kind: 'new-agent' } }),
   editAgent: (agentId) => set({ space: 'agency', page: { kind: 'edit-agent', agentId } }),
+  openSettings: (agentId = null) => set({ space: 'agency', page: { kind: 'settings', agentId } }),
   goHome: () => set({ page: { kind: 'home' } }),
   proposals: [],
   addProposal: (proposal) => set((state) => ({ proposals: [...state.proposals, proposal] })),

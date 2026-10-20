@@ -40,6 +40,8 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
   const [instructions, setInstructions] = useState(agent?.instructions ?? '')
   const [model, setModel] = useState<string>(agent?.model ?? DEFAULT_MODEL)
   const [profile, setProfile] = useState<AgentPermissionProfile>(agent?.permission_profile ?? 'workspace')
+  // D-6: null sigue a Rinari (y pregunta en una regla que lee un conector).
+  const [newDestinations, setNewDestinations] = useState<boolean | null>(agent?.ask_new_destinations ?? null)
   const [connectors, setConnectors] = useState<string[]>(agent?.connectors ?? [])
   const [usd, setUsd] = useState(agent?.budget.daily_usd ? String(agent.budget.daily_usd) : '')
   const [tokens, setTokens] = useState(agent?.budget.daily_tokens ? String(agent.budget.daily_tokens) : '')
@@ -122,6 +124,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
       instructions: instructions.trim(),
       model: model === DEFAULT_MODEL ? null : model,
       permission_profile: profile,
+      ask_new_destinations: newDestinations,
       connectors,
       budget: {
         ...(numberOrUndefined(usd) !== undefined ? { daily_usd: numberOrUndefined(usd) } : {}),
@@ -262,6 +265,24 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
             ))}
           </div>
           <span className="field-hint">{t(`agency.form.autonomyHint.${profile}` as I18nKey)}</span>
+        </fieldset>
+
+        <fieldset className="grid gap-1.5">
+          <legend className="field-label mb-1.5">{t('agency.form.newDestinations')}</legend>
+          <div className="agency-choice" role="group" aria-label={t('agency.form.newDestinations')}>
+            {([['default', null], ['ask', true], ['allow', false]] as const).map(([key, value]) => (
+              <button
+                key={key}
+                type="button"
+                className={cn('agency-choice-option', newDestinations === value && 'is-active')}
+                aria-pressed={newDestinations === value}
+                onClick={() => setNewDestinations(value)}
+              >
+                {t(`agency.form.newDestinations.${key}` as I18nKey)}
+              </button>
+            ))}
+          </div>
+          <span className="field-hint">{t('agency.form.newDestinationsHint')}</span>
         </fieldset>
 
         <fieldset className="grid gap-1.5">

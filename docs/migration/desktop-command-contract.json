@@ -4261,6 +4261,11 @@
           "name": "connection_string",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "owner",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -4305,6 +4310,11 @@
         {
           "key": "connection_string",
           "from": "connection_string",
+          "optional": true
+        },
+        {
+          "key": "owner",
+          "from": "owner",
           "optional": true
         }
       ],
@@ -7718,6 +7728,105 @@
           "key": "description",
           "from": "description",
           "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_stop_all",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.stop_all",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_memory_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.memory.list",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_memory_add",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.memory.add",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        },
+        {
+          "key": "topic",
+          "from": "topic",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": false
+        },
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
         }
       ],
       "passthrough": null,

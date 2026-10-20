@@ -3682,3 +3682,9 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-draft { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); }
 .agency-rehearsal { display: grid; gap: 4px; flex-basis: 100%; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: var(--r-sm); font-size: 12.5px; color: var(--text); }
 .agency-new-agent { flex: none; }
+.agency-stop-all { color: var(--danger); }
+.agency-stop-all:hover { color: var(--danger); }
+.sidebar-link.is-active { background: var(--bg-active); color: var(--text); }
+.agency-memory-row { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-subtle); list-style: none; }
+.agency-memory-topic { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.agency-memory-add { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2.5fr) auto; gap: 8px; }

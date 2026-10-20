@@ -28,10 +28,13 @@ const CATEGORIES: readonly Category[] = ['all', 'google', 'work', 'dev', 'design
  * cliente propio o los datos de un servidor local. Lo que no está en la
  * lista entra por «Agregar servidor MCP».
  */
-export function CatalogDialog({ open, onClose, onManual, onAdded }: {
+export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
   open: boolean
   onClose: () => void
-  onManual: () => void
+  /** «Agregar servidor MCP»; sin él no se ofrece (la Agency conecta desde el catálogo). */
+  onManual?: () => void
+  /** Rinari Agency (C8): la cuenta será solo de este agente (`agent:ID`). */
+  owner?: string
   onAdded: (server: McpServer, next: 'sign_in' | 'connect', label: string) => void
 }) {
   const { t, lang } = useI18n()
@@ -63,7 +66,7 @@ export function CatalogDialog({ open, onClose, onManual, onAdded }: {
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
       <DialogContent className="max-w-3xl" data-testid="connector-catalog" data-step={chosen ? 'setup' : 'browse'}>
         {chosen ? (
-          <SetupStep entry={chosen} onBack={() => setChosen(null)} onAdded={onAdded} />
+          <SetupStep entry={chosen} onBack={() => setChosen(null)} onAdded={onAdded} owner={owner} />
         ) : (
           <>
             <DialogHeader>
@@ -101,10 +104,12 @@ export function CatalogDialog({ open, onClose, onManual, onAdded }: {
                 </li>
               ))}
             </ul>
-            <div className="catalog-manual">
-              <p className="text-[12.5px] text-[var(--text-muted)]">{t('connectors.catalog.notListed')}</p>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={onManual} data-testid="catalog-manual"><Plus size={13} /> {t('connectors.catalog.manual')}</button>
-            </div>
+            {onManual && (
+              <div className="catalog-manual">
+                <p className="text-[12.5px] text-[var(--text-muted)]">{t('connectors.catalog.notListed')}</p>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={onManual} data-testid="catalog-manual"><Plus size={13} /> {t('connectors.catalog.manual')}</button>
+              </div>
+            )}
           </>
         )}
       </DialogContent>
@@ -126,10 +131,11 @@ const FIELD_LABEL: Record<McpSetupField, I18nKey> = {
 }
 const SECRET_FIELDS: ReadonlySet<McpSetupField> = new Set(['client_secret', 'token', 'connection_string'])
 
-function SetupStep({ entry, onBack, onAdded }: {
+function SetupStep({ entry, onBack, onAdded, owner }: {
   entry: McpCatalogEntry
   onBack: () => void
   onAdded: (server: McpServer, next: 'sign_in' | 'connect', label: string) => void
+  owner?: string
 }) {
   const { t, lang } = useI18n()
   const alternatives = entry.setup.alternatives ?? []
@@ -158,6 +164,7 @@ function SetupStep({ entry, onBack, onAdded }: {
     setFailure(null)
     try {
       const input: Parameters<typeof engineApi.mcpCatalogAdd>[0] = { id: entry.id }
+      if (owner) input.owner = owner
       if (name.trim()) input.name = name.trim()
       for (const field of fields) {
         const value = values[field.name]?.trim()

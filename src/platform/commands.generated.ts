@@ -9,8 +9,11 @@ export type DesktopCommand =
   | "agency_agent_draft"
   | "agency_agent_get"
   | "agency_agent_list"
+  | "agency_agent_memory_add"
+  | "agency_agent_memory_list"
   | "agency_agent_update"
   | "agency_status"
+  | "agency_stop_all"
   | "agent_config_get"
   | "agent_config_set"
   | "agent_list"
@@ -317,8 +320,11 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_agent_draft",
   "agency_agent_get",
   "agency_agent_list",
+  "agency_agent_memory_add",
+  "agency_agent_memory_list",
   "agency_agent_update",
   "agency_status",
+  "agency_stop_all",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -645,8 +651,11 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_agent_draft",
   "agency_agent_get",
   "agency_agent_list",
+  "agency_agent_memory_add",
+  "agency_agent_memory_list",
   "agency_agent_update",
   "agency_status",
+  "agency_stop_all",
   "agent_config_get",
   "agent_config_set",
   "agent_list",

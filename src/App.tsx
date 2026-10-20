@@ -11,7 +11,7 @@ import { listenConnectorEvents } from './features/connectors/connectorStore'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
-import { commandMessage, engineApi, type TrustState } from './services/engine'
+import { commandMessage, engineApi, onEngineEvent, type TrustState } from './services/engine'
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
@@ -76,6 +76,7 @@ import AgencySidebar from './features/agency/AgencySidebar'
 import AgencyHome from './features/agency/AgencyHome'
 import AgentForm from './features/agency/AgentForm'
 import AgencyTutorial from './features/agency/AgencyTutorial'
+import AgencySettings from './features/agency/AgencySettings'
 import type { AgencyAgent } from './features/agency/types'
 import { useProfileStore } from './features/profiles/profileStore'
 import ReconnectNotifier from './features/connectors/ReconnectNotifier'
@@ -548,6 +549,38 @@ function App() {
   const activeAgentId = agencyPage.kind === 'agent' || agencyPage.kind === 'edit-agent' ? agencyPage.agentId : null
   const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
   const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent'
+  const stopAllAgents = async () => {
+    const ok = await confirm({
+      title: translate(lang, 'agency.stopAll.title'),
+      body: translate(lang, 'agency.stopAll.body'),
+      confirmLabel: translate(lang, 'agency.stopAll.confirm'),
+      cancelLabel: translate(lang, 'agency.settings.cancel'),
+    })
+    if (!ok) return
+    try {
+      const result = await engineApi.agencyStopAll()
+      toast.success(translate(lang, 'agency.stopAll.done', { turns: result.cancelled_turns, rules: result.paused_rules }))
+      void agency.reload()
+    } catch (error) {
+      toast.error(commandMessage(error))
+    }
+  }
+  // D-11: una clave pegada en el chat de un agente ya salió; se dice y se recomienda cambiarla.
+  useEffect(() => {
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      if (event.event !== 'agency.secret_pasted') return
+      toast.warning(translate(lang, 'agency.secretPasted.title'), { description: translate(lang, 'agency.secretPasted.body'), duration: 20_000 })
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [lang])
   const agentSessions = useAgencyStore((s) => s.agentSessions)
   // «Revisar» en el aviso de una regla propuesta: el chat del agente con «Reglas» abierta.
   useEffect(() => {
@@ -751,6 +784,9 @@ function App() {
             onNewAgent={() => { useAgencyStore.getState().newAgent(); goChat() }}
             onTutorial={() => setAgencyTutorialOpen(true)}
             onLeave={leaveAgency}
+            onSettings={() => { useAgencyStore.getState().openSettings(activeAgentId); goChat() }}
+            settingsOpen={agencyPage.kind === 'settings'}
+            onStopAll={session.status?.capabilities.agency_stop_all_v1 === true ? () => void stopAllAgents() : undefined}
           />
         ) : (
           <AppSidebar
@@ -879,6 +915,9 @@ function App() {
             onEditAgent={(agent) => useAgencyStore.getState().editAgent(agent.id)}
             onNewAgent={() => useAgencyStore.getState().newAgent()}
           />
+        )}
+        {agencyMain && agencyPage.kind === 'settings' && (
+          <AgencySettings agents={agency.agents} initialAgentId={agencyPage.agentId} />
         )}
         {agencyMain && (agencyPage.kind === 'new-agent' || agencyPage.kind === 'edit-agent') && (
           <AgentForm

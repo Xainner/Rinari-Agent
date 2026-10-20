@@ -80,6 +80,29 @@ scenario(async () => {
   assert.equal(await evaluate(`Boolean(document.querySelector('.dock-view-bar'))`), false, 'no conversation buttons on an Agency page')
   await screenshot('home')
 
+  // Ajustes de la Agency (D-24): la memoria del agente y sus cuentas propias.
+  await click('[data-testid="agency-settings-link"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-settings"]'))`)
+  await input('[data-testid="agency-memory-topic"]', 'estilo')
+  await input('[data-testid="agency-memory-text"]', 'Resúmenes de tres líneas')
+  await click('[data-testid="agency-memory-add"]')
+  await wait(`document.querySelectorAll('[data-testid="agency-memory-row"]').length === 1`)
+  const memory = await command('agency_agent_memory_list', { agent_id: agent.id })
+  assert.equal(memory.records[0].text, 'Resúmenes de tres líneas')
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-testid="agency-connect-account"]'))`), true)
+  await settleAnimations()
+  await screenshot('settings')
+
+  // «Detener a todos» pide confirmación y pausa sus reglas.
+  await command('schedule_create', {
+    task: { name: 'Revisión', kind: 'agent', schedule: { kind: 'daily', time: '08:00' }, prompt: 'Revisa', agent_id: agent.id },
+  })
+  await click('[data-testid="agency-stop-all"]')
+  await clickText('Detener a todos', '[role="alertdialog"] button, [role="dialog"] button')
+  await wait(`document.body.innerText.includes('reglas en pausa')`)
+  const tasks = (await command('schedule_list', {})).tasks.filter((task) => task.agent_id === agent.id)
+  assert(tasks.length === 1 && tasks[0].enabled === false, 'the agent rule is paused')
+
   report({
     passed: [
       'card above Settings says how to start',
@@ -91,6 +114,8 @@ scenario(async () => {
       'back to Rinari, card counts the agent',
       'tutorial once per profile',
       'Agency pages show the Agency in the top bar, not a conversation',
+      'Agency settings: the agent memory is written and listed, accounts can be connected',
+      'stop everyone asks and pauses the agent rules',
     ],
   })
 })

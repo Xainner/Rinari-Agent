@@ -22,6 +22,11 @@ Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño l
    - **«Detener a todos» desde Telegram**, además de desde la app.
    - **Credenciales con dueño** (D-11 de la Agency): se usa el almacén del Engine, que guarda referencias y nunca valores (`application/credentials.py` del repo de la CLI). En el servidor Linux hay que comprobar con qué respaldo se resuelven: el Administrador de credenciales de Windows no existe allí.
    - **La vista Normal de la Agency** (chats, pizarra, registro) es lo primero que se ve desde la app conectada y desde la web (punto 5). La vista de 8 bits llega cuando la Agency la tenga (fase A4, sin fecha).
+   - **Conectores** ([plan-conectores.md](plan-conectores.md); dueño, 2026-10-18): primero se depuran en el escritorio y después se traen aquí. En el servidor hay que resolver:
+     - el mismo catálogo y las mismas cuentas conectadas, sin pedir al usuario que vuelva a conectar todo;
+     - OAuth sin navegador en el servidor: la autorización se hace desde la app conectada o desde la web, y el token queda en el almacén del Engine del servidor;
+     - la renovación de tokens 24/7 y el aviso «Hay que reconectar» por Telegram, además de en la app;
+     - los MCP locales (stdio) corren en el servidor, no en la PC: qué entradas del catálogo sirven allí.
 5. **Web nueva.** La web del Gateway se rediseña con el sistema Obsidiana neón del Agent y suma lo que hoy solo está en el escritorio que tenga sentido en el servidor (la Agency, sus recados, sus registros). Alcance a definir con el dueño.
 
 ## Orden
@@ -31,7 +36,7 @@ Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño l
 | G0 | Pin al día y la lista de comprobación |
 | G1 | «Qué vive dónde»: inventario de automatizaciones, planificador, trabajos y memoria del Gateway frente al Engine |
 | G2 | Conexión remota segura al Engine |
-| G3 | La Agency 24/7 en el servidor, con sus disparadores de correo, Telegram y webhooks y «Detener a todos» desde Telegram (punto 4). Necesita al menos la fase A1 de la Agency |
+| G3 | La Agency 24/7 en el servidor, con sus disparadores de correo, Telegram y webhooks y «Detener a todos» desde Telegram (punto 4). Necesita al menos la fase A1 de la Agency y los conectores ya depurados en el escritorio |
 | G4 | Web nueva |
 
 ## Preguntas para el dueño (respondidas, 2026-10-15)

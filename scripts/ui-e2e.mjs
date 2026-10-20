@@ -142,6 +142,8 @@ async function runScenario(name) {
     RINARI_UI_OUTPUT: output,
     RINARI_UI_MODEL: model?.baseUrl ?? '',
     RINARI_UI_KEEP: keep ? '1' : '',
+    // Variables propias del escenario (p. ej. un BROWSER falso), siempre dentro de su carpeta.
+    ...scenario.env?.(data),
   }
   console.log(`\n▶ ${name} — ${scenario.title}\n  datos aislados: ${data}`)
   let code = 0

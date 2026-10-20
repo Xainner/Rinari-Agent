@@ -250,6 +250,10 @@ interface UIState {
   providerFocus: ProviderFocus | null
   openProvider: (focus: ProviderFocus) => void
   clearProviderFocus: () => void
+  /** Ajustes > Conectores con el detalle de ese servidor abierto (la tarjeta del Resumen); en memoria. */
+  connectorFocus: string | null
+  openConnector: (name: string) => void
+  clearConnectorFocus: () => void
   /** Abre el selector de modelo del compositor de esa sesión (p. ej. tras un error de créditos); en memoria. */
   modelPickerRequest: { sessionId: string; seq: number } | null
   requestModelPicker: (sessionId: string) => void
@@ -365,6 +369,10 @@ export const useUIStore = create<UIState>((set) => ({
   openProvider: (focus) =>
     set({ view: 'settings', sidebarOpen: false, settingsSection: 'providers', projectRoot: null, providerFocus: focus }),
   clearProviderFocus: () => set({ providerFocus: null }),
+  connectorFocus: null,
+  openConnector: (name) =>
+    set({ view: 'settings', sidebarOpen: false, settingsSection: 'mcp', projectRoot: null, connectorFocus: name }),
+  clearConnectorFocus: () => set({ connectorFocus: null }),
   modelPickerRequest: null,
   requestModelPicker: (sessionId) =>
     set((s) => ({ modelPickerRequest: { sessionId, seq: (s.modelPickerRequest?.seq ?? 0) + 1 } })),

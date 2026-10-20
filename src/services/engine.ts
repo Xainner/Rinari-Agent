@@ -828,8 +828,11 @@ export type McpHints = Partial<Record<McpHintKey, boolean | null>>
 
 /** Una herramienta de un servidor con su ajuste (`mcp_tool_permissions_v1`). */
 export interface McpToolPermission {
+  /** El nombre que da el servidor (`read_notes`): el `tool` de `mcp.tools.set`. */
   name: string;
+  /** El id completo en Rinari (`mcp.notas.read_notes`). */
   tool: string;
+  /** `annotations.title` del servidor, si lo da. */
   title: string | null;
   description: string;
   /** false: un ajuste guardado de una herramienta que el servidor ya no ofrece. */

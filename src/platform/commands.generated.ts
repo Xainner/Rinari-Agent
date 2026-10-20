@@ -58,13 +58,27 @@ export type DesktopCommand =
   | "images_settings_get"
   | "images_settings_set"
   | "initial_open_request"
+  | "mcp_auth_cancel"
+  | "mcp_auth_signout"
+  | "mcp_auth_start"
+  | "mcp_auth_status"
+  | "mcp_catalog_add"
+  | "mcp_catalog_list"
   | "mcp_create"
   | "mcp_get"
+  | "mcp_import_apply"
+  | "mcp_import_scan"
   | "mcp_list"
   | "mcp_probe"
+  | "mcp_project_offers_decide"
+  | "mcp_project_offers_list"
+  | "mcp_reconnect"
   | "mcp_remove"
   | "mcp_set_enabled"
   | "mcp_test"
+  | "mcp_tools_list"
+  | "mcp_tools_set"
+  | "mcp_tools_set_default"
   | "mcp_update"
   | "memory_about_get"
   | "memory_about_set"
@@ -344,13 +358,27 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "images_settings_get",
   "images_settings_set",
   "initial_open_request",
+  "mcp_auth_cancel",
+  "mcp_auth_signout",
+  "mcp_auth_start",
+  "mcp_auth_status",
+  "mcp_catalog_add",
+  "mcp_catalog_list",
   "mcp_create",
   "mcp_get",
+  "mcp_import_apply",
+  "mcp_import_scan",
   "mcp_list",
   "mcp_probe",
+  "mcp_project_offers_decide",
+  "mcp_project_offers_list",
+  "mcp_reconnect",
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "mcp_tools_list",
+  "mcp_tools_set",
+  "mcp_tools_set_default",
   "mcp_update",
   "memory_about_get",
   "memory_about_set",
@@ -645,13 +673,27 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "images_connector_test",
   "images_settings_get",
   "images_settings_set",
+  "mcp_auth_cancel",
+  "mcp_auth_signout",
+  "mcp_auth_start",
+  "mcp_auth_status",
+  "mcp_catalog_add",
+  "mcp_catalog_list",
   "mcp_create",
   "mcp_get",
+  "mcp_import_apply",
+  "mcp_import_scan",
   "mcp_list",
   "mcp_probe",
+  "mcp_project_offers_decide",
+  "mcp_project_offers_list",
+  "mcp_reconnect",
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "mcp_tools_list",
+  "mcp_tools_set",
+  "mcp_tools_set_default",
   "mcp_update",
   "memory_about_get",
   "memory_about_set",

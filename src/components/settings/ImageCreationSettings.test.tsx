@@ -98,9 +98,16 @@ it('adds a local ComfyUI with a workflow, an MCP server mapped by operation and 
   await waitFor(() => expect(set).toHaveBeenCalledTimes(1))
   expect(set.mock.calls[0][0].connectors[0]).toMatchObject({ kind: 'comfyui', endpoint: 'http://127.0.0.1:8188', workflows: { upscale: { '3': { inputs: { text: '{{prompt}}' } } } } })
 
+  // The tool is picked from the server's list (C3), never typed.
+  const toolsList = vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValue({ server: { name: 'visual-lab', scope: 'global', status: 'connected', default: null, tools: [
+    { name: 'make_image', tool: 'mcp.visual-lab.make_image', title: 'Make image', description: 'Creates an image', listed: true, annotations: {}, kind: 'write', sends_out: true, setting: null, decision: null, decision_source: 'mode', by_mode: {} },
+  ] } })
   await user.click(screen.getByRole('button', { name: /Servidor MCP/ }))
   form = screen.getByTestId('image-connector-form')
-  await user.type(within(form).getByRole('textbox', { name: 'Crear' }), 'make_image')
+  expect(within(form).queryByRole('textbox', { name: 'Crear' })).toBeNull()
+  await user.click(await within(form).findByRole('button', { name: /^Crear/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /make_image/ }))
+  expect(toolsList).toHaveBeenCalledWith('visual-lab')
   await user.click(within(form).getByRole('button', { name: 'Agregar' }))
   await waitFor(() => expect(set).toHaveBeenCalledTimes(2))
   expect(set.mock.calls[1][0].connectors.at(-1)).toMatchObject({ kind: 'mcp', server: 'visual-lab', tools: { generate: { tool: 'make_image', prompt_arg: 'prompt' } } })

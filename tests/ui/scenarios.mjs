@@ -807,11 +807,17 @@ export const scenarios = {
       mkdirSync(codex, { recursive: true })
       writeFileSync(join(codex, 'config.toml'), `[mcp_servers.notas]\ncommand = "node"\nargs = ["${server}"]\nenv = { NOTAS_TOKEN = "secreto-de-codex" }\n`)
       mkdirSync(join(data, 'claude'), { recursive: true })
+      mkdirSync(join(data, 'import-home'), { recursive: true })
       const project = join(data, 'workspace', 'tienda')
       mkdirSync(project, { recursive: true })
       writeFileSync(join(project, '.mcp.json'), JSON.stringify({ mcpServers: { inventario: { command: 'node', args: [server], env: { INVENTARIO_KEY: 'secreto-del-proyecto' } } } }, null, 2))
     },
-    // Claude Code y Codex leen su configuración de estas carpetas, no de las del equipo.
-    env: (data) => ({ CODEX_HOME: join(data, 'codex'), CLAUDE_CONFIG_DIR: join(data, 'claude') }),
+    // «Importar de otra app» solo mira las carpetas del escenario: con
+    // RINARI_IMPORT_HOME no lee nada del equipo (ni ~, ni APPDATA, ni LOCALAPPDATA).
+    env: (data) => ({
+      CODEX_HOME: join(data, 'codex'),
+      CLAUDE_CONFIG_DIR: join(data, 'claude'),
+      RINARI_IMPORT_HOME: join(data, 'import-home'),
+    }),
   },
 }

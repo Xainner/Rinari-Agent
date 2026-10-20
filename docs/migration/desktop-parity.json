@@ -45,6 +45,13 @@
       ]
     },
     {
+      "command": "agency_agent_draft",
+      "kind": "engine",
+      "method": "agency.agent.draft",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agency_agent_get",
       "kind": "engine",
       "method": "agency.agent.get",
@@ -2550,10 +2557,10 @@
     }
   ],
   "summary": {
-    "commands": 304,
-    "engine_backed": 298,
+    "commands": 305,
+    "engine_backed": 299,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 98
+    "without_callers": 99
   }
 }

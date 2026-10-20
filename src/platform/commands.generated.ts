@@ -6,6 +6,7 @@ export type DesktopCommand =
   | "advanced_settings_set"
   | "agency_agent_archive"
   | "agency_agent_create"
+  | "agency_agent_draft"
   | "agency_agent_get"
   | "agency_agent_list"
   | "agency_agent_update"
@@ -312,6 +313,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "advanced_settings_set",
   "agency_agent_archive",
   "agency_agent_create",
+  "agency_agent_draft",
   "agency_agent_get",
   "agency_agent_list",
   "agency_agent_update",
@@ -638,6 +640,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "advanced_settings_set",
   "agency_agent_archive",
   "agency_agent_create",
+  "agency_agent_draft",
   "agency_agent_get",
   "agency_agent_list",
   "agency_agent_update",

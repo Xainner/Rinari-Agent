@@ -20,6 +20,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "advanced_settings_set": {"method":"advanced.settings.set","params":[{"key":"values","from":"values","optional":false}]},
   "agency_agent_archive": {"method":"agency.agent.archive","params":[{"key":"agent_id","from":"agent_id","optional":false}]},
   "agency_agent_create": {"method":"agency.agent.create","params":[{"key":"agent","from":"agent","optional":false},{"key":"rinari_profile_id","from":"rinari_profile_id","optional":true}]},
+  "agency_agent_draft": {"method":"agency.agent.draft","params":[{"key":"description","from":"description","optional":false}]},
   "agency_agent_get": {"method":"agency.agent.get","params":[{"key":"agent_id","from":"agent_id","optional":false}]},
   "agency_agent_list": {"method":"agency.agent.list","params":[{"key":"rinari_profile_id","from":"rinari_profile_id","optional":true},{"key":"include_archived","from":"include_archived","optional":true}]},
   "agency_agent_update": {"method":"agency.agent.update","params":[{"key":"agent_id","from":"agent_id","optional":false},{"key":"patch","from":"patch","optional":false}]},

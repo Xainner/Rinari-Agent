@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive } from 'lucide-react'
+import { Archive, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { Select, type SelectOption } from '../../components/ui/select'
-import { commandMessage, engineApi, type McpServer, type ModelSummary } from '../../services/engine'
+import { commandMessage, engineApi, onEngineEvent, type McpServer, type ModelSummary } from '../../services/engine'
 import agencyIcon from '../../assets/agency/agency-icon.webp'
 import type { AgencyAgent, AgencyAgentInput, AgentPermissionProfile } from './types'
 
@@ -17,6 +17,8 @@ interface AgentFormProps {
   onSaved: (agent: AgencyAgent, created: boolean) => void
   onCancel: () => void
   onArchived?: (agent: AgencyAgent) => void
+  /** «Créalo con Rinari» (`agency_draft_v1`): sin la capacidad no se ofrece. */
+  draftEnabled?: boolean
 }
 
 function numberOrUndefined(text: string): number | undefined {
@@ -27,10 +29,10 @@ function numberOrUndefined(text: string): number | undefined {
 /**
  * La ficha de un agente (sección 5 y D-16): en la vista principal, no en un
  * diálogo. La valida el Engine; aquí solo se arma lo que el dueño escribe.
- * «Créalo con Rinari» llega con `agency.agent.draft`: mientras el Engine no
- * lo tenga, no se ofrece.
+ * «Créalo con Rinari» pide un borrador (`agency.agent.draft`) que llena el
+ * formulario; el dueño lo revisa y nada se crea hasta «Crear agente».
  */
-export default function AgentForm({ agent, onSaved, onCancel, onArchived }: AgentFormProps) {
+export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftEnabled = false }: AgentFormProps) {
   const { t } = useI18n()
   const editing = Boolean(agent)
   const [name, setName] = useState(agent?.name ?? '')
@@ -44,6 +46,49 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived }: Agen
   const [models, setModels] = useState<ModelSummary[]>([])
   const [servers, setServers] = useState<McpServer[]>([])
   const [saving, setSaving] = useState(false)
+  const [description, setDescription] = useState('')
+  const [draftJob, setDraftJob] = useState<string | null>(null)
+
+  // El borrador llega como evento del Engine, con el job que se pidió.
+  useEffect(() => {
+    if (!draftJob) return
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      const payload = event.payload as { job_id?: string; draft?: Record<string, unknown>; message?: string }
+      if (payload?.job_id !== draftJob) return
+      if (event.event === 'agency.draft.ready' && payload.draft) {
+        const draft = payload.draft
+        if (typeof draft.name === 'string') setName(draft.name)
+        if (typeof draft.role === 'string') setRole(draft.role)
+        if (typeof draft.instructions === 'string') setInstructions(draft.instructions)
+        if (draft.permission_profile === 'read-only' || draft.permission_profile === 'workspace' || draft.permission_profile === 'full-access') {
+          setProfile(draft.permission_profile)
+        }
+        setDraftJob(null)
+      } else if (event.event === 'agency.draft.failed') {
+        toast.error(payload.message ?? '')
+        setDraftJob(null)
+      }
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [draftJob])
+
+  const requestDraft = async () => {
+    if (!description.trim()) return
+    try {
+      const started = await engineApi.agencyDraft(description.trim())
+      setDraftJob(started.job_id)
+    } catch (error) {
+      toast.error(commandMessage(error))
+    }
+  }
 
   useEffect(() => {
     engineApi.modelList().then((result) => setModels(result.models.filter((item) => item.saved !== false))).catch(() => {})
@@ -124,6 +169,40 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived }: Agen
             <p className="field-hint">{t('agency.form.icon')}</p>
           </div>
         </header>
+
+        {draftEnabled && !editing && (
+          <div className="agency-draft" data-testid="agency-draft">
+            <label className="grid min-w-0 flex-1 gap-1.5">
+              <span className="field-label"><Sparkles size={13} aria-hidden="true" className="inline align-[-2px] text-[var(--accent-2)]" /> {t('agency.form.draftLabel')}</span>
+              <input
+                className="field-input"
+                value={description}
+                maxLength={1000}
+                placeholder={t('agency.form.draftPlaceholder')}
+                onChange={(event) => setDescription(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void requestDraft()
+                  }
+                }}
+                data-testid="agency-draft-input"
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm self-end"
+              disabled={!description.trim() || draftJob !== null}
+              onClick={() => void requestDraft()}
+              data-testid="agency-draft-fill"
+            >
+              {t('agency.form.draftFill')}
+            </button>
+            <p className="field-hint basis-full" role="status" aria-live="polite">
+              {draftJob ? t('agency.form.draftWorking') : t('agency.form.draftHint')}
+            </p>
+          </div>
+        )}
 
         <div className="agency-form-grid">
           <label className="grid gap-1.5">

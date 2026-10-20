@@ -1,16 +1,19 @@
 // @vitest-environment jsdom
 // Rinari Agency A1: la tarjeta (D-17), la barra lateral con «Agencia»
 // deshabilitada y «Pronto» (D-21), el tutorial (D-20) y la ficha (D-16).
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { AgencyAgent, AgencyStatus } from './types'
 
 const agencyCreateAgent = vi.fn(async (agent: unknown) => ({ agent: { ...(agent as object), id: 'agent_1', session_id: 'ses_1' } }))
+const agencyDraft = vi.fn(async (_description: string) => ({ status: 'started', job_id: 'draft_1' }))
+let engineListener: ((event: { event: string; payload: unknown }) => void) | null = null
 vi.mock('../../services/engine', () => ({
   engineApi: {
     agencyCreateAgent: (agent: unknown) => agencyCreateAgent(agent),
+    agencyDraft: (description: string) => agencyDraft(description),
     agencyUpdateAgent: vi.fn(),
     agencyArchiveAgent: vi.fn(),
     modelList: vi.fn(async () => ({ models: [{ id: 'mdl_1', alias: 'rapido', provider: 'local', saved: true }] })),
@@ -22,6 +25,10 @@ vi.mock('../../services/engine', () => ({
       ],
     })),
   },
+  onEngineEvent: vi.fn(async (listener: (event: { event: string; payload: unknown }) => void) => {
+    engineListener = listener
+    return () => { engineListener = null }
+  }),
   commandMessage: String,
 }))
 vi.mock('../rinari/art', () => ({ art: { standing: (pose: string) => `vn-${pose}.webp`, chibi: () => 'chibi.webp' } }))
@@ -150,4 +157,26 @@ it('the card form offers only everyone\'s connectors and sends what the owner wr
     connectors: ['gmail'],
     budget: { daily_tokens: 50000 },
   })
+})
+
+it('«Créalo con Rinari» fills the form from the draft and creates nothing', async () => {
+  render(<I18nProvider lang="es"><AgentForm draftEnabled onSaved={() => {}} onCancel={() => {}} /></I18nProvider>)
+  await userEvent.type(screen.getByTestId('agency-draft-input'), 'una que revise el CI')
+  await userEvent.click(screen.getByTestId('agency-draft-fill'))
+  expect(agencyDraft).toHaveBeenCalledWith('una que revise el CI')
+  await waitFor(() => expect(engineListener).not.toBeNull())
+  act(() => engineListener!({ event: 'agency.draft.ready', payload: { job_id: 'otro', draft: { name: 'No' } } }))
+  expect((screen.getByTestId('agency-form-name') as HTMLInputElement).value).toBe('')
+  act(() => engineListener!({
+    event: 'agency.draft.ready',
+    payload: { job_id: 'draft_1', draft: { name: 'Centinela', role: 'Vigila el CI', instructions: 'Cada mañana.', permission_profile: 'read-only' } },
+  }))
+  await waitFor(() => expect((screen.getByTestId('agency-form-name') as HTMLInputElement).value).toBe('Centinela'))
+  expect(screen.getByRole('button', { name: 'Solo lectura' }).getAttribute('aria-pressed')).toBe('true')
+  expect(agencyCreateAgent).not.toHaveBeenCalled()
+})
+
+it('without the capability, «Créalo con Rinari» is not offered', () => {
+  render(<I18nProvider lang="es"><AgentForm onSaved={() => {}} onCancel={() => {}} /></I18nProvider>)
+  expect(screen.queryByTestId('agency-draft')).toBeNull()
 })

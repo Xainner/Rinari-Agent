@@ -1697,6 +1697,9 @@ export const engineApi = {
   agencyArchiveAgent: (agentId: string) =>
     platform().command<{ agent: AgencyAgent }>('agency_agent_archive', { agent_id: agentId }),
   agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
+  /** «Créalo con Rinari»: responde con un job; el borrador llega como `agency.draft.ready`. */
+  agencyDraft: (description: string) =>
+    platform().command<{ status: 'started'; job_id: string }>('agency_agent_draft', { description }),
   scheduleList: () => platform().command<{ tasks: ScheduledTask[]; now: number }>('schedule_list'),
   scheduleGet: (taskId: string) =>
     platform().command<{ task: ScheduledTask; runs: ScheduledRun[] }>('schedule_get', { task_id: taskId }),

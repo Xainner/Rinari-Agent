@@ -875,6 +875,7 @@ function App() {
           <AgentForm
             key={agencyPage.kind === 'edit-agent' ? agencyPage.agentId : 'new'}
             agent={editingAgent}
+            draftEnabled={session.status?.capabilities.agency_draft_v1 === true}
             onSaved={(agent, created) => {
               void agency.reload()
               if (created) openAgentChat(agent)

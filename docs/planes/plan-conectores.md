@@ -1,6 +1,6 @@
 # Plan de conectores
 
-Estado: **depurado con el dueño; C0 hecho** (2026-10-19), salvo lo que necesita las cuentas del dueño, que queda para C1. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
+Estado: **C0 hecho; C1 y C2 en revisión** en el PR [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74), contra `0.4.0` (2026-10-19). Falta probar con servicios reales y las cuentas del dueño. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
 
 Sale de la tarjeta de Planka «Herramientas para docker, además validar herramientas que se le puede dar de servicios populares o de uso profesional» (Agent → Para luego) y de la fila «Después» del [plan 0.4.0](plan-0.4.0.md), que el dueño mete ahora en la 0.4.0.
 
@@ -178,6 +178,14 @@ Fuera del directorio: GitHub (MCP remoto oficial, con token), Planka y Docker (C
 
 **Pruebas:** un servidor de autorización falso en las pruebas (descubrimiento, registro dinámico, PKCE, callback, renovación, 401 → renovar → reintentar, renovación fallida → «reconectar», cancelar a mitad, puerto ocupado, `state` incorrecto rechazado). Con servicios reales, lo que se pueda con las cuentas del dueño, anotando qué quedó sin comprobar.
 
+**Cómo quedó (en revisión en [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74), 2026-10-19).**
+- `mcp/oauth.py` nuevo y `auth.kind: "oauth"` en `mcp.create`/`mcp.update`, con `client_id`, `client_secret` (al almacén), `scopes`, `redirect_port`, `client_metadata_url` y `authorize_params` (por ejemplo `access_type=offline` para Google).
+- El descubrimiento va sin 401, después con el `resource_metadata` del 401 y, si no hay nada, con el origen. El cliente se elige en este orden: el del usuario, registro dinámico (guardado por servidor) y CIMD (la URL es configurable; por defecto `RINARI_MCP_CLIENT_METADATA_URL`).
+- Métodos `mcp.auth.start/status/cancel/signout`, eventos `mcp.auth.progress/finished`, `rinari mcp add --oauth`, `mcp login` y `mcp logout`. Capacidad `mcp_oauth_v1`.
+- `initialize` pide `2025-06-18` y baja a `2025-03-26` o `2024-11-05`.
+- **Arreglo al juntar C1 y C2:** al terminar de iniciar sesión, el servidor se reconecta solo. Sin eso se quedaba en «hay que reconectar», porque C2 no reintenta con temporizador lo que solo arregla el dueño.
+- **Sin comprobar:** ningún servicio real ni ningún registro de cliente en ellos. Tampoco si un cliente «de escritorio» de Google sirve con sus MCP.
+
 ### C2. Conectar como Claude Code
 
 **Decisión (dueño, 2026-10-18): igual que Claude Code.** Claude Code conecta todos los servidores al iniciar cada sesión, en paralelo y sin bloquear: mientras uno sigue conectando, la sesión trabaja y sus herramientas aparecen cuando llega. Las herramientas quedan «diferidas»: el modelo ve los nombres y carga la definición al usarlas. Rinari ya conecta al iniciar la sesión; lo que cambia es el cómo:
@@ -193,6 +201,15 @@ Fuera del directorio: GitHub (MCP remoto oficial, con token), Planka y Docker (C
 - **Cada turno arma su runtime** en el escritorio: la conexión en segundo plano tiene que vivir en el proceso del Engine, no en el runtime del turno, para que un turno no vuelva a esperar ni a reintentar un servidor caído.
 
 **Pruebas:** con un servidor lento (con espera), el «Preparando» y `model.started` del primer turno no lo esperan; sus herramientas aparecen en `capability.search` cuando conecta; un servidor caído no retrasa el arranque; dos sesiones comparten el mismo proceso local; `list_changed` refresca; la medición de C0 mejora.
+
+**Cómo quedó (en revisión en [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74), 2026-10-19).**
+- Las conexiones viven en el proceso del Engine. Los servidores globales conectan al arrancar el Engine, cada uno en su hilo, y uno de proyecto conecta cuando una sesión de un proyecto de confianza arma su runtime.
+- Estados `idle`, `connecting`, `connected`, `reauth_required`, `error` y `disabled`, con `connection {code, hint, message, tools, resources, attempts, retry_in_s, changed_at}`, el evento `mcp.status.changed`, el diagnóstico y `mcp.reconnect`.
+- Se reintenta con una espera creciente (de 2 s hasta 5 min). Lo que solo arregla el dueño no se reintenta con temporizador.
+- `tools/list` se vuelve a leer solo con `list_changed`. Por HTTP, solo cuando el aviso llega en el stream de un POST: el GET independiente no se abre.
+- `mcp.resources.list` y `mcp.resources.read` van por la puerta. Capacidad `mcp_background_connect_v1`.
+- **Medido con el script de C0:** `_mcp_tools` tarda entre 0,00 y 0,01 s por turno en todos los casos (antes, 30 s por turno con un remoto que cuelga). Las herramientas llegan después, cuando el servidor conecta.
+- `test_cache_prefix.py` comprueba que un servidor que llega tarde no cambia ni la lista ni el prefijo.
 
 ### C3. Pantalla «Conectores»
 

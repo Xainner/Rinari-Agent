@@ -389,3 +389,26 @@ Revisado contra las ramas de los conectores: CLI `feat/conectores-c1-c2` (f625e9
 4. **Destinos nuevos (D-6) y C5.** Gmail → Telegram es pasar datos de un conector a otro, y C5 lo trata como destino nuevo. Para una regla aprobada por el dueño, el destino ya está autorizado: la ejecución no pregunta. En un turno de un agente con el interruptor de D-6 encendido, sí.
 5. **«Reconectar» sin pantalla.** Con la app en la bandeja, un `reauth_required` tiene que llegar como notificación del sistema y quedar en la ficha del agente y en la vista «Reglas».
 6. **La cuenta conectada** no la informa el Engine (C3 muestra el servidor de autorización). En la ficha de un agente hace falta saber qué cuenta usa: depende del servicio.
+
+## 15. A1 en el Engine: diseño propuesto (2026-10-20, para aprobar)
+
+Sobre lo que ya hay en la CLI (`feat/agency`, encima de `feat/conectores-c1-c2` f625e9d). La idea es reutilizar todo lo posible: sesiones, tareas programadas, memoria por lugar y los permisos de C5.
+
+**Datos (migración `0062_agency_agents.sql`, se renumera si otra rama fusiona antes):**
+- **`agency_agents`**: `id`, `rinari_profile_id` (la Agency es por perfil), `name`, `role` (oficio), `instructions` (su Soul), `model`, `permission_profile` (autonomía: los tres modos de permisos v4), `connectors_json` (ids de servidores MCP permitidos), `budget_json` (tope diario en USD o en tokens), `ask_new_destinations` (D-6; `NULL` = el valor de la app), `session_id` (su chat directo), `created_at`, `updated_at`, `archived_at`.
+- **`sessions.agent_id`** (columna nueva, nula): marca el chat directo del agente (y en A2, sus puestos). La columna `kind` tiene un `CHECK` (`CHAT`/`PROJECT`) y no se toca: el chat directo es un `CHAT` con `agent_id`. **`session.list` deja fuera las sesiones de agentes** salvo que se pidan con `agent_id`, así no aparecen en las conversaciones de Rinari.
+- **`mcp_servers.owner`** (C8, texto, `''` = de todos): `agent:<id>` o, en A2, `team:<id>`. Una cuenta con dueño es su propia fila de servidor, igual que `project_root` (§14.1).
+- **`scheduled_tasks.agent_id`** (nula) y un tipo nuevo **`tool`**: llamar a una herramienta MCP con argumentos fijos, sin modelo (reloj + MCP). Una regla permanente es una tarea programada del agente: se reutilizan el horario cron, las ejecuciones (`scheduled_runs`), «Ejecutar ahora», pausar y los permisos aprobados al crearla (`grants`), que es exactamente «activar la regla es el permiso» (§14.3).
+- **Memoria del agente:** un lugar nuevo, `agent`, en `user_memory.place` (con `place_ref` = id del agente), junto a `general`, `profile` y `chat`. Desde el chat directo, lo aprendido va ahí por defecto (D-7).
+
+**Gasto (la cuenta que faltaba):** no hace falta una tabla nueva. Los tokens de cada llamada ya quedan en `session_events` (`ModelInvoked`), y `engine_protocol/usage_report.py` ya calcula el coste con los precios del catálogo (`_cost`), por sesiones y desde una fecha. El gasto de un agente es ese informe sobre sus sesiones (`agent_id`) en el día. **Si el modelo no tiene precio conocido, el coste es desconocido y nunca se inventa:** por eso el tope del agente puede ser en USD o en tokens, y la ficha pide tokens cuando su modelo no tiene precio. Antes de cada turno de una sesión de agente se compara con su tope; al pasarlo, el turno no arranca y el agente queda en «sin presupuesto» con aviso.
+
+**Turnos de un agente:** si la sesión tiene `agent_id`, el runtime usa el modelo, el modo de permisos y las instrucciones del agente (como un bloque de sistema propio, marcado como del dueño), filtra los conectores (`connectors_for`, `capability.search` y `tool.call` solo ven los de `connectors_json` y los de dueño `agent:<id>`) y lee la memoria `general` + `profile` + `agent`.
+
+**Protocolo** (capacidad `agency_agents_v1`, en `engine_protocol/agency.py`, como `schedule.py`):
+- `agency.agent.list / get / create / update / archive`: la ficha. `create` abre también su chat directo.
+- `agency.agent.draft`: «Créalo con Rinari». Una frase → una propuesta de ficha que el dueño revisa; no crea nada.
+- `agency.status`: lo que dice la tarjeta (agentes, trabajando, te necesitan) y el gasto del día por agente.
+- Evento `agency.agent.changed`. Las reglas usan `schedule.*` con `agent_id`.
+
+**Pruebas:** unitarias por servicio (ficha, filtro de conectores, gasto y corte, regla `tool` sin modelo con grants), `test_cache_prefix.py` con un agente (el prefijo no cambia por filtrar conectores) y la migración en `test_migrations.py`.

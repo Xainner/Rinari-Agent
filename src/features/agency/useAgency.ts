@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { engineApi, onEngineEvent } from '../../services/engine'
+import { useAgencyStore } from '../../stores/agency'
 import type { AgencyAgent, AgencyStatus } from './types'
 
 /** Eventos que cambian lo que dice la Agency: sus agentes, sus turnos y lo que esperan. */
@@ -38,6 +39,7 @@ export function useAgency(enabled: boolean): AgencyData {
       const [list, current] = await Promise.all([engineApi.agencyAgents(), engineApi.agencyStatus()])
       setAgents(list.agents)
       setStatus(current)
+      useAgencyStore.getState().setAgentSessions(list.agents)
     } catch {
       // El Engine puede estar reiniciando: se conserva lo último que se supo.
     } finally {

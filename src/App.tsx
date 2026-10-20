@@ -24,7 +24,7 @@ import SingleSessionView from './features/engine/SingleSessionView'
 import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
-import ScheduleNotifier from './features/schedules/ScheduleNotifier'
+import ScheduleNotifier, { AGENCY_REVIEW_RULES_EVENT } from './features/schedules/ScheduleNotifier'
 import SoundCoordinator from './features/sounds/SoundCoordinator'
 import UpdateNotifier from './features/updates/UpdateNotifier'
 import NotificationCenter from './features/notifications/NotificationCenter'
@@ -544,6 +544,20 @@ function App() {
   const activeAgentId = agencyPage.kind === 'agent' || agencyPage.kind === 'edit-agent' ? agencyPage.agentId : null
   const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
   const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent'
+  const agentSessions = useAgencyStore((s) => s.agentSessions)
+  // «Revisar» en el aviso de una regla propuesta: el chat del agente con «Reglas» abierta.
+  useEffect(() => {
+    const review = (event: Event) => {
+      const agentId = (event as CustomEvent<{ agentId: string }>).detail?.agentId
+      const agent = agency.agents.find((item) => item.id === agentId)
+      if (!agent?.session_id) return
+      if (useAgencyStore.getState().space !== 'agency') rinariSessionRef.current = session.activeSession || null
+      openAgentChat(agent)
+      useSessionDockStore.getState().openView(agent.session_id, 'rules')
+    }
+    window.addEventListener(AGENCY_REVIEW_RULES_EVENT, review)
+    return () => window.removeEventListener(AGENCY_REVIEW_RULES_EVENT, review)
+  })
 
   const openInBoard = (id: string) => {
     const existing = useBoardStore.getState().paneForSession(id)
@@ -832,7 +846,14 @@ function App() {
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}
-            dockViews={dockButtonsSessionId ? <DockViewButtons key={dockButtonsSessionId} sessionId={dockButtonsSessionId} terminalEnabled={session.status?.capabilities.desktop_terminal_v1 === true} /> : null}
+            dockViews={dockButtonsSessionId ? (
+              <DockViewButtons
+                key={dockButtonsSessionId}
+                sessionId={dockButtonsSessionId}
+                terminalEnabled={session.status?.capabilities.desktop_terminal_v1 === true}
+                extraViews={agentSessions[dockButtonsSessionId] ? ['rules'] : []}
+              />
+            ) : null}
           />
         }
       >

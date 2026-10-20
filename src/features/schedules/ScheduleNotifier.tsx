@@ -1,3 +1,4 @@
+import { useAgencyStore } from '../../stores/agency'
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -31,6 +32,9 @@ const TONE: Partial<Record<ScheduledRunStatus, CenterNotification['tone']>> = {
  *
  * Pulsar una notificación del sistema abre la conversación de esa ejecución.
  */
+/** Rinari Agency: abrir el chat de un agente con su vista «Reglas» (lo escucha App). */
+export const AGENCY_REVIEW_RULES_EVENT = 'rinari:agency-review-rules'
+
 export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (sessionId: string) => void }) {
   const { t, lang } = useI18n()
   const goSchedules = useUIStore((state) => state.goSchedules)
@@ -64,6 +68,20 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
 
       if (event.event === 'schedule.proposed' && payload.proposal) {
         const proposal = payload.proposal as ScheduledTaskInput
+        if (proposal.agent_id) {
+          // Rinari Agency (D-18): la regla de un agente se revisa en su vista
+          // «Reglas», junto a su chat; nunca se crea sola.
+          const agentId = proposal.agent_id
+          useAgencyStore.getState().addProposal(proposal)
+          const review = () => window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId } }))
+          toast(tr('agency.rules.proposedToast', { name: proposal.name }), {
+            description: tr('agency.rules.approveHint'),
+            duration: 20_000,
+            action: { label: tr('agency.rules.review'), onClick: review },
+          })
+          record({ title: tr('agency.rules.proposedToast', { name: proposal.name }), body: tr('agency.rules.approveHint'), tone: 'info', target: { kind: 'schedules' } })
+          return
+        }
         const task = payload.created && payload.task ? (payload.task as ScheduledTask) : null
         if (task) {
           const when = `${describeSchedule(task.schedule, tr, locale)} · ${tr('schedules.next', { when: formatWhen(task.next_run_at, locale) })}`

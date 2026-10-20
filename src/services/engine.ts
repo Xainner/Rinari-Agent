@@ -457,12 +457,29 @@ export interface ScheduledRun {
 }
 
 /** Lo que se envía al crear o editar una tarea (`scheduled_tasks_v1`). */
+/** Rinari Agency: una llamada a un conector con argumentos fijos, sin modelo. */
+export interface ScheduledToolCall {
+  server: string
+  tool: string
+  arguments: Record<string, unknown>
+}
+
+/** Rinari Agency: lo que hace una regla de tipo «tool» y adónde va su resultado. */
+export interface ScheduledToolSpec extends ScheduledToolCall {
+  on_result: 'nothing' | 'notify' | 'agent' | 'deliver'
+  deliver?: ScheduledToolCall
+  max_per_day?: number | null
+}
+
 export interface ScheduledTaskInput {
   name: string
-  kind: 'agent' | 'reminder' | 'command'
+  kind: 'agent' | 'reminder' | 'command' | 'tool'
   schedule: ScheduleSpec
   prompt: string
   command?: ScheduledCommand | null
+  /** Rinari Agency: la regla de un agente. */
+  tool?: ScheduledToolSpec | null
+  agent_id?: string | null
   project_id?: string | null
   mode?: 'plan' | 'build' | 'review'
   /** Sin valor: el modo por defecto del proyecto, o Proyecto (permisos v4 P-5). */
@@ -473,9 +490,11 @@ export interface ScheduledTaskInput {
   enabled?: boolean
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile'>> {
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id'>> {
   id: string
   command?: ScheduledCommand | null
+  tool?: ScheduledToolSpec | null
+  agent_id?: string | null
   permission_profile?: ScheduledTaskInput['permission_profile']
   project_id: string | null
   model: string | null

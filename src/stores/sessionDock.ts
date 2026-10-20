@@ -11,13 +11,14 @@ import { create } from 'zustand'
  * `webContentsId`, grants, `busy`, handles CDP ni generaciones: nada de eso
  * es autoridad recuperable.
  */
-export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan'
+export type DockView = 'browser' | 'terminal' | 'files' | 'changes' | 'agents' | 'flow' | 'plan' | 'rules'
 /** Las vistas con botón propio en la barra de título, en su orden. */
 export const PRIMARY_VIEWS: readonly DockView[] = ['browser', 'terminal', 'files', 'changes']
 /** Las que van en el menú «⋮» (Agentes y Flujos desde el 0.4.0); cuentan para el límite como las demás. */
 export const MORE_VIEWS: readonly DockView[] = ['agents', 'flow']
 /** La vista «Plan» (#55) tiene botón solo cuando la conversación tiene un plan. */
-export const DOCK_VIEWS: readonly DockView[] = [...PRIMARY_VIEWS, 'plan', ...MORE_VIEWS]
+/** Rinari Agency: «Reglas» tiene botón solo en el chat de un agente (D-18). */
+export const DOCK_VIEWS: readonly DockView[] = [...PRIMARY_VIEWS, 'plan', ...MORE_VIEWS, 'rules']
 export const MAX_VIEWS = 4
 
 /** Nombres de antes (una superficie a la vez, Workspace con pestañas): se aceptan al revelar. */

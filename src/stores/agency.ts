@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ScheduledTaskInput } from '../services/engine'
 
 /**
  * Rinari Agency: en qué espacio está la app y qué página de la Agency se ve.
@@ -25,6 +26,17 @@ interface AgencyState {
   newAgent: () => void
   editAgent: (agentId: string) => void
   goHome: () => void
+  /**
+   * Reglas que un agente propuso en su chat y esperan al dueño (D-18): una
+   * regla nunca se crea sola. En memoria; el Engine no guarda nada hasta
+   * que el dueño la activa.
+   */
+  proposals: ScheduledTaskInput[]
+  addProposal: (proposal: ScheduledTaskInput) => void
+  dropProposal: (proposal: ScheduledTaskInput) => void
+  /** De quién es cada chat directo: sesión → agente (para «Reglas» en el panel lateral). */
+  agentSessions: Record<string, string>
+  setAgentSessions: (agents: { id: string; session_id: string | null }[]) => void
 }
 
 export const useAgencyStore = create<AgencyState>((set) => ({
@@ -36,6 +48,15 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   newAgent: () => set({ space: 'agency', page: { kind: 'new-agent' } }),
   editAgent: (agentId) => set({ space: 'agency', page: { kind: 'edit-agent', agentId } }),
   goHome: () => set({ page: { kind: 'home' } }),
+  proposals: [],
+  addProposal: (proposal) => set((state) => ({ proposals: [...state.proposals, proposal] })),
+  dropProposal: (proposal) => set((state) => ({ proposals: state.proposals.filter((item) => item !== proposal) })),
+  agentSessions: {},
+  setAgentSessions: (agents) => set({
+    agentSessions: Object.fromEntries(
+      agents.filter((agent) => agent.session_id).map((agent) => [agent.session_id as string, agent.id]),
+    ),
+  }),
 }))
 
 /**

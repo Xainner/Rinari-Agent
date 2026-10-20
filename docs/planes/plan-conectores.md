@@ -1,6 +1,6 @@
 # Plan de conectores
 
-Estado: **depurado con el dueño, sin empezar** (2026-10-18). Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
+Estado: **depurado con el dueño; C0 hecho** (2026-10-19), salvo lo que necesita las cuentas del dueño, que queda para C1. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
 
 Sale de la tarjeta de Planka «Herramientas para docker, además validar herramientas que se le puede dar de servicios populares o de uso profesional» (Agent → Para luego) y de la fila «Después» del [plan 0.4.0](plan-0.4.0.md), que el dueño mete ahora en la 0.4.0.
 
@@ -15,17 +15,22 @@ Un servicio que el usuario conecta una vez (su cuenta y sus permisos) y que Rina
 - **Decisión (dueño, 2026-10-18):** una sola pantalla, **«Conectores»**, que reemplaza a «Servidores MCP». Cada tarjeta lleva un chip pequeño «MCP remoto» o «MCP local», y «Agregar servidor MCP» (el alta manual de hoy) sigue dentro.
 - **Nada hardcodeado al dueño:** el catálogo sirve a cualquier usuario; los MCP propios del dueño (Visual Lab, Planka, PufferPanel) entran como cualquier otro.
 
-## Qué hay hoy (verificado en las ramas `0.4.0`, CLI 8b0733a y Agent 5f854e7)
+## Qué hay hoy (verificado en las ramas `0.4.0`, CLI 25296c8 y Agent 581b999, 2026-10-19)
+
+Rehecho en C0 sobre lo que dejó F42 del [plan 0.4.0 v3](plan-0.4.0-v3.md) (la lista de herramientas fija por conversación y la puerta `tool.call`). La versión anterior se verificó en CLI 8b0733a y Agent 5f854e7.
 
 **Engine (`src/rinari/mcp/`):**
 - Transportes stdio y Streamable HTTP (`http_transport.py`), con `Mcp-Session-Id` y `MCP-Protocol-Version`. Versión por defecto del protocolo: `2024-11-05` (`protocol.py:25`).
-- Autenticación HTTP: `none`, `bearer` y `headers` (`config.py`). Los secretos van al almacén de credenciales con referencias `mcp/<id>/<slot>`; nunca a la base, a las vistas ni a los registros.
-- **OAuth no existe.** Un 401 con `resource_metadata` en `WWW-Authenticate` solo da la pista `oauth_required` (`http_transport.py:304`), y la app dice que use un token como Bearer.
-- Ámbitos `global` y `project`; uno de proyecto exige confianza en la carpeta (`service.py:252`).
-- **Los servidores se conectan al preparar la sesión** («Preparando», `_build_tools` en `cli/agent_runtime.py:876` → `_mcp_tools`, línea 1162), **uno tras otro y esperando a cada uno**: un local arranca su proceso y un remoto hace `initialize` + `tools/list`. Las conexiones quedan en caché en el proceso del Engine (`service.py:95`). Un servidor caído no rompe la sesión, pero alarga el «Preparando» hasta su timeout (30 s por defecto).
-- Las herramientas salen como `mcp.<servidor>.<herramienta>`, ocultas hasta `capability.search` (`always_loaded=False`). Capacidad `mcp.read` si el servidor declara `readOnlyHint`, si no `mcp.call` (`adapter.py:68`). `destructiveHint` y `openWorldHint` no se usan.
-- `resources` y `prompts` solo se cuentan en «Probar» (`service.py:503`); el modelo no puede leerlos.
-- Los archivos `.mcp.json`, `.vscode/mcp.json` y `.cursor/mcp.json` de una carpeta se detectan solo para avisar al confiar (`engine_protocol/server.py:159`); no se importan.
+- Autenticación HTTP: `none`, `bearer` y `headers` (`config.py:46`). Los secretos van al almacén de credenciales con referencias `mcp/<id>/<slot>` (o `env://`); nunca a la base, a las vistas ni a los registros.
+- **OAuth no existe.** Un 401 con `resource_metadata` en `WWW-Authenticate` solo da la pista `oauth_required` (`http_transport.py:307`), y la app dice que use un token como Bearer.
+- Ámbitos `global` y `project`; uno de proyecto exige confianza en la carpeta (`service.py:250`).
+- **Los servidores se conectan al armar el runtime** (`_build_tools` en `cli/agent_runtime.py:1303` → `_mcp_tools`, línea 1275), **uno tras otro y esperando a cada uno**: un local arranca su proceso y un remoto hace `initialize`; después, `tools/list` a cada uno. **El escritorio arma un runtime por turno** (F42, fase 1), así que esto pasa en cada turno, no solo al abrir la sesión. Las conexiones quedan en caché en el proceso del Engine (`service.py:100`) y un servidor ya conectado no vuelve a hacer `initialize`, pero sí `tools/list` en cada turno (`service.py:376`). **Un servidor caído no deja cliente en caché**, así que `_client` (`service.py:317`) lo vuelve a intentar en cada turno y espera su timeout cada vez (30 s por defecto, `config.py:57`). La sesión no se rompe.
+- **Las herramientas MCP nunca entran en la lista del modelo (F42).** Salen como `mcp.<servidor>.<herramienta>` con `always_loaded=False` (`adapter.py:60`); la lista es el núcleo nativo (53) más la puerta `tool.call`, fija por conversación y guardada con la sesión (`tools/exposure.py`; se rehace solo al cambiar de modelo, al compactar o con otra versión del Engine). El modelo encuentra una herramienta MCP con `capability.search` (o `capability.activate`, que ahora es un alias de buscar), recibe su esquema y la llamada exacta, y la ejecuta con `tool.call`. Permisos, aprobaciones, timeline y registro usan el nombre real, no `tool.call`.
+- **El modelo ya ve qué hay conectado.** `deferred_index(connected=True)` (`tools/index.py:36`) arma cada turno una línea por servidor MCP, spec OpenAPI o plugin con los nombres de sus herramientas y su `instructions` (marcada como «del servidor, no del dueño»). Va en la nota del turno (`CachePolicy.TURN`, `prompts/assembler.py:282`), fuera del prefijo, así que un servidor nuevo no rompe la caché.
+- Capacidad `mcp.read` si el servidor declara `readOnlyHint`, si no `mcp.call` (`adapter.py:43`). `destructiveHint` y `openWorldHint` no se usan.
+- `notifications/tools/list_changed` no se escucha.
+- `resources` y `prompts` solo se cuentan en «Probar» (`service.py:512`) y la CLI tiene `rinari mcp resources` (`cli/commands/mcp.py:298`); el modelo no puede leerlos.
+- Los archivos `.mcp.json`, `.rinari/mcp.json`, `.vscode/mcp.json` y `.cursor/mcp.json` de una carpeta se detectan solo para avisar al confiar (`engine_protocol/server.py:159`); no se importan.
 - OpenAPI (`src/rinari/openapi/`): specs registradas que generan herramientas, con secretos solo como `env://`. Solo por la CLI (`rinari api`); la app no lo muestra.
 - La Suscripción de Claude ya le pasa las herramientas de Rinari a Claude Code por un MCP propio (`providers/claude_cli.py:1321`).
 
@@ -33,7 +38,7 @@ Un servicio que el usuario conecta una vez (su cuenta y sus permisos) y que Rina
 - Ajustes → Herramientas → MCP, «Servidores MCP» (`src/features/ecosystem/McpView.tsx`): lista con estado, Local/Remoto, Probar, Editar, Activar/Desactivar y Eliminar; alta stdio o HTTP con bearer, encabezados o nada; «Probar antes de guardar».
 - No se ven ni se eligen el ámbito ni la confianza. No hay lista de herramientas (solo 8 nombres en el resultado de «Probar»), ni controles por herramienta.
 - Sin catálogo, sin OAuth y sin manejador de enlaces `rinari://` (no hace falta: ver C1).
-- El «Resumen» ya tiene una tarjeta **Conectores** (MCP activos y skills; `SummaryPanel.tsx:255`) y las «Fuentes» agrupan lo leído por MCP.
+- El «Resumen» ya tiene una tarjeta **Conectores** (MCP activos y skills; `SummaryPanel.tsx:256`) y las «Fuentes» agrupan lo leído por MCP.
 - Imágenes → «MCP asignado» (`ImageCreationSettings.tsx`): el usuario escribe a mano el nombre de la herramienta; no hay selector.
 - Plugins es otra pantalla aparte, sin relación con MCP.
 
@@ -42,10 +47,10 @@ Un servicio que el usuario conecta una vez (su cuenta y sus permisos) y que Rina
 ## Lo que falta
 
 1. **OAuth.** Los MCP remotos oficiales de los servicios grandes piden OAuth. Sin él, el usuario tiene que crear tokens a mano, y hay servicios donde no se puede.
-2. **Conectar uno tras otro y esperando** alarga el «Preparando» de cada sesión, y un servidor caído lo alarga hasta su timeout.
+2. **Conectar uno tras otro y esperando** alarga el arranque de cada turno, y un servidor caído lo alarga hasta su timeout **en cada turno**.
 3. **No hay catálogo:** dar de alta un servicio exige saber su URL o su comando.
 4. **No hay control por herramienta:** no se puede apagar una herramienta peligrosa ni decir «esta siempre se permite».
-5. **El modelo no sabe qué conectores hay** hasta que busca, y tampoco puede leer `resources`.
+5. **El modelo ve los nombres de lo conectado (F42), pero no para qué sirve cada conector ni si hay que reconectarlo**, y no puede leer `resources`.
 6. **Permisos:** casi toda tarea con MCP lee un resultado (contenido externo) y vuelve a llamar al mismo MCP, y la guardia de contenido externo lo trata como enviar datos fuera ([plan de permisos v4](plan-permisos-v4.md), punto «Por eso pregunta tanto»).
 7. **Docker** se usa hoy por la consola, sin reglas propias: `docker rm`, `compose down -v` o `system prune` no se clasifican como destructivos.
 8. **La Agency** necesita conectores que funcionen sin la app abierta y con permisos por agente, y eso no existe.
@@ -98,10 +103,70 @@ Fuera del directorio: GitHub (MCP remoto oficial, con token), Planka y Docker (C
 
 **Docker:** si hay un MCP de Docker bueno y mantenido para el catálogo (C7).
 
+#### C0. Resultados (2026-10-19)
+
+**Cómo se probó.** Un sondeo sin credenciales desde esta PC (scratchpad de la sesión, no está en el repo): `initialize` anónimo a cada URL, `WWW-Authenticate`, metadatos del recurso protegido (RFC 9728) y del servidor de autorización (RFC 8414 / OIDC). Solo lecturas. **No se registró ningún cliente ni se inició sesión en ningún servicio**: el registro dinámico crea un cliente en el servidor del servicio, y eso queda para C1 con el visto bueno del dueño.
+
+**Autorización por servicio.**
+
+| Servicio | URL | Registro dinámico | Metadatos de cliente (CIMD) | Revocación | Qué necesita Rinari |
+|---|---|---|---|---|---|
+| Notion | `mcp.notion.com/mcp` | sí | sí | sí | registro dinámico |
+| Linear | `mcp.linear.app/mcp` | sí | sí | sí | registro dinámico |
+| Todoist | `ai.todoist.net/mcp` | sí | sí | sí | registro dinámico |
+| Airtable | `mcp.airtable.com/mcp` | sí | sí | no | registro dinámico |
+| Sentry | `mcp.sentry.dev/mcp` | sí | sí | sí | registro dinámico |
+| Canva | `mcp.canva.com/mcp` | sí | sí | sí | registro dinámico |
+| ClickUp | `mcp.clickup.com/mcp` | sí | — | no | registro dinámico (cliente público) |
+| Vercel | `mcp.vercel.com` | sí | — | sí | registro dinámico |
+| Supabase | `mcp.supabase.com/mcp` | sí | — | no | registro dinámico |
+| Stripe | `mcp.stripe.com` | sí | — | sí | registro dinámico (cliente público) |
+| Figma | `mcp.figma.com/mcp` | sí | — | no | registro dinámico |
+| Dropbox | `mcp.dropbox.com/mcp` | sí | — | sí | registro dinámico. La general basta: la de Claude (`/claude_app_mcp`) usa el mismo servidor de autorización |
+| Atlassian | `mcp.atlassian.com/v1/mcp` | sí | — | sí | registro dinámico. **No publica metadatos del recurso** (404) y su 401 no trae `resource_metadata`: hay que caer a los metadatos del servidor en el origen (como en la especificación 2025-03-26) |
+| ElevenLabs | `api.elevenlabs.io/v1/mcp` | no | **sí** | sí | **documento de metadatos del cliente** de Rinari publicado en una URL (`rinari.ai`), o `client_id` propio. Se queda en el catálogo (dueño, 2026-10-19). La de Claude (`/v1/mcp-claude-marketplace`) responde igual |
+| Slack | `mcp.slack.com/mcp` | no | no | no | `client_id` y `client_secret` propios (app de Slack del usuario) |
+| Asana | `mcp.asana.com/v2/mcp` | no | no | sí | `client_id` propio |
+| HubSpot | `mcp.hubspot.com` | no | no | no | `client_id` y `client_secret` propios. La de Anthropic (`/anthropic`) responde igual |
+| GitHub | `api.githubcopilot.com/mcp/` | no | no | no | token personal como Bearer (lo que ya funciona hoy) o una app OAuth propia |
+| Google | `gmailmcp`, `drivemcp`, `calendarmcp` … `.googleapis.com/mcp/v1` | no | no | sí | cliente propio (decidido). Ver abajo |
+
+- **Todos piden PKCE S256** y todos los que tienen metadatos del recurso los publican. Solo Atlassian no.
+- **Que un servicio anuncie registro dinámico no prueba que acepte a Rinari:** puede rechazar una redirección a `127.0.0.1` o tener lista de clientes permitidos. Queda sin comprobar hasta C1.
+- **C1 no puede arrancar solo con un 401.** Los MCP de Google responden `initialize` y `tools/list` sin autenticación (200, con la lista de herramientas). El 401 llegaría recién en `tools/call`. «Conectar» tiene que buscar los metadatos del recurso por su cuenta (`/.well-known/oauth-protected-resource<ruta>`) aunque no haya 401.
+- **Anotaciones:** Google declara `readOnlyHint`, `destructiveHint`, `idempotentHint` y `openWorldHint` en cada herramienta, así que C5 tiene con qué trabajar.
+- **Versión del protocolo:** Google contesta con `2025-06-18`. Rinari pide `2024-11-05` por defecto (`protocol.py:25`). La autorización de MCP manda desde 2025-06-18, así que C1 debería pedir esa versión o una más nueva.
+
+**Google con cliente propio.**
+- **Están en Developer Preview:** hay que inscribirse en el programa de vista previa de Google Workspace y ser aceptado ([guía de Gmail](https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server), [codelab](https://codelabs.developers.google.com/google-workspace-mcp-antigravity)). Es un paso más para el usuario y la guía de Rinari lo tiene que decir primero.
+- **Más servidores de los que decía el plan:** `workspacemcp` (todo en uno), `gmailmcp`, `drivemcp`, `docsmcp`, `sheetsmcp`, `slidesmcp`, `calendarmcp`, `chatmcp` y `people.googleapis.com/mcp/v1`.
+- **Hay que activar** la API normal (por ejemplo `gmail.googleapis.com`) y la API MCP (`gmailmcp.googleapis.com`) de cada servicio.
+- **Tipo de cliente:** las guías de Google usan «Aplicación web» con redirecciones exactas (las de Claude y Antigravity), con la casilla «Use this client for an AI-powered agent». **No se ha comprobado si un «cliente de escritorio» funciona.** Es lo que necesita el patrón `127.0.0.1:<puerto libre>`, porque un cliente web exige el puerto exacto. Se prueba en C1 con la cuenta del dueño. Si no funciona, Rinari usa un puerto fijo y la guía dice qué redirección registrar.
+- **Renovación:** sin `access_type=offline` (y `prompt=consent` para una concesión que ya existe) no hay token de renovación y el usuario tendría que entrar cada hora. `offline_access` no basta.
+- **En modo «Prueba»**, el token de renovación vence a los 7 días y hay un tope de 100 usuarios de prueba. Publicada, no vence salvo que se revoque o pasen unos seis meses sin usarla. Que funcione publicada y sin verificar (con el aviso «app no verificada») no se comprobó.
+- **Consentimiento:** «Interno» si la cuenta es de Workspace; «Externo» con el usuario como usuario de prueba si es una cuenta personal.
+
+**El «Preparando», medido** (`_mcp_tools`, lo que el runtime de cada turno espera por MCP). Usé `RINARI_HOME` temporal, un servidor local falso que tarda 1 s en arrancar y dos turnos seguidos con los mismos servicios, como el proceso del Engine (`engine_protocol/entry.py:49` arma los servicios una vez):
+
+| Caso | Turno 1 | Turno 2 |
+|---|---|---|
+| 0 servidores | 0,00 s | 0,00 s |
+| 2 locales | 2,72 s | 0,00 s |
+| 5 locales | 7,20 s | 0,00 s |
+| 1 remoto que cuelga (timeout 30 s) | 31,08 s | **30,01 s** |
+| 1 remoto con el puerto cerrado | 2,02 s | 2,05 s |
+| 5 locales + 1 remoto que cuelga | 37,65 s | **30,01 s** |
+
+- **Se confirma:** los locales se conectan uno tras otro (unos 1,4 s cada uno con 1 s de arranque) y un remoto caído **se paga en cada turno**. Un servidor real que arranca con `npx` tarda más que el falso.
+- Con la caché, el segundo turno de los locales no cuesta nada: el falso responde `tools/list` al instante. Un remoto real añade su ida y vuelta de `tools/list` en cada turno.
+- La medición después de C2 se hace con el mismo script.
+
+**Docker.** No hay un MCP oficial de Docker para manejar contenedores. `docker/mcp-gateway` es de Docker, pero es la pasarela que arranca servidores del catálogo de Docker Desktop, no un servidor de `ps`, `logs` o `run`. El más usado de la comunidad (`mcp-server-docker`) no es oficial. Según una reseña de mayo de 2026, no tiene commits desde junio de 2025 y tiene abierto un aviso de acceso al sistema de archivos del host (no lo comprobé en el repositorio). **Propuesta:** C7 se queda solo con las reglas de la política. La entrada del catálogo espera a que haya uno oficial o uno mantenido.
+
 ### C1. OAuth para MCP remotos
 
 **Flujo:**
-1. Al probar o conectar un servidor, un 401 con `resource_metadata` arranca el descubrimiento: metadatos del recurso → servidor de autorización → sus metadatos.
+1. Al probar o conectar un servidor, un 401 con `resource_metadata` arranca el descubrimiento: metadatos del recurso → servidor de autorización → sus metadatos. **Sin 401 también** (C0: Google responde `initialize` y `tools/list` sin autenticación): «Conectar» pide `/.well-known/oauth-protected-resource<ruta>` igual. Sin metadatos del recurso (Atlassian), se piden los del servidor de autorización en el origen.
 2. Cliente: registro dinámico si el servidor lo ofrece; si no, un documento de metadatos del cliente de Rinari publicado en `rinari.ai` (si C0 confirma que los servidores lo aceptan); si no, el usuario pega su propio `client_id` (y `client_secret` si hace falta). Google va siempre por cliente propio (C0).
 3. Autorización con PKCE (S256) y el indicador de recurso, en **el navegador predeterminado del usuario**, no en el de Rinari: ahí ya tiene sus sesiones, y Google y otros bloquean los navegadores embebidos.
 4. Redirección a `http://127.0.0.1:<puerto>/callback` en un puerto libre que el Engine abre solo para esa autorización (el patrón de apps nativas, RFC 8252). No hace falta registrar `rinari://`.
@@ -123,7 +188,9 @@ Fuera del directorio: GitHub (MCP remoto oficial, con token), Planka y Docker (C
 - **Se mantiene** la caché de conexiones del Engine (`service.py:95`), así que un servidor local no arranca otro proceso por cada sesión.
 - **Lista de herramientas al día** cuando el servidor avisa `notifications/tools/list_changed`.
 - **Estado por servidor:** conectando, conectado, hay que reconectar (C1), error (con su pista), desactivado. Lo usan Ajustes, la tarjeta «Conectores» del Resumen y el diagnóstico.
-- **`resources`:** dos herramientas genéricas, `mcp.resources.list` y `mcp.resources.read` (por servidor), como lecturas (`mcp.read`).
+- **`resources`:** dos herramientas genéricas, `mcp.resources.list` y `mcp.resources.read` (por servidor), como lecturas (`mcp.read`). Van por la puerta `tool.call` como el resto de MCP: si entraran al núcleo, la lista dependería de si hay servidores y dejaría de ser la misma en todas las conversaciones.
+- **Con F42 la parte difícil ya está:** la lista del modelo no cambia cuando un servidor llega tarde, así que sumarlo no rompe la caché. Lo que falta es que el registro acepte herramientas nuevas mientras el turno corre (con su cerrojo) y que el índice de lo conectado de la nota del turno salga del estado real, no de lo que llegó a tiempo.
+- **Cada turno arma su runtime** en el escritorio: la conexión en segundo plano tiene que vivir en el proceso del Engine, no en el runtime del turno, para que un turno no vuelva a esperar ni a reintentar un servidor caído.
 
 **Pruebas:** con un servidor lento (con espera), el «Preparando» y `model.started` del primer turno no lo esperan; sus herramientas aparecen en `capability.search` cuando conecta; un servidor caído no retrasa el arranque; dos sesiones comparten el mismo proceso local; `list_changed` refresca; la medición de C0 mejora.
 
@@ -165,7 +232,7 @@ Encima de [permisos v4](plan-permisos-v4.md), sin cambiar sus tres modos:
 
 ### C6. El modelo sabe qué conectores tiene
 
-- Una línea en las instrucciones del turno con los conectores activos y para qué sirven (nombre y una frase), sin cargar sus herramientas. Igual que la línea de imágenes de V2-1 del [plan 0.4.0 v2](plan-0.4.0-v2.md).
+- **Medio hecho con F42:** la nota del turno ya lleva el índice de lo conectado (`tools/index.py:36`), con los nombres de las herramientas de cada servidor y su `instructions`. Falta una frase por conector que diga para qué sirve (del catálogo, C4, o de la descripción del servidor) y su estado (C2).
 - `capability.search` ordena por coincidencia, sin favorecer a un servidor por llegar primero.
 - Si un conector necesita reconectar, el modelo lo sabe y se lo dice al usuario en vez de intentar otra vía.
 

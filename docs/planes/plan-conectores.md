@@ -1,6 +1,6 @@
 # Plan de conectores
 
-Estado: **C0 hecho; C1, C2, C4 (Engine), C5, C6 y C7 en revisión** en el PR [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74); **C3 en curso** en el PR [Xainner/Rinari-Agent#113](https://github.com/Xainner/Rinari-Agent/pull/113), los dos contra `0.4.0` (2026-10-20). **C8 espera a que exista la Agency** (dueño, 2026-10-20). Falta probar con servicios reales y las cuentas del dueño. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
+Estado: **C0 hecho; C1, C2, C4 (Engine), C5, C6 y C7 en revisión** en el PR [Xainner/Rinari-CLI#74](https://github.com/Xainner/Rinari-CLI/pull/74); **C3 en revisión, con pulido de UI pendiente,** en el PR [Xainner/Rinari-Agent#113](https://github.com/Xainner/Rinari-Agent/pull/113), los dos contra `0.4.0` (2026-10-20). **C8 espera a que exista la Agency** (dueño, 2026-10-20). Falta probar con servicios reales y las cuentas del dueño. Va en la **0.4.0**, por tandas en las ramas `0.4.0`, con la Nightly al terminar. No se empieza hasta que el dueño lo diga.
 
 Sale de la tarjeta de Planka «Herramientas para docker, además validar herramientas que se le puede dar de servicios populares o de uso profesional» (Agent → Para luego) y de la fila «Después» del [plan 0.4.0](plan-0.4.0.md), que el dueño mete ahora en la 0.4.0.
 
@@ -225,6 +225,14 @@ Reemplaza a «Servidores MCP» en Ajustes, con el sistema [Obsidiana neón](../d
 **Pruebas:** escenarios en `tests/ui` (agregar desde el catálogo, OAuth con servidor falso, reconectar, permisos por herramienta, ámbito y confianza), `ui-tour` con capturas, i18n en los dos idiomas, movimiento reducido.
 
 **Pulido de UI después (dueño, 2026-10-20).** La pantalla «Conectores» entra funcional y dentro del sistema Obsidiana neón, pero **pasa por una tanda de pulido de UI** antes de darla por terminada. El PR que lleve todo lo dice. C3 se centra en que todo funcione, sea correcto y accesible, sin perseguir el detalle visual fino.
+
+**Cómo quedó (en revisión en [Xainner/Rinari-Agent#113](https://github.com/Xainner/Rinari-Agent/pull/113), 2026-10-20).**
+- `src/features/connectors/`: tarjetas, detalle (permisos por herramienta, valor por defecto, anotaciones, ámbito y confianza), catálogo, inicio de sesión, «Agregar servidor MCP» con OAuth, importar de otra app y pegar JSON, la pregunta del `.mcp.json` y el logo. «Servidores MCP» (`McpView.tsx`) se retiró.
+- Se añadieron 14 filas al contrato: `mcp_reconnect`, `mcp_auth_*`, `mcp_tools_*`, `mcp_catalog_*`, `mcp_import_*` y `mcp_project_offers_*`. Los tipos se generan con `RINARI_ENGINE_SCHEMA`. Lo que necesita una capacidad que el Engine no anuncia no se ofrece.
+- Imágenes → «MCP asignado» es ahora un selector, y la tarjeta «Conectores» del Resumen muestra el estado y abre el detalle.
+- Escenarios `connectors-oauth` (catálogo, OAuth con servidor falso, permisos, reconectar y desconectar) y `connectors-import`. `ui-tour` pasa por el catálogo.
+- **Para la tanda de pulido:** faltan los logos reales (hoy son iniciales sobre un fondo de token y `CONNECTOR_LOGOS` está vacío). También: el icono de Ajustes, el botón principal desactivado que parece activo, el detalle (diálogo largo; quizá mejor como página), el filtro de categorías del catálogo (un `<Select>`), las tarjetas fuera del catálogo que muestran la URL en vez de una descripción, y las clases `.mcp-*` heredadas, con `rgb()` sueltos y animación al montar.
+- **Sin comprobar o pendiente del Engine:** la cuenta conectada (el Engine no la informa; la tarjeta dice el servidor de autorización), los registros (no hay método; «Actividad» es lo visto en la ventana), cambiar el ámbito (no hay método) y ningún servicio real.
 
 ### C4. Catálogo e importar configuraciones
 

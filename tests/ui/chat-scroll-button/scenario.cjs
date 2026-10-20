@@ -23,7 +23,7 @@ async function verify(prefix, name) {
   await screenshot(name)
   await click(prefix + ' ' + arrow)
   await wait(`!${q(prefix + ' ' + arrow)}`)
-  await wait(`(() => {const el=${q(prefix + ' ' + scroller)};return el.scrollHeight-el.scrollTop-el.clientHeight<80})()`)
+  await wait(`(() => {const el=${q(prefix + ' ' + scroller)};return el.scrollHeight-el.scrollTop-el.clientHeight<=2})()`)
 }
 const draft = Array.from({ length: 8 }, (_, i) => 'Línea de borrador ' + i).join('\n')
 

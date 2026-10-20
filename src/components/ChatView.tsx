@@ -271,12 +271,15 @@ function ChatView({
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
-    const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const gap = el.scrollHeight - el.scrollTop - el.clientHeight
+    const bottom = gap < 80
     const gesture = pointerHeldRef.current || performance.now() - gestureAtRef.current < 300
-    if (!bottom && followRef.current && !gesture) {
-      // Creció el contenido o movió el programa: se sigue abajo.
+    if (gap > 1 && followRef.current && !gesture) {
+      // Creció el contenido o movió el programa: se sigue hasta el fondo
+      // exacto. Con los 80 px de «abajo» como corte, un salto de la lista que
+      // quedaba corto por menos de eso dejaba el final tapado y ya no seguía.
       scheduleFollow()
-      return
+      if (!bottom) return
     }
     if (jumpRef.current && !bottom) return
     if (jumpRef.current && !streamingRef.current) jumpRef.current = false
@@ -474,6 +477,30 @@ function ChatView({
   // no mueven nada.
   const sessionRef = useRef(sessionId)
   sessionRef.current = sessionId
+  // Ir al fondo real: el salto de Virtua usa alturas estimadas y el último
+  // turno puede medir distinto (o seguir creciendo), así que se confirma unos
+  // cuadros hasta que el fondo queda quieto. Un gesto del usuario lo corta.
+  const endFrameRef = useRef(0)
+  const jumpToEnd = useCallback(() => {
+    cancelAnimationFrame(endFrameRef.current)
+    let frames = 0
+    let still = 0
+    const step = () => {
+      const scroller = scrollRef.current
+      const last = streamRef.current.length - 1
+      if (!scroller || last < 0) return
+      if (frames > 0 && (pointerHeldRef.current || performance.now() - gestureAtRef.current < 300)) return
+      if (frames === 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
+      else if (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 1) {
+        scroller.scrollTop = scroller.scrollHeight
+        still = 0
+      } else still += 1
+      frames += 1
+      if (still < 2 && frames < 30) endFrameRef.current = requestAnimationFrame(step)
+    }
+    endFrameRef.current = requestAnimationFrame(step)
+  }, [])
+  useEffect(() => () => cancelAnimationFrame(endFrameRef.current), [])
   const goToEnd = useCallback(() => {
     jumpRef.current = true
     followRef.current = true
@@ -481,11 +508,8 @@ function ChatView({
     anchorRef.current = { follow: true }
     restoreRef.current = null
     pendingRevealRef.current = null
-    requestAnimationFrame(() => {
-      const last = streamRef.current.length - 1
-      if (last >= 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
-    })
-  }, [])
+    jumpToEnd()
+  }, [jumpToEnd])
   const afterOwnMessage = useCallback(async (accepted: Promise<boolean>): Promise<boolean> => {
     const origin = sessionRef.current
     const navigation = navigationRef.current
@@ -582,12 +606,10 @@ function ChatView({
             needsYou={waitingOnYou}
             newResult={unreadResults > 0}
             onClick={() => {
+              followRef.current = true
+              anchorRef.current = { follow: true }
               setAtBottom(true)
-              if (stream.length > 0) {
-                requestAnimationFrame(() => {
-                  virtRef.current?.scrollToIndex(stream.length - 1, { align: 'end' })
-                })
-              }
+              if (stream.length > 0) jumpToEnd()
             }}
           />
           {sessionId !== '' && <StickyNote key={`note:${sessionId}`} sessionId={sessionId} compact={homeVariant === 'pane'} />}

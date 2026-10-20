@@ -59,7 +59,7 @@ export default function AgencySidebar({
         </button>
       </div>
 
-      <button type="button" className={cn('sidebar-new mt-3', creating && 'is-active')} onClick={onNewAgent} data-testid="agency-new-agent">
+      <button type="button" className={cn('sidebar-new agency-new-agent mt-3', creating && 'is-active')} onClick={onNewAgent} data-testid="agency-new-agent">
         <UserPlus size={15} aria-hidden="true" />
         <span className="truncate">{t('agency.sidebar.newAgent')}</span>
       </button>

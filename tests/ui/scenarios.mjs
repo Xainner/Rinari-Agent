@@ -707,6 +707,10 @@ export const scenarios = {
       main: [{ text: 'Les huskies sont de merveilleux chiens…' }],
     }, laneOf, { held: ['main', 'title'] }),
   },
+  agency: {
+    title: 'Rinari Agency: tarjeta, tutorial una vez por perfil, nuevo agente, su chat fuera de la lista de Rinari, Agencia «Pronto», Reglas y volver',
+    phases: ['exercise'],
+  },
   'full-access-confirm': {
     title: 'Acceso completo: diálogo que explica, cancelar no cambia nada, confirmar lo activa, bajar no pregunta',
     phases: ['exercise'],

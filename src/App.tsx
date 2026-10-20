@@ -459,7 +459,10 @@ function App() {
   // Los botones de las vistas solo aparecen con una conversación de verdad:
   // no en la pantalla de inicio, en una conversación nueva sin enviar, en
   // Ajustes ni en las demás pantallas sin sesión (#47).
-  const dockButtonsSessionId = view === 'board' ? focusedBoardPane?.sessionId || null : view === 'chat' && activeHasContent ? session.activeSession || null : null
+  // Rinari Agency: en el chat directo de un agente los botones están desde el
+  // principio, aunque esté vacío («Reglas» importa antes del primer mensaje).
+  const activeIsAgentChat = useAgencyStore((s) => Boolean(session.activeSession && s.agentSessions[session.activeSession]))
+  const dockButtonsSessionId = view === 'board' ? focusedBoardPane?.sessionId || null : view === 'chat' && (activeHasContent || activeIsAgentChat) ? session.activeSession || null : null
   /**
    * Botón de una vista del panel lateral (barra de título, atajo, menú o
    * paleta): la abre o la cierra en la sesión destino. Desde un atajo, con el
@@ -808,7 +811,10 @@ function App() {
         topbar={
           <AppStatusBar
             context={
-              view === 'chat' && activeHasContent ? (
+              // Las páginas propias de la Agency (inicio, ficha) no son una conversación.
+              agencyMain ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, 'agency.name')}</span>
+              ) : view === 'chat' && activeHasContent ? (
                 <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} mother={activeMother} />
               ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
@@ -849,7 +855,7 @@ function App() {
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}
-            dockViews={dockButtonsSessionId ? (
+            dockViews={dockButtonsSessionId && !agencyMain ? (
               <DockViewButtons
                 key={dockButtonsSessionId}
                 sessionId={dockButtonsSessionId}

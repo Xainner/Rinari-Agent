@@ -18,7 +18,7 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | P9 | Hecho por la sesión de pulido: Agent 06fc235. |
 | F45 | Hecho (commit con F43). |
 | F43 | Hecho (commit con F45). |
-| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha. Fase 2b hecha, con un A/B de la nota del turno: gana B, ver abajo (CLI 301392a, b161ffa). B es ya el comportamiento normal (CLI 2d83367). Pendiente: la validación corta que el dueño decida. |
+| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha. Fase 2b hecha, con un A/B de la nota del turno: gana B, ver abajo (CLI 301392a, b161ffa). B es ya el comportamiento normal (CLI 2d83367, 25296c8). Validado con C1: luna 89 % de caché (antes 40 %), Qwen 92 %. **Cerrado.** |
 | F46 | Fuera: nota externa. |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
@@ -132,6 +132,19 @@ La tabla da cache(k) − entrada(k−1) de las llamadas 2 a 8. Un valor cerca de
 
   Suite completa: 3.688 + 88.
 - **Posible mejora, sin hacer.** Codex escribe su contexto antes del mensaje del usuario; aquí va después, que es como se midió en la 2b. Ponerlo antes obliga a guardar la nota antes que el mensaje del dueño, que hoy se guarda primero por la memoria.
+
+**Validación con C1 (2026-10-19, aprobada por el dueño).** Se corrieron las tres vueltas de la batería (crear el gestor de tareas, export/import, migrar a SQLite) con B por defecto. El tope fue de 5 llamadas por vuelta y 15 por modelo, 30 en total. Las vueltas se cortaron en el tope: lo que se mide es la caché, no terminar la tarea.
+
+| Modelo | Entrada total | De caché | cache(k) − entrada(k−1) | Entre vueltas |
+|---|---|---|---|---|
+| `gpt-6-luna` (medio) | 255.893 | 228.992 (**89 %**) | −84 a −204 en las 15 llamadas | Primera de la vuelta 2: −148. Primera de la 3: −147. |
+| `qwen3.8-flash-next` (local) | 497.447 | 456.668 (**92 %**) | −5 a +6.522 (cuenta lo generado) | Primera de la vuelta 2: +422. Primera de la 3: +301. |
+
+- **Antes:** luna C1 tenía 40 % de caché en total (1,97 M de entrada), con 58 → 43 → 30 % por vuelta. Ahora reutiliza en cada llamada toda la petición anterior, también al pasar de vuelta.
+- **Las notas de estado** (3 en luna, 1 en Qwen) se guardaron como `harness`, así que la timeline de la app no las muestra.
+- **El título** sale del primer mensaje del dueño, por el mismo camino que antes.
+- **No hubo avisos** de `rinari.cache`.
+- **Un tropiezo del script de prueba, no del Engine.** Al final no pudo leer un resultado que no era JSON y no escribió su informe. Los números salen de los eventos `ModelInvoked` de la base temporal, que se borró después.
 
 ## Set 2: F41, F43, F44 y F27 bis
 

@@ -18,7 +18,7 @@ La regla de cero hardcodeo del [plan v2](plan-0.4.0-v2.md#regla-cero-hardcodeo-d
 | P9 | Hecho por la sesión de pulido: Agent 06fc235. |
 | F45 | Hecho (commit con F43). |
 | F43 | Hecho (commit con F45). |
-| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha. Fase 2b hecha, con un A/B de la nota del turno: gana B, ver abajo (CLI 301392a, b161ffa). Pendiente: decidir si B pasa a ser el comportamiento normal, y la fase 3. |
+| F42 | Aprobado por el dueño (16be14d). Fase 1 hecha: CLI bb2b1ab y 5a045ba. Fase 2 hecha. Fase 2b hecha, con un A/B de la nota del turno: gana B, ver abajo (CLI 301392a, b161ffa). B es ya el comportamiento normal (CLI 2d83367). Pendiente: la validación corta que el dueño decida. |
 | F46 | Fuera: nota externa. |
 
 ## F42: la lista de herramientas no cambia a mitad de la conversación
@@ -114,6 +114,24 @@ La tabla da cache(k) − entrada(k−1) de las llamadas 2 a 8. Un valor cerca de
 - **B mejora los 5 modelos.** En luna y en Qwen arregla la meseta. En los demás reutiliza también los ~130 tokens de la nota.
 - **En Qwen se confirma la causa.** Es un modelo híbrido con capas recurrentes: llama.cpp no puede recortar el final del caché y vuelve a un checkpoint. Con B nunca hay nada que recortar.
 - **Sin efectos secundarios.** Las 6 lecturas salieron bien en los 10 brazos, y no hubo ningún aviso de `rinari.cache`.
+
+**B como comportamiento normal (dueño, 2026-10-19; CLI 2d83367, sin llamadas).**
+- **Cómo funciona.** El estado del turno es una nota del harness guardada en el historial. Se escribe solo cuando su contenido cambia respecto a la última nota guardada, y nunca se reescribe ni se quita. La primera vez va justo después del mensaje del dueño; si cambia a mitad de turno, va como mensaje nuevo. `RINARI_TURN_STATE=trailing` vuelve a la nota final durante una versión; luego se borra.
+- **No se lee como palabras del dueño.** No la leen:
+  - la captura de memoria;
+  - el objetivo y las restricciones del estado compactado;
+  - el resumen de la compactación (después de compactar se escribe una fresca);
+  - la timeline de la app, que ya omitía los mensajes del harness.
+
+  La exportación de diagnóstico lleva el `origin` de cada mensaje.
+- **Pruebas.**
+  - Extensión pura en Responses, Chat y Anthropic, con guardar y recargar por turno.
+  - Una nota a mitad de turno en Anthropic, que mantiene la alternancia de roles.
+  - La memoria no captura la nota.
+  - Las pruebas que asumían la nota final se adaptaron.
+
+  Suite completa: 3.688 + 88.
+- **Posible mejora, sin hacer.** Codex escribe su contexto antes del mensaje del usuario; aquí va después, que es como se midió en la 2b. Ponerlo antes obliga a guardar la nota antes que el mensaje del dueño, que hoy se guarda primero por la memoria.
 
 ## Set 2: F41, F43, F44 y F27 bis
 

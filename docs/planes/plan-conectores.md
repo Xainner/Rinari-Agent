@@ -224,6 +224,8 @@ Reemplaza a «Servidores MCP» en Ajustes, con el sistema [Obsidiana neón](../d
 
 **Pruebas:** escenarios en `tests/ui` (agregar desde el catálogo, OAuth con servidor falso, reconectar, permisos por herramienta, ámbito y confianza), `ui-tour` con capturas, i18n en los dos idiomas, movimiento reducido.
 
+**Pulido de UI después (dueño, 2026-10-20).** La pantalla «Conectores» entra funcional y dentro del sistema Obsidiana neón, pero **pasa por una tanda de pulido de UI** antes de darla por terminada. El PR que lleve todo lo dice. C3 se centra en que todo funcione, sea correcto y accesible, sin perseguir el detalle visual fino.
+
 ### C4. Catálogo e importar configuraciones
 
 **Catálogo** como datos (un JSON que va con el Engine y se actualiza con él), no código por servicio. Cada entrada: id, nombre, logo, descripción, tipo (remoto con su URL y autenticación, o local con su comando y los secretos que pide), enlace a la documentación y las herramientas esperadas. Entran los que C0 comprobó; elegir una entrada rellena el alta y el usuario solo pone lo que falta (iniciar sesión o pegar un token). Más adelante: buscar también en el registro público de MCP.

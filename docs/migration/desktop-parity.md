@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **298**
-- Respaldados por Engine: **292**
+- Comandos: **330**
+- Respaldados por Engine: **324**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -16,6 +16,37 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 |---|---|---|---|
 | `advanced_settings_get` | engine | `advanced.settings.get` | `src/services/engine.ts` |
 | `advanced_settings_set` | engine | `advanced.settings.set` | `src/services/engine.ts` |
+| `agency_agent_archive` | engine | `agency.agent.archive` | `src/services/engine.ts` |
+| `agency_agent_create` | engine | `agency.agent.create` | `src/services/engine.ts` |
+| `agency_agent_draft` | engine | `agency.agent.draft` | **ninguno** |
+| `agency_agent_get` | engine | `agency.agent.get` | **ninguno** |
+| `agency_agent_list` | engine | `agency.agent.list` | `src/services/engine.ts` |
+| `agency_agent_memory_add` | engine | `agency.agent.memory.add` | `src/services/engine.ts` |
+| `agency_agent_memory_list` | engine | `agency.agent.memory.list` | **ninguno** |
+| `agency_agent_update` | engine | `agency.agent.update` | `src/services/engine.ts` |
+| `agency_errand_cancel` | engine | `agency.errand.cancel` | `src/services/engine.ts` |
+| `agency_errand_create` | engine | `agency.errand.create` | `src/services/engine.ts` |
+| `agency_errand_list` | engine | `agency.errand.list` | `src/services/engine.ts` |
+| `agency_errand_retry` | engine | `agency.errand.retry` | `src/services/engine.ts` |
+| `agency_errand_review` | engine | `agency.errand.review` | `src/services/engine.ts` |
+| `agency_office_list` | engine | `agency.office.list` | `src/services/engine.ts` |
+| `agency_office_post` | engine | `agency.office.post` | `src/services/engine.ts` |
+| `agency_resume` | engine | `agency.resume` | `src/services/engine.ts` |
+| `agency_settings_get` | engine | `agency.settings.get` | `src/services/engine.ts` |
+| `agency_settings_set` | engine | `agency.settings.set` | `src/services/engine.ts` |
+| `agency_status` | engine | `agency.status` | `src/services/engine.ts` |
+| `agency_stop_all` | engine | `agency.stop_all` | **ninguno** |
+| `agency_team_archive` | engine | `agency.team.archive` | `src/services/engine.ts` |
+| `agency_team_create` | engine | `agency.team.create` | `src/services/engine.ts` |
+| `agency_team_duplicate` | engine | `agency.team.duplicate` | `src/services/engine.ts` |
+| `agency_team_get` | engine | `agency.team.get` | **ninguno** |
+| `agency_team_join` | engine | `agency.team.join` | `src/services/engine.ts` |
+| `agency_team_leave` | engine | `agency.team.leave` | `src/services/engine.ts` |
+| `agency_team_list` | engine | `agency.team.list` | `src/services/engine.ts` |
+| `agency_team_memory_add` | engine | `agency.team.memory.add` | `src/services/engine.ts` |
+| `agency_team_memory_list` | engine | `agency.team.memory.list` | **ninguno** |
+| `agency_team_template` | engine | `agency.team.template` | `src/services/engine.ts` |
+| `agency_team_update` | engine | `agency.team.update` | `src/services/engine.ts` |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |
 | `agent_config_set` | engine | `agent.config.set` | `src/services/engine.ts` |
 | `agent_list` | engine | `agent.list` | `src/services/engine.ts` |
@@ -193,6 +224,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `schedule_get` | engine | `schedule.get` | **ninguno** |
 | `schedule_grant` | engine | `schedule.grant` | `src/services/engine.ts` |
 | `schedule_list` | engine | `schedule.list` | **ninguno** |
+| `schedule_rehearse` | engine | `schedule.rehearse` | **ninguno** |
 | `schedule_run_now` | engine | `schedule.run_now` | `src/services/engine.ts` |
 | `schedule_runs` | engine | `schedule.runs` | **ninguno** |
 | `schedule_update` | engine | `schedule.update` | `src/services/engine.ts` |

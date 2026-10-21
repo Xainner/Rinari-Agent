@@ -783,6 +783,7 @@ export default function Composer({
         onDragLeave={event => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setTreeDrag(false) }}
         data-working={isStreaming || undefined}
         data-tree-drag={treeDrag || undefined}
+        data-toast-avoid=""
         className="composer-surface rounded-[22px] border p-2.5 transition-colors"
       >
         {attachments.length > 0 && (

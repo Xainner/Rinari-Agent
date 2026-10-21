@@ -3643,3 +3643,170 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .image-kind:hover .image-kind-add { color: var(--accent-2); }
 .image-kind-mark { display: inline-flex; width: 28px; height: 28px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid var(--line-1); border-radius: 8px; background: rgb(255 255 255 / 0.04); color: var(--violet-300); }
 @media (prefers-reduced-motion: reduce) { .pane-column.is-working .pane-column-now::before, .board-toolbar-count.is-working::before { animation: none; } }
+
+/* -- Rinari Agency (A1) ------------------------------------------------------------
+   La tarjeta encima de Ajustes, la barra lateral de la Agency, su inicio, la ficha
+   de un agente y el tutorial. Pasa por la sesión de pulido de UI (D-22). */
+.agency-card { position: relative; display: flex; width: 100%; min-width: 0; align-items: center; gap: 10px; margin: 0 0 6px; padding: 8px 10px 8px 8px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-elevated); text-align: left; box-shadow: var(--inset-hi); transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-card:hover { border-color: var(--line-3); background: var(--bg-hover); }
+.agency-card-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--r-sm); object-fit: cover; }
+.agency-card-back { display: grid; width: 36px; height: 36px; flex-shrink: 0; place-items: center; border-radius: var(--r-sm); background: var(--bg-inset); color: var(--accent-2); }
+.agency-card-text { display: grid; min-width: 0; gap: 2px; }
+.agency-card-title { overflow: hidden; font-size: 13px; font-weight: 600; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.agency-card-line { overflow: hidden; font-size: 11.5px; color: var(--text-subtle); text-overflow: ellipsis; white-space: nowrap; }
+.agency-card-line.is-attention { color: var(--warning); }
+.agency-card-compact { width: 44px; height: 44px; justify-content: center; margin: 0 0 4px; padding: 4px; }
+.agency-card-compact .agency-card-icon { width: 32px; height: 32px; }
+.agency-card-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 999px; background: var(--warning); box-shadow: 0 0 0 2px var(--bg-sidebar); }
+.agency-view-switch { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg-inset); }
+.agency-view-option { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 6px; min-height: 30px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.agency-view-option.is-active { background: var(--bg-active); color: var(--text); }
+.agency-view-option[aria-disabled='true'] { cursor: default; color: var(--text-subtle); }
+.agency-soon { padding: 1px 6px; border-radius: 999px; background: var(--bg-elevated); font-size: 10px; font-weight: 600; color: var(--text-subtle); }
+.agency-agent-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 9px; padding: 6px 8px; border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.agency-agent-row:hover { background: var(--bg-hover); color: var(--text); }
+.agency-agent-row.is-active { background: var(--bg-active); color: var(--text); }
+.agency-agent-avatar { width: 26px; height: 26px; flex-shrink: 0; border-radius: 7px; object-fit: cover; }
+.agency-working-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 999px; background: var(--agent); animation: agency-pulse 1.6s var(--ease-out) infinite; }
+@keyframes agency-pulse { 50% { opacity: 0.35; } }
+.agency-empty { display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px; }
+.agency-empty-art { width: 168px; height: 168px; object-fit: contain; }
+.agency-home { height: 100%; overflow-y: auto; padding: 28px 32px; }
+.agency-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 18px 0 0; padding: 0; list-style: none; }
+.agency-tile { padding: 14px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: var(--bg-subtle); }
+.agency-tile-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-sm); object-fit: cover; }
+.agency-home-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; max-width: 1100px; }
+.agency-home-status { margin-top: 4px; font-size: 13px; color: var(--text-muted); }
+.agency-home-status[data-attention] { color: var(--warning); }
+.agency-home .agency-grid { max-width: 1100px; }
+.agency-tile { display: flex; flex-direction: column; gap: 14px; transition: border-color var(--dur-fast); }
+.agency-tile:hover { border-color: var(--line-2); }
+.agency-tile[data-state='warning'] { border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+.agency-tile-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }
+.agency-tile-spend { flex-basis: 100%; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.agency-form-page { height: 100%; overflow-y: auto; padding: 28px 32px 40px; }
+.agency-form { display: grid; max-width: 720px; gap: 18px; margin: 0 auto; }
+.agency-form-head { display: flex; align-items: center; gap: 14px; }
+.agency-form-icon { width: 56px; height: 56px; flex-shrink: 0; border-radius: var(--r-md); object-fit: cover; }
+.agency-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.agency-choice { display: flex; flex-wrap: wrap; gap: 6px; }
+.agency-choice-option { padding: 7px 12px; border: 1px solid var(--line-2); border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
+.agency-choice-option:hover { border-color: var(--line-3); color: var(--text); }
+.agency-choice-option.is-active { border-color: var(--accent-2); background: var(--bg-active); color: var(--text); }
+.agency-connectors { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
+.agency-connector { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line-1); border-radius: var(--r-sm); font-size: 13px; color: var(--text); }
+.agency-form-actions { display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line-1); }
+.agency-tutorial-office { background-position: 50% 40%; }
+.agency-tutorial-preview { display: grid; gap: 8px; margin: 18px 0 0; }
+.agency-tutorial-preview img { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-md); image-rendering: auto; }
+.agency-tutorial-preview figcaption { font-size: 12px; line-height: 1.5; color: var(--text-subtle); }
+.agency-tutorial-shot { position: relative; overflow: hidden; border: 1px solid var(--line-2); border-radius: var(--r-md); }
+.agency-tutorial-shot img { display: block; width: 100%; border: 0; border-radius: 0; }
+/* La oficina es lo que viene (A4): el sello lo dice sobre la imagen, que no es un botón. */
+.agency-tutorial-soon { position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--bg-elevated) 88%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); font-size: 11px; font-weight: 600; color: var(--text-muted); }
+/* Lo que cuenta cada paso del tutorial, y la elección del último. */
+.agency-tour-points { display: grid; gap: 10px; margin: 20px 0 0; padding: 0; list-style: none; }
+.agency-tour-points li { display: flex; min-width: 0; align-items: flex-start; gap: 12px; animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.agency-tour-points b, .agency-tour-choice b { display: block; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.agency-tour-points small, .agency-tour-choice small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.agency-tour-icon { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--accent-2); }
+.agency-tour-choices { display: grid; gap: 8px; margin-top: 20px; }
+.agency-tour-choice { display: flex; min-width: 0; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-tour-choice:hover:not(:disabled) { border-color: var(--line-3); background: var(--bg-hover); }
+.agency-tour-choice:disabled { cursor: default; opacity: 0.6; }
+.agency-tour-choice.is-primary { border-color: color-mix(in srgb, var(--accent-2) 50%, transparent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-subtle)); }
+.agency-tour-choice.is-primary .agency-tour-icon { background: var(--grad-brand); color: #fff; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .agency-working-dot { animation: none; } }
+:root[data-motion='reduced'] .agency-working-dot { animation: none; }
+.agency-rules { display: grid; gap: 10px; padding: 12px; }
+.agency-rule { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); }
+.agency-rule.is-proposal { border-color: var(--warning); }
+.agency-rule-head { display: flex; min-width: 0; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+.agency-rule-head svg { flex-shrink: 0; color: var(--accent-2); }
+.agency-rule-parts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 12.5px; }
+.agency-rule-parts dt { color: var(--text-subtle); }
+.agency-rule-parts dd { display: grid; min-width: 0; gap: 2px; margin: 0; color: var(--text); }
+.agency-rule-parts code { overflow: hidden; font-family: var(--font-mono); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.agency-rule-args { color: var(--text-muted); }
+.agency-rule-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.agency-draft { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); }
+.agency-rehearsal { display: grid; gap: 4px; flex-basis: 100%; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: var(--r-sm); font-size: 12.5px; color: var(--text); }
+.agency-new-agent { flex: none; }
+/* «Detener a todos» es un freno de emergencia: siempre a mano, pero sin gritar en reposo. */
+.agency-stop-all { color: var(--text-muted); }
+.agency-stop-all svg { color: var(--danger); }
+.agency-stop-all:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.sidebar-link.is-active { background: var(--bg-active); color: var(--text); }
+.agency-memory-row { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-subtle); list-style: none; }
+.agency-memory-topic { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.agency-memory-add { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 2.5fr) auto; gap: 8px; }
+
+/* -- Rinari Agency (A2) ------------------------------------------------------------
+   Equipos en la barra lateral, la oficina, los recados y la pizarra. Pasa por la
+   sesión de pulido de UI (D-22). */
+.agency-new-team { width: 24px; height: 24px; }
+.agency-team-mark { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border: 1px solid var(--line-2); border-radius: 7px; background: var(--bg-inset); color: var(--accent-2); }
+.agency-posts { display: grid; gap: 1px; margin: 2px 0 0 21px; padding: 0 0 0 10px; border-left: 1px solid var(--line-1); list-style: none; }
+.agency-post-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.agency-post-row:hover { background: var(--bg-hover); color: var(--text); }
+.agency-post-row.is-active { background: var(--bg-active); color: var(--text); }
+.agency-post-avatar { width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px; object-fit: cover; }
+.agency-chief { padding: 0 6px; border-radius: 999px; background: var(--bg-elevated); font-size: 10px; font-weight: 600; color: var(--accent-2); }
+
+.agency-office { display: grid; height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr); }
+.agency-office.has-board { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); }
+.agency-office-main { display: flex; min-height: 0; min-width: 0; flex-direction: column; }
+.agency-office-head { display: flex; align-items: center; gap: 8px; padding: 18px 24px 12px; border-bottom: 1px solid var(--line-1); }
+.agency-office-head .btn.is-active { background: var(--bg-active); color: var(--text); }
+.agency-office-log { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; overflow-y: auto; padding: 18px 24px; }
+.agency-office-empty { margin: auto; max-width: 420px; text-align: center; font-size: 13px; line-height: 1.6; color: var(--text-subtle); }
+.agency-office-message { display: flex; gap: 10px; }
+.agency-office-avatar { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; object-fit: cover; }
+.agency-office-avatar.is-owner { display: grid; place-items: center; background: var(--bg-active); font-size: 10.5px; font-weight: 700; color: var(--text); }
+.agency-office-author { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.agency-office-time { font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--text-subtle); }
+.agency-office-text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; color: var(--text); }
+.agency-mention { border-radius: 4px; background: rgb(147 88 255 / 0.16); padding: 0 3px; color: var(--violet-300); font-weight: 600; }
+.agency-office-composer { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; padding: 12px 24px 16px; border-top: 1px solid var(--line-1); }
+.agency-office-input { min-height: 44px; max-height: 180px; resize: vertical; }
+.agency-office-hint { grid-column: 1 / -1; margin: 0; font-size: 11.5px; color: var(--text-subtle); }
+.agency-mention-list { position: absolute; bottom: calc(100% - 6px); left: 24px; z-index: 20; display: grid; min-width: 220px; max-width: min(360px, calc(100% - 48px)); gap: 1px; margin: 0; padding: 4px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-elevated); box-shadow: var(--shadow-pop, 0 12px 32px rgb(0 0 0 / 0.4)); list-style: none; }
+.agency-mention-hint { padding: 4px 8px 6px; font-size: 11px; line-height: 1.4; color: var(--text-subtle); }
+.agency-mention-option { display: flex; width: 100%; min-width: 0; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); text-align: left; }
+.agency-mention-option:hover, .agency-mention-option.is-active { background: var(--bg-active); color: var(--text); }
+.agency-errand-form { display: grid; gap: 10px; margin: 0 24px 4px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); }
+.agency-office-board { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line-1); background: var(--bg-subtle); }
+
+.agency-errand { display: grid; gap: 6px; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line-1); border-left: 2px solid var(--line-3); border-radius: var(--r-sm); background: var(--bg-subtle); font-size: 12.5px; }
+.agency-errand[data-status='in_progress'] { border-left-color: var(--accent-2); }
+.agency-errand[data-status='delivered'], .agency-errand[data-status='reviewed'] { border-left-color: var(--success); }
+.agency-errand[data-status='returned'] { border-left-color: var(--warning); }
+.agency-errand[data-status='blocked'] { border-left-color: var(--danger); }
+.agency-errand-head { display: flex; min-width: 0; align-items: center; gap: 8px; color: var(--text); }
+.agency-errand-head svg { flex-shrink: 0; color: var(--accent-2); }
+.agency-errand-who { margin: 0; font-size: 11.5px; color: var(--text-subtle); }
+.agency-errand-body { margin: 0; white-space: pre-wrap; color: var(--text-muted); }
+.agency-errand-checks { display: grid; gap: 2px; margin: 0; padding-left: 18px; color: var(--text-muted); }
+.agency-errand-result { margin: 0; padding: 6px 8px; border-radius: var(--r-sm); background: var(--bg-inset); white-space: pre-wrap; color: var(--text); }
+.agency-errand-reason { margin: 0; color: var(--warning); }
+.agency-errand[data-status='blocked'] .agency-errand-reason { color: var(--danger); }
+.agency-errand-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.agency-errand-actions:empty { display: none; }
+
+.agency-board { display: grid; align-content: start; gap: 14px; padding: 12px; }
+.agency-board-team { margin: 0; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.agency-board-column { display: grid; gap: 6px; }
+.agency-board-heading { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-subtle); }
+.agency-board-heading span { padding: 0 6px; border-radius: 999px; background: var(--bg-elevated); font-weight: 600; }
+.agency-board-column .agency-errand { margin-top: 0; }
+@media (max-width: 900px) { .agency-office.has-board { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 40%); } .agency-office-board { border-top: 1px solid var(--line-1); border-left: 0; } }
+
+/* Revisión de A2: avisos de la oficina, «Reanudar» y lo que la Agency le pasa a un agente. */
+.agency-office-notice { margin: 2px 0 0; font-size: 12.5px; font-style: italic; color: var(--text-muted); }
+.agency-resume { color: var(--warning); }
+.agency-resume:hover { color: var(--warning); }
+.agency-bubble { width: fit-content; min-width: 0; max-width: 85%; overflow-wrap: anywhere; padding: 10px 14px; border: 1px solid var(--line-2); border-left: 2px solid var(--accent-2); border-radius: var(--r-lg); border-bottom-left-radius: var(--r-sm); background: var(--bg-subtle); font-size: 14px; line-height: 1.55; color: var(--text); }
+.agency-bubble-head { display: flex; min-width: 0; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-2); }
+.agency-bubble-body { margin-top: 6px; }
+.agency-bubble-body > summary { cursor: pointer; font-size: 12px; color: var(--text-subtle); }
+.agency-bubble-body[open] > summary { margin-bottom: 6px; }

@@ -18,6 +18,7 @@ import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { revealSessionProject } from '../projects/revealSessionProject'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
+import { isAgencySession, useAgencyStore } from '../../stores/agency'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -140,7 +141,15 @@ export function useSessionList(options: {
    * historial no está cargado: así el primer pintado ya muestra
    * esqueleto y nunca el home transitorio. Único cuello de botella
    * para cambios de sesión Normal (ver select/restore/fork/create). */
+  // The session chosen last, and the listing in flight when it was: a listing
+  // that started before cannot know it (an Agency child before session.open
+  // answers), so it never moves you off it.
+  const activatedAt = useRef<{ id: string; seq: number }>({ id: '', seq: 0 })
+  // The session whose session.open is still pending: until it answers (with
+  // its agent_id, for an Agency child) no listing moves you off it.
+  const opening = useRef('')
   const activate = useCallback((id: string) => {
+    activatedAt.current = { id, seq: refreshSeq.current }
     if (id !== '' && !historyLoaded.current.has(id)) {
       setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
     }
@@ -161,6 +170,10 @@ export function useSessionList(options: {
   const rememberRows = useCallback((rows: SessionSummary[]) => {
     for (const row of rows) learntDuring.current.set(row.id, refreshSeq.current)
     if (rows.length === 0) return
+    // Rinari Agency: una conversación de un agente (también un hijo o un fork)
+    // se recuerda aparte: session.list no la trae, y no por eso se fue.
+    const agents = rows.filter((row) => row.agent_id).map((row) => row.id)
+    if (agents.length > 0) useAgencyStore.getState().markAgentRows(agents)
     setSessionsById((current) => {
       let changed = false
       const next = { ...current }
@@ -178,7 +191,8 @@ export function useSessionList(options: {
     const present = new Set(rows.map((row) => row.id))
     setSessionsById((current) => {
       const stale = Object.keys(current).filter(
-        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq,
+        // Las de la Agency no están en session.list: su fila (modelo, título) se queda.
+        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !isAgencySession(id),
       )
       if (stale.length === 0) return current
       const next = { ...current }
@@ -190,6 +204,7 @@ export function useSessionList(options: {
   /** Una sesión que el Engine confirmó que no existe deja de estar en caché. */
   const forgetRow = useCallback((id: string) => {
     learntDuring.current.delete(id)
+    useAgencyStore.getState().forgetAgentRow(id)
     setSessionsById((current) => {
       if (!(id in current)) return current
       const next = { ...current }
@@ -227,6 +242,11 @@ export function useSessionList(options: {
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current
+        // Rinari Agency: sus chats y puestos no están en `session.list`; quien
+        // escribe en el chat de un agente sigue en él.
+        if (current !== '' && isAgencySession(current)) return current
+        if (current !== '' && activatedAt.current.id === current && activatedAt.current.seq >= seq) return current
+        if (current !== '' && opening.current === current) return current
         // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
         if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''
@@ -360,7 +380,8 @@ export function useSessionList(options: {
   const rememberOpened = useCallback(
     (opened: { session: SessionSummary }) => {
       rememberRows([opened.session])
-      if (!isSessionHidden(opened.session)) {
+      // Las conversaciones de la Agency no entran en los recientes de Rinari.
+      if (!isSessionHidden(opened.session) && !opened.session.agent_id) {
         setRecentSessionIds((current) =>
           current.includes(opened.session.id) ? current : [opened.session.id, ...current],
         )
@@ -428,13 +449,16 @@ export function useSessionList(options: {
       const previous = activeSession
       const generation = ++selectionGeneration.current
       const engine = generationRef.current
+      opening.current = id
       activate(id)
       try {
         const opened = await engineApi.openSession(id)
+        if (opening.current === id) opening.current = ''
         if (generationRef.current !== engine) return
         rememberOpened(opened)
         reportWarnings(id, opened)
       } catch (err) {
+        if (opening.current === id) opening.current = ''
         if (generationRef.current !== engine) return
         // A stale failure must not undo a newer selection.
         if (selectionGeneration.current === generation) {

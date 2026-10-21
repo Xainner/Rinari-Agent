@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useEngineData, useOptionalEngineCommands, useRuntimeStore } from '../engine/EngineContext'
 import { onNotificationActivated, onNotificationReplied } from '../../services/notifications'
+import { useAgencyStore } from '../../stores/agency'
+import { enterAgencySession } from '../agency/openAgencySession'
 import { requestTurnReveal } from './boardCommands'
 import {
   derivePaneStatus,
@@ -211,7 +213,8 @@ export default function BoardActivityController() {
   // de las que tienen un turno vivo, y «Ir» abre la conversación en el turno.
   const titleFor = useCallback((sessionId: string): string | null => {
     const record = data.sessionsById[sessionId]
-    if (!record) return null
+    // Las conversaciones de la Agency no están en la lista de Rinari: se nombran por su agente (y su equipo).
+    if (!record) return useAgencyStore.getState().sessionLabels[sessionId] ?? null
     return record.title || (record.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
   }, [data.sessionsById, t])
   const projectFor = useCallback((sessionId: string): string | null => {
@@ -228,11 +231,15 @@ export default function BoardActivityController() {
     if (!commands) return
     // Un aviso de otro perfil cambia antes a ese perfil (#34).
     const profile = data.sessionsById[target.sessionId]?.rinari_profile_id
-    void switchToProfileOf(profile).then(() => commands.selectSession(target.sessionId)).then(() => {
+    void switchToProfileOf(profile).then(() => {
+      // Una conversación de la Agency se abre dentro de la Agency, con su página.
+      enterAgencySession(target.sessionId, data.activeSession || null)
+      return commands.selectSession(target.sessionId)
+    }).then(() => {
       useUIStore.getState().goChat()
       if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
     })
-  }, [commands, data.sessionsById])
+  }, [commands, data.sessionsById, data.activeSession])
   useBoardNotifications({
     runtime: store,
     labelFor: titleFor,

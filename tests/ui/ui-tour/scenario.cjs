@@ -227,6 +227,18 @@ scenario(async () => {
     await key('Escape')
     await delay(500)
   })
+  // Rinari Agency (A1): el tutorial y el inicio de la Agency.
+  await step('agency', async () => {
+    if (!(await evaluate(`Boolean(document.querySelector('[data-testid="agency-card"]'))`))) return
+    await evaluate(`document.querySelector('[data-testid="agency-card"]').click()`)
+    await delay(900)
+    await screenshot('19-agency-tutorial')
+    await key('Escape')
+    await delay(600)
+    await screenshot('19-agency-home')
+    await evaluate(`document.querySelector('[data-testid="agency-card"][data-mode="leave"]')?.click()`)
+    await delay(600)
+  })
   await step('narrow', async () => {
     await size(1000, 760)
     await delay(700)

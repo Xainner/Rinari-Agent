@@ -215,6 +215,24 @@ it('a task the owner asked for is created at once, with undo, and lands in the b
   await waitFor(() => expect(useNotificationCenter.getState().items).toHaveLength(0))
 })
 
+it('an agent proposing the same rule twice makes one toast and one bell entry', async () => {
+  const { useAgencyStore } = await import('../../stores/agency')
+  useAgencyStore.setState({ proposals: [] })
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  const proposed = { type: 'event', event: 'schedule.proposed', payload: {
+    session_id: 'ses_agent', proposal: { ...emptyDraft(), name: 'Correos', prompt: 'p', agent_id: 'agent_1' },
+  } } as const
+  act(() => emit(proposed))
+  act(() => emit(proposed))
+  expect(toasts.calls.filter((call) => call.title.includes('Correos'))).toHaveLength(1)
+  const items = useNotificationCenter.getState().items
+  expect(items).toHaveLength(1)
+  expect(items[0].id).toMatch(/^agency-proposal-/)
+  expect(useAgencyStore.getState().proposals).toHaveLength(1)
+  useAgencyStore.setState({ proposals: [] })
+})
+
 it('a run that needs you and then finishes is one entry in the bell, updated', async () => {
   wrap(<ScheduleNotifier onOpenSession={() => {}} />)
   await waitFor(() => expect(emit).toBeTypeOf('function'))

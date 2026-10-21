@@ -9,7 +9,7 @@
  */
 
 /** Dónde aplica un recuerdo (#75). */
-export type MemoryPlace = 'general' | 'profile' | 'project' | 'chat'
+export type MemoryPlace = 'general' | 'profile' | 'project' | 'chat' | 'agent' | 'team'
 export const MEMORY_PLACES: readonly MemoryPlace[] = ['general', 'profile', 'project', 'chat']
 
 /** Qué hace Rinari con lo que aprende sin que se lo pidas. */

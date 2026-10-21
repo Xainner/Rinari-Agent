@@ -128,6 +128,12 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return <PeerBubble message={message} />
   }
 
+  // Rinari Agency: what the Engine hands a post or an agent (an @mention from
+  // the office, an errand, a team's delivery) is not something the owner wrote.
+  if (message.role === 'user' && AGENCY_ORIGINS.has(String(message.origin?.kind ?? ''))) {
+    return <AgencyBubble message={message} />
+  }
+
   // Implementar o ajustar un plan tampoco es algo que el dueño escribió (#55).
   if (message.role === 'user' && (message.origin?.source === 'plan_implement' || message.origin?.source === 'plan_adjust')) {
     return <PlanSeparator kind={message.origin.source === 'plan_adjust' ? 'adjust' : 'implement'} title={message.origin.plan_title ?? null} comment={message.origin.comment ?? null} />
@@ -237,6 +243,38 @@ function PeerBubble({ message }: { message: ChatMessage }) {
         </div>
         <div className="whitespace-pre-wrap">{message.content}</div>
         <p className="mt-1.5 text-[10px] text-[var(--text-subtle)]">{t('board.peers.untrusted')}</p>
+      </div>
+    </div>
+  )
+}
+
+const AGENCY_ORIGINS = new Set(['agency_office', 'agency_errand', 'agency_delivery'])
+
+/**
+ * Lo que la Agency le pasa a un agente: una mención en la oficina, un recado
+ * o la entrega de otro equipo. Va a la izquierda, con su procedencia y sin
+ * las acciones del dueño (exportar, abrir un hijo): el dueño no lo escribió.
+ */
+function AgencyBubble({ message }: { message: ChatMessage }) {
+  const { t } = useI18n()
+  const origin = message.origin ?? { kind: 'user' }
+  const from = origin.from_label || null
+  const key: I18nKey = origin.kind === 'agency_errand'
+    ? (from ? 'agency.bubble.errandFrom' : 'agency.bubble.errand')
+    : origin.kind === 'agency_delivery'
+      ? (from ? 'agency.bubble.deliveryFrom' : 'agency.bubble.delivery')
+      : (from ? 'agency.bubble.officeFrom' : 'agency.bubble.office')
+  return (
+    <div className="flex w-full min-w-0 justify-start" data-testid="agency-bubble" data-origin={origin.kind}>
+      <div className="agency-bubble">
+        <div className="agency-bubble-head">
+          <ClipboardList size={13} aria-hidden="true" />
+          <span className="truncate">{t(key, { name: from ?? '' })}</span>
+        </div>
+        <details className="agency-bubble-body">
+          <summary>{t('agency.bubble.show')}</summary>
+          <div className="whitespace-pre-wrap">{message.content}</div>
+        </details>
       </div>
     </div>
   )

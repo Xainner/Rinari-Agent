@@ -33,7 +33,12 @@ const isCompact = () => typeof window.matchMedia === 'function' && window.matchM
  * Sin conversación no aparecen. Con cuatro vistas abiertas, abrir otra
  * pregunta cuál reemplazar.
  */
-export default function DockViewButtons({ sessionId, terminalEnabled }: { sessionId: string; terminalEnabled: boolean }) {
+export default function DockViewButtons({ sessionId, terminalEnabled, extraViews = [] }: {
+  sessionId: string
+  terminalEnabled: boolean
+  /** Vistas con botón solo en esta conversación (Rinari Agency: «Reglas» en el chat de un agente). */
+  extraViews?: DockView[]
+}) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const signals = useDockSignalsStore(selectDockSignals(sessionId))
@@ -44,7 +49,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled }: { sessio
   // La vista elegida en el menú «⋮», que se abre al cerrarse el menú.
   const picked = useRef<DockView | null>(null)
   // «Plan» se suma a los botones solo cuando la conversación tiene un plan (#55).
-  const available = [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : [])].filter((view) => view !== 'terminal' || terminalEnabled)
+  const available = [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : []), ...extraViews].filter((view) => view !== 'terminal' || terminalEnabled)
   const shown = (view: DockView) => layout.visible && layout.views.includes(view)
   const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
   // El Resumen flota sobre el chat, aparte del panel: su botón no toca las vistas.

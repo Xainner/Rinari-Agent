@@ -50,10 +50,13 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+/** Los orígenes que cambian cómo se ve la burbuja del turno en vivo (la Agency: el texto no es del dueño). */
+const LIVE_ORIGINS = new Set(['peer', 'user', 'automation', 'schedule', 'agency_office', 'agency_errand', 'agency_delivery'])
+
 function originOf(value: unknown): MessageOrigin | undefined {
   if (!value || typeof value !== 'object') return undefined
   const kind = (value as { kind?: unknown }).kind
-  if (kind !== 'peer' && kind !== 'user' && kind !== 'automation' && kind !== 'schedule') return undefined
+  if (typeof kind !== 'string' || !LIVE_ORIGINS.has(kind)) return undefined
   return value as MessageOrigin
 }
 

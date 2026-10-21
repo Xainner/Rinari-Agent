@@ -27,6 +27,11 @@ describe('narrative activity timeline', () => {
     state = turnTimelineReducer(state, event('agent.failed', { ...ids, agent_id: 'a1' }))
     expect(state.busySessions.has('s1')).toBe(true)
   })
+  it.each(['agency_errand', 'agency_office', 'agency_delivery'])('keeps the live turn origin %s, so the bubble is not the owner\'s', (kind) => {
+    const origin = { kind, team_id: 'team_1', from_label: 'Ana' }
+    const state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 's1', message: 'Recado', origin }))
+    expect(state.timelines.t1.origin).toEqual(origin)
+  })
   it('retains the mode of the turn independently of later session changes', () => {
     let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 'plan', session_id: 's1', mode: 'plan' }))
     state = turnTimelineReducer(state, event('turn.completed', { turn_id: 'plan', session_id: 's1' }))

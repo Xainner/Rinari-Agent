@@ -71,6 +71,11 @@ import { SESSION_DRAG_TYPE } from '../../features/board/boardDrag'
 
 export interface AppSidebarProps {
   collapsed: boolean
+  /**
+   * Rinari Agency: la tarjeta que abre la Agency, encima de Ajustes (con
+   * `compact` en el riel). Ausente si esta versión de Rinari no la tiene.
+   */
+  agencyCard?: (compact: boolean) => ReactNode
   onSearch: () => void
   onOpenSettings: () => void
   onOpenEngine: () => void
@@ -149,6 +154,7 @@ function RailButton({
 
 export function AppSidebar({
   collapsed,
+  agencyCard,
   onSearch,
   onOpenEngine,
   onOpenSchedules,
@@ -538,6 +544,7 @@ export function AppSidebar({
           <Cpu size={17} />
         </RailButton>
         <div className="flex-1" />
+        {agencyCard?.(true)}
         <ApplicationMenu collapsed />
       </div>
     )
@@ -835,6 +842,7 @@ export function AppSidebar({
         )}
       </div>
 
+      {agencyCard && <div className="shrink-0">{agencyCard(false)}</div>}
       <SidebarFooter />
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>

@@ -3960,6 +3960,8 @@ export const en: Record<I18nKey, string> = {
   'connectors.retryingSoon': 'Rinari will try again on its own.',
   'connectors.docs': 'Documentation',
   'connectors.chip.remote': 'Remote MCP',
+  'connectors.card.remote': 'MCP server at {value}',
+  'connectors.card.local': 'Local program: {value}',
   'connectors.chip.local': 'Local MCP',
   'connectors.chip.project': 'This project',
   'connectors.state.connected': 'Connected',

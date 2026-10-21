@@ -1,4 +1,4 @@
-import { KeyRound, LoaderCircle, LogIn, Power, RotateCcw, Zap } from 'lucide-react'
+import { Globe, KeyRound, LoaderCircle, LogIn, Monitor, Power, RotateCcw, Zap } from 'lucide-react'
 import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import { hintKey, hostOf, isOAuth, isRemote, primaryAction, STATE_LABEL, STATE_TONE, type ConnectorCapabilities } from './connectorModel'
 import type { ConnectorItem } from './useConnectors'
@@ -27,6 +27,24 @@ export function StateChip({ item }: { item: ConnectorItem }) {
       {item.state === 'connected' && typeof tools === 'number' && tools > 0 && <span className="text-[var(--text-subtle)]">· {t('connectors.toolCount', { n: tools })}</span>}
     </span>
   )
+}
+
+/** «MCP remoto» o «MCP local»: lo técnico, en segundo plano y con su icono. */
+export function KindChip({ remote }: { remote: boolean }) {
+  const { t } = useI18n()
+  const Icon = remote ? Globe : Monitor
+  return <span className="connector-kind"><Icon size={11} aria-hidden="true" />{t(remote ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
+}
+
+/**
+ * Lo que dice una tarjeta que no viene del catálogo, en lugar de su URL o su
+ * comando completos (esos van en el detalle): dónde está o qué programa corre.
+ */
+export function serverSummary(server: ConnectorItem['server']): { key: 'connectors.card.remote' | 'connectors.card.local'; value: string; full: string } {
+  if (isRemote(server)) return { key: 'connectors.card.remote', value: hostOf(server.url ?? '') || (server.url ?? ''), full: server.url ?? '' }
+  const command = server.command ?? ''
+  const program = command.trim().split(/\s+/)[0]?.split(/[\\/]/).at(-1) ?? command
+  return { key: 'connectors.card.local', value: program || command, full: command }
 }
 
 /** La línea que dice qué falla y qué hacer, con la pista del Engine. */

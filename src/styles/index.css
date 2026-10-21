@@ -2965,23 +2965,43 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 /* -- MCP ------------------------------------------------------------------------ */
 .field-label { display: block; margin: 14px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
 .field-hint { margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: var(--text-subtle); }
-.mcp-card { border-radius: var(--r-lg); border: 1px solid var(--line-1); background: linear-gradient(180deg, rgb(26 19 44 / 0.7), rgb(16 12 27 / 0.75)); padding: 16px; box-shadow: var(--inset-hi); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
-.mcp-card:not([data-enabled]) { opacity: 0.72; }
-.mcp-icon { display: grid; width: 36px; height: 36px; flex-shrink: 0; place-items: center; border-radius: 11px; color: var(--violet-300); background: rgb(147 88 255 / 0.14); border: 1px solid var(--line-2); }
-.mcp-icon[data-remote] { color: var(--cyan-300); background: rgb(130 244 239 / 0.08); border-color: rgb(130 244 239 / 0.25); }
-.mcp-status { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600; border: 1px solid var(--line-2); color: var(--text-muted); }
-.mcp-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
-.mcp-status[data-state='on'] { color: var(--success); border-color: rgb(91 224 165 / 0.3); }
-.mcp-status[data-state='on']::before { background: var(--success); }
-.mcp-chip { border-radius: 6px; border: 1px solid var(--line-2); padding: 1px 7px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
-.mcp-result { display: flex; gap: 12px; margin-top: 12px; border-radius: var(--r-md); padding: 12px 14px; font-size: 13px; animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
-.mcp-result.is-ok { border: 1px solid rgb(91 224 165 / 0.3); background: rgb(91 224 165 / 0.06); }
-.mcp-result.is-error { border: 1px solid rgb(255 122 147 / 0.32); background: rgb(255 122 147 / 0.06); }
-.mcp-choice { display: flex; gap: 10px; align-items: flex-start; border-radius: var(--r-md); border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.5); padding: 12px; text-align: left; font-size: 13px; color: var(--text-muted); transition: all var(--dur-fast); }
-.mcp-choice b { display: block; color: var(--text); }
-.mcp-choice small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--text-subtle); }
-.mcp-choice.is-on { border-color: rgb(196 181 253 / 0.6); background: rgb(147 88 255 / 0.12); box-shadow: 0 0 0 3px rgb(147 88 255 / 0.12); }
-.mcp-choice.is-on svg { color: var(--violet-300); }
+/* Tarjeta, resultado y elección de los conectores (antes .mcp-*): con tokens y sin entrar con
+   movimiento al montarse; el resultado de «Probar» aparece con un fundido porque es un cambio. */
+.connector-card { border-radius: var(--r-lg); border: 1px solid var(--line-1); background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 82%, transparent), color-mix(in srgb, var(--bg-subtle) 82%, transparent)); padding: 16px; box-shadow: var(--inset-hi); transition: border-color var(--dur-fast); }
+.connector-card:hover { border-color: var(--line-2); }
+.connector-card:not([data-enabled]) { opacity: 0.72; }
+.connector-kind { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; background: var(--bg-subtle); box-shadow: inset 0 0 0 1px var(--line-1); font-size: 11px; color: var(--text-subtle); }
+.connector-kind svg { flex-shrink: 0; }
+.connector-result { --tone: var(--success); display: flex; gap: 12px; margin-top: 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent); background: color-mix(in srgb, var(--tone) 6%, transparent); padding: 12px 14px; font-size: 13px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.connector-result.is-error { --tone: var(--danger); }
+.connector-choice { display: flex; gap: 10px; align-items: flex-start; border-radius: var(--r-md); border: 1px solid var(--line-2); background: var(--bg-subtle); padding: 12px; text-align: left; font-size: 13px; color: var(--text-muted); transition: border-color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.connector-choice:hover { border-color: var(--line-3); }
+.connector-choice b { display: block; color: var(--text); }
+.connector-choice small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--text-subtle); }
+.connector-choice.is-on { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.connector-choice.is-on svg { color: var(--accent-2); }
+.connector-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; text-align: center; font-size: 13px; color: var(--text-muted); }
+.connector-empty img { width: 130px; height: 130px; object-fit: contain; animation: home-float 7s ease-in-out infinite; }
+/* El detalle de un conector, como página de Ajustes. */
+.connector-page { display: flex; flex-direction: column; gap: 14px; }
+.connector-page-back { align-self: flex-start; margin-left: -8px; }
+.connector-page-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px; }
+.connector-page-title { border-radius: var(--r-xs); font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--text); outline: none; }
+/* El foco llega al título solo para anunciar la página: no es un control y no lleva anillo. */
+.connector-page-title:focus-visible { outline: none; }
+.connector-page-desc { margin-top: 6px; max-width: 60ch; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.connector-page-action { display: flex; flex-shrink: 0; gap: 8px; padding-top: 2px; }
+/* El catálogo: la cabecera, el buscador y los filtros quietos; solo la lista se desplaza. */
+.catalog-browse { display: flex; min-height: 0; flex-direction: column; gap: 14px; }
+.catalog-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.catalog-filter { display: inline-flex; align-items: center; gap: 6px; height: 28px; border-radius: 999px; padding: 0 11px; border: 1px solid var(--line-2); background: transparent; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: color var(--dur-fast), background-color var(--dur-fast), border-color var(--dur-fast); }
+.catalog-filter:hover { color: var(--text); background: var(--bg-hover); }
+.catalog-filter[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.catalog-filter-count { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; color: var(--text-subtle); }
+.catalog-filter[aria-pressed='true'] .catalog-filter-count { color: var(--accent-2); }
+.catalog-scroll { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 10px; overflow-y: auto; margin: 0 -6px; padding: 2px 6px; }
+/* Un botón principal desactivado no debe parecer listo para pulsar: pierde el degradado y el brillo. */
+.btn-primary:disabled { opacity: 1; color: var(--text-subtle); background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--line-2); }
 .mcp-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; text-align: center; font-size: 13px; color: var(--text-muted); }
 .mcp-empty img { width: 130px; height: 130px; object-fit: contain; animation: rinari-rise var(--dur-slow) var(--ease-out) both, home-float 7s ease-in-out 0.6s infinite; }
 
@@ -2991,6 +3011,12 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .connector-card .connector-name:hover { color: var(--accent-2); }
 .connector-logo { --tone: var(--accent-2); display: inline-grid; flex-shrink: 0; place-items: center; overflow: hidden; border-radius: var(--r-sm); font-family: var(--font-display); font-weight: 700; line-height: 1; color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, var(--bg-elevated)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 32%, transparent); }
 .connector-logo img { width: 70%; height: 70%; object-fit: contain; }
+/* Con imagen: el glifo va sobre una placa neutra (el color lo pone la marca), y el logo que ya trae
+   su placa la llena entera. */
+.connector-logo[data-image] { background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--line-2); }
+.connector-logo[data-image='glyph'] img { width: 64%; height: 64%; }
+.connector-logo[data-image='fill'] { box-shadow: none; background: none; }
+.connector-logo[data-image='fill'] img { width: 100%; height: 100%; object-fit: cover; }
 .connector-logo[data-tone='google'], .connector-logo[data-tone='files'] { --tone: var(--info); }
 .connector-logo[data-tone='dev'], .connector-logo[data-tone='remote'] { --tone: var(--agent); }
 .connector-logo[data-tone='design'], .connector-logo[data-tone='media'] { --tone: var(--accent-3); }

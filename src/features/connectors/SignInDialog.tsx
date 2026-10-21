@@ -171,7 +171,7 @@ export function SignInDialog() {
         )}
 
         {phase.kind === 'signed_in' && (
-          <div className="mcp-result is-ok" role="status">
+          <div className="connector-result is-ok" role="status">
             <RinariAvatar state="done" size={34} />
             <div className="min-w-0">
               <p className="font-semibold text-[var(--success)]">{t('connectors.signin.done')}</p>
@@ -181,7 +181,7 @@ export function SignInDialog() {
         )}
 
         {(phase.kind === 'failed' || phase.kind === 'timed_out') && (
-          <div className="mcp-result is-error" role="alert">
+          <div className="connector-result is-error" role="alert">
             <RinariAvatar state="error" size={34} />
             <div className="min-w-0">
               <p className="font-semibold text-[var(--danger)]">{t(phase.kind === 'timed_out' ? 'connectors.signin.timedOut' : 'connectors.signin.failed')}</p>

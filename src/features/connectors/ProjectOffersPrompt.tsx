@@ -7,6 +7,7 @@ import { pathKey } from '../../lib/paths'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { CandidateBody, FailureDetails, failureText } from './ImportDialog'
 import { SegChoice } from './SegChoice'
+import { KindChip } from './ConnectorParts'
 import { useProjectOffersCheck } from './connectorStore'
 
 type Answer = 'accept' | 'reject'
@@ -91,7 +92,7 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
                 <li key={offer.key} className="import-item flex-col" data-key={offer.key}>
                   <div className="flex w-full flex-wrap items-center gap-2">
                     <b className="text-[13px] text-[var(--text)]" id={`offer-${offer.key}`}>{offer.name}</b>
-                    <span className="mcp-chip">{t(offer.transport === 'http' ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
+                    <KindChip remote={offer.transport === 'http'} />
                     {offer.path && <span className="font-mono text-[11px] text-[var(--text-subtle)]">{offer.path.split(/[\\/]/).slice(-2).join('/')}</span>}
                     {offer.changed && <span className="r-chip" data-tone="warning">{t('connectors.offers.changed')}</span>}
                   </div>

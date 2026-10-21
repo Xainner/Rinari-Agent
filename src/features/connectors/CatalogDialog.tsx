@@ -12,10 +12,10 @@ import {
 import { useI18n, type I18nKey } from '../../i18n'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { ProgressBar } from '../../components/ui/progress-bar'
-import { Select } from '../../components/ui/select'
 import { SearchField } from '../../components/ui/SearchField'
 import { platform } from '../../platform'
 import { ConnectorLogo } from './ConnectorLogo'
+import { KindChip } from './ConnectorParts'
 import { SegChoice } from './SegChoice'
 import { parsePort } from './mcpForm'
 
@@ -52,34 +52,42 @@ export function CatalogDialog({ open, onClose, onManual, onAdded }: {
     return () => { alive = false }
   }, [open])
 
-  const visible = useMemo(() => {
+  const matching = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return (entries ?? []).filter((entry) =>
-      (category === 'all' || entry.category === category)
-      && (!q || `${entry.name} ${entry.description[lang]} ${entry.id}`.toLowerCase().includes(q)))
-  }, [entries, query, category, lang])
+    return (entries ?? []).filter((entry) => !q || `${entry.name} ${entry.description[lang]} ${entry.id}`.toLowerCase().includes(q))
+  }, [entries, query, lang])
+  const visible = useMemo(() => matching.filter((entry) => category === 'all' || entry.category === category), [matching, category])
+  // Las categorías como chips con cuántas hay (lo que busca el texto); solo las que tienen alguna.
+  const counts = useMemo(() => {
+    const out = new Map<Category, number>([['all', matching.length]])
+    for (const entry of matching) out.set(entry.category, (out.get(entry.category) ?? 0) + 1)
+    return out
+  }, [matching])
+  const shown = CATEGORIES.filter((value) => value === 'all' || value === category || (counts.get(value) ?? 0) > 0)
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
-      <DialogContent className="max-w-3xl" data-testid="connector-catalog" data-step={chosen ? 'setup' : 'browse'}>
+      <DialogContent className={chosen ? 'max-w-3xl' : 'max-w-3xl grid-rows-[minmax(0,1fr)] overflow-hidden'} data-testid="connector-catalog" data-step={chosen ? 'setup' : 'browse'}>
         {chosen ? (
           <SetupStep entry={chosen} onBack={() => setChosen(null)} onAdded={onAdded} />
         ) : (
-          <>
+          <div className="catalog-browse">
             <DialogHeader>
               <DialogTitle>{t('connectors.catalog.title')}</DialogTitle>
               <DialogDescription>{t('connectors.catalog.intro')}</DialogDescription>
             </DialogHeader>
-            <div className="flex flex-wrap items-center gap-2">
-              <SearchField className="min-w-[200px] flex-1" label={t('connectors.catalog.search')} value={query} onChange={(event) => setQuery(event.target.value)} />
-              <Select<Category>
-                value={category}
-                label={t('connectors.catalog.category')}
-                className="w-48"
-                options={CATEGORIES.map((value) => ({ value, label: t(`connectors.category.${value}` as I18nKey) }))}
-                onChange={setCategory}
-              />
-            </div>
+            <SearchField label={t('connectors.catalog.search')} value={query} onChange={(event) => setQuery(event.target.value)} />
+            {entries && (
+              <div className="catalog-filters" role="group" aria-label={t('connectors.catalog.category')}>
+                {shown.map((value) => (
+                  <button key={value} type="button" className="catalog-filter" aria-pressed={category === value} data-category={value} onClick={() => setCategory(value)}>
+                    {t(`connectors.category.${value}` as I18nKey)}
+                    <span className="catalog-filter-count">{counts.get(value) ?? 0}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="catalog-scroll">
             {error && <p role="alert" className="text-[13px] text-[var(--danger)]">{error}</p>}
             {!entries && !error && <ProgressBar label={t('connectors.catalog.loading')} />}
             {entries && visible.length === 0 && <p className="text-[13px] text-[var(--text-muted)]">{t('connectors.catalog.none')}</p>}
@@ -95,17 +103,18 @@ export function CatalogDialog({ open, onClose, onManual, onAdded }: {
                         {entry.added && <span className="r-chip" data-tone="success">{t('connectors.catalog.added')}</span>}
                       </span>
                       <small>{entry.description[lang] ?? entry.description.es}</small>
-                      <span className="mcp-chip mt-1 inline-block">{t(entry.server.transport === 'http' ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
+                      <span className="mt-1.5 flex"><KindChip remote={entry.server.transport === 'http'} /></span>
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
+            </div>
             <div className="catalog-manual">
               <p className="text-[12.5px] text-[var(--text-muted)]">{t('connectors.catalog.notListed')}</p>
               <button type="button" className="btn btn-secondary btn-sm" onClick={onManual} data-testid="catalog-manual"><Plus size={13} /> {t('connectors.catalog.manual')}</button>
             </div>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

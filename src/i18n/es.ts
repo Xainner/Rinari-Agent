@@ -3978,6 +3978,8 @@ export const es = {
   'connectors.retryingSoon': 'Rinari lo volverá a intentar solo.',
   'connectors.docs': 'Documentación',
   'connectors.chip.remote': 'MCP remoto',
+  'connectors.card.remote': 'Servidor MCP en {value}',
+  'connectors.card.local': 'Programa local: {value}',
   'connectors.chip.local': 'MCP local',
   'connectors.chip.project': 'Este proyecto',
   'connectors.state.connected': 'Conectado',

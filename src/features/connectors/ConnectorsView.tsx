@@ -26,7 +26,7 @@ import {
 } from './connectorModel'
 import { ConnectorLogo } from './ConnectorLogo'
 import { McpServerDialog, TestResult } from './McpServerDialog'
-import { AccountLine, PrimaryButton, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
+import { AccountLine, KindChip, PrimaryButton, serverSummary, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
 import { CatalogDialog } from './CatalogDialog'
 import { useConnectorEvents } from './connectorStore'
 import { ImportDialog } from './ImportDialog'
@@ -107,6 +107,10 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
 
   return (
     <div className="space-y-4" data-testid="connectors-view">
+      {detailItem ? (
+        <ConnectorDetail item={detailItem} caps={caps} actions={actions} testing={testing} result={detail ? results[detail] : undefined} onClose={() => setDetail(null)} />
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-lg font-bold text-[var(--text)]">{t('connectors.title')}</h2>
@@ -119,7 +123,7 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
       {!loaded && <ProgressBar label={t('connectors.loading')} />}
 
       {error && (
-        <div className="mcp-result is-error" role="alert">
+        <div className="connector-result is-error" role="alert">
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-[var(--danger)]">{t('connectors.loadFailed')}</p>
             <p className="mt-1 text-[12.5px] text-[var(--text-muted)]">{error}</p>
@@ -129,7 +133,7 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
       )}
 
       {loaded && !error && items.length === 0 && (
-        <div className="mcp-empty">
+        <div className="connector-empty">
           <img src={art.chibi('plug')} alt="" draggable={false} />
           <p className="font-display text-[15px] font-bold text-[var(--text)]">{t('connectors.emptyTitle')}</p>
           <p>{t('connectors.emptyHint')}</p>
@@ -147,6 +151,8 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
           </li>
         ))}
       </ul>
+      </>
+      )}
 
       <CatalogDialog
         open={catalogOpen}
@@ -173,8 +179,6 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
       />
 
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void changed()} />
-
-      <ConnectorDetail item={detailItem} caps={caps} actions={actions} testing={testing} result={detail ? results[detail] : undefined} onClose={() => setDetail(null)} />
 
       <SignInDialog />
 
@@ -228,20 +232,21 @@ function ConnectorCard({ item, caps, actions, testing, busy, result }: {
   const { server, entry } = item
   const remote = isRemote(server)
   const description = entry ? entry.description[lang] ?? entry.description.es : null
+  const summary = description ? null : serverSummary(server)
   return (
-    <section className="mcp-card connector-card" data-enabled={server.enabled || undefined} data-connector={server.name} data-state={item.state} aria-labelledby={`connector-${item.key}`}>
+    <section className="connector-card" data-enabled={server.enabled || undefined} data-connector={server.name} data-state={item.state} aria-labelledby={`connector-${item.key}`}>
       <div className="flex items-start gap-3">
         <ConnectorLogo name={entry?.name ?? server.name} logo={entry?.logo} tone={entry?.category ?? (remote ? 'remote' : 'local')} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" id={`connector-${item.key}`} className="connector-name" onClick={() => actions.details(item)}>{item.name}</button>
             <StateChip item={item} />
-            <span className="mcp-chip">{t(remote ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
-            {server.scope === 'project' && <span className="mcp-chip">{t('connectors.chip.project')}</span>}
+            <KindChip remote={remote} />
+            {server.scope === 'project' && <span className="connector-kind">{t('connectors.chip.project')}</span>}
           </div>
           {description
             ? <p className="mt-1 text-[12.5px] text-[var(--text-muted)]">{description}</p>
-            : <p className="mt-1 truncate font-mono text-[11.5px] text-[var(--text-subtle)]" title={remote ? server.url : server.command}>{remote ? server.url : server.command}</p>}
+            : summary && <p className="mt-1 truncate text-[12.5px] text-[var(--text-muted)]" title={summary.full}>{t(summary.key, { value: summary.value })}</p>}
           <AccountLine item={item} />
           <StateHint item={item} caps={caps} />
           {server.warnings?.includes('plain_http_remote') && <p className="mt-1 text-[11.5px] text-[var(--warning)]">{t('mcp.plainHttp')}</p>}

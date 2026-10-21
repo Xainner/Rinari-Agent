@@ -6,6 +6,7 @@ import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { ProgressBar } from '../../components/ui/progress-bar'
 import { SegTabPanel, SegTabs } from './SegTabs'
+import { KindChip } from './ConnectorParts'
 
 type Mode = 'apps' | 'paste'
 
@@ -220,9 +221,9 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
                     <div className="min-w-0 flex-1">
                       <label htmlFor={id} className="flex flex-wrap items-center gap-2">
                         <b className="text-[13px] text-[var(--text)]">{candidate.suggested_name ?? candidate.name}</b>
-                        <span className="mcp-chip">{t(candidate.transport === 'http' ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
+                        <KindChip remote={candidate.transport === 'http'} />
                         {candidate.source_label && <span className="text-[11.5px] text-[var(--text-subtle)]">{candidate.source_label}</span>}
-                        {candidate.project_root && <span className="mcp-chip">{t('connectors.chip.project')}</span>}
+                        {candidate.project_root && <span className="connector-kind">{t('connectors.chip.project')}</span>}
                       </label>
                       <CandidateBody candidate={candidate} />
                       {candidate.existing && <p className="text-[12px] text-[var(--text-muted)]">{t('connectors.import.existing', { name: candidate.existing })}</p>}

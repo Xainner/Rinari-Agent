@@ -80,7 +80,7 @@ export function McpServerDialog({ target, caps, onClose, onSaved }: {
         {remoteSupported && !original && (
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('mcp.transport')}>
             {(['stdio', 'http'] as const).map((transport) => (
-              <button key={transport} type="button" role="radio" aria-checked={form.transport === transport} className={cn('mcp-choice', form.transport === transport && 'is-on')} onClick={() => set({ transport })}>
+              <button key={transport} type="button" role="radio" aria-checked={form.transport === transport} className={cn('connector-choice', form.transport === transport && 'is-on')} onClick={() => set({ transport })}>
                 {transport === 'stdio' ? <SquareTerminal size={17} aria-hidden="true" /> : <Globe size={17} aria-hidden="true" />}
                 <span><b>{t(transport === 'stdio' ? 'mcp.local' : 'mcp.remote')}</b><small>{t(transport === 'stdio' ? 'mcp.localHint' : 'mcp.remoteHint')}</small></span>
               </button>
@@ -197,7 +197,7 @@ export function TestResult({ result, oauthSupported }: { result: McpTest; oauthS
   const oauthLine = oauth && <p className="mt-1 text-[12px] text-[var(--text-muted)]">{t(oauth.client === 'required' ? 'connectors.test.oauthClientRequired' : 'connectors.test.oauthAvailable')}</p>
   if (result.ok) {
     return (
-      <div className="mcp-result is-ok" role="status">
+      <div className="connector-result is-ok" role="status">
         <RinariAvatar state="done" size={34} />
         <div className="min-w-0">
           <p className="font-semibold text-[var(--success)]">{t('mcp.result.ok', { n: result.tools ?? 0, ms: Math.round(result.latency_ms ?? 0) })}</p>
@@ -213,7 +213,7 @@ export function TestResult({ result, oauthSupported }: { result: McpTest; oauthS
   const codeKey = code ? `mcp.code.${code}` : ''
   const hint = result.hint === 'oauth_required' && oauthSupported ? 'connectors.hint.oauth_required' : result.hint ? `mcp.hint.${result.hint}` : ''
   return (
-    <div className="mcp-result is-error" role="alert">
+    <div className="connector-result is-error" role="alert">
       <RinariAvatar state="error" size={34} />
       <div className="min-w-0">
         <p className="font-semibold text-[var(--danger)]">{hasTranslation(codeKey) ? t(codeKey) : t('mcp.code.unknown')}{result.http_status ? ` · HTTP ${result.http_status}` : ''}</p>

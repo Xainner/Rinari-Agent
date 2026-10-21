@@ -653,3 +653,19 @@ La tercera pasada cerró casi todo. Lo que quedaba se arregló en la misma rama;
 - **Menores:**
   - La entrada de la campana mira su propia propuesta, no otra del mismo agente.
   - Las conversaciones de agente vistas se olvidan al borrarse y al cambiar de perfil.
+
+### Cuarta revisión (sobre `844616c` y `48d9fff`)
+
+Sin bloqueantes. Lo que quedaba se arregló en la misma rama.
+
+**Engine (Rinari-CLI#75):**
+- **El resultado de un conector pasado por una regla:** la vuelta de una regla «tool» que entrega el resultado a su agente arranca con la marca de contenido externo y el conector como origen. Si deja un recado a un equipo, el recado lleva la marca.
+- **Menores:**
+  - Se escapa todo corchete de apertura o cierre que no sea ASCII (categorías Unicode Ps/Pe), en vez de una lista.
+  - «Reanudar» sin perfil solo reanuda lo que detuvo un «Detener a todos» sin perfil; un perfil detenido aparte sigue detenido.
+  - La comprobación tras arrancar una vuelta del tablero cancela esa vuelta (por `turn_id`), nunca otra que el dueño haya empezado después.
+
+**App (Rinari-Agent#114):**
+- Mientras `session.open` de una conversación sigue pendiente, ninguna recarga te saca de ella.
+- Al cambiar de perfil, la conversación ya abierta conserva su marca de la Agency.
+- **Pendiente para el pulido:** un toast abajo a la derecha tapa «Enviar» en la oficina y en el composer, y con el puntero encima no se va. Lo señaló la revisión; ya estaba anotado.

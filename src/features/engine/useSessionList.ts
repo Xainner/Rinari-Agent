@@ -145,6 +145,9 @@ export function useSessionList(options: {
   // that started before cannot know it (an Agency child before session.open
   // answers), so it never moves you off it.
   const activatedAt = useRef<{ id: string; seq: number }>({ id: '', seq: 0 })
+  // The session whose session.open is still pending: until it answers (with
+  // its agent_id, for an Agency child) no listing moves you off it.
+  const opening = useRef('')
   const activate = useCallback((id: string) => {
     activatedAt.current = { id, seq: refreshSeq.current }
     if (id !== '' && !historyLoaded.current.has(id)) {
@@ -243,6 +246,7 @@ export function useSessionList(options: {
         // escribe en el chat de un agente sigue en él.
         if (current !== '' && isAgencySession(current)) return current
         if (current !== '' && activatedAt.current.id === current && activatedAt.current.seq >= seq) return current
+        if (current !== '' && opening.current === current) return current
         // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
         if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''
@@ -445,13 +449,16 @@ export function useSessionList(options: {
       const previous = activeSession
       const generation = ++selectionGeneration.current
       const engine = generationRef.current
+      opening.current = id
       activate(id)
       try {
         const opened = await engineApi.openSession(id)
+        if (opening.current === id) opening.current = ''
         if (generationRef.current !== engine) return
         rememberOpened(opened)
         reportWarnings(id, opened)
       } catch (err) {
+        if (opening.current === id) opening.current = ''
         if (generationRef.current !== engine) return
         // A stale failure must not undo a newer selection.
         if (selectionGeneration.current === generation) {

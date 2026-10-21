@@ -252,6 +252,26 @@ describe('useSessionList session visibility', () => {
     useAgencyStore.setState({ agentRows: {} })
   })
 
+  it('a listing that starts while an Agency child is still opening does not move you off it', async () => {
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: {}, postSessions: {}, sessionLabels: {}, agentRows: {} })
+    const opening = deferred<{ session: SessionSummary; created: boolean; warnings: string[] }>()
+    openSession.mockReturnValueOnce(opening.promise)
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    let select!: Promise<void>
+    act(() => { select = result.current.selectSession('ses_child') })
+    // A profile switch, a model change or a retry: a new listing while it opens.
+    await act(async () => { await result.current.refreshSessions() })
+    expect(result.current.activeSession).toBe('ses_child')
+    await act(async () => {
+      opening.resolve({ session: { ...summary('ses_child'), agent_id: 'agent_1' }, created: false, warnings: [] })
+      await select
+    })
+    await act(async () => { await result.current.refreshSessions() })
+    expect(result.current.activeSession).toBe('ses_child')
+    useAgencyStore.setState({ agentRows: {} })
+  })
+
   it('reconciles selectSession with the resumed record instead of stale list data', async () => {
     const { result } = setup()
     sessions.mockResolvedValue({ sessions: [summary('a', 'interrupted')] })

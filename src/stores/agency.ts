@@ -80,8 +80,8 @@ interface AgencyState {
   markAgentRows: (ids: string[]) => void
   /** Una conversación borrada deja de contar como de la Agency. */
   forgetAgentRow: (id: string) => void
-  /** Al cambiar de perfil: eran conversaciones de los agentes del otro. */
-  clearAgentRows: () => void
+  /** Al cambiar de perfil: eran conversaciones de los agentes del otro (menos las de keep: la que está abierta). */
+  clearAgentRows: (keep?: string[]) => void
 }
 
 export const useAgencyStore = create<AgencyState>((set, get) => ({
@@ -133,7 +133,9 @@ export const useAgencyStore = create<AgencyState>((set, get) => ({
     delete agentRows[id]
     return { agentRows }
   }),
-  clearAgentRows: () => set({ agentRows: {} }),
+  clearAgentRows: (keep = []) => set((state) => ({
+    agentRows: Object.fromEntries(keep.filter((id) => state.agentRows[id]).map((id) => [id, true as const])),
+  })),
   setPostSessions: (teams) => set({
     postSessions: Object.fromEntries(
       teams.flatMap((team) => team.posts.map((post) => [post.session_id, { teamId: team.id, agentId: post.agent_id }])),

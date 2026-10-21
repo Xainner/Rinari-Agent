@@ -121,8 +121,13 @@ it('an agent conversation stops counting once deleted or on a profile switch', (
   expect(isAgencySession('ses_child')).toBe(true)
   store.forgetAgentRow('ses_child')
   expect(isAgencySession('ses_child')).toBe(false)
-  store.clearAgentRows()
+  store.markAgentRows(['ses_open'])
+  // The one already open in the new profile keeps its mark.
+  store.clearAgentRows(['ses_open'])
   expect(isAgencySession('ses_fork')).toBe(false)
+  expect(isAgencySession('ses_open')).toBe(true)
+  store.clearAgentRows()
+  expect(isAgencySession('ses_open')).toBe(false)
 })
 
 it('a failed office post comes back only into an empty box', async () => {

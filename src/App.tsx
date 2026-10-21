@@ -550,7 +550,9 @@ function App() {
   // Las propuestas de reglas y las conversaciones de agentes vistas eran del perfil anterior.
   useEffect(() => {
     useAgencyStore.getState().clearProposals()
-    useAgencyStore.getState().clearAgentRows()
+    // The conversation already open in the new profile keeps its mark: its
+    // session.open may have answered before this effect ran.
+    useAgencyStore.getState().clearAgentRows([session.activeSession])
   }, [activeProfileId])
   const openAgentChat = (agent: AgencyAgent) => {
     useAgencyStore.getState().openAgent(agent.id)

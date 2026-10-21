@@ -594,3 +594,31 @@ Los dos PR se revisaron sobre `0.4.0` con #74 y #113 ya fusionados. La mezcla co
 - La Agency solo se recarga con turnos de sus propias conversaciones, agrupados y numerados.
 - Los avisos de la oficina, los motivos nuevos y «Reanudar la Agency», en el idioma del dueño.
 
+### Segunda revisión (sobre `57d7f5d` y `3464e8a`)
+
+La segunda pasada dio por resuelto casi todo y dejó dos bloqueantes a medias y seis importantes; tres de ellos los abrieron los propios arreglos. Todo se arregló en la misma rama `fix/agency-review`.
+
+**Engine (Rinari-CLI#75):**
+- **Memoria por `context.retrieve` y los pines:** pasan por la misma regla que `memory.recall`; un puesto ya no recupera ni fija la memoria de otro equipo, de otro agente o del dueño.
+- **«Detener a todos» con una vuelta que se escapaba:** primero se detiene el tablero y después se cortan las vueltas; el tablero corta las suyas. Lo que publica una vuelta que termina durante la parada queda en la oficina, pero no despierta a nadie al reanudar.
+- **El hijo de un puesto se saltaba los topes:** solo un puesto y el chat directo del agente tienen herramientas de la Agency. Sus hijos y forks siguen siendo del agente (memoria, presupuesto, conectores), pero el trabajo lo entrega quien los abrió, dentro de su cadena.
+- **La carpeta vigilada volvía a disparar:** cualquier final consume el cambio salvo un fallo. Un fallo se reintenta como mucho 3 veces sobre el mismo cambio; después, la ejecución queda «bloqueada» y se avisa.
+- **Título y cuerpo del recado crudos:** el título va en una línea, y el cuerpo va citado línea a línea («| …») como datos de quien lo pidió. Los ⟦ ⟧ y sus parecidos 〚 〛 se escapan.
+- **La devolución perdía la marca externa:** el recado la guarda al devolverse, y la vuelta que lo rehace mantiene el guardia.
+- **Menores:**
+  - una prueba de que un aviso del Engine no suelta una espera;
+  - una entrega cuenta una sola vez en el tope de 20, con una sola regla para las dos comprobaciones;
+  - una vuelta que falla ya no hereda la marca externa de la anterior.
+
+**App (Rinari-Agent#114):**
+- **Los hijos y forks del chat de un agente:**
+  - La lista recuerda toda conversación con `agent_id`; un hijo o un fork activo ya no salta a Rinari.
+  - Su fila (modelo y título) sobrevive a las recargas.
+  - Lo mismo vale para la fila del chat directo y del puesto.
+- **La vuelta de la Agency en vivo:** conserva su origen, y se ve como de la Agency desde el primer momento, no solo al recargar el historial.
+- **Menores:**
+  - «Probar» y «Créalo con Rinari» se cancelan al cerrar su vista.
+  - Si un envío a la oficina falla, el texto solo se repone en un cuadro vacío.
+  - Una propuesta repetida no suma aviso ni entrada en la campana, y la entrada lleva un id por su contenido.
+  - Una entrada vieja de la campana dice que la propuesta ya no está.
+  - Si la recarga nueva falla, la Agency se queda con la última buena del mismo perfil.

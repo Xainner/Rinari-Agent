@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 import { Select, type SelectOption } from '../../components/ui/select'
 import { commandMessage, engineApi, type McpServer, type ModelSummary } from '../../services/engine'
 import agencyIcon from '../../assets/agency/agency-icon.webp'
-import { JobTimeoutError, runJob } from './jobEvents'
+import { JobCancelledError, JobTimeoutError, runJob, useJobSignal } from './jobEvents'
 import type { AgencyAgent, AgencyAgentInput, AgentPermissionProfile } from './types'
 
 const PROFILES: AgentPermissionProfile[] = ['read-only', 'workspace', 'full-access']
@@ -53,6 +53,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
   const [saving, setSaving] = useState(false)
   const [description, setDescription] = useState('')
   const [drafting, setDrafting] = useState(false)
+  const jobSignal = useJobSignal()
 
   // El borrador llega como evento del Engine, con el job que se pidió; la
   // suscripción va antes de pedirlo (un fallo rápido no deja el botón colgado).
@@ -68,6 +69,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
           return null
         },
         DRAFT_TIMEOUT_MS,
+        jobSignal(),
       )
       if ('message' in outcome) {
         toast.error(outcome.message)
@@ -81,6 +83,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
         setProfile(draft.permission_profile)
       }
     } catch (error) {
+      if (error instanceof JobCancelledError) return // the form closed meanwhile
       toast.error(error instanceof JobTimeoutError ? t('agency.jobTimeout') : commandMessage(error))
     } finally {
       setDrafting(false)

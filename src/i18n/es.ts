@@ -4320,6 +4320,7 @@ export const es = {
   'agency.rules.onResult.agent': 'Se lo pasa al agente',
   'agency.rules.onResult.deliver': 'A otro conector',
   'agency.rules.proposed': 'Propuesta',
+  'agency.rules.proposalGone': 'Esa propuesta ya no está esperando (las propuestas duran hasta cerrar la app). Pídesela de nuevo al agente.',
   'agency.rules.approveHint': 'Activarla es tu aprobación: correrá sin preguntar con lo que dice aquí. Lo bloqueado en los conectores sigue bloqueado.',
   'agency.rules.discard': 'Descartar',
   'agency.rules.activate': 'Activar regla',

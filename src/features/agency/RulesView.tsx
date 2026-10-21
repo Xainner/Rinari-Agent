@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pause, Play, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
-import { JobTimeoutError, runJob } from './jobEvents'
+import { JobCancelledError, JobTimeoutError, runJob, useJobSignal } from './jobEvents'
 import { commandMessage, engineApi, onEngineEvent, type ScheduledTask, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
 import { describeSchedule, formatWhen, SCHEDULES_CHANGED_EVENT } from '../schedules/scheduleModel'
 import { useAgencyStore } from '../../stores/agency'
@@ -78,6 +78,7 @@ function RehearseButton({ proposal }: { proposal: ScheduledTaskInput }) {
   const { t } = useI18n()
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<Rehearsal | null>(null)
+  const jobSignal = useJobSignal()
 
   // Suscrito antes de pedirlo: «no se puede ensayar» llega casi enseguida.
   const start = async () => {
@@ -89,8 +90,10 @@ function RehearseButton({ proposal }: { proposal: ScheduledTaskInput }) {
         () => engineApi.scheduleRehearse(proposal),
         (event) => (event.event === 'schedule.rehearsed' ? (event.payload as unknown as Rehearsal) : null),
         REHEARSAL_TIMEOUT_MS,
+        jobSignal(),
       ))
     } catch (error) {
+      if (error instanceof JobCancelledError) return // the card closed meanwhile
       toast.error(error instanceof JobTimeoutError ? t('agency.jobTimeout') : commandMessage(error))
     } finally {
       setRunning(false)

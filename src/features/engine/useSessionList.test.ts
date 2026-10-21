@@ -199,7 +199,32 @@ describe('useSessionList session visibility', () => {
     })
     expect(result.current.activeSession).toBe('ses_agent')
     expect(result.current.sessions.map((item) => item.id)).not.toContain('ses_agent')
-    useAgencyStore.setState({ agentSessions: {} })
+    // Its row stays: the model pill and the title read it after every turn.
+    expect(result.current.sessionsById.ses_agent?.model_id).toBe('m')
+    useAgencyStore.setState({ agentSessions: {}, agentRows: {} })
+  })
+
+  it('keeps a child of an agent\'s chat active and its row after a refresh', async () => {
+    // The Engine copies agent_id to a child or a fork; nothing else names it.
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: {}, postSessions: {}, sessionLabels: {}, agentRows: {} })
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    const child = { ...summary('ses_child'), title: 'Investigar', model_id: 'qwen', agent_id: 'agent_1', parent_session_id: 'ses_agent' }
+    openSession.mockResolvedValue({ session: child, created: false, warnings: [] })
+    await act(async () => {
+      await result.current.refreshSessions()
+      await result.current.selectSession('ses_child')
+    })
+    for (let turn = 0; turn < 2; turn += 1) {
+      await act(async () => {
+        await result.current.refreshSessions()
+      })
+    }
+    expect(result.current.activeSession).toBe('ses_child')
+    expect(result.current.sessionsById.ses_child?.model_id).toBe('qwen')
+    expect(result.current.sessionsById.ses_child?.title).toBe('Investigar')
+    expect(result.current.sessions.map((item) => item.id)).not.toContain('ses_child')
+    useAgencyStore.setState({ agentRows: {} })
   })
 
   it('reconciles selectSession with the resumed record instead of stale list data', async () => {

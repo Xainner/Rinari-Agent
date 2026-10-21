@@ -41,12 +41,15 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
   const [status, setStatus] = useState<AgencyStatus | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [halted, setHalted] = useState(false)
-  // Numbered: an older answer arriving late never overwrites a newer one.
+  // Numbered: an older answer arriving late never overwrites a newer one that
+  // was shown. If the newest fails, the last good one of the same profile stays.
   const seq = useRef(0)
+  const applied = useRef(0)
 
   const reload = useCallback(async () => {
     if (!enabled) return
     const mine = ++seq.current
+    const asked = useProfileStore.getState().activeId ?? 'default'
     try {
       const [list, current, teamList, settings] = await Promise.all([
         engineApi.agencyAgents(),
@@ -54,8 +57,9 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
         teamsEnabled ? engineApi.agencyTeams() : Promise.resolve({ teams: [] as AgencyTeam[] }),
         haltEnabled ? engineApi.agencySettings() : Promise.resolve(null),
       ])
-      if (mine !== seq.current) return
       const profile = useProfileStore.getState().activeId ?? 'default'
+      if (mine < applied.current || profile !== asked) return
+      applied.current = mine
       setHalted(Boolean(settings?.stopped_profiles?.includes(profile)))
       setAgents(list.agents)
       setStatus(current)
@@ -70,7 +74,7 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
     } catch {
       // El Engine puede estar reiniciando: se conserva lo último que se supo.
     } finally {
-      if (mine === seq.current) setLoaded(true)
+      if (mine === seq.current || mine === applied.current) setLoaded(true)
     }
   }, [enabled, teamsEnabled, haltEnabled])
 

@@ -53,7 +53,8 @@ interface AgencyState {
    * que el dueño la activa.
    */
   proposals: ScheduledTaskInput[]
-  addProposal: (proposal: ScheduledTaskInput) => void
+  /** false si esa misma regla ya esperaba: ni otra tarjeta ni otro aviso. */
+  addProposal: (proposal: ScheduledTaskInput) => boolean
   dropProposal: (proposal: ScheduledTaskInput) => void
   /** Al cambiar de perfil: las propuestas eran de los agentes del otro. */
   clearProposals: () => void
@@ -70,9 +71,16 @@ interface AgencyState {
    */
   sessionLabels: Record<string, string>
   setSessionLabels: (labels: Record<string, string>) => void
+  /**
+   * Otras conversaciones de un agente que la app ya vio (hijos y forks de un
+   * chat directo o de un puesto: el Engine les copia el agent_id). Tampoco
+   * están en session.list.
+   */
+  agentRows: Record<string, true>
+  markAgentRows: (ids: string[]) => void
 }
 
-export const useAgencyStore = create<AgencyState>((set) => ({
+export const useAgencyStore = create<AgencyState>((set, get) => ({
   space: 'rinari',
   page: { kind: 'home' },
   enter: () => set((state) => ({
@@ -93,11 +101,11 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   goHome: () => set({ page: { kind: 'home' } }),
   proposals: [],
   // La misma regla propuesta dos veces es una sola tarjeta.
-  addProposal: (proposal) => set((state) => (
-    state.proposals.some((item) => proposalKey(item) === proposalKey(proposal))
-      ? state
-      : { proposals: [...state.proposals, proposal] }
-  )),
+  addProposal: (proposal) => {
+    if (get().proposals.some((item) => proposalKey(item) === proposalKey(proposal))) return false
+    set((state) => ({ proposals: [...state.proposals, proposal] }))
+    return true
+  },
   clearProposals: () => set({ proposals: [] }),
   dropProposal: (proposal) => set((state) => ({ proposals: state.proposals.filter((item) => item !== proposal) })),
   agentSessions: {},
@@ -109,6 +117,12 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   postSessions: {},
   sessionLabels: {},
   setSessionLabels: (sessionLabels) => set({ sessionLabels }),
+  agentRows: {},
+  markAgentRows: (ids) => set((state) => (
+    ids.every((id) => state.agentRows[id])
+      ? state
+      : { agentRows: { ...state.agentRows, ...Object.fromEntries(ids.map((id) => [id, true as const])) } }
+  )),
   setPostSessions: (teams) => set({
     postSessions: Object.fromEntries(
       teams.flatMap((team) => team.posts.map((post) => [post.session_id, { teamId: team.id, agentId: post.agent_id }])),
@@ -117,7 +131,7 @@ export const useAgencyStore = create<AgencyState>((set) => ({
 }))
 
 /** Lo que identifica una regla propuesta (el Engine no le da id). */
-function proposalKey(proposal: ScheduledTaskInput): string {
+export function proposalKey(proposal: ScheduledTaskInput): string {
   return JSON.stringify([proposal.agent_id ?? null, proposal.name, proposal.kind, proposal.schedule, proposal.tool ?? null, proposal.prompt ?? '', proposal.watch ?? null])
 }
 
@@ -128,7 +142,9 @@ function proposalKey(proposal: ScheduledTaskInput): string {
 export function isAgencySession(sessionId: string): boolean {
   if (!sessionId) return false
   const state = useAgencyStore.getState()
-  return Boolean(state.agentSessions[sessionId] || state.postSessions[sessionId] || state.sessionLabels[sessionId])
+  return Boolean(
+    state.agentSessions[sessionId] || state.postSessions[sessionId] || state.sessionLabels[sessionId] || state.agentRows[sessionId],
+  )
 }
 
 /**

@@ -18,7 +18,7 @@ import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { revealSessionProject } from '../projects/revealSessionProject'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
-import { isAgencySession } from '../../stores/agency'
+import { isAgencySession, useAgencyStore } from '../../stores/agency'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -162,6 +162,10 @@ export function useSessionList(options: {
   const rememberRows = useCallback((rows: SessionSummary[]) => {
     for (const row of rows) learntDuring.current.set(row.id, refreshSeq.current)
     if (rows.length === 0) return
+    // Rinari Agency: una conversación de un agente (también un hijo o un fork)
+    // se recuerda aparte: session.list no la trae, y no por eso se fue.
+    const agents = rows.filter((row) => row.agent_id).map((row) => row.id)
+    if (agents.length > 0) useAgencyStore.getState().markAgentRows(agents)
     setSessionsById((current) => {
       let changed = false
       const next = { ...current }
@@ -179,7 +183,8 @@ export function useSessionList(options: {
     const present = new Set(rows.map((row) => row.id))
     setSessionsById((current) => {
       const stale = Object.keys(current).filter(
-        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq,
+        // Las de la Agency no están en session.list: su fila (modelo, título) se queda.
+        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !current[id]?.agent_id && !isAgencySession(id),
       )
       if (stale.length === 0) return current
       const next = { ...current }

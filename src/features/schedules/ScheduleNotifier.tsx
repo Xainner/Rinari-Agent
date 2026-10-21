@@ -1,4 +1,4 @@
-import { useAgencyStore } from '../../stores/agency'
+import { proposalKey, useAgencyStore } from '../../stores/agency'
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -72,14 +72,15 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
           // Rinari Agency (D-18): la regla de un agente se revisa en su vista
           // «Reglas», junto a su chat; nunca se crea sola.
           const agentId = proposal.agent_id
-          useAgencyStore.getState().addProposal(proposal)
+          // The same rule proposed again: no second toast nor bell entry.
+          if (!useAgencyStore.getState().addProposal(proposal)) return
           const review = () => window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId } }))
           toast(tr('agency.rules.proposedToast', { name: proposal.name }), {
             description: tr('agency.rules.approveHint'),
             duration: 20_000,
             action: { label: tr('agency.rules.review'), onClick: review },
           })
-          record({ title: tr('agency.rules.proposedToast', { name: proposal.name }), body: tr('agency.rules.approveHint'), tone: 'info', target: { kind: 'agency-rules', agentId } })
+          record({ id: `agency-proposal-${proposalKey(proposal)}`, title: tr('agency.rules.proposedToast', { name: proposal.name }), body: tr('agency.rules.approveHint'), tone: 'info', target: { kind: 'agency-rules', agentId } })
           return
         }
         const task = payload.created && payload.task ? (payload.task as ScheduledTask) : null

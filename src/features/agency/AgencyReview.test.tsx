@@ -106,6 +106,18 @@ it('a double Enter in the office posts once', async () => {
   expect((input as HTMLTextAreaElement).value).toBe('')
 })
 
+it('a failed office post comes back only into an empty box', async () => {
+  let fail: (() => void) | null = null
+  api.agencyOfficePost.mockImplementation(() => new Promise((_resolve, reject) => { fail = () => reject(new Error('caído')) }))
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} onEditTeam={() => {}} />)
+  const input = screen.getByTestId('agency-office-input') as HTMLTextAreaElement
+  await userEvent.type(input, 'primero{Enter}')
+  await userEvent.type(input, 'segundo')
+  await act(async () => { fail?.() })
+  expect(input.value).toBe('segundo')
+  api.agencyOfficePost.mockImplementation(() => new Promise(() => {}))
+})
+
 it('the office words the Engine notices in the owner language', async () => {
   officeMessages = [
     { id: 'm1', team_id: 'team_1', author_kind: 'owner', agent_id: null, text: 'Guion', mentions: [], errand_id: null, chain_id: 'c', hop: 0, created_at: 1, system: true, notice: { kind: 'errand', title: 'Guion' } },

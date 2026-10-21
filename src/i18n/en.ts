@@ -4302,6 +4302,7 @@ export const en: Record<I18nKey, string> = {
   'agency.rules.onResult.agent': 'Hands it to the agent',
   'agency.rules.onResult.deliver': 'To another connector',
   'agency.rules.proposed': 'Proposed',
+  'agency.rules.proposalGone': 'That proposal is no longer waiting (proposals last until the app closes). Ask the agent for it again.',
   'agency.rules.approveHint': 'Turning it on is your approval: it will run without asking, as written here. What is blocked in the connectors stays blocked.',
   'agency.rules.discard': 'Discard',
   'agency.rules.activate': 'Turn on rule',

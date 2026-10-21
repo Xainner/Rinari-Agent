@@ -131,14 +131,15 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
     }
     sendingRef.current = true
     setSending(true)
-    // Cleared before the call; restored if it fails.
+    // Cleared before the call; restored if it fails and the box is still empty.
     setText('')
     setCaret(0)
     try {
       await engineApi.agencyOfficePost(team.id, message)
       await reload()
     } catch (error) {
-      setText(message)
+      // Back in the box, unless the owner already wrote something new there.
+      setText((current) => (current === '' ? message : current))
       toast.error(commandMessage(error))
     } finally {
       sendingRef.current = false

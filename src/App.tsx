@@ -941,7 +941,12 @@ function App() {
                       if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
                     }).catch((error) => toast.error(commandMessage(error)))
                   }
-                  else if (target.kind === 'agency-rules') window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId: target.agentId } }))
+                  else if (target.kind === 'agency-rules') {
+                    // The bell outlives the proposals (they live until the app
+                    // closes): an old entry says so instead of an empty «Reglas».
+                    if (!useAgencyStore.getState().proposals.some((item) => item.agent_id === target.agentId)) toast.info(translate(lang, 'agency.rules.proposalGone'))
+                    window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId: target.agentId } }))
+                  }
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
                   else if (target.kind === 'update') goSettings('about')

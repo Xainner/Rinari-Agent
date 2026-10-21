@@ -268,6 +268,7 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
           <form
             className="agency-errand-form"
             data-testid="agency-errand-form"
+            data-toast-avoid=""
             onSubmit={(event) => {
               event.preventDefault()
               void leaveErrand()
@@ -308,7 +309,7 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
           </form>
         )}
 
-        <div className="agency-office-composer">
+        <div className="agency-office-composer" data-toast-avoid="">
           {suggestions.length > 0 && (
             <ul className="agency-mention-list" role="listbox" aria-label={t('agency.office.mention')} data-testid="agency-mention-list">
               <li role="presentation" className="agency-mention-hint">{t('agency.office.mentionHint')}</li>

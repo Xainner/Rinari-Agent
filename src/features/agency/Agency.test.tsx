@@ -123,8 +123,16 @@ it('the tutorial walks five steps with Rinari and ends on creating an agent', as
   const pose = () => document.querySelector('.welcome-figure img[data-on]')?.getAttribute('src')
   expect(pose()).toBe('vn-hello.webp')
   expect(screen.getByText(/Así se verá tu oficina más adelante/)).toBeTruthy()
-  for (let step = 0; step < 4; step++) await userEvent.click(screen.getByTestId('agency-tutorial-next'))
+  for (let step = 0; step < 4; step++) {
+    await userEvent.click(screen.getByTestId('agency-tutorial-next'))
+    // One title per step: the earlier ones do not stay behind.
+    expect(document.querySelectorAll('.welcome-title')).toHaveLength(1)
+  }
   expect(pose()).toBe('vn-happy.webp')
+  // The last step is a choice; templates are not there yet and say so.
+  const template = screen.getByTestId('agency-tutorial-template') as HTMLButtonElement
+  expect(template.disabled).toBe(true)
+  expect(template.textContent).toContain('Pronto')
   await userEvent.click(screen.getByTestId('agency-tutorial-create'))
   expect(onClose).toHaveBeenCalledWith('create')
 })

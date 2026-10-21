@@ -3675,6 +3675,15 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 18px 0 0; padding: 0; list-style: none; }
 .agency-tile { padding: 14px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: var(--bg-subtle); }
 .agency-tile-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-sm); object-fit: cover; }
+.agency-home-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; max-width: 1100px; }
+.agency-home-status { margin-top: 4px; font-size: 13px; color: var(--text-muted); }
+.agency-home-status[data-attention] { color: var(--warning); }
+.agency-home .agency-grid { max-width: 1100px; }
+.agency-tile { display: flex; flex-direction: column; gap: 14px; transition: border-color var(--dur-fast); }
+.agency-tile:hover { border-color: var(--line-2); }
+.agency-tile[data-state='warning'] { border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+.agency-tile-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }
+.agency-tile-spend { flex-basis: 100%; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
 .agency-form-page { height: 100%; overflow-y: auto; padding: 28px 32px 40px; }
 .agency-form { display: grid; max-width: 720px; gap: 18px; margin: 0 auto; }
 .agency-form-head { display: flex; align-items: center; gap: 14px; }
@@ -3691,6 +3700,22 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-tutorial-preview { display: grid; gap: 8px; margin: 18px 0 0; }
 .agency-tutorial-preview img { width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-md); image-rendering: auto; }
 .agency-tutorial-preview figcaption { font-size: 12px; line-height: 1.5; color: var(--text-subtle); }
+.agency-tutorial-shot { position: relative; overflow: hidden; border: 1px solid var(--line-2); border-radius: var(--r-md); }
+.agency-tutorial-shot img { display: block; width: 100%; border: 0; border-radius: 0; }
+/* La oficina es lo que viene (A4): el sello lo dice sobre la imagen, que no es un botón. */
+.agency-tutorial-soon { position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--bg-elevated) 88%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); font-size: 11px; font-weight: 600; color: var(--text-muted); }
+/* Lo que cuenta cada paso del tutorial, y la elección del último. */
+.agency-tour-points { display: grid; gap: 10px; margin: 20px 0 0; padding: 0; list-style: none; }
+.agency-tour-points li { display: flex; min-width: 0; align-items: flex-start; gap: 12px; animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.agency-tour-points b, .agency-tour-choice b { display: block; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.agency-tour-points small, .agency-tour-choice small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.agency-tour-icon { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--accent-2); }
+.agency-tour-choices { display: grid; gap: 8px; margin-top: 20px; }
+.agency-tour-choice { display: flex; min-width: 0; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-tour-choice:hover:not(:disabled) { border-color: var(--line-3); background: var(--bg-hover); }
+.agency-tour-choice:disabled { cursor: default; opacity: 0.6; }
+.agency-tour-choice.is-primary { border-color: color-mix(in srgb, var(--accent-2) 50%, transparent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-subtle)); }
+.agency-tour-choice.is-primary .agency-tour-icon { background: var(--grad-brand); color: #fff; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .agency-working-dot { animation: none; } }
 :root[data-motion='reduced'] .agency-working-dot { animation: none; }
 .agency-rules { display: grid; gap: 10px; padding: 12px; }
@@ -3707,8 +3732,10 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-draft { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); }
 .agency-rehearsal { display: grid; gap: 4px; flex-basis: 100%; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: var(--r-sm); font-size: 12.5px; color: var(--text); }
 .agency-new-agent { flex: none; }
-.agency-stop-all { color: var(--danger); }
-.agency-stop-all:hover { color: var(--danger); }
+/* «Detener a todos» es un freno de emergencia: siempre a mano, pero sin gritar en reposo. */
+.agency-stop-all { color: var(--text-muted); }
+.agency-stop-all svg { color: var(--danger); }
+.agency-stop-all:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .sidebar-link.is-active { background: var(--bg-active); color: var(--text); }
 .agency-memory-row { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-subtle); list-style: none; }
 .agency-memory-topic { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }

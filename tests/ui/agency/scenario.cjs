@@ -13,6 +13,15 @@ const { click, clickText, command, evaluate, input, reload, report, scenario, sc
 const pointerAway = () => ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 400 })
 
 const CARD = '[data-testid="agency-card"]'
+/** Ningún toast tapa la caja del selector (el composer y su «Enviar»). */
+const toastClearOf = (selector) => evaluate(`(() => {
+  const target = document.querySelector(${JSON.stringify(selector)})?.getBoundingClientRect()
+  if (!target) return true
+  return [...document.querySelectorAll('[data-sonner-toast]')].every((toast) => {
+    const r = toast.getBoundingClientRect()
+    return r.width === 0 || r.right <= target.left || r.left >= target.right || r.bottom <= target.top || r.top >= target.bottom
+  })
+})()`)
 const TUTORIAL = '[data-testid="agency-tutorial"]'
 const SIDEBAR = '[data-testid="agency-sidebar"]'
 
@@ -33,7 +42,18 @@ scenario(async () => {
   await settleAnimations()
   assert(await evaluate(`document.querySelector('${TUTORIAL}').innerText.includes('Así se verá tu oficina')`), 'the office art is a preview')
   await screenshot('tutorial')
-  for (let step = 0; step < 4; step++) await click('[data-testid="agency-tutorial-next"]')
+  // Cada paso con su pose y lo que cuenta; el último es una elección (D-20).
+  for (let step = 2; step <= 5; step++) {
+    await click('[data-testid="agency-tutorial-next"]')
+    await wait(`document.querySelectorAll('${TUTORIAL} .welcome-figure img[data-on]').length === 1`)
+    await settleAnimations()
+    if (step < 5) assert(await evaluate(`document.querySelectorAll('${TUTORIAL} .agency-tour-points li').length >= 3`), `step ${step} explains itself`)
+    assert.equal(await evaluate(`document.querySelectorAll('${TUTORIAL} .welcome-title').length`), 1, `step ${step} shows one title`)
+    await screenshot(`tutorial-${step}`)
+  }
+  const choices = await evaluate(`[...document.querySelectorAll('${TUTORIAL} .agency-tour-choice')].map((b) => ({ text: b.innerText, disabled: b.disabled }))`)
+  assert.equal(choices.length, 3, 'create, template or later')
+  assert(choices[1].disabled && choices[1].text.includes('Pronto'), `no templates yet: it says so (${JSON.stringify(choices[1])})`)
   await click('[data-testid="agency-tutorial-create"]')
   await wait(`!document.querySelector('${TUTORIAL}')`)
 
@@ -44,15 +64,27 @@ scenario(async () => {
   assert(office.text.includes('Pronto'))
   assert.equal(await evaluate(`Boolean(document.querySelector('.view-switcher'))`), false, 'no Normal | Boards inside the Agency')
 
-  // «Nuevo agente» en la vista principal (D-16).
+  // «Nuevo agente» en la vista principal (D-16); con «Créalo con Rinari», su frase lista para escribir.
   await wait(`Boolean(document.querySelector('[data-testid="agency-agent-form"]'))`)
+  if (await evaluate(`Boolean(document.querySelector('[data-testid="agency-draft-input"]'))`)) {
+    await wait(`document.activeElement?.dataset.testid === 'agency-draft-input'`)
+  }
   await screenshot('form')
   await input('[data-testid="agency-form-name"]', 'Emails')
   await clickText('Solo lectura', '[data-testid="agency-agent-form"] button')
   await click('[data-testid="agency-form-submit"]')
 
-  // Su chat directo se abre; «Reglas» está en el panel lateral.
+  // Su chat directo se abre vacío con su nombre y su saludo, no los de Rinari;
+  // el aviso de «listo» no tapa el composer.
   await wait(`document.querySelectorAll('[data-testid="agency-agent-row"]').length === 1`)
+  await wait(`document.querySelector('[data-testid="agency-chat-greeting"]')?.innerText.includes('Emails')`)
+  assert(await evaluate(`document.querySelector('[data-testid="agency-chat-title"]')?.innerText.includes('Emails')`), 'the title bar names the agent before the first message')
+  assert.equal(await evaluate(`Boolean(document.querySelector('.home-suggestions'))`), false, "no Rinari suggestions in an agent's chat")
+  assert.equal(await evaluate(`document.querySelector('.home-art img')?.getAttribute('src')?.includes('/brand/home.webp')`), false, 'the Agency chat has its own art')
+  await wait(`Boolean(document.querySelector('[data-sonner-toast]'))`)
+  assert(await toastClearOf('.composer-surface'), 'the toast leaves the composer free')
+  await settleAnimations()
+  await screenshot('agent-chat-empty')
   await wait(`Boolean(document.querySelector('.dock-view-button[data-view="rules"]'))`)
   const [agent] = (await command('agency_agent_list', { rinari_profile_id: 'active' })).agents
   assert.equal(agent.name, 'Emails')
@@ -147,9 +179,8 @@ scenario(async () => {
 
   // Una @mención despierta a Emails en su puesto; su respuesta vuelve a la oficina (D-1).
   await input('[data-testid="agency-office-input"]', 'Hola @Emails, ¿qué hay hoy?')
-  // El aviso de «equipo creado» queda encima de «Enviar» hasta que se va (anotado para el pulido).
-  pointerAway()
-  await wait(`!document.querySelector('[data-sonner-toast]')`)
+  // El aviso de «equipo creado» ya no tapa «Enviar»: la pila sube sobre el composer.
+  assert(await toastClearOf('.agency-office-composer'), 'the toast leaves the office composer free')
   await click('[data-testid="agency-office-send"]')
   await wait(`[...document.querySelectorAll('[data-testid="agency-office-message"]')].some((m) => m.querySelector('img') && m.innerText.includes('Emails'))`, 30_000)
   const officeMessages = (await command('agency_office_list', { team_id: team.id })).messages
@@ -161,6 +192,7 @@ scenario(async () => {
   await click('[data-testid="agency-office-errand"]')
   await input('[data-testid="agency-errand-title"]', 'Resumen del día')
   await input('[data-testid="agency-errand-checks"]', 'Tres líneas')
+  assert(await toastClearOf('[data-testid="agency-errand-form"]'), 'the toast leaves the errand form free')
   await click('[data-testid="agency-errand-submit"]')
   await wait(`Boolean(document.querySelector('[data-testid="agency-errand"][data-status="delivered"] [data-testid="agency-errand-accept"]'))`, 30_000)
   await settleAnimations()

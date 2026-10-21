@@ -7,13 +7,14 @@ import {
   overlaps,
   protectedToastOcclusions,
   toastLane,
+  toastLift,
 } from './AdaptiveToaster'
 
 const viewport = { width: 1_200, height: 800 }
 
 describe('AdaptiveToaster', () => {
   it('conserva bottom-right cuando no tapa una superficie nativa', () => {
-    expect(chooseToastLayout([], viewport)).toEqual({ chosen: 'bottom-right', occlusions: [] })
+    expect(chooseToastLayout([], viewport)).toEqual({ chosen: 'bottom-right', occlusions: [], lift: 0 })
   })
 
   it('elige otro carril antes de pedir un recorte nativo', () => {
@@ -101,5 +102,32 @@ describe('AdaptiveToaster', () => {
 
     expect(measureToastStack(root)).toEqual({ x: 800, y: 400, width: 380, height: 170 })
     root.remove()
+  })
+})
+
+describe('toasts que esquivan el composer', () => {
+  const composer = { x: 300, y: 660, width: 880, height: 120 }
+
+  it('sube la pila de abajo justo por encima de un composer bajo su carril', () => {
+    const lift = toastLift('bottom-right', viewport, [composer])
+    expect(lift).toBe(800 - 660 - 16 + 10)
+    const lane = toastLane('bottom-right', viewport.width, viewport.height, undefined, lift)
+    expect(lane.y + lane.height).toBeLessThanOrEqual(composer.y)
+    expect(chooseToastLayout([], viewport, null, undefined, [composer]).lift).toBe(lift)
+  })
+
+  it('no se mueve por un composer que no cae bajo su carril, ni arriba, ni por una zona que ocupa la ventana', () => {
+    expect(toastLift('bottom-right', viewport, [{ x: 100, y: 660, width: 500, height: 120 }])).toBe(0)
+    expect(toastLift('top-right', viewport, [composer])).toBe(0)
+    expect(toastLift('bottom-right', viewport, [{ ...composer, y: 20, height: 760 }])).toBe(0)
+  })
+
+  it('queda por encima de la zona más alta (un formulario abierto sobre el composer)', () => {
+    const form = { x: 300, y: 385, width: 880, height: 270 }
+    expect(toastLift('bottom-right', viewport, [composer, form])).toBe(800 - 385 - 16 + 10)
+  })
+
+  it('nunca sube más del 70 % de la ventana', () => {
+    expect(toastLift('bottom-right', viewport, [{ ...composer, y: 100, height: 500 }])).toBe(560)
   })
 })

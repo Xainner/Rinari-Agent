@@ -14,6 +14,7 @@ import { useConfirm } from '../../components/ui/useConfirm'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
 import { ZoneBoundary } from '../../components/ZoneBoundary'
 import { moveNormalDraft } from '../projects/draftProject'
+import type { HomePersona } from '../home/HomeWelcome'
 
 /**
  * Vista Normal: la sesión activa con las mismas primitivas y el mismo
@@ -24,10 +25,13 @@ import { moveNormalDraft } from '../projects/draftProject'
 export default function SingleSessionView({
   onOpenProviders,
   processesOpenSignal,
+  persona,
 }: {
   onOpenProviders: () => void
   /** Contador que abre el inspector de procesos de la sesión (acción "processes"). */
   processesOpenSignal?: number
+  /** El agente de la Agency dueño de esta conversación (su saludo en el chat vacío). */
+  persona?: HomePersona & { sessionId: string }
 }) {
   const commands = useEngineCommands()
   const data = useEngineData()
@@ -74,6 +78,7 @@ export default function SingleSessionView({
       <ChatView
         queue={steering ? <QueueBar sessionId={sessionId} refreshKey={busy} showInput={false} /> : undefined}
         processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
+        homePersona={persona && persona.sessionId === sessionId ? persona : undefined}
         homeContext={{
           projectName: project?.name ?? projectRoot ?? project?.root ?? null,
           changedFiles: gitStatus?.status.available ? gitStatus.status.files.length : null,

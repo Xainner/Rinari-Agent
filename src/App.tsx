@@ -81,6 +81,7 @@ import TeamForm from './features/agency/TeamForm'
 import OfficeView from './features/agency/OfficeView'
 import type { AgencyAgent, AgencyTeam } from './features/agency/types'
 import { enterAgencySession } from './features/agency/openAgencySession'
+import agencyHero from './assets/agency/agency-hero.webp'
 import { useProfileStore } from './features/profiles/profileStore'
 import ReconnectNotifier from './features/connectors/ReconnectNotifier'
 
@@ -573,6 +574,22 @@ function App() {
   const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
   const activeTeamId = agencyPage.kind === 'office' || agencyPage.kind === 'post' || agencyPage.kind === 'edit-team' ? agencyPage.teamId : null
   const activeTeam = activeTeamId ? agency.teams.find((item) => item.id === activeTeamId) ?? null : null
+  // El chat de un agente (directo o su puesto en un equipo): la barra de título
+  // dice de quién es desde el primer momento, y el chat vacío lo saluda él, no Rinari.
+  const chatAgentId = inAgency && (agencyPage.kind === 'agent' || agencyPage.kind === 'post') ? agencyPage.agentId : null
+  const chatAgent = chatAgentId ? agency.agents.find((item) => item.id === chatAgentId) ?? null : null
+  const chatTeam = agencyPage.kind === 'post' ? activeTeam : null
+  const chatAgentLabel = chatAgent ? (chatTeam ? `${chatAgent.name} · ${chatTeam.name}` : chatAgent.name) : null
+  const agencyPersona = chatAgent && session.activeSession
+    ? {
+        sessionId: session.activeSession,
+        art: agencyHero,
+        title: translate(lang, 'agency.chat.emptyTitle', { name: chatAgent.name }),
+        subtitle: chatTeam
+          ? translate(lang, 'agency.chat.emptyPost', { team: chatTeam.name })
+          : chatAgent.role?.trim() || translate(lang, 'agency.chat.emptyCopy'),
+      }
+    : undefined
   // Un puesto es una conversación como el chat directo; la oficina y las fichas no.
   const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent' && agencyPage.kind !== 'post'
   const stopAllAgents = async () => {
@@ -912,7 +929,9 @@ function App() {
               agencyMain ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, 'agency.name')}</span>
               ) : view === 'chat' && activeHasContent ? (
-                <ChatHeader title={activeTitle} sessionId={activeRecord?.id ?? null} mother={activeMother} />
+                <ChatHeader title={activeTitle || chatAgentLabel} sessionId={activeRecord?.id ?? null} mother={activeMother} />
+              ) : view === 'chat' && chatAgentLabel ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]" data-testid="agency-chat-title">{chatAgentLabel}</span>
               ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null
@@ -976,7 +995,7 @@ function App() {
         {/* Cada vista entra con un fundido corto (solo opacidad: un transform
             movería el rectángulo del navegador nativo durante la entrada). */}
         <div key={view} className="view-stage">
-        {view === 'chat' && !agencyMain && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />}
+        {view === 'chat' && !agencyMain && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} persona={agencyPersona} />}
         {agencyMain && agencyPage.kind === 'home' && (
           <AgencyHome
             agents={agency.agents}
@@ -1114,11 +1133,17 @@ function App() {
 
       <AgencyTutorial
         open={agencyTutorialOpen}
+        draftAvailable={session.status?.capabilities.agency_draft_v1 === true}
         onClose={(next) => {
           // Visto o saltado, no vuelve solo en este perfil (D-20).
           markAgencyTutorialSeen(activeProfileId)
           setAgencyTutorialOpen(false)
-          if (next === 'create') useAgencyStore.getState().newAgent()
+          if (next === 'create') {
+            useAgencyStore.getState().newAgent()
+            goChat()
+            // «Créalo con Rinari»: la ficha nueva abre con su frase lista para escribir.
+            requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-testid="agency-draft-input"]')?.focus()))
+          }
         }}
       />
 

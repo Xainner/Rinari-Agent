@@ -3,6 +3,7 @@ import { useI18n } from '../../i18n'
 import { art } from '../rinari/art'
 import agencyIcon from '../../assets/agency/agency-icon.webp'
 import type { AgencyAgent, AgencyStatus, AgentSpend } from './types'
+import { agencyStatusLine } from './AgencyCard'
 
 interface AgencyHomeProps {
   agents: AgencyAgent[]
@@ -46,7 +47,15 @@ export default function AgencyHome({ agents, status, loaded, onOpenAgent, onEdit
 
   return (
     <div className="agency-home" data-testid="agency-home">
-      <h1 className="font-display text-[22px] font-semibold text-[var(--text)]">{t('agency.home.title')}</h1>
+      <header className="agency-home-head">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-[22px] font-semibold text-[var(--text)]">{t('agency.home.title')}</h1>
+          {status && <p className="agency-home-status" data-attention={status.needs_you > 0 || undefined}>{agencyStatusLine(status, t)}</p>}
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onNewAgent}>
+          <UserPlus size={13} aria-hidden="true" /> {t('agency.sidebar.newAgent')}
+        </button>
+      </header>
       <ul className="agency-grid">
         {agents.map((agent) => {
           const state = waiting.has(agent.id)
@@ -58,7 +67,7 @@ export default function AgencyHome({ agents, status, loaded, onOpenAgent, onEdit
                 : null
           const spend = spendLine(agent.spend_today, t)
           return (
-            <li key={agent.id} className="agency-tile" data-testid="agency-tile">
+            <li key={agent.id} className="agency-tile" data-testid="agency-tile" data-state={state?.tone}>
               <div className="flex items-start gap-3">
                 <img src={agencyIcon} alt="" className="agency-tile-icon" draggable={false} />
                 <div className="min-w-0 flex-1">
@@ -67,14 +76,14 @@ export default function AgencyHome({ agents, status, loaded, onOpenAgent, onEdit
                 </div>
                 {state && <span className="r-chip" data-tone={state.tone}>{state.text}</span>}
               </div>
-              {spend && <p className="mt-3 font-mono text-[11.5px] text-[var(--text-subtle)]">{spend}</p>}
-              <div className="mt-3 flex gap-2">
+              <div className="agency-tile-foot">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenAgent(agent)} aria-label={t('agency.home.open', { name: agent.name })}>
                   <MessageSquare size={13} aria-hidden="true" /> {t('agency.home.chat')}
                 </button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => onEditAgent(agent)}>
                   <SlidersHorizontal size={13} aria-hidden="true" /> {t('agency.home.card')}
                 </button>
+                {spend && <span className="agency-tile-spend">{spend}</span>}
               </div>
             </li>
           )

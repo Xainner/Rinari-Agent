@@ -32,6 +32,10 @@ export interface AgencyAgent {
   connectors: string[]
   budget: AgentBudget
   ask_new_destinations: boolean | null
+  /** Esfuerzo de razonamiento de sus vueltas (chat, puestos, reglas, hijos); null: el del modelo. */
+  reasoning_effort?: AgentEffort | null
+  /** El avatar que eligió el dueño (un id de `AGENT_AVATARS`); null: uno fijo por su id. */
+  icon?: string | null
   /** Su chat directo: una conversación CHAT marcada con su id. */
   session_id: string | null
   created_at: number
@@ -50,7 +54,12 @@ export interface AgencyAgentInput {
   connectors?: string[]
   budget?: AgentBudget
   ask_new_destinations?: boolean | null
+  reasoning_effort?: AgentEffort | null
+  icon?: string | null
 }
+
+/** Los esfuerzos que guarda el Engine para un agente (los de una vuelta). */
+export type AgentEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra'
 
 /** Lo que dice la tarjeta «Rinari Agency». */
 export interface AgencyStatus {

@@ -4,13 +4,16 @@ import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi, type McpServer, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import ModelPicker from '../../components/composer/ModelPicker'
+import EffortPicker from '../../components/composer/EffortPicker'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
+import type { ReasoningEffort } from '../../lib/reasoning'
 import { useUIStore } from '../../stores/ui'
 import { SegChoice } from '../connectors/SegChoice'
-import AgentAvatar from './AgentAvatar'
+import AgentAvatar, { AGENT_AVATARS, agentAvatarSrc } from './AgentAvatar'
 import { BudgetFields, ConnectorTiles, EditorHero, EditorPage, EditorSection, OptionCards } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
 import { JobCancelledError, JobTimeoutError, runJob, useJobSignal } from './jobEvents'
-import type { AgencyAgent, AgencyAgentInput, AgentPermissionProfile } from './types'
+import type { AgencyAgent, AgencyAgentInput, AgentEffort, AgentPermissionProfile } from './types'
 
 const PROFILES: AgentPermissionProfile[] = ['read-only', 'workspace', 'full-access']
 const DEFAULT_MODEL = '__default__'
@@ -53,6 +56,11 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
   const [tokens, setTokens] = useState(agent?.budget.daily_tokens ? String(agent.budget.daily_tokens) : '')
   const [models, setModels] = useState<ModelSummary[]>([])
   const [providers, setProviders] = useState<ProviderSummary[]>([])
+  const [activeAlias, setActiveAlias] = useState<string | null>(null)
+  // «Predeterminado» del selector (`off`) es el esfuerzo del modelo: null en el Engine.
+  const [effort, setEffort] = useState<ReasoningEffort>(agent?.reasoning_effort ?? 'off')
+  const [icon, setIcon] = useState<string | null>(agent?.icon ?? null)
+  const [iconOpen, setIconOpen] = useState(false)
   const [servers, setServers] = useState<McpServer[]>([])
   const [saving, setSaving] = useState(false)
   const [description, setDescription] = useState('')
@@ -96,7 +104,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
 
   useEffect(() => {
     engineApi.modelList().then((result) => setModels(result.models.filter((item) => item.saved !== false))).catch(() => {})
-    engineApi.providerList().then((result) => setProviders(result.providers)).catch(() => {})
+    engineApi.providerList().then((result) => { setProviders(result.providers); setActiveAlias(result.active_alias) }).catch(() => {})
     engineApi.mcpList().then((result) => setServers(result.servers)).catch(() => {})
   }, [])
 
@@ -129,6 +137,9 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
       permission_profile: profile,
       ask_new_destinations: newDestinations,
       connectors,
+      // Solo si hay algo que guardar o cambiar: un Engine sin estos campos no los recibe de más.
+      ...((effort !== 'off' || (agent?.reasoning_effort ?? null) !== null) ? { reasoning_effort: effort === 'off' ? null : effort as AgentEffort } : {}),
+      ...((icon !== null || (agent?.icon ?? null) !== null) ? { icon } : {}),
       budget: {
         ...(numberOrUndefined(usd) !== undefined ? { daily_usd: numberOrUndefined(usd) } : {}),
         ...(numberOrUndefined(tokens) !== undefined ? { daily_tokens: Math.round(numberOrUndefined(tokens)!) } : {}),
@@ -158,7 +169,9 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
   }
 
   const autonomyIcon = { 'read-only': Eye, workspace: FolderOpen, 'full-access': ShieldAlert } as const
-  const preview = { id: agent?.id ?? 'new-agent', name: name || t('agency.form.title') }
+  const preview = { id: agent?.id ?? 'new-agent', name: name || t('agency.form.title'), icon }
+  // El esfuerzo se ofrece según el modelo: el elegido, o con «El de siempre» el que usa Rinari ahora.
+  const effortModel = chosenModel ?? models.find((item) => item.alias === activeAlias) ?? null
 
   return (
     <EditorPage
@@ -180,7 +193,31 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
       )}
     >
       <EditorHero
-        media={<AgentAvatar agent={preview} size={72} />}
+        media={(
+          <Popover open={iconOpen} onOpenChange={setIconOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" className="agency-avatar-button" aria-label={t('agency.form.avatarChange')} title={t('agency.form.avatarChange')} data-testid="agency-form-avatar">
+                <AgentAvatar agent={preview} size={72} />
+                <span className="agency-avatar-edit" aria-hidden="true">{t('agency.form.avatarEdit')}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="agency-avatar-pop" aria-label={t('agency.form.avatar')}>
+              <p className="agency-avatar-pop-title">{t('agency.form.avatar')}</p>
+              <div className="agency-avatar-grid" role="radiogroup" aria-label={t('agency.form.avatar')}>
+                <button type="button" role="radio" aria-checked={icon === null} className="agency-avatar-option" onClick={() => { setIcon(null); setIconOpen(false) }} data-icon="auto">
+                  <img src={agentAvatarSrc({ id: preview.id, icon: null })} alt="" draggable={false} />
+                  <span>{t('agency.form.avatarAuto')}</span>
+                </button>
+                {AGENT_AVATARS.map((avatar) => (
+                  <button key={avatar.id} type="button" role="radio" aria-checked={icon === avatar.id} className="agency-avatar-option" onClick={() => { setIcon(avatar.id); setIconOpen(false) }} data-icon={avatar.id}>
+                    <img src={avatar.src} alt="" draggable={false} />
+                    <span>{t(`agency.avatar.${avatar.id}` as I18nKey)}</span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
         kicker={editing ? t('agency.form.editKicker') : t('agency.form.title')}
       >
         <input
@@ -267,6 +304,9 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
               onDiscoverModels={() => {}}
               onOpenProviders={() => useUIStore.getState().goSettings('providers')}
             />
+          </div>
+          <div className="agency-effort" data-testid="agency-form-effort">
+            <EffortPicker value={effort} capabilities={effortModel?.capabilities} onChange={setEffort} />
           </div>
           {model !== DEFAULT_MODEL && (
             <button type="button" className="btn btn-quiet btn-sm" onClick={() => setModel(DEFAULT_MODEL)}>

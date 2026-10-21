@@ -170,6 +170,17 @@ it('the card form offers only everyone\'s connectors and sends what the owner wr
   })
 })
 
+it('the owner picks the agent avatar from the approved ones, and it is saved with the agent', async () => {
+  const onSaved = vi.fn()
+  render(<I18nProvider lang="es"><AgentForm onSaved={onSaved} onCancel={() => {}} /></I18nProvider>)
+  await userEvent.type(screen.getByTestId('agency-form-name'), 'Revisor')
+  await userEvent.click(screen.getByTestId('agency-form-avatar'))
+  await userEvent.click(await screen.findByRole('radio', { name: 'Programadora' }))
+  await userEvent.click(screen.getByTestId('agency-form-submit'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(agencyCreateAgent).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Revisor', icon: 'code' }))
+})
+
 it('«Créalo con Rinari» fills the form from the draft and creates nothing', async () => {
   render(<I18nProvider lang="es"><AgentForm draftEnabled onSaved={() => {}} onCancel={() => {}} /></I18nProvider>)
   await userEvent.type(screen.getByTestId('agency-draft-input'), 'una que revise el CI')

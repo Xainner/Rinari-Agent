@@ -3866,6 +3866,19 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
   .agency-settings-nav { position: static; }
 }
 
+/* El avatar en la ficha: se cambia con un clic, eligiendo entre los aprobados. */
+.agency-avatar-button { position: relative; display: block; border-radius: 28%; }
+.agency-avatar-edit { position: absolute; left: 50%; bottom: -8px; padding: 1px 8px; border-radius: 999px; background: var(--bg-elevated); box-shadow: inset 0 0 0 1px var(--line-2); font-size: 10.5px; font-weight: 600; color: var(--text-muted); transform: translateX(-50%); opacity: 0; transition: opacity var(--dur-fast); }
+.agency-avatar-button:hover .agency-avatar-edit, .agency-avatar-button:focus-visible .agency-avatar-edit { opacity: 1; }
+.agency-avatar-pop { width: 340px; padding: 12px; }
+.agency-avatar-pop-title { margin: 0 0 10px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.agency-avatar-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.agency-avatar-option { display: grid; justify-items: center; gap: 4px; padding: 8px 4px 6px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 11px; color: var(--text-muted); transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-avatar-option img { width: 52px; height: 52px; border-radius: 28%; object-fit: cover; background: radial-gradient(120% 120% at 30% 20%, hsl(265 70% 28% / 0.9), hsl(265 60% 12%)); }
+.agency-avatar-option:hover { border-color: var(--line-3); color: var(--text); }
+.agency-avatar-option[aria-checked='true'] { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); background: color-mix(in srgb, var(--accent) 14%, var(--bg-subtle)); color: var(--text); }
+.agency-effort { flex-shrink: 0; }
+
 /* El avatar de un agente (D-23): su arte sobre una placa con un tono propio en el borde. */
 .agent-avatar { --agent-hue: 265; position: relative; display: inline-grid; flex-shrink: 0; place-items: center; overflow: hidden; border-radius: 28%; background: radial-gradient(120% 120% at 30% 20%, hsl(var(--agent-hue) 70% 28% / 0.9), hsl(var(--agent-hue) 60% 12%)); box-shadow: inset 0 0 0 1px hsl(var(--agent-hue) 80% 72% / 0.45); }
 .agent-avatar img { width: 100%; height: 100%; object-fit: cover; }

@@ -74,6 +74,14 @@ scenario(async () => {
   // La autonomía es una elección en tarjetas, y el modelo el selector del composer (card «Agency», puntos 1 y 2).
   assert(await evaluate(`Boolean(document.querySelector('[data-testid="agency-form-model"] .agency-model-field button'))`), 'the model is chosen with the composer picker')
   await click('[data-testid="agency-form-autonomy"] [data-value="read-only"]')
+  // El avatar se elige entre los aprobados (punto 7) y el esfuerzo va junto al modelo (punto 1).
+  assert(await evaluate(`Boolean(document.querySelector('[data-testid="agency-form-effort"] button'))`), 'the effort picker sits next to the model')
+  await click('[data-testid="agency-form-avatar"]')
+  await wait(`Boolean(document.querySelector('.agency-avatar-option[data-icon="code"]'))`)
+  await settleAnimations()
+  await screenshot('form-avatar')
+  await click('.agency-avatar-option[data-icon="code"]')
+  await wait(`!document.querySelector('.agency-avatar-option')`)
   await click('[data-testid="agency-form-submit"]')
 
   // Su chat directo se abre vacío con su nombre y su saludo, no los de Rinari;
@@ -91,6 +99,7 @@ scenario(async () => {
   const [agent] = (await command('agency_agent_list', { rinari_profile_id: 'active' })).agents
   assert.equal(agent.name, 'Emails')
   assert.equal(agent.permission_profile, 'read-only')
+  assert.equal(agent.icon, 'code', 'the chosen avatar is saved with the agent')
   await click('.dock-view-button[data-view="rules"]')
   await wait(`Boolean(document.querySelector('[data-testid="agency-rules"]'))`)
   await settleAnimations()

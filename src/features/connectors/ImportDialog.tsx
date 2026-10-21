@@ -20,6 +20,18 @@ export function reasonText(t: (key: I18nKey) => string, reason: string | null | 
   return reason && hasTranslation(key) ? t(key) : t('connectors.import.reason.unknown')
 }
 
+/** Por qué no se creó un servidor, en llano; el mensaje del Engine queda en «Detalles». */
+export function failureText(t: (key: I18nKey) => string, code: string | null | undefined): string {
+  const key = `connectors.import.failed.${code ?? ''}`
+  return code && hasTranslation(key) ? t(key) : t('connectors.import.failed.unknown')
+}
+
+export function FailureDetails({ message }: { message?: string | null }) {
+  const { t } = useI18n()
+  if (!message) return null
+  return <details className="mt-1 text-[11.5px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{t('connectors.details')}</summary><p className="mt-1 break-words font-mono">{message}</p></details>
+}
+
 /** Qué trae un candidato: el programa o la URL, y los nombres (nunca los valores) de sus secretos. */
 export function CandidateBody({ candidate }: { candidate: McpImportCandidate }) {
   const { t } = useI18n()
@@ -190,7 +202,12 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
                     <CandidateBody candidate={candidate} />
                     {candidate.existing && <p className="text-[12px] text-[var(--text-muted)]">{t('connectors.import.existing', { name: candidate.existing })}</p>}
                     {done && <p className="text-[12px] text-[var(--success)]" role="status">{t('connectors.import.created')}</p>}
-                    {fail && <p className="text-[12px] text-[var(--danger)]" role="alert">{fail.message || fail.code}</p>}
+                    {fail && (
+                      <div role="alert">
+                        <p className="text-[12px] text-[var(--danger)]">{failureText(t, fail.code)}</p>
+                        <FailureDetails message={fail.message} />
+                      </div>
+                    )}
                   </div>
                 </li>
               )

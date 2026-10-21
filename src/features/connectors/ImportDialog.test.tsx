@@ -3,6 +3,8 @@ import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
+import type { ReactElement } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi, type McpImportCandidate } from '../../services/engine'
@@ -67,7 +69,9 @@ it('reads a pasted mcpServers JSON as text and imports from that same text', asy
   await user.click(await within(dialog).findByLabelText(/^linear/))
   await user.click(within(dialog).getByTestId('import-apply'))
   expect(apply).toHaveBeenCalledWith({ keys: ['pasted:linear'], names: undefined, json })
-  expect(await within(dialog).findByText('name taken')).toBeTruthy()
+  // Plain text first; the raw message only under «Detalles».
+  expect(await within(dialog).findByText('Rinari no pudo crearlo con esa configuración.')).toBeTruthy()
+  expect(within(dialog).getByText('name taken').closest('details')?.querySelector('summary')?.textContent).toBe('Detalles')
 })
 
 it('asks once per server a trusted folder brings, and records only what was answered', async () => {
@@ -166,4 +170,21 @@ it('«Más tarde» holds for the same folder written another way', async () => {
   await new Promise((resolve) => setTimeout(resolve, 20))
   expect(list).toHaveBeenCalledTimes(1)
   expect(screen.queryByTestId('project-offers')).toBeNull()
+})
+
+it('a server the folder brings that could not be created says why in plain words, with the raw message under «Detalles»', async () => {
+  vi.spyOn(engineApi, 'mcpProjectOffersList').mockResolvedValue({ project: 'C:/repo', trusted: true, answered: 0, offers: [candidate({ key: 'db', name: 'db', source: 'project' })] })
+  vi.spyOn(engineApi, 'mcpProjectOffersDecide').mockResolvedValue({ project: 'C:/repo', created: [], failed: [{ key: 'db', message: 'command not allowed: rm' } as never], rejected: [] })
+  const error = vi.spyOn(toast, 'error').mockImplementation(() => 1)
+  render(<I18nProvider lang="es"><ProjectOffersPrompt root="C:/repo" enabled /></I18nProvider>)
+  const dialog = await screen.findByTestId('project-offers')
+  const user = userEvent.setup()
+  await user.click(within(dialog).getByRole('radio', { name: 'Usar en este proyecto' }))
+  await user.click(within(dialog).getByTestId('offers-save'))
+  await waitFor(() => expect(error).toHaveBeenCalledTimes(1))
+  const [text, options] = error.mock.calls[0] as [string, { description: ReactElement }]
+  expect(text).toBe('db: No se pudo crear.')
+  const { container } = render(<I18nProvider lang="es">{options.description}</I18nProvider>)
+  expect(container.querySelector('summary')?.textContent).toBe('Detalles')
+  expect(container.textContent).toContain('command not allowed: rm')
 })

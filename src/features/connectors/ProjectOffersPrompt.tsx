@@ -5,7 +5,7 @@ import { commandMessage, engineApi, type McpProjectOffers } from '../../services
 import { useI18n } from '../../i18n'
 import { pathKey } from '../../lib/paths'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { CandidateBody } from './ImportDialog'
+import { CandidateBody, FailureDetails, failureText } from './ImportDialog'
 import { SegChoice } from './SegChoice'
 import { useProjectOffersCheck } from './connectorStore'
 
@@ -61,7 +61,10 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
     try {
       const result = await engineApi.mcpProjectOffersDecide(offers.project, decisions)
       if (result.created.length > 0) toast.success(t('connectors.offers.created', { n: result.created.length }))
-      for (const failure of result.failed) toast.error(failure.message || failure.code)
+      for (const failure of result.failed) {
+        const name = offers.offers.find((offer) => offer.key === failure.key)?.name ?? failure.key
+        toast.error(`${name}: ${failureText(t, failure.code)}`, { description: <FailureDetails message={failure.message} /> })
+      }
       // Lo que quedó sin responder se pregunta la próxima vez que se abra.
       if (decisions.length < offers.offers.length) deferred.current.add(pathKey(offers.project))
       setOffers(null)

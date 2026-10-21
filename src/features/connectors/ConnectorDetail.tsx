@@ -20,6 +20,7 @@ import { isOAuth, isRemote, type ConnectorCapabilities } from './connectorModel'
 import { ConnectorLogo } from './ConnectorLogo'
 import { TestResult } from './McpServerDialog'
 import { SegChoice } from './SegChoice'
+import { SegTabPanel, SegTabs } from './SegTabs'
 import { useConnectorEvents, type ConnectorLogEntry } from './connectorStore'
 import { AccountLine, PrimaryButton, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
 import type { ConnectorItem } from './useConnectors'
@@ -70,27 +71,18 @@ export function ConnectorDetail({ item, caps, actions, testing = null, result, o
             <div className="flex flex-wrap gap-2">
               <PrimaryButton item={item} caps={caps} actions={actions} />
             </div>
-            <div role="tablist" aria-label={t('connectors.detail.tabs')} className="seg-tabs w-fit">
-              {tabs.map((value, index) => (
-                <button key={value} type="button" role="tab" id={`connector-tab-${value}`} aria-controls={`connector-panel-${value}`} aria-selected={tab === value} tabIndex={tab === value ? 0 : -1} className="seg-tab"
-                  onClick={() => setTab(value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
-                    event.preventDefault()
-                    const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]
-                    setTab(next)
-                    document.getElementById(`connector-tab-${next}`)?.focus()
-                  }}>
-                  {tab === value && <span className="seg-tab-pill" aria-hidden="true" />}
-                  <span className="relative">{t(`connectors.detail.tab.${value}` as I18nKey)}</span>
-                </button>
-              ))}
-            </div>
-            <div role="tabpanel" id={`connector-panel-${tab}`} aria-labelledby={`connector-tab-${tab}`}>
+            <SegTabs<Tab>
+              value={tab}
+              label={t('connectors.detail.tabs')}
+              idPrefix="connector"
+              options={tabs.map((value) => ({ value, label: t(`connectors.detail.tab.${value}` as I18nKey) }))}
+              onChange={setTab}
+            />
+            <SegTabPanel idPrefix="connector" value={tab}>
               {tab === 'tools' && <ToolsPanel item={item} actions={actions} />}
               {tab === 'connection' && <ConnectionPanel item={item} caps={caps} actions={actions} testing={testing} result={result} />}
               {tab === 'activity' && <ActivityPanel item={item} />}
-            </div>
+            </SegTabPanel>
           </>
         )}
       </DialogContent>

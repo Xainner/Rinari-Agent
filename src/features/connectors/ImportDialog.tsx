@@ -5,6 +5,7 @@ import { commandMessage, engineApi, type McpImportCandidate, type McpImportResul
 import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { ProgressBar } from '../../components/ui/progress-bar'
+import { SegTabPanel, SegTabs } from './SegTabs'
 
 type Mode = 'apps' | 'paste'
 
@@ -158,77 +159,78 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
           <DialogTitle>{t('connectors.import.title')}</DialogTitle>
           <DialogDescription>{t('connectors.import.intro')}</DialogDescription>
         </DialogHeader>
-        <div role="tablist" aria-label={t('connectors.import.title')} className="seg-tabs w-fit">
-          {(['apps', 'paste'] as const).map((value) => (
-            <button key={value} type="button" role="tab" aria-selected={mode === value} className="seg-tab" onClick={() => switchMode(value)} data-mode={value}>
-              {mode === value && <span className="seg-tab-pill" aria-hidden="true" />}
-              <span className="relative">{t(`connectors.import.mode.${value}` as I18nKey)}</span>
-            </button>
-          ))}
-        </div>
+        <SegTabs<Mode>
+          value={mode}
+          label={t('connectors.import.title')}
+          idPrefix="import"
+          options={(['apps', 'paste'] as const).map((value) => ({ value, label: t(`connectors.import.mode.${value}` as I18nKey) }))}
+          onChange={switchMode}
+        />
 
-        {mode === 'paste' && (
-          <div className="space-y-2">
-            <label className="field-label mt-0" htmlFor="import-json">{t('connectors.import.jsonLabel')}</label>
-            <textarea id="import-json" className="field-input min-h-[140px] font-mono text-[12px]" value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} placeholder={'{ "mcpServers": { … } }'} />
-            <p className="field-hint">{t('connectors.import.jsonHint')}</p>
-            <button type="button" className="btn btn-secondary btn-sm" disabled={!json.trim() || scanning} onClick={() => void runScan(json)}>{scanning && <LoaderCircle size={13} className="r-spin" />} {t('connectors.import.read')}</button>
-          </div>
-        )}
+        <SegTabPanel idPrefix="import" value={mode} className="grid grid-cols-[minmax(0,1fr)] gap-4">
+          {mode === 'paste' && (
+            <div className="space-y-2">
+              <label className="field-label mt-0" htmlFor="import-json">{t('connectors.import.jsonLabel')}</label>
+              <textarea id="import-json" className="field-input min-h-[140px] font-mono text-[12px]" value={json} onChange={(event) => setJson(event.target.value)} spellCheck={false} placeholder={'{ "mcpServers": { … } }'} />
+              <p className="field-hint">{t('connectors.import.jsonHint')}</p>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={!json.trim() || scanning} onClick={() => void runScan(json)}>{scanning && <LoaderCircle size={13} className="r-spin" />} {t('connectors.import.read')}</button>
+            </div>
+          )}
 
-        {scanning && mode === 'apps' && <ProgressBar label={t('connectors.import.scanning')} />}
-        {error && <p role="alert" className="text-[13px] text-[var(--danger)]">{error}</p>}
+          {scanning && mode === 'apps' && <ProgressBar label={t('connectors.import.scanning')} />}
+          {error && <p role="alert" className="text-[13px] text-[var(--danger)]">{error}</p>}
 
-        {scan && mode === 'apps' && (
-          <ul className="import-sources" aria-label={t('connectors.import.sources')}>
-            {scan.sources.map((source) => (
-              <li key={`${source.source}:${source.path}`} data-found={source.found || undefined}>
-                <span className="text-[12.5px] text-[var(--text)]">{source.label ?? source.source}</span>
-                <span className="text-[12px] text-[var(--text-muted)]">
-                  {source.error ? t(`connectors.import.sourceError.${source.error}` as I18nKey) : source.found ? t('connectors.import.sourceFound', { n: source.servers }) : t('connectors.import.sourceMissing')}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {scan && scan.candidates.length === 0 && <p className="text-[13px] text-[var(--text-muted)]">{t(mode === 'apps' ? 'connectors.import.noneFound' : 'connectors.import.nonePasted')}</p>}
-
-        {scan && scan.candidates.length > 0 && (
-          <ul className="import-list" aria-label={t('connectors.import.candidates')}>
-            {scan.candidates.map((candidate) => {
-              const id = `import-${candidate.key}`
-              const done = created.has(candidate.key)
-              const fail = failed.get(candidate.key)
-              return (
-                <li key={candidate.key} className="import-item" data-key={candidate.key} data-importable={candidate.importable || undefined}>
-                  <input id={id} type="checkbox" className="r-checkbox" checked={marked.has(candidate.key)} disabled={!candidate.importable || done || applying || scanning || (scan.mode === 'paste' && !scan.json)} onChange={() => toggle(candidate.key)} />
-                  <div className="min-w-0 flex-1">
-                    <label htmlFor={id} className="flex flex-wrap items-center gap-2">
-                      <b className="text-[13px] text-[var(--text)]">{candidate.suggested_name ?? candidate.name}</b>
-                      <span className="mcp-chip">{t(candidate.transport === 'http' ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
-                      {candidate.source_label && <span className="text-[11.5px] text-[var(--text-subtle)]">{candidate.source_label}</span>}
-                      {candidate.project_root && <span className="mcp-chip">{t('connectors.chip.project')}</span>}
-                    </label>
-                    <CandidateBody candidate={candidate} />
-                    {candidate.existing && <p className="text-[12px] text-[var(--text-muted)]">{t('connectors.import.existing', { name: candidate.existing })}</p>}
-                    {done && <p className="text-[12px] text-[var(--success)]" role="status">{t('connectors.import.created')}</p>}
-                    {fail && (
-                      <div role="alert">
-                        <p className="text-[12px] text-[var(--danger)]">{failureText(t, fail.code)}</p>
-                        <FailureDetails message={fail.message} />
-                      </div>
-                    )}
-                  </div>
+          {scan && mode === 'apps' && (
+            <ul className="import-sources" aria-label={t('connectors.import.sources')}>
+              {scan.sources.map((source) => (
+                <li key={`${source.source}:${source.path}`} data-found={source.found || undefined}>
+                  <span className="text-[12.5px] text-[var(--text)]">{source.label ?? source.source}</span>
+                  <span className="text-[12px] text-[var(--text-muted)]">
+                    {source.error ? t(`connectors.import.sourceError.${source.error}` as I18nKey) : source.found ? t('connectors.import.sourceFound', { n: source.servers }) : t('connectors.import.sourceMissing')}
+                  </span>
                 </li>
-              )
-            })}
-          </ul>
-        )}
+              ))}
+            </ul>
+          )}
 
-        {scan && scan.mode === 'paste' && !scan.json && scan.candidates.some((candidate) => candidate.importable && !created.has(candidate.key)) && (
-          <p className="field-hint">{t('connectors.import.pasteAgain')}</p>
-        )}
+          {scan && scan.candidates.length === 0 && <p className="text-[13px] text-[var(--text-muted)]">{t(mode === 'apps' ? 'connectors.import.noneFound' : 'connectors.import.nonePasted')}</p>}
+
+          {scan && scan.candidates.length > 0 && (
+            <ul className="import-list" aria-label={t('connectors.import.candidates')}>
+              {scan.candidates.map((candidate) => {
+                const id = `import-${candidate.key}`
+                const done = created.has(candidate.key)
+                const fail = failed.get(candidate.key)
+                return (
+                  <li key={candidate.key} className="import-item" data-key={candidate.key} data-importable={candidate.importable || undefined}>
+                    <input id={id} type="checkbox" className="r-checkbox" checked={marked.has(candidate.key)} disabled={!candidate.importable || done || applying || scanning || (scan.mode === 'paste' && !scan.json)} onChange={() => toggle(candidate.key)} />
+                    <div className="min-w-0 flex-1">
+                      <label htmlFor={id} className="flex flex-wrap items-center gap-2">
+                        <b className="text-[13px] text-[var(--text)]">{candidate.suggested_name ?? candidate.name}</b>
+                        <span className="mcp-chip">{t(candidate.transport === 'http' ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
+                        {candidate.source_label && <span className="text-[11.5px] text-[var(--text-subtle)]">{candidate.source_label}</span>}
+                        {candidate.project_root && <span className="mcp-chip">{t('connectors.chip.project')}</span>}
+                      </label>
+                      <CandidateBody candidate={candidate} />
+                      {candidate.existing && <p className="text-[12px] text-[var(--text-muted)]">{t('connectors.import.existing', { name: candidate.existing })}</p>}
+                      {done && <p className="text-[12px] text-[var(--success)]" role="status">{t('connectors.import.created')}</p>}
+                      {fail && (
+                        <div role="alert">
+                          <p className="text-[12px] text-[var(--danger)]">{failureText(t, fail.code)}</p>
+                          <FailureDetails message={fail.message} />
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
+          {scan && scan.mode === 'paste' && !scan.json && scan.candidates.some((candidate) => candidate.importable && !created.has(candidate.key)) && (
+            <p className="field-hint">{t('connectors.import.pasteAgain')}</p>
+          )}
+        </SegTabPanel>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           {mode === 'apps' && <button type="button" className="btn btn-quiet btn-sm mr-auto" disabled={scanning} onClick={() => void runScan()}><RotateCcw size={13} /> {t('connectors.import.rescan')}</button>}

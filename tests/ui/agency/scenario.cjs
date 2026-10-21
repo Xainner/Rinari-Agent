@@ -6,7 +6,11 @@
 // puesto (con el modelo falso), un recado entregado y aceptado, «Pizarra» en el
 // panel lateral del puesto y la Vía 2 con «Pronto» en Ajustes.
 const assert = require('node:assert/strict')
-const { click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
+const { click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, ui, useLocalModel, wait } = require('../harness.cjs')
+
+// Sonner pauses its toasts while the pointer is over them: the last click can
+// leave it there, so the wait for them to go first moves it away.
+const pointerAway = () => ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 400 })
 
 const CARD = '[data-testid="agency-card"]'
 const TUTORIAL = '[data-testid="agency-tutorial"]'
@@ -62,6 +66,7 @@ scenario(async () => {
   // sesión activa sigue siendo la del agente y su respuesta aparece ahí.
   const SEND = '.composer-surface button[aria-label="Enviar mensaje"]'
   await input('.composer-surface textarea', 'Hola, preséntate en una frase.')
+  pointerAway()
   await wait(`!document.querySelector(${JSON.stringify(SEND)})?.disabled && !document.querySelector('[data-sonner-toast]')`)
   await click(SEND)
   await wait(`document.querySelector('.composer-surface textarea').value === ''`)
@@ -143,6 +148,7 @@ scenario(async () => {
   // Una @mención despierta a Emails en su puesto; su respuesta vuelve a la oficina (D-1).
   await input('[data-testid="agency-office-input"]', 'Hola @Emails, ¿qué hay hoy?')
   // El aviso de «equipo creado» queda encima de «Enviar» hasta que se va (anotado para el pulido).
+  pointerAway()
   await wait(`!document.querySelector('[data-sonner-toast]')`)
   await click('[data-testid="agency-office-send"]')
   await wait(`[...document.querySelectorAll('[data-testid="agency-office-message"]')].some((m) => m.querySelector('img') && m.innerText.includes('Emails'))`, 30_000)

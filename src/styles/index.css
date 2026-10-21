@@ -3759,29 +3759,167 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-post-avatar { width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px; object-fit: cover; }
 .agency-chief { padding: 0 6px; border-radius: 999px; background: var(--bg-elevated); font-size: 10px; font-weight: 600; color: var(--accent-2); }
 
-.agency-office { display: grid; height: 100%; min-height: 0; grid-template-columns: minmax(0, 1fr); }
-.agency-office.has-board { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); }
-.agency-office-main { display: flex; min-height: 0; min-width: 0; flex-direction: column; }
-.agency-office-head { display: flex; align-items: center; gap: 8px; padding: 18px 24px 12px; border-bottom: 1px solid var(--line-1); }
-.agency-office-head .btn.is-active { background: var(--bg-active); color: var(--text); }
-.agency-office-log { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; overflow-y: auto; padding: 18px 24px; }
-.agency-office-empty { margin: auto; max-width: 420px; text-align: center; font-size: 13px; line-height: 1.6; color: var(--text-subtle); }
-.agency-office-message { display: flex; gap: 10px; }
-.agency-office-avatar { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; object-fit: cover; }
-.agency-office-avatar.is-owner { display: grid; place-items: center; background: var(--bg-active); font-size: 10.5px; font-weight: 700; color: var(--text); }
-.agency-office-author { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+/* Las fichas de la Agency (agente y equipo): la misma cara que los ajustes del Agent. */
+.agency-editor-page { height: 100%; overflow-y: auto; }
+.agency-editor { display: flex; min-height: 100%; flex-direction: column; }
+.agency-editor-body { display: flex; width: 100%; max-width: 860px; flex: 1; flex-direction: column; gap: 16px; margin: 0 auto; padding: 32px 32px 24px; }
+.agency-editor-foot { position: sticky; bottom: 0; z-index: 5; border-top: 1px solid var(--line-1); background: color-mix(in srgb, var(--bg-app) 86%, transparent); backdrop-filter: blur(12px); }
+.agency-editor-foot-inner { display: flex; max-width: 860px; align-items: center; gap: 8px; margin: 0 auto; padding: 12px 32px; }
+.agency-editor-hero { display: flex; align-items: center; gap: 18px; padding: 20px 22px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%), linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 85%, transparent), color-mix(in srgb, var(--bg-subtle) 85%, transparent)); box-shadow: var(--inset-hi); }
+.agency-editor-media { flex-shrink: 0; }
+.agency-editor-kicker { margin: 0 0 2px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-2); }
+.agency-editor-sub { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.agency-title-input, .agency-subtitle-input { display: block; width: 100%; padding: 2px 6px; margin-left: -6px; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--text); outline: none; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-title-input { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.2; }
+.agency-subtitle-input { margin-top: 2px; font-size: 14px; color: var(--text-muted); }
+.agency-title-input::placeholder, .agency-subtitle-input::placeholder { color: var(--text-subtle); }
+.agency-title-input:hover, .agency-subtitle-input:hover { border-color: var(--line-1); }
+.agency-title-input:focus, .agency-subtitle-input:focus { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); background: var(--bg-inset); }
+.agency-team-faces { display: flex; padding-left: 10px; }
+.agency-team-faces .agent-avatar { margin-left: -10px; box-shadow: 0 0 0 2px var(--bg-elevated), inset 0 0 0 1px hsl(var(--agent-hue) 80% 72% / 0.45); }
+.agency-team-emblem { display: grid; width: 72px; height: 72px; place-items: center; border-radius: 28%; background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--accent) 45%, transparent), var(--bg-inset)); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--violet-200); }
+.agency-editor-section { padding: 18px 20px 20px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 80%, transparent), color-mix(in srgb, var(--bg-subtle) 80%, transparent)); box-shadow: var(--inset-hi); }
+.agency-editor-section-head { display: flex; gap: 12px; margin-bottom: 14px; }
+.agency-editor-section-head h2 { margin: 0; font-family: var(--font-display); font-size: 15.5px; font-weight: 700; color: var(--text); }
+.agency-editor-section-head p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.agency-editor-section-icon { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--accent-2); }
+.agency-editor-section-body { display: grid; gap: 12px; }
+.agency-instructions { min-height: 160px; resize: vertical; line-height: 1.6; }
+.agency-instructions.is-short { min-height: 84px; }
+.agency-count { margin: -4px 0 0; text-align: right; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
+.agency-model-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.agency-model-field { min-width: 0; flex: 1; }
+.agency-model-field > button { width: 100%; max-width: none; justify-content: flex-start; min-height: 40px; padding: 0 14px; border-radius: var(--r-md); font-size: 13.5px; color: var(--text); }
+.agency-inline-field { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding-top: 12px; border-top: 1px solid var(--line-1); }
+.agency-inline-title { margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+/* Una elección como tarjetas (autonomía): icono, nombre y lo que significa; la elegida se marca. */
+.agency-option-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.agency-option-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 10px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.agency-option-card:hover { border-color: var(--line-3); }
+.agency-option-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; background: var(--bg-hover); color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.agency-option-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.agency-option-hint { grid-column: 1 / -1; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.agency-option-check { position: absolute; top: 10px; right: 10px; display: grid; width: 18px; height: 18px; place-items: center; border-radius: 999px; background: var(--grad-brand); color: #fff; }
+.agency-option-card[aria-checked='true'] { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-subtle)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.agency-option-card[aria-checked='true'] .agency-option-icon { background: color-mix(in srgb, var(--accent) 30%, transparent); color: #fff; }
+.agency-option-card[data-tone='warning'][aria-checked='true'] { border-color: color-mix(in srgb, var(--warning) 60%, transparent); background: color-mix(in srgb, var(--warning) 9%, var(--bg-subtle)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 12%, transparent); }
+.agency-option-card[data-tone='warning'][aria-checked='true'] .agency-option-icon { background: color-mix(in srgb, var(--warning) 25%, transparent); color: var(--warning); }
+/* Casillas con su logo o su avatar (conectores, agentes de un equipo). */
+.agency-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.agency-pick-grid.is-agents { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.agency-pick { position: relative; display: flex; min-width: 0; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; color: var(--text); cursor: pointer; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-pick:hover { border-color: var(--line-2); }
+.agency-pick[data-checked] { border-color: color-mix(in srgb, var(--accent-2) 50%, transparent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-subtle)); }
+.agency-pick.is-agent { padding: 0; cursor: default; }
+.agency-pick-main { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; }
+.agency-pick.is-chief { border-color: color-mix(in srgb, var(--warning) 55%, transparent); }
+.agency-chief-toggle { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; height: 26px; margin-right: 10px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--text-subtle); transition: color var(--dur-fast), background-color var(--dur-fast); }
+.agency-chief-toggle:hover { color: var(--text); background: var(--bg-hover); }
+.agency-chief-toggle[aria-pressed='true'] { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+/* El presupuesto del día, con su unidad pegada al número. */
+.agency-budget { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.agency-budget-field { display: grid; gap: 6px; }
+.agency-budget-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.agency-budget-input { display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); font-family: var(--font-mono); font-size: 12px; color: var(--text-subtle); }
+.agency-budget-input:focus-within { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); }
+.agency-budget-input .field-input { flex: 1; min-width: 0; padding-left: 0; padding-right: 0; border: 0; background: transparent; box-shadow: none; }
+/* «Créalo con Rinari» y «Duplicar»: una tarjeta con borde de acento sobre el resto. */
+.agency-draft-card { display: flex; gap: 14px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--accent-2) 40%, transparent); border-radius: var(--r-lg); background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--magenta-400, #e879f9) 6%, transparent)); }
+.agency-draft-spark { display: grid; width: 34px; height: 34px; flex-shrink: 0; place-items: center; border-radius: 10px; background: var(--grad-brand); color: #fff; }
+.agency-draft-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--text); }
+.agency-draft-row { display: flex; gap: 8px; }
+.agency-draft-row .field-input { flex: 1; min-width: 0; }
+@media (max-width: 720px) {
+  .agency-editor-body, .agency-editor-foot-inner { padding-left: 16px; padding-right: 16px; }
+  .agency-editor-hero { flex-direction: column; align-items: flex-start; }
+}
+
+/* Ajustes de la Agency: lista a la izquierda (agentes, equipos, toda la Agency) y su detalle en tarjetas. */
+.agency-settings-page { height: 100%; overflow-y: auto; }
+.agency-settings-layout { display: grid; max-width: 1080px; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; margin: 0 auto; padding: 28px 32px 40px; }
+.agency-settings-nav { position: sticky; top: 0; display: flex; align-self: start; flex-direction: column; gap: 2px; padding-top: 4px; }
+.agency-settings-title { margin: 0 0 14px; padding: 0 8px; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text); }
+.agency-settings-nav-head { margin: 10px 0 4px; padding: 0 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); }
+.agency-settings-nav-empty { margin: 0; padding: 2px 8px; font-size: 12px; color: var(--text-subtle); }
+.agency-settings-nav-sep { height: 1px; margin: 10px 8px 6px; background: var(--line-1); }
+.agency-settings-nav-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 9px; padding: 6px 8px; border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); text-align: left; transition: background-color var(--dur-fast), color var(--dur-fast); }
+.agency-settings-nav-row:hover { background: var(--bg-hover); color: var(--text); }
+.agency-settings-nav-row.is-active { background: var(--bg-active); color: var(--text); box-shadow: inset 2px 0 0 var(--accent-2); }
+.agency-settings-main { display: flex; min-width: 0; flex-direction: column; gap: 16px; }
+.agency-settings-head { display: flex; align-items: center; gap: 14px; padding: 4px 2px 6px; }
+.agency-settings-empty { margin: 0; font-size: 13px; color: var(--text-subtle); }
+.agency-team-emblem.is-small { width: 48px; height: 48px; }
+.agency-spend-line { margin: -2px 0 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-subtle); }
+.agency-memory-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.agency-memory-row { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); list-style: none; }
+.agency-memory-row-head { display: flex; align-items: center; gap: 8px; }
+.agency-memory-topic { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; color: var(--accent-2); }
+.agency-memory-actions { display: flex; gap: 2px; opacity: 0; transition: opacity var(--dur-fast); }
+.agency-memory-row:hover .agency-memory-actions, .agency-memory-row:focus-within .agency-memory-actions { opacity: 1; }
+@media (hover: none) { .agency-memory-actions { opacity: 1; } }
+.agency-memory-forget:hover { color: var(--danger); }
+.agency-memory-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text); }
+.agency-pick.is-static { cursor: default; }
+.agency-option-card[aria-disabled='true'] { cursor: default; opacity: 0.7; }
+@media (max-width: 860px) {
+  .agency-settings-layout { grid-template-columns: minmax(0, 1fr); padding: 20px 16px 32px; }
+  .agency-settings-nav { position: static; }
+}
+
+/* El avatar de un agente (D-23): su arte sobre una placa con un tono propio en el borde. */
+.agent-avatar { --agent-hue: 265; position: relative; display: inline-grid; flex-shrink: 0; place-items: center; overflow: hidden; border-radius: 28%; background: radial-gradient(120% 120% at 30% 20%, hsl(var(--agent-hue) 70% 28% / 0.9), hsl(var(--agent-hue) 60% 12%)); box-shadow: inset 0 0 0 1px hsl(var(--agent-hue) 80% 72% / 0.45); }
+.agent-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* La oficina de un equipo: un chat de grupo dentro del espacio de una conversación, con su panel lateral. */
+.agency-office { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.agency-office-head { display: flex; align-items: center; gap: 14px; padding: 18px 28px 14px; border-bottom: 1px solid var(--line-1); }
+.agency-office-faces { display: flex; flex-shrink: 0; padding-left: 8px; }
+.agency-office-faces .agent-avatar { margin-left: -8px; box-shadow: 0 0 0 2px var(--bg-app), inset 0 0 0 1px hsl(var(--agent-hue) 80% 72% / 0.45); }
+.agency-office-log { min-height: 0; flex: 1; overflow-y: auto; }
+.agency-office-thread { display: flex; min-height: 100%; max-width: 820px; flex-direction: column; gap: 18px; margin: 0 auto; padding: 22px 28px 28px; }
+.agency-office-empty { display: flex; margin: auto; max-width: 440px; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+.agency-office-empty-faces { display: flex; gap: 8px; margin-bottom: 6px; }
+.agency-office-message { display: flex; gap: 12px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
+.agency-office-avatar { flex-shrink: 0; }
+.agency-office-avatar.is-owner { display: grid; width: 32px; height: 32px; flex-shrink: 0; place-items: center; border-radius: 28%; background: var(--grad-brand); font-size: 10.5px; font-weight: 700; color: #fff; }
+.agency-office-author { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+.agency-office-name.is-agent { color: var(--violet-200); }
 .agency-office-time { font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--text-subtle); }
-.agency-office-text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; color: var(--text); }
-.agency-mention { border-radius: 4px; background: rgb(147 88 255 / 0.16); padding: 0 3px; color: var(--violet-300); font-weight: 600; }
-.agency-office-composer { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; padding: 12px 24px 16px; border-top: 1px solid var(--line-1); }
-.agency-office-input { min-height: 44px; max-height: 180px; resize: vertical; }
-.agency-office-hint { grid-column: 1 / -1; margin: 0; font-size: 11.5px; color: var(--text-subtle); }
-.agency-mention-list { position: absolute; bottom: calc(100% - 6px); left: 24px; z-index: 20; display: grid; min-width: 220px; max-width: min(360px, calc(100% - 48px)); gap: 1px; margin: 0; padding: 4px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-elevated); box-shadow: var(--shadow-pop, 0 12px 32px rgb(0 0 0 / 0.4)); list-style: none; }
-.agency-mention-hint { padding: 4px 8px 6px; font-size: 11px; line-height: 1.4; color: var(--text-subtle); }
-.agency-mention-option { display: flex; width: 100%; min-width: 0; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--r-sm); font-size: 13px; color: var(--text-muted); text-align: left; }
-.agency-mention-option:hover, .agency-mention-option.is-active { background: var(--bg-active); color: var(--text); }
-.agency-errand-form { display: grid; gap: 10px; margin: 0 24px 4px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); }
-.agency-office-board { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line-1); background: var(--bg-subtle); }
+.agency-office-text { margin: 3px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; color: var(--text); }
+/* Una @mención: una pastilla con el avatar de quien se nombra; nunca más ancha que su línea. */
+.agency-mention { display: inline-flex; max-width: 100%; align-items: center; gap: 4px; vertical-align: baseline; padding: 0 7px 0 3px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 30%, transparent); font-weight: 600; color: var(--violet-200); overflow-wrap: anywhere; white-space: normal; }
+.agency-mention-avatar { border-radius: 999px; }
+/* El composer de la oficina: la misma tarjeta que el de una conversación. */
+.office-composer-wrap { padding: 4px 28px 18px; }
+.office-composer { position: relative; max-width: 820px; margin: 0 auto; padding: 10px 10px 8px 14px; border: 1px solid var(--line-2); border-radius: 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 92%, transparent), color-mix(in srgb, var(--bg-subtle) 92%, transparent)); box-shadow: var(--inset-hi), 0 18px 40px -26px rgb(0 0 0 / 0.9); transition: border-color var(--dur-fast); }
+.office-composer:focus-within { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); }
+.office-input-shell { position: relative; }
+.office-input, .office-input-backdrop { display: block; width: 100%; max-height: 220px; margin: 0; padding: 2px 0; border: 0; font: inherit; font-size: 14px; line-height: 1.6; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: anywhere; }
+.office-input { position: relative; resize: none; overflow-y: auto; background: transparent; color: transparent; caret-color: var(--text); outline: none; }
+.office-input::placeholder { color: var(--text-subtle); }
+.office-input::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); color: transparent; }
+.office-input-backdrop { position: absolute; inset: 0; overflow: hidden; color: var(--text); pointer-events: none; }
+.office-input-mention { border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); color: var(--violet-200); font-weight: 600; }
+.office-composer-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.office-composer-hint { min-width: 0; flex: 1; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-subtle); }
+.office-send { display: grid; width: 32px; height: 32px; flex-shrink: 0; place-items: center; border-radius: 999px; background: var(--grad-brand); color: #fff; box-shadow: 0 0 0 1px rgb(196 181 253 / 0.3), 0 8px 22px -10px rgb(147 88 255 / 0.85); transition: filter var(--dur-fast), opacity var(--dur-fast); }
+.office-send:hover:not(:disabled) { filter: brightness(1.1); }
+.office-send:disabled { cursor: default; background: var(--bg-hover); color: var(--text-subtle); box-shadow: inset 0 0 0 1px var(--line-2); }
+/* La lista de @menciones: la del menú «/» del composer, pegada encima y con su mismo ancho. */
+.office-mention-list { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 30; max-height: 320px; overflow-y: auto; border-radius: var(--r-lg); }
+.office-mention-name { font-family: inherit; font-size: 13px; }
+/* Recado y Ficha en el panel lateral de la oficina. */
+.office-panel { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.office-panel-body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; overflow-y: auto; padding: 14px 16px; }
+.office-panel-lead { display: flex; gap: 8px; margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.office-panel-lead svg { flex-shrink: 0; margin-top: 2px; color: var(--accent-2); }
+.office-panel-foot { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--line-1); }
+.office-panel-purpose { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text); }
+.office-panel-section h3 { margin: 0 0 8px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-subtle); }
+.office-panel-line { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--text-muted); }
+.office-member-list, .office-connector-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.office-member { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; }
+.office-connector { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 6px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; color: var(--text); }
 
 .agency-errand { display: grid; gap: 6px; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line-1); border-left: 2px solid var(--line-3); border-radius: var(--r-sm); background: var(--bg-subtle); font-size: 12.5px; }
 .agency-errand[data-status='in_progress'] { border-left-color: var(--accent-2); }

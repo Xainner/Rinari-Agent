@@ -45,7 +45,7 @@ import { signalOf, useSessionPendingStore, type SessionSignal } from './features
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
 import DockViewButtons from './components/app-shell/DockViewButtons'
-import { requestDockToggle } from './features/session/SessionWorkspace'
+import SessionWorkspace, { requestDockToggle } from './features/session/SessionWorkspace'
 import { useTerminalStore } from './features/terminal/terminalStore'
 import { AGENT_TAB } from './features/terminal/agentTab'
 import { useSessionDockStore, viewForSurface, type DockSurface } from './stores/sessionDock'
@@ -81,6 +81,7 @@ import TeamForm from './features/agency/TeamForm'
 import OfficeView from './features/agency/OfficeView'
 import type { AgencyAgent, AgencyTeam } from './features/agency/types'
 import { enterAgencySession } from './features/agency/openAgencySession'
+import { AgencyDataContext, officeDockKey } from './features/agency/AgencyData'
 import agencyHero from './assets/agency/agency-hero.webp'
 import { useProfileStore } from './features/profiles/profileStore'
 import ReconnectNotifier from './features/connectors/ReconnectNotifier'
@@ -574,6 +575,7 @@ function App() {
   const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
   const activeTeamId = agencyPage.kind === 'office' || agencyPage.kind === 'post' || agencyPage.kind === 'edit-team' ? agencyPage.teamId : null
   const activeTeam = activeTeamId ? agency.teams.find((item) => item.id === activeTeamId) ?? null : null
+  const agencyData = useMemo(() => ({ agents: agency.agents, teams: agency.teams, reload: agency.reload }), [agency.agents, agency.teams, agency.reload])
   // El chat de un agente (directo o su puesto en un equipo): la barra de título
   // dice de quién es desde el primer momento, y el chat vacío lo saluda él, no Rinari.
   const chatAgentId = inAgency && (agencyPage.kind === 'agent' || agencyPage.kind === 'post') ? agencyPage.agentId : null
@@ -926,7 +928,9 @@ function App() {
           <AppStatusBar
             context={
               // Las páginas propias de la Agency (inicio, ficha) no son una conversación.
-              agencyMain ? (
+              agencyMain && agencyPage.kind === 'office' && activeTeam ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]" data-testid="agency-office-title">{activeTeam.name}</span>
+              ) : agencyMain ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, 'agency.name')}</span>
               ) : view === 'chat' && activeHasContent ? (
                 <ChatHeader title={activeTitle || chatAgentLabel} sessionId={activeRecord?.id ?? null} mother={activeMother} />
@@ -981,7 +985,10 @@ function App() {
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}
-            dockViews={dockButtonsSessionId && !agencyMain ? (
+            dockViews={agencyMain && agencyPage.kind === 'office' && activeTeam ? (
+              // La oficina usa el panel lateral de una conversación, con solo sus vistas.
+              <DockViewButtons key={officeDockKey(activeTeam.id)} sessionId={officeDockKey(activeTeam.id)} terminalEnabled={false} onlyViews={['errand', 'board', 'team']} />
+            ) : dockButtonsSessionId && !agencyMain ? (
               <DockViewButtons
                 key={dockButtonsSessionId}
                 sessionId={dockButtonsSessionId}
@@ -994,6 +1001,7 @@ function App() {
       >
         {/* Cada vista entra con un fundido corto (solo opacidad: un transform
             movería el rectángulo del navegador nativo durante la entrada). */}
+        <AgencyDataContext.Provider value={agencyData}>
         <div key={view} className="view-stage">
         {view === 'chat' && !agencyMain && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} persona={agencyPersona} />}
         {agencyMain && agencyPage.kind === 'home' && (
@@ -1017,12 +1025,9 @@ function App() {
           />
         )}
         {agencyMain && agencyPage.kind === 'office' && activeTeam && (
-          <OfficeView
-            key={activeTeam.id}
-            team={activeTeam}
-            agents={agency.agents}
-            onEditTeam={(team) => useAgencyStore.getState().editTeam(team.id)}
-          />
+          <SessionWorkspace key={activeTeam.id} sessionId={officeDockKey(activeTeam.id)} record={null} density="normal" focused browserEnabled={false}>
+            <OfficeView team={activeTeam} agents={agency.agents} />
+          </SessionWorkspace>
         )}
         {agencyMain && (agencyPage.kind === 'new-team' || agencyPage.kind === 'edit-team') && (
           <TeamForm
@@ -1127,6 +1132,7 @@ function App() {
           </Suspense>
         )}
         </div>
+        </AgencyDataContext.Provider>
       </AppShell>
 
       <ReviewExportDialog />

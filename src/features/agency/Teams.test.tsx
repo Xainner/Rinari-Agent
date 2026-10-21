@@ -59,6 +59,7 @@ const api = {
   agencyTeamMemory: vi.fn(async () => ({ records: [], count: 0 })),
   agencyTeamRemember: vi.fn(async () => ({ record: {} })),
   mcpList: vi.fn(async () => ({ servers: [{ name: 'youtube-canal', scope: 'global', owner: 'team:team_1' }, { name: 'gmail', scope: 'global', owner: null }, { name: 'mio', scope: 'global', owner: 'agent:agent_w' }] })),
+  mcpCatalogList: vi.fn(async () => ({ entries: [] })),
 }
 vi.mock('../../services/engine', () => ({
   engineApi: new Proxy({}, { get: (_target, key: string) => (api as Record<string, unknown>)[key] }),
@@ -74,6 +75,9 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: v
 
 import AgencySidebar from './AgencySidebar'
 import OfficeView, { mentionQuery } from './OfficeView'
+import { AgencyDataContext, officeDockKey } from './AgencyData'
+import { ErrandPanel } from './OfficePanels'
+import { useSessionDockStore } from '../../stores/sessionDock'
 import TeamForm from './TeamForm'
 import { BoardPanel } from './Board'
 import AgencySettings from './AgencySettings'
@@ -119,7 +123,7 @@ it('reads the @mention being typed', () => {
 })
 
 it('posts in the office with an @mention picked from the list', async () => {
-  wrap(<OfficeView team={team} agents={[writer, video]} onEditTeam={() => {}} />)
+  wrap(<OfficeView team={team} agents={[writer, video]} />)
   await waitFor(() => expect(screen.getAllByTestId('agency-office-message')).toHaveLength(3))
   // La tarjeta del recado va una vez, en el mensaje que lo dejó, no también en la entrega.
   expect(screen.getAllByTestId('agency-errand')).toHaveLength(1)
@@ -135,11 +139,15 @@ it('posts in the office with an @mention picked from the list', async () => {
   expect(api.agencyOfficePost).toHaveBeenCalledWith('team_1', 'Hola @Video anímalo')
 })
 
-it('opens an errand from /recado and leaves it on the board for the chief', async () => {
-  wrap(<OfficeView team={team} agents={[writer, video]} onEditTeam={() => {}} />)
+it('opens an errand from /recado in the side panel and leaves it on the board for the chief', async () => {
+  wrap(<OfficeView team={team} agents={[writer, video]} />)
   const input = screen.getByTestId('agency-office-input')
   await userEvent.type(input, '/recado Guion del martes{Enter}')
   expect(api.agencyOfficePost).not.toHaveBeenCalled()
+  // Recado se abre en el panel lateral de la oficina, con el título que traía.
+  expect(useSessionDockStore.getState().layoutFor(officeDockKey('team_1')).views).toContain('errand')
+  cleanup()
+  wrap(<AgencyDataContext.Provider value={{ agents: [writer, video], teams: [team], reload: () => {} }}><ErrandPanel teamId="team_1" /></AgencyDataContext.Provider>)
   expect((screen.getByTestId('agency-errand-title') as HTMLInputElement).value).toBe('Guion del martes')
   fireEvent.change(screen.getByTestId('agency-errand-checks'), { target: { value: '30 segundos\n\nCon gancho' } })
   await userEvent.click(screen.getByTestId('agency-errand-submit'))
@@ -149,7 +157,7 @@ it('opens an errand from /recado and leaves it on the board for the chief', asyn
 })
 
 it('reviews a delivered errand the owner asked for and sends one back with why', async () => {
-  wrap(<OfficeView team={team} agents={[writer, video]} onEditTeam={() => {}} />)
+  wrap(<OfficeView team={team} agents={[writer, video]} />)
   await waitFor(() => expect(screen.getByTestId('agency-errand-accept')).toBeTruthy())
   await userEvent.click(screen.getByTestId('agency-errand-accept'))
   expect(api.agencyReviewErrand).toHaveBeenCalledWith('err_1', true)

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, Sparkles } from 'lucide-react'
+import { Archive, Cpu, Eye, FolderOpen, Plug, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
-import { cn } from '../../lib/utils'
-import { Select, type SelectOption } from '../../components/ui/select'
-import { commandMessage, engineApi, type McpServer, type ModelSummary } from '../../services/engine'
-import agencyIcon from '../../assets/agency/agency-icon.webp'
+import { commandMessage, engineApi, type McpServer, type ModelSummary, type ProviderSummary } from '../../services/engine'
+import ModelPicker from '../../components/composer/ModelPicker'
+import { useUIStore } from '../../stores/ui'
+import { SegChoice } from '../connectors/SegChoice'
+import AgentAvatar from './AgentAvatar'
+import { BudgetFields, ConnectorTiles, EditorHero, EditorPage, EditorSection, OptionCards } from './AgencyEditor'
+import { useConnectorDirectory } from './useConnectorDirectory'
 import { JobCancelledError, JobTimeoutError, runJob, useJobSignal } from './jobEvents'
 import type { AgencyAgent, AgencyAgentInput, AgentPermissionProfile } from './types'
 
@@ -49,6 +52,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
   const [usd, setUsd] = useState(agent?.budget.daily_usd ? String(agent.budget.daily_usd) : '')
   const [tokens, setTokens] = useState(agent?.budget.daily_tokens ? String(agent.budget.daily_tokens) : '')
   const [models, setModels] = useState<ModelSummary[]>([])
+  const [providers, setProviders] = useState<ProviderSummary[]>([])
   const [servers, setServers] = useState<McpServer[]>([])
   const [saving, setSaving] = useState(false)
   const [description, setDescription] = useState('')
@@ -92,6 +96,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
 
   useEffect(() => {
     engineApi.modelList().then((result) => setModels(result.models.filter((item) => item.saved !== false))).catch(() => {})
+    engineApi.providerList().then((result) => setProviders(result.providers)).catch(() => {})
     engineApi.mcpList().then((result) => setServers(result.servers)).catch(() => {})
   }, [])
 
@@ -104,13 +109,13 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
     })
   }, [servers, agent])
 
-  const modelOptions: SelectOption[] = useMemo(
-    () => [
-      { value: DEFAULT_MODEL, label: t('agency.form.modelDefault') },
-      ...models.map((item) => ({ value: item.id, label: item.alias, detail: item.provider ?? undefined })),
-    ],
-    [models, t],
-  )
+  const chosenModel = model === DEFAULT_MODEL ? null : models.find((item) => item.id === model) ?? null
+  const { marks } = useConnectorDirectory()
+  // Las marcas (logo y nombre del catálogo) de los conectores que este agente puede usar.
+  const availableMarks = useMemo(() => {
+    const names = new Set(available.map((server) => server.name))
+    return marks.filter((mark) => names.has(mark.name))
+  }, [marks, available])
 
   const toggleConnector = (serverName: string) =>
     setConnectors((current) => (current.includes(serverName) ? current.filter((value) => value !== serverName) : [...current, serverName]))
@@ -152,175 +157,15 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
     }
   }
 
+  const autonomyIcon = { 'read-only': Eye, workspace: FolderOpen, 'full-access': ShieldAlert } as const
+  const preview = { id: agent?.id ?? 'new-agent', name: name || t('agency.form.title') }
+
   return (
-    <div className="agency-form-page" data-testid="agency-agent-form">
-      <form
-        className="agency-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submit()
-        }}
-      >
-        <header className="agency-form-head">
-          <img src={agencyIcon} alt="" className="agency-form-icon" draggable={false} />
-          <div className="min-w-0">
-            <h1 className="font-display text-[22px] font-semibold text-[var(--text)]">
-              {editing ? t('agency.form.editTitle', { name: agent!.name }) : t('agency.form.title')}
-            </h1>
-            <p className="field-hint">{t('agency.form.icon')}</p>
-          </div>
-        </header>
-
-        {draftEnabled && !editing && (
-          <div className="agency-draft" data-testid="agency-draft">
-            <label className="grid min-w-0 flex-1 gap-1.5">
-              <span className="field-label"><Sparkles size={13} aria-hidden="true" className="inline align-[-2px] text-[var(--accent-2)]" /> {t('agency.form.draftLabel')}</span>
-              <input
-                className="field-input"
-                value={description}
-                maxLength={1000}
-                placeholder={t('agency.form.draftPlaceholder')}
-                onChange={(event) => setDescription(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    void requestDraft()
-                  }
-                }}
-                data-testid="agency-draft-input"
-              />
-            </label>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm self-end"
-              disabled={!description.trim() || drafting}
-              onClick={() => void requestDraft()}
-              data-testid="agency-draft-fill"
-            >
-              {t('agency.form.draftFill')}
-            </button>
-            <p className="field-hint basis-full" role="status" aria-live="polite">
-              {drafting ? t('agency.form.draftWorking') : t('agency.form.draftHint')}
-            </p>
-          </div>
-        )}
-
-        <div className="agency-form-grid">
-          <label className="grid gap-1.5">
-            <span className="field-label">{t('agency.form.name')}</span>
-            <input
-              className="field-input"
-              value={name}
-              maxLength={60}
-              required
-              autoFocus={!editing}
-              placeholder={t('agency.form.namePlaceholder')}
-              onChange={(event) => setName(event.target.value)}
-              data-testid="agency-form-name"
-            />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="field-label">{t('agency.form.role')}</span>
-            <input
-              className="field-input"
-              value={role}
-              maxLength={120}
-              placeholder={t('agency.form.rolePlaceholder')}
-              onChange={(event) => setRole(event.target.value)}
-            />
-          </label>
-        </div>
-
-        <label className="grid gap-1.5">
-          <span className="field-label">{t('agency.form.instructions')}</span>
-          <textarea
-            className="field-input min-h-[120px] resize-y leading-relaxed"
-            value={instructions}
-            maxLength={8000}
-            onChange={(event) => setInstructions(event.target.value)}
-          />
-          <span className="field-hint">{t('agency.form.instructionsHint')}</span>
-        </label>
-
-        <div className="grid gap-1.5">
-          <span className="field-label" id="agency-form-model">{t('agency.form.model')}</span>
-          <Select value={model} options={modelOptions} onChange={setModel} label={t('agency.form.model')} testId="agency-form-model" />
-        </div>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.form.autonomy')}</legend>
-          <div className="agency-choice" role="group" aria-label={t('agency.form.autonomy')}>
-            {PROFILES.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={cn('agency-choice-option', value === profile && 'is-active')}
-                aria-pressed={value === profile}
-                onClick={() => setProfile(value)}
-              >
-                {t(`agency.form.autonomy.${value}` as I18nKey)}
-              </button>
-            ))}
-          </div>
-          <span className="field-hint">{t(`agency.form.autonomyHint.${profile}` as I18nKey)}</span>
-        </fieldset>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.form.newDestinations')}</legend>
-          <div className="agency-choice" role="group" aria-label={t('agency.form.newDestinations')}>
-            {([['default', null], ['ask', true], ['allow', false]] as const).map(([key, value]) => (
-              <button
-                key={key}
-                type="button"
-                className={cn('agency-choice-option', newDestinations === value && 'is-active')}
-                aria-pressed={newDestinations === value}
-                onClick={() => setNewDestinations(value)}
-              >
-                {t(`agency.form.newDestinations.${key}` as I18nKey)}
-              </button>
-            ))}
-          </div>
-          <span className="field-hint">{t('agency.form.newDestinationsHint')}</span>
-        </fieldset>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.form.connectors')}</legend>
-          {available.length === 0 ? (
-            <span className="field-hint">{t('agency.form.noConnectors')}</span>
-          ) : (
-            <div className="agency-connectors">
-              {available.map((server) => (
-                <label key={server.name} className="agency-connector">
-                  <input
-                    type="checkbox"
-                    className="r-checkbox"
-                    checked={connectors.includes(server.name)}
-                    onChange={() => toggleConnector(server.name)}
-                  />
-                  <span className="truncate">{server.name}</span>
-                </label>
-              ))}
-            </div>
-          )}
-          <span className="field-hint">{t('agency.form.connectorsHint')}</span>
-        </fieldset>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.form.budget')}</legend>
-          <div className="agency-form-grid">
-            <label className="grid gap-1">
-              <span className="field-hint">{t('agency.form.budgetUsd')}</span>
-              <input className="field-input" inputMode="decimal" value={usd} onChange={(event) => setUsd(event.target.value)} />
-            </label>
-            <label className="grid gap-1">
-              <span className="field-hint">{t('agency.form.budgetTokens')}</span>
-              <input className="field-input" inputMode="numeric" value={tokens} onChange={(event) => setTokens(event.target.value)} />
-            </label>
-          </div>
-          <span className="field-hint">{t('agency.form.budgetHint')}</span>
-        </fieldset>
-
-        <footer className="agency-form-actions">
+    <EditorPage
+      testId="agency-agent-form"
+      onSubmit={() => void submit()}
+      footer={(
+        <>
           {editing && (
             <button type="button" className="btn btn-quiet btn-sm" onClick={() => void archive()}>
               <Archive size={13} aria-hidden="true" /> {t('agency.form.archive')}
@@ -331,8 +176,142 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
           <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !name.trim()} data-testid="agency-form-submit">
             {editing ? t('agency.form.save') : t('agency.form.create')}
           </button>
-        </footer>
-      </form>
-    </div>
+        </>
+      )}
+    >
+      <EditorHero
+        media={<AgentAvatar agent={preview} size={72} />}
+        kicker={editing ? t('agency.form.editKicker') : t('agency.form.title')}
+      >
+        <input
+          className="agency-title-input"
+          value={name}
+          maxLength={60}
+          required
+          autoFocus={!editing}
+          aria-label={t('agency.form.name')}
+          placeholder={t('agency.form.namePlaceholder')}
+          onChange={(event) => setName(event.target.value)}
+          data-testid="agency-form-name"
+        />
+        <input
+          className="agency-subtitle-input"
+          value={role}
+          maxLength={120}
+          aria-label={t('agency.form.role')}
+          placeholder={t('agency.form.rolePlaceholder')}
+          onChange={(event) => setRole(event.target.value)}
+        />
+      </EditorHero>
+
+      {draftEnabled && !editing && (
+        <div className="agency-draft-card" data-testid="agency-draft">
+          <span className="agency-draft-spark" aria-hidden="true"><Sparkles size={16} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="agency-draft-title">{t('agency.form.draftLabel')}</p>
+            <div className="agency-draft-row">
+              <input
+                className="field-input"
+                value={description}
+                maxLength={1000}
+                aria-label={t('agency.form.draftLabel')}
+                placeholder={t('agency.form.draftPlaceholder')}
+                onChange={(event) => setDescription(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void requestDraft()
+                  }
+                }}
+                data-testid="agency-draft-input"
+              />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={!description.trim() || drafting}
+                onClick={() => void requestDraft()}
+                data-testid="agency-draft-fill"
+              >
+                <Sparkles size={13} aria-hidden="true" /> {t('agency.form.draftFill')}
+              </button>
+            </div>
+            <p className="field-hint" role="status" aria-live="polite">
+              {drafting ? t('agency.form.draftWorking') : t('agency.form.draftHint')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <EditorSection icon={ScrollText} title={t('agency.form.instructions')} hint={t('agency.form.instructionsHint')}>
+        <textarea
+          className="field-input agency-instructions"
+          value={instructions}
+          maxLength={8000}
+          aria-label={t('agency.form.instructions')}
+          placeholder={t('agency.form.instructionsPlaceholder')}
+          onChange={(event) => setInstructions(event.target.value)}
+        />
+        <p className="agency-count">{t('agency.form.count', { n: instructions.length, max: 8000 })}</p>
+      </EditorSection>
+
+      <EditorSection icon={Cpu} title={t('agency.form.model')} hint={t('agency.form.modelHint')} testId="agency-form-model">
+        <div className="agency-model-row">
+          <div className="agency-model-field">
+            <ModelPicker
+              models={models}
+              providers={providers}
+              activeAlias={chosenModel?.alias ?? null}
+              activeModel={chosenModel}
+              missingLabel={model === DEFAULT_MODEL ? t('agency.form.modelDefault') : t('agency.form.modelMissing')}
+              onUseModel={(item) => setModel(item.id)}
+              onDiscoverModels={() => {}}
+              onOpenProviders={() => useUIStore.getState().goSettings('providers')}
+            />
+          </div>
+          {model !== DEFAULT_MODEL && (
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setModel(DEFAULT_MODEL)}>
+              <RotateCcw size={13} aria-hidden="true" /> {t('agency.form.modelUseDefault')}
+            </button>
+          )}
+        </div>
+      </EditorSection>
+
+      <EditorSection icon={ShieldCheck} title={t('agency.form.autonomy')} hint={t('agency.form.autonomySection')}>
+        <OptionCards
+          value={profile}
+          label={t('agency.form.autonomy')}
+          testId="agency-form-autonomy"
+          onChange={setProfile}
+          options={PROFILES.map((value) => ({
+            value,
+            icon: autonomyIcon[value],
+            title: t(`agency.form.autonomy.${value}` as I18nKey),
+            hint: t(`agency.form.autonomyHint.${value}` as I18nKey),
+            tone: value === 'full-access' ? 'warning' as const : undefined,
+          }))}
+        />
+        <div className="agency-inline-field">
+          <div className="min-w-0">
+            <p className="agency-inline-title" id="agency-new-destinations">{t('agency.form.newDestinations')}</p>
+            <p className="field-hint mt-0">{t('agency.form.newDestinationsHint')}</p>
+          </div>
+          <SegChoice<'default' | 'ask' | 'allow'>
+            small
+            value={newDestinations === null ? 'default' : newDestinations ? 'ask' : 'allow'}
+            labelledBy="agency-new-destinations"
+            options={(['default', 'ask', 'allow'] as const).map((key) => ({ value: key, label: t(`agency.form.newDestinations.${key}` as I18nKey) }))}
+            onChange={(key) => setNewDestinations(key === 'default' ? null : key === 'ask')}
+          />
+        </div>
+      </EditorSection>
+
+      <EditorSection icon={Plug} title={t('agency.form.connectors')} hint={t('agency.form.connectorsHint')}>
+        <ConnectorTiles marks={availableMarks} selected={connectors} onToggle={toggleConnector} empty={t('agency.form.noConnectors')} />
+      </EditorSection>
+
+      <EditorSection icon={Wallet} title={t('agency.form.budget')} hint={t('agency.form.budgetHint')}>
+        <BudgetFields usd={usd} tokens={tokens} onUsd={setUsd} onTokens={setTokens} />
+      </EditorSection>
+    </EditorPage>
   )
 }

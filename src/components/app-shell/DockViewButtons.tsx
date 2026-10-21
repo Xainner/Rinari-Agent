@@ -33,11 +33,16 @@ const isCompact = () => typeof window.matchMedia === 'function' && window.matchM
  * Sin conversación no aparecen. Con cuatro vistas abiertas, abrir otra
  * pregunta cuál reemplazar.
  */
-export default function DockViewButtons({ sessionId, terminalEnabled, extraViews = [] }: {
+export default function DockViewButtons({ sessionId, terminalEnabled, extraViews = [], onlyViews }: {
   sessionId: string
   terminalEnabled: boolean
   /** Vistas con botón solo en esta conversación (Rinari Agency: «Reglas» en el chat de un agente). */
   extraViews?: DockView[]
+  /**
+   * Solo estas vistas, sin Resumen ni «⋮»: un lugar que no es una conversación
+   * con proyecto (la oficina de un equipo: Recado, Pizarra, Ficha).
+   */
+  onlyViews?: DockView[]
 }) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
@@ -49,7 +54,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled, extraViews
   // La vista elegida en el menú «⋮», que se abre al cerrarse el menú.
   const picked = useRef<DockView | null>(null)
   // «Plan» se suma a los botones solo cuando la conversación tiene un plan (#55).
-  const available = [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : []), ...extraViews].filter((view) => view !== 'terminal' || terminalEnabled)
+  const available = onlyViews ?? [...PRIMARY_VIEWS, ...(signals.plans > 0 ? (['plan'] as DockView[]) : []), ...extraViews].filter((view) => view !== 'terminal' || terminalEnabled)
   const shown = (view: DockView) => layout.visible && layout.views.includes(view)
   const toggleSummary = useSessionDockStore((state) => state.toggleSummary)
   // El Resumen flota sobre el chat, aparte del panel: su botón no toca las vistas.
@@ -60,7 +65,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled, extraViews
   // los de las vistas abiertas o con algo que avisar, y el resto va en «Más».
   const compact = useSyncExternalStore(subscribeCompact, isCompact, () => false)
   const primary = compact ? available.filter((view) => shown(view) || indicatorFor(view, signals, t) !== null) : available
-  const overflow = [...available.filter((view) => !primary.includes(view)), ...MORE_VIEWS]
+  const overflow = onlyViews ? available.filter((view) => !primary.includes(view)) : [...available.filter((view) => !primary.includes(view)), ...MORE_VIEWS]
 
   const press = useCallback((view: DockView, button: HTMLElement | null) => {
     const rect = button?.getBoundingClientRect()
@@ -77,7 +82,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled, extraViews
     <Popover open={replace !== null} onOpenChange={(open) => { if (!open) setReplace(null) }}>
       <PopoverAnchor asChild>
         <div ref={group} className="dock-view-bar" role="toolbar" aria-label={t('dock.views')} data-session-id={sessionId}>
-          <button
+          {!onlyViews && <button
             type="button"
             className="app-topbar-icon dock-view-button dock-summary-button"
             data-view="summary"
@@ -88,8 +93,8 @@ export default function DockViewButtons({ sessionId, terminalEnabled, extraViews
           >
             <ClipboardList size={16} aria-hidden="true" />
             {branchChanged && <span className="dock-view-dot" data-tone="warning" aria-hidden="true" />}
-          </button>
-          <span className="dock-view-sep" aria-hidden="true" />
+          </button>}
+          {!onlyViews && <span className="dock-view-sep" aria-hidden="true" />}
           {primary.map((view) => {
             const Icon = DOCK_VIEW_ICONS[view]
             const label = t(DOCK_VIEW_LABELS[view])
@@ -112,7 +117,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled, extraViews
               </button>
             )
           })}
-          <DropdownMenu>
+          {overflow.length > 0 && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" className="app-topbar-icon dock-view-button" data-view="more" aria-label={moreLabel} title={moreLabel} aria-pressed={moreOpen.length > 0}>
                 <EllipsisVertical size={16} aria-hidden="true" />
@@ -147,7 +152,7 @@ export default function DockViewButtons({ sessionId, terminalEnabled, extraViews
                 )
               })}
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
         </div>
       </PopoverAnchor>
       <PopoverContent align="end" className="dock-replace" aria-label={t('dock.replaceTitle')}>

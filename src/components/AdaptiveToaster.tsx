@@ -229,6 +229,12 @@ export default function AdaptiveToaster() {
     mutation?.observe(root, { childList: true, subtree: true, attributes: true })
     root.addEventListener('transitionrun', burst, true)
     root.addEventListener('transitionend', burst, true)
+    // Lo que la pila esquiva (un composer, un pie con «Crear») puede aparecer
+    // debajo mientras un toast sigue a la vista: se vuelve a mirar cada poco.
+    const zonesTimer = window.setInterval(() => {
+      const avoid = measureAvoidZones(root.ownerDocument)
+      setZones((current) => (JSON.stringify(current) === JSON.stringify(avoid) ? current : avoid))
+    }, 400)
     observeTree()
     return () => {
       if (frame !== null) cancelAnimationFrame(frame)
@@ -236,6 +242,7 @@ export default function AdaptiveToaster() {
       mutation?.disconnect()
       root.removeEventListener('transitionrun', burst, true)
       root.removeEventListener('transitionend', burst, true)
+      window.clearInterval(zonesTimer)
     }
   }, [active, toasts])
 

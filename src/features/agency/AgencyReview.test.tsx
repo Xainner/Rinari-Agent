@@ -99,7 +99,7 @@ it('the same proposal twice is one card, and switching profile clears them', () 
 })
 
 it('a double Enter in the office posts once', async () => {
-  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} onEditTeam={() => {}} />)
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
   const input = screen.getByTestId('agency-office-input')
   await userEvent.type(input, 'hola{Enter}{Enter}')
   expect(api.agencyOfficePost).toHaveBeenCalledTimes(1)
@@ -133,7 +133,7 @@ it('an agent conversation stops counting once deleted or on a profile switch', (
 it('a failed office post comes back only into an empty box', async () => {
   let fail: (() => void) | null = null
   api.agencyOfficePost.mockImplementation(() => new Promise((_resolve, reject) => { fail = () => reject(new Error('caído')) }))
-  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} onEditTeam={() => {}} />)
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
   const input = screen.getByTestId('agency-office-input') as HTMLTextAreaElement
   await userEvent.type(input, 'primero{Enter}')
   await userEvent.type(input, 'segundo')
@@ -148,7 +148,7 @@ it('the office words the Engine notices in the owner language', async () => {
     { id: 'm2', team_id: 'team_1', author_kind: 'agent', agent_id: 'w', text: 'Writer', mentions: [], errand_id: null, chain_id: 'c', hop: 0, created_at: 2, system: true, notice: { kind: 'wait', for: 'Video' } },
     { id: 'm3', team_id: 'team_1', author_kind: 'agent', agent_id: 'w', text: 'Un gato', mentions: [], errand_id: null, chain_id: 'c', hop: 1, created_at: 3, notice: { kind: 'delivered', title: 'Guion', to: 'Emails' } },
   ]
-  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} onEditTeam={() => {}} />)
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
   await waitFor(() => expect(screen.getByText('Dejó un recado: «Guion»')).toBeTruthy())
   expect(screen.getByText('Espera a Video.')).toBeTruthy()
   expect(screen.getByText('Entregó «Guion» a Emails')).toBeTruthy()

@@ -17,6 +17,8 @@ vi.mock('../../services/engine', () => ({
     agencyUpdateAgent: vi.fn(),
     agencyArchiveAgent: vi.fn(),
     modelList: vi.fn(async () => ({ models: [{ id: 'mdl_1', alias: 'rapido', provider: 'local', saved: true }] })),
+    providerList: vi.fn(async () => ({ providers: [], active_alias: null })),
+    mcpCatalogList: vi.fn(async () => ({ entries: [] })),
     mcpList: vi.fn(async () => ({
       servers: [
         { name: 'gmail', scope: 'global', owner: null },
@@ -151,7 +153,7 @@ it('the card form offers only everyone\'s connectors and sends what the owner wr
   expect(screen.queryByText('ajeno')).toBeNull()
   expect(screen.queryByText('repo')).toBeNull()
   await userEvent.type(screen.getByTestId('agency-form-name'), 'Emails')
-  await userEvent.click(screen.getByRole('button', { name: 'Acceso completo' }))
+  await userEvent.click(screen.getByRole('radio', { name: /^Acceso completo/ }))
   await userEvent.click(screen.getByRole('checkbox'))
   await userEvent.type(screen.getByRole('textbox', { name: 'Tokens al día' }), '50000')
   await userEvent.click(screen.getByTestId('agency-form-submit'))
@@ -181,7 +183,7 @@ it('«Créalo con Rinari» fills the form from the draft and creates nothing', a
     payload: { job_id: 'draft_1', draft: { name: 'Centinela', role: 'Vigila el CI', instructions: 'Cada mañana.', permission_profile: 'read-only' } },
   }))
   await waitFor(() => expect((screen.getByTestId('agency-form-name') as HTMLInputElement).value).toBe('Centinela'))
-  expect(screen.getByRole('button', { name: 'Solo lectura' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('radio', { name: /^Solo lectura/ }).getAttribute('aria-checked')).toBe('true')
   expect(agencyCreateAgent).not.toHaveBeenCalled()
 })
 

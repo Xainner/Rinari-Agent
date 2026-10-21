@@ -2,7 +2,7 @@ import { CircleHelp, MessageSquare, Building2, OctagonX, Play, Plus, Settings2, 
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
-import agencyIcon from '../../assets/agency/agency-icon.webp'
+import AgentAvatar from './AgentAvatar'
 import AgencyCard from './AgencyCard'
 import type { AgencyAgent, AgencyStatus, AgencyTeam } from './types'
 
@@ -114,7 +114,7 @@ export default function AgencySidebar({
                     aria-label={state ? `${agent.name} · ${state}` : agent.name}
                     data-testid="agency-agent-row"
                   >
-                    <img src={agencyIcon} alt="" className="agency-agent-avatar" draggable={false} />
+                    <AgentAvatar agent={agent} size={26} />
                     <span className="min-w-0 flex-1 text-left">
                       <span className="block truncate">{agent.name}</span>
                       {agent.role && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{agent.role}</span>}
@@ -178,7 +178,7 @@ export default function AgencySidebar({
                               aria-label={t('agency.sidebar.post', { name, team: team.name })}
                               data-testid="agency-post-row"
                             >
-                              <img src={agencyIcon} alt="" className="agency-post-avatar" draggable={false} />
+                              <AgentAvatar agent={{ id: post.agent_id, name }} size={20} />
                               <span className="min-w-0 flex-1 truncate text-left">{name}</span>
                               {team.chief_agent_id === post.agent_id && <span className="agency-chief" title={t('agency.team.chief')}>{t('agency.team.chiefShort')}</span>}
                             </button>

@@ -70,7 +70,7 @@ scenario(async () => {
   const selected = await evaluate(`document.querySelector('[data-testid="agency-agent-row"][aria-current="page"]')?.innerText ?? ''`)
   assert(selected.includes('Emails'), 'the agent stays selected after writing to it')
   assert.equal(await evaluate(`Boolean(document.querySelector('.dock-view-button[data-view="rules"]'))`), true, 'still in the agent chat')
-  const history = await command('session_history', { session_id: agent.session_id })
+  const history = await command('session_history', { reference: agent.session_id })
   assert(history.messages.some((m) => m.role === 'user' && String(m.content).includes('preséntate')), 'the message went to the agent chat')
   assert(history.messages.some((m) => m.role === 'assistant' && String(m.content).includes('listo')), 'its answer is in the agent chat')
 

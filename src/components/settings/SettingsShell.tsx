@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import {
   ArrowLeft,
   Bot,
+  Cable,
   Brain,
-  Boxes,
   ChevronRight,
   Cpu,
   Info,
@@ -43,7 +43,7 @@ const GROUPS: Array<{ title: 'settings.group.rinari' | 'settings.group.models' |
     { id: 'context', icon: Gauge },
   ] },
   { title: 'settings.group.tools', items: [
-    { id: 'mcp', icon: Boxes },
+    { id: 'mcp', icon: Cable },
     { id: 'plugins', icon: Puzzle },
     { id: 'tools', icon: ShieldCheck },
     { id: 'terminal', icon: SquareTerminal },

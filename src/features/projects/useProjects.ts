@@ -13,6 +13,7 @@ import { translate } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import { setProjectPermissionDefaults } from '../../stores/conversationDraft'
+import { useProjectOffersCheck } from '../connectors/connectorStore'
 
 /**
  * Projects: proyectos recientes del engine, apertura, estado Git vivo e
@@ -161,6 +162,8 @@ export function useProjects(options: { engineReady: boolean }) {
       const intel = await engineApi.projectIntelligence(root)
       setIntelByRoot((prev) => ({ ...prev, [root]: intel }))
       toast.success(translate(useUIStore.getState().lang, 'project.trusted'))
+      // Confiar puede destapar servidores del .mcp.json: se pregunta ya.
+      useProjectOffersCheck.getState().check(root)
       return true
     } catch (err) {
       toast.error(commandMessage(err))

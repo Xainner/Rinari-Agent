@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, LoaderCircle, Plug, Plus, Trash2, TriangleAlert, Workflow, Zap, type LucideIcon } from 'lucide-react'
 import ProviderLogo from '../ProviderLogo'
@@ -7,6 +7,8 @@ import { engineApi, commandMessage } from '../../services/engine'
 import type { ImageConnector, ImageCreationSettings as Config } from '../../types/protocol.generated'
 import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, Section } from './parts'
+import { Select } from '../ui/select'
+import { ProgressBar } from '../ui/progress-bar'
 
 type Kind = ImageConnector['kind']
 type Operation = 'generate' | 'edit' | 'variations' | 'upscale' | 'remove_background'
@@ -63,6 +65,98 @@ function KindMark({ kind }: { kind: Kind }) {
     <span className="image-kind-mark" aria-hidden="true">
       {brand ? <ProviderLogo brand={providerBrand(brand)} size={16} /> : <Icon size={15} />}
     </span>
+  )
+}
+
+type ToolName = { name: string; detail?: string }
+
+/**
+ * La herramienta de cada operación: de la lista del servidor si la hay, o
+ * escrita a mano si no (lista vacía, Rinari sin `mcp.tools.list` o un fallo).
+ * La lista se lee solo cuando se abre un selector o se pide, nunca al montar:
+ * `mcp.tools.list` no conecta, y `mcp.test` (que sí arranca el servidor) solo
+ * con «Probar el servidor». Un nombre ya guardado se ve siempre, esté o no.
+ */
+function McpToolPicker({ server, tools, onChange }: { server: string; tools: Draft['tools']; onChange: (tools: Draft['tools']) => void }) {
+  const { t } = useI18n()
+  const [names, setNames] = useState<ToolName[] | null>(null)
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'ready' | 'manual'>('idle')
+  const request = useRef(0)
+  useEffect(() => {
+    request.current += 1
+    setNames(null)
+    setPhase('idle')
+  }, [server])
+
+  async function read(probe: boolean) {
+    const id = ++request.current
+    setPhase('loading')
+    const found = await (probe
+      ? engineApi.mcpTest(server).then((result) => (result.test.names ?? []).map((name) => ({ name })))
+      : engineApi.mcpToolsList(server).then((result) => result.server.tools.filter((tool) => tool.listed).map((tool) => ({ name: tool.name, detail: tool.title ?? (tool.description || undefined) }))))
+      .catch(() => [] as ToolName[])
+    if (id !== request.current) return
+    setNames(found)
+    setPhase(found.length > 0 ? 'ready' : 'manual')
+  }
+  const onOpen = (open: boolean) => { if (open && phase === 'idle') void read(false) }
+  const set = (op: Operation, tool: string) => onChange({ ...tools, [op]: tool || undefined })
+
+  const status = phase === 'loading'
+    ? <div className="sm:col-span-2"><ProgressBar label={t('images.mcpToolsLoading')} /></div>
+    : phase === 'manual' && (
+      <div className="text-xs text-[var(--text-muted)] sm:col-span-2" role="status">
+        <p>{t('images.mcpToolsEmpty')}</p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <button type="button" className="btn btn-quiet btn-xs" onClick={() => void read(false)}>{t('images.mcpToolsRetry')}</button>
+          <button type="button" className="btn btn-quiet btn-xs" onClick={() => void read(true)}>{t('images.mcpToolsTest')}</button>
+        </div>
+      </div>
+    )
+
+  if (phase === 'manual') {
+    return (
+      <>
+        {status}
+        {OPERATIONS.map((op) => (
+          <label key={op} className="block text-xs text-[var(--text-muted)]">
+            {t(OPERATION_LABEL[op])}
+            <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} spellCheck={false} value={tools[op] ?? ''} onChange={(event) => set(op, event.target.value)} data-testid={`image-mcp-tool-${op}`} />
+          </label>
+        ))}
+      </>
+    )
+  }
+
+  const listed = names ?? []
+  return (
+    <>
+      {status}
+      {OPERATIONS.map((op) => {
+        const saved = tools[op]
+        // Lo guardado que el servidor no lista se ve igual, marcado.
+        const extra = saved && !listed.some((tool) => tool.name === saved) ? [{ value: saved, label: saved, detail: t('images.mcpToolUnlisted') }] : []
+        const options = [{ value: '', label: t('images.mcpToolNone') }, ...extra, ...listed.map((tool) => ({ value: tool.name, label: tool.name, detail: tool.detail }))]
+        return (
+          <div key={op} className="block text-xs text-[var(--text-muted)]">
+            <span>{t(OPERATION_LABEL[op])}</span>
+            <Select
+              className="mt-1"
+              value={saved ?? ''}
+              label={t(OPERATION_LABEL[op])}
+              placeholder={t('images.mcpToolPick')}
+              testId={`image-mcp-tool-${op}`}
+              options={options}
+              onOpenChange={onOpen}
+              onChange={(tool) => set(op, tool)}
+            />
+          </div>
+        )
+      })}
+      {phase === 'ready' && (
+        <button type="button" className="btn btn-quiet btn-xs justify-self-start sm:col-span-2" onClick={() => setPhase('manual')}>{t('images.mcpToolsType')}</button>
+      )}
+    </>
   )
 }
 
@@ -314,20 +408,19 @@ export default function ImageCreationSettings() {
               <p className="text-xs text-[var(--text-muted)]">{t('images.mcpMissing')}</p>
             ) : (
               <>
-                <label className="block text-xs text-[var(--text-muted)]">
-                  {t('images.mcpServer')}
-                  <select className={inputClass} value={draft.server || servers[0]} onChange={(event) => setDraft({ ...draft, server: event.target.value })}>
-                    {servers.map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                </label>
+                <div className="block text-xs text-[var(--text-muted)]">
+                  <span id="image-mcp-server">{t('images.mcpServer')}</span>
+                  <Select
+                    className="mt-1"
+                    value={draft.server || servers[0]}
+                    label={t('images.mcpServer')}
+                    options={servers.map((name) => ({ value: name, label: name }))}
+                    onChange={(server) => setDraft({ ...draft, server, tools: {} })}
+                  />
+                </div>
                 <p className="text-xs text-[var(--text-subtle)]">{t('images.mcpHint')}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {OPERATIONS.map((op) => (
-                    <label key={op} className="block text-xs text-[var(--text-muted)]">
-                      {t(OPERATION_LABEL[op])}
-                      <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} value={draft.tools[op] ?? ''} onChange={(event) => setDraft({ ...draft, tools: { ...draft.tools, [op]: event.target.value } })} />
-                    </label>
-                  ))}
+                  <McpToolPicker server={draft.server || servers[0]} tools={draft.tools} onChange={(tools) => setDraft({ ...draft, tools })} />
                   <label className="block text-xs text-[var(--text-muted)]">
                     {t('images.mcpPromptArg')}
                     <input className={inputClass} value={draft.prompt_arg} onChange={(event) => setDraft({ ...draft, prompt_arg: event.target.value })} />

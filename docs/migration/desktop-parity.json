@@ -477,6 +477,60 @@
       "callers": []
     },
     {
+      "command": "mcp_auth_cancel",
+      "kind": "engine",
+      "method": "mcp.auth.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_auth_signout",
+      "kind": "engine",
+      "method": "mcp.auth.signout",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_auth_start",
+      "kind": "engine",
+      "method": "mcp.auth.start",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_auth_status",
+      "kind": "engine",
+      "method": "mcp.auth.status",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_catalog_add",
+      "kind": "engine",
+      "method": "mcp.catalog.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_catalog_list",
+      "kind": "engine",
+      "method": "mcp.catalog.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "mcp_create",
       "kind": "engine",
       "method": "mcp.create",
@@ -493,6 +547,24 @@
       "callers": []
     },
     {
+      "command": "mcp_import_apply",
+      "kind": "engine",
+      "method": "mcp.import.apply",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_import_scan",
+      "kind": "engine",
+      "method": "mcp.import.scan",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "mcp_list",
       "kind": "engine",
       "method": "mcp.list",
@@ -505,6 +577,33 @@
       "command": "mcp_probe",
       "kind": "engine",
       "method": "mcp.probe",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_project_offers_decide",
+      "kind": "engine",
+      "method": "mcp.project_offers.decide",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_project_offers_list",
+      "kind": "engine",
+      "method": "mcp.project_offers.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_reconnect",
+      "kind": "engine",
+      "method": "mcp.reconnect",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -532,6 +631,33 @@
       "command": "mcp_test",
       "kind": "engine",
       "method": "mcp.test",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_tools_list",
+      "kind": "engine",
+      "method": "mcp.tools.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_tools_set",
+      "kind": "engine",
+      "method": "mcp.tools.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_tools_set_default",
+      "kind": "engine",
+      "method": "mcp.tools.set_default",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -2372,8 +2498,8 @@
     }
   ],
   "summary": {
-    "commands": 284,
-    "engine_backed": 278,
+    "commands": 298,
+    "engine_backed": 292,
     "host_only": 6,
     "manual_adapters": 8,
     "without_callers": 97

@@ -1,6 +1,6 @@
 import type { McpConfig, McpServer } from '../../services/engine'
 
-export type McpAuthKind = 'none' | 'bearer' | 'headers'
+export type McpAuthKind = 'none' | 'bearer' | 'headers' | 'oauth'
 
 export interface KeyValue {
   key: string
@@ -22,6 +22,13 @@ export interface McpFormState {
   headers: KeyValue[]
   env: KeyValue[]
   timeout: string
+  /** OAuth: el cliente propio del dueño (opcional si el servidor admite registro dinámico). */
+  clientId: string
+  clientSecret: string
+  clientSecretStored: boolean
+  /** Alcances separados por espacios, como los pide el servicio. */
+  scopes: string
+  redirectPort: string
 }
 
 export const emptyForm = (): McpFormState => ({
@@ -35,6 +42,11 @@ export const emptyForm = (): McpFormState => ({
   headers: [],
   env: [],
   timeout: '',
+  clientId: '',
+  clientSecret: '',
+  clientSecretStored: false,
+  scopes: '',
+  redirectPort: '',
 })
 
 /**
@@ -69,18 +81,30 @@ const SENSITIVE = /auth|token|key|secret|password|cookie|session/i
 
 export function formFromServer(server: McpServer): McpFormState {
   const remote = server.transport === 'http'
+  const auth = server.auth
   return {
     name: server.name,
     transport: remote ? 'http' : 'stdio',
     command: server.argv?.map((part) => (/\s/.test(part) ? `"${part}"` : part)).join(' ') ?? server.command ?? '',
     url: server.url ?? '',
-    auth: server.auth?.kind ?? 'none',
+    auth: auth?.kind ?? 'none',
     token: '',
-    tokenStored: Boolean(server.auth?.token?.configured),
+    tokenStored: Boolean(auth?.token?.configured),
     headers: (server.headers ?? []).map((header) => ({ key: header.name, value: header.secret ? '' : header.value ?? '', secret: header.secret, stored: header.secret && Boolean(header.configured) })),
     env: (server.env ?? []).map((entry) => ({ key: entry.name, value: '', secret: true, stored: entry.configured })),
     timeout: server.timeout_s ? String(server.timeout_s) : '',
+    clientId: auth?.client_id ?? '',
+    clientSecret: '',
+    clientSecretStored: Boolean(auth?.client_secret?.configured),
+    scopes: (auth?.scopes ?? []).join(' '),
+    redirectPort: auth?.redirect_port ? String(auth.redirect_port) : '',
   }
+}
+
+/** Un puerto de redirección válido (1024–65535), o null. */
+export function parsePort(value: string): number | null {
+  const port = Number(value.trim())
+  return value.trim() && Number.isInteger(port) && port >= 1024 && port <= 65535 ? port : null
 }
 
 /**
@@ -107,6 +131,7 @@ export function configFromForm(form: McpFormState, original?: McpServer | null):
   }
   config.url = form.url.trim()
   if (form.auth === 'bearer') config.auth = form.token ? { kind: 'bearer', token: form.token } : { kind: 'bearer' }
+  else if (form.auth === 'oauth') config.auth = oauthFromForm(form, original)
   else config.auth = { kind: form.auth }
   if (form.auth === 'headers') {
     const headers: NonNullable<McpConfig['headers']> = {}
@@ -121,11 +146,33 @@ export function configFromForm(form: McpFormState, original?: McpServer | null):
   return config
 }
 
+/**
+ * OAuth se fusiona con lo guardado: lo vacío no se envía en un alta, y en
+ * una edición se manda `null` solo si antes había algo (así se borra).
+ */
+function oauthFromForm(form: McpFormState, original?: McpServer | null): NonNullable<McpConfig['auth']> {
+  const before = original?.auth?.kind === 'oauth' ? original.auth : null
+  const auth: Extract<NonNullable<McpConfig['auth']>, { kind: 'oauth' }> = { kind: 'oauth' }
+  const clientId = form.clientId.trim()
+  if (clientId) auth.client_id = clientId
+  else if (before?.client_id) auth.client_id = null
+  if (form.clientSecret) auth.client_secret = form.clientSecret
+  else if (!form.clientSecretStored && before?.client_secret?.configured) auth.client_secret = null
+  const scopes = form.scopes.split(/[\s,]+/).filter(Boolean)
+  if (scopes.length) auth.scopes = scopes
+  else if (before?.scopes?.length) auth.scopes = null
+  const port = parsePort(form.redirectPort)
+  if (port) auth.redirect_port = port
+  else if (before?.redirect_port) auth.redirect_port = null
+  return auth
+}
+
 /** Lo mínimo para poder probar o guardar. */
 export function formReady(form: McpFormState): boolean {
   if (!form.name.trim()) return false
   if (form.transport === 'stdio') return splitCommand(form.command).length > 0
   if (!/^https?:\/\/\S+$/i.test(form.url.trim())) return false
   if (form.auth === 'bearer') return Boolean(form.token || form.tokenStored)
+  if (form.auth === 'oauth' && form.redirectPort.trim() && parsePort(form.redirectPort) === null) return false
   return true
 }

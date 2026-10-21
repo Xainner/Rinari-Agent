@@ -1,4 +1,4 @@
-import { Bot, FileText, GitCompareArrows, Globe, KanbanSquare, NotebookText, SquareTerminal, Workflow, Zap, type LucideIcon } from 'lucide-react'
+import { Bot, ClipboardList, FileText, GitCompareArrows, Globe, KanbanSquare, NotebookText, SquareTerminal, UsersRound, Workflow, Zap, type LucideIcon } from 'lucide-react'
 import type { I18nKey } from '../../i18n'
 import type { DockView } from '../../stores/sessionDock'
 
@@ -13,6 +13,8 @@ export const DOCK_VIEW_ICONS: Record<DockView, LucideIcon> = {
   plan: NotebookText,
   rules: Zap,
   board: KanbanSquare,
+  errand: ClipboardList,
+  team: UsersRound,
 }
 
 export const DOCK_VIEW_LABELS: Record<DockView, I18nKey> = {
@@ -25,4 +27,6 @@ export const DOCK_VIEW_LABELS: Record<DockView, I18nKey> = {
   plan: 'dock.view.plan',
   rules: 'dock.view.rules',
   board: 'dock.view.board',
+  errand: 'dock.view.errand',
+  team: 'dock.view.team',
 }

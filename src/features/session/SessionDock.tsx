@@ -37,7 +37,9 @@ import { cn } from '../../lib/utils'
 import { useCalmMotion } from '../../lib/motion'
 import { DOCK_VIEW_ICONS, DOCK_VIEW_LABELS } from './dockViews'
 import RulesView from '../agency/RulesView'
-import { PostBoard } from '../agency/Board'
+import { BoardPanel, PostBoard } from '../agency/Board'
+import { ErrandPanel, TeamPanel } from '../agency/OfficePanels'
+import { teamIdOfDockKey } from '../agency/AgencyData'
 
 export interface SessionDockProps {
   sessionId: string
@@ -537,8 +539,19 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
       return <PlanView sessionId={sessionId} />
     case 'rules':
       return <RulesView sessionId={sessionId} />
-    case 'board':
-      return <PostBoard sessionId={sessionId} />
+    case 'board': {
+      // La oficina de un equipo tiene su pizarra; un puesto, la de su equipo.
+      const office = teamIdOfDockKey(sessionId)
+      return office ? <BoardPanel teamId={office} /> : <PostBoard sessionId={sessionId} />
+    }
+    case 'errand': {
+      const office = teamIdOfDockKey(sessionId)
+      return office ? <ErrandPanel teamId={office} /> : null
+    }
+    case 'team': {
+      const office = teamIdOfDockKey(sessionId)
+      return office ? <TeamPanel teamId={office} /> : null
+    }
   }
   void sharedRoot
 }

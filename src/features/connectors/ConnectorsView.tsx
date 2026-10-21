@@ -28,6 +28,7 @@ import { ConnectorLogo } from './ConnectorLogo'
 import { McpServerDialog, TestResult } from './McpServerDialog'
 import { AccountLine, PrimaryButton, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
 import { CatalogDialog } from './CatalogDialog'
+import { useConnectorEvents } from './connectorStore'
 import { ImportDialog } from './ImportDialog'
 import { ConnectorDetail } from './ConnectorDetail'
 import { SignInDialog, useSignIn } from './SignInDialog'
@@ -185,7 +186,7 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction className="btn-danger" onClick={() => { const target = removing; setRemoving(null); if (target) void run(() => engineApi.mcpRemove(target.name)) }}>{t('connectors.remove')}</AlertDialogAction>
+            <AlertDialogAction className="btn-danger" onClick={() => { const target = removing; setRemoving(null); if (target) void run(async () => { await engineApi.mcpRemove(target.name); useConnectorEvents.getState().forget(target.name) }) }}>{t('connectors.remove')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

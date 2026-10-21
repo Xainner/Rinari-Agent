@@ -46,6 +46,7 @@ export function useConnectors(caps: ConnectorCapabilities) {
         withCatalog ? engineApi.mcpCatalogList().then((result) => result.entries).catch(() => [] as McpCatalogEntry[]) : Promise.resolve([] as McpCatalogEntry[]),
       ])
       setServers(list.servers)
+      useConnectorEvents.getState().prune(list.servers.map((server) => server.name))
       setCatalog(entries)
       setError(null)
       if (withOAuth) {

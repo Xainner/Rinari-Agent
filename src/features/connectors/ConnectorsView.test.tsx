@@ -212,3 +212,22 @@ it('«Probar» in the detail shows its result and its error there, one run at a 
   expect(failure.textContent).toContain('No se pudo arrancar el programa')
   expect(failure.textContent).toContain('npx not found')
 })
+
+it('a tools refetch that started before a change does not undo it when it comes back later', async () => {
+  const list = vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValueOnce({ server: tools })
+  vi.spyOn(engineApi, 'mcpToolsSet').mockImplementation(async (request) => ({ server: { ...tools, tools: [{ ...tools.tools[0], setting: request.decision ?? null, decision: request.decision ?? null, decision_source: 'tool' }] }, tool: tools.tools[0] }))
+  mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('files')).findByRole('button', { name: 'Detalles' }))
+  const detail = await screen.findByTestId('connector-detail')
+  const row = (await within(detail).findByText('Delete file')).closest('[data-tool]') as HTMLElement
+  // An event asks for the tools again; that answer (still without the change) comes back late.
+  let late!: (value: { server: McpToolPermissions }) => void
+  list.mockImplementationOnce(() => new Promise((resolve) => { late = resolve }))
+  act(() => bridge.emitEngineEvent({ type: 'event', event: 'mcp.status.changed', payload: { name: 'files', status: 'connected', connection: { tools: 1, resources: false, attempts: 1 } } }))
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+  await user.click(within(row).getByRole('radio', { name: 'Bloquear' }))
+  await waitFor(() => expect(within(row).getByRole('radio', { name: 'Bloquear' }).getAttribute('aria-checked')).toBe('true'))
+  await act(async () => { late({ server: tools }) })
+  expect(within(row).getByRole('radio', { name: 'Bloquear' }).getAttribute('aria-checked')).toBe('true')
+})

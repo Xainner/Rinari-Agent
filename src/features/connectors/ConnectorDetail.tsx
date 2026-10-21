@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ExternalLink, Folder, LoaderCircle, RotateCcw, ShieldCheck, ShieldAlert } from 'lucide-react'
 import {
@@ -111,17 +111,20 @@ function ToolsPanel({ item, actions }: { item: ConnectorItem; actions: Connector
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
   const tick = useConnectorEvents((state) => state.tick)
+  // Cada lectura lleva su número y un cambio guardado sube el contador: una lectura
+  // que empezó antes y vuelve después no deshace lo que el dueño acaba de elegir.
+  const version = useRef(0)
 
   useEffect(() => {
-    let alive = true
-    engineApi.mcpToolsList(server.name, scope).then((result) => { if (alive) { setData(result.server); setError(null) } }).catch((err) => { if (alive) setError(commandMessage(err)) })
-    return () => { alive = false }
+    const id = ++version.current
+    engineApi.mcpToolsList(server.name, scope).then((result) => { if (id === version.current) { setData(result.server); setError(null) } }).catch((err) => { if (id === version.current) setError(commandMessage(err)) })
   }, [server.name, scope, tick])
 
   async function save(key: string, change: () => Promise<{ server: McpToolPermissions }>) {
     setSaving(key)
     try {
       const result = await change()
+      version.current += 1
       setData(result.server)
     } catch (err) {
       toast.error(commandMessage(err))

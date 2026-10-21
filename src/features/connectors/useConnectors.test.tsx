@@ -5,7 +5,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { engineApi, type McpServer } from '../../services/engine'
 import { connectorCapabilities } from './connectorModel'
-import { resetConnectorEvents } from './connectorStore'
+import { resetConnectorEvents, useConnectorEvents } from './connectorStore'
 import { useConnectors } from './useConnectors'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); resetConnectorEvents() })
@@ -46,4 +46,11 @@ it('reloads with the capabilities that arrive during a load', async () => {
   rerender({ caps: connectorCapabilities({ mcp_catalog_v1: true }) })
   await act(async () => { first.resolve({ servers: [] }) })
   await waitFor(() => expect(catalog).toHaveBeenCalledTimes(1))
+})
+
+it('drops the live status of servers the list no longer has', async () => {
+  useConnectorEvents.getState().apply({ type: 'event', event: 'mcp.status.changed', payload: { name: 'removed', status: 'connected' } })
+  vi.spyOn(engineApi, 'mcpList').mockResolvedValue({ servers: [server('kept')] })
+  renderHook(() => useConnectors(connectorCapabilities({})))
+  await waitFor(() => expect(useConnectorEvents.getState().live.removed).toBeUndefined())
 })

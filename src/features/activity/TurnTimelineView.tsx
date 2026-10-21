@@ -75,6 +75,7 @@ import { activityKey, useActivityDisclosure } from '../../stores/activityDisclos
 import { useAgentFocusStore } from '../../stores/agentFocus'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { useReducedMotion } from 'framer-motion'
+import { runsInItsConversation } from '../schedules/scheduleModel'
 
 interface Props {
   timeline: TurnTimeline
@@ -866,7 +867,9 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
  */
 export default function TurnTimelineView(props: Props) {
   const { timeline } = props
-  const runSession = timeline.origin?.kind === 'schedule' ? timeline.sessionId : null
+  // «Permitir para esta tarea» solo en la sesión propia de una ejecución: una
+  // tarea que corre en su conversación («Repetir aquí») no lleva permisos.
+  const runSession = timeline.origin?.kind === 'schedule' && !runsInItsConversation(timeline.origin) ? timeline.sessionId : null
   return (
     <ScheduledRunContext.Provider value={runSession}>
       <TurnSessionContext.Provider value={timeline.sessionId}>

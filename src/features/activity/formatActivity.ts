@@ -99,6 +99,22 @@ export function agentInstruction(item: ToolTimelineItem): { agentId: string; tex
   return text ? { agentId: typeof args.agent_id === 'string' ? args.agent_id : '', text } : null
 }
 
+/**
+ * `schedule.propose`: lo que de verdad quedó, del resultado y no de lo que el
+ * modelo diga (programada con su próxima hora local, o solo propuesta).
+ */
+function scheduleLabel(item: ToolTimelineItem, args: Record<string, unknown>, es: boolean): string {
+  const name = typeof args.name === 'string' && args.name.trim() ? args.name.trim() : ''
+  const quoted = name ? (es ? ` «${name}»` : ` “${name}”`) : ''
+  if (item.status === 'failed' || item.status === 'cancelled') return es ? `No pudo programar${quoted}` : `Could not schedule${quoted}`
+  if (item.status !== 'completed') return es ? `Programando${quoted}…` : `Scheduling${quoted}…`
+  const data = (item.presentation?.data ?? {}) as { status?: unknown; next_run_local?: unknown }
+  if (data.status === 'proposed') return es ? `Propuso programar${quoted}` : `Proposed to schedule${quoted}`
+  const next = typeof data.next_run_local === 'string' ? data.next_run_local : ''
+  const when = next ? (es ? ` · próxima ${next}` : ` · next ${next}`) : ''
+  return (es ? `Programó${quoted}` : `Scheduled${quoted}`) + when
+}
+
 /** `wait.for`: qué esperó (un puerto, una URL, un texto en un proceso o un archivo). */
 function waitLabel(args: Record<string, unknown>, status: ToolTimelineItem['status'], es: boolean): string {
   const what = args.port !== undefined
@@ -178,6 +194,7 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
   }
   if (item.tool === 'session.message') return pick(['Escribió a una sesión hija', 'Wrote to a child session'])
   if (item.tool === 'session.children') return pick(['Revisó sus sesiones hijas', 'Checked its child sessions'])
+  if (item.tool === 'schedule.propose') return scheduleLabel(item, args, es)
   const target = basename(args.path ?? args.file ?? args.cwd)
   const query = String(args.query ?? args.pattern ?? '').trim()
   const site = host(args.url)

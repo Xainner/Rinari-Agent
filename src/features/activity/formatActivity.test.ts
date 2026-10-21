@@ -14,9 +14,19 @@ it('registrar evidencia de verificación no se presenta como «ejecutó pruebas�
 })
 
 it('una herramienta desconocida muestra su nombre, no «ejecutó un comando»', () => {
-  expect(toolCategory('schedule.propose')).toBe('other')
-  expect(formatTool(tool('schedule.propose'), 'en')).toBe('Used schedule.propose')
+  expect(toolCategory('telemetry.ping')).toBe('other')
+  expect(formatTool(tool('telemetry.ping'), 'en')).toBe('Used telemetry.ping')
   expect(formatTool(tool('shell.exec', { command: 'npm test' }), 'en')).toBe('Ran a command')
+})
+
+it('una tarea programada dice lo que quedó según el resultado, no lo que diga el modelo', () => {
+  const args = { name: 'Revisar el precio' }
+  const created = { ...tool('schedule.propose', args), presentation: { kind: 'tool', data: { status: 'created', next_run_local: '2026-10-21 15:03' } } } as ToolTimelineItem
+  expect(formatTool(created, 'es')).toBe('Programó «Revisar el precio» · próxima 2026-10-21 15:03')
+  const proposed = { ...tool('schedule.propose', args), presentation: { kind: 'tool', data: { status: 'proposed' } } } as ToolTimelineItem
+  expect(formatTool(proposed, 'en')).toBe('Proposed to schedule “Revisar el precio”')
+  expect(formatTool(tool('schedule.propose', args, 'failed'), 'es')).toBe('No pudo programar «Revisar el precio»')
+  expect(formatTool(tool('schedule.propose', {}, 'running'), 'es')).toBe('Programando…')
 })
 
 it('una memoria rechazada o pendiente no se presenta como guardada', () => {

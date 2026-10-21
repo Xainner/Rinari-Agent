@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Rinari Agency (D-18): las reglas de un agente en el panel lateral. Una
 // propuesta solo se crea cuando el dueño la activa; las activas se pausan.
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -20,6 +20,8 @@ vi.mock('../../services/engine', () => ({
     scheduleDelete: vi.fn(),
     scheduleRunNow: vi.fn(),
     scheduleRehearse: (task: unknown) => scheduleRehearse(task),
+    agencyAgent: vi.fn(async () => ({ agent: { id: 'agent_1', connectors: ['gmail', 'telegram'] }, sessions: [] })),
+    mcpToolsList: vi.fn(async (name: string) => ({ server: { name, tools: name === 'gmail' ? [{ name: 'search', listed: true }] : [{ name: 'send_message', listed: true }] } })),
   },
   onEngineEvent: vi.fn(async (listener: (event: { event: string; payload: unknown }) => void) => {
     engineListener = listener
@@ -117,4 +119,35 @@ it('«Probar» shows what the rule would send now, and creates nothing', async (
   expect(box.getAttribute('data-outcome')).toBe('would_run')
   expect(box.textContent).toContain('telegram · send_message')
   expect(scheduleCreate).not.toHaveBeenCalled()
+})
+
+it('the owner writes a new rule: it waits as a proposal to try and turn on, nothing is created yet', async () => {
+  render(<I18nProvider lang="es"><RulesView sessionId="ses_1" /></I18nProvider>)
+  await userEvent.click(screen.getByTestId('agency-rule-new'))
+  fireEvent.change(await screen.findByTestId('agency-rule-name'), { target: { value: 'Avisos de CI' } })
+  const server = await screen.findByTestId('agency-rule-server')
+  await waitFor(() => expect(server.querySelectorAll('option').length).toBe(3))
+  fireEvent.change(server, { target: { value: 'gmail' } })
+  await waitFor(() => expect(screen.getByTestId('agency-rule-tool').tagName).toBe('SELECT'))
+  fireEvent.change(screen.getByTestId('agency-rule-tool'), { target: { value: 'search' } })
+  fireEvent.change(screen.getByTestId('agency-rule-args'), { target: { value: '{"query": "is:unread"}' } })
+  await userEvent.click(screen.getByTestId('agency-rule-add'))
+  const card = await screen.findByTestId('agency-rule-proposal')
+  expect(card.textContent).toContain('gmail · search')
+  expect(scheduleCreate).not.toHaveBeenCalled()
+  expect(useAgencyStore.getState().proposals[0]).toMatchObject({
+    name: 'Avisos de CI',
+    kind: 'tool',
+    agent_id: 'agent_1',
+    tool: { server: 'gmail', tool: 'search', arguments: { query: 'is:unread' }, on_result: 'notify' },
+  })
+})
+
+it('a new rule with something missing says what and adds nothing', async () => {
+  render(<I18nProvider lang="es"><RulesView sessionId="ses_1" /></I18nProvider>)
+  await userEvent.click(screen.getByTestId('agency-rule-new'))
+  fireEvent.change(await screen.findByTestId('agency-rule-name'), { target: { value: 'Sin conector' } })
+  await userEvent.click(screen.getByTestId('agency-rule-add'))
+  expect((await screen.findByRole('alert')).textContent).toBe('Elige el conector y la herramienta.')
+  expect(useAgencyStore.getState().proposals).toEqual([])
 })

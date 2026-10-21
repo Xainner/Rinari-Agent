@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Pause, Play, Trash2, Zap } from 'lucide-react'
+import { Pause, Play, Plus, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { JobCancelledError, JobTimeoutError, runJob, useJobSignal } from './jobEvents'
@@ -7,6 +7,7 @@ import { commandMessage, engineApi, onEngineEvent, type ScheduledTask, type Sche
 import { describeSchedule, formatWhen, SCHEDULES_CHANGED_EVENT } from '../schedules/scheduleModel'
 import { useAgencyStore } from '../../stores/agency'
 import { useOptionalEngineData } from '../engine/EngineContext'
+import RuleForm from './RuleForm'
 
 interface RulesViewProps {
   /** El chat directo abierto; su agente sale del store de la Agency. */
@@ -131,6 +132,8 @@ export default function RulesView({ sessionId }: RulesViewProps) {
   const locale = lang === 'es' ? 'es' : 'en'
   const proposals = useAgencyStore((state) => state.proposals).filter((item) => item.agent_id === agentId)
   const dropProposal = useAgencyStore((state) => state.dropProposal)
+  const addProposal = useAgencyStore((state) => state.addProposal)
+  const [creating, setCreating] = useState(false)
   const [rules, setRules] = useState<ScheduledTask[]>([])
   const canRehearse = useOptionalEngineData()?.status?.capabilities?.agency_rule_rehearsal_v1 === true
 
@@ -182,6 +185,17 @@ export default function RulesView({ sessionId }: RulesViewProps) {
   if (!agentId) return null
   return (
     <div className="agency-rules" data-testid="agency-rules">
+      <div className="flex justify-end">
+        <button type="button" className="btn btn-secondary btn-sm" data-testid="agency-rule-new" onClick={() => setCreating(true)}>
+          <Plus size={13} aria-hidden="true" /> {t('agency.rules.new')}
+        </button>
+      </div>
+      <RuleForm
+        agentId={agentId}
+        open={creating}
+        onClose={() => setCreating(false)}
+        onAdd={(proposal) => addProposal(proposal)}
+      />
       {proposals.map((proposal, index) => (
         <article key={`proposal-${index}`} className="agency-rule is-proposal" data-testid="agency-rule-proposal">
           <header className="agency-rule-head">

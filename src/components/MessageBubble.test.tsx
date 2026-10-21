@@ -53,3 +53,21 @@ it('an owner message offers no child session nor review export of its own', asyn
   expect(screen.getByText('Revisa el módulo de pagos entero')).toBeTruthy()
   expect(screen.queryByRole('button')).toBeNull()
 })
+
+it('a message from a task that runs in its conversation names the task', () => {
+  render(
+    <I18nProvider lang="es">
+      <MessageBubble
+        message={{
+          id: 'h13',
+          role: 'user',
+          content: 'Revisa otra vez el precio.',
+          createdAt: 1,
+          turnId: 'turn-task',
+          origin: { kind: 'schedule', task_id: 'sch_1', run_id: 'run_1', task_name: 'Revisar el precio', target: 'this_conversation' } as never,
+        }}
+      />
+    </I18nProvider>,
+  )
+  expect(screen.getByTestId('scheduled-badge').textContent).toBe('Tarea programada · Revisar el precio')
+})

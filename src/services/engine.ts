@@ -454,7 +454,8 @@ export interface ScheduleGrant {
   target: string | null
 }
 
-export type ScheduledRunStatus = 'running' | 'needs_you' | 'completed' | 'failed' | 'cancelled' | 'blocked' | 'skipped'
+/** `queued`: «Repetir aquí» esperando su turno en la cola de la conversación. */
+export type ScheduledRunStatus = 'queued' | 'running' | 'needs_you' | 'completed' | 'failed' | 'cancelled' | 'blocked' | 'skipped'
 
 export interface ScheduledRun {
   id: string
@@ -506,10 +507,20 @@ export interface ScheduledTaskInput {
   skills?: string[]
   grants?: ScheduleGrant[]
   enabled?: boolean
+  /**
+   * Dónde corre una tarea de agente: una conversación nueva cada vez, o la
+   * conversación donde se pidió, con su historial («Repetir aquí»,
+   * `schedule_target_v1`). Ahí usa el modelo, el modo y los permisos de esa
+   * conversación y no lleva permisos concedidos.
+   */
+  target?: 'new_session' | 'this_conversation'
+  session_id?: string | null
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch'>> {
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch' | 'target' | 'session_id'>> {
   id: string
+  target?: ScheduledTaskInput['target']
+  session_id?: string | null
   command?: ScheduledCommand | null
   tool?: ScheduledToolSpec | null
   watch?: { path: string } | null

@@ -23,6 +23,7 @@ import {
   describeSchedule,
   formatWhen,
   runTone,
+  runsHere,
   useScheduleForm,
 } from './scheduleModel'
 
@@ -218,7 +219,19 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                     <dd className="text-[var(--text)]">{t(`schedules.onResult.${selected.command.on_result ?? 'notify_failure'}`)}</dd>
                   </>
                 )}
-                {selected.kind === 'agent' && (
+                {selected.kind === 'agent' && runsHere(selected) && (
+                  <>
+                    <dt className="text-[var(--text-subtle)]">{t('schedules.form.where')}</dt>
+                    <dd className="text-[var(--text)]" data-testid="schedule-runs-here">
+                      {t('schedules.target.this_conversation')}
+                      {' · '}
+                      <button type="button" onClick={() => onOpenSession(selected.session_id!)} className="text-[var(--accent)] hover:underline">
+                        {t('schedules.openConversation')}
+                      </button>
+                    </dd>
+                  </>
+                )}
+                {selected.kind === 'agent' && !runsHere(selected) && (
                   <>
                     <dt className="text-[var(--text-subtle)]">{t('schedules.form.project')}</dt>
                     <dd className="text-[var(--text)]">{projectName(selected.project_id) ?? t('schedules.form.noProject')}</dd>

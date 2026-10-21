@@ -528,10 +528,16 @@ Mismas ramas `feat/agency`, locales y sin subir. Vía 1 (D-28): cada recado es u
 
 **Comprobado:** suite completa de la CLI en verde sobre 2710225 (4075 pasadas, 23 omitidas), más las pruebas de equipos (33) después; `ruff`. En la app: `tsc`, `protocol:check` y `parity:check` con el schema de la rama, vitest de `agency`, `board`, `notifications`, `session` y `stores` (los dos fallos de `BoardView` por tiempo pasan solos), y el escenario `tests/ui/agency` con el Engine de la rama y un modelo falso: equipo nuevo, una @mención que responde desde el puesto, un recado entregado y aceptado, «Pizarra» en el puesto y la Vía 2 con «Pronto».
 
+**Prueba real con el modelo del dueño** (Xainner, qwen3.8-flash-next q4, sobre una copia del home; el home real no se tocó): un equipo «Canal de prueba» con *Guionista* (jefe) y *Revisora*, los dos de solo lectura.
+- El dueño escribió «@Guionista propón una idea… Cuando la tengas, pídele a @Revisora que la revise». Las dos menciones despertaron a las dos a la vez (D-1: una @mención siempre despierta, aunque el texto diga «cuando la tengas»): Revisora contestó a los 54 s que todavía no había nada. Guionista respondió con la idea a los 23 s; después se revisaron y corrigieron entre ellas hasta la versión 2, y el Engine paró la cadena en el salto 3 (`too_many_hops`), como se espera.
+- Revisora llamó a `board.list` y a `errand.review` sin que hubiera un recado suyo que revisar: el Engine lo rechazó (solo revisa quien pidió) y no pasó nada más.
+- Un recado del dueño a Revisora con dos comprobaciones («Son 3 títulos», «Cada uno tiene menos de 8 palabras») corrió como un turno de su puesto y se entregó a los 27 s, cumpliendo la lista; se aceptó.
+- Gasto: 10 llamadas, 168 803 tokens de entrada y 4 530 de salida, unos 17 000 de entrada por turno (como en A1), con coste desconocido (el provider custom no tiene precio). Por eso importan los topes de 3 saltos y los presupuestos. Total: 250 s. No escribieron en la memoria del equipo. Los puestos quedaron fuera de la lista de Rinari.
+
 **Para la sesión de pulido de UI** (D-22, va en el PR): el aviso de «equipo creado» queda encima de «Enviar» de la oficina mientras dura; el chat de un puesto muestra como mensaje del dueño el encargo que arma el Engine («[Recado del equipo…]»); el resto de las pantallas de A2 entran funcionales y dentro del sistema, sin el detalle visual fino.
 
 **Falta:**
 - Fusionar primero la CLI y fijar su commit en `engine-manifest.json` (no se tocó).
-- Una prueba real de un equipo con el modelo del dueño y con conectores reales.
+- Una prueba real con conectores reales (la copia del home no los tenía conectados).
 - Vía 2 (subagentes), anotada como futura (D-28).
 - A3 (producciones), con el diseño del §17 ya aprobado.

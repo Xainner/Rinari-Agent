@@ -4194,7 +4194,10 @@ export const en: Record<I18nKey, string> = {
   'images.mcpToolPick': 'Pick a tool',
   'images.mcpToolNone': 'None',
   'images.mcpToolsLoading': 'Reading the server’s tools',
-  'images.mcpToolsEmpty': 'I could not read that server’s tools. Connect it in Settings → Connectors and try again.',
+  'images.mcpToolsEmpty': 'I could not read that server’s tools. Type each one’s name, or test the server so it lists them.',
   'images.mcpToolsRetry': 'Read again',
+  'images.mcpToolsTest': 'Test the server',
+  'images.mcpToolsType': 'Type the name',
+  'images.mcpToolUnlisted': 'Not in the server’s list',
   'summary.connectors.open': 'View the connector {name}',
 }

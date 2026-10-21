@@ -4212,8 +4212,11 @@ export const es = {
   'images.mcpToolPick': 'Elige una herramienta',
   'images.mcpToolNone': 'Ninguna',
   'images.mcpToolsLoading': 'Leyendo las herramientas del servidor',
-  'images.mcpToolsEmpty': 'No pude leer las herramientas de ese servidor. Conéctalo en Ajustes → Conectores y vuelve a intentar.',
+  'images.mcpToolsEmpty': 'No pude leer las herramientas de ese servidor. Escribe el nombre de cada una, o prueba el servidor para que las diga.',
   'images.mcpToolsRetry': 'Leer de nuevo',
+  'images.mcpToolsTest': 'Probar el servidor',
+  'images.mcpToolsType': 'Escribir el nombre',
+  'images.mcpToolUnlisted': 'No está en la lista del servidor',
   'summary.connectors.open': 'Ver el conector {name}',
 } as const
 

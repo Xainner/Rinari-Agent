@@ -32,6 +32,7 @@ export function Select<V extends string>({
   className,
   compact = false,
   testId,
+  onOpenChange,
 }: {
   id?: string
   value: V | null
@@ -45,10 +46,12 @@ export function Select<V extends string>({
   /** Disparador bajo y sin borde de campo, para barras de herramientas. */
   compact?: boolean
   testId?: string
+  /** Al abrir o cerrar la lista (por ejemplo, para cargarla solo cuando se abre). */
+  onOpenChange?: (open: boolean) => void
 }) {
   const current = options.find((option) => option.value === value) ?? null
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild disabled={disabled}>
         <button
           id={id}

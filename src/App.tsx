@@ -6,6 +6,8 @@ import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { warnUntrusted } from './features/projects/trustWarning'
+import { ProjectOffersPrompt } from './features/connectors/ProjectOffersPrompt'
+import { listenConnectorEvents } from './features/connectors/connectorStore'
 import { X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
@@ -82,6 +84,8 @@ function App() {
   const lang = useUIStore((s) => s.lang)
   const setLang = useUIStore((s) => s.setLang)
   const { ask: confirm, dialog: confirmDialog } = useConfirm()
+  // El estado de los conectores llega por eventos: se escucha desde el arranque (C3).
+  useEffect(() => { listenConnectorEvents() }, [])
   const theme = useUIStore((s) => s.theme)
   const setTheme = useUIStore((s) => s.setTheme)
   const paletteOpen = useUIStore((s) => s.paletteOpen)
@@ -872,6 +876,12 @@ function App() {
             setWizardSnoozed(true)
           }
         }}
+      />
+
+      {/* Los servidores que trae el .mcp.json de un proyecto de confianza: se pregunta una vez por cada uno (C4). */}
+      <ProjectOffersPrompt
+        root={view === 'project' ? projectRoot : activeRecord?.project_root ?? null}
+        enabled={session.status?.capabilities.mcp_catalog_v1 === true}
       />
 
       <CommandPalette

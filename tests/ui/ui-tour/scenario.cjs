@@ -211,10 +211,14 @@ scenario(async () => {
       })
     }
   })
+  // Conectores (C3): el catálogo de «Agregar conector» y, dentro, «Agregar servidor MCP».
   await step('mcp-add', async () => {
-    await evaluate(`[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='MCP')?.click()`)
+    await evaluate(`[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Conectores')?.click()`)
     await delay(700)
-    await evaluate(`[...document.querySelectorAll('main button, [role="dialog"] button')].find(b=>/Agregar|Añadir|Nuevo/.test(b.textContent))?.click()`)
+    await evaluate(`[...document.querySelectorAll('main button')].find(b=>b.textContent.includes('Agregar conector'))?.click()`)
+    await delay(800)
+    await screenshot('17-connectors-catalog')
+    await evaluate(`document.querySelector('[data-testid="catalog-manual"]')?.click()`)
     await delay(800)
     await screenshot('17-mcp-add')
     await key('Escape')

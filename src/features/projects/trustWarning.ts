@@ -2,6 +2,7 @@ import { toast } from 'sonner'
 import { translate } from '../../i18n'
 import { commandMessage, engineApi, type TrustState } from '../../services/engine'
 import { useUIStore } from '../../stores/ui'
+import { useProjectOffersCheck } from '../connectors/connectorStore'
 
 /**
  * Aviso de un proyecto sin confianza vigente, con la acción para confiar.
@@ -27,6 +28,7 @@ async function trustFromWarning(root: string): Promise<void> {
   try {
     await engineApi.projectTrust(root)
     toast.success(translate(useUIStore.getState().lang, 'project.trusted'))
+    useProjectOffersCheck.getState().check(root)
   } catch (err) {
     toast.error(commandMessage(err))
   }

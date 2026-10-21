@@ -7,6 +7,8 @@
 //   `{ baseUrl, close }`. Sin `model`, el escenario usa un proveedor muerto
 //   (`127.0.0.1:9`) y los turnos que lance fallan a propósito.
 // - `fixtures(data)`: archivos que el escenario necesita en su carpeta.
+// - `env(data)`: variables de entorno propias del escenario, para la app y el
+//   Engine (un `BROWSER` falso, carpetas de configuración de otras apps).
 import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -14,6 +16,35 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
+
+/**
+ * «Navegador» de `connectors-oauth`: abre la URL de autorización (solo
+ * loopback), sigue la redirección al callback de Rinari y termina, como quien
+ * pulsa «Autorizar».
+ */
+const FAKE_BROWSER = `const url = new URL(process.argv[2])
+if (url.hostname !== '127.0.0.1') process.exit(1)
+const answer = await fetch(url, { redirect: 'manual' })
+const next = answer.headers.get('location')
+if (!next || new URL(next).hostname !== '127.0.0.1') process.exit(1)
+await fetch(next)
+`
+
+/** Servidor MCP por stdio de `connectors-import`: dos herramientas, sin red. */
+const FAKE_STDIO_MCP = `const readline = require('node:readline')
+const send = (message) => process.stdout.write(JSON.stringify(message) + '\\n')
+readline.createInterface({ input: process.stdin }).on('line', (line) => {
+  let msg
+  try { msg = JSON.parse(line) } catch { return }
+  if (msg.id === undefined) return
+  if (msg.method === 'initialize') return send({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: msg.params?.protocolVersion ?? '2024-11-05', serverInfo: { name: 'fake-stdio', version: '1' }, capabilities: { tools: {} } } })
+  if (msg.method === 'tools/list') return send({ jsonrpc: '2.0', id: msg.id, result: { tools: [
+    { name: 'list_items', description: 'Lista lo guardado.', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true } },
+    { name: 'add_item', description: 'Guarda algo nuevo.', inputSchema: { type: 'object' } },
+  ] } })
+  send({ jsonrpc: '2.0', id: msg.id, error: { code: -32601, message: 'not found' } })
+})
+`
 
 const paragraphs = (count, line) => Array.from({ length: count }, (_, i) => line(i + 1)).join('\n\n')
 
@@ -776,5 +807,36 @@ export const scenarios = {
         { text: 'El explorador no encontró nada más.' },
       ],
     }, laneOf, { held: ['main', 'sub'] }),
+  },
+  'connectors-oauth': {
+    title: 'Conectores: catálogo, OAuth con un servidor falso en loopback, permisos por herramienta, reconectar y desconectar la cuenta (conectores C3)',
+    phases: ['exercise'],
+    fixtures: (data) => writeFileSync(join(data, 'fake-browser.mjs'), FAKE_BROWSER),
+    // El «navegador» del Engine (webbrowser lee BROWSER) es un script que
+    // aprueba solo: el navegador del equipo nunca se abre.
+    env: (data) => ({ BROWSER: `node ${data.replace(/\\/g, '/')}/fake-browser.mjs %s &` }),
+  },
+  'connectors-import': {
+    title: 'Conectores: importar de otra app (Codex) y pegar JSON sin mostrar secretos, la pregunta del .mcp.json de un proyecto de confianza una sola vez, y su ámbito (conectores C4)',
+    phases: ['exercise'],
+    fixtures: (data) => {
+      const server = join(data, 'fake-mcp.cjs').replace(/\\/g, '/')
+      writeFileSync(server, FAKE_STDIO_MCP)
+      const codex = join(data, 'codex')
+      mkdirSync(codex, { recursive: true })
+      writeFileSync(join(codex, 'config.toml'), `[mcp_servers.notas]\ncommand = "node"\nargs = ["${server}"]\nenv = { NOTAS_TOKEN = "secreto-de-codex" }\n`)
+      mkdirSync(join(data, 'claude'), { recursive: true })
+      mkdirSync(join(data, 'import-home'), { recursive: true })
+      const project = join(data, 'workspace', 'tienda')
+      mkdirSync(project, { recursive: true })
+      writeFileSync(join(project, '.mcp.json'), JSON.stringify({ mcpServers: { inventario: { command: 'node', args: [server], env: { INVENTARIO_KEY: 'secreto-del-proyecto' } } } }, null, 2))
+    },
+    // «Importar de otra app» solo mira las carpetas del escenario: con
+    // RINARI_IMPORT_HOME no lee nada del equipo (ni ~, ni APPDATA, ni LOCALAPPDATA).
+    env: (data) => ({
+      CODEX_HOME: join(data, 'codex'),
+      CLAUDE_CONFIG_DIR: join(data, 'claude'),
+      RINARI_IMPORT_HOME: join(data, 'import-home'),
+    }),
   },
 }

@@ -706,18 +706,53 @@ export interface McpSecretView {
   env_var?: string;
 }
 
+/** Estado de la conexión en segundo plano (`mcp_background_connect_v1`). */
+export type McpStatus = 'idle' | 'connecting' | 'connected' | 'reauth_required' | 'error' | 'disabled'
+
+export interface McpConnection {
+  code?: string | null;
+  hint?: string | null;
+  message?: string | null;
+  tools: number;
+  resources: boolean;
+  attempts: number;
+  retry_in_s?: number | null;
+  changed_at?: string | null;
+}
+
+export type McpAuthKind = 'none' | 'bearer' | 'headers' | 'oauth'
+
+/** La autorización de un servidor guardado: tipos y estados, nunca un valor secreto. */
+export interface McpAuthView {
+  kind: McpAuthKind;
+  token?: McpSecretView;
+  /** OAuth (`mcp_oauth_v1`): el cliente propio del dueño, si lo hay. */
+  client_id?: string | null;
+  client_secret?: McpSecretView | null;
+  scopes?: string[];
+  redirect_port?: number | null;
+  client_metadata_url?: string | null;
+  authorize_params?: Record<string, string>;
+}
+
 export interface McpServer {
   name: string;
   transport: string;
   command: string;
   argv?: string[];
   url?: string;
+  /** La URL entera está en el almacén (traía un secreto en la query): `url` lleva `***`. */
+  url_secret?: McpSecretView;
   scope: string;
+  /** Carpeta del proyecto al que pertenece (C4); null: cualquier proyecto de confianza. */
+  project_root?: string | null;
   enabled: boolean;
   connected: boolean;
   updated_at: string | null;
   timeout_s?: number | null;
-  auth?: { kind: 'none' | 'bearer' | 'headers'; token?: McpSecretView };
+  auth?: McpAuthView;
+  status?: McpStatus;
+  connection?: McpConnection;
   headers?: Array<{ name: string; secret: boolean; configured?: boolean; value?: string; source?: string | null; env_var?: string }>;
   env?: Array<{ name: string; configured: boolean; source: string | null; env_var?: string }>;
   warnings?: string[];
@@ -739,6 +774,168 @@ export interface McpTest {
   http_status?: number | null;
   hint?: string | null;
   retryable?: boolean;
+  /** Servidores http con auth `none` u `oauth`: si inicia sesión con OAuth y qué cliente usaría. */
+  oauth?: McpOAuthSupport | null;
+}
+
+export interface McpOAuthSupport {
+  available: boolean;
+  client: 'configured' | 'registration' | 'metadata_document' | 'required';
+  issuer?: string;
+  resource?: string;
+  registration?: boolean;
+  client_metadata_document?: boolean;
+  revocation?: boolean;
+}
+
+export interface McpAuthError { code: string; message: string; hint?: string }
+
+export interface McpAuthStart {
+  name: string;
+  flow_id: string;
+  authorize_url: string;
+  redirect_uri: string;
+  browser_opened: boolean;
+  expires_at?: string | null;
+  client: 'configured' | 'registered' | 'metadata_document';
+  issuer?: string;
+}
+
+export interface McpAuthOutcome {
+  flow_id: string;
+  outcome: 'signed_in' | 'failed' | 'cancelled' | 'timed_out';
+  finished_at?: string | null;
+  error?: McpAuthError;
+}
+
+export interface McpAuthStatus {
+  name: string;
+  kind: McpAuthKind;
+  signed_in: boolean;
+  reauth_required: boolean;
+  expires_at?: string | null;
+  has_refresh_token: boolean;
+  scopes: string[];
+  issuer?: string | null;
+  client?: 'configured' | 'registered' | 'metadata_document' | null;
+  pending?: { flow_id: string; authorize_url: string; started_at?: string; expires_at?: string | null } | null;
+  last?: McpAuthOutcome | null;
+}
+
+export type McpDecision = 'allow' | 'ask' | 'deny'
+export type McpHintKey = 'readOnlyHint' | 'destructiveHint' | 'openWorldHint'
+export type McpHints = Partial<Record<McpHintKey, boolean | null>>
+
+/** Una herramienta de un servidor con su ajuste (`mcp_tool_permissions_v1`). */
+export interface McpToolPermission {
+  /** El nombre que da el servidor (`read_notes`): el `tool` de `mcp.tools.set`. */
+  name: string;
+  /** El id completo en Rinari (`mcp.notas.read_notes`). */
+  tool: string;
+  /** `annotations.title` del servidor, si lo da. */
+  title: string | null;
+  description: string;
+  /** false: un ajuste guardado de una herramienta que el servidor ya no ofrece. */
+  listed: boolean;
+  annotations: { server?: McpHints; owner?: McpHints; effective?: McpHints };
+  kind: 'read' | 'write' | 'destructive';
+  sends_out: boolean;
+  setting: McpDecision | null;
+  decision: McpDecision | null;
+  decision_source: 'tool' | 'server' | 'mode';
+  by_mode: Partial<Record<'read-only' | 'workspace' | 'full-access', string>>;
+}
+
+export interface McpToolPermissions {
+  name: string;
+  scope: 'global' | 'project';
+  status: McpStatus;
+  default: McpDecision | null;
+  tools: McpToolPermission[];
+}
+
+export interface McpCatalogText { es: string; en: string }
+export type McpSetupKind = 'registration' | 'client_metadata' | 'own_client' | 'token' | 'secrets'
+export type McpSetupField = 'client_id' | 'client_secret' | 'redirect_port' | 'token' | 'connection_string'
+
+export interface McpCatalogSetup {
+  kind: McpSetupKind;
+  fields?: Array<{ name: McpSetupField; required: boolean }>;
+  console_url?: string;
+  help?: McpCatalogText;
+  alternatives?: McpCatalogSetup[];
+}
+
+export interface McpCatalogEnvSpec { name: string; label: McpCatalogText; secret: boolean; required: boolean; default?: string }
+
+/** Una entrada del catálogo de conectores (`mcp_catalog_v1`). `logo` es un identificador, no una imagen. */
+export interface McpCatalogEntry {
+  id: string;
+  name: string;
+  logo: string;
+  category: 'google' | 'work' | 'dev' | 'design' | 'files' | 'crm' | 'media' | 'data';
+  group?: string;
+  preview?: boolean;
+  description: McpCatalogText;
+  notes?: McpCatalogText;
+  docs_url: string;
+  tools?: string[];
+  server:
+    | { transport: 'http'; url: string; auth: { kind: 'oauth' | 'bearer'; scopes?: string[] } }
+    | { transport: 'stdio'; command: string[]; env?: McpCatalogEnvSpec[]; connection_string?: { schemes: string[] } };
+  setup: McpCatalogSetup;
+  added: boolean;
+  servers: Array<{ name: string; scope: string; enabled: boolean; status?: McpStatus | null }>;
+}
+
+export interface McpCatalogAddInput {
+  id: string;
+  name?: string;
+  client_id?: string;
+  client_secret?: string;
+  redirect_port?: number;
+  token?: string;
+  secrets?: Record<string, string>;
+  connection_string?: string;
+}
+
+export interface McpImportSecret { where: 'env' | 'header' | 'url'; name: string; kind: 'value' | 'env_ref'; /** env_ref: la variable tuya que lee (el nombre, nunca el valor). */ variable?: string }
+
+export interface McpImportCandidate {
+  key: string;
+  name: string;
+  source: 'claude_desktop' | 'claude_code' | 'cursor' | 'vscode' | 'codex' | 'pasted' | 'project';
+  source_label?: string;
+  path?: string | null;
+  project_root?: string | null;
+  transport: 'stdio' | 'http' | null;
+  command: string[];
+  url: string;
+  secrets: McpImportSecret[];
+  warnings: string[];
+  importable: boolean;
+  reason?: string | null;
+  suggested_name?: string;
+  existing?: string | null;
+  changed?: boolean;
+  previous_decision?: 'accepted' | 'rejected' | null;
+}
+
+export interface McpImportSource { source: string; label?: string; path: string; found: boolean; servers: number; error?: string | null }
+
+export interface McpImportResult {
+  created: Array<{ key: string; server: McpServer }>;
+  failed: Array<{ key: string; code: string; message: string }>;
+  rejected?: string[];
+  project?: string;
+}
+
+export interface McpProjectOffers {
+  project: string;
+  trusted: boolean;
+  offers: McpImportCandidate[];
+  answered: number;
+  files?: McpImportSource[];
 }
 
 /**
@@ -751,7 +948,10 @@ export interface McpConfig {
   command?: string[];
   url?: string;
   env?: Record<string, string | null>;
-  auth?: { kind: 'none' | 'bearer' | 'headers'; token?: string };
+  auth?:
+    | { kind: 'none' | 'bearer' | 'headers'; token?: string }
+    /** `mcp_oauth_v1`: se fusiona con lo guardado; `null` borra una clave. */
+    | { kind: 'oauth'; client_id?: string | null; client_secret?: string | null; scopes?: string[] | null; redirect_port?: number | null; authorize_params?: Record<string, string> | null };
   headers?: Record<string, string | { value: string; secret?: boolean } | null>;
   timeout_s?: number;
 }
@@ -1333,6 +1533,34 @@ export const engineApi = {
   mcpSetEnabled: (name: string, enabled: boolean) =>
     platform().command<{ server: McpServer }>("mcp_set_enabled", { name, enabled }),
   mcpTest: (name: string) => platform().command<{ test: McpTest }>("mcp_test", { name }),
+  /** «Reconectar»: vuelve a conectar ya, en segundo plano; el resultado llega con `mcp.status.changed`. */
+  mcpReconnect: (name: string) => platform().command<{ server: McpServer }>("mcp_reconnect", { name }),
+  /** Inicia sesión con OAuth: Rinari abre el navegador predeterminado y espera la vuelta. */
+  mcpAuthStart: (name: string, options: { open_browser?: boolean; timeout_s?: number } = {}) =>
+    platform().command<McpAuthStart>("mcp_auth_start", { name, ...options }),
+  mcpAuthStatus: (name: string) => platform().command<McpAuthStatus>("mcp_auth_status", { name }),
+  mcpAuthCancel: (name: string) => platform().command<{ name: string, cancelled: boolean }>("mcp_auth_cancel", { name }),
+  mcpAuthSignout: (name: string) =>
+    platform().command<{ name: string, revoked: boolean, removed: boolean, cancelled: boolean }>("mcp_auth_signout", { name }),
+  mcpToolsList: (name: string, scope?: string) =>
+    platform().command<{ server: McpToolPermissions }>("mcp_tools_list", { name, scope }),
+  /** `decision: null` vuelve al valor por defecto del servidor; una anotación `null`, a la del servidor. */
+  mcpToolsSet: (request: { name: string; tool: string; decision?: McpDecision | null; annotations?: McpHints | null; scope?: string }) =>
+    platform().command<{ server: McpToolPermissions, tool: McpToolPermission }>("mcp_tools_set", { request }),
+  mcpToolsSetDefault: (request: { name: string; decision: McpDecision | null; scope?: string }) =>
+    platform().command<{ server: McpToolPermissions }>("mcp_tools_set_default", { request }),
+  mcpCatalogList: () =>
+    platform().command<{ version: string | number, verified_at?: string | null, entries: McpCatalogEntry[] }>("mcp_catalog_list"),
+  mcpCatalogAdd: (input: McpCatalogAddInput) =>
+    platform().command<{ server: McpServer, entry_id: string, next: 'sign_in' | 'connect' }>("mcp_catalog_add", { ...input }),
+  /** Lo que otras apps de este equipo declaran, o un JSON pegado: solo nombres de secretos, nunca valores. */
+  mcpImportScan: (input: { sources?: string[]; json?: unknown } = {}) =>
+    platform().command<{ sources: McpImportSource[], candidates: McpImportCandidate[] }>("mcp_import_scan", { ...input }),
+  mcpImportApply: (input: { keys: string[]; names?: Record<string, string>; sources?: string[]; json?: unknown }) =>
+    platform().command<McpImportResult>("mcp_import_apply", { ...input }),
+  mcpProjectOffersList: (path: string) => platform().command<McpProjectOffers>("mcp_project_offers_list", { path }),
+  mcpProjectOffersDecide: (path: string, decisions: Array<{ key: string; accept: boolean; name?: string }>) =>
+    platform().command<McpImportResult & { project: string }>("mcp_project_offers_decide", { path, decisions }),
   soulSettingsGet: () =>
     platform().command<{ settings: { character_intensity: 'minimal' | 'balanced' | 'full'; options: string[]; default: string } }>("soul_settings_get"),
   soulSettingsSet: (character_intensity: 'minimal' | 'balanced' | 'full') =>

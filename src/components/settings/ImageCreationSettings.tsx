@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, LoaderCircle, Plug, Plus, Trash2, TriangleAlert, Workflow, Zap, type LucideIcon } from 'lucide-react'
 import ProviderLogo from '../ProviderLogo'
@@ -8,6 +8,8 @@ import type { ImageConnector, ImageCreationSettings as Config } from '../../type
 import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, Section } from './parts'
 import { matchImageTools } from '../../lib/mcpImageTools'
+import { Select } from '../ui/select'
+import { ProgressBar } from '../ui/progress-bar'
 
 type Kind = ImageConnector['kind']
 type Operation = 'generate' | 'edit' | 'variations' | 'upscale' | 'remove_background'
@@ -67,6 +69,115 @@ function KindMark({ kind }: { kind: Kind }) {
   )
 }
 
+type ToolName = { name: string; detail?: string }
+
+/**
+ * La herramienta de cada operación: de la lista del servidor si la hay, o
+ * escrita a mano si no (lista vacía, Rinari sin `mcp.tools.list` o un fallo).
+ * La lista se lee solo cuando se abre un selector o se pide, nunca al montar:
+ * `mcp.tools.list` no conecta, y `mcp.test` (que sí arranca el servidor) solo
+ * con «Probar el servidor». Un nombre ya guardado se ve siempre, esté o no.
+ * «Asignar automáticamente» propone una por operación según su nombre, solo
+ * en las que están vacías.
+ */
+function McpToolPicker({ server, tools, onChange }: { server: string; tools: Draft['tools']; onChange: (tools: Draft['tools']) => void }) {
+  const { t } = useI18n()
+  const [names, setNames] = useState<ToolName[] | null>(null)
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'ready' | 'manual'>('idle')
+  const [assigned, setAssigned] = useState<string | null>(null)
+  const request = useRef(0)
+  useEffect(() => {
+    request.current += 1
+    setNames(null)
+    setPhase('idle')
+    setAssigned(null)
+  }, [server])
+
+  async function read(probe: boolean): Promise<ToolName[] | null> {
+    const id = ++request.current
+    setPhase('loading')
+    const found = await (probe
+      ? engineApi.mcpTest(server).then((result) => (result.test.names ?? []).map((name) => ({ name })))
+      : engineApi.mcpToolsList(server).then((result) => result.server.tools.filter((tool) => tool.listed).map((tool) => ({ name: tool.name, detail: tool.title ?? (tool.description || undefined) }))))
+      .catch(() => [] as ToolName[])
+    if (id !== request.current) return null
+    setNames(found)
+    setPhase(found.length > 0 ? 'ready' : 'manual')
+    return found
+  }
+  async function assign() {
+    const found = phase === 'ready' && names ? names : await read(false)
+    if (!found || found.length === 0) return
+    const proposal = matchImageTools(found.map((tool) => tool.name))
+    onChange({ ...tools, ...Object.fromEntries(Object.entries(proposal).filter(([op]) => !tools[op as Operation])) })
+    const n = Object.keys(proposal).length
+    setAssigned(n > 0 ? t('images.mcpAutoAssigned', { n, total: found.length }) : t('images.mcpAutoAssignedNone', { total: found.length }))
+  }
+  const onOpen = (open: boolean) => { if (open && phase === 'idle') void read(false) }
+  const set = (op: Operation, tool: string) => onChange({ ...tools, [op]: tool || undefined })
+
+  const status = phase === 'loading'
+    ? <div className="sm:col-span-2"><ProgressBar label={t('images.mcpToolsLoading')} /></div>
+    : phase === 'manual' && (
+      <div className="text-xs text-[var(--text-muted)] sm:col-span-2" role="status">
+        <p>{t('images.mcpToolsEmpty')}</p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <button type="button" className="btn btn-quiet btn-xs" onClick={() => void read(false)}>{t('images.mcpToolsRetry')}</button>
+          <button type="button" className="btn btn-quiet btn-xs" onClick={() => void read(true)}>{t('images.mcpToolsTest')}</button>
+        </div>
+      </div>
+    )
+
+  if (phase === 'manual') {
+    return (
+      <>
+        {status}
+        {OPERATIONS.map((op) => (
+          <label key={op} className="block text-xs text-[var(--text-muted)]">
+            {t(OPERATION_LABEL[op])}
+            <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} spellCheck={false} value={tools[op] ?? ''} onChange={(event) => set(op, event.target.value)} data-testid={`image-mcp-tool-${op}`} />
+          </label>
+        ))}
+      </>
+    )
+  }
+
+  const listed = names ?? []
+  return (
+    <>
+      {status}
+      {OPERATIONS.map((op) => {
+        const saved = tools[op]
+        // Lo guardado que el servidor no lista se ve igual, marcado.
+        const extra = saved && !listed.some((tool) => tool.name === saved) ? [{ value: saved, label: saved, detail: t('images.mcpToolUnlisted') }] : []
+        const options = [{ value: '', label: t('images.mcpToolNone') }, ...extra, ...listed.map((tool) => ({ value: tool.name, label: tool.name, detail: tool.detail }))]
+        return (
+          <div key={op} className="block text-xs text-[var(--text-muted)]">
+            <span>{t(OPERATION_LABEL[op])}</span>
+            <Select
+              className="mt-1"
+              value={saved ?? ''}
+              label={t(OPERATION_LABEL[op])}
+              placeholder={t('images.mcpToolPick')}
+              testId={`image-mcp-tool-${op}`}
+              options={options}
+              onOpenChange={onOpen}
+              onChange={(tool) => set(op, tool)}
+            />
+          </div>
+        )
+      })}
+      {phase !== 'loading' && (
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+          <button type="button" className="btn btn-secondary btn-xs" data-testid="image-mcp-auto" onClick={() => void assign()}><Zap size={12} aria-hidden="true" /> {t('images.mcpAutoAssign')}</button>
+          {phase === 'ready' && <button type="button" className="btn btn-quiet btn-xs" onClick={() => setPhase('manual')}>{t('images.mcpToolsType')}</button>}
+          {assigned && <p role="status" data-testid="image-mcp-auto-result" className="text-xs text-[var(--text-muted)]">{assigned}</p>}
+        </div>
+      )}
+    </>
+  )
+}
+
 const EMPTY_DRAFT: Draft = { provider_id: '', api_key: '', model: '', endpoint: '', server: '', workflows: {}, tools: {}, prompt_arg: 'prompt', image_arg: 'image' }
 
 /** Un id corto y libre a partir del tipo: `chatgpt`, `chatgpt-2`, `openai`… */
@@ -91,9 +202,6 @@ export default function ImageCreationSettings() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [tests, setTests] = useState<Record<string, { ok: boolean; message?: string; running?: boolean }>>({})
   const [budget, setBudget] = useState('')
-  /** MCP: las herramientas del servidor elegido, leídas con «Detectar herramientas». */
-  const [detected, setDetected] = useState<{ server: string; names: string[]; running?: boolean; message?: string; failed?: boolean } | null>(null)
-  const toolList = useId()
 
   useEffect(() => {
     void engineApi.imagesSettingsGet().then((value) => {
@@ -132,30 +240,6 @@ export default function ImageCreationSettings() {
   const servers = config.mcp_servers ?? []
   const label = (kind: Kind) => t(KIND_LABEL[kind])
   const mcpTools = Object.entries(draft.tools).filter(([, tool]) => tool && tool.trim())
-  const mcpServer = draft.server || servers[0] || ''
-  const toolNames = detected?.server === mcpServer ? detected.names : []
-
-  // Pide al servidor sus herramientas y propone una por operación según su
-  // nombre; no pisa lo que el dueño ya escribió y deja los nombres a mano.
-  const detectTools = async () => {
-    if (!mcpServer) return
-    setDetected({ server: mcpServer, names: [], running: true })
-    try {
-      const { test } = await engineApi.mcpTest(mcpServer)
-      if (!test.ok) {
-        setDetected({ server: mcpServer, names: [], failed: true, message: t('images.mcpDetectFailed', { message: test.message ?? test.error ?? test.code ?? '' }) })
-        return
-      }
-      const names = test.names ?? []
-      const found = matchImageTools(names)
-      const filled = Object.fromEntries(Object.entries(found).filter(([op]) => !draft.tools[op as Operation]?.trim()))
-      setDraft((current) => ({ ...current, tools: { ...filled, ...Object.fromEntries(Object.entries(current.tools).filter(([, tool]) => tool?.trim())) } }))
-      const count = Object.keys(found).length
-      setDetected({ server: mcpServer, names, message: count > 0 ? t('images.mcpDetected', { n: count, total: names.length }) : t('images.mcpDetectedNone', { total: names.length }) })
-    } catch (e) {
-      setDetected({ server: mcpServer, names: [], failed: true, message: t('images.mcpDetectFailed', { message: commandMessage(e) }) })
-    }
-  }
 
   const connectorFromDraft = (kind: Kind, id: string): ImageConnector & { api_key?: string } => {
     const base = { id, kind, label: label(kind) }
@@ -342,28 +426,19 @@ export default function ImageCreationSettings() {
               <p className="text-xs text-[var(--text-muted)]">{t('images.mcpMissing')}</p>
             ) : (
               <>
-                <label className="block text-xs text-[var(--text-muted)]">
-                  {t('images.mcpServer')}
-                  <select className={inputClass} value={mcpServer} onChange={(event) => { setDraft({ ...draft, server: event.target.value }); setDetected(null) }}>
-                    {servers.map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                </label>
-                <p className="text-xs text-[var(--text-subtle)]">{t('images.mcpHint')}</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" className="btn btn-secondary btn-sm" data-testid="images-mcp-detect" disabled={detected?.running} onClick={() => void detectTools()}>
-                    {detected?.running ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <Zap size={13} aria-hidden="true" />}
-                    {t(detected?.running ? 'images.mcpDetecting' : 'images.mcpDetect')}
-                  </button>
-                  {detected?.message && <p role="status" data-testid="images-mcp-detected" className={`text-xs ${detected.failed ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`}>{detected.message}</p>}
+                <div className="block text-xs text-[var(--text-muted)]">
+                  <span id="image-mcp-server">{t('images.mcpServer')}</span>
+                  <Select
+                    className="mt-1"
+                    value={draft.server || servers[0]}
+                    label={t('images.mcpServer')}
+                    options={servers.map((name) => ({ value: name, label: name }))}
+                    onChange={(server) => setDraft({ ...draft, server, tools: {} })}
+                  />
                 </div>
-                {toolNames.length > 0 && <datalist id={toolList}>{toolNames.map((name) => <option key={name} value={name} />)}</datalist>}
+                <p className="text-xs text-[var(--text-subtle)]">{t('images.mcpHint')}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {OPERATIONS.map((op) => (
-                    <label key={op} className="block text-xs text-[var(--text-muted)]">
-                      {t(OPERATION_LABEL[op])}
-                      <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} list={toolNames.length > 0 ? toolList : undefined} value={draft.tools[op] ?? ''} onChange={(event) => setDraft({ ...draft, tools: { ...draft.tools, [op]: event.target.value } })} />
-                    </label>
-                  ))}
+                  <McpToolPicker server={draft.server || servers[0]} tools={draft.tools} onChange={(tools) => setDraft({ ...draft, tools })} />
                   <label className="block text-xs text-[var(--text-muted)]">
                     {t('images.mcpPromptArg')}
                     <input className={inputClass} value={draft.prompt_arg} onChange={(event) => setDraft({ ...draft, prompt_arg: event.target.value })} />

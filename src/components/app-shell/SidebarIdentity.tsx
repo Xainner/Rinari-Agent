@@ -95,7 +95,7 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
           <ChevronsUpDown size={15} aria-hidden="true" className="shrink-0 text-[var(--text-subtle)]" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="profile-menu w-[18rem]">
+      <DropdownMenuContent align="start" className="profile-menu w-[var(--radix-dropdown-menu-trigger-width)] min-w-0">
         <DropdownMenuLabel className="text-[11px] text-[var(--text-subtle)]">{t(rinariStateLabel(state))}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-[11px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('profiles.label')}</DropdownMenuLabel>

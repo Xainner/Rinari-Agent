@@ -34,3 +34,22 @@ describe('configFromForm', () => {
     expect(formReady({ ...emptyForm(), name: 'x', transport: 'http', url: 'example.com' })).toBe(false)
   })
 })
+
+describe('OAuth', () => {
+  it('signs in with registration when no client is given, and with the owner client when it is', () => {
+    const form = { ...emptyForm(), name: 'notion', transport: 'http' as const, url: 'https://mcp.notion.com/mcp', auth: 'oauth' as const }
+    expect(formReady(form)).toBe(true)
+    expect(configFromForm(form)).toEqual({ transport: 'http', url: 'https://mcp.notion.com/mcp', auth: { kind: 'oauth' } })
+    const own = { ...form, clientId: ' my-client ', clientSecret: 's3cret', scopes: 'read write', redirectPort: '8765' }
+    expect(configFromForm(own).auth).toEqual({ kind: 'oauth', client_id: 'my-client', client_secret: 's3cret', scopes: ['read', 'write'], redirect_port: 8765 })
+  })
+
+  it('keeps a stored client secret, clears what the owner emptied and refuses a bad port', () => {
+    const server = { name: 'slack', transport: 'http', command: '', url: 'https://mcp.slack.com/mcp', scope: 'global', enabled: true, connected: false, updated_at: null, auth: { kind: 'oauth' as const, client_id: 'abc', client_secret: { configured: true, source: 'stored' as const }, scopes: ['chat'], redirect_port: 8765 } }
+    const form = formFromServer(server)
+    expect(form).toMatchObject({ auth: 'oauth', clientId: 'abc', clientSecret: '', clientSecretStored: true, scopes: 'chat', redirectPort: '8765' })
+    expect(configFromForm(form, server).auth).toEqual({ kind: 'oauth', client_id: 'abc', scopes: ['chat'], redirect_port: 8765 })
+    expect(configFromForm({ ...form, clientId: '', clientSecretStored: false, scopes: '', redirectPort: '' }, server).auth).toEqual({ kind: 'oauth', client_id: null, client_secret: null, scopes: null, redirect_port: null })
+    expect(formReady({ ...form, redirectPort: '80' })).toBe(false)
+  })
+})

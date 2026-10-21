@@ -23,7 +23,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/pop
 import type { TurnTimeline } from '../activity/types'
 import { compareUrl, useConversationSummary, useRepoStatus } from './summaryData'
 import CreatePrDialog from './CreatePrDialog'
+import { STATE_LABEL, type ConnectorState } from '../connectors/connectorModel'
 import { platform } from '../../platform'
+
+/** El estado de un conector en el Resumen: el de C2 si llegó; si no, solo «conectado» o no. */
+export function connectorSummaryState(server: { connected: boolean; status: string | null }): ConnectorState {
+  switch (server.status) {
+    case 'connecting': return 'connecting'
+    case 'connected': return 'connected'
+    case 'reauth_required': return 'reauth'
+    case 'error': return 'error'
+    case 'disabled': return 'disabled'
+    case 'idle': return 'idle'
+    default: return server.connected ? 'connected' : 'idle'
+  }
+}
 
 export type SummaryCardId = 'env' | 'context' | 'plan' | 'changes' | 'results' | 'sources' | 'connectors' | 'agents' | 'background'
 export const SUMMARY_CARDS: readonly SummaryCardId[] = ['env', 'context', 'plan', 'changes', 'results', 'sources', 'connectors', 'agents', 'background']
@@ -75,6 +89,7 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
   const dockReviewTurn = useSessionDockStore((state) => state.reviewTurn)
   const uiGoProject = useUIStore((state) => state.goProject)
   const uiGoSchedules = useUIStore((state) => state.goSchedules)
+  const uiOpenConnector = useUIStore((state) => state.openConnector)
   const workspace = useFileWorkspace()
   // El Resumen flota sobre el chat: lo que lleva a otra vista o pantalla lo cierra al llevarte.
   const leaving = <A extends unknown[]>(go: (...args: A) => void) => (...args: A) => { go(...args); onClose() }
@@ -82,6 +97,7 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
   const reviewTurn = leaving(dockReviewTurn)
   const goProject = leaving(uiGoProject)
   const goSchedules = leaving(uiGoSchedules)
+  const openConnector = leaving(uiOpenConnector)
   const revealArtifacts = leaving(() => useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'artifacts' }))
   const files = workspace && { reveal: leaving(workspace.reveal), open: leaving(workspace.open) }
   const [prefs, setPrefs] = useState<SummaryPrefs>(() => readSummaryPrefs())
@@ -257,7 +273,15 @@ function Panel({ sessionId, record, timelines, onClose }: { sessionId: string; r
       <SummaryCard id="connectors" icon={<Plug size={14} />} title={t('summary.connectors.title')} meta={String(summary.mcpServers.length + summary.skills.length)} prefs={prefs} onPrefs={update}>
         {summary.mcpServers.length > 0 && (
           <ul className="summary-list">
-            {summary.mcpServers.map((server) => <li key={server.name} data-live={server.connected || undefined} data-off={!server.connected || undefined}>{server.name}</li>)}
+            {summary.mcpServers.map((server) => {
+              const state = connectorSummaryState(server)
+              return (
+                <li key={server.name} data-live={state === 'connected' || undefined} data-off={state !== 'connected' || undefined} data-state={state}>
+                  <button type="button" className="summary-link" aria-label={t('summary.connectors.open', { name: server.name })} onClick={() => openConnector(server.name)}>{server.name}</button>
+                  {state !== 'connected' && <span className="summary-line-inline"> · {t(STATE_LABEL[state])}</span>}
+                </li>
+              )
+            })}
           </ul>
         )}
         {summary.skills.length > 0 && <p className="summary-line">{t('summary.connectors.skills', { names: summary.skills.map((skill) => skill.name).join(', ') })}</p>}

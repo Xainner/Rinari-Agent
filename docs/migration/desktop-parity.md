@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **284**
-- Respaldados por Engine: **278**
+- Comandos: **298**
+- Respaldados por Engine: **292**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -70,13 +70,27 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `images_settings_get` | engine | `images.settings.get` | `src/services/engine.ts` |
 | `images_settings_set` | engine | `images.settings.set` | `src/services/engine.ts` |
 | `initial_open_request` | host | — | **ninguno** |
+| `mcp_auth_cancel` | engine | `mcp.auth.cancel` | `src/services/engine.ts` |
+| `mcp_auth_signout` | engine | `mcp.auth.signout` | `src/services/engine.ts` |
+| `mcp_auth_start` | engine | `mcp.auth.start` | `src/services/engine.ts` |
+| `mcp_auth_status` | engine | `mcp.auth.status` | `src/services/engine.ts` |
+| `mcp_catalog_add` | engine | `mcp.catalog.add` | `src/services/engine.ts` |
+| `mcp_catalog_list` | engine | `mcp.catalog.list` | `src/services/engine.ts` |
 | `mcp_create` | engine | `mcp.create` | `src/services/engine.ts` |
 | `mcp_get` | engine | `mcp.get` | **ninguno** |
+| `mcp_import_apply` | engine | `mcp.import.apply` | `src/services/engine.ts` |
+| `mcp_import_scan` | engine | `mcp.import.scan` | `src/services/engine.ts` |
 | `mcp_list` | engine | `mcp.list` | `src/services/engine.ts` |
 | `mcp_probe` | engine | `mcp.probe` | `src/services/engine.ts` |
+| `mcp_project_offers_decide` | engine | `mcp.project_offers.decide` | `src/services/engine.ts` |
+| `mcp_project_offers_list` | engine | `mcp.project_offers.list` | `src/services/engine.ts` |
+| `mcp_reconnect` | engine | `mcp.reconnect` | `src/services/engine.ts` |
 | `mcp_remove` | engine | `mcp.remove` | `src/services/engine.ts` |
 | `mcp_set_enabled` | engine | `mcp.enable` | `src/services/engine.ts` |
 | `mcp_test` | engine | `mcp.test` | `src/services/engine.ts` |
+| `mcp_tools_list` | engine | `mcp.tools.list` | `src/services/engine.ts` |
+| `mcp_tools_set` | engine | `mcp.tools.set` | `src/services/engine.ts` |
+| `mcp_tools_set_default` | engine | `mcp.tools.set_default` | `src/services/engine.ts` |
 | `mcp_update` | engine | `mcp.update` | `src/services/engine.ts` |
 | `memory_about_get` | engine | `memory.about.get` | `src/services/engine.ts` |
 | `memory_about_set` | engine | `memory.about.set` | `src/services/engine.ts` |

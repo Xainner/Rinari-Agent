@@ -12,7 +12,7 @@ import ProvidersView from '../providers/ProvidersView'
 import ModelsView from '../providers/ModelsView'
 import AgentsView from '../agents/AgentsView'
 import SoulsView from '../souls/SoulsView'
-import McpView from '../ecosystem/McpView'
+import ConnectorsView from '../connectors/ConnectorsView'
 import SkillsView from '../skills/SkillsView'
 import PluginsView from '../ecosystem/PluginsView'
 import ToolsView from '../ecosystem/ToolsView'
@@ -84,7 +84,7 @@ export default function SettingsView({
       )}
       {section === 'soul' && <SoulsView onChanged={onCatalogChanged} />}
       {section === 'skills' && <SkillsView />}
-      {section === 'mcp' && <McpView onChanged={onCatalogChanged} />}
+      {section === 'mcp' && <ConnectorsView onChanged={onCatalogChanged} engineCapabilities={engineCapabilities} />}
       {section === 'plugins' && <PluginsView onChanged={onCatalogChanged} />}
       {section === 'tools' && <ToolsView />}
       {section === 'profiles' && (

@@ -3996,6 +3996,454 @@
       "host_effects": []
     },
     {
+      "command": "mcp_reconnect",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.reconnect",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_start",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "open_browser",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "timeout_s",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.start",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "open_browser",
+          "from": "open_browser",
+          "optional": true
+        },
+        {
+          "key": "timeout_s",
+          "from": "timeout_s",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_status",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.status",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_cancel",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.cancel",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_signout",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.signout",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_tools_list",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "scope",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.tools.list",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "scope",
+          "from": "scope",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_tools_set",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "request",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.tools.set",
+      "engine_params": [],
+      "passthrough": "request",
+      "host_effects": []
+    },
+    {
+      "command": "mcp_tools_set_default",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "request",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.tools.set_default",
+      "engine_params": [],
+      "passthrough": "request",
+      "host_effects": []
+    },
+    {
+      "command": "mcp_catalog_list",
+      "module": "ecosystem",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.catalog.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_catalog_add",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "client_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "client_secret",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "redirect_port",
+          "type": "Option<u32>",
+          "optional": true
+        },
+        {
+          "name": "token",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "secrets",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "connection_string",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.catalog.add",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "client_id",
+          "from": "client_id",
+          "optional": true
+        },
+        {
+          "key": "client_secret",
+          "from": "client_secret",
+          "optional": true
+        },
+        {
+          "key": "redirect_port",
+          "from": "redirect_port",
+          "optional": true
+        },
+        {
+          "key": "token",
+          "from": "token",
+          "optional": true
+        },
+        {
+          "key": "secrets",
+          "from": "secrets",
+          "optional": true
+        },
+        {
+          "key": "connection_string",
+          "from": "connection_string",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_import_scan",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "sources",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "json",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.import.scan",
+      "engine_params": [
+        {
+          "key": "sources",
+          "from": "sources",
+          "optional": true
+        },
+        {
+          "key": "json",
+          "from": "json",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_import_apply",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "keys",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "names",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "sources",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "json",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.import.apply",
+      "engine_params": [
+        {
+          "key": "keys",
+          "from": "keys",
+          "optional": false
+        },
+        {
+          "key": "names",
+          "from": "names",
+          "optional": true
+        },
+        {
+          "key": "sources",
+          "from": "sources",
+          "optional": true
+        },
+        {
+          "key": "json",
+          "from": "json",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_project_offers_list",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.project_offers.list",
+      "engine_params": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_project_offers_decide",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "decisions",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.project_offers.decide",
+      "engine_params": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "decisions",
+          "from": "decisions",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "mcp_probe",
       "module": "ecosystem",
       "args": [

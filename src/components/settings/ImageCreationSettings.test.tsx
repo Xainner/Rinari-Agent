@@ -98,9 +98,16 @@ it('adds a local ComfyUI with a workflow, an MCP server mapped by operation and 
   await waitFor(() => expect(set).toHaveBeenCalledTimes(1))
   expect(set.mock.calls[0][0].connectors[0]).toMatchObject({ kind: 'comfyui', endpoint: 'http://127.0.0.1:8188', workflows: { upscale: { '3': { inputs: { text: '{{prompt}}' } } } } })
 
+  // With a list, the tool is picked from it (C3); the list is read when the picker opens.
+  const toolsList = vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValue({ server: { name: 'visual-lab', scope: 'global', status: 'connected', default: null, tools: [
+    { name: 'make_image', tool: 'mcp.visual-lab.make_image', title: 'Make image', description: 'Creates an image', listed: true, annotations: {}, kind: 'write', sends_out: true, setting: null, decision: null, decision_source: 'mode', by_mode: {} },
+  ] } })
   await user.click(screen.getByRole('button', { name: /Servidor MCP/ }))
   form = screen.getByTestId('image-connector-form')
-  await user.type(within(form).getByRole('textbox', { name: 'Crear' }), 'make_image')
+  expect(within(form).queryByRole('textbox', { name: 'Crear' })).toBeNull()
+  await user.click(await within(form).findByRole('button', { name: /^Crear/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /make_image/ }))
+  expect(toolsList).toHaveBeenCalledWith('visual-lab')
   await user.click(within(form).getByRole('button', { name: 'Agregar' }))
   await waitFor(() => expect(set).toHaveBeenCalledTimes(2))
   expect(set.mock.calls[1][0].connectors.at(-1)).toMatchObject({ kind: 'mcp', server: 'visual-lab', tools: { generate: { tool: 'make_image', prompt_arg: 'prompt' } } })
@@ -111,4 +118,37 @@ it('adds a local ComfyUI with a workflow, an MCP server mapped by operation and 
   await waitFor(() => expect(set).toHaveBeenCalledTimes(3))
   expect(set.mock.calls[2][0].connectors.at(-1)).toMatchObject({ kind: 'openrouter', provider_id: 'prov_or' })
   expect(set.mock.calls[2][0].connectors.at(-1)).not.toHaveProperty('api_key')
+})
+
+it('reads the MCP tools only when asked, lets the owner type them when there is no list and keeps a saved name', async () => {
+  vi.spyOn(engineApi, 'imagesSettingsGet').mockResolvedValue({ ...empty, mcp_servers: ['visual-lab'] })
+  const set = vi.spyOn(engineApi, 'imagesSettingsSet').mockImplementation(async (value) => ({ ...empty, mcp_servers: ['visual-lab'], ...value }))
+  const toolsList = vi.spyOn(engineApi, 'mcpToolsList').mockRejectedValueOnce({ code: 'METHOD_NOT_FOUND', message: 'unknown method' })
+  const test = vi.spyOn(engineApi, 'mcpTest')
+  mount()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /Servidor MCP/ }))
+  const form = screen.getByTestId('image-connector-form')
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  // Mounting the section starts nothing.
+  expect(toolsList).not.toHaveBeenCalled()
+  expect(test).not.toHaveBeenCalled()
+
+  // The list fails (an older Rinari): each operation is typed by hand.
+  await user.click(within(form).getByRole('button', { name: /^Crear/ }))
+  await user.keyboard('{Escape}')
+  const typed = await within(form).findByRole('textbox', { name: 'Crear' })
+  expect(test).not.toHaveBeenCalled()
+  await user.type(typed, 'draw')
+
+  // Read again: the server lists other tools, and the typed name stays chosen.
+  toolsList.mockResolvedValueOnce({ server: { name: 'visual-lab', scope: 'global', status: 'connected', default: null, tools: [
+    { name: 'make_image', tool: 'mcp.visual-lab.make_image', title: 'Make image', description: '', listed: true, annotations: {}, kind: 'write', sends_out: true, setting: null, decision: null, decision_source: 'mode', by_mode: {} },
+  ] } })
+  await user.click(within(form).getByRole('button', { name: 'Leer de nuevo' }))
+  await waitFor(() => expect(within(form).getByTestId('image-mcp-tool-generate').getAttribute('data-value')).toBe('draw'))
+  expect(test).not.toHaveBeenCalled()
+  await user.click(within(form).getByRole('button', { name: 'Agregar' }))
+  await waitFor(() => expect(set).toHaveBeenCalledTimes(1))
+  expect(set.mock.calls[0][0].connectors.at(-1)).toMatchObject({ kind: 'mcp', server: 'visual-lab', tools: { generate: { tool: 'draw' } } })
 })

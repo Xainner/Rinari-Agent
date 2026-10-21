@@ -9,7 +9,8 @@ export interface SummaryData {
   mcp: Array<{ connector: string; calls: number }>
   sourcesTotal: number
   results: Array<{ path: string; name: string; kind: string; exists: boolean }>
-  mcpServers: Array<{ name: string; connected: boolean }>
+  /** `status`: el estado de la conexión (C2), si esta versión de Rinari lo informa. */
+  mcpServers: Array<{ name: string; connected: boolean; status: string | null }>
   skills: Array<{ name: string }>
   processes: Array<{ id: string; command: string }>
   scheduled: Array<{ id: string; name: string; enabled: boolean }>
@@ -34,7 +35,7 @@ export function readSummary(raw: unknown): SummaryData {
     mcp,
     sourcesTotal: typeof sources.total === 'number' ? sources.total : pages.length + searches.length + mcp.length,
     results: list(root.results).map((item) => ({ path: str(item.path), name: str(item.name) || str(item.path), kind: str(item.kind) || 'file', exists: item.exists !== false })).filter((item) => item.path),
-    mcpServers: list(connectors.mcp).map((server) => ({ name: str(server.name), connected: server.connected === true })).filter((server) => server.name),
+    mcpServers: list(connectors.mcp).map((server) => ({ name: str(server.name), connected: server.connected === true, status: str(server.status) || null })).filter((server) => server.name),
     skills: list(connectors.skills).map((skill) => ({ name: str(skill.name) })).filter((skill) => skill.name),
     processes: list(background.processes).map((process) => ({ id: str(process.id), command: str(process.command) })).filter((process) => process.id),
     scheduled: list(background.scheduled).map((task) => ({ id: str(task.id), name: str(task.name), enabled: task.enabled !== false })).filter((task) => task.id),

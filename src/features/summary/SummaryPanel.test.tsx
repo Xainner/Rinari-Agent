@@ -82,6 +82,25 @@ it('Fuentes y Conectores salen del resumen del Engine; una página se abre en el
   expect(results.textContent).not.toContain('gone.md')
 })
 
+it('Conectores dice el estado real de cada uno y abre su detalle (conectores C3)', async () => {
+  withEngine({ session_summary_v1: true })
+  sessionSummary.mockResolvedValue({
+    sources: { pages: [], searches: [], mcp: [], total: 0 }, results: [],
+    connectors: { mcp: [{ name: 'notion', connected: false, status: 'reauth_required' }, { name: 'planka', connected: true, status: 'connected' }, { name: 'slow', connected: false, status: 'connecting' }], skills: [] },
+    background: { processes: [], scheduled: [] },
+  })
+  const { useUIStore } = await import('../../stores/ui')
+  const onClose = vi.fn()
+  render(<I18nProvider lang="es"><SummaryPanel sessionId="ses_a" record={sessionFixture('ses_a', 'Charla')} onClose={onClose} /></I18nProvider>)
+  const connectors = await screen.findByRole('region', { name: 'Conectores' })
+  expect(connectors.textContent).toContain('notion · Hay que reconectar')
+  expect(connectors.textContent).toContain('slow · Conectando…')
+  expect(connectors.textContent).not.toContain('planka ·')
+  await userEvent.click(within(connectors).getByRole('button', { name: 'Ver el conector notion' }))
+  expect(useUIStore.getState()).toMatchObject({ view: 'settings', settingsSection: 'mcp', connectorFocus: 'notion' })
+  expect(onClose).toHaveBeenCalled()
+})
+
 it('Cambios enseña los PR de la rama y «Crear PR» abre GitHub si no hay gh', async () => {
   withEngine({ repo_status_v1: true })
   repoStatus.mockResolvedValue({ available: true, root: 'C:/p', branch: 'feat/x', ahead: 2, behind: 0, dirty: false, changed: 0, github: { owner: 'o', repo: 'r' }, gh: 'missing', prs: [] })

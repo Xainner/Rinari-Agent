@@ -1964,7 +1964,6 @@ html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none;
 .steer-send-now:hover:not(:disabled) { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 .steer-send-now:disabled { opacity: 0.5; cursor: default; }
 .steer-send-now { font-weight: 500; border-radius: 4px; }
-.steer-send-now:focus-visible { outline: 1px solid var(--accent-2); outline-offset: 2px; }
 .steer-note { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-subtle); }
 /* «Enviar ahora» (#31): la burbuja que cortó el paso lleva un rayo y un filo de acento; mientras
    espera a que el paso se corte, el rayo late (sigue en curso). */

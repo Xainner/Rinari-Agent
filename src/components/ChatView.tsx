@@ -249,6 +249,31 @@ function ChatView({
       window.removeEventListener('pointercancel', release)
     }
   }, [])
+  // Lo que va antes de la lista dentro del scroll («+N mensajes anteriores»,
+  // solo en conversaciones largas): Virtua necesita su alto en `startMargin`
+  // para saber dónde está el final. Sin él, seguir el final dejaba la última
+  // fila corta por ese alto, tapada por el composer.
+  const earlierRef = useRef<HTMLDivElement>(null)
+  const [startMargin, setStartMargin] = useState(0)
+  const hasEarlier = Boolean(historyNote?.hasMore)
+  useLayoutEffect(() => {
+    const earlier = earlierRef.current
+    if (!hasEarlier || !earlier) {
+      setStartMargin(0)
+      return
+    }
+    const measure = () => {
+      const content = contentRef.current
+      const scroller = scrollRef.current
+      if (!content || !scroller) return
+      const top = content.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
+      setStartMargin(Math.max(0, Math.round(top)))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(earlier)
+    return () => observer.disconnect()
+  }, [hasEarlier, presentation, sessionId])
   const autoFollowRef = useRef(autoFollow)
   autoFollowRef.current = autoFollow
   // Un solo mecanismo para ir al final (#58): como mucho una vez por cuadro,
@@ -587,11 +612,11 @@ function ChatView({
         <div key={sessionId + ':ready'} className="conversation-enter flex min-h-full flex-col">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onScroll={handleScroll} onWheel={userScrolls} onTouchStart={userScrolls} onPointerDown={pointerDown} onKeyDown={userScrolls}>
             {historyNote?.hasMore && (
-              <LoadEarlier total={historyNote.total} onLoad={onLoadEarlier} />
+              <div ref={earlierRef}><LoadEarlier total={historyNote.total} onLoad={onLoadEarlier} /></div>
             )}
             <div ref={contentRef}>
             <ActivityLayoutContext.Provider value={activityLayout}>
-            <Virtualizer ref={virtRef} scrollRef={scrollRef} data={stream} bufferSize={800}>
+            <Virtualizer ref={virtRef} scrollRef={scrollRef} data={stream} bufferSize={800} startMargin={startMargin}>
               {(row, index) => (
                 <div
                   key={row.id}

@@ -107,7 +107,18 @@ export interface OfficeMessage {
   chain_id: string
   hop: number
   created_at: number
+  /** Un aviso del Engine (un recado dejado, una espera): la app lo pone en palabras. */
+  system?: boolean
+  notice?: OfficeNotice | null
+  /** Viene de una vuelta que leyó algo de fuera de la máquina. */
+  external?: boolean
 }
+
+/** Qué dice un aviso de la oficina, como datos (el Engine no escribe frases). */
+export type OfficeNotice =
+  | { kind: 'errand'; title: string }
+  | { kind: 'wait'; for: string }
+  | { kind: 'delivered'; title: string; to?: string }
 
 /** blocked: no pudo empezar o falló; espera a que el dueño lo reintente. */
 export type ErrandStatus = 'pending' | 'in_progress' | 'delivered' | 'reviewed' | 'returned' | 'blocked' | 'cancelled'
@@ -131,6 +142,9 @@ export interface Errand {
   updated_at: number
   started_at: number | null
   delivered_at: number | null
+  /** Veces que se entregó y que se devolvió (a la cuarta devolución, se traba). */
+  deliveries?: number
+  returns?: number
 }
 
 export interface ErrandInput {
@@ -144,6 +158,8 @@ export interface ErrandInput {
 export type ErrandMode = 'turn' | 'subagents'
 
 export interface AgencySettingsData {
+  /** Perfiles con la Agency detenida («Detener a todos») hasta reanudarla. */
+  stopped_profiles?: string[]
   budget: AgentBudget
   errand_mode: ErrandMode
   errand_modes: ErrandMode[]

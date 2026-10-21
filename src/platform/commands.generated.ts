@@ -19,6 +19,7 @@ export type DesktopCommand =
   | "agency_errand_review"
   | "agency_office_list"
   | "agency_office_post"
+  | "agency_resume"
   | "agency_settings_get"
   | "agency_settings_set"
   | "agency_status"
@@ -350,6 +351,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_errand_review",
   "agency_office_list",
   "agency_office_post",
+  "agency_resume",
   "agency_settings_get",
   "agency_settings_set",
   "agency_status",
@@ -701,6 +703,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_errand_review",
   "agency_office_list",
   "agency_office_post",
+  "agency_resume",
   "agency_settings_get",
   "agency_settings_set",
   "agency_status",

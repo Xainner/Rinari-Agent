@@ -109,7 +109,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
   }
 
   const archive = async () => {
-    if (!team) return
+    if (!team || saving) return
     try {
       const result = await engineApi.agencyArchiveTeam(team.id)
       toast.success(t('agency.team.archived', { name: result.team.name }))
@@ -120,7 +120,9 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
   }
 
   const duplicate = async () => {
-    if (!team || !copyName?.trim()) return
+    // A double click duplicated the team (and its agents) twice.
+    if (!team || !copyName?.trim() || saving) return
+    setSaving(true)
     try {
       const result = await engineApi.agencyDuplicateTeam(team.id, copyName.trim())
       toast.success(t('agency.team.duplicated', { name: result.team.name }))
@@ -128,6 +130,8 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
       onSaved(result.team, true)
     } catch (error) {
       toast.error(commandMessage(error))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -249,7 +253,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
               <span className="field-label">{t('agency.team.copyName')}</span>
               <input className="field-input" value={copyName} maxLength={60} autoFocus onChange={(event) => setCopyName(event.target.value)} data-testid="agency-team-copy-name" />
             </label>
-            <button type="button" className="btn btn-secondary btn-sm self-end" disabled={!copyName.trim()} onClick={() => void duplicate()} data-testid="agency-team-copy">
+            <button type="button" className="btn btn-secondary btn-sm self-end" disabled={!copyName.trim() || saving} onClick={() => void duplicate()} data-testid="agency-team-copy">
               {t('agency.team.copy')}
             </button>
             <p className="field-hint basis-full">{t('agency.team.copyHint')}</p>

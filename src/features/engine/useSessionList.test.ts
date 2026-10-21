@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { useSessionList } from './useSessionList'
 import type { SessionSummary } from '../../services/engine'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { useAgencyStore } from '../../stores/agency'
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
@@ -181,6 +182,25 @@ describe('useSessionList session visibility', () => {
       expect(result.current.sessions.map((s) => s.id)).toEqual(['other', 'mine'])
     },
   )
+
+  it('keeps an Agency conversation active although session.list leaves it out, and out of the recents', async () => {
+    // Rinari Agency: writing in an agent's chat must not move you to a Rinari conversation.
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: { ses_agent: 'agent_1' } })
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    openSession.mockResolvedValue({ session: { ...summary('ses_agent'), agent_id: 'agent_1' }, created: false, warnings: [] })
+    await act(async () => {
+      await result.current.refreshSessions()
+      await result.current.selectSession('ses_agent')
+    })
+    expect(result.current.activeSession).toBe('ses_agent')
+    await act(async () => {
+      await result.current.refreshSessions()
+    })
+    expect(result.current.activeSession).toBe('ses_agent')
+    expect(result.current.sessions.map((item) => item.id)).not.toContain('ses_agent')
+    useAgencyStore.setState({ agentSessions: {} })
+  })
 
   it('reconciles selectSession with the resumed record instead of stale list data', async () => {
     const { result } = setup()

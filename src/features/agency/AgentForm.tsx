@@ -4,12 +4,15 @@ import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { Select, type SelectOption } from '../../components/ui/select'
-import { commandMessage, engineApi, onEngineEvent, type McpServer, type ModelSummary } from '../../services/engine'
+import { commandMessage, engineApi, type McpServer, type ModelSummary } from '../../services/engine'
 import agencyIcon from '../../assets/agency/agency-icon.webp'
+import { JobTimeoutError, runJob } from './jobEvents'
 import type { AgencyAgent, AgencyAgentInput, AgentPermissionProfile } from './types'
 
 const PROFILES: AgentPermissionProfile[] = ['read-only', 'workspace', 'full-access']
 const DEFAULT_MODEL = '__default__'
+/** «Créalo con Rinari» llama a un modelo: si en 3 minutos no hay borrador, se dice. */
+const DRAFT_TIMEOUT_MS = 180_000
 
 interface AgentFormProps {
   /** Sin agente: «Nuevo agente». Con agente: su ficha. */
@@ -49,46 +52,38 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
   const [servers, setServers] = useState<McpServer[]>([])
   const [saving, setSaving] = useState(false)
   const [description, setDescription] = useState('')
-  const [draftJob, setDraftJob] = useState<string | null>(null)
+  const [drafting, setDrafting] = useState(false)
 
-  // El borrador llega como evento del Engine, con el job que se pidió.
-  useEffect(() => {
-    if (!draftJob) return
-    let stop: (() => void) | undefined
-    let disposed = false
-    void onEngineEvent((event) => {
-      const payload = event.payload as { job_id?: string; draft?: Record<string, unknown>; message?: string }
-      if (payload?.job_id !== draftJob) return
-      if (event.event === 'agency.draft.ready' && payload.draft) {
-        const draft = payload.draft
-        if (typeof draft.name === 'string') setName(draft.name)
-        if (typeof draft.role === 'string') setRole(draft.role)
-        if (typeof draft.instructions === 'string') setInstructions(draft.instructions)
-        if (draft.permission_profile === 'read-only' || draft.permission_profile === 'workspace' || draft.permission_profile === 'full-access') {
-          setProfile(draft.permission_profile)
-        }
-        setDraftJob(null)
-      } else if (event.event === 'agency.draft.failed') {
-        toast.error(payload.message ?? '')
-        setDraftJob(null)
-      }
-    }).then((unlisten) => {
-      if (disposed) unlisten()
-      else stop = unlisten
-    })
-    return () => {
-      disposed = true
-      stop?.()
-    }
-  }, [draftJob])
-
+  // El borrador llega como evento del Engine, con el job que se pidió; la
+  // suscripción va antes de pedirlo (un fallo rápido no deja el botón colgado).
   const requestDraft = async () => {
-    if (!description.trim()) return
+    if (!description.trim() || drafting) return
+    setDrafting(true)
     try {
-      const started = await engineApi.agencyDraft(description.trim())
-      setDraftJob(started.job_id)
+      const outcome = await runJob(
+        () => engineApi.agencyDraft(description.trim()),
+        (event) => {
+          if (event.event === 'agency.draft.ready' && event.payload.draft) return { draft: event.payload.draft as Record<string, unknown> }
+          if (event.event === 'agency.draft.failed') return { message: String(event.payload.message ?? '') }
+          return null
+        },
+        DRAFT_TIMEOUT_MS,
+      )
+      if ('message' in outcome) {
+        toast.error(outcome.message)
+        return
+      }
+      const draft = outcome.draft
+      if (typeof draft.name === 'string') setName(draft.name)
+      if (typeof draft.role === 'string') setRole(draft.role)
+      if (typeof draft.instructions === 'string') setInstructions(draft.instructions)
+      if (draft.permission_profile === 'read-only' || draft.permission_profile === 'workspace' || draft.permission_profile === 'full-access') {
+        setProfile(draft.permission_profile)
+      }
     } catch (error) {
-      toast.error(commandMessage(error))
+      toast.error(error instanceof JobTimeoutError ? t('agency.jobTimeout') : commandMessage(error))
+    } finally {
+      setDrafting(false)
     }
   }
 
@@ -195,14 +190,14 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
             <button
               type="button"
               className="btn btn-secondary btn-sm self-end"
-              disabled={!description.trim() || draftJob !== null}
+              disabled={!description.trim() || drafting}
               onClick={() => void requestDraft()}
               data-testid="agency-draft-fill"
             >
               {t('agency.form.draftFill')}
             </button>
             <p className="field-hint basis-full" role="status" aria-live="polite">
-              {draftJob ? t('agency.form.draftWorking') : t('agency.form.draftHint')}
+              {drafting ? t('agency.form.draftWorking') : t('agency.form.draftHint')}
             </p>
           </div>
         )}

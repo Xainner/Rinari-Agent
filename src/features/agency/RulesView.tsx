@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pause, Play, Trash2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
+import { JobTimeoutError, runJob } from './jobEvents'
 import { commandMessage, engineApi, onEngineEvent, type ScheduledTask, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
 import { describeSchedule, formatWhen, SCHEDULES_CHANGED_EVENT } from '../schedules/scheduleModel'
 import { useAgencyStore } from '../../stores/agency'
@@ -62,6 +63,9 @@ function RuleParts({ rule }: { rule: Pick<ScheduledTaskInput, 'schedule' | 'tool
   )
 }
 
+/** Un ensayo lee como mucho una herramienta: si en un minuto no responde, se dice. */
+const REHEARSAL_TIMEOUT_MS = 60_000
+
 interface Rehearsal {
   outcome: 'nothing_new' | 'condition_not_met' | 'would_run' | 'blocked' | 'not_rehearsable' | 'failed'
   reason?: string
@@ -72,42 +76,31 @@ interface Rehearsal {
 /** «Probar»: lo que la regla haría ahora, sin enviar nada (Agency 10.1.3). */
 function RehearseButton({ proposal }: { proposal: ScheduledTaskInput }) {
   const { t } = useI18n()
-  const [job, setJob] = useState<string | null>(null)
+  const [running, setRunning] = useState(false)
   const [result, setResult] = useState<Rehearsal | null>(null)
 
-  useEffect(() => {
-    if (!job) return
-    let stop: (() => void) | undefined
-    let disposed = false
-    void onEngineEvent((event) => {
-      const payload = event.payload as Rehearsal & { job_id?: string }
-      if (event.event !== 'schedule.rehearsed' || payload.job_id !== job) return
-      setResult(payload)
-      setJob(null)
-    }).then((unlisten) => {
-      if (disposed) unlisten()
-      else stop = unlisten
-    })
-    return () => {
-      disposed = true
-      stop?.()
-    }
-  }, [job])
-
+  // Suscrito antes de pedirlo: «no se puede ensayar» llega casi enseguida.
   const start = async () => {
+    if (running) return
     setResult(null)
+    setRunning(true)
     try {
-      const started = await engineApi.scheduleRehearse(proposal)
-      setJob(started.job_id)
+      setResult(await runJob(
+        () => engineApi.scheduleRehearse(proposal),
+        (event) => (event.event === 'schedule.rehearsed' ? (event.payload as unknown as Rehearsal) : null),
+        REHEARSAL_TIMEOUT_MS,
+      ))
     } catch (error) {
-      toast.error(commandMessage(error))
+      toast.error(error instanceof JobTimeoutError ? t('agency.jobTimeout') : commandMessage(error))
+    } finally {
+      setRunning(false)
     }
   }
 
   return (
     <>
-      <button type="button" className="btn btn-ghost btn-sm" disabled={job !== null} onClick={() => void start()} data-testid="agency-rule-rehearse">
-        {job ? t('agency.rules.rehearsing') : t('agency.rules.rehearse')}
+      <button type="button" className="btn btn-ghost btn-sm" disabled={running} onClick={() => void start()} data-testid="agency-rule-rehearse">
+        {running ? t('agency.rules.rehearsing') : t('agency.rules.rehearse')}
       </button>
       {result && (
         <div className="agency-rehearsal" role="status" data-testid="agency-rule-rehearsal" data-outcome={result.outcome}>
@@ -164,13 +157,22 @@ export default function RulesView({ sessionId }: RulesViewProps) {
     }
   }, [reload])
 
+  // One action at a time: a double click on «Activar» created the rule twice (and it then sent twice).
+  const busyRef = useRef(false)
+  const [busy, setBusy] = useState(false)
   const act = async (work: () => Promise<unknown>) => {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
     try {
       await work()
       window.dispatchEvent(new Event(SCHEDULES_CHANGED_EVENT))
       await reload()
     } catch (error) {
       toast.error(commandMessage(error))
+    } finally {
+      busyRef.current = false
+      setBusy(false)
     }
   }
 
@@ -196,6 +198,7 @@ export default function RulesView({ sessionId }: RulesViewProps) {
               type="button"
               className="btn btn-primary btn-sm"
               data-testid="agency-rule-activate"
+              disabled={busy}
               onClick={() => void act(async () => {
                 await engineApi.scheduleCreate(proposal)
                 dropProposal(proposal)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ClipboardList, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
@@ -14,6 +14,13 @@ const TONE: Record<ErrandStatus, string> = {
   returned: 'warning',
   blocked: 'danger',
   cancelled: 'neutral',
+}
+
+/** Motivos que el Engine da como código: se dicen en el idioma del dueño. */
+const REASON_CODES = new Set(['stopped_by_owner', 'too_many_returns', 'team archived', 'its agent left'])
+function reasonText(reason: string, t: ReturnType<typeof useI18n>['t']): string {
+  if (!REASON_CODES.has(reason)) return reason
+  return t(`agency.errand.reason.${reason.replace(/ /g, '_')}` as I18nKey)
 }
 
 interface ErrandCardProps {
@@ -64,7 +71,7 @@ export function ErrandCard({ errand, names, compact = false, onChanged }: Errand
         <p className="agency-errand-result">{errand.result.summary}</p>
       )}
       {errand.return_reason && (errand.status === 'returned' || errand.status === 'blocked' || errand.status === 'pending') && (
-        <p className="agency-errand-reason">{t(errand.status === 'blocked' ? 'agency.errand.blockedWhy' : 'agency.errand.returnedWhy', { reason: errand.return_reason })}</p>
+        <p className="agency-errand-reason">{t(errand.status === 'blocked' ? 'agency.errand.blockedWhy' : 'agency.errand.returnedWhy', { reason: reasonText(errand.return_reason, t) })}</p>
       )}
       {returning ? (
         <div className="flex flex-wrap gap-2">
@@ -117,16 +124,51 @@ const COLUMNS: { key: string; statuses: ErrandStatus[] }[] = [
   { key: 'delivered', statuses: ['delivered', 'reviewed'] },
 ]
 
+/** Una ráfaga de mensajes de la oficina es una sola recarga. */
+const TEAM_RELOAD_DEBOUNCE_MS = 200
+
+/**
+ * Llama a `reload` cuando cambia algo de este equipo (su oficina o su
+ * pizarra), una vez por ráfaga de eventos.
+ */
+export function useTeamEvents(teamId: string | null, reload: () => void) {
+  useEffect(() => {
+    if (!teamId) return
+    reload()
+    let stop: (() => void) | undefined
+    let disposed = false
+    let timer: number | undefined
+    void onEngineEvent((event) => {
+      const payload = event.payload as { team_id?: string } | undefined
+      if ((event.event === 'agency.office.message' || event.event === 'agency.team.changed') && payload?.team_id === teamId) {
+        window.clearTimeout(timer)
+        timer = window.setTimeout(reload, TEAM_RELOAD_DEBOUNCE_MS)
+      }
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      window.clearTimeout(timer)
+      stop?.()
+    }
+  }, [reload, teamId])
+}
+
 /** Los recados de un equipo y los nombres de sus agentes, al día con los eventos del Engine. */
 export function useTeamBoard(teamId: string | null) {
   const [errands, setErrands] = useState<Errand[]>([])
   const [names, setNames] = useState<Map<string, string>>(new Map())
   const [teamName, setTeamName] = useState('')
 
+  const seq = useRef(0)
   const reload = useCallback(async () => {
     if (!teamId) return
+    const mine = ++seq.current
     try {
       const [board, agents] = await Promise.all([engineApi.agencyTeam(teamId), engineApi.agencyAgents({ includeArchived: true })])
+      if (mine !== seq.current) return
       setErrands(board.errands)
       setTeamName(board.team.name)
       setNames(new Map(agents.agents.map((agent) => [agent.id, agent.name])))
@@ -135,22 +177,7 @@ export function useTeamBoard(teamId: string | null) {
     }
   }, [teamId])
 
-  useEffect(() => {
-    void reload()
-    let stop: (() => void) | undefined
-    let disposed = false
-    void onEngineEvent((event) => {
-      const payload = event.payload as { team_id?: string } | undefined
-      if ((event.event === 'agency.team.changed' || event.event === 'agency.office.message') && payload?.team_id === teamId) void reload()
-    }).then((unlisten) => {
-      if (disposed) unlisten()
-      else stop = unlisten
-    })
-    return () => {
-      disposed = true
-      stop?.()
-    }
-  }, [reload, teamId])
+  useTeamEvents(teamId, useCallback(() => void reload(), [reload]))
 
   return { errands, names, teamName, reload }
 }

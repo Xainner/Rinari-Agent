@@ -156,6 +156,15 @@
       ]
     },
     {
+      "command": "agency_resume",
+      "kind": "engine",
+      "method": "agency.resume",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "agency_settings_get",
       "kind": "engine",
       "method": "agency.settings.get",
@@ -2763,8 +2772,8 @@
     }
   ],
   "summary": {
-    "commands": 329,
-    "engine_backed": 323,
+    "commands": 330,
+    "engine_backed": 324,
     "host_only": 6,
     "manual_adapters": 8,
     "without_callers": 104

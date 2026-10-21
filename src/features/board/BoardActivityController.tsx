@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useEngineData, useOptionalEngineCommands, useRuntimeStore } from '../engine/EngineContext'
 import { onNotificationActivated, onNotificationReplied } from '../../services/notifications'
 import { useAgencyStore } from '../../stores/agency'
+import { enterAgencySession } from '../agency/openAgencySession'
 import { requestTurnReveal } from './boardCommands'
 import {
   derivePaneStatus,
@@ -230,11 +231,15 @@ export default function BoardActivityController() {
     if (!commands) return
     // Un aviso de otro perfil cambia antes a ese perfil (#34).
     const profile = data.sessionsById[target.sessionId]?.rinari_profile_id
-    void switchToProfileOf(profile).then(() => commands.selectSession(target.sessionId)).then(() => {
+    void switchToProfileOf(profile).then(() => {
+      // Una conversación de la Agency se abre dentro de la Agency, con su página.
+      enterAgencySession(target.sessionId, data.activeSession || null)
+      return commands.selectSession(target.sessionId)
+    }).then(() => {
       useUIStore.getState().goChat()
       if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
     })
-  }, [commands, data.sessionsById])
+  }, [commands, data.sessionsById, data.activeSession])
   useBoardNotifications({
     runtime: store,
     labelFor: titleFor,

@@ -18,6 +18,7 @@ import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { revealSessionProject } from '../projects/revealSessionProject'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
+import { isAgencySession } from '../../stores/agency'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -227,6 +228,9 @@ export function useSessionList(options: {
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current
+        // Rinari Agency: sus chats y puestos no están en `session.list`; quien
+        // escribe en el chat de un agente sigue en él.
+        if (current !== '' && isAgencySession(current)) return current
         // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
         if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''
@@ -360,7 +364,8 @@ export function useSessionList(options: {
   const rememberOpened = useCallback(
     (opened: { session: SessionSummary }) => {
       rememberRows([opened.session])
-      if (!isSessionHidden(opened.session)) {
+      // Las conversaciones de la Agency no entran en los recientes de Rinari.
+      if (!isSessionHidden(opened.session) && !opened.session.agent_id) {
         setRecentSessionIds((current) =>
           current.includes(opened.session.id) ? current : [opened.session.id, ...current],
         )

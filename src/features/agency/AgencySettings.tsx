@@ -21,6 +21,8 @@ interface AgencySettingsProps {
   initialTeamId?: string | null
   /** Con `agency_teams_v1`: equipos y lo de toda la Agency. */
   teamsEnabled?: boolean
+  /** Con `agency_agent_memory_v1`: la memoria de cada agente y de cada equipo. */
+  memoryEnabled?: boolean
 }
 
 type Scope = 'agent' | 'team' | 'agency'
@@ -102,7 +104,7 @@ interface Owner {
  * C8). Las cuentas solo las ve y usa su dueño; se conectan desde el catálogo
  * de conectores, a su nombre.
  */
-function MemoryAndAccounts({ owner }: { owner: Owner }) {
+function MemoryAndAccounts({ owner, memoryEnabled = true }: { owner: Owner; memoryEnabled?: boolean }) {
   const { t } = useI18n()
   const [records, setRecords] = useState<MemoryRecord[]>([])
   const [accounts, setAccounts] = useState<McpServer[]>([])
@@ -115,7 +117,9 @@ function MemoryAndAccounts({ owner }: { owner: Owner }) {
   const reload = useCallback(async () => {
     try {
       const [memory, servers] = await Promise.all([
-        owner.kind === 'agent' ? engineApi.agencyAgentMemory(owner.id) : engineApi.agencyTeamMemory(owner.id),
+        !memoryEnabled
+          ? Promise.resolve({ records: [] as MemoryRecord[] })
+          : owner.kind === 'agent' ? engineApi.agencyAgentMemory(owner.id) : engineApi.agencyTeamMemory(owner.id),
         engineApi.mcpList(),
       ])
       setRecords(memory.records)
@@ -123,7 +127,7 @@ function MemoryAndAccounts({ owner }: { owner: Owner }) {
     } catch (error) {
       toast.error(commandMessage(error))
     }
-  }, [owner.kind, owner.id, tag])
+  }, [owner.kind, owner.id, tag, memoryEnabled])
 
   useEffect(() => {
     void reload()
@@ -156,6 +160,14 @@ function MemoryAndAccounts({ owner }: { owner: Owner }) {
 
   return (
     <>
+      {!memoryEnabled ? (
+        <section className="grid gap-1" aria-labelledby="agency-memory-title" data-testid="agency-memory-soon">
+          <h2 id="agency-memory-title" className="text-[15px] font-semibold text-[var(--text)]">
+            {t('agency.settings.memory', { name: owner.name })} <span className="agency-soon ml-1.5">{t('agency.view.soon')}</span>
+          </h2>
+          <p className="field-hint">{t('agency.settings.memorySoon')}</p>
+        </section>
+      ) : (
       <section className="grid gap-3" aria-labelledby="agency-memory-title">
         <div>
           <h2 id="agency-memory-title" className="text-[15px] font-semibold text-[var(--text)]">{t('agency.settings.memory', { name: owner.name })}</h2>
@@ -176,6 +188,7 @@ function MemoryAndAccounts({ owner }: { owner: Owner }) {
           </button>
         </div>
       </section>
+      )}
 
       <section className="grid gap-3" aria-labelledby="agency-accounts-title">
         <div>
@@ -246,7 +259,7 @@ function BudgetEditor({ budget, onSave, testId }: { budget: AgentBudget; onSave:
   )
 }
 
-function TeamSettings({ team, agents }: { team: AgencyTeam; agents: AgencyAgent[] }) {
+function TeamSettings({ team, agents, memoryEnabled }: { team: AgencyTeam; agents: AgencyAgent[]; memoryEnabled: boolean }) {
   const { t } = useI18n()
   const save = async (patch: { budget?: AgentBudget; chief_agent_id?: string }) => {
     try {
@@ -277,7 +290,7 @@ function TeamSettings({ team, agents }: { team: AgencyTeam; agents: AgencyAgent[
         />
         <span className="field-hint">{t('agency.team.chiefHint')}</span>
       </section>
-      <MemoryAndAccounts key={team.id} owner={{ kind: 'team', id: team.id, name: team.name }} />
+      <MemoryAndAccounts key={team.id} owner={{ kind: 'team', id: team.id, name: team.name }} memoryEnabled={memoryEnabled} />
     </>
   )
 }
@@ -354,7 +367,7 @@ function GlobalSettings() {
  * por equipo (A2), su memoria, sus cuentas, su presupuesto y su jefe; y lo de
  * toda la Agency: el presupuesto global y cómo corre un recado.
  */
-export default function AgencySettings({ agents, teams = [], initialAgentId = null, initialTeamId = null, teamsEnabled = false }: AgencySettingsProps) {
+export default function AgencySettings({ agents, teams = [], initialAgentId = null, initialTeamId = null, teamsEnabled = false, memoryEnabled = true }: AgencySettingsProps) {
   const { t } = useI18n()
   const [scope, setScope] = useState<Scope>(initialTeamId && teamsEnabled ? 'team' : 'agent')
   const [agentId, setAgentId] = useState<string | null>(initialAgentId ?? agents[0]?.id ?? null)
@@ -411,7 +424,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
                 testId="agency-settings-agent"
               />
             </div>
-            {agent && <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} />}
+            {agent && <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} memoryEnabled={memoryEnabled} />}
           </>
         ))}
 
@@ -429,7 +442,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
                 testId="agency-settings-team"
               />
             </div>
-            {team && <TeamSettings team={team} agents={agents} />}
+            {team && <TeamSettings team={team} agents={agents} memoryEnabled={memoryEnabled} />}
           </>
         ))}
 

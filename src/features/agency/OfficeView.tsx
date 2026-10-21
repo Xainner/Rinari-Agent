@@ -4,9 +4,9 @@ import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { Select } from '../../components/ui/select'
-import { commandMessage, engineApi, onEngineEvent } from '../../services/engine'
+import { commandMessage, engineApi } from '../../services/engine'
 import agencyIcon from '../../assets/agency/agency-icon.webp'
-import { BoardPanel, ErrandCard } from './Board'
+import { BoardPanel, ErrandCard, useTeamEvents } from './Board'
 import type { AgencyAgent, AgencyTeam, Errand, OfficeMessage } from './types'
 
 const NOBODY = '__chief__'
@@ -56,6 +56,8 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
   // Escape cierra la lista de @menciones hasta que se vuelva a escribir.
   const [dismissed, setDismissed] = useState(false)
   const [sending, setSending] = useState(false)
+  const sendingRef = useRef(false)
+  const [leaving, setLeaving] = useState(false)
   const [boardOpen, setBoardOpen] = useState(false)
   const [errandOpen, setErrandOpen] = useState(false)
   const [title, setTitle] = useState('')
@@ -78,9 +80,12 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
     return new Set(first.values())
   }, [messages])
 
+  const seq = useRef(0)
   const reload = useCallback(async () => {
+    const mine = ++seq.current
     try {
       const result = await engineApi.agencyTeam(team.id)
+      if (mine !== seq.current) return
       setMessages(result.messages)
       setErrands(result.errands)
     } catch (error) {
@@ -88,22 +93,7 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
     }
   }, [team.id])
 
-  useEffect(() => {
-    void reload()
-    let stop: (() => void) | undefined
-    let disposed = false
-    void onEngineEvent((event) => {
-      const payload = event.payload as { team_id?: string } | undefined
-      if ((event.event === 'agency.office.message' || event.event === 'agency.team.changed') && payload?.team_id === team.id) void reload()
-    }).then((unlisten) => {
-      if (disposed) unlisten()
-      else stop = unlisten
-    })
-    return () => {
-      disposed = true
-      stop?.()
-    }
-  }, [reload, team.id])
+  useTeamEvents(team.id, useCallback(() => void reload(), [reload]))
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: 'end' })
@@ -129,7 +119,8 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
 
   const send = async () => {
     const message = text.trim()
-    if (!message) return
+    // A double Enter posted twice, and each @mention starts a paid turn.
+    if (!message || sendingRef.current) return
     // «/recado …» abre el recado con ese título en vez de escribir en la oficina.
     const slash = /^\/recado\b\s*(.*)$/isu.exec(message)
     if (slash) {
@@ -138,15 +129,19 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
       setText('')
       return
     }
+    sendingRef.current = true
     setSending(true)
+    // Cleared before the call; restored if it fails.
+    setText('')
+    setCaret(0)
     try {
       await engineApi.agencyOfficePost(team.id, message)
-      setText('')
-      setCaret(0)
       await reload()
     } catch (error) {
+      setText(message)
       toast.error(commandMessage(error))
     } finally {
+      sendingRef.current = false
       setSending(false)
     }
   }
@@ -176,7 +171,8 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
   }
 
   const leaveErrand = async () => {
-    if (!title.trim()) return
+    if (!title.trim() || leaving) return
+    setLeaving(true)
     try {
       await engineApi.agencyCreateErrand(team.id, {
         title: title.trim(),
@@ -192,6 +188,8 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
       await reload()
     } catch (error) {
       toast.error(commandMessage(error))
+    } finally {
+      setLeaving(false)
     }
   }
 
@@ -240,7 +238,22 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
                         {new Date(message.created_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </time>
                     </p>
-                    <MessageText text={message.text} names={members.map((agent) => agent.name)} />
+                    {message.notice?.kind === 'errand' ? (
+                      <p className="agency-office-notice">{t('agency.office.notice.errand', { title: message.notice.title })}</p>
+                    ) : message.notice?.kind === 'wait' ? (
+                      <p className="agency-office-notice">{t('agency.office.notice.wait', { name: message.notice.for })}</p>
+                    ) : (
+                      <>
+                        {message.notice?.kind === 'delivered' && (
+                          <p className="agency-office-notice">
+                            {message.notice.to
+                              ? t('agency.office.notice.deliveredTo', { title: message.notice.title, name: message.notice.to })
+                              : t('agency.office.notice.delivered', { title: message.notice.title })}
+                          </p>
+                        )}
+                        <MessageText text={message.text} names={members.map((agent) => agent.name)} />
+                      </>
+                    )}
                     {errand && <ErrandCard errand={errand} names={names} onChanged={() => void reload()} />}
                   </div>
                 </div>
@@ -289,7 +302,7 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
             </label>
             <div className="flex justify-end gap-2">
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setErrandOpen(false)}>{t('agency.settings.cancel')}</button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={!title.trim()} data-testid="agency-errand-submit">{t('agency.errand.leave')}</button>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={!title.trim() || leaving} data-testid="agency-errand-submit">{t('agency.errand.leave')}</button>
             </div>
           </form>
         )}

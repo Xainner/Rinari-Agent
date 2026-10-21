@@ -559,3 +559,38 @@ Mismas ramas `feat/agency`, locales y sin subir. Vía 1 (D-28): cada recado es u
 - Una prueba real con conectores reales (la copia del home no los tenía conectados).
 - Vía 2 (subagentes), anotada como futura (D-28).
 - A3 (producciones), con el diseño del §17 ya aprobado.
+
+## 20. Revisión de los PR sobre la nueva `0.4.0` (2026-10-21)
+
+Los dos PR se revisaron sobre `0.4.0` con #74 y #113 ya fusionados. La mezcla con `0.4.0` y todos los hallazgos se hicieron en la rama `fix/agency-review` de cada repo y se subieron a `feat/agency`.
+
+**Engine (Rinari-CLI#75), bloqueantes:**
+- **Memoria cruzada:** una conversación ya solo recuerda lo que le toca ver (la general, la de su perfil, la de su chat, la de su agente y la de su equipo). Un agente o un puesto solo corrige u olvida la memoria de su agente o de su equipo; lo demás da `NOT_FOUND`. El panel del dueño sigue viendo todo.
+- **Dos agentes que se esperan:** los avisos del Engine (`system`) nunca sueltan una espera, y una espera mutua se rechaza.
+- **Recados devueltos sin fin:** cada recado cuenta sus entregas (migración `0064`) y el tope de la cadena las suma. A la cuarta devolución, el recado queda trabado (`too_many_returns`).
+- **`office.say` en ráfaga:** las menciones cuentan para las 20 entregas de la cadena, cada vuelta escribe como mucho 3 `office.say` y despierta una sola vez a cada compañero.
+- **«Detener a todos» no detenía:** ahora para el tablero. Vacía las colas y las esperas, traba los recados abiertos (`stopped_by_owner`) y no arranca nada hasta `agency.resume` (o un mensaje, recado o reintento del dueño). Las reglas se pausan con una escritura directa, sin volver a validarlas.
+
+**Engine, importantes y menores:**
+- Hijos y forks de un agente heredan su agente y su equipo; el encargo de un hijo no cuenta como el dueño pidiéndolo.
+- La oficina llega al modelo como datos: una línea por mensaje, con el autor puesto por el Engine entre ⟦ ⟧ y etiquetada como contexto. El contenido externo se hereda a la vuelta que despierta.
+- Un `tick` a la vez, y nunca se arranca una vuelta encima de otra.
+- La cuenta propia de un agente se guarda con su dueño antes de conectarse (C8).
+- Salir de un equipo corta la vuelta del puesto.
+- La huella de una carpeta vigilada se guarda solo tras una ejecución terminada, y una carpeta con más archivos de los vigilados lo dice.
+- Una entrega al chat directo que no puede empezar se avisa; las entregas y las esperas sobreviven a un reinicio.
+- Un recado a un equipo sin jefe avisa y pasa al primer jefe.
+- Los prompts van en inglés, como los demás del Engine, y lo que el Engine publica en la oficina es un aviso (`notice`) que la app pone en palabras. El esquema conoce los orígenes de la Agency y quién mandó cada encargo (`from_label`).
+- Capacidad `agency_board_v2`.
+
+**App (Rinari-Agent#114):**
+- **Bloqueante:** escribir en el chat de un agente ya no te saca de él (`refreshSessions` conserva una sesión de la Agency), y las conversaciones de la Agency no entran en los recientes de Rinari.
+- El encargo de la Agency se ve como «Desde la oficina · {agente}», «Recado de {agente}» o «Entrega de {equipo}», con el texto plegado y sin las acciones del dueño.
+- Volver a la Agency abre su inicio, no la conversación de Rinari como si fuera del agente. Una notificación de una conversación de la Agency la abre dentro de la Agency.
+- «Probar» y «Créalo con Rinari» ya no se quedan colgados: se suscriben antes de pedir y tienen un tiempo límite.
+- Doble clic: «Activar», «Duplicar», el Enter de la oficina y «Dejar recado» actúan una sola vez.
+- La regla que propone un agente abre su vista «Reglas» desde la campana. Las propuestas no se duplican y se limpian al cambiar de perfil.
+- La memoria de Ajustes de la Agency mira su capacidad. El lugar `team` tiene nombre en la memoria.
+- La Agency solo se recarga con turnos de sus propias conversaciones, agrupados y numerados.
+- Los avisos de la oficina, los motivos nuevos y «Reanudar la Agency», en el idioma del dueño.
+

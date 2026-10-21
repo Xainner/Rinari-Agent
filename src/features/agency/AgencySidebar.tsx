@@ -1,4 +1,4 @@
-import { CircleHelp, MessageSquare, Building2, OctagonX, Plus, Settings2, UserPlus, UsersRound } from 'lucide-react'
+import { CircleHelp, MessageSquare, Building2, OctagonX, Play, Plus, Settings2, UserPlus, UsersRound } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
@@ -20,6 +20,9 @@ interface AgencySidebarProps {
   onSettings?: () => void
   /** «Detener a todos» (sección 8); ausente sin `agency_stop_all_v1`. */
   onStopAll?: () => void
+  /** Con la Agency detenida, «Reanudar» en su lugar (`agency_board_v2`). */
+  halted?: boolean
+  onResume?: () => void
   settingsOpen?: boolean
   /** A2: los equipos; sin `onNewTeam` (sin `agency_teams_v1`) se dice que llegan pronto. */
   teams?: AgencyTeam[]
@@ -47,6 +50,8 @@ export default function AgencySidebar({
   onLeave,
   onSettings,
   onStopAll,
+  halted = false,
+  onResume,
   settingsOpen = false,
   teams = [],
   activeTeam = null,
@@ -189,7 +194,13 @@ export default function AgencySidebar({
         )}
       </div>
 
-      {onStopAll && (agents.length > 0) && (
+      {halted && onResume ? (
+        <button type="button" className="sidebar-link agency-resume" onClick={onResume} data-testid="agency-resume">
+          <Play size={15} aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-left">{t('agency.sidebar.resume')}</span>
+          <span className="r-chip" data-tone="warning">{t('agency.sidebar.stopped')}</span>
+        </button>
+      ) : onStopAll && (agents.length > 0) && (
         <button type="button" className="sidebar-link agency-stop-all" onClick={onStopAll} data-testid="agency-stop-all">
           <OctagonX size={15} aria-hidden="true" />
           <span className="truncate">{t('agency.sidebar.stopAll')}</span>

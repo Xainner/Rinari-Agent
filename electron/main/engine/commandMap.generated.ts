@@ -33,6 +33,7 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "agency_errand_review": {"method":"agency.errand.review","params":[{"key":"errand_id","from":"errand_id","optional":false},{"key":"accepted","from":"accepted","optional":false},{"key":"reason","from":"reason","optional":true}]},
   "agency_office_list": {"method":"agency.office.list","params":[{"key":"team_id","from":"team_id","optional":false}]},
   "agency_office_post": {"method":"agency.office.post","params":[{"key":"team_id","from":"team_id","optional":false},{"key":"text","from":"text","optional":false}]},
+  "agency_resume": {"method":"agency.resume","params":[{"key":"rinari_profile_id","from":"rinari_profile_id","optional":true}]},
   "agency_settings_get": {"method":"agency.settings.get","params":[]},
   "agency_settings_set": {"method":"agency.settings.set","params":[{"key":"budget","from":"budget","optional":true},{"key":"errand_mode","from":"errand_mode","optional":true}]},
   "agency_status": {"method":"agency.status","params":[{"key":"rinari_profile_id","from":"rinari_profile_id","optional":true}]},

@@ -28,8 +28,16 @@ export type AgencyPage =
 interface AgencyState {
   space: AgencySpace
   page: AgencyPage
+  /**
+   * Entrar a la Agency. Un chat o un puesto abiertos antes se vuelven a
+   * seleccionar fuera de aquí; si no, se vuelve al inicio, para no mostrar
+   * la conversación de Rinari como si fuera la del agente.
+   */
   enter: () => void
   leave: () => void
+  /** La conversación de Rinari a la que volver al salir de la Agency. */
+  returnTo: string | null
+  rememberRinari: (sessionId: string | null) => void
   openAgent: (agentId: string) => void
   newAgent: () => void
   editAgent: (agentId: string) => void
@@ -47,6 +55,8 @@ interface AgencyState {
   proposals: ScheduledTaskInput[]
   addProposal: (proposal: ScheduledTaskInput) => void
   dropProposal: (proposal: ScheduledTaskInput) => void
+  /** Al cambiar de perfil: las propuestas eran de los agentes del otro. */
+  clearProposals: () => void
   /** De quién es cada chat directo: sesión → agente (para «Reglas» en el panel lateral). */
   agentSessions: Record<string, string>
   setAgentSessions: (agents: { id: string; session_id: string | null }[]) => void
@@ -65,8 +75,13 @@ interface AgencyState {
 export const useAgencyStore = create<AgencyState>((set) => ({
   space: 'rinari',
   page: { kind: 'home' },
-  enter: () => set({ space: 'agency' }),
+  enter: () => set((state) => ({
+    space: 'agency',
+    page: state.page.kind === 'agent' || state.page.kind === 'post' ? { kind: 'home' } : state.page,
+  })),
   leave: () => set({ space: 'rinari' }),
+  returnTo: null,
+  rememberRinari: (sessionId) => set({ returnTo: sessionId }),
   openAgent: (agentId) => set({ space: 'agency', page: { kind: 'agent', agentId } }),
   newAgent: () => set({ space: 'agency', page: { kind: 'new-agent' } }),
   editAgent: (agentId) => set({ space: 'agency', page: { kind: 'edit-agent', agentId } }),
@@ -77,7 +92,13 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   editTeam: (teamId) => set({ space: 'agency', page: { kind: 'edit-team', teamId } }),
   goHome: () => set({ page: { kind: 'home' } }),
   proposals: [],
-  addProposal: (proposal) => set((state) => ({ proposals: [...state.proposals, proposal] })),
+  // La misma regla propuesta dos veces es una sola tarjeta.
+  addProposal: (proposal) => set((state) => (
+    state.proposals.some((item) => proposalKey(item) === proposalKey(proposal))
+      ? state
+      : { proposals: [...state.proposals, proposal] }
+  )),
+  clearProposals: () => set({ proposals: [] }),
   dropProposal: (proposal) => set((state) => ({ proposals: state.proposals.filter((item) => item !== proposal) })),
   agentSessions: {},
   setAgentSessions: (agents) => set({
@@ -94,6 +115,21 @@ export const useAgencyStore = create<AgencyState>((set) => ({
     ),
   }),
 }))
+
+/** Lo que identifica una regla propuesta (el Engine no le da id). */
+function proposalKey(proposal: ScheduledTaskInput): string {
+  return JSON.stringify([proposal.agent_id ?? null, proposal.name, proposal.kind, proposal.schedule, proposal.tool ?? null, proposal.prompt ?? '', proposal.watch ?? null])
+}
+
+/**
+ * Una conversación de la Agency (chat directo o puesto): no está en la lista
+ * de Rinari, y eso no la hace desaparecer.
+ */
+export function isAgencySession(sessionId: string): boolean {
+  if (!sessionId) return false
+  const state = useAgencyStore.getState()
+  return Boolean(state.agentSessions[sessionId] || state.postSessions[sessionId] || state.sessionLabels[sessionId])
+}
 
 /**
  * El tutorial de la primera vez (D-20) se ve una vez **por perfil de Rinari**:

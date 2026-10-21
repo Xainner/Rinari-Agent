@@ -80,6 +80,7 @@ import AgencySettings from './features/agency/AgencySettings'
 import TeamForm from './features/agency/TeamForm'
 import OfficeView from './features/agency/OfficeView'
 import type { AgencyAgent, AgencyTeam } from './features/agency/types'
+import { enterAgencySession } from './features/agency/openAgencySession'
 import { useProfileStore } from './features/profiles/profileStore'
 import ReconnectNotifier from './features/connectors/ReconnectNotifier'
 
@@ -528,25 +529,28 @@ function App() {
   const agencyPage = useAgencyStore((s) => s.page)
   // A2: equipos, oficinas y pizarra (agency_teams_v1).
   const teamsEnabled = agencyEnabled && session.status?.capabilities.agency_teams_v1 === true
-  const agency = useAgency(agencyEnabled, teamsEnabled)
+  const agency = useAgency(agencyEnabled, teamsEnabled, agencyEnabled && session.status?.capabilities.agency_board_v2 === true)
   const activeProfileId = useProfileStore((s) => s.activeId)
   const [agencyTutorialOpen, setAgencyTutorialOpen] = useState(false)
-  // La conversación de Rinari que estaba abierta al entrar: se recupera al salir.
-  const rinariSessionRef = useRef<string | null>(null)
   const inAgency = agencyEnabled && agencySpace === 'agency'
   const enterAgency = () => {
-    rinariSessionRef.current = session.activeSession || null
+    // La conversación de Rinari que estaba abierta al entrar: se recupera al salir.
+    useAgencyStore.getState().rememberRinari(session.activeSession || null)
     useAgencyStore.getState().enter()
     goChat()
     if (!agencyTutorialSeen(activeProfileId)) setAgencyTutorialOpen(true)
   }
   const leaveAgency = () => {
     useAgencyStore.getState().leave()
-    const previous = rinariSessionRef.current
+    const previous = useAgencyStore.getState().returnTo
     if (previous && session.sessionsById[previous]) void session.selectSession(previous)
     else session.openDraft()
     goChat()
   }
+  // Las propuestas de reglas eran de los agentes del perfil anterior.
+  useEffect(() => {
+    useAgencyStore.getState().clearProposals()
+  }, [activeProfileId])
   const openAgentChat = (agent: AgencyAgent) => {
     useAgencyStore.getState().openAgent(agent.id)
     if (agent.session_id) void session.selectSession(agent.session_id)
@@ -578,7 +582,9 @@ function App() {
     if (!ok) return
     try {
       const result = await engineApi.agencyStopAll()
-      toast.success(translate(lang, 'agency.stopAll.done', { turns: result.cancelled_turns, rules: result.paused_rules }))
+      toast.success(translate(lang, 'agency.stopAll.done', { turns: result.cancelled_turns, rules: result.paused_rules }), {
+        description: translate(lang, 'agency.stopAll.board', { errands: result.blocked_errands ?? 0 }),
+      })
       void agency.reload()
     } catch (error) {
       toast.error(commandMessage(error))
@@ -592,7 +598,7 @@ function App() {
       if (event.event !== 'agency.chain.stopped') return
       const payload = event.payload as { reason?: string; detail?: string } | undefined
       const reason = payload?.reason ?? 'too_many_hops'
-      const known = ['too_many_hops', 'too_many_mentions', 'too_many_deliveries', 'could_not_start', 'wait_expired', 'wait_cancelled'].includes(reason)
+      const known = ['too_many_hops', 'too_many_mentions', 'too_many_deliveries', 'too_many_returns', 'no_chief', 'could_not_start', 'wait_expired', 'wait_cancelled'].includes(reason)
       toast.warning(translate(lang, 'agency.chain.stopped'), {
         description: [translate(lang, `agency.chain.${known ? reason : 'too_many_hops'}` as I18nKey), payload?.detail].filter(Boolean).join(' · '),
         duration: 15_000,
@@ -630,7 +636,7 @@ function App() {
       const agentId = (event as CustomEvent<{ agentId: string }>).detail?.agentId
       const agent = agency.agents.find((item) => item.id === agentId)
       if (!agent?.session_id) return
-      if (useAgencyStore.getState().space !== 'agency') rinariSessionRef.current = session.activeSession || null
+      if (useAgencyStore.getState().space !== 'agency') useAgencyStore.getState().rememberRinari(session.activeSession || null)
       openAgentChat(agent)
       useSessionDockStore.getState().openView(agent.session_id, 'rules')
     }
@@ -829,6 +835,11 @@ function App() {
             onSettings={() => { useAgencyStore.getState().openSettings(activeAgentId, activeTeamId); goChat() }}
             settingsOpen={agencyPage.kind === 'settings'}
             onStopAll={session.status?.capabilities.agency_stop_all_v1 === true ? () => void stopAllAgents() : undefined}
+            halted={agency.halted}
+            onResume={() => void engineApi.agencyResume().then(() => {
+              toast.success(translate(lang, 'agency.resume.done'))
+              void agency.reload()
+            }).catch((error) => toast.error(commandMessage(error)))}
             teams={agency.teams}
             activeTeam={agencyPage.kind === 'office' ? { teamId: agencyPage.teamId, agentId: null } : agencyPage.kind === 'post' ? { teamId: agencyPage.teamId, agentId: agencyPage.agentId } : null}
             onOpenOffice={openOffice}
@@ -922,10 +933,15 @@ function App() {
                   if (target.kind === 'session') {
                     // De otro perfil: primero ese perfil (#34).
                     void switchToProfileOf(session.sessionsById[target.sessionId]?.rinari_profile_id).then(() => {
-                      chooseSession(target.sessionId)
+                      // Una conversación de la Agency se abre dentro de la Agency.
+                      if (enterAgencySession(target.sessionId, session.activeSession || null)) {
+                        void session.selectSession(target.sessionId)
+                        goChat()
+                      } else chooseSession(target.sessionId)
                       if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
                     }).catch((error) => toast.error(commandMessage(error)))
                   }
+                  else if (target.kind === 'agency-rules') window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId: target.agentId } }))
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
                   else if (target.kind === 'update') goSettings('about')
@@ -968,6 +984,7 @@ function App() {
             agents={agency.agents}
             teams={agency.teams}
             teamsEnabled={teamsEnabled}
+            memoryEnabled={session.status?.capabilities.agency_agent_memory_v1 === true}
             initialAgentId={agencyPage.agentId}
             initialTeamId={agencyPage.teamId ?? null}
           />

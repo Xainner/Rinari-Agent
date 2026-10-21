@@ -58,6 +58,22 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('agent-chat-rules')
 
+  // Escribir en el chat del agente no te saca de él (revisión de #114): la
+  // sesión activa sigue siendo la del agente y su respuesta aparece ahí.
+  const SEND = '.composer-surface button[aria-label="Enviar mensaje"]'
+  await input('.composer-surface textarea', 'Hola, preséntate en una frase.')
+  await wait(`!document.querySelector(${JSON.stringify(SEND)})?.disabled && !document.querySelector('[data-sonner-toast]')`)
+  await click(SEND)
+  await wait(`document.querySelector('.composer-surface textarea').value === ''`)
+  await wait(`document.body.innerText.includes('listo')`, 30_000)
+  await new Promise((resolve) => setTimeout(resolve, 1500)) // the list refresh after the turn
+  const selected = await evaluate(`document.querySelector('[data-testid="agency-agent-row"][aria-current="page"]')?.innerText ?? ''`)
+  assert(selected.includes('Emails'), 'the agent stays selected after writing to it')
+  assert.equal(await evaluate(`Boolean(document.querySelector('.dock-view-button[data-view="rules"]'))`), true, 'still in the agent chat')
+  const history = await command('session_history', { session_id: agent.session_id })
+  assert(history.messages.some((m) => m.role === 'user' && String(m.content).includes('preséntate')), 'the message went to the agent chat')
+  assert(history.messages.some((m) => m.role === 'assistant' && String(m.content).includes('listo')), 'its answer is in the agent chat')
+
   // El chat del agente no está entre las conversaciones de Rinari.
   const listed = (await command('session_list', {})).sessions.map((s) => s.id)
   assert(listed.includes(rinari))
@@ -178,6 +194,7 @@ scenario(async () => {
       'Agencia disabled with Pronto, no Normal | Boards inside',
       'new agent in the main view, created read-only',
       'direct chat with Reglas in the side panel',
+      'writing in the agent chat keeps it selected and its answer there',
       'agent chat out of Rinari\'s list',
       'back to Rinari, card counts the agent',
       'tutorial once per profile',

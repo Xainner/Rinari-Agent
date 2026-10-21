@@ -1720,7 +1720,9 @@ export const engineApi = {
   agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
   /** «Detener a todos»: corta los turnos de los agentes y pausa sus reglas activas. */
   agencyStopAll: () =>
-    platform().command<{ cancelled_turns: number; paused_rules: number }>('agency_stop_all', { rinari_profile_id: 'active' }),
+    platform().command<{ cancelled_turns: number; paused_rules: number; blocked_errands?: number }>('agency_stop_all', { rinari_profile_id: 'active' }),
+  /** Después de «Detener a todos»: el tablero vuelve a trabajar (lo trabado sigue trabado). */
+  agencyResume: () => platform().command<{ resumed: boolean }>('agency_resume', { rinari_profile_id: 'active' }),
   /** La memoria propia de un agente (D-24); se edita y olvida con memoryApi. */
   agencyAgentMemory: (agentId: string) =>
     platform().command<{ records: MemoryRecord[]; count: number }>('agency_agent_memory_list', { agent_id: agentId }),

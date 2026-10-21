@@ -1,7 +1,10 @@
-import { CircleHelp, MessageSquare, Building2, OctagonX, Play, Plus, Settings2, UserPlus, UsersRound } from 'lucide-react'
+import { CircleHelp, MessageSquare, Building2, OctagonX, Play, Plus, Settings, Settings2, UserPlus, UsersRound } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useUIStore } from '../../stores/ui'
+import { dispatchAction } from '../../services/actions'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
-import { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
+import ApplicationMenu, { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
 import AgentAvatar from './AgentAvatar'
 import AgencyCard from './AgencyCard'
 import type { AgencyAgent, AgencyStatus, AgencyTeam } from './types'
@@ -31,6 +34,33 @@ interface AgencySidebarProps {
   onOpenOffice?: (team: AgencyTeam) => void
   onOpenPost?: (team: AgencyTeam, agentId: string) => void
   onNewTeam?: () => void
+  /** La barra colapsada: un riel de iconos, como el de Rinari. */
+  collapsed?: boolean
+}
+
+/** Un botón del riel: solo su icono, con su nombre como etiqueta y tooltip. */
+function RailButton({ label, onClick, active = false, tone, testId, children }: {
+  label: string
+  onClick: () => void
+  active?: boolean
+  tone?: 'danger' | 'warning'
+  testId?: string
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      aria-current={active ? 'page' : undefined}
+      className={cn('agency-rail-button', active && 'is-active')}
+      data-tone={tone}
+      data-testid={testId}
+    >
+      {children}
+    </button>
+  )
 }
 
 /**
@@ -58,11 +88,80 @@ export default function AgencySidebar({
   onOpenOffice,
   onOpenPost,
   onNewTeam,
+  collapsed = false,
 }: AgencySidebarProps) {
   const { t } = useI18n()
   const working = new Set(status?.agent_ids.working ?? [])
   const waiting = new Set(status?.agent_ids.needs_you ?? [])
   const nameOf = new Map(agents.map((agent) => [agent.id, agent.name]))
+  // En el cajón móvil la barra va siempre expandida, como la de Rinari.
+  const mobileOpen = useUIStore((state) => state.sidebarOpen)
+
+  if (collapsed && !mobileOpen) {
+    return (
+      <div className="agency-rail" data-testid="agency-sidebar" data-rail="true">
+        <RailButton label={t('agency.sidebar.newAgent')} onClick={onNewAgent} active={creating} testId="agency-new-agent">
+          <UserPlus size={17} aria-hidden="true" />
+        </RailButton>
+        <div className="agency-rail-list" aria-label={t('agency.sidebar.agents')}>
+          {agents.map((agent) => {
+            const state = waiting.has(agent.id) ? t('agency.agent.needsYou') : working.has(agent.id) ? t('agency.agent.working') : ''
+            return (
+              <button
+                key={agent.id}
+                type="button"
+                className={cn('agency-rail-avatar', agent.id === activeAgentId && 'is-active')}
+                onClick={() => onOpenAgent(agent)}
+                aria-current={agent.id === activeAgentId ? 'page' : undefined}
+                aria-label={state ? `${agent.name} · ${state}` : agent.name}
+                title={state ? `${agent.name} · ${state}` : agent.name}
+                data-testid="agency-agent-row"
+              >
+                <AgentAvatar agent={agent} size={30} />
+                {waiting.has(agent.id) ? <span className="agency-rail-dot" data-tone="warning" aria-hidden="true" /> : working.has(agent.id) ? <span className="agency-rail-dot" aria-hidden="true" /> : null}
+              </button>
+            )
+          })}
+          {teams.length > 0 && <span className="agency-rail-sep" aria-hidden="true" />}
+          {teams.map((team) => {
+            const active = activeTeam?.teamId === team.id
+            return (
+              <RailButton key={team.id} label={t('agency.sidebar.office', { name: team.name })} onClick={() => onOpenOffice?.(team)} active={active} testId="agency-team-office">
+                <span className="agency-team-mark" aria-hidden="true"><UsersRound size={14} /></span>
+              </RailButton>
+            )
+          })}
+          {onNewTeam && (
+            <RailButton label={t('agency.sidebar.newTeam')} onClick={onNewTeam} testId="agency-new-team">
+              <Plus size={16} aria-hidden="true" />
+            </RailButton>
+          )}
+        </div>
+        {halted && onResume ? (
+          <RailButton label={`${t('agency.sidebar.resume')} · ${t('agency.sidebar.stopped')}`} onClick={onResume} tone="warning" testId="agency-resume">
+            <Play size={17} aria-hidden="true" />
+          </RailButton>
+        ) : onStopAll && agents.length > 0 && (
+          <RailButton label={t('agency.sidebar.stopAll')} onClick={onStopAll} tone="danger" testId="agency-stop-all">
+            <OctagonX size={17} aria-hidden="true" />
+          </RailButton>
+        )}
+        {onSettings && (
+          <RailButton label={t('agency.sidebar.settings')} onClick={onSettings} active={settingsOpen} testId="agency-settings-link">
+            <Settings2 size={17} aria-hidden="true" />
+          </RailButton>
+        )}
+        <RailButton label={t('agency.sidebar.tutorial')} onClick={onTutorial}>
+          <CircleHelp size={17} aria-hidden="true" />
+        </RailButton>
+        <AgencyCard mode="leave" status={status} onClick={onLeave} compact />
+        <RailButton label={t('app.settings')} onClick={() => dispatchAction('settings')}>
+          <Settings size={17} aria-hidden="true" />
+        </RailButton>
+        <ApplicationMenu collapsed />
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col px-3 pt-3" data-testid="agency-sidebar">

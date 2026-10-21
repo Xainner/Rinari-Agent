@@ -110,6 +110,29 @@ it('lists each team with its office and its posts, the chief marked', async () =
   expect(screen.getByText('Jefe')).toBeTruthy()
 })
 
+it('collapsed, the Agency sidebar is an icon rail: avatars, teams and actions with their names as labels', async () => {
+  const onOpenAgent = vi.fn()
+  const { container } = wrap(
+    <AgencySidebar
+      collapsed
+      agents={[writer, video]} status={null} activeAgentId="agent_w" creating={false}
+      onOpenAgent={onOpenAgent} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}} onSettings={() => {}}
+      teams={[team]} onOpenOffice={() => {}} onNewTeam={() => {}}
+    />,
+  )
+  const rail = container.querySelector('[data-testid="agency-sidebar"]') as HTMLElement
+  expect(rail.dataset.rail).toBe('true')
+  // Sin la pastilla Normal | Agencia y sin texto que se parta en el riel angosto.
+  expect(rail.querySelector('.agency-view-switch')).toBeNull()
+  expect(rail.textContent?.trim()).toBe('')
+  expect(screen.getByRole('button', { name: 'Writer' }).getAttribute('aria-current')).toBe('page')
+  expect(screen.getByRole('button', { name: 'Oficina de Canal infantil' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Ver el tutorial' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Volver a Rinari' })).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Video' }))
+  expect(onOpenAgent).toHaveBeenCalledWith(video)
+})
+
 it('says teams come soon without the capability', () => {
   wrap(<AgencySidebar agents={[]} status={null} activeAgentId={null} creating={false} onOpenAgent={() => {}} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}} />)
   expect(screen.getByText(/Pronto: oficinas/)).toBeTruthy()

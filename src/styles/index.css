@@ -3879,6 +3879,23 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-avatar-option[aria-checked='true'] { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); background: color-mix(in srgb, var(--accent) 14%, var(--bg-subtle)); color: var(--text); }
 .agency-effort { flex-shrink: 0; }
 
+/* La barra de la Agency colapsada: un riel de iconos, como el de Rinari (sin texto partido). */
+.agency-rail { display: flex; height: 100%; width: 100%; min-height: 0; flex-direction: column; align-items: center; gap: 4px; padding: 16px 8px 12px; }
+.agency-rail-button { display: grid; width: 40px; height: 40px; flex-shrink: 0; place-items: center; border-radius: 12px; color: var(--text-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+.agency-rail-button:hover { background: var(--bg-hover); color: var(--text); }
+.agency-rail-button.is-active { background: var(--bg-active); color: var(--text); }
+.agency-rail-button[data-tone='danger'] { color: var(--danger); }
+.agency-rail-button[data-tone='warning'] { color: var(--warning); }
+.agency-rail-list { display: flex; width: 100%; min-height: 0; flex: 1; flex-direction: column; align-items: center; gap: 6px; overflow-y: auto; padding: 8px 0; scrollbar-width: none; }
+.agency-rail-list::-webkit-scrollbar { display: none; }
+.agency-rail-avatar { position: relative; flex-shrink: 0; padding: 3px; border-radius: 12px; transition: background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.agency-rail-avatar:hover { background: var(--bg-hover); }
+.agency-rail-avatar.is-active { background: var(--bg-active); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 55%, transparent); }
+.agency-rail-dot { position: absolute; top: 1px; right: 1px; width: 9px; height: 9px; border-radius: 999px; background: var(--agent); box-shadow: 0 0 0 2px var(--bg-sidebar); }
+.agency-rail-dot[data-tone='warning'] { background: var(--warning); }
+.agency-rail-sep { width: 24px; height: 1px; flex-shrink: 0; margin: 4px 0; background: var(--line-1); }
+.agency-card-back-icon { color: var(--accent-2); }
+
 /* El avatar de un agente (D-23): su arte sobre una placa con un tono propio en el borde. */
 .agent-avatar { --agent-hue: 265; position: relative; display: inline-grid; flex-shrink: 0; place-items: center; overflow: hidden; border-radius: 28%; background: radial-gradient(120% 120% at 30% 20%, hsl(var(--agent-hue) 70% 28% / 0.9), hsl(var(--agent-hue) 60% 12%)); box-shadow: inset 0 0 0 1px hsl(var(--agent-hue) 80% 72% / 0.45); }
 .agent-avatar img { width: 100%; height: 100%; object-fit: cover; }

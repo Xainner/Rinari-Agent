@@ -263,6 +263,38 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('settings-agency')
 
+  // Colapsar la barra en la Agency: un riel de iconos como el de Rinari, sin texto partido.
+  const TOGGLE = '.app-topbar-leading .app-topbar-icon'
+  await click(TOGGLE)
+  await wait(`Boolean(document.querySelector('[data-testid="agency-sidebar"][data-rail="true"]'))`)
+  await settleAnimations()
+  const rail = await evaluate(`(() => {
+    const el = document.querySelector('[data-testid="agency-sidebar"][data-rail="true"]')
+    return {
+      switch: Boolean(el.querySelector('.agency-view-switch')),
+      text: [...el.querySelectorAll('p, .truncate')].map((node) => node.textContent.trim()).filter(Boolean),
+      agents: el.querySelectorAll('[data-testid="agency-agent-row"] .agent-avatar').length,
+      teams: el.querySelectorAll('[data-testid="agency-team-office"]').length,
+      overflow: el.scrollWidth - el.clientWidth,
+      labels: [...el.querySelectorAll('button')].every((button) => button.getAttribute('aria-label')),
+    }
+  })()`)
+  assert.equal(rail.switch, false, 'no Normal | Agencia pill in the rail')
+  assert.deepEqual(rail.text, [], `no text in the rail (${rail.text})`)
+  assert.equal(rail.agents, 2, 'one avatar per agent')
+  assert.equal(rail.teams, 1, 'one icon per team')
+  assert(rail.overflow <= 0, `nothing spills sideways (${rail.overflow})`)
+  assert(rail.labels, 'every rail button has its name as a label')
+  await screenshot('rail')
+  // Un avatar del riel abre el chat de su agente.
+  await click('[data-testid="agency-sidebar"][data-rail="true"] [data-testid="agency-agent-row"][aria-label^="Emails"]')
+  await wait(`document.querySelector('[data-testid="agency-agent-row"][aria-label^="Emails"]')?.getAttribute('aria-current') === 'page'`)
+  // Expandir: la barra completa vuelve.
+  await click(TOGGLE)
+  await wait(`Boolean(document.querySelector('[data-testid="agency-sidebar"]:not([data-rail]) .agency-view-switch'))`)
+  await settleAnimations()
+  await screenshot('rail-expanded')
+
   report({
     passed: [
       'card above Settings says how to start',
@@ -276,6 +308,7 @@ scenario(async () => {
       'tutorial once per profile',
       'Agency pages show the Agency in the top bar, not a conversation',
       'Agency settings: the agent memory is written and listed, accounts can be connected',
+      'collapsed Agency sidebar is an icon rail (avatars, teams, actions) and expands back',
       'stop everyone asks and pauses the agent rules',
       "new team with two agents, the first is the chief, posts out of Rinari's list",
       'an @mention wakes the agent in its post and its answer comes back to the office',

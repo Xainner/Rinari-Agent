@@ -846,6 +846,7 @@ function App() {
         )}
         sidebar={inAgency ? (
           <AgencySidebar
+            collapsed={sidebarCollapsed}
             agents={agency.agents}
             status={agency.status}
             activeAgentId={activeAgentId}

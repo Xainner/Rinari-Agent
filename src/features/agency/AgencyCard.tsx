@@ -47,7 +47,9 @@ export default function AgencyCard({ mode, status, onClick, compact = false }: A
         data-testid="agency-card"
         data-mode={mode}
       >
-        <img src={agencyIcon} alt="" className="agency-card-icon" draggable={false} />
+        {mode === 'leave'
+          ? <ArrowLeft size={17} aria-hidden="true" className="agency-card-back-icon" />
+          : <img src={agencyIcon} alt="" className="agency-card-icon" draggable={false} />}
         {needsYou && <span className="agency-card-dot" aria-hidden="true" />}
       </button>
     )

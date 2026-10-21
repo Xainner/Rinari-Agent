@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { ExternalLink, Folder, RotateCcw, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { ExternalLink, Folder, LoaderCircle, RotateCcw, ShieldCheck, ShieldAlert } from 'lucide-react'
 import {
   commandMessage,
   engineApi,
   type McpDecision,
   type McpHintKey,
+  type McpTest,
   type McpToolPermission,
   type McpToolPermissions,
 } from '../../services/engine'
@@ -17,6 +18,7 @@ import { SearchField } from '../../components/ui/SearchField'
 import { platform } from '../../platform'
 import { isOAuth, isRemote, type ConnectorCapabilities } from './connectorModel'
 import { ConnectorLogo } from './ConnectorLogo'
+import { TestResult } from './McpServerDialog'
 import { SegChoice } from './SegChoice'
 import { useConnectorEvents, type ConnectorLogEntry } from './connectorStore'
 import { AccountLine, PrimaryButton, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
@@ -29,10 +31,14 @@ type Tab = 'tools' | 'connection' | 'activity'
  * Bloquear (C5) y las anotaciones que el dueño puede corregir; la conexión,
  * la cuenta y el ámbito; y lo que esta ventana vio pasar.
  */
-export function ConnectorDetail({ item, caps, actions, onClose }: {
+export function ConnectorDetail({ item, caps, actions, testing = null, result, onClose }: {
   item: ConnectorItem | null
   caps: ConnectorCapabilities
   actions: ConnectorActions
+  /** El servidor que se está probando (uno a la vez en toda la pantalla). */
+  testing?: string | null
+  /** El último «Probar» de este conector. */
+  result?: McpTest
   onClose: () => void
 }) {
   const { t } = useI18n()
@@ -82,7 +88,7 @@ export function ConnectorDetail({ item, caps, actions, onClose }: {
             </div>
             <div role="tabpanel" id={`connector-panel-${tab}`} aria-labelledby={`connector-tab-${tab}`}>
               {tab === 'tools' && <ToolsPanel item={item} actions={actions} />}
-              {tab === 'connection' && <ConnectionPanel item={item} caps={caps} actions={actions} />}
+              {tab === 'connection' && <ConnectionPanel item={item} caps={caps} actions={actions} testing={testing} result={result} />}
               {tab === 'activity' && <ActivityPanel item={item} />}
             </div>
           </>
@@ -242,7 +248,7 @@ function ToolRow({ tool, busy, options, onDecision, onHint }: {
   )
 }
 
-function ConnectionPanel({ item, caps, actions }: { item: ConnectorItem; caps: ConnectorCapabilities; actions: ConnectorActions }) {
+function ConnectionPanel({ item, caps, actions, testing, result }: { item: ConnectorItem; caps: ConnectorCapabilities; actions: ConnectorActions; testing: string | null; result?: McpTest }) {
   const { t, lang } = useI18n()
   const { server, entry, auth } = item
   const remote = isRemote(server)
@@ -302,13 +308,16 @@ function ConnectionPanel({ item, caps, actions }: { item: ConnectorItem; caps: C
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => actions.test(item)}>{t('mcp.test')}</button>
+        <button type="button" className="btn btn-secondary btn-sm" disabled={testing !== null} aria-busy={testing === server.name || undefined} onClick={() => actions.test(item)} data-testid="connector-detail-test">
+          {testing === server.name && <LoaderCircle size={13} className="r-spin" />} {t('mcp.test')}
+        </button>
         {caps.remote && <button type="button" className="btn btn-ghost btn-sm" onClick={() => actions.edit(item)}>{t('mcp.edit')}</button>}
         {caps.oauth && isOAuth(server) && auth && (auth.signed_in || auth.reauth_required) && <button type="button" className="btn btn-ghost btn-sm" onClick={() => actions.signOut(item)}>{t('connectors.signOut')}</button>}
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => actions.toggle(item)}>{server.enabled ? t('connectors.action.disable') : t('connectors.action.enable')}</button>
         {entry?.docs_url && <button type="button" className="btn btn-quiet btn-sm" onClick={() => void platform().opener.openUrl(entry.docs_url).catch(() => undefined)}><ExternalLink size={13} /> {t('connectors.docs')}</button>}
         <button type="button" className="btn btn-quiet btn-sm text-[var(--danger)]" onClick={() => actions.remove(item)}>{t('connectors.remove')}</button>
       </div>
+      {result && testing !== server.name && <TestResult result={result} oauthSupported={caps.oauth} />}
     </div>
   )
 }

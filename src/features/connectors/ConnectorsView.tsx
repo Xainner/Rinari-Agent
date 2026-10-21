@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Download, Ellipsis, LoaderCircle, Plus, RotateCcw } from 'lucide-react'
-import { commandMessage, engineApi, type McpServer, type McpTest } from '../../services/engine'
+import { commandMessage, engineApi, isCommandError, type McpServer, type McpTest } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import {
@@ -75,13 +75,16 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
   }
 
   async function test(server: McpServer) {
+    if (testing) return
     setTesting(server.name)
     try {
       const result = await engineApi.mcpTest(server.name)
       setResults((current) => ({ ...current, [server.name]: result.test }))
       await reload()
     } catch (err) {
-      toast.error(commandMessage(err))
+      // El fallo se ve donde se pidió (tarjeta o detalle), con el mensaje en «Respuesta completa».
+      const failed: McpTest = { ok: false, code: isCommandError(err) ? err.code : undefined, message: commandMessage(err) }
+      setResults((current) => ({ ...current, [server.name]: failed }))
     } finally {
       setTesting(null)
     }
@@ -170,7 +173,7 @@ export default function ConnectorsView({ onChanged, engineCapabilities }: { onCh
 
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={() => void changed()} />
 
-      <ConnectorDetail item={detailItem} caps={caps} actions={actions} onClose={() => setDetail(null)} />
+      <ConnectorDetail item={detailItem} caps={caps} actions={actions} testing={testing} result={detail ? results[detail] : undefined} onClose={() => setDetail(null)} />
 
       <SignInDialog />
 

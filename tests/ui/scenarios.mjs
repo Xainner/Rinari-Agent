@@ -630,6 +630,37 @@ export const scenarios = {
       }, laneOf)
     },
   },
+  'chat-follow-tools': {
+    title: 'Chat: sigue el final cuando el turno pasa de escribir a usar herramientas',
+    phases: ['exercise'],
+    model: () => {
+      const long = paragraphs(40, (i) => `Párrafo ${i}: contenido largo para que el chat tenga desplazamiento antes del turno con herramientas.`)
+      const list = (done) => ({ items: [
+        { id: 'a', content: 'Capturar la gráfica', status: done > 0 ? 'completed' : 'in_progress' },
+        { id: 'b', content: 'Calibrar los ejes', status: done > 1 ? 'completed' : done === 1 ? 'in_progress' : 'pending' },
+        { id: 'c', content: 'Redibujar la proyección', status: done > 2 ? 'completed' : done === 2 ? 'in_progress' : 'pending' },
+      ] })
+      return startRoutedModel({
+        title: Array.from({ length: 6 }, () => ({ text: 'Seguir con herramientas' })),
+        main: (() => {
+        // Una conversación larga como la del dueño: 30 turnos antes, la mitad con herramientas.
+        const main = [
+          { text: long, streamDelayMs: 8, streamChunk: 48 },
+          { think: 'El dueño quiere el overlay adaptado al zoom. Primero capturo la gráfica para leer los ejes, luego calibro el mapeo de píxeles a precio y redibujo la proyección encima. '.repeat(3), streamDelayMs: 10, streamChunk: 18, tool: 'checklist.update', args: list(0), say: 'Voy a recalibrar: captura para leer los ejes con el zoom actual y redibujo pegado:' },
+          { think: 'El dueño quiere el overlay adaptado al zoom. Primero capturo la gráfica para leer los ejes, luego calibro el mapeo de píxeles a precio y redibujo la proyección encima. '.repeat(3), streamDelayMs: 10, streamChunk: 18, tool: 'capability.search', args: { query: 'browser screenshot', limit: 3 }, say: 'Busco la captura.' },
+          { think: 'El dueño quiere el overlay adaptado al zoom. Primero capturo la gráfica para leer los ejes, luego calibro el mapeo de píxeles a precio y redibujo la proyección encima. '.repeat(3), streamDelayMs: 10, streamChunk: 18, tool: 'checklist.update', args: list(1), say: 'Calibro.' },
+          { think: 'El dueño quiere el overlay adaptado al zoom. Primero capturo la gráfica para leer los ejes, luego calibro el mapeo de píxeles a precio y redibujo la proyección encima. '.repeat(3), streamDelayMs: 10, streamChunk: 18, tool: 'capability.search', args: { query: 'browser evaluate', limit: 3 }, say: 'Busco cómo dibujar.' },
+          { think: 'El dueño quiere el overlay adaptado al zoom. Primero capturo la gráfica para leer los ejes, luego calibro el mapeo de píxeles a precio y redibujo la proyección encima. '.repeat(3), streamDelayMs: 10, streamChunk: 18, tool: 'checklist.update', args: list(2), say: 'Redibujo.' },
+          { think: 'El dueño quiere el overlay adaptado al zoom. Primero capturo la gráfica para leer los ejes, luego calibro el mapeo de píxeles a precio y redibujo la proyección encima. '.repeat(3), streamDelayMs: 10, streamChunk: 18, tool: 'checklist.update', args: list(3), say: 'Reviso.' },
+          { text: paragraphs(12, (i) => `Resultado ${i}: la proyección quedó alineada con los ejes.`), streamDelayMs: 8, streamChunk: 48 },
+        ]
+        // Otra vez, con el panel lateral abierto (el chat más angosto).
+        main.push(...main.slice(1))
+        return main
+      })(),
+      }, laneOf)
+    },
+  },
   'chat-scroll-button': {
     title: 'Chat: flecha de bajar junto al composer',
     phases: ['exercise'],

@@ -532,11 +532,27 @@ Mismas ramas `feat/agency`, locales y sin subir. Vía 1 (D-28): cada recado es u
 
 **Prueba real con el modelo del dueño** (Xainner, qwen3.8-flash-next q4, sobre una copia del home; el home real no se tocó): un equipo «Canal de prueba» con *Guionista* (jefe) y *Revisora*, los dos de solo lectura.
 - El dueño escribió «@Guionista propón una idea… Cuando la tengas, pídele a @Revisora que la revise». Las dos menciones despertaron a las dos a la vez (D-1: una @mención siempre despierta, aunque el texto diga «cuando la tengas»): Revisora contestó a los 54 s que todavía no había nada. Guionista respondió con la idea a los 23 s; después se revisaron y corrigieron entre ellas hasta la versión 2, y el Engine paró la cadena en el salto 3 (`too_many_hops`), como se espera.
-- Revisora llamó a `board.list` y a `errand.review` sin que hubiera un recado suyo que revisar: el Engine lo rechazó (solo revisa quien pidió) y no pasó nada más.
+- Revisora llamó a `board.list` y a `errand.review` sin que hubiera un recado suyo que revisar: se rechazó y no pasó nada más. (Después se vio que, además, las herramientas de la Agency que escriben estaban bloqueadas para un agente de solo lectura; ver «D-29 y D-30» abajo.)
 - Un recado del dueño a Revisora con dos comprobaciones («Son 3 títulos», «Cada uno tiene menos de 8 palabras») corrió como un turno de su puesto y se entregó a los 27 s, cumpliendo la lista; se aceptó.
 - Gasto: 10 llamadas, 168 803 tokens de entrada y 4 530 de salida, unos 17 000 de entrada por turno (como en A1), con coste desconocido (el provider custom no tiene precio). Por eso importan los topes de 3 saltos y los presupuestos. Total: 250 s. No escribieron en la memoria del equipo. Los puestos quedaron fuera de la lista de Rinari.
 
-**Para la sesión de pulido de UI** (D-22, va en el PR): el aviso de «equipo creado» queda encima de «Enviar» de la oficina mientras dura; el chat de un puesto muestra como mensaje del dueño el encargo que arma el Engine («[Recado del equipo…]»); el resto de las pantallas de A2 entran funcionales y dentro del sistema, sin el detalle visual fino.
+**D-29 y D-30 (2026-10-20, noche):** hecho en la CLI (2d16b0a, 24257a1; capacidad `agency_team_awareness_v1`) y en la app (2c62ebb).
+- El prompt del puesto nombra su equipo, para qué es, el jefe y cada compañero con su oficio. Solo cambia si alguien entra o sale, así que la caché del prompt se mantiene.
+- `team.members` dice quién está libre, trabajando (y en qué) o esperando; con `teams: true`, también los otros equipos (nombre, para qué es, jefe y agentes).
+- `office.wait`: el modelo decide esperar a un compañero. El Engine aparca su mención, no publica su respuesta y lo despierta con lo que publique ese compañero en la misma cadena, sin un salto extra; si ya lo había publicado, al momento. La espera vence a los 30 min, o se cancela si alguno sale, y se avisa (`wait_expired`, `wait_cancelled`). Las esperas viven en memoria: un reinicio del Engine las olvida, como las menciones en cola.
+- El encargo de un recado lleva lo último de la oficina.
+- Chat directo (D-30): `teams.list`, `errand.create` a un equipo (lo recibe su jefe) y `errand.review`. Al entregarse, el Engine despierta al agente en su chat directo con el resultado.
+- Las herramientas de la Agency se cargan siempre donde existen; antes estaban diferidas y el modelo llegaba a ellas por `tool.call`. La lista de la oficina dice que @ despierta y que el agente decide si espera.
+
+**Hallazgo de la prueba real:** las herramientas de la Agency que escriben estaban clasificadas `state.write`, que el perfil de solo lectura niega. Un agente de solo lectura no podía esperar, dejar un recado ni revisarlo. Las pruebas unitarias no lo vieron porque llamaban directo a las herramientas. Ahora son `state.mutate` (contabilidad propia, sin efecto fuera, como la checklist), permitida en todo perfil; cada agente despertado trabaja con sus propios permisos (24257a1, con prueba).
+
+**Prueba real de D-29 y D-30** (mismo modelo, copia nueva del home, agentes de solo lectura):
+- El mismo mensaje de antes («@Guionista propón… cuando la tengas, pídele a @Revisora que la revise»): Revisora llamó a `office.wait("Guionista")`, la oficina mostró «Espera a Guionista.» y no publicó nada más. Guionista publicó la idea a los 84 s; Revisora despertó y la revisó; Guionista la corrigió y el Engine paró la cadena en el salto 3.
+- Emails, sin equipo, recibió en su chat directo «pásaselo al equipo Canal de prueba»: dejó el recado (lo tomó Guionista, la jefa), se entregó a los 28 s, Emails despertó en su chat con la entrega, contó las palabras (6, 6 y 7) y la aceptó con `errand.review`.
+- 13 llamadas, 220 005 tokens en total, coste desconocido; 244 s.
+- Fuera de la Agency: en el chat directo, el harness pidió una vez que el modelo dijera qué iba a hacer antes de llamar a una herramienta (regla general de Rinari), lo que costó una llamada más.
+
+ queda encima de «Enviar» de la oficina mientras dura; el chat de un puesto muestra como mensaje del dueño el encargo que arma el Engine («[Recado del equipo…]»); el resto de las pantallas de A2 entran funcionales y dentro del sistema, sin el detalle visual fino.
 
 **Falta:**
 - Fusionar primero la CLI y fijar su commit en `engine-manifest.json` (no se tocó).

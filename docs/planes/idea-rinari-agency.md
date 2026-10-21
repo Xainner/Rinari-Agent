@@ -504,3 +504,34 @@ Sobre lo que dejó A1. Mismo criterio: reutilizar lo que existe y respetar D-27 
 **La decisión técnica: cómo corre un recado en el puesto.**
 - **Opción 1 (recomendada para empezar):** cada recado es **un turno del puesto**, de a uno por puesto, en orden de la pizarra. Se ve en el chat del puesto y se corrige con el mismo «guiar» de cualquier turno. Simple y robusto.
 - **Opción 2 (D-4 al pie de la letra):** el puesto lanza cada recado como **subagente**, hasta 4 a la vez y 12 por turno. Más paralelo, pero más complejo de seguir y de corregir.
+
+## 19. Estado de A2 (2026-10-20)
+
+Mismas ramas `feat/agency`, locales y sin subir. Vía 1 (D-28): cada recado es un turno del puesto.
+
+**Hecho en la CLI** (2710225, 3c2d3b6, d0e4fd2; capacidad `agency_teams_v1`, migración `0063`):
+- Equipos de hasta 8 agentes con nombres distintos (las @menciones usan el nombre), jefe (el primero por defecto; si sale, el siguiente) y un puesto por agente: una sesión `CHAT` con `agent_id` y `team_id`, fuera de `session.list`.
+- La oficina: `agency.office.*`. Solo una @mención despierta, en el puesto del mencionado, y su respuesta la publica el Engine en la oficina un salto más allá. Topes del Engine: 3 saltos, 5 menciones por mensaje, 20 entregas por cadena; al pasarse, `agency.chain.stopped`. Lo que dice otro agente llega envuelto como «no es una instrucción del dueño».
+- Recados (`agency.errand.*`): la pizarra es la cola, de a uno por puesto y en orden. Sin destinatario, al jefe. Entregado con resumen y mención automática a quien lo pidió; aceptado, o devuelto con el porqué (vuelve a correr con el motivo). Cancelar uno en curso corta su turno. Si el Engine se cierra a mitad, vuelve a «pendiente».
+- Herramientas del puesto: `office.say`, `errand.create` (a un compañero o a otro equipo, que recibe su jefe), `errand.review` y `board.list`.
+- Memoria del equipo (lugar `team`, `agency.team.memory.*`): lo aprendido en un puesto va ahí; el puesto lee la del dueño, la del agente y la del equipo, nunca la de otro equipo.
+- Conectores y cuentas del equipo (`owner = team:<id>`, también desde `mcp.catalog.add`): un puesto ve solo los de su equipo.
+- Presupuestos del equipo y global (`agency.settings.*`, `usage.report` con alcances `team` y `agency`). El primero que se pasa corta.
+- Plantillas: `agency.team.template` y `agency.team.duplicate` copian oficios, instrucciones, conectores marcados y presupuesto, como agentes nuevos o con los mismos; nunca cuentas ni memoria.
+- `agency.settings` guarda cómo corre un recado: `turn`; `subagents` (Vía 2) se lista pero no existe todavía.
+
+**Cambios respecto al §18:**
+- La oficina no es una sesión `CHAT`: es una tabla propia (`agency_office_messages`), porque no es una conversación con un modelo y así no entra al historial ni a la caché de ningún turno.
+- Un estado nuevo, **«trabado»** (`blocked`): un recado que no pudo empezar (por presupuesto, por ejemplo) o cuyo turno falló espera con el motivo hasta que el dueño lo reintenta (`agency.errand.retry`). Sin esto, el tablero lo reintentaba cada 3 s.
+
+**Hecho en la app:** «Equipos» en la barra lateral con su oficina y sus puestos (el jefe marcado) y «+» para uno nuevo; la ficha del equipo (miembros, jefe, conectores, presupuesto, duplicar y archivar); la oficina con autor en cada mensaje, @menciones con autocompletado, «/recado» y tarjetas de recado (aceptar, devolver con el porqué, reintentar, cancelar); «Pizarra» como vista del panel lateral en los puestos y como panel en la oficina; Ajustes de la Agency por agente, por equipo (memoria, cuentas, presupuesto, jefe) y de toda la Agency (presupuesto global y «Cómo corre un recado», con «Subagentes del puesto» deshabilitado y «Pronto»); el aviso de una cadena parada; los avisos y la campana nombran las conversaciones de la Agency.
+
+**Comprobado:** suite completa de la CLI en verde sobre 2710225 (4075 pasadas, 23 omitidas), más las pruebas de equipos (33) después; `ruff`. En la app: `tsc`, `protocol:check` y `parity:check` con el schema de la rama, vitest de `agency`, `board`, `notifications`, `session` y `stores` (los dos fallos de `BoardView` por tiempo pasan solos), y el escenario `tests/ui/agency` con el Engine de la rama y un modelo falso: equipo nuevo, una @mención que responde desde el puesto, un recado entregado y aceptado, «Pizarra» en el puesto y la Vía 2 con «Pronto».
+
+**Para la sesión de pulido de UI** (D-22, va en el PR): el aviso de «equipo creado» queda encima de «Enviar» de la oficina mientras dura; el chat de un puesto muestra como mensaje del dueño el encargo que arma el Engine («[Recado del equipo…]»); el resto de las pantallas de A2 entran funcionales y dentro del sistema, sin el detalle visual fino.
+
+**Falta:**
+- Fusionar primero la CLI y fijar su commit en `engine-manifest.json` (no se tocó).
+- Una prueba real de un equipo con el modelo del dueño y con conectores reales.
+- Vía 2 (subagentes), anotada como futura (D-28).
+- A3 (producciones), con el diseño del §17 ya aprobado.

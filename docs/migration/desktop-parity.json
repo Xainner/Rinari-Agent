@@ -93,6 +93,87 @@
       ]
     },
     {
+      "command": "agency_errand_cancel",
+      "kind": "engine",
+      "method": "agency.errand.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_create",
+      "kind": "engine",
+      "method": "agency.errand.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_list",
+      "kind": "engine",
+      "method": "agency.errand.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_retry",
+      "kind": "engine",
+      "method": "agency.errand.retry",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_review",
+      "kind": "engine",
+      "method": "agency.errand.review",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_office_list",
+      "kind": "engine",
+      "method": "agency.office.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_office_post",
+      "kind": "engine",
+      "method": "agency.office.post",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_settings_get",
+      "kind": "engine",
+      "method": "agency.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_settings_set",
+      "kind": "engine",
+      "method": "agency.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "agency_status",
       "kind": "engine",
       "method": "agency.status",
@@ -107,6 +188,101 @@
       "method": "agency.stop_all",
       "manual": false,
       "callers": []
+    },
+    {
+      "command": "agency_team_archive",
+      "kind": "engine",
+      "method": "agency.team.archive",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_create",
+      "kind": "engine",
+      "method": "agency.team.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_duplicate",
+      "kind": "engine",
+      "method": "agency.team.duplicate",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_get",
+      "kind": "engine",
+      "method": "agency.team.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_join",
+      "kind": "engine",
+      "method": "agency.team.join",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_leave",
+      "kind": "engine",
+      "method": "agency.team.leave",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_list",
+      "kind": "engine",
+      "method": "agency.team.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_memory_add",
+      "kind": "engine",
+      "method": "agency.team.memory.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_memory_list",
+      "kind": "engine",
+      "method": "agency.team.memory.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_template",
+      "kind": "engine",
+      "method": "agency.team.template",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_update",
+      "kind": "engine",
+      "method": "agency.team.update",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "agent_config_get",
@@ -2587,10 +2763,10 @@
     }
   ],
   "summary": {
-    "commands": 309,
-    "engine_backed": 303,
+    "commands": 329,
+    "engine_backed": 323,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 102
+    "without_callers": 104
   }
 }

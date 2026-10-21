@@ -7833,6 +7833,594 @@
       "host_effects": []
     },
     {
+      "command": "agency_team_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.list",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_get",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.get",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.create",
+      "engine_params": [
+        {
+          "key": "team",
+          "from": "team",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_update",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "patch",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.update",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "patch",
+          "from": "patch",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_archive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.archive",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_join",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.join",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_leave",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.leave",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_template",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.template",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_duplicate",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "new_agents",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.duplicate",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "new_agents",
+          "from": "new_agents",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_memory_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.memory.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_memory_add",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.memory.add",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "topic",
+          "from": "topic",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": false
+        },
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_office_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.office.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_office_post",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.office.post",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "errand",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.create",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "errand",
+          "from": "errand",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_review",
+      "module": "agency",
+      "args": [
+        {
+          "name": "errand_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "accepted",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.review",
+      "engine_params": [
+        {
+          "key": "errand_id",
+          "from": "errand_id",
+          "optional": false
+        },
+        {
+          "key": "accepted",
+          "from": "accepted",
+          "optional": false
+        },
+        {
+          "key": "reason",
+          "from": "reason",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_cancel",
+      "module": "agency",
+      "args": [
+        {
+          "name": "errand_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.cancel",
+      "engine_params": [
+        {
+          "key": "errand_id",
+          "from": "errand_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_retry",
+      "module": "agency",
+      "args": [
+        {
+          "name": "errand_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.retry",
+      "engine_params": [
+        {
+          "key": "errand_id",
+          "from": "errand_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_settings_get",
+      "module": "agency",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_settings_set",
+      "module": "agency",
+      "args": [
+        {
+          "name": "budget",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "errand_mode",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.settings.set",
+      "engine_params": [
+        {
+          "key": "budget",
+          "from": "budget",
+          "optional": true
+        },
+        {
+          "key": "errand_mode",
+          "from": "errand_mode",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "documents_capabilities_get",
       "module": "desktop",
       "args": [

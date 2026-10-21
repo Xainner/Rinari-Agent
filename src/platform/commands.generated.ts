@@ -12,8 +12,28 @@ export type DesktopCommand =
   | "agency_agent_memory_add"
   | "agency_agent_memory_list"
   | "agency_agent_update"
+  | "agency_errand_cancel"
+  | "agency_errand_create"
+  | "agency_errand_list"
+  | "agency_errand_retry"
+  | "agency_errand_review"
+  | "agency_office_list"
+  | "agency_office_post"
+  | "agency_settings_get"
+  | "agency_settings_set"
   | "agency_status"
   | "agency_stop_all"
+  | "agency_team_archive"
+  | "agency_team_create"
+  | "agency_team_duplicate"
+  | "agency_team_get"
+  | "agency_team_join"
+  | "agency_team_leave"
+  | "agency_team_list"
+  | "agency_team_memory_add"
+  | "agency_team_memory_list"
+  | "agency_team_template"
+  | "agency_team_update"
   | "agent_config_get"
   | "agent_config_set"
   | "agent_list"
@@ -323,8 +343,28 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_agent_memory_add",
   "agency_agent_memory_list",
   "agency_agent_update",
+  "agency_errand_cancel",
+  "agency_errand_create",
+  "agency_errand_list",
+  "agency_errand_retry",
+  "agency_errand_review",
+  "agency_office_list",
+  "agency_office_post",
+  "agency_settings_get",
+  "agency_settings_set",
   "agency_status",
   "agency_stop_all",
+  "agency_team_archive",
+  "agency_team_create",
+  "agency_team_duplicate",
+  "agency_team_get",
+  "agency_team_join",
+  "agency_team_leave",
+  "agency_team_list",
+  "agency_team_memory_add",
+  "agency_team_memory_list",
+  "agency_team_template",
+  "agency_team_update",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -654,8 +694,28 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_agent_memory_add",
   "agency_agent_memory_list",
   "agency_agent_update",
+  "agency_errand_cancel",
+  "agency_errand_create",
+  "agency_errand_list",
+  "agency_errand_retry",
+  "agency_errand_review",
+  "agency_office_list",
+  "agency_office_post",
+  "agency_settings_get",
+  "agency_settings_set",
   "agency_status",
   "agency_stop_all",
+  "agency_team_archive",
+  "agency_team_create",
+  "agency_team_duplicate",
+  "agency_team_get",
+  "agency_team_join",
+  "agency_team_leave",
+  "agency_team_list",
+  "agency_team_memory_add",
+  "agency_team_memory_list",
+  "agency_team_template",
+  "agency_team_update",
   "agent_config_get",
   "agent_config_set",
   "agent_list",

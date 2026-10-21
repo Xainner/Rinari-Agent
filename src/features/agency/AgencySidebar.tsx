@@ -1,10 +1,10 @@
-import { CircleHelp, MessageSquare, Building2, OctagonX, Settings2, UserPlus } from 'lucide-react'
+import { CircleHelp, MessageSquare, Building2, OctagonX, Plus, Settings2, UserPlus, UsersRound } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
 import agencyIcon from '../../assets/agency/agency-icon.webp'
 import AgencyCard from './AgencyCard'
-import type { AgencyAgent, AgencyStatus } from './types'
+import type { AgencyAgent, AgencyStatus, AgencyTeam } from './types'
 
 interface AgencySidebarProps {
   agents: AgencyAgent[]
@@ -21,11 +21,18 @@ interface AgencySidebarProps {
   /** «Detener a todos» (sección 8); ausente sin `agency_stop_all_v1`. */
   onStopAll?: () => void
   settingsOpen?: boolean
+  /** A2: los equipos; sin `onNewTeam` (sin `agency_teams_v1`) se dice que llegan pronto. */
+  teams?: AgencyTeam[]
+  /** Lo que se ve de un equipo: su oficina o un puesto. */
+  activeTeam?: { teamId: string; agentId: string | null } | null
+  onOpenOffice?: (team: AgencyTeam) => void
+  onOpenPost?: (team: AgencyTeam, agentId: string) => void
+  onNewTeam?: () => void
 }
 
 /**
  * La barra lateral de la Agency (D-15): «Agentes» con todos (cada uno abre
- * su chat directo) y «Equipos», que llegan en A2. El selector Normal |
+ * su chat directo) y «Equipos» (A2), cada uno con su oficina y sus puestos. El selector Normal |
  * Agencia está desde el principio, con Agencia deshabilitada y «Pronto»
  * hasta que exista la oficina (D-21).
  */
@@ -41,10 +48,16 @@ export default function AgencySidebar({
   onSettings,
   onStopAll,
   settingsOpen = false,
+  teams = [],
+  activeTeam = null,
+  onOpenOffice,
+  onOpenPost,
+  onNewTeam,
 }: AgencySidebarProps) {
   const { t } = useI18n()
   const working = new Set(status?.agent_ids.working ?? [])
   const waiting = new Set(status?.agent_ids.needs_you ?? [])
+  const nameOf = new Map(agents.map((agent) => [agent.id, agent.name]))
 
   return (
     <div className="flex h-full min-h-0 flex-col px-3 pt-3" data-testid="agency-sidebar">
@@ -113,8 +126,67 @@ export default function AgencySidebar({
           </ul>
         )}
 
-        <p className="sidebar-heading mb-1 mt-5 px-2">{t('agency.sidebar.teams')}</p>
-        <p className="px-2 text-[12px] leading-relaxed text-[var(--text-subtle)]">{t('agency.sidebar.teamsSoon')}</p>
+        <div className="mb-1 mt-5 flex items-center justify-between gap-2 px-2">
+          <p className="sidebar-heading">{t('agency.sidebar.teams')}</p>
+          {onNewTeam && (
+            <button type="button" className="icon-btn agency-new-team" onClick={onNewTeam} aria-label={t('agency.sidebar.newTeam')} title={t('agency.sidebar.newTeam')} data-testid="agency-new-team">
+              <Plus size={14} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {!onNewTeam ? (
+          <p className="px-2 text-[12px] leading-relaxed text-[var(--text-subtle)]">{t('agency.sidebar.teamsSoon')}</p>
+        ) : teams.length === 0 ? (
+          <p className="px-2 py-1 text-[12px] text-[var(--text-subtle)]">{t('agency.sidebar.noTeams')}</p>
+        ) : (
+          <ul className="grid gap-2" aria-label={t('agency.sidebar.teams')}>
+            {teams.map((team) => {
+              const officeActive = activeTeam?.teamId === team.id && activeTeam.agentId === null
+              return (
+                <li key={team.id} data-testid="agency-team">
+                  <button
+                    type="button"
+                    className={cn('agency-agent-row', officeActive && 'is-active')}
+                    onClick={() => onOpenOffice?.(team)}
+                    aria-current={officeActive ? 'page' : undefined}
+                    aria-label={t('agency.sidebar.office', { name: team.name })}
+                    data-testid="agency-team-office"
+                  >
+                    <span className="agency-team-mark" aria-hidden="true"><UsersRound size={14} /></span>
+                    <span className="min-w-0 flex-1 text-left">
+                      <span className="block truncate">{team.name}</span>
+                      <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('agency.sidebar.officeLabel')}</span>
+                    </span>
+                  </button>
+                  {team.posts.length > 0 && (
+                    <ul className="agency-posts" aria-label={t('agency.sidebar.posts', { name: team.name })}>
+                      {team.posts.map((post) => {
+                        const active = activeTeam?.teamId === team.id && activeTeam.agentId === post.agent_id
+                        const name = nameOf.get(post.agent_id) ?? post.agent_id
+                        return (
+                          <li key={post.agent_id}>
+                            <button
+                              type="button"
+                              className={cn('agency-post-row', active && 'is-active')}
+                              onClick={() => onOpenPost?.(team, post.agent_id)}
+                              aria-current={active ? 'page' : undefined}
+                              aria-label={t('agency.sidebar.post', { name, team: team.name })}
+                              data-testid="agency-post-row"
+                            >
+                              <img src={agencyIcon} alt="" className="agency-post-avatar" draggable={false} />
+                              <span className="min-w-0 flex-1 truncate text-left">{name}</span>
+                              {team.chief_agent_id === post.agent_id && <span className="agency-chief" title={t('agency.team.chief')}>{t('agency.team.chiefShort')}</span>}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </div>
 
       {onStopAll && (agents.length > 0) && (

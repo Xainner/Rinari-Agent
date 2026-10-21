@@ -77,7 +77,9 @@ import AgencyHome from './features/agency/AgencyHome'
 import AgentForm from './features/agency/AgentForm'
 import AgencyTutorial from './features/agency/AgencyTutorial'
 import AgencySettings from './features/agency/AgencySettings'
-import type { AgencyAgent } from './features/agency/types'
+import TeamForm from './features/agency/TeamForm'
+import OfficeView from './features/agency/OfficeView'
+import type { AgencyAgent, AgencyTeam } from './features/agency/types'
 import { useProfileStore } from './features/profiles/profileStore'
 import ReconnectNotifier from './features/connectors/ReconnectNotifier'
 
@@ -449,6 +451,8 @@ function App() {
   }, [pendingBySession])
   const boardLabelFor = (id: string) => {
     const record = session.sessionsById[id]
+    // Las conversaciones de la Agency no están en la lista de Rinari.
+    if (!record && useAgencyStore.getState().sessionLabels[id]) return useAgencyStore.getState().sessionLabels[id]
     return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
   }
   const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
@@ -462,7 +466,7 @@ function App() {
   // Ajustes ni en las demás pantallas sin sesión (#47).
   // Rinari Agency: en el chat directo de un agente los botones están desde el
   // principio, aunque esté vacío («Reglas» importa antes del primer mensaje).
-  const activeIsAgentChat = useAgencyStore((s) => Boolean(session.activeSession && s.agentSessions[session.activeSession]))
+  const activeIsAgentChat = useAgencyStore((s) => Boolean(session.activeSession && (s.agentSessions[session.activeSession] || s.postSessions[session.activeSession])))
   const dockButtonsSessionId = view === 'board' ? focusedBoardPane?.sessionId || null : view === 'chat' && (activeHasContent || activeIsAgentChat) ? session.activeSession || null : null
   /**
    * Botón de una vista del panel lateral (barra de título, atajo, menú o
@@ -522,7 +526,9 @@ function App() {
   const agencyEnabled = session.status?.capabilities.agency_agents_v1 === true
   const agencySpace = useAgencyStore((s) => s.space)
   const agencyPage = useAgencyStore((s) => s.page)
-  const agency = useAgency(agencyEnabled)
+  // A2: equipos, oficinas y pizarra (agency_teams_v1).
+  const teamsEnabled = agencyEnabled && session.status?.capabilities.agency_teams_v1 === true
+  const agency = useAgency(agencyEnabled, teamsEnabled)
   const activeProfileId = useProfileStore((s) => s.activeId)
   const [agencyTutorialOpen, setAgencyTutorialOpen] = useState(false)
   // La conversación de Rinari que estaba abierta al entrar: se recupera al salir.
@@ -546,9 +552,22 @@ function App() {
     if (agent.session_id) void session.selectSession(agent.session_id)
     goChat()
   }
+  const openOffice = (team: AgencyTeam) => {
+    useAgencyStore.getState().openOffice(team.id)
+    goChat()
+  }
+  const openPost = (team: AgencyTeam, agentId: string) => {
+    const post = team.posts.find((item) => item.agent_id === agentId)
+    useAgencyStore.getState().openPost(team.id, agentId)
+    if (post) void session.selectSession(post.session_id)
+    goChat()
+  }
   const activeAgentId = agencyPage.kind === 'agent' || agencyPage.kind === 'edit-agent' ? agencyPage.agentId : null
   const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
-  const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent'
+  const activeTeamId = agencyPage.kind === 'office' || agencyPage.kind === 'post' || agencyPage.kind === 'edit-team' ? agencyPage.teamId : null
+  const activeTeam = activeTeamId ? agency.teams.find((item) => item.id === activeTeamId) ?? null : null
+  // Un puesto es una conversación como el chat directo; la oficina y las fichas no.
+  const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent' && agencyPage.kind !== 'post'
   const stopAllAgents = async () => {
     const ok = await confirm({
       title: translate(lang, 'agency.stopAll.title'),
@@ -565,6 +584,28 @@ function App() {
       toast.error(commandMessage(error))
     }
   }
+  // D-2: una cadena de la oficina que el Engine paró se dice, con el porqué.
+  useEffect(() => {
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      if (event.event !== 'agency.chain.stopped') return
+      const payload = event.payload as { reason?: string; detail?: string } | undefined
+      const reason = payload?.reason ?? 'too_many_hops'
+      const known = ['too_many_hops', 'too_many_mentions', 'too_many_deliveries', 'could_not_start'].includes(reason)
+      toast.warning(translate(lang, 'agency.chain.stopped'), {
+        description: [translate(lang, `agency.chain.${known ? reason : 'too_many_hops'}` as I18nKey), payload?.detail].filter(Boolean).join(' · '),
+        duration: 15_000,
+      })
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [lang])
   // D-11: una clave pegada en el chat de un agente ya salió; se dice y se recomienda cambiarla.
   useEffect(() => {
     let stop: (() => void) | undefined
@@ -582,6 +623,7 @@ function App() {
     }
   }, [lang])
   const agentSessions = useAgencyStore((s) => s.agentSessions)
+  const postSessions = useAgencyStore((s) => s.postSessions)
   // «Revisar» en el aviso de una regla propuesta: el chat del agente con «Reglas» abierta.
   useEffect(() => {
     const review = (event: Event) => {
@@ -784,9 +826,14 @@ function App() {
             onNewAgent={() => { useAgencyStore.getState().newAgent(); goChat() }}
             onTutorial={() => setAgencyTutorialOpen(true)}
             onLeave={leaveAgency}
-            onSettings={() => { useAgencyStore.getState().openSettings(activeAgentId); goChat() }}
+            onSettings={() => { useAgencyStore.getState().openSettings(activeAgentId, activeTeamId); goChat() }}
             settingsOpen={agencyPage.kind === 'settings'}
             onStopAll={session.status?.capabilities.agency_stop_all_v1 === true ? () => void stopAllAgents() : undefined}
+            teams={agency.teams}
+            activeTeam={agencyPage.kind === 'office' ? { teamId: agencyPage.teamId, agentId: null } : agencyPage.kind === 'post' ? { teamId: agencyPage.teamId, agentId: agencyPage.agentId } : null}
+            onOpenOffice={openOffice}
+            onOpenPost={openPost}
+            onNewTeam={teamsEnabled ? () => { useAgencyStore.getState().newTeam(); goChat() } : undefined}
           />
         ) : (
           <AppSidebar
@@ -896,7 +943,7 @@ function App() {
                 key={dockButtonsSessionId}
                 sessionId={dockButtonsSessionId}
                 terminalEnabled={session.status?.capabilities.desktop_terminal_v1 === true}
-                extraViews={agentSessions[dockButtonsSessionId] ? ['rules'] : []}
+                extraViews={agentSessions[dockButtonsSessionId] ? ['rules'] : postSessions[dockButtonsSessionId] ? ['board'] : []}
               />
             ) : null}
           />
@@ -917,7 +964,37 @@ function App() {
           />
         )}
         {agencyMain && agencyPage.kind === 'settings' && (
-          <AgencySettings agents={agency.agents} initialAgentId={agencyPage.agentId} />
+          <AgencySettings
+            agents={agency.agents}
+            teams={agency.teams}
+            teamsEnabled={teamsEnabled}
+            initialAgentId={agencyPage.agentId}
+            initialTeamId={agencyPage.teamId ?? null}
+          />
+        )}
+        {agencyMain && agencyPage.kind === 'office' && activeTeam && (
+          <OfficeView
+            key={activeTeam.id}
+            team={activeTeam}
+            agents={agency.agents}
+            onEditTeam={(team) => useAgencyStore.getState().editTeam(team.id)}
+          />
+        )}
+        {agencyMain && (agencyPage.kind === 'new-team' || agencyPage.kind === 'edit-team') && (
+          <TeamForm
+            key={agencyPage.kind === 'edit-team' ? agencyPage.teamId : 'new-team'}
+            agents={agency.agents}
+            team={agencyPage.kind === 'edit-team' ? activeTeam : null}
+            onSaved={(team) => {
+              void agency.reload()
+              useAgencyStore.getState().openOffice(team.id)
+            }}
+            onArchived={() => {
+              void agency.reload()
+              useAgencyStore.getState().goHome()
+            }}
+            onCancel={() => (activeTeam ? useAgencyStore.getState().openOffice(activeTeam.id) : useAgencyStore.getState().goHome())}
+          />
         )}
         {agencyMain && (agencyPage.kind === 'new-agent' || agencyPage.kind === 'edit-agent') && (
           <AgentForm

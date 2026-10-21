@@ -16,7 +16,20 @@ import type {
 } from '../types/protocol.generated'
 import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
 import type { AttachmentRef, Language } from '../types'
-import type { AgencyAgent, AgencyAgentInput, AgencyStatus } from '../features/agency/types'
+import type {
+  AgencyAgent,
+  AgencyAgentInput,
+  AgencySettingsData,
+  AgencyStatus,
+  AgencyTeam,
+  AgencyTeamInput,
+  AgentBudget,
+  Errand,
+  ErrandInput,
+  ErrandMode,
+  OfficeMessage,
+  TeamTemplate,
+} from '../features/agency/types'
 import type { MemoryRecord } from '../features/memory/types'
 
 import { platform, type Unsubscribe } from '../platform'
@@ -1716,6 +1729,60 @@ export const engineApi = {
   /** «Créalo con Rinari»: responde con un job; el borrador llega como `agency.draft.ready`. */
   agencyDraft: (description: string) =>
     platform().command<{ status: 'started'; job_id: string }>('agency_agent_draft', { description }),
+  // Rinari Agency A2 (agency_teams_v1): equipos, oficina, pizarra y ajustes.
+  agencyTeams: () =>
+    platform().command<{ teams: AgencyTeam[] }>('agency_team_list', { rinari_profile_id: 'active' }),
+  agencyTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; errands: Errand[]; messages: OfficeMessage[] }>('agency_team_get', { team_id: teamId }),
+  agencyCreateTeam: (team: AgencyTeamInput) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_create', {
+      team: team as unknown as Record<string, unknown>,
+      rinari_profile_id: null,
+    }),
+  agencyUpdateTeam: (teamId: string, patch: Partial<AgencyTeamInput>) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_update', {
+      team_id: teamId,
+      patch: patch as unknown as Record<string, unknown>,
+    }),
+  agencyArchiveTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_archive', { team_id: teamId }),
+  agencyJoinTeam: (teamId: string, agentId: string) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_join', { team_id: teamId, agent_id: agentId }),
+  agencyLeaveTeam: (teamId: string, agentId: string) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_leave', { team_id: teamId, agent_id: agentId }),
+  agencyTeamTemplate: (teamId: string) =>
+    platform().command<{ template: TeamTemplate }>('agency_team_template', { team_id: teamId }),
+  /** Plantilla (10.4): copia oficios, conectores marcados y presupuesto; nunca cuentas ni memoria. */
+  agencyDuplicateTeam: (teamId: string, name: string, newAgents = true) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_duplicate', { team_id: teamId, name, new_agents: newAgents }),
+  agencyTeamMemory: (teamId: string) =>
+    platform().command<{ records: MemoryRecord[]; count: number }>('agency_team_memory_list', { team_id: teamId }),
+  agencyTeamRemember: (teamId: string, topic: string, text: string) =>
+    platform().command<{ record: MemoryRecord }>('agency_team_memory_add', { team_id: teamId, topic, text, kind: null }),
+  agencyOffice: (teamId: string) =>
+    platform().command<{ messages: OfficeMessage[] }>('agency_office_list', { team_id: teamId }),
+  /** Solo una @mención despierta a un agente (D-1). */
+  agencyOfficePost: (teamId: string, text: string) =>
+    platform().command<{ message: OfficeMessage }>('agency_office_post', { team_id: teamId, text }),
+  agencyCreateErrand: (teamId: string, errand: ErrandInput) =>
+    platform().command<{ errand: Errand }>('agency_errand_create', {
+      team_id: teamId,
+      errand: errand as unknown as Record<string, unknown>,
+    }),
+  agencyErrands: (teamId: string) =>
+    platform().command<{ errands: Errand[] }>('agency_errand_list', { team_id: teamId }),
+  agencyReviewErrand: (errandId: string, accepted: boolean, reason?: string) =>
+    platform().command<{ errand: Errand }>('agency_errand_review', { errand_id: errandId, accepted, reason: reason ?? null }),
+  agencyCancelErrand: (errandId: string) =>
+    platform().command<{ errand: Errand }>('agency_errand_cancel', { errand_id: errandId }),
+  agencyRetryErrand: (errandId: string) =>
+    platform().command<{ errand: Errand }>('agency_errand_retry', { errand_id: errandId }),
+  agencySettings: () => platform().command<AgencySettingsData>('agency_settings_get'),
+  agencySetSettings: (patch: { budget?: AgentBudget; errand_mode?: ErrandMode }) =>
+    platform().command<AgencySettingsData>('agency_settings_set', {
+      budget: patch.budget ?? null,
+      errand_mode: patch.errand_mode ?? null,
+    }),
   scheduleList: () => platform().command<{ tasks: ScheduledTask[]; now: number }>('schedule_list'),
   scheduleGet: (taskId: string) =>
     platform().command<{ task: ScheduledTask; runs: ScheduledRun[] }>('schedule_get', { task_id: taskId }),

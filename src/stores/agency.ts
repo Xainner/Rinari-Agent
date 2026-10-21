@@ -16,8 +16,14 @@ export type AgencyPage =
   | { kind: 'agent'; agentId: string }
   | { kind: 'new-agent' }
   | { kind: 'edit-agent'; agentId: string }
-  /** Ajustes de la Agency (D-24), con el agente que estaba abierto si había uno. */
-  | { kind: 'settings'; agentId: string | null }
+  /** Ajustes de la Agency (D-24), con el agente o el equipo que estaba abierto si había uno. */
+  | { kind: 'settings'; agentId: string | null; teamId?: string | null }
+  /** A2: la oficina de un equipo (su chat de grupo, no una conversación con un modelo). */
+  | { kind: 'office'; teamId: string }
+  /** A2: el puesto de un agente en un equipo, su conversación ahí. */
+  | { kind: 'post'; teamId: string; agentId: string }
+  | { kind: 'new-team' }
+  | { kind: 'edit-team'; teamId: string }
 
 interface AgencyState {
   space: AgencySpace
@@ -27,7 +33,11 @@ interface AgencyState {
   openAgent: (agentId: string) => void
   newAgent: () => void
   editAgent: (agentId: string) => void
-  openSettings: (agentId?: string | null) => void
+  openSettings: (agentId?: string | null, teamId?: string | null) => void
+  openOffice: (teamId: string) => void
+  openPost: (teamId: string, agentId: string) => void
+  newTeam: () => void
+  editTeam: (teamId: string) => void
   goHome: () => void
   /**
    * Reglas que un agente propuso en su chat y esperan al dueño (D-18): una
@@ -40,6 +50,16 @@ interface AgencyState {
   /** De quién es cada chat directo: sesión → agente (para «Reglas» en el panel lateral). */
   agentSessions: Record<string, string>
   setAgentSessions: (agents: { id: string; session_id: string | null }[]) => void
+  /** De quién es cada puesto: sesión → equipo y agente (para «Pizarra» en el panel lateral). */
+  postSessions: Record<string, { teamId: string; agentId: string }>
+  setPostSessions: (teams: { id: string; posts: { agent_id: string; session_id: string }[] }[]) => void
+  /**
+   * Cómo se llama cada conversación de la Agency (chat directo: el agente;
+   * puesto: «agente · equipo»): no están en la lista de Rinari, y los avisos
+   * y la campana las nombran con esto.
+   */
+  sessionLabels: Record<string, string>
+  setSessionLabels: (labels: Record<string, string>) => void
 }
 
 export const useAgencyStore = create<AgencyState>((set) => ({
@@ -50,7 +70,11 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   openAgent: (agentId) => set({ space: 'agency', page: { kind: 'agent', agentId } }),
   newAgent: () => set({ space: 'agency', page: { kind: 'new-agent' } }),
   editAgent: (agentId) => set({ space: 'agency', page: { kind: 'edit-agent', agentId } }),
-  openSettings: (agentId = null) => set({ space: 'agency', page: { kind: 'settings', agentId } }),
+  openSettings: (agentId = null, teamId = null) => set({ space: 'agency', page: { kind: 'settings', agentId, teamId } }),
+  openOffice: (teamId) => set({ space: 'agency', page: { kind: 'office', teamId } }),
+  openPost: (teamId, agentId) => set({ space: 'agency', page: { kind: 'post', teamId, agentId } }),
+  newTeam: () => set({ space: 'agency', page: { kind: 'new-team' } }),
+  editTeam: (teamId) => set({ space: 'agency', page: { kind: 'edit-team', teamId } }),
   goHome: () => set({ page: { kind: 'home' } }),
   proposals: [],
   addProposal: (proposal) => set((state) => ({ proposals: [...state.proposals, proposal] })),
@@ -59,6 +83,14 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   setAgentSessions: (agents) => set({
     agentSessions: Object.fromEntries(
       agents.filter((agent) => agent.session_id).map((agent) => [agent.session_id as string, agent.id]),
+    ),
+  }),
+  postSessions: {},
+  sessionLabels: {},
+  setSessionLabels: (sessionLabels) => set({ sessionLabels }),
+  setPostSessions: (teams) => set({
+    postSessions: Object.fromEntries(
+      teams.flatMap((team) => team.posts.map((post) => [post.session_id, { teamId: team.id, agentId: post.agent_id }])),
     ),
   }),
 }))

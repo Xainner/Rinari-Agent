@@ -37,6 +37,7 @@ import { cn } from '../../lib/utils'
 import { useCalmMotion } from '../../lib/motion'
 import { DOCK_VIEW_ICONS, DOCK_VIEW_LABELS } from './dockViews'
 import RulesView from '../agency/RulesView'
+import { PostBoard } from '../agency/Board'
 
 export interface SessionDockProps {
   sessionId: string
@@ -536,6 +537,8 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
       return <PlanView sessionId={sessionId} />
     case 'rules':
       return <RulesView sessionId={sessionId} />
+    case 'board':
+      return <PostBoard sessionId={sessionId} />
   }
   void sharedRoot
 }

@@ -2,6 +2,9 @@
 // vez (una vez por perfil), «Nuevo agente» en la vista principal, el chat
 // directo del agente fuera de las conversaciones de Rinari, «Agencia»
 // deshabilitada con «Pronto», «Reglas» en el panel lateral y volver a Rinari.
+// A2: un equipo con su oficina, una @mención que despierta a un agente en su
+// puesto (con el modelo falso), un recado entregado y aceptado, «Pizarra» en el
+// panel lateral del puesto y la Vía 2 con «Pronto» en Ajustes.
 const assert = require('node:assert/strict')
 const { click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
 
@@ -103,6 +106,71 @@ scenario(async () => {
   const tasks = (await command('schedule_list', {})).tasks.filter((task) => task.agent_id === agent.id)
   assert(tasks.length === 1 && tasks[0].enabled === false, 'the agent rule is paused')
 
+  // A2: «Nuevo equipo» con dos agentes; el primero es el jefe (D-8).
+  await command('agency_agent_create', { agent: { name: 'Video' } })
+  await wait(`document.querySelectorAll('[data-testid="agency-agent-row"]').length === 2`)
+  await click('[data-testid="agency-new-team"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-team-form"]'))`)
+  await input('[data-testid="agency-team-name"]', 'Canal infantil')
+  await evaluate(`[...document.querySelectorAll('[data-testid="agency-team-members"] input[type="checkbox"]')].forEach((box) => box.click())`)
+  await settleAnimations()
+  await screenshot('team-form')
+  await click('[data-testid="agency-team-submit"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-office"]'))`)
+  await wait(`document.querySelectorAll('[data-testid="agency-post-row"]').length === 2`)
+  const [team] = (await command('agency_team_list', { rinari_profile_id: 'active' })).teams
+  assert.equal(team.chief_agent_id, agent.id, 'the first agent is the chief')
+  assert.equal(team.posts.length, 2)
+  const posts = (await command('session_list', {})).sessions.map((s) => s.id)
+  assert(team.posts.every((post) => !posts.includes(post.session_id)), "posts stay out of Rinari's list")
+
+  // Una @mención despierta a Emails en su puesto; su respuesta vuelve a la oficina (D-1).
+  await input('[data-testid="agency-office-input"]', 'Hola @Emails, ¿qué hay hoy?')
+  // El aviso de «equipo creado» queda encima de «Enviar» hasta que se va (anotado para el pulido).
+  await wait(`!document.querySelector('[data-sonner-toast]')`)
+  await click('[data-testid="agency-office-send"]')
+  await wait(`[...document.querySelectorAll('[data-testid="agency-office-message"]')].some((m) => m.querySelector('img') && m.innerText.includes('Emails'))`, 30_000)
+  const officeMessages = (await command('agency_office_list', { team_id: team.id })).messages
+  assert.equal(officeMessages[0].author_kind, 'owner')
+  assert.deepEqual(officeMessages[0].mentions, [agent.id])
+  assert(officeMessages.some((m) => m.author_kind === 'agent' && m.agent_id === agent.id && m.hop === 1), 'the post answered one hop further')
+
+  // Un recado sin destinatario va al jefe, corre como un turno y se entrega (D-3, Vía 1).
+  await click('[data-testid="agency-office-errand"]')
+  await input('[data-testid="agency-errand-title"]', 'Resumen del día')
+  await input('[data-testid="agency-errand-checks"]', 'Tres líneas')
+  await click('[data-testid="agency-errand-submit"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-errand"][data-status="delivered"] [data-testid="agency-errand-accept"]'))`, 30_000)
+  await settleAnimations()
+  await screenshot('office')
+  await click('[data-testid="agency-errand-accept"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-errand"][data-status="reviewed"]'))`)
+  const [done] = (await command('agency_errand_list', { team_id: team.id })).errands
+  assert.equal(done.status, 'reviewed')
+  assert.deepEqual(done.done_when, ['Tres líneas'])
+
+  // El puesto es una conversación con «Pizarra» en su panel lateral (D-14).
+  await clickText('Emails', '[data-testid="agency-post-row"]', { includes: true })
+  await wait(`Boolean(document.querySelector('.dock-view-button[data-view="board"]'))`)
+  assert.equal(await evaluate(`Boolean(document.querySelector('.dock-view-button[data-view="rules"]'))`), false, 'Reglas is for the direct chat')
+  await click('.dock-view-button[data-view="board"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-board"] [data-testid="agency-errand"]'))`)
+  await settleAnimations()
+  await screenshot('post-board')
+
+  // Ajustes: el equipo y toda la Agency, con la Vía 2 todavía «Pronto» (D-28).
+  await click('[data-testid="agency-settings-link"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-settings-scope-agency"]'))`)
+  await click('[data-testid="agency-settings-scope-agency"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-errand-mode-subagents"]'))`)
+  const later = await evaluate(`(() => { const b = document.querySelector('[data-testid="agency-errand-mode-subagents"]'); return { disabled: b.getAttribute('aria-disabled'), text: b.innerText } })()`)
+  assert.equal(later.disabled, 'true')
+  assert(later.text.includes('Pronto'))
+  const agencySettings = await command('agency_settings_get', {})
+  assert.equal(agencySettings.errand_mode, 'turn')
+  await settleAnimations()
+  await screenshot('settings-agency')
+
   report({
     passed: [
       'card above Settings says how to start',
@@ -116,6 +184,11 @@ scenario(async () => {
       'Agency pages show the Agency in the top bar, not a conversation',
       'Agency settings: the agent memory is written and listed, accounts can be connected',
       'stop everyone asks and pauses the agent rules',
+      "new team with two agents, the first is the chief, posts out of Rinari's list",
+      'an @mention wakes the agent in its post and its answer comes back to the office',
+      'an errand to nobody goes to the chief, is delivered and accepted',
+      'Pizarra in the post side panel',
+      'Agency settings: subagents shown as Pronto, errands run as turns',
     ],
   })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useEngineData, useOptionalEngineCommands, useRuntimeStore } from '../engine/EngineContext'
 import { onNotificationActivated, onNotificationReplied } from '../../services/notifications'
+import { useAgencyStore } from '../../stores/agency'
 import { requestTurnReveal } from './boardCommands'
 import {
   derivePaneStatus,
@@ -211,7 +212,8 @@ export default function BoardActivityController() {
   // de las que tienen un turno vivo, y «Ir» abre la conversación en el turno.
   const titleFor = useCallback((sessionId: string): string | null => {
     const record = data.sessionsById[sessionId]
-    if (!record) return null
+    // Las conversaciones de la Agency no están en la lista de Rinari: se nombran por su agente (y su equipo).
+    if (!record) return useAgencyStore.getState().sessionLabels[sessionId] ?? null
     return record.title || (record.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
   }, [data.sessionsById, t])
   const projectFor = useCallback((sessionId: string): string | null => {

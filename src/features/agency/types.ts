@@ -59,3 +59,103 @@ export interface AgencyStatus {
   needs_you: number
   agent_ids: { working: string[]; needs_you: string[] }
 }
+
+/**
+ * Rinari Agency A2 (`agency_teams_v1`): equipos, sus puestos, la oficina y la
+ * pizarra. Un puesto es la conversación de un agente en un equipo.
+ */
+export interface TeamPost {
+  team_id: string
+  agent_id: string
+  session_id: string
+  created_at: number
+}
+
+export interface AgencyTeam {
+  id: string
+  rinari_profile_id: string
+  name: string
+  purpose: string
+  chief_agent_id: string | null
+  connectors: string[]
+  budget: AgentBudget
+  members: string[]
+  posts: TeamPost[]
+  created_at: number
+  updated_at: number
+  archived_at: number | null
+}
+
+export interface AgencyTeamInput {
+  name: string
+  purpose?: string
+  chief_agent_id?: string | null
+  connectors?: string[]
+  budget?: AgentBudget
+  /** Solo al crear; después se entra y se sale con join y leave. */
+  members?: string[]
+}
+
+export interface OfficeMessage {
+  id: string
+  team_id: string
+  author_kind: 'owner' | 'agent'
+  agent_id: string | null
+  text: string
+  mentions: string[]
+  errand_id: string | null
+  chain_id: string
+  hop: number
+  created_at: number
+}
+
+/** blocked: no pudo empezar o falló; espera a que el dueño lo reintente. */
+export type ErrandStatus = 'pending' | 'in_progress' | 'delivered' | 'reviewed' | 'returned' | 'blocked' | 'cancelled'
+
+export interface Errand {
+  id: string
+  team_id: string
+  from_team_id: string | null
+  from_agent_id: string | null
+  to_agent_id: string | null
+  title: string
+  body: string
+  done_when: string[]
+  status: ErrandStatus
+  result: { summary?: string } | null
+  return_reason: string | null
+  chain_id: string
+  hop: number
+  session_id: string | null
+  created_at: number
+  updated_at: number
+  started_at: number | null
+  delivered_at: number | null
+}
+
+export interface ErrandInput {
+  title: string
+  body?: string
+  done_when?: string[]
+  to_agent_id?: string | null
+}
+
+/** Cómo corre un recado: un turno del puesto (Vía 1) o subagentes (Vía 2, D-28, todavía no). */
+export type ErrandMode = 'turn' | 'subagents'
+
+export interface AgencySettingsData {
+  budget: AgentBudget
+  errand_mode: ErrandMode
+  errand_modes: ErrandMode[]
+  available_errand_modes: ErrandMode[]
+  spend_today: AgentSpend
+}
+
+export interface TeamTemplate {
+  name: string
+  purpose: string
+  connectors: string[]
+  budget: AgentBudget
+  agents: Partial<AgencyAgentInput>[]
+  chief_index: number | null
+}

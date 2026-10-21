@@ -6,7 +6,7 @@
 // puesto (con el modelo falso), un recado entregado y aceptado, «Pizarra» en el
 // panel lateral del puesto y la Vía 2 con «Pronto» en Ajustes.
 const assert = require('node:assert/strict')
-const { click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, ui, useLocalModel, wait } = require('../harness.cjs')
+const { until, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, ui, useLocalModel, wait } = require('../harness.cjs')
 
 // Sonner pauses its toasts while the pointer is over them: the last click can
 // leave it there, so the wait for them to go first moves it away.
@@ -71,7 +71,17 @@ scenario(async () => {
   }
   await screenshot('form')
   await input('[data-testid="agency-form-name"]', 'Emails')
-  await clickText('Solo lectura', '[data-testid="agency-agent-form"] button')
+  // La autonomía es una elección en tarjetas, y el modelo el selector del composer (card «Agency», puntos 1 y 2).
+  assert(await evaluate(`Boolean(document.querySelector('[data-testid="agency-form-model"] .agency-model-field button'))`), 'the model is chosen with the composer picker')
+  await click('[data-testid="agency-form-autonomy"] [data-value="read-only"]')
+  // El avatar se elige entre los aprobados (punto 7) y el esfuerzo va junto al modelo (punto 1).
+  assert(await evaluate(`Boolean(document.querySelector('[data-testid="agency-form-effort"] button'))`), 'the effort picker sits next to the model')
+  await click('[data-testid="agency-form-avatar"]')
+  await wait(`Boolean(document.querySelector('.agency-avatar-option[data-icon="code"]'))`)
+  await settleAnimations()
+  await screenshot('form-avatar')
+  await click('.agency-avatar-option[data-icon="code"]')
+  await wait(`!document.querySelector('.agency-avatar-option')`)
   await click('[data-testid="agency-form-submit"]')
 
   // Su chat directo se abre vacío con su nombre y su saludo, no los de Rinari;
@@ -82,13 +92,14 @@ scenario(async () => {
   assert.equal(await evaluate(`Boolean(document.querySelector('.home-suggestions'))`), false, "no Rinari suggestions in an agent's chat")
   assert.equal(await evaluate(`document.querySelector('.home-art img')?.getAttribute('src')?.includes('/brand/home.webp')`), false, 'the Agency chat has its own art')
   await wait(`Boolean(document.querySelector('[data-sonner-toast]'))`)
-  assert(await toastClearOf('.composer-surface'), 'the toast leaves the composer free')
+  await until(() => toastClearOf('.composer-surface'), 'the toast leaves the composer free', 3000)
   await settleAnimations()
   await screenshot('agent-chat-empty')
   await wait(`Boolean(document.querySelector('.dock-view-button[data-view="rules"]'))`)
   const [agent] = (await command('agency_agent_list', { rinari_profile_id: 'active' })).agents
   assert.equal(agent.name, 'Emails')
   assert.equal(agent.permission_profile, 'read-only')
+  assert.equal(agent.icon, 'code', 'the chosen avatar is saved with the agent')
   await click('.dock-view-button[data-view="rules"]')
   await wait(`Boolean(document.querySelector('[data-testid="agency-rules"]'))`)
   await settleAnimations()
@@ -168,6 +179,8 @@ scenario(async () => {
   await evaluate(`[...document.querySelectorAll('[data-testid="agency-team-members"] input[type="checkbox"]')].forEach((box) => box.click())`)
   await settleAnimations()
   await screenshot('team-form')
+  // Un aviso que sigue a la vista no tapa el pie de la ficha (se vuelve a mirar al cambiar de página).
+  await wait(`(() => { const target = document.querySelector('[data-testid="agency-team-submit"]').getBoundingClientRect(); return [...document.querySelectorAll('[data-sonner-toast]')].every((toast) => { const r = toast.getBoundingClientRect(); return r.width === 0 || r.bottom <= target.top || r.top >= target.bottom || r.right <= target.left || r.left >= target.right }) })()`)
   await click('[data-testid="agency-team-submit"]')
   await wait(`Boolean(document.querySelector('[data-testid="agency-office"]'))`)
   await wait(`document.querySelectorAll('[data-testid="agency-post-row"]').length === 2`)
@@ -177,26 +190,51 @@ scenario(async () => {
   const posts = (await command('session_list', {})).sessions.map((s) => s.id)
   assert(team.posts.every((post) => !posts.includes(post.session_id)), "posts stay out of Rinari's list")
 
+  // La oficina usa el panel lateral de una conversación: Recado, Pizarra y Ficha en la barra de título (punto 5).
+  const officeViews = await evaluate(`[...document.querySelectorAll('.dock-view-bar .dock-view-button')].map((b) => b.dataset.view)`)
+  assert.deepEqual(officeViews, ['errand', 'board', 'team'], `office side panel views (${officeViews})`)
+  // La lista de @ sale pegada al composer y con su ancho, sin salirse (punto 3).
+  await input('[data-testid="agency-office-input"]', 'Hola @Em')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-mention-list"]'))`)
+  const fit = await evaluate(`(() => { const list = document.querySelector('[data-testid="agency-mention-list"]').getBoundingClientRect(); const box = document.querySelector('.office-composer').getBoundingClientRect(); return { left: list.left - box.left, right: box.right - list.right } })()`)
+  assert(Math.abs(fit.left) <= 1 && Math.abs(fit.right) <= 1, `the @ list keeps the composer's width (${JSON.stringify(fit)})`)
+  await settleAnimations()
+  await screenshot('office-mention')
   // Una @mención despierta a Emails en su puesto; su respuesta vuelve a la oficina (D-1).
   await input('[data-testid="agency-office-input"]', 'Hola @Emails, ¿qué hay hoy?')
+  // Mientras se escribe, la @mención se ve como mención (punto 4).
+  await wait(`document.querySelector('.office-input-mention')?.textContent === '@Emails'`)
   // El aviso de «equipo creado» ya no tapa «Enviar»: la pila sube sobre el composer.
-  assert(await toastClearOf('.agency-office-composer'), 'the toast leaves the office composer free')
+  await until(() => toastClearOf('.office-composer'), 'the toast leaves the office composer free', 3000)
   await click('[data-testid="agency-office-send"]')
-  await wait(`[...document.querySelectorAll('[data-testid="agency-office-message"]')].some((m) => m.querySelector('img') && m.innerText.includes('Emails'))`, 30_000)
+  await wait(`[...document.querySelectorAll('[data-testid="agency-office-message"]:not(.is-owner)')].some((m) => m.querySelector('.agency-office-avatar img') && m.innerText.includes('Emails'))`, 30_000)
   const officeMessages = (await command('agency_office_list', { team_id: team.id })).messages
   assert.equal(officeMessages[0].author_kind, 'owner')
   assert.deepEqual(officeMessages[0].mentions, [agent.id])
   assert(officeMessages.some((m) => m.author_kind === 'agent' && m.agent_id === agent.id && m.hop === 1), 'the post answered one hop further')
 
-  // Un recado sin destinatario va al jefe, corre como un turno y se entrega (D-3, Vía 1).
-  await click('[data-testid="agency-office-errand"]')
+  // La mención en el mensaje enviado es una pastilla con el avatar de quien se nombra, dentro de su burbuja.
+  await wait(`Boolean(document.querySelector('[data-testid="agency-office-message"] .agency-mention .agent-avatar'))`)
+
+  // Un recado sin destinatario va al jefe, corre como un turno y se entrega (D-3, Vía 1); se deja desde el panel lateral.
+  await click('.dock-view-button[data-view="errand"]')
+  await wait(`Boolean(document.querySelector('[data-dock-view="errand"] [data-testid="agency-errand-form"]'))`)
   await input('[data-testid="agency-errand-title"]', 'Resumen del día')
   await input('[data-testid="agency-errand-checks"]', 'Tres líneas')
-  assert(await toastClearOf('[data-testid="agency-errand-form"]'), 'the toast leaves the errand form free')
+  await until(() => toastClearOf('[data-testid="agency-errand-submit"]'), 'the toast leaves «Dejar el recado» free', 3000)
+  await settleAnimations()
+  await screenshot('office-errand')
   await click('[data-testid="agency-errand-submit"]')
+  await wait(`!document.querySelector('[data-dock-view="errand"]')`)
   await wait(`Boolean(document.querySelector('[data-testid="agency-errand"][data-status="delivered"] [data-testid="agency-errand-accept"]'))`, 30_000)
   await settleAnimations()
   await screenshot('office')
+  // Pizarra y Ficha, una sobre otra en el mosaico del panel.
+  await click('.dock-view-button[data-view="board"]')
+  await click('.dock-view-button[data-view="team"]')
+  await wait(`Boolean(document.querySelector('[data-dock-view="board"] [data-testid="agency-board"]')) && Boolean(document.querySelector('[data-dock-view="team"] [data-testid="agency-team-card"]'))`)
+  await settleAnimations()
+  await screenshot('office-dock')
   await click('[data-testid="agency-errand-accept"]')
   await wait(`Boolean(document.querySelector('[data-testid="agency-errand"][data-status="reviewed"]'))`)
   const [done] = (await command('agency_errand_list', { team_id: team.id })).errands
@@ -225,6 +263,38 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('settings-agency')
 
+  // Colapsar la barra en la Agency: un riel de iconos como el de Rinari, sin texto partido.
+  const TOGGLE = '.app-topbar-leading .app-topbar-icon'
+  await click(TOGGLE)
+  await wait(`Boolean(document.querySelector('[data-testid="agency-sidebar"][data-rail="true"]'))`)
+  await settleAnimations()
+  const rail = await evaluate(`(() => {
+    const el = document.querySelector('[data-testid="agency-sidebar"][data-rail="true"]')
+    return {
+      switch: Boolean(el.querySelector('.agency-view-switch')),
+      text: [...el.querySelectorAll('p, .truncate')].map((node) => node.textContent.trim()).filter(Boolean),
+      agents: el.querySelectorAll('[data-testid="agency-agent-row"] .agent-avatar').length,
+      teams: el.querySelectorAll('[data-testid="agency-team-office"]').length,
+      overflow: el.scrollWidth - el.clientWidth,
+      labels: [...el.querySelectorAll('button')].every((button) => button.getAttribute('aria-label')),
+    }
+  })()`)
+  assert.equal(rail.switch, false, 'no Normal | Agencia pill in the rail')
+  assert.deepEqual(rail.text, [], `no text in the rail (${rail.text})`)
+  assert.equal(rail.agents, 2, 'one avatar per agent')
+  assert.equal(rail.teams, 1, 'one icon per team')
+  assert(rail.overflow <= 0, `nothing spills sideways (${rail.overflow})`)
+  assert(rail.labels, 'every rail button has its name as a label')
+  await screenshot('rail')
+  // Un avatar del riel abre el chat de su agente.
+  await click('[data-testid="agency-sidebar"][data-rail="true"] [data-testid="agency-agent-row"][aria-label^="Emails"]')
+  await wait(`document.querySelector('[data-testid="agency-agent-row"][aria-label^="Emails"]')?.getAttribute('aria-current') === 'page'`)
+  // Expandir: la barra completa vuelve.
+  await click(TOGGLE)
+  await wait(`Boolean(document.querySelector('[data-testid="agency-sidebar"]:not([data-rail]) .agency-view-switch'))`)
+  await settleAnimations()
+  await screenshot('rail-expanded')
+
   report({
     passed: [
       'card above Settings says how to start',
@@ -238,6 +308,7 @@ scenario(async () => {
       'tutorial once per profile',
       'Agency pages show the Agency in the top bar, not a conversation',
       'Agency settings: the agent memory is written and listed, accounts can be connected',
+      'collapsed Agency sidebar is an icon rail (avatars, teams, actions) and expands back',
       'stop everyone asks and pauses the agent rules',
       "new team with two agents, the first is the chief, posts out of Rinari's list",
       'an @mention wakes the agent in its post and its answer comes back to the office',

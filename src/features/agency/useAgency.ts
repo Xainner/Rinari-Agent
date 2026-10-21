@@ -49,7 +49,10 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
   const reload = useCallback(async () => {
     if (!enabled) return
     const mine = ++seq.current
-    const asked = useProfileStore.getState().activeId ?? 'default'
+    // The profile the Engine answers for. Unknown (null) while the app still
+    // loads its profiles: the answer is then for the Engine's active profile,
+    // never «another profile».
+    const asked = useProfileStore.getState().activeId
     try {
       const [list, current, teamList, settings] = await Promise.all([
         engineApi.agencyAgents(),
@@ -57,8 +60,9 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
         teamsEnabled ? engineApi.agencyTeams() : Promise.resolve({ teams: [] as AgencyTeam[] }),
         haltEnabled ? engineApi.agencySettings() : Promise.resolve(null),
       ])
-      const profile = useProfileStore.getState().activeId ?? 'default'
-      if (mine < applied.current || profile !== asked) return
+      const now = useProfileStore.getState().activeId
+      if (mine < applied.current || (asked !== null && now !== null && now !== asked)) return
+      const profile = now ?? asked ?? 'default'
       applied.current = mine
       setHalted(Boolean(settings?.stopped_profiles?.includes(profile)))
       setAgents(list.agents)
@@ -77,6 +81,15 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
       if (mine === seq.current || mine === applied.current) setLoaded(true)
     }
   }, [enabled, teamsEnabled, haltEnabled])
+
+  // A profile switch (or the active profile becoming known) reloads: what was
+  // shown belonged to the profile before.
+  useEffect(() => {
+    if (!enabled) return
+    return useProfileStore.subscribe((state, previous) => {
+      if (state.activeId !== previous.activeId) void reload()
+    })
+  }, [enabled, reload])
 
   useEffect(() => {
     if (!enabled) return

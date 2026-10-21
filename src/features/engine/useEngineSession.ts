@@ -15,6 +15,7 @@ import { useTurnRuntime } from './useTurnRuntime'
 import { selectSessionModel, selectSessionTimelines } from './sessionSelectors'
 import { sessionPlans } from '../plan/planModel'
 import { useSessionUiStore } from '../../stores/sessionUi'
+import { isAgencySession } from '../../stores/agency'
 import { unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
 import { sessionForDraft, useConversationDraftStore, type ConversationDraft } from '../../stores/conversationDraft'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
@@ -257,7 +258,10 @@ export function useEngineSession() {
           selected = added.model
         }
         if (options.setGlobalDefault) await engineApi.modelUse(selected.alias, selected.provider ?? undefined)
-        if (sessionId) await engineApi.setSessionModel(sessionId, selected.id, selected.provider ?? undefined)
+        if (sessionId) {
+          const result = await engineApi.setSessionModel(sessionId, selected.id, selected.provider ?? undefined)
+          if (result?.session) sessions.rememberRows([result.session])
+        }
         if (options.setGlobalDefault || model.saved === false) await catalog.refreshCatalog()
         await sessions.refreshSessions()
         return true
@@ -272,11 +276,15 @@ export function useEngineSession() {
       if (modelChangeChain.current.get(sessionId) === chained) modelChangeChain.current.delete(sessionId)
     })
     return job
-  }, [catalog, sessions.refreshSessions])
+  }, [catalog, sessions.refreshSessions, sessions.rememberRows])
 
-  /** Vista Normal: conserva el comportamiento histórico (default global + sesión activa). */
+  /** Vista Normal: conserva el comportamiento histórico (default global + sesión activa).
+   * El chat de un agente de la Agency cambia solo su conversación: el default
+   * de Rinari no es suyo. */
   async function useModel(model: ModelSummary): Promise<void> {
-    await useModelFor(sessions.activeSession, model, { setGlobalDefault: true })
+    const active = sessions.activeSession
+    const agency = Boolean(sessions.sessionsById[active]?.agent_id) || isAgencySession(active)
+    await useModelFor(active, model, { setGlobalDefault: !agency })
   }
   /**
    * Abre una conversación nueva en Normal **sin crearla**: un borrador del

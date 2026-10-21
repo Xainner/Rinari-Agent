@@ -168,23 +168,38 @@ export function scriptedModel(initial = []) {
           'Cache-Control': 'no-cache',
           Connection: 'keep-alive',
         })
-        // `{ text, streamDelayMs, streamChunk }`: the answer arrives in pieces
-        // over time, like a real model writing (escenarios de scroll en vivo).
-        if (entry.streamDelayMs && !message.tool_calls && typeof message.content === 'string') {
+        // `{ text | tool, say, think, streamDelayMs, streamChunk }`: the answer
+        // arrives in pieces over time, like a real model writing (escenarios de
+        // scroll en vivo). `think` streams first as reasoning (the «Pensando…»
+        // card); a tool step streams its `say` and then asks for the tool.
+        if (entry.streamDelayMs && (typeof message.content === 'string' || entry.think)) {
           const base = { id: `chatcmpl-${step}`, object: 'chat.completion.chunk', model: 'fake-vertical' }
           const size = entry.streamChunk ?? 24
-          const pieces = []
-          for (let at = 0; at < message.content.length; at += size) pieces.push(message.content.slice(at, at + size))
+          const split = (text) => {
+            const out = []
+            for (let at = 0; at < text.length; at += size) out.push(text.slice(at, at + size))
+            return out
+          }
+          const deltas = [
+            ...split(entry.think ?? '').map((piece) => ({ reasoning_content: piece })),
+            ...split(typeof message.content === 'string' ? message.content : '').map((piece) => ({ content: piece })),
+          ]
+          if (deltas.length > 0) deltas[0] = { role: 'assistant', ...deltas[0] }
           const send = (chunk) => response.write(`data: ${JSON.stringify(chunk)}\n\n`)
           let index = 0
           const next = () => {
-            if (index < pieces.length) {
-              send({ ...base, choices: [{ index: 0, delta: index === 0 ? { role: 'assistant', content: pieces[0] } : { content: pieces[index] }, finish_reason: null }] })
+            if (index < deltas.length) {
+              send({ ...base, choices: [{ index: 0, delta: deltas[index], finish_reason: null }] })
               index += 1
               setTimeout(next, entry.streamDelayMs)
               return
             }
-            send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
+            if (message.tool_calls) {
+              send({ ...base, choices: [{ index: 0, delta: { tool_calls: message.tool_calls.map((call, at) => ({ index: at, ...call })) }, finish_reason: null }] })
+              send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })
+            } else {
+              send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
+            }
             send({ ...base, choices: [], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })
             response.end('data: [DONE]\n\n')
           }

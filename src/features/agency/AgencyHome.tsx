@@ -1,7 +1,7 @@
 import { MessageSquare, SlidersHorizontal, UserPlus } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { art } from '../rinari/art'
-import agencyIcon from '../../assets/agency/agency-icon.webp'
+import AgentAvatar from './AgentAvatar'
 import type { AgencyAgent, AgencyStatus, AgentSpend } from './types'
 import { agencyStatusLine } from './AgencyCard'
 
@@ -69,7 +69,7 @@ export default function AgencyHome({ agents, status, loaded, onOpenAgent, onEdit
           return (
             <li key={agent.id} className="agency-tile" data-testid="agency-tile" data-state={state?.tone}>
               <div className="flex items-start gap-3">
-                <img src={agencyIcon} alt="" className="agency-tile-icon" draggable={false} />
+                <AgentAvatar agent={agent} size={44} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-[var(--text)]">{agent.name}</p>
                   {agent.role && <p className="truncate text-[12.5px] text-[var(--text-muted)]">{agent.role}</p>}

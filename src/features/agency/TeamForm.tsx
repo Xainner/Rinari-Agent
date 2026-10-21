@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, Copy } from 'lucide-react'
+import { Archive, Copy, Crown, Plug, Target, UsersRound, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
-import { Select } from '../../components/ui/select'
+import { cn } from '../../lib/utils'
 import { commandMessage, engineApi, type McpServer } from '../../services/engine'
+import AgentAvatar from './AgentAvatar'
+import { BudgetFields, ConnectorTiles, EditorHero, EditorPage, EditorSection } from './AgencyEditor'
+import { useConnectorDirectory } from './useConnectorDirectory'
 import type { AgencyAgent, AgencyTeam, AgencyTeamInput } from './types'
 
 /** Un equipo tiene hasta 8 agentes; para más, otro equipo (6.2). */
@@ -57,6 +60,11 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
   }, [servers, team])
 
   const active = agents.filter((agent) => agent.archived_at === null)
+  const { marks } = useConnectorDirectory()
+  const availableMarks = useMemo(() => {
+    const names = new Set(available.map((server) => server.name))
+    return marks.filter((mark) => names.has(mark.name))
+  }, [marks, available])
   const effectiveChief = chief && members.includes(chief) ? chief : members[0] ?? null
 
   const toggleMember = (agentId: string) =>
@@ -135,132 +143,14 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
     }
   }
 
+  const chosen = members.map((id) => agents.find((agent) => agent.id === id)).filter((agent): agent is AgencyAgent => Boolean(agent))
+
   return (
-    <div className="agency-form-page" data-testid="agency-team-form">
-      <form
-        className="agency-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submit()
-        }}
-      >
-        <header className="grid gap-1">
-          <h1 className="font-display text-[22px] font-semibold text-[var(--text)]">
-            {editing ? t('agency.team.editTitle', { name: team!.name }) : t('agency.team.title')}
-          </h1>
-          <p className="field-hint">{t('agency.team.intro')}</p>
-        </header>
-
-        <label className="grid gap-1.5">
-          <span className="field-label">{t('agency.team.name')}</span>
-          <input
-            className="field-input"
-            value={name}
-            maxLength={60}
-            required
-            autoFocus={!editing}
-            placeholder={t('agency.team.namePlaceholder')}
-            onChange={(event) => setName(event.target.value)}
-            data-testid="agency-team-name"
-          />
-        </label>
-
-        <label className="grid gap-1.5">
-          <span className="field-label">{t('agency.team.purpose')}</span>
-          <textarea
-            className="field-input min-h-[80px] resize-y leading-relaxed"
-            value={purpose}
-            maxLength={2000}
-            placeholder={t('agency.team.purposePlaceholder')}
-            onChange={(event) => setPurpose(event.target.value)}
-          />
-        </label>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.team.members', { n: members.length, max: MAX_MEMBERS })}</legend>
-          {active.length === 0 ? (
-            <span className="field-hint">{t('agency.team.noAgents')}</span>
-          ) : (
-            <div className="agency-connectors" data-testid="agency-team-members">
-              {active.map((agent) => {
-                const checked = members.includes(agent.id)
-                return (
-                  <label key={agent.id} className="agency-connector">
-                    <input
-                      type="checkbox"
-                      className="r-checkbox"
-                      checked={checked}
-                      disabled={!checked && members.length >= MAX_MEMBERS}
-                      onChange={() => toggleMember(agent.id)}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{agent.name}</span>
-                  </label>
-                )
-              })}
-            </div>
-          )}
-          <span className="field-hint">{t('agency.team.membersHint')}</span>
-        </fieldset>
-
-        <div className="grid max-w-sm gap-1.5">
-          <span className="field-label">{t('agency.team.chief')}</span>
-          <Select
-            value={effectiveChief}
-            label={t('agency.team.chief')}
-            disabled={members.length === 0}
-            options={members.map((id) => ({ value: id, label: agents.find((agent) => agent.id === id)?.name ?? id }))}
-            onChange={setChief}
-            testId="agency-team-chief"
-          />
-          <span className="field-hint">{t('agency.team.chiefHint')}</span>
-        </div>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.form.connectors')}</legend>
-          {available.length === 0 ? (
-            <span className="field-hint">{t('agency.form.noConnectors')}</span>
-          ) : (
-            <div className="agency-connectors">
-              {available.map((server) => (
-                <label key={server.name} className="agency-connector">
-                  <input type="checkbox" className="r-checkbox" checked={connectors.includes(server.name)} onChange={() => toggleConnector(server.name)} />
-                  <span className="truncate">{server.name}</span>
-                </label>
-              ))}
-            </div>
-          )}
-          <span className="field-hint">{t('agency.team.connectorsHint')}</span>
-        </fieldset>
-
-        <fieldset className="grid gap-1.5">
-          <legend className="field-label mb-1.5">{t('agency.team.budget')}</legend>
-          <div className="agency-form-grid">
-            <label className="grid gap-1">
-              <span className="field-hint">{t('agency.form.budgetUsd')}</span>
-              <input className="field-input" inputMode="decimal" value={usd} onChange={(event) => setUsd(event.target.value)} />
-            </label>
-            <label className="grid gap-1">
-              <span className="field-hint">{t('agency.form.budgetTokens')}</span>
-              <input className="field-input" inputMode="numeric" value={tokens} onChange={(event) => setTokens(event.target.value)} />
-            </label>
-          </div>
-          <span className="field-hint">{t('agency.team.budgetHint')}</span>
-        </fieldset>
-
-        {editing && copyName !== null && (
-          <div className="agency-draft" data-testid="agency-team-duplicate">
-            <label className="grid min-w-0 flex-1 gap-1.5">
-              <span className="field-label">{t('agency.team.copyName')}</span>
-              <input className="field-input" value={copyName} maxLength={60} autoFocus onChange={(event) => setCopyName(event.target.value)} data-testid="agency-team-copy-name" />
-            </label>
-            <button type="button" className="btn btn-secondary btn-sm self-end" disabled={!copyName.trim() || saving} onClick={() => void duplicate()} data-testid="agency-team-copy">
-              {t('agency.team.copy')}
-            </button>
-            <p className="field-hint basis-full">{t('agency.team.copyHint')}</p>
-          </div>
-        )}
-
-        <footer className="agency-form-actions">
+    <EditorPage
+      testId="agency-team-form"
+      onSubmit={() => void submit()}
+      footer={(
+        <>
           {editing && (
             <>
               <button type="button" className="btn btn-quiet btn-sm" onClick={() => void archive()}>
@@ -276,8 +166,113 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
           <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !name.trim()} data-testid="agency-team-submit">
             {editing ? t('agency.form.save') : t('agency.team.create')}
           </button>
-        </footer>
-      </form>
-    </div>
+        </>
+      )}
+    >
+      <EditorHero
+        media={chosen.length > 0 ? (
+          <div className="agency-team-faces" aria-hidden="true">
+            {chosen.slice(0, 4).map((agent) => <AgentAvatar key={agent.id} agent={agent} size={40} />)}
+          </div>
+        ) : (
+          <span className="agency-team-emblem" aria-hidden="true"><UsersRound size={30} /></span>
+        )}
+        kicker={editing ? t('agency.team.editKicker') : t('agency.team.title')}
+      >
+        <input
+          className="agency-title-input"
+          value={name}
+          maxLength={60}
+          required
+          autoFocus={!editing}
+          aria-label={t('agency.team.name')}
+          placeholder={t('agency.team.namePlaceholder')}
+          onChange={(event) => setName(event.target.value)}
+          data-testid="agency-team-name"
+        />
+        <p className="agency-editor-sub">{t('agency.team.intro')}</p>
+      </EditorHero>
+
+      {editing && copyName !== null && (
+        <div className="agency-draft-card" data-testid="agency-team-duplicate">
+          <span className="agency-draft-spark" aria-hidden="true"><Copy size={16} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="agency-draft-title">{t('agency.team.copyName')}</p>
+            <div className="agency-draft-row">
+              <input className="field-input" value={copyName} maxLength={60} autoFocus aria-label={t('agency.team.copyName')} onChange={(event) => setCopyName(event.target.value)} data-testid="agency-team-copy-name" />
+              <button type="button" className="btn btn-secondary btn-sm" disabled={!copyName.trim() || saving} onClick={() => void duplicate()} data-testid="agency-team-copy">
+                {t('agency.team.copy')}
+              </button>
+            </div>
+            <p className="field-hint">{t('agency.team.copyHint')}</p>
+          </div>
+        </div>
+      )}
+
+      <EditorSection icon={Target} title={t('agency.team.purpose')} hint={t('agency.team.purposeHint')}>
+        <textarea
+          className="field-input agency-instructions is-short"
+          value={purpose}
+          maxLength={2000}
+          aria-label={t('agency.team.purpose')}
+          placeholder={t('agency.team.purposePlaceholder')}
+          onChange={(event) => setPurpose(event.target.value)}
+        />
+      </EditorSection>
+
+      <EditorSection icon={UsersRound} title={t('agency.team.members', { n: members.length, max: MAX_MEMBERS })} hint={t('agency.team.membersCardHint')}>
+        {active.length === 0 ? (
+          <p className="field-hint mt-0">{t('agency.team.noAgents')}</p>
+        ) : (
+          <div className="agency-pick-grid is-agents" data-testid="agency-team-members">
+            {active.map((agent) => {
+              const checked = members.includes(agent.id)
+              const isChief = checked && effectiveChief === agent.id
+              return (
+                <div key={agent.id} className={cn('agency-pick is-agent', isChief && 'is-chief')} data-checked={checked || undefined}>
+                  <label className="agency-pick-main">
+                    <input
+                      type="checkbox"
+                      className="r-checkbox"
+                      checked={checked}
+                      disabled={!checked && members.length >= MAX_MEMBERS}
+                      onChange={() => toggleMember(agent.id)}
+                    />
+                    <AgentAvatar agent={agent} size={34} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-[var(--text)]">{agent.name}</span>
+                      {agent.role && <span className="block truncate text-[11.5px] text-[var(--text-subtle)]">{agent.role}</span>}
+                    </span>
+                  </label>
+                  {checked && (
+                    <button
+                      type="button"
+                      className="agency-chief-toggle"
+                      aria-pressed={isChief}
+                      aria-label={isChief ? t('agency.team.isChief', { name: agent.name }) : t('agency.team.makeChief', { name: agent.name })}
+                      title={isChief ? t('agency.team.chief') : t('agency.team.makeChiefShort')}
+                      onClick={() => setChief(agent.id)}
+                      data-testid="agency-team-chief"
+                    >
+                      <Crown size={13} aria-hidden="true" />
+                      {isChief && <span>{t('agency.team.chiefShort')}</span>}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+        <p className="field-hint mt-0">{t('agency.team.chiefHint')}</p>
+      </EditorSection>
+
+      <EditorSection icon={Plug} title={t('agency.form.connectors')} hint={t('agency.team.connectorsHint')}>
+        <ConnectorTiles marks={availableMarks} selected={connectors} onToggle={toggleConnector} empty={t('agency.form.noConnectors')} />
+      </EditorSection>
+
+      <EditorSection icon={Wallet} title={t('agency.team.budget')} hint={t('agency.team.budgetHint')}>
+        <BudgetFields usd={usd} tokens={tokens} onUsd={setUsd} onTokens={setTokens} />
+      </EditorSection>
+    </EditorPage>
   )
 }

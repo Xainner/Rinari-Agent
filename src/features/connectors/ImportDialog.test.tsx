@@ -188,3 +188,25 @@ it('a server the folder brings that could not be created says why in plain words
   expect(container.querySelector('summary')?.textContent).toBe('Detalles')
   expect(container.textContent).toContain('command not allowed: rm')
 })
+
+it('clears the pasted JSON once everything ticked was imported', async () => {
+  vi.spyOn(engineApi, 'mcpImportScan').mockImplementation(async (input) => (input?.json
+    ? { sources: [], candidates: [candidate({ key: 'pasted:linear', name: 'linear', source: 'pasted', transport: 'http', command: [], url: 'https://mcp.linear.app/mcp', secrets: [{ where: 'header', name: 'Authorization', kind: 'value' }] }), candidate({ key: 'pasted:other', name: 'other', source: 'pasted' })] }
+    : { sources: [], candidates: [] }))
+  vi.spyOn(engineApi, 'mcpImportApply').mockResolvedValue({ created: [{ key: 'pasted:linear', server: { name: 'linear' } as never }], failed: [] })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  const user = userEvent.setup()
+  await user.click(within(dialog).getByRole('tab', { name: 'Pegar JSON' }))
+  const field = within(dialog).getByLabelText('Configuración mcpServers') as HTMLTextAreaElement
+  await user.click(field)
+  await user.paste('{"mcpServers":{"linear":{"url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer secret"}}}}')
+  await user.click(within(dialog).getByRole('button', { name: 'Leer' }))
+  await user.click(await within(dialog).findByLabelText(/^linear/))
+  await user.click(within(dialog).getByTestId('import-apply'))
+  expect(await within(dialog).findByText('Importado')).toBeTruthy()
+  expect(field.value).toBe('')
+  // What is left of that JSON cannot be imported without pasting it again.
+  expect(within(dialog).getByLabelText(/^other/)).toHaveProperty('disabled', true)
+  expect(dialog.textContent).toContain('pégalo de nuevo')
+})

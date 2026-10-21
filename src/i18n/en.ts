@@ -4173,6 +4173,7 @@ export const en: Record<I18nKey, string> = {
   'connectors.import.failed.unknown': 'It could not be created.',
   'connectors.import.failed.NOT_FOUND': 'It is no longer where it was found. Search again.',
   'connectors.import.failed.INVALID_PARAMS': 'Rinari could not create it from that configuration.',
+  'connectors.import.pasteAgain': 'For safety, the pasted JSON was cleared. To import the rest, paste it again.',
   'connectors.import.reason.unknown': 'It cannot be imported.',
   'connectors.import.reason.legacy_sse_unsupported': 'It uses the old SSE transport, which is not supported.',
   'connectors.import.reason.secret_in_command': 'It has a secret in the command: move it to an environment variable in the other app.',

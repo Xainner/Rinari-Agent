@@ -88,7 +88,13 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      // El JSON pegado puede traer secretos: no se queda en memoria con el diálogo cerrado.
+      scanSeq.current += 1
+      setJson('')
+      setScan(null)
+      return
+    }
     setMode('apps')
     setJson('')
     setScan(null)
@@ -108,8 +114,8 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
   }
 
   async function apply() {
-    // Solo lo marcado de la última lectura de esta pestaña.
-    if (!scan || scan.mode !== mode || scanning) return
+    // Solo lo marcado de la última lectura de esta pestaña (y un JSON ya importado no se reusa).
+    if (!scan || scan.mode !== mode || scanning || (scan.mode === 'paste' && !scan.json)) return
     const chosen = scan.candidates.filter((candidate) => marked.has(candidate.key))
     if (chosen.length === 0) return
     const id = scanSeq.current
@@ -120,6 +126,11 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
       const applied = await engineApi.mcpImportApply({ keys, names: Object.keys(names).length ? names : undefined, json: scan.json })
       if (id === scanSeq.current) setResult(applied)
       setMarked(new Set())
+      // Importado todo lo marcado: el JSON pegado (puede traer secretos) se borra.
+      if (scan.mode === 'paste' && applied.failed.length === 0 && applied.created.length > 0) {
+        setJson('')
+        if (id === scanSeq.current) setScan((current) => (current ? { ...current, json: undefined } : current))
+      }
       if (applied.created.length > 0) {
         toast.success(t('connectors.import.done', { n: applied.created.length }))
         onImported()
@@ -191,7 +202,7 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
               const fail = failed.get(candidate.key)
               return (
                 <li key={candidate.key} className="import-item" data-key={candidate.key} data-importable={candidate.importable || undefined}>
-                  <input id={id} type="checkbox" className="r-checkbox" checked={marked.has(candidate.key)} disabled={!candidate.importable || done || applying || scanning} onChange={() => toggle(candidate.key)} />
+                  <input id={id} type="checkbox" className="r-checkbox" checked={marked.has(candidate.key)} disabled={!candidate.importable || done || applying || scanning || (scan.mode === 'paste' && !scan.json)} onChange={() => toggle(candidate.key)} />
                   <div className="min-w-0 flex-1">
                     <label htmlFor={id} className="flex flex-wrap items-center gap-2">
                       <b className="text-[13px] text-[var(--text)]">{candidate.suggested_name ?? candidate.name}</b>
@@ -213,6 +224,10 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
               )
             })}
           </ul>
+        )}
+
+        {scan && scan.mode === 'paste' && !scan.json && scan.candidates.some((candidate) => candidate.importable && !created.has(candidate.key)) && (
+          <p className="field-hint">{t('connectors.import.pasteAgain')}</p>
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2">

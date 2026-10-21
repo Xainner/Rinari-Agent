@@ -4191,6 +4191,7 @@ export const es = {
   'connectors.import.failed.unknown': 'No se pudo crear.',
   'connectors.import.failed.NOT_FOUND': 'Ya no está donde se encontró. Busca de nuevo.',
   'connectors.import.failed.INVALID_PARAMS': 'Rinari no pudo crearlo con esa configuración.',
+  'connectors.import.pasteAgain': 'Por seguridad borré el JSON pegado. Para importar el resto, pégalo de nuevo.',
   'connectors.import.reason.unknown': 'No se puede importar.',
   'connectors.import.reason.legacy_sse_unsupported': 'Usa el transporte SSE antiguo, que no se admite.',
   'connectors.import.reason.secret_in_command': 'Lleva un secreto en el comando: muévelo a una variable de entorno en la otra app.',

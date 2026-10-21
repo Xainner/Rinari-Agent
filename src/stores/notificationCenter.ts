@@ -14,7 +14,7 @@ export type NotificationTarget =
   | { kind: 'session'; sessionId: string; turnId?: string }
   | { kind: 'schedules' }
   /** Rinari Agency: la vista «Reglas» del chat de un agente, con lo que propuso. */
-  | { kind: 'agency-rules'; agentId: string }
+  | { kind: 'agency-rules'; agentId: string; /** La propuesta (`proposalKey`) de esta entrada. */ proposal?: string }
   | { kind: 'skills'; skill?: string }
   | { kind: 'providers' }
   /** Ajustes > Acerca de, con la versión ofrecida y su acción. */

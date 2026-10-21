@@ -80,7 +80,7 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
             duration: 20_000,
             action: { label: tr('agency.rules.review'), onClick: review },
           })
-          record({ id: `agency-proposal-${proposalKey(proposal)}`, title: tr('agency.rules.proposedToast', { name: proposal.name }), body: tr('agency.rules.approveHint'), tone: 'info', target: { kind: 'agency-rules', agentId } })
+          record({ id: `agency-proposal-${proposalKey(proposal)}`, title: tr('agency.rules.proposedToast', { name: proposal.name }), body: tr('agency.rules.approveHint'), tone: 'info', target: { kind: 'agency-rules', agentId, proposal: proposalKey(proposal) } })
           return
         }
         const task = payload.created && payload.task ? (payload.task as ScheduledTask) : null

@@ -227,6 +227,31 @@ describe('useSessionList session visibility', () => {
     useAgencyStore.setState({ agentRows: {} })
   })
 
+  it('a listing in flight when an Agency child is opened does not move you off it', async () => {
+    // The child is activated before session.open answers with its agent_id.
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: {}, postSessions: {}, sessionLabels: {}, agentRows: {} })
+    const listing = deferred<{ sessions: SessionSummary[] }>()
+    const opening = deferred<{ session: SessionSummary; created: boolean; warnings: string[] }>()
+    sessions.mockReturnValueOnce(listing.promise)
+    openSession.mockReturnValueOnce(opening.promise)
+    let refresh!: Promise<void>
+    let select!: Promise<void>
+    act(() => { refresh = result.current.refreshSessions() })
+    act(() => { select = result.current.selectSession('ses_child') })
+    await act(async () => {
+      listing.resolve({ sessions: [summary('a')] })
+      await refresh
+    })
+    expect(result.current.activeSession).toBe('ses_child')
+    await act(async () => {
+      opening.resolve({ session: { ...summary('ses_child'), agent_id: 'agent_1' }, created: false, warnings: [] })
+      await select
+    })
+    expect(result.current.activeSession).toBe('ses_child')
+    useAgencyStore.setState({ agentRows: {} })
+  })
+
   it('reconciles selectSession with the resumed record instead of stale list data', async () => {
     const { result } = setup()
     sessions.mockResolvedValue({ sessions: [summary('a', 'interrupted')] })

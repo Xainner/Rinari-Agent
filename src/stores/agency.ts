@@ -78,6 +78,10 @@ interface AgencyState {
    */
   agentRows: Record<string, true>
   markAgentRows: (ids: string[]) => void
+  /** Una conversación borrada deja de contar como de la Agency. */
+  forgetAgentRow: (id: string) => void
+  /** Al cambiar de perfil: eran conversaciones de los agentes del otro. */
+  clearAgentRows: () => void
 }
 
 export const useAgencyStore = create<AgencyState>((set, get) => ({
@@ -123,12 +127,30 @@ export const useAgencyStore = create<AgencyState>((set, get) => ({
       ? state
       : { agentRows: { ...state.agentRows, ...Object.fromEntries(ids.map((id) => [id, true as const])) } }
   )),
+  forgetAgentRow: (id) => set((state) => {
+    if (!state.agentRows[id]) return state
+    const agentRows = { ...state.agentRows }
+    delete agentRows[id]
+    return { agentRows }
+  }),
+  clearAgentRows: () => set({ agentRows: {} }),
   setPostSessions: (teams) => set({
     postSessions: Object.fromEntries(
       teams.flatMap((team) => team.posts.map((post) => [post.session_id, { teamId: team.id, agentId: post.agent_id }])),
     ),
   }),
 }))
+
+/**
+ * Si la propuesta de una entrada de la campana sigue esperando: la suya, no
+ * otra del mismo agente (las entradas viejas no tienen la clave).
+ */
+export function proposalWaiting(
+  target: { agentId: string; proposal?: string },
+  proposals: ScheduledTaskInput[],
+): boolean {
+  return proposals.some((item) => (target.proposal ? proposalKey(item) === target.proposal : item.agent_id === target.agentId))
+}
 
 /** Lo que identifica una regla propuesta (el Engine no le da id). */
 export function proposalKey(proposal: ScheduledTaskInput): string {

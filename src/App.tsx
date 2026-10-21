@@ -69,7 +69,7 @@ import { useProfileMoves } from './features/profiles/useProfileMoves'
 import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
 import { useCreateProjectStore } from './features/projects/createProjectStore'
 import { PROJECT_PICKER_EVENT } from './components/composer/ProjectChip'
-import { useAgencyStore, agencyTutorialSeen, markAgencyTutorialSeen } from './stores/agency'
+import { useAgencyStore, agencyTutorialSeen, markAgencyTutorialSeen, proposalWaiting } from './stores/agency'
 import { useAgency } from './features/agency/useAgency'
 import AgencyCard from './features/agency/AgencyCard'
 import AgencySidebar from './features/agency/AgencySidebar'
@@ -547,9 +547,10 @@ function App() {
     else session.openDraft()
     goChat()
   }
-  // Las propuestas de reglas eran de los agentes del perfil anterior.
+  // Las propuestas de reglas y las conversaciones de agentes vistas eran del perfil anterior.
   useEffect(() => {
     useAgencyStore.getState().clearProposals()
+    useAgencyStore.getState().clearAgentRows()
   }, [activeProfileId])
   const openAgentChat = (agent: AgencyAgent) => {
     useAgencyStore.getState().openAgent(agent.id)
@@ -944,7 +945,7 @@ function App() {
                   else if (target.kind === 'agency-rules') {
                     // The bell outlives the proposals (they live until the app
                     // closes): an old entry says so instead of an empty «Reglas».
-                    if (!useAgencyStore.getState().proposals.some((item) => item.agent_id === target.agentId)) toast.info(translate(lang, 'agency.rules.proposalGone'))
+                    if (!proposalWaiting(target, useAgencyStore.getState().proposals)) toast.info(translate(lang, 'agency.rules.proposalGone'))
                     window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId: target.agentId } }))
                   }
                   else if (target.kind === 'schedules') goSchedules()

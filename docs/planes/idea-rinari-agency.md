@@ -631,3 +631,25 @@ Las conversaciones de la Agency no se bifurcan. Un agente trabaja en su chat dir
   - `session.fork` y `rinari session fork` rechazan una conversación con `agent_id`;
   - el menú «/» de la Agency no ofrece `/fork`.
 - **Hijos:** siguen. Un subagente de un agente sí aporta, y el que nace con el contexto «fork» (`child.create`, `SessionService.fork(child=True)`) sigue copiando la conversación de su madre.
+
+### Tercera revisión (sobre `672e92c` y `9cd0253`)
+
+La tercera pasada cerró casi todo. Lo que quedaba se arregló en la misma rama; el bloqueante de `/fork` ya no aplica, porque las conversaciones de la Agency no se bifurcan (decisión del dueño, más arriba).
+
+**Engine (Rinari-CLI#75):**
+- **`memory.propose` (familia de B1):** compara solo con la memoria y las propuestas que esa conversación puede ver. Un puesto ya no recibe «ya lo sé» con la nota de otro equipo, y su equipo guarda el dato.
+- **«Detener a todos» sin perfil:**
+  - detiene el tablero de todos los perfiles, no solo del activo;
+  - «Reanudar» sin perfil reanuda todos los detenidos.
+- **Menores:**
+  - Un recado que se deja o se devuelve durante la parada queda trabado (`stopped_by_owner`) y no corre al reanudar.
+  - Una vuelta que arranca mientras corre `halt()` se corta, y con el tablero detenido `_start` ya no lo intenta.
+  - Una ejecución de una regla del agente puede pasar trabajo a un equipo, como su chat directo.
+  - Un cambio de la carpeta visto pasado el límite diario espera, no se pierde.
+  - También se escapan los corchetes parecidos (［］ ⟪⟫ 【】 ⁅⁆ 〖〗 ⦃⦄).
+
+**App (Rinari-Agent#114):**
+- **Carrera al abrir un hijo:** un listado que ya iba en camino cuando se eligió una conversación no te saca de ella.
+- **Menores:**
+  - La entrada de la campana mira su propia propuesta, no otra del mismo agente.
+  - Las conversaciones de agente vistas se olvidan al borrarse y al cambiar de perfil.

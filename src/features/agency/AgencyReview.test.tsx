@@ -44,7 +44,7 @@ import RulesView from './RulesView'
 import OfficeView from './OfficeView'
 import AgencySidebar from './AgencySidebar'
 import MessageBubble from '../../components/MessageBubble'
-import { useAgencyStore, isAgencySession } from '../../stores/agency'
+import { useAgencyStore, isAgencySession, proposalKey, proposalWaiting } from '../../stores/agency'
 import { enterAgencySession } from './openAgencySession'
 
 const wrap = (node: React.ReactNode) => render(<I18nProvider lang="es">{node}</I18nProvider>)
@@ -104,6 +104,25 @@ it('a double Enter in the office posts once', async () => {
   await userEvent.type(input, 'hola{Enter}{Enter}')
   expect(api.agencyOfficePost).toHaveBeenCalledTimes(1)
   expect((input as HTMLTextAreaElement).value).toBe('')
+})
+
+it('a bell entry checks its own proposal, not another one of the same agent', () => {
+  const x = proposal({ name: 'X' })
+  const y = proposal({ name: 'Y' })
+  expect(proposalWaiting({ agentId: 'agent_1', proposal: proposalKey(x) }, [y])).toBe(false)
+  expect(proposalWaiting({ agentId: 'agent_1', proposal: proposalKey(x) }, [x, y])).toBe(true)
+  // An entry from before the key: by its agent.
+  expect(proposalWaiting({ agentId: 'agent_1' }, [y])).toBe(true)
+})
+
+it('an agent conversation stops counting once deleted or on a profile switch', () => {
+  const store = useAgencyStore.getState()
+  store.markAgentRows(['ses_child', 'ses_fork'])
+  expect(isAgencySession('ses_child')).toBe(true)
+  store.forgetAgentRow('ses_child')
+  expect(isAgencySession('ses_child')).toBe(false)
+  store.clearAgentRows()
+  expect(isAgencySession('ses_fork')).toBe(false)
 })
 
 it('a failed office post comes back only into an empty box', async () => {

@@ -141,7 +141,12 @@ export function useSessionList(options: {
    * historial no está cargado: así el primer pintado ya muestra
    * esqueleto y nunca el home transitorio. Único cuello de botella
    * para cambios de sesión Normal (ver select/restore/fork/create). */
+  // The session chosen last, and the listing in flight when it was: a listing
+  // that started before cannot know it (an Agency child before session.open
+  // answers), so it never moves you off it.
+  const activatedAt = useRef<{ id: string; seq: number }>({ id: '', seq: 0 })
   const activate = useCallback((id: string) => {
+    activatedAt.current = { id, seq: refreshSeq.current }
     if (id !== '' && !historyLoaded.current.has(id)) {
       setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
     }
@@ -184,7 +189,7 @@ export function useSessionList(options: {
     setSessionsById((current) => {
       const stale = Object.keys(current).filter(
         // Las de la Agency no están en session.list: su fila (modelo, título) se queda.
-        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !current[id]?.agent_id && !isAgencySession(id),
+        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !isAgencySession(id),
       )
       if (stale.length === 0) return current
       const next = { ...current }
@@ -196,6 +201,7 @@ export function useSessionList(options: {
   /** Una sesión que el Engine confirmó que no existe deja de estar en caché. */
   const forgetRow = useCallback((id: string) => {
     learntDuring.current.delete(id)
+    useAgencyStore.getState().forgetAgentRow(id)
     setSessionsById((current) => {
       if (!(id in current)) return current
       const next = { ...current }
@@ -236,6 +242,7 @@ export function useSessionList(options: {
         // Rinari Agency: sus chats y puestos no están en `session.list`; quien
         // escribe en el chat de un agente sigue en él.
         if (current !== '' && isAgencySession(current)) return current
+        if (current !== '' && activatedAt.current.id === current && activatedAt.current.seq >= seq) return current
         // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
         if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''

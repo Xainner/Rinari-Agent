@@ -622,3 +622,12 @@ La segunda pasada dio por resuelto casi todo y dejó dos bloqueantes a medias y 
   - Una propuesta repetida no suma aviso ni entrada en la campana, y la entrada lleva un id por su contenido.
   - Una entrada vieja de la campana dice que la propuesta ya no está.
   - Si la recarga nueva falla, la Agency se queda con la última buena del mismo perfil.
+
+### Decisión: sin forks en la Agency (dueño, 2026-10-21)
+
+Las conversaciones de la Agency no se bifurcan. Un agente trabaja en su chat directo y en sus puestos. Un fork de una de ellas quedaba escondido de todas las listas, gastaba el presupuesto del agente y escribía en su memoria sin las herramientas de la Agency, y era el último caso que sacaba al dueño de la conversación (tercera revisión de #114).
+
+- **Engine** (Rinari-CLI#75, `e595588` y `32ab318`):
+  - `session.fork` y `rinari session fork` rechazan una conversación con `agent_id`;
+  - el menú «/» de la Agency no ofrece `/fork`.
+- **Hijos:** siguen. Un subagente de un agente sí aporta, y el que nace con el contexto «fork» (`child.create`, `SessionService.fork(child=True)`) sigue copiando la conversación de su madre.

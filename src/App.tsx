@@ -592,7 +592,7 @@ function App() {
       if (event.event !== 'agency.chain.stopped') return
       const payload = event.payload as { reason?: string; detail?: string } | undefined
       const reason = payload?.reason ?? 'too_many_hops'
-      const known = ['too_many_hops', 'too_many_mentions', 'too_many_deliveries', 'could_not_start'].includes(reason)
+      const known = ['too_many_hops', 'too_many_mentions', 'too_many_deliveries', 'could_not_start', 'wait_expired', 'wait_cancelled'].includes(reason)
       toast.warning(translate(lang, 'agency.chain.stopped'), {
         description: [translate(lang, `agency.chain.${known ? reason : 'too_many_hops'}` as I18nKey), payload?.detail].filter(Boolean).join(' · '),
         duration: 15_000,

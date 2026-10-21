@@ -297,6 +297,7 @@ export default function OfficeView({ team, agents, onEditTeam }: OfficeViewProps
         <div className="agency-office-composer">
           {suggestions.length > 0 && (
             <ul className="agency-mention-list" role="listbox" aria-label={t('agency.office.mention')} data-testid="agency-mention-list">
+              <li role="presentation" className="agency-mention-hint">{t('agency.office.mentionHint')}</li>
               {suggestions.map((agent, index) => (
                 <li key={agent.id} role="option" aria-selected={index === picked}>
                   <button

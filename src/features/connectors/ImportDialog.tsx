@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { LoaderCircle, RotateCcw } from 'lucide-react'
 import { commandMessage, engineApi, type McpImportCandidate, type McpImportResult, type McpImportSource } from '../../services/engine'
@@ -47,26 +47,31 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
   const { t } = useI18n()
   const [mode, setMode] = useState<Mode>('apps')
   const [json, setJson] = useState('')
-  const [scan, setScan] = useState<{ sources: McpImportSource[]; candidates: McpImportCandidate[]; json?: string } | null>(null)
+  const [scan, setScan] = useState<{ mode: Mode; sources: McpImportSource[]; candidates: McpImportCandidate[]; json?: string } | null>(null)
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [marked, setMarked] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState(false)
   const [result, setResult] = useState<McpImportResult | null>(null)
+  // Cada lectura lleva su número: la respuesta de una vieja (o de la otra pestaña) se ignora.
+  const scanSeq = useRef(0)
 
   async function runScan(pasted?: string) {
+    const id = ++scanSeq.current
+    const tab: Mode = pasted === undefined ? 'apps' : 'paste'
     setScanning(true)
     setError(null)
     setResult(null)
     setMarked(new Set())
     try {
       const found = await engineApi.mcpImportScan(pasted === undefined ? {} : { json: pasted })
-      setScan({ ...found, json: pasted })
+      if (id === scanSeq.current) setScan({ ...found, mode: tab, json: pasted })
     } catch (err) {
+      if (id !== scanSeq.current) return
       setScan(null)
       setError(commandMessage(err))
     } finally {
-      setScanning(false)
+      if (id === scanSeq.current) setScanning(false)
     }
   }
 
@@ -80,6 +85,8 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
   }, [open])
 
   function switchMode(next: Mode) {
+    scanSeq.current += 1
+    setScanning(false)
     setMode(next)
     setScan(null)
     setError(null)
@@ -89,13 +96,17 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
   }
 
   async function apply() {
-    if (!scan || marked.size === 0) return
+    // Solo lo marcado de la última lectura de esta pestaña.
+    if (!scan || scan.mode !== mode || scanning) return
+    const chosen = scan.candidates.filter((candidate) => marked.has(candidate.key))
+    if (chosen.length === 0) return
+    const id = scanSeq.current
     setApplying(true)
     try {
-      const keys = [...marked]
-      const names = Object.fromEntries(scan.candidates.filter((candidate) => marked.has(candidate.key) && candidate.suggested_name && candidate.suggested_name !== candidate.name).map((candidate) => [candidate.key, candidate.suggested_name as string]))
+      const keys = chosen.map((candidate) => candidate.key)
+      const names = Object.fromEntries(chosen.filter((candidate) => candidate.suggested_name && candidate.suggested_name !== candidate.name).map((candidate) => [candidate.key, candidate.suggested_name as string]))
       const applied = await engineApi.mcpImportApply({ keys, names: Object.keys(names).length ? names : undefined, json: scan.json })
-      setResult(applied)
+      if (id === scanSeq.current) setResult(applied)
       setMarked(new Set())
       if (applied.created.length > 0) {
         toast.success(t('connectors.import.done', { n: applied.created.length }))
@@ -168,7 +179,7 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
               const fail = failed.get(candidate.key)
               return (
                 <li key={candidate.key} className="import-item" data-key={candidate.key} data-importable={candidate.importable || undefined}>
-                  <input id={id} type="checkbox" className="r-checkbox" checked={marked.has(candidate.key)} disabled={!candidate.importable || done || applying} onChange={() => toggle(candidate.key)} />
+                  <input id={id} type="checkbox" className="r-checkbox" checked={marked.has(candidate.key)} disabled={!candidate.importable || done || applying || scanning} onChange={() => toggle(candidate.key)} />
                   <div className="min-w-0 flex-1">
                     <label htmlFor={id} className="flex flex-wrap items-center gap-2">
                       <b className="text-[13px] text-[var(--text)]">{candidate.suggested_name ?? candidate.name}</b>
@@ -189,7 +200,7 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           {mode === 'apps' && <button type="button" className="btn btn-quiet btn-sm mr-auto" disabled={scanning} onClick={() => void runScan()}><RotateCcw size={13} /> {t('connectors.import.rescan')}</button>}
-          <button type="button" className="btn btn-primary" disabled={marked.size === 0 || applying} onClick={() => void apply()} data-testid="import-apply">
+          <button type="button" className="btn btn-primary" disabled={marked.size === 0 || applying || scanning} onClick={() => void apply()} data-testid="import-apply">
             {applying && <LoaderCircle size={14} className="r-spin" />} {t('connectors.import.apply', { n: marked.size })}
           </button>
         </div>

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -109,4 +109,47 @@ it('does not ask without the catalog capability', async () => {
   render(<I18nProvider lang="es"><ProjectOffersPrompt root="C:/repo" enabled={false} /></I18nProvider>)
   await new Promise((resolve) => setTimeout(resolve, 20))
   expect(list).not.toHaveBeenCalled()
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
+it('shows only the latest scan of the current tab, and imports only from it', async () => {
+  type Scan = Awaited<ReturnType<typeof engineApi.mcpImportScan>>
+  const first = deferred<Scan>()
+  const second = deferred<Scan>()
+  const pasted = deferred<Scan>()
+  const scan = vi.spyOn(engineApi, 'mcpImportScan')
+    .mockImplementationOnce(() => first.promise)
+    .mockImplementationOnce(() => pasted.promise)
+    .mockImplementationOnce(() => second.promise)
+  const apply = vi.spyOn(engineApi, 'mcpImportApply').mockResolvedValue({ created: [], failed: [] })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  const user = userEvent.setup()
+  // apps (first, still out) → paste → reads a JSON (still out) → apps again (second)
+  await user.click(within(dialog).getByRole('tab', { name: 'Pegar JSON' }))
+  await user.click(within(dialog).getByLabelText('Configuración mcpServers'))
+  await user.paste('{"mcpServers":{}}')
+  await user.click(within(dialog).getByRole('button', { name: 'Leer' }))
+  await user.click(within(dialog).getByRole('tab', { name: 'De otra app' }))
+  expect(scan).toHaveBeenCalledTimes(3)
+
+  await act(async () => { second.resolve({ sources: [], candidates: [candidate({ key: 'claude_desktop:new', name: 'new' })] }) })
+  expect(await within(dialog).findByText('new')).toBeTruthy()
+  expect(within(dialog).queryByRole('progressbar')).toBeNull()
+  await act(async () => {
+    first.resolve({ sources: [], candidates: [candidate({ key: 'claude_desktop:old', name: 'old' })] })
+    pasted.resolve({ sources: [], candidates: [candidate({ key: 'pasted:x', name: 'pasted-one', source: 'pasted' })] })
+  })
+  expect(within(dialog).queryByText('old')).toBeNull()
+  expect(within(dialog).queryByText('pasted-one')).toBeNull()
+  expect(within(dialog).getByText('new')).toBeTruthy()
+
+  await user.click(within(dialog).getByLabelText(/^new/))
+  await user.click(within(dialog).getByTestId('import-apply'))
+  expect(apply).toHaveBeenCalledWith({ keys: ['claude_desktop:new'], names: undefined, json: undefined })
 })

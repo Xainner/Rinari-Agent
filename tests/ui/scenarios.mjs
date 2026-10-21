@@ -763,6 +763,10 @@ export const scenarios = {
     // Cada turno de un puesto responde «listo»: alcanza para ver la respuesta en la oficina y el recado entregado.
     model: () => startFakeModel([]),
   },
+  'agency-chat-model': {
+    title: 'Agency: el modelo del chat de un agente cambia cada vez desde el composer y el de siempre de Rinari no se mueve',
+    phases: ['exercise'],
+  },
   'full-access-confirm': {
     title: 'Acceso completo: diálogo que explica, cancelar no cambia nada, confirmar lo activa, bajar no pregunta',
     phases: ['exercise'],

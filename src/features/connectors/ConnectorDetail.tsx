@@ -1,94 +1,109 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ExternalLink, Folder, RotateCcw, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Folder, LoaderCircle, RotateCcw, ShieldCheck, ShieldAlert } from 'lucide-react'
 import {
   commandMessage,
   engineApi,
   type McpDecision,
   type McpHintKey,
+  type McpTest,
   type McpToolPermission,
   type McpToolPermissions,
 } from '../../services/engine'
 import { useI18n, type I18nKey } from '../../i18n'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { ProgressBar } from '../../components/ui/progress-bar'
 import { Select } from '../../components/ui/select'
 import { SearchField } from '../../components/ui/SearchField'
 import { platform } from '../../platform'
 import { isOAuth, isRemote, type ConnectorCapabilities } from './connectorModel'
 import { ConnectorLogo } from './ConnectorLogo'
+import { TestResult } from './McpServerDialog'
 import { SegChoice } from './SegChoice'
+import { SegTabPanel, SegTabs } from './SegTabs'
 import { useConnectorEvents, type ConnectorLogEntry } from './connectorStore'
-import { AccountLine, PrimaryButton, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
+import { AccountLine, KindChip, PrimaryButton, serverSummary, StateChip, StateHint, type ConnectorActions } from './ConnectorParts'
 import type { ConnectorItem } from './useConnectors'
 
 type Tab = 'tools' | 'connection' | 'activity'
 
 /**
- * El detalle de un conector: sus herramientas con Permitir / Preguntar /
- * Bloquear (C5) y las anotaciones que el dueño puede corregir; la conexión,
- * la cuenta y el ámbito; y lo que esta ventana vio pasar.
+ * El detalle de un conector, como página dentro de Ajustes (en un diálogo
+ * las herramientas quedaban apretadas en una caja con su propio scroll): sus
+ * herramientas con Permitir / Preguntar / Bloquear (C5) y las anotaciones que
+ * el dueño puede corregir; la conexión, la cuenta y el ámbito; y lo que esta
+ * ventana vio pasar. «Conectores» o Esc vuelven a la lista.
  */
-export function ConnectorDetail({ item, caps, actions, onClose }: {
+export function ConnectorDetail({ item, caps, actions, testing = null, result, onClose }: {
   item: ConnectorItem | null
   caps: ConnectorCapabilities
   actions: ConnectorActions
+  /** El servidor que se está probando (uno a la vez en toda la pantalla). */
+  testing?: string | null
+  /** El último «Probar» de este conector. */
+  result?: McpTest
   onClose: () => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const tabs: Tab[] = caps.tools ? ['tools', 'connection', 'activity'] : ['connection', 'activity']
   const [tab, setTab] = useState<Tab>(tabs[0])
   const name = item?.server.name ?? null
+  const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { setTab(tabs[0]) }, [name])
-  const remote = item ? isRemote(item.server) : false
+  // Al entrar, el foco va al título: el lector de pantalla anuncia dónde está.
+  useEffect(() => { if (name) heading.current?.focus({ preventScroll: true }) }, [name])
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    if (!name) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      // Un menú, un desplegable o un diálogo abierto se cierra primero con su propio Esc.
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]')) return
+      close.current()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [name])
+  if (!item) return null
+  const remote = isRemote(item.server)
+  const summary = serverSummary(item.server)
+  const description = item.entry ? item.entry.description[lang] ?? item.entry.description.es : t(summary.key, { value: summary.value })
 
   return (
-    <Dialog open={item !== null} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-2xl" data-testid="connector-detail" data-connector={name ?? undefined}>
-        {item && (
-          <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <ConnectorLogo name={item.entry?.name ?? item.server.name} logo={item.entry?.logo} tone={item.entry?.category ?? (remote ? 'remote' : 'local')} size={40} />
-                <div className="min-w-0">
-                  <DialogTitle>{item.name}</DialogTitle>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <StateChip item={item} />
-                    <span className="mcp-chip">{t(remote ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
-                  </div>
-                </div>
-              </div>
-              <DialogDescription className="sr-only">{t('connectors.detail.description', { name: item.name })}</DialogDescription>
-            </DialogHeader>
-            <StateHint item={item} caps={caps} />
-            <div className="flex flex-wrap gap-2">
-              <PrimaryButton item={item} caps={caps} actions={actions} />
-            </div>
-            <div role="tablist" aria-label={t('connectors.detail.tabs')} className="seg-tabs w-fit">
-              {tabs.map((value, index) => (
-                <button key={value} type="button" role="tab" id={`connector-tab-${value}`} aria-controls={`connector-panel-${value}`} aria-selected={tab === value} tabIndex={tab === value ? 0 : -1} className="seg-tab"
-                  onClick={() => setTab(value)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
-                    event.preventDefault()
-                    const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]
-                    setTab(next)
-                    document.getElementById(`connector-tab-${next}`)?.focus()
-                  }}>
-                  {tab === value && <span className="seg-tab-pill" aria-hidden="true" />}
-                  <span className="relative">{t(`connectors.detail.tab.${value}` as I18nKey)}</span>
-                </button>
-              ))}
-            </div>
-            <div role="tabpanel" id={`connector-panel-${tab}`} aria-labelledby={`connector-tab-${tab}`}>
-              {tab === 'tools' && <ToolsPanel item={item} actions={actions} />}
-              {tab === 'connection' && <ConnectionPanel item={item} caps={caps} actions={actions} />}
-              {tab === 'activity' && <ActivityPanel item={item} />}
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+    <section className="connector-page" data-testid="connector-detail" data-connector={name ?? undefined} aria-labelledby="connector-page-title" aria-describedby="connector-page-about">
+      <p id="connector-page-about" className="sr-only">{t('connectors.detail.description', { name: item.name })}</p>
+      <button type="button" className="btn btn-quiet btn-sm connector-page-back" onClick={onClose}>
+        <ArrowLeft size={14} aria-hidden="true" /> {t('connectors.title')}
+      </button>
+      <header className="connector-page-head">
+        <ConnectorLogo name={item.entry?.name ?? item.server.name} logo={item.entry?.logo} tone={item.entry?.category ?? (remote ? 'remote' : 'local')} size={48} />
+        <div className="min-w-0 flex-1">
+          <h2 id="connector-page-title" ref={heading} tabIndex={-1} className="connector-page-title">{item.name}</h2>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <StateChip item={item} />
+            <KindChip remote={remote} />
+            {item.server.scope === 'project' && <span className="connector-kind">{t('connectors.chip.project')}</span>}
+          </div>
+          {description && <p className="connector-page-desc">{description}</p>}
+        </div>
+        <div className="connector-page-action">
+          <PrimaryButton item={item} caps={caps} actions={actions} size="md" />
+        </div>
+      </header>
+      <StateHint item={item} caps={caps} />
+      <SegTabs<Tab>
+        value={tab}
+        label={t('connectors.detail.tabs')}
+        idPrefix="connector"
+        options={tabs.map((value) => ({ value, label: t(`connectors.detail.tab.${value}` as I18nKey) }))}
+        onChange={setTab}
+      />
+      <SegTabPanel idPrefix="connector" value={tab}>
+        {tab === 'tools' && <ToolsPanel item={item} actions={actions} />}
+        {tab === 'connection' && <ConnectionPanel item={item} caps={caps} actions={actions} testing={testing} result={result} />}
+        {tab === 'activity' && <ActivityPanel item={item} />}
+      </SegTabPanel>
+    </section>
   )
 }
 
@@ -105,17 +120,20 @@ function ToolsPanel({ item, actions }: { item: ConnectorItem; actions: Connector
   const [query, setQuery] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
   const tick = useConnectorEvents((state) => state.tick)
+  // Cada lectura lleva su número y un cambio guardado sube el contador: una lectura
+  // que empezó antes y vuelve después no deshace lo que el dueño acaba de elegir.
+  const version = useRef(0)
 
   useEffect(() => {
-    let alive = true
-    engineApi.mcpToolsList(server.name, scope).then((result) => { if (alive) { setData(result.server); setError(null) } }).catch((err) => { if (alive) setError(commandMessage(err)) })
-    return () => { alive = false }
+    const id = ++version.current
+    engineApi.mcpToolsList(server.name, scope).then((result) => { if (id === version.current) { setData(result.server); setError(null) } }).catch((err) => { if (id === version.current) setError(commandMessage(err)) })
   }, [server.name, scope, tick])
 
   async function save(key: string, change: () => Promise<{ server: McpToolPermissions }>) {
     setSaving(key)
     try {
       const result = await change()
+      version.current += 1
       setData(result.server)
     } catch (err) {
       toast.error(commandMessage(err))
@@ -242,7 +260,7 @@ function ToolRow({ tool, busy, options, onDecision, onHint }: {
   )
 }
 
-function ConnectionPanel({ item, caps, actions }: { item: ConnectorItem; caps: ConnectorCapabilities; actions: ConnectorActions }) {
+function ConnectionPanel({ item, caps, actions, testing, result }: { item: ConnectorItem; caps: ConnectorCapabilities; actions: ConnectorActions; testing: string | null; result?: McpTest }) {
   const { t, lang } = useI18n()
   const { server, entry, auth } = item
   const remote = isRemote(server)
@@ -302,13 +320,16 @@ function ConnectionPanel({ item, caps, actions }: { item: ConnectorItem; caps: C
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => actions.test(item)}>{t('mcp.test')}</button>
+        <button type="button" className="btn btn-secondary btn-sm" disabled={testing !== null} aria-busy={testing === server.name || undefined} onClick={() => actions.test(item)} data-testid="connector-detail-test">
+          {testing === server.name && <LoaderCircle size={13} className="r-spin" />} {t('mcp.test')}
+        </button>
         {caps.remote && <button type="button" className="btn btn-ghost btn-sm" onClick={() => actions.edit(item)}>{t('mcp.edit')}</button>}
         {caps.oauth && isOAuth(server) && auth && (auth.signed_in || auth.reauth_required) && <button type="button" className="btn btn-ghost btn-sm" onClick={() => actions.signOut(item)}>{t('connectors.signOut')}</button>}
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => actions.toggle(item)}>{server.enabled ? t('connectors.action.disable') : t('connectors.action.enable')}</button>
         {entry?.docs_url && <button type="button" className="btn btn-quiet btn-sm" onClick={() => void platform().opener.openUrl(entry.docs_url).catch(() => undefined)}><ExternalLink size={13} /> {t('connectors.docs')}</button>}
         <button type="button" className="btn btn-quiet btn-sm text-[var(--danger)]" onClick={() => actions.remove(item)}>{t('connectors.remove')}</button>
       </div>
+      {result && testing !== server.name && <TestResult result={result} oauthSupported={caps.oauth} />}
     </div>
   )
 }

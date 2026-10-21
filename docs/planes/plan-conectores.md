@@ -52,7 +52,7 @@ Rehecho en C0 sobre lo que dejó F42 del [plan 0.4.0 v3](plan-0.4.0-v3.md) (la l
 4. **No hay control por herramienta:** no se puede apagar una herramienta peligrosa ni decir «esta siempre se permite».
 5. **El modelo ve los nombres de lo conectado (F42), pero no para qué sirve cada conector ni si hay que reconectarlo**, y no puede leer `resources`.
 6. **Permisos:** casi toda tarea con MCP lee un resultado (contenido externo) y vuelve a llamar al mismo MCP, y la guardia de contenido externo lo trata como enviar datos fuera ([plan de permisos v4](plan-permisos-v4.md), punto «Por eso pregunta tanto»).
-7. **Docker** se usa hoy por la consola, sin reglas propias: `docker rm`, `compose down -v` o `system prune` no se clasifican como destructivos.
+7. **Docker** se usa hoy por la consola, sin reglas propias, y así se queda (C7, 2026-10-20): pasa por las reglas generales como cualquier programa.
 8. **La Agency** necesita conectores que funcionen sin la app abierta y con permisos por agente, y eso no existe.
 
 ## Bloques
@@ -66,7 +66,7 @@ Rehecho en C0 sobre lo que dejó F42 del [plan 0.4.0 v3](plan-0.4.0-v3.md) (la l
 | C4 | Catálogo e importar configuraciones | CLI + Agent | C0, C3 |
 | C5 | Permisos por conector y por herramienta | CLI + Agent | C2 |
 | C6 | El modelo sabe qué conectores tiene | CLI | C2 |
-| C7 | Docker: reglas en la política y entrada en el catálogo | CLI (+ catálogo) | C4 para la entrada |
+| C7 | ~~Docker: reglas en la política y entrada en el catálogo~~ — retirado (2026-10-20) | — | — |
 | C8 | Lo que necesita la Agency (**espera a la Agency**) | CLI + Agent | C1, C5, la Agency |
 
 Orden propuesto: C0; después C1 y C2 a la vez (no tocan los mismos archivos: `http_transport.py` y un `oauth.py` nuevo contra `service.py` y `agent_runtime.py`); C5 y C6; C3 con C4; C7; C8. C8 espera a que exista la Agency (dueño, 2026-10-20).
@@ -253,6 +253,7 @@ Encima de [permisos v4](plan-permisos-v4.md), sin cambiar sus tres modos:
 - Las anotaciones del servidor cuentan: `readOnlyHint` → lectura; `destructiveHint` → riesgo alto; `openWorldHint` → envía fuera. Son pistas del servidor, no garantías: el usuario puede corregirlas por herramienta.
 - Por herramienta: Permitir / Preguntar / Bloquear, que gana sobre la regla general del modo. «Siempre» en la tarjeta de permiso guarda eso mismo.
 - **Mismo conector, mismo destino:** leer de un conector y volver a llamar al mismo conector no es «enviar a un destino nuevo» para la guardia de contenido externo. Pasar datos de un conector a otro sí cuenta. Hay que revisarlo con lo que ya hace la guardia antes de cambiarla.
+  - **Riesgo conocido, aceptado (dueño, 2026-10-20):** en conectores donde «el mismo conector» no es «el mismo sitio» (correo, chat, GitHub), un contenido malicioso leído con `gmail.read` puede llevar a enviar datos con `gmail.send` sin preguntar. Solo afecta al modo «Preguntar»; en «Siempre» la guardia no pregunta nada de todos modos, y el dueño trabaja así para que la automatización no se frene. No se añade ninguna regla. Si algún día se quiere, la opción sería que la excepción valga solo para herramientas `openWorldHint: false` o marcadas por el usuario.
 - Acceso completo sigue sin preguntar nada, salvo la lista catastrófica y lo bloqueado a mano.
 
 **Pruebas:** tabla de casos por modo × anotación × ajuste por herramienta; la guardia con un conector y con dos.
@@ -265,13 +266,14 @@ Encima de [permisos v4](plan-permisos-v4.md), sin cambiar sus tres modos:
 
 **Pruebas:** la línea aparece solo con conectores activos; un conector que conecta tarde entra a la búsqueda; uno que hay que reconectar lo dice el modelo.
 
-### C7. Docker
+### C7. Docker — retirado
 
-**Decisión (dueño, 2026-10-18): reglas más una entrada en el catálogo, sin herramientas nativas.** El modelo ya sabe usar la consola de Docker; lo que falta es seguridad.
-1. **Reglas en la política de la consola** para `docker` y `docker compose`: `ps`, `logs`, `inspect`, `images` son lecturas; `run`, `build`, `compose up` ejecutan; `rm`, `rmi`, `compose down -v`, `volume rm` y `system prune` son destructivos. Protegen a cualquier usuario, tenga o no el conector.
-2. **Una entrada de Docker en el catálogo** si C0 encuentra un MCP bueno y mantenido, para quien quiera herramientas estructuradas.
+**Decisión (dueño, 2026-10-20): sin reglas propias de Docker.** Se hicieron (Rinari-CLI#74, 12c7a3b) y se revirtieron: una lista para un solo programa es hardcodeo, y mañana harían falta otras para `kubectl`, `gh`, `terraform`… Docker, como cualquier otro programa, pasa por las reglas generales, como lo hacen Codex y Claude Code:
+1. Una lista corta y fija de órdenes conocidas: las de solo lectura corren sin preguntar y unas pocas peligrosas de verdad (la lista catastrófica) siempre se frenan.
+2. Todo lo demás es «ejecutar»: pregunta en «Preguntar» y corre en «Siempre».
+3. Las reglas del dueño. Hoy «Siempre» en una orden guarda la orden exacta o toda la capacidad; **pendiente:** reglas por prefijo («`docker ps` siempre», «bloquear `docker system prune`»), como `prefix_rule` de Codex o `Bash(docker ps:*)` de Claude Code.
 
-**Pruebas:** tabla de comandos de Docker por modo; las variantes con `-f`, `--force` y `-a`.
+Tampoco hay entrada de Docker en el catálogo (C0: no hay un MCP oficial ni uno mantenido).
 
 ### C8. Lo que necesita la Agency
 
@@ -286,6 +288,32 @@ La Agency ([idea-rinari-agency.md](idea-rinari-agency.md)) se va a probar pronto
 
 Lo que se pensó como base genérica y queda para entonces: conectores permitidos por agente (sobre `agents/definition.py`), un dueño por servidor con dos cuentas del mismo servicio, renovación proactiva del token y aviso de «reconectar» sin pantalla, y una acción de `schedule/` que llama a una herramienta MCP con datos fijos respetando C5. C1 ya renueva el token al usarlo y ante un 401, y C5 ya bloquea lo bloqueado a mano en cualquier modo.
 
+## Revisión de Rinari-CLI#74 y Rinari-Agent#113 (2026-10-20)
+
+Revisión de código antes de fusionar a `0.4.0`. Arreglado en las ramas de los PRs, cada arreglo con una prueba que falla sin él:
+- **Engine:**
+  - Cambiar el permiso de una herramienta borraba `project_root`: un servidor de la carpeta A pasaba a verse en todos los proyectos de confianza (bloqueante).
+  - C7 revertido (arriba). Con él se fue el permitido temprano de solo lectura, donde `docker ps | sort -o ARCHIVO` podía escribir un archivo.
+  - OAuth solo por https (http solo en esta computadora).
+  - Un 408, 429 o 5xx al renovar ya no tira el refresh token.
+  - Cancelar mientras se descubre o se registra corta el inicio de sesión antes de abrir el navegador.
+  - La oferta de un `.mcp.json` dice qué variable tuya mandaría y a dónde.
+  - La confianza del proyecto (corre `git`) se mira fuera del lock del servicio.
+  - `close()` y «reautorizar» no dejan clientes ni procesos abiertos.
+- **App:**
+  - Cancelar el inicio de sesión mientras arranca lo cancela de verdad, y salir de «Conectores» también.
+  - Las etapas «Buscar» y «Preparar el cliente» se ven.
+  - Las recargas pedidas a la vez no se pierden.
+  - Los escaneos de importar van numerados.
+  - «Probar» en el detalle muestra el resultado.
+  - «Más tarde» compara rutas normalizadas.
+  - El selector de herramienta de Imágenes vuelve a aceptar texto.
+  - Los errores del Engine van traducidos, con el texto en «Detalles».
+  - El JSON pegado se borra al importar.
+  - El estado de un servidor borrado no se queda pegado.
+  - Las pestañas de importar son accesibles.
+- **Aceptado sin cambio:** «mismo conector, mismo destino» (C5).
+
 ## Decisiones (dueño, 2026-10-18)
 
 | Tema | Decisión |
@@ -294,7 +322,7 @@ Lo que se pensó como base genérica y queda para entonces: conectores permitido
 | Nombre | «Conectores» reemplaza a «Servidores MCP»; chip «MCP remoto/local» y «Agregar servidor MCP» dentro. |
 | Conexión | Como Claude Code: al abrir la sesión, en paralelo y sin bloquear (C2). |
 | Catálogo | Lo del directorio de Claude que funcione con Rinari como cliente, más ElevenLabs, GitHub, Planka, Docker y bases de datos (C0, C4). |
-| Docker | Reglas en la política + entrada en el catálogo; sin herramientas nativas (C7). |
+| Docker | ~~Reglas en la política + entrada en el catálogo~~. **2026-10-20:** sin reglas propias; las reglas generales y, más adelante, reglas del dueño por prefijo (C7). |
 | Google | Cliente OAuth propio de cada usuario, con guía paso a paso (C0, C3). |
 | Importar | Como Claude Code: `.mcp.json` de un proyecto de confianza con pregunta por servidor, «Importar de otra app» y pegar JSON; nada automático (C4). |
 | Gateway | Va en [plan-gateway.md](plan-gateway.md), después de depurar aquí. |

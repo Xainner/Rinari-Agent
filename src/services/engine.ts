@@ -942,7 +942,7 @@ export interface McpCatalogAddInput {
   connection_string?: string;
 }
 
-export interface McpImportSecret { where: 'env' | 'header' | 'url'; name: string; kind: 'value' | 'env_ref' }
+export interface McpImportSecret { where: 'env' | 'header' | 'url'; name: string; kind: 'value' | 'env_ref'; /** env_ref: la variable tuya que lee (el nombre, nunca el valor). */ variable?: string }
 
 export interface McpImportCandidate {
   key: string;

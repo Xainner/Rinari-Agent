@@ -3,9 +3,11 @@ import { toast } from 'sonner'
 import { LoaderCircle } from 'lucide-react'
 import { commandMessage, engineApi, type McpProjectOffers } from '../../services/engine'
 import { useI18n } from '../../i18n'
+import { pathKey } from '../../lib/paths'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
-import { CandidateBody } from './ImportDialog'
+import { CandidateBody, FailureDetails, failureText } from './ImportDialog'
 import { SegChoice } from './SegChoice'
+import { KindChip } from './ConnectorParts'
 import { useProjectOffersCheck } from './connectorStore'
 
 type Answer = 'accept' | 'reject'
@@ -22,7 +24,8 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
   const [offers, setOffers] = useState<McpProjectOffers | null>(null)
   const [answers, setAnswers] = useState<Record<string, Answer>>({})
   const [busy, setBusy] = useState(false)
-  // Lo aplazado con «Más tarde» no se vuelve a preguntar en esta ventana.
+  // Lo aplazado con «Más tarde» no se vuelve a preguntar en esta ventana. Se guarda
+  // con `pathKey`: el Engine devuelve la ruta resuelta y aquí llega la cruda.
   const deferred = useRef(new Set<string>())
   const requestRoot = useProjectOffersCheck((state) => state.root)
   const nonce = useProjectOffersCheck((state) => state.nonce)
@@ -31,12 +34,12 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
   useEffect(() => { setTarget(root) }, [root])
   useEffect(() => {
     if (nonce === 0 || !requestRoot) return
-    deferred.current.delete(requestRoot)
+    deferred.current.delete(pathKey(requestRoot))
     setTarget(requestRoot)
   }, [nonce])
 
   useEffect(() => {
-    if (!enabled || !target || deferred.current.has(target)) return
+    if (!enabled || !target || deferred.current.has(pathKey(target))) return
     let alive = true
     engineApi.mcpProjectOffersList(target).then((found) => {
       if (!alive || !found.trusted || found.offers.length === 0) return
@@ -47,7 +50,7 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
   }, [enabled, target, nonce])
 
   function later() {
-    if (offers) deferred.current.add(offers.project)
+    if (offers) deferred.current.add(pathKey(offers.project))
     setOffers(null)
   }
 
@@ -59,9 +62,12 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
     try {
       const result = await engineApi.mcpProjectOffersDecide(offers.project, decisions)
       if (result.created.length > 0) toast.success(t('connectors.offers.created', { n: result.created.length }))
-      for (const failure of result.failed) toast.error(failure.message || failure.code)
+      for (const failure of result.failed) {
+        const name = offers.offers.find((offer) => offer.key === failure.key)?.name ?? failure.key
+        toast.error(`${name}: ${failureText(t, failure.code)}`, { description: <FailureDetails message={failure.message} /> })
+      }
       // Lo que quedó sin responder se pregunta la próxima vez que se abra.
-      if (decisions.length < offers.offers.length) deferred.current.add(offers.project)
+      if (decisions.length < offers.offers.length) deferred.current.add(pathKey(offers.project))
       setOffers(null)
     } catch (err) {
       toast.error(commandMessage(err))
@@ -86,7 +92,7 @@ export function ProjectOffersPrompt({ root, enabled }: { root: string | null; en
                 <li key={offer.key} className="import-item flex-col" data-key={offer.key}>
                   <div className="flex w-full flex-wrap items-center gap-2">
                     <b className="text-[13px] text-[var(--text)]" id={`offer-${offer.key}`}>{offer.name}</b>
-                    <span className="mcp-chip">{t(offer.transport === 'http' ? 'connectors.chip.remote' : 'connectors.chip.local')}</span>
+                    <KindChip remote={offer.transport === 'http'} />
                     {offer.path && <span className="font-mono text-[11px] text-[var(--text-subtle)]">{offer.path.split(/[\\/]/).slice(-2).join('/')}</span>}
                     {offer.changed && <span className="r-chip" data-tone="warning">{t('connectors.offers.changed')}</span>}
                   </div>

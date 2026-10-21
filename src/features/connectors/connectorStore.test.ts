@@ -38,3 +38,13 @@ it('keeps the outcome of a sign-in that finished before mcp.auth.start returned'
   useConnectorEvents.getState().startFlow('fast', 'f10')
   expect(useConnectorEvents.getState().auth.fast).toMatchObject({ flowId: 'f10', outcome: null })
 })
+
+it('forgets the live status of a removed server and of one the list no longer has', () => {
+  apply('mcp.status.changed', { name: 'gone', status: 'connected' })
+  apply('mcp.status.changed', { name: 'old', status: 'error' })
+  apply('mcp.status.changed', { name: 'kept', status: 'connected' })
+  useConnectorEvents.getState().forget('gone')
+  expect(Object.keys(useConnectorEvents.getState().live).sort()).toEqual(['kept', 'old'])
+  useConnectorEvents.getState().prune(['kept', 'new'])
+  expect(Object.keys(useConnectorEvents.getState().live)).toEqual(['kept'])
+})

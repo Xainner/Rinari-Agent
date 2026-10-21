@@ -62,23 +62,48 @@ export function SignInDialog() {
   const [attempt, setAttempt] = useState(0)
   const [copied, setCopied] = useState(false)
   const flowId = phase.kind === 'waiting' ? phase.start.flow_id : null
+  // Mientras arranca (descubrir, registrar) el `flow_id` solo llega por
+  // `mcp.auth.progress`: el flujo anterior de este servidor no cuenta.
+  const before = useRef<string | null>(null)
   const pending = useRef<string | null>(null)
+  const dismissed = useRef(false)
 
   useEffect(() => {
     if (!name) return
     let alive = true
+    dismissed.current = false
+    before.current = useConnectorEvents.getState().auth[name]?.flowId ?? null
+    pending.current = 'starting'
     setPhase({ kind: 'starting' })
     setCopied(false)
     engineApi.mcpAuthStart(name).then((start) => {
-      if (!alive) return
+      if (!alive) {
+        // Cerrada mientras arrancaba: si aun así llegó a esperar el navegador, se cancela.
+        if (dismissed.current) void engineApi.mcpAuthCancel(name).catch(() => undefined)
+        return
+      }
       pending.current = start.flow_id
       startFlow(name, start.flow_id)
       setPhase({ kind: 'waiting', start })
     }).catch((err) => {
-      if (alive) setPhase({ kind: 'failed', ...startError(t, err) })
+      if (!alive) return
+      pending.current = null
+      setPhase({ kind: 'failed', ...startError(t, err) })
     })
     return () => { alive = false }
   }, [name, attempt])
+
+  // Salir de «Conectores» con un inicio de sesión a medias lo cancela: al
+  // volver no arranca otro solo.
+  useEffect(() => () => {
+    const current = useSignIn.getState().name
+    if (current && pending.current) {
+      dismissed.current = true
+      void engineApi.mcpAuthCancel(current).catch(() => undefined)
+    }
+    pending.current = null
+    useSignIn.getState().close()
+  }, [])
 
   // El final llega como evento del flujo que esta ventana empezó.
   useEffect(() => {
@@ -91,14 +116,19 @@ export function SignInDialog() {
   }, [flow, flowId])
 
   function dismiss() {
-    // Cerrar mientras espera el navegador cancela ese inicio de sesión: no queda nada a medias.
-    if (name && pending.current) void engineApi.mcpAuthCancel(name).catch(() => undefined)
+    // Cerrar mientras arranca o espera el navegador cancela ese inicio de
+    // sesión (el Engine lo corta antes de abrir el navegador): no queda nada a medias.
+    if (name && pending.current) {
+      dismissed.current = true
+      void engineApi.mcpAuthCancel(name).catch(() => undefined)
+    }
     pending.current = null
     close()
   }
 
+  const starting = phase.kind === 'starting' && flow && flow.flowId !== before.current && !flow.outcome ? flow.stage : null
   const stage = flow && flowId && flow.flowId === flowId ? flow.stage : null
-  const currentStage = phase.kind === 'starting' ? null : stage ?? 'waiting_for_browser'
+  const currentStage = phase.kind === 'starting' ? starting ?? 'discovering' : stage ?? 'waiting_for_browser'
 
   return (
     <Dialog open={name !== null} onOpenChange={(open) => { if (!open) dismiss() }}>
@@ -141,7 +171,7 @@ export function SignInDialog() {
         )}
 
         {phase.kind === 'signed_in' && (
-          <div className="mcp-result is-ok" role="status">
+          <div className="connector-result is-ok" role="status">
             <RinariAvatar state="done" size={34} />
             <div className="min-w-0">
               <p className="font-semibold text-[var(--success)]">{t('connectors.signin.done')}</p>
@@ -151,7 +181,7 @@ export function SignInDialog() {
         )}
 
         {(phase.kind === 'failed' || phase.kind === 'timed_out') && (
-          <div className="mcp-result is-error" role="alert">
+          <div className="connector-result is-error" role="alert">
             <RinariAvatar state="error" size={34} />
             <div className="min-w-0">
               <p className="font-semibold text-[var(--danger)]">{t(phase.kind === 'timed_out' ? 'connectors.signin.timedOut' : 'connectors.signin.failed')}</p>

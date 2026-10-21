@@ -33,20 +33,23 @@ export function useConnectors(caps: ConnectorCapabilities) {
   const [error, setError] = useState<string | null>(null)
   const live = useConnectorEvents((state) => state.live)
   const tick = useConnectorEvents((state) => state.tick)
-  const loading = useRef(false)
+  const capsRef = useRef(caps)
+  capsRef.current = caps
+  const running = useRef<Promise<void> | null>(null)
+  const queued = useRef<Promise<void> | null>(null)
 
-  const reload = useCallback(async () => {
-    if (loading.current) return
-    loading.current = true
+  const load = useCallback(async () => {
+    const { catalog: withCatalog, oauth: withOAuth } = capsRef.current
     try {
       const [list, entries] = await Promise.all([
         engineApi.mcpList(),
-        caps.catalog ? engineApi.mcpCatalogList().then((result) => result.entries).catch(() => [] as McpCatalogEntry[]) : Promise.resolve([] as McpCatalogEntry[]),
+        withCatalog ? engineApi.mcpCatalogList().then((result) => result.entries).catch(() => [] as McpCatalogEntry[]) : Promise.resolve([] as McpCatalogEntry[]),
       ])
       setServers(list.servers)
+      useConnectorEvents.getState().prune(list.servers.map((server) => server.name))
       setCatalog(entries)
       setError(null)
-      if (caps.oauth) {
+      if (withOAuth) {
         const oauth = list.servers.filter((server) => server.auth?.kind === 'oauth')
         const statuses = await Promise.all(oauth.map((server) => engineApi.mcpAuthStatus(server.name).catch(() => null)))
         setAuth(Object.fromEntries(statuses.filter((status): status is McpAuthStatus => status !== null).map((status) => [status.name, status])))
@@ -54,13 +57,23 @@ export function useConnectors(caps: ConnectorCapabilities) {
     } catch (err) {
       setError(commandMessage(err))
       setServers((current) => current ?? [])
-    } finally {
-      loading.current = false
     }
-  }, [caps.catalog, caps.oauth])
+  }, [])
+
+  // Una recarga pedida durante otra no se pierde: se hace una más al terminar,
+  // con las capacidades de ese momento, y quien la pidió espera esa.
+  const reload = useCallback((): Promise<void> => {
+    if (running.current) {
+      queued.current ??= running.current.then(() => { queued.current = null; return reload() })
+      return queued.current
+    }
+    const current = load().finally(() => { running.current = null })
+    running.current = current
+    return current
+  }, [load])
 
   useEffect(() => { listenConnectorEvents() }, [])
-  useEffect(() => { void reload() }, [reload])
+  useEffect(() => { void reload() }, [reload, caps.catalog, caps.oauth])
   // Un evento que cambia algo (otro estado, una sesión iniciada): la lista y las sesiones se releen.
   useEffect(() => {
     if (tick === 0) return

@@ -107,6 +107,42 @@ it('cancels a pending sign-in and explains a refused one', async () => {
   expect(await within(failed).findByText(/no deja que Rinari se registre solo/)).toBeTruthy()
 })
 
+it('cancelling while the sign-in still starts cancels it in the Engine, and the first steps show', async () => {
+  let resolve: (value: Awaited<ReturnType<typeof engineApi.mcpAuthStart>>) => void = () => {}
+  vi.spyOn(engineApi, 'mcpAuthStart').mockReturnValue(new Promise((done) => { resolve = done }))
+  const cancel = vi.spyOn(engineApi, 'mcpAuthCancel').mockResolvedValue({ name: 'notion', cancelled: true })
+  mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('notion')).findByRole('button', { name: 'Iniciar sesión' }))
+  const dialog = await screen.findByTestId('connector-signin')
+  // Discovering and registering show while it starts (their flow_id comes only by event).
+  await waitFor(() => expect(dialog.querySelector('[data-state="current"]')?.textContent).toContain('Buscar'))
+  act(() => bridge.emitEngineEvent({ type: 'event', event: 'mcp.auth.progress', payload: { name: 'notion', flow_id: 'f9', stage: 'registering' } }))
+  await waitFor(() => expect(dialog.querySelector('[data-state="current"]')?.textContent).toContain('Preparar el cliente'))
+  await user.click(within(dialog).getByRole('button', { name: 'Cancelar inicio de sesión' }))
+  expect(cancel).toHaveBeenCalledWith('notion')
+  await waitFor(() => expect(screen.queryByTestId('connector-signin')).toBeNull())
+  // If the Engine still answered with a sign-in waiting for the browser, it is cancelled too.
+  await act(async () => resolve({ name: 'notion', flow_id: 'f9', authorize_url: 'https://auth.example/a', redirect_uri: 'http://127.0.0.1:5555/callback', browser_opened: true, client: 'registered' }))
+  await waitFor(() => expect(cancel).toHaveBeenCalledTimes(2))
+})
+
+it('leaving Conectores mid sign-in cancels it and does not start another on return', async () => {
+  const start = vi.spyOn(engineApi, 'mcpAuthStart').mockReturnValue(new Promise(() => {}))
+  const cancel = vi.spyOn(engineApi, 'mcpAuthCancel').mockResolvedValue({ name: 'notion', cancelled: true })
+  const view = mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('notion')).findByRole('button', { name: 'Iniciar sesión' }))
+  await screen.findByTestId('connector-signin')
+  view.unmount()
+  expect(cancel).toHaveBeenCalledWith('notion')
+  expect(useSignIn.getState().name).toBeNull()
+  mount()
+  await findCard('notion')
+  expect(screen.queryByTestId('connector-signin')).toBeNull()
+  expect(start).toHaveBeenCalledTimes(1)
+})
+
 it('sets Allow / Ask / Block per tool, the connector default and corrects an annotation', async () => {
   vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValue({ server: tools })
   const set = vi.spyOn(engineApi, 'mcpToolsSet').mockImplementation(async (request) => ({ server: { ...tools, tools: [{ ...tools.tools[0], setting: request.decision ?? null, decision: request.decision ?? null, decision_source: 'tool' }] }, tool: tools.tools[0] }))
@@ -185,4 +221,49 @@ it('without the new capabilities it offers only what works: the manual form, no 
   await user.click(screen.getByRole('button', { name: 'Agregar conector' }))
   const form = await screen.findByTestId('mcp-server-dialog')
   expect(within(form).queryByRole('radio', { name: 'Iniciar sesión (OAuth)' })).toBeNull()
+})
+
+it('«Probar» in the detail shows its result and its error there, one run at a time', async () => {
+  vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValue({ server: tools })
+  vi.spyOn(engineApi, 'projectIntelligence').mockResolvedValue({ instructions: { trusted: true, scopes: [] } } as never)
+  let finish!: (value: Awaited<ReturnType<typeof engineApi.mcpTest>>) => void
+  const test = vi.spyOn(engineApi, 'mcpTest').mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+  mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('files')).findByRole('button', { name: 'Detalles' }))
+  const detail = await screen.findByTestId('connector-detail')
+  await user.click(within(detail).getByRole('tab', { name: 'Conexión' }))
+  const probe = await within(detail).findByTestId('connector-detail-test')
+  await user.click(probe)
+  expect(probe).toHaveProperty('disabled', true)
+  await user.click(probe)
+  expect(test).toHaveBeenCalledTimes(1)
+  await act(async () => { finish({ test: { ok: true, tools: 4, latency_ms: 12 } } as never) })
+  expect(await within(detail).findByText(/4 herramientas/)).toBeTruthy()
+  expect(probe).toHaveProperty('disabled', false)
+
+  test.mockRejectedValueOnce({ code: 'MCP_SPAWN_FAILED', message: 'npx not found' })
+  await user.click(probe)
+  const failure = await within(detail).findByRole('alert')
+  expect(failure.textContent).toContain('No se pudo arrancar el programa')
+  expect(failure.textContent).toContain('npx not found')
+})
+
+it('a tools refetch that started before a change does not undo it when it comes back later', async () => {
+  const list = vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValueOnce({ server: tools })
+  vi.spyOn(engineApi, 'mcpToolsSet').mockImplementation(async (request) => ({ server: { ...tools, tools: [{ ...tools.tools[0], setting: request.decision ?? null, decision: request.decision ?? null, decision_source: 'tool' }] }, tool: tools.tools[0] }))
+  mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('files')).findByRole('button', { name: 'Detalles' }))
+  const detail = await screen.findByTestId('connector-detail')
+  const row = (await within(detail).findByText('Delete file')).closest('[data-tool]') as HTMLElement
+  // An event asks for the tools again; that answer (still without the change) comes back late.
+  let late!: (value: { server: McpToolPermissions }) => void
+  list.mockImplementationOnce(() => new Promise((resolve) => { late = resolve }))
+  act(() => bridge.emitEngineEvent({ type: 'event', event: 'mcp.status.changed', payload: { name: 'files', status: 'connected', connection: { tools: 1, resources: false, attempts: 1 } } }))
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+  await user.click(within(row).getByRole('radio', { name: 'Bloquear' }))
+  await waitFor(() => expect(within(row).getByRole('radio', { name: 'Bloquear' }).getAttribute('aria-checked')).toBe('true'))
+  await act(async () => { late({ server: tools }) })
+  expect(within(row).getByRole('radio', { name: 'Bloquear' }).getAttribute('aria-checked')).toBe('true')
 })

@@ -42,6 +42,10 @@ interface ConnectorEvents {
   /** El inicio de sesión que esta ventana empezó (antes del primer evento). */
   startFlow: (server: string, flowId: string) => void
   clearFlow: (server: string) => void
+  /** Olvida el estado vivo de un servidor quitado. */
+  forget: (server: string) => void
+  /** Deja solo el estado vivo de los servidores que siguen en la lista. */
+  prune: (servers: readonly string[]) => void
 }
 
 const now = () => new Date().toISOString()
@@ -93,6 +97,18 @@ export const useConnectorEvents = create<ConnectorEvents>((set) => ({
     const next = { ...state.auth }
     delete next[server]
     return { auth: next }
+  }),
+  forget: (server) => set((state) => {
+    if (!(server in state.live)) return {}
+    const live = { ...state.live }
+    delete live[server]
+    return { live }
+  }),
+  prune: (servers) => set((state) => {
+    const keep = new Set(servers)
+    const gone = Object.keys(state.live).filter((name) => !keep.has(name))
+    if (gone.length === 0) return {}
+    return { live: Object.fromEntries(Object.entries(state.live).filter(([name]) => keep.has(name))) }
   }),
 }))
 

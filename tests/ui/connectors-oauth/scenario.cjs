@@ -124,11 +124,26 @@ scenario(async () => {
     await wait(`document.querySelectorAll('[data-testid="connector-catalog"] [data-entry]').length > 10`)
     await settleAnimations()
     await screenshot('02-catalog')
+    // Every catalog entry has its official logo (none falls back to initials), and only the list scrolls.
+    const logos = await evaluate(`[...document.querySelectorAll('[data-testid="connector-catalog"] [data-entry] .connector-logo')].map((logo) => Boolean(logo.querySelector('img')))`)
+    assert.ok(logos.length >= 29 && logos.every(Boolean), `every entry shows a logo (${logos.filter(Boolean).length}/${logos.length})`)
+    await evaluate(`(() => { const list = document.querySelector('[data-testid="connector-catalog"] .catalog-scroll'); list.scrollTop = list.scrollHeight; return true })()`)
+    await wait(`document.querySelector('[data-testid="connector-catalog"] .catalog-scroll').scrollTop > 0`)
+    assert.ok(await evaluate(`document.querySelector('[data-testid="connector-catalog"] .catalog-filters').getBoundingClientRect().top > 0`), 'the filters stay in view while the list scrolls')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await screenshot('02b-catalog-end')
+    await evaluate(`(() => { document.querySelector('[data-testid="connector-catalog"] .catalog-scroll').scrollTop = 0; return true })()`)
     passed.push('empty state and catalog')
 
     // 2. GitHub from the catalog: only the token; the dead proxy leaves a plain error.
     await domClick('[data-testid="connector-catalog"] [data-entry="github"]')
     await wait(`Boolean(document.querySelector('[data-testid="catalog-setup"][data-entry="github"]'))`)
+    // Without the token the main button is off, and it looks off: no brand gradient or glow.
+    const off = await evaluate(`(() => { const b = document.querySelector('[data-testid="catalog-add"]'); const s = getComputedStyle(b); return { disabled: b.disabled, image: s.backgroundImage, shadow: s.boxShadow } })()`)
+    assert.equal(off.disabled, true, 'nothing to add yet')
+    assert.equal(off.image, 'none', `a disabled main button drops the gradient (${off.image})`)
+    await settleAnimations()
+    await screenshot('03a-catalog-github-empty')
     await input('#catalog-token', 'ghp-token-de-prueba')
     await screenshot('03-catalog-github')
     await domClick('[data-testid="catalog-add"]')

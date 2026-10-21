@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
+import type { ReactElement } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi, type McpImportCandidate } from '../../services/engine'
@@ -10,7 +12,7 @@ import { ImportDialog } from './ImportDialog'
 import { ProjectOffersPrompt } from './ProjectOffersPrompt'
 import { useProjectOffersCheck } from './connectorStore'
 
-afterEach(() => { cleanup(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); useProjectOffersCheck.setState({ root: null, nonce: 0 }) })
 
 const candidate = (patch: Partial<McpImportCandidate>): McpImportCandidate => ({
   key: 'claude_desktop:github', name: 'github', source: 'claude_desktop', source_label: 'Claude Desktop', transport: 'stdio',
@@ -67,7 +69,9 @@ it('reads a pasted mcpServers JSON as text and imports from that same text', asy
   await user.click(await within(dialog).findByLabelText(/^linear/))
   await user.click(within(dialog).getByTestId('import-apply'))
   expect(apply).toHaveBeenCalledWith({ keys: ['pasted:linear'], names: undefined, json })
-  expect(await within(dialog).findByText('name taken')).toBeTruthy()
+  // Plain text first; the raw message only under «Detalles».
+  expect(await within(dialog).findByText('Rinari no pudo crearlo con esa configuración.')).toBeTruthy()
+  expect(within(dialog).getByText('name taken').closest('details')?.querySelector('summary')?.textContent).toBe('Detalles')
 })
 
 it('asks once per server a trusted folder brings, and records only what was answered', async () => {
@@ -109,4 +113,134 @@ it('does not ask without the catalog capability', async () => {
   render(<I18nProvider lang="es"><ProjectOffersPrompt root="C:/repo" enabled={false} /></I18nProvider>)
   await new Promise((resolve) => setTimeout(resolve, 20))
   expect(list).not.toHaveBeenCalled()
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
+it('shows only the latest scan of the current tab, and imports only from it', async () => {
+  type Scan = Awaited<ReturnType<typeof engineApi.mcpImportScan>>
+  const first = deferred<Scan>()
+  const second = deferred<Scan>()
+  const pasted = deferred<Scan>()
+  const scan = vi.spyOn(engineApi, 'mcpImportScan')
+    .mockImplementationOnce(() => first.promise)
+    .mockImplementationOnce(() => pasted.promise)
+    .mockImplementationOnce(() => second.promise)
+  const apply = vi.spyOn(engineApi, 'mcpImportApply').mockResolvedValue({ created: [], failed: [] })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  const user = userEvent.setup()
+  // apps (first, still out) → paste → reads a JSON (still out) → apps again (second)
+  await user.click(within(dialog).getByRole('tab', { name: 'Pegar JSON' }))
+  await user.click(within(dialog).getByLabelText('Configuración mcpServers'))
+  await user.paste('{"mcpServers":{}}')
+  await user.click(within(dialog).getByRole('button', { name: 'Leer' }))
+  await user.click(within(dialog).getByRole('tab', { name: 'De otra app' }))
+  expect(scan).toHaveBeenCalledTimes(3)
+
+  await act(async () => { second.resolve({ sources: [], candidates: [candidate({ key: 'claude_desktop:new', name: 'new' })] }) })
+  expect(await within(dialog).findByText('new')).toBeTruthy()
+  expect(within(dialog).queryByRole('progressbar')).toBeNull()
+  await act(async () => {
+    first.resolve({ sources: [], candidates: [candidate({ key: 'claude_desktop:old', name: 'old' })] })
+    pasted.resolve({ sources: [], candidates: [candidate({ key: 'pasted:x', name: 'pasted-one', source: 'pasted' })] })
+  })
+  expect(within(dialog).queryByText('old')).toBeNull()
+  expect(within(dialog).queryByText('pasted-one')).toBeNull()
+  expect(within(dialog).getByText('new')).toBeTruthy()
+
+  await user.click(within(dialog).getByLabelText(/^new/))
+  await user.click(within(dialog).getByTestId('import-apply'))
+  expect(apply).toHaveBeenCalledWith({ keys: ['claude_desktop:new'], names: undefined, json: undefined })
+})
+
+it('«Más tarde» holds for the same folder written another way', async () => {
+  const list = vi.spyOn(engineApi, 'mcpProjectOffersList').mockResolvedValue({
+    project: 'C:/Repo', trusted: true, answered: 0, offers: [candidate({ key: 'db', name: 'db', source: 'project' })],
+  })
+  const { rerender } = render(<I18nProvider lang="es"><ProjectOffersPrompt root={'c:\\repo\\'} enabled /></I18nProvider>)
+  const dialog = await screen.findByTestId('project-offers')
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Más tarde' }))
+  await waitFor(() => expect(screen.queryByTestId('project-offers')).toBeNull())
+  rerender(<I18nProvider lang="es"><ProjectOffersPrompt root="C:/Repo/" enabled /></I18nProvider>)
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  expect(list).toHaveBeenCalledTimes(1)
+  expect(screen.queryByTestId('project-offers')).toBeNull()
+})
+
+it('a server the folder brings that could not be created says why in plain words, with the raw message under «Detalles»', async () => {
+  vi.spyOn(engineApi, 'mcpProjectOffersList').mockResolvedValue({ project: 'C:/repo', trusted: true, answered: 0, offers: [candidate({ key: 'db', name: 'db', source: 'project' })] })
+  vi.spyOn(engineApi, 'mcpProjectOffersDecide').mockResolvedValue({ project: 'C:/repo', created: [], failed: [{ key: 'db', message: 'command not allowed: rm' } as never], rejected: [] })
+  const error = vi.spyOn(toast, 'error').mockImplementation(() => 1)
+  render(<I18nProvider lang="es"><ProjectOffersPrompt root="C:/repo" enabled /></I18nProvider>)
+  const dialog = await screen.findByTestId('project-offers')
+  const user = userEvent.setup()
+  await user.click(within(dialog).getByRole('radio', { name: 'Usar en este proyecto' }))
+  await user.click(within(dialog).getByTestId('offers-save'))
+  await waitFor(() => expect(error).toHaveBeenCalledTimes(1))
+  const [text, options] = error.mock.calls[0] as [string, { description: ReactElement }]
+  expect(text).toBe('db: No se pudo crear.')
+  const { container } = render(<I18nProvider lang="es">{options.description}</I18nProvider>)
+  expect(container.querySelector('summary')?.textContent).toBe('Detalles')
+  expect(container.textContent).toContain('command not allowed: rm')
+})
+
+it('clears the pasted JSON once everything ticked was imported', async () => {
+  vi.spyOn(engineApi, 'mcpImportScan').mockImplementation(async (input) => (input?.json
+    ? { sources: [], candidates: [candidate({ key: 'pasted:linear', name: 'linear', source: 'pasted', transport: 'http', command: [], url: 'https://mcp.linear.app/mcp', secrets: [{ where: 'header', name: 'Authorization', kind: 'value' }] }), candidate({ key: 'pasted:other', name: 'other', source: 'pasted' })] }
+    : { sources: [], candidates: [] }))
+  vi.spyOn(engineApi, 'mcpImportApply').mockResolvedValue({ created: [{ key: 'pasted:linear', server: { name: 'linear' } as never }], failed: [] })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  const user = userEvent.setup()
+  await user.click(within(dialog).getByRole('tab', { name: 'Pegar JSON' }))
+  const field = within(dialog).getByLabelText('Configuración mcpServers') as HTMLTextAreaElement
+  await user.click(field)
+  await user.paste('{"mcpServers":{"linear":{"url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer secret"}}}}')
+  await user.click(within(dialog).getByRole('button', { name: 'Leer' }))
+  await user.click(await within(dialog).findByLabelText(/^linear/))
+  await user.click(within(dialog).getByTestId('import-apply'))
+  expect(await within(dialog).findByText('Importado')).toBeTruthy()
+  expect(field.value).toBe('')
+  // What is left of that JSON cannot be imported without pasting it again.
+  expect(within(dialog).getByLabelText(/^other/)).toHaveProperty('disabled', true)
+  expect(dialog.textContent).toContain('pégalo de nuevo')
+})
+
+it('«De otra app» / «Pegar JSON» follow the tabs pattern: one tab stop, arrows, and a labelled panel', async () => {
+  vi.spyOn(engineApi, 'mcpImportScan').mockResolvedValue({ sources: [], candidates: [] })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  const apps = within(dialog).getByRole('tab', { name: 'De otra app' })
+  const paste = within(dialog).getByRole('tab', { name: 'Pegar JSON' })
+  expect(apps.tabIndex).toBe(0)
+  expect(paste.tabIndex).toBe(-1)
+  const panel = within(dialog).getByRole('tabpanel')
+  expect(apps.getAttribute('aria-controls')).toBe(panel.id)
+  expect(panel.getAttribute('aria-labelledby')).toBe(apps.id)
+  apps.focus()
+  await userEvent.setup().keyboard('{ArrowRight}')
+  expect(paste.getAttribute('aria-selected')).toBe('true')
+  expect(document.activeElement).toBe(paste)
+  expect(within(dialog).getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(paste.id)
+})
+
+it('says which of the owner variables a server would receive, and where', async () => {
+  vi.spyOn(engineApi, 'mcpImportScan').mockResolvedValue({
+    sources: [],
+    candidates: [
+      candidate({ key: 'claude_desktop:author', name: 'author', transport: 'http', command: [], url: 'https://author.example/mcp', secrets: [{ where: 'header', name: 'X-Api-Key', kind: 'env_ref', variable: 'AWS_SECRET_ACCESS_KEY' }] }),
+      candidate({ key: 'claude_desktop:tool', name: 'tool', secrets: [{ where: 'env', name: 'KEY', kind: 'env_ref', variable: 'OPENAI_API_KEY' }, { where: 'env', name: 'PLAIN', kind: 'value' }] }),
+    ],
+  })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  await within(dialog).findByText('author')
+  expect(dialog.textContent).toContain('Enviará tu variable AWS_SECRET_ACCESS_KEY a author.example.')
+  expect(dialog.textContent).toContain('Le pasará tu variable OPENAI_API_KEY a este programa.')
+  expect(dialog.textContent).not.toContain('variable PLAIN')
 })

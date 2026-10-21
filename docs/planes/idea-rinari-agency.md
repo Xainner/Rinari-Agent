@@ -669,3 +669,12 @@ Sin bloqueantes. Lo que quedaba se arregló en la misma rama.
 - Mientras `session.open` de una conversación sigue pendiente, ninguna recarga te saca de ella.
 - Al cambiar de perfil, la conversación ya abierta conserva su marca de la Agency.
 - **Pendiente para el pulido:** un toast abajo a la derecha tapa «Enviar» en la oficina y en el composer, y con el puntero encima no se va. Lo señaló la revisión; ya estaba anotado.
+
+### Fusionado en `0.4.0` (2026-10-21) y lo que sigue
+
+A1 y A2, con C8, se fusionaron tras cuatro revisiones y el pulido de UI: Rinari-CLI#75 (`4db64e8`) y Rinari-Agent#114 (`c152a14`). El tutorial queda completo; el chat vacío de un agente lleva su arte (`agency-hero`, aprobado por el dueño), y los toasts esquivan el composer.
+
+**Siguiente tanda: plantillas de equipo** (dueño, 2026-10-21; hoy «Usar una plantilla» del tutorial sale con «Pronto»). Las plantillas son datos en el Engine, como el catálogo de conectores, y la Gateway las tiene igual:
+- `agency.templates.list`: las plantillas integradas, por ejemplo «Mantenimiento de repo», «Contenido» o «Servidor». Cada una lleva sus agentes con oficio, instrucciones, conectores marcados y presupuesto sugerido, nunca cuentas ni claves.
+- `agency.team.from_template`: crea el equipo y sus agentes de una vez.
+- La pantalla para elegirlas desde el paso 5 del tutorial y desde «+» en Equipos.

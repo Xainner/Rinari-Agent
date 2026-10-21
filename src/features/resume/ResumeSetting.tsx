@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi } from '../../services/engine'
 import { Section } from '../../components/settings/parts'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 type Mode = 'ask' | 'always' | 'never'
 const MODES: Mode[] = ['ask', 'always', 'never']
@@ -50,7 +51,7 @@ export default function ResumeSetting() {
             onClick={() => void choose(option)}
             className="seg-tab"
           >
-            {mode === option && <span className="seg-tab-pill" aria-hidden="true" />}
+            {mode === option && <SegTabPill />}
             <span className="relative">{t(`resume.setting.${option}` as I18nKey)}</span>
           </button>
         ))}

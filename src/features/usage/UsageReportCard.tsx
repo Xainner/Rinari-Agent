@@ -8,6 +8,7 @@ import { useUIStore } from '../../stores/ui'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type UsageScope } from './usageReport'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 const SCOPES: UsageScope[] = ['session', 'today', 'project', 'all']
 const compact = (value: number, lang: string) =>
@@ -127,7 +128,7 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
         <div role="tablist" aria-label={t('usage.scope')} className="seg-tabs w-fit">
           {SCOPES.map((scope) => (
             <button key={scope} type="button" role="tab" className="seg-tab" aria-selected={report.scope === scope} data-active={report.scope === scope || undefined} onClick={() => void reload(scope)}>
-              {report.scope === scope && <span className="seg-tab-pill" aria-hidden="true" />}
+              {report.scope === scope && <SegTabPill />}
               <span className="relative">{t(`usage.scope.${scope}` as I18nKey)}</span>
             </button>
           ))}

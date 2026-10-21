@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, LoaderCircle, Plug, Plus, Trash2, TriangleAlert, Workflow, Zap, type LucideIcon } from 'lucide-react'
 import ProviderLogo from '../ProviderLogo'
@@ -7,6 +7,7 @@ import { engineApi, commandMessage } from '../../services/engine'
 import type { ImageConnector, ImageCreationSettings as Config } from '../../types/protocol.generated'
 import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, Section } from './parts'
+import { matchImageTools } from '../../lib/mcpImageTools'
 
 type Kind = ImageConnector['kind']
 type Operation = 'generate' | 'edit' | 'variations' | 'upscale' | 'remove_background'
@@ -90,6 +91,9 @@ export default function ImageCreationSettings() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [tests, setTests] = useState<Record<string, { ok: boolean; message?: string; running?: boolean }>>({})
   const [budget, setBudget] = useState('')
+  /** MCP: las herramientas del servidor elegido, leídas con «Detectar herramientas». */
+  const [detected, setDetected] = useState<{ server: string; names: string[]; running?: boolean; message?: string; failed?: boolean } | null>(null)
+  const toolList = useId()
 
   useEffect(() => {
     void engineApi.imagesSettingsGet().then((value) => {
@@ -128,6 +132,30 @@ export default function ImageCreationSettings() {
   const servers = config.mcp_servers ?? []
   const label = (kind: Kind) => t(KIND_LABEL[kind])
   const mcpTools = Object.entries(draft.tools).filter(([, tool]) => tool && tool.trim())
+  const mcpServer = draft.server || servers[0] || ''
+  const toolNames = detected?.server === mcpServer ? detected.names : []
+
+  // Pide al servidor sus herramientas y propone una por operación según su
+  // nombre; no pisa lo que el dueño ya escribió y deja los nombres a mano.
+  const detectTools = async () => {
+    if (!mcpServer) return
+    setDetected({ server: mcpServer, names: [], running: true })
+    try {
+      const { test } = await engineApi.mcpTest(mcpServer)
+      if (!test.ok) {
+        setDetected({ server: mcpServer, names: [], failed: true, message: t('images.mcpDetectFailed', { message: test.message ?? test.error ?? test.code ?? '' }) })
+        return
+      }
+      const names = test.names ?? []
+      const found = matchImageTools(names)
+      const filled = Object.fromEntries(Object.entries(found).filter(([op]) => !draft.tools[op as Operation]?.trim()))
+      setDraft((current) => ({ ...current, tools: { ...filled, ...Object.fromEntries(Object.entries(current.tools).filter(([, tool]) => tool?.trim())) } }))
+      const count = Object.keys(found).length
+      setDetected({ server: mcpServer, names, message: count > 0 ? t('images.mcpDetected', { n: count, total: names.length }) : t('images.mcpDetectedNone', { total: names.length }) })
+    } catch (e) {
+      setDetected({ server: mcpServer, names: [], failed: true, message: t('images.mcpDetectFailed', { message: commandMessage(e) }) })
+    }
+  }
 
   const connectorFromDraft = (kind: Kind, id: string): ImageConnector & { api_key?: string } => {
     const base = { id, kind, label: label(kind) }
@@ -316,16 +344,24 @@ export default function ImageCreationSettings() {
               <>
                 <label className="block text-xs text-[var(--text-muted)]">
                   {t('images.mcpServer')}
-                  <select className={inputClass} value={draft.server || servers[0]} onChange={(event) => setDraft({ ...draft, server: event.target.value })}>
+                  <select className={inputClass} value={mcpServer} onChange={(event) => { setDraft({ ...draft, server: event.target.value }); setDetected(null) }}>
                     {servers.map((name) => <option key={name} value={name}>{name}</option>)}
                   </select>
                 </label>
                 <p className="text-xs text-[var(--text-subtle)]">{t('images.mcpHint')}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn btn-secondary btn-sm" data-testid="images-mcp-detect" disabled={detected?.running} onClick={() => void detectTools()}>
+                    {detected?.running ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <Zap size={13} aria-hidden="true" />}
+                    {t(detected?.running ? 'images.mcpDetecting' : 'images.mcpDetect')}
+                  </button>
+                  {detected?.message && <p role="status" data-testid="images-mcp-detected" className={`text-xs ${detected.failed ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`}>{detected.message}</p>}
+                </div>
+                {toolNames.length > 0 && <datalist id={toolList}>{toolNames.map((name) => <option key={name} value={name} />)}</datalist>}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {OPERATIONS.map((op) => (
                     <label key={op} className="block text-xs text-[var(--text-muted)]">
                       {t(OPERATION_LABEL[op])}
-                      <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} value={draft.tools[op] ?? ''} onChange={(event) => setDraft({ ...draft, tools: { ...draft.tools, [op]: event.target.value } })} />
+                      <input className={inputClass} placeholder={t('images.mcpToolPlaceholder')} list={toolNames.length > 0 ? toolList : undefined} value={draft.tools[op] ?? ''} onChange={(event) => setDraft({ ...draft, tools: { ...draft.tools, [op]: event.target.value } })} />
                     </label>
                   ))}
                   <label className="block text-xs text-[var(--text-muted)]">

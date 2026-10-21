@@ -10,6 +10,7 @@ import { presentedChangeSets } from '../activity/changeSetPresentation'
 import { useFileWorkspace } from '../files/FileWorkspace'
 import ChangesPanel from './ChangesPanel'
 import DiffView from './DiffView'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 const KIND_TONE: Record<TurnChangedFile['kind'], string | undefined> = { created: 'success', modified: 'accent', deleted: 'danger', renamed: undefined }
 
@@ -86,7 +87,7 @@ function Body({ sessionId, path, turns }: { sessionId: string; path: string | nu
           <div className="seg-tabs changes-scope" role="radiogroup" aria-label={t('changes.view.scope')}>
             {(['turn', 'repo'] as const).map((option) => (
               <button key={option} type="button" role="radio" aria-checked={scope === option} className="seg-tab" onClick={() => setScope(option)}>
-                {scope === option && <span className="seg-tab-pill" aria-hidden="true" />}
+                {scope === option && <SegTabPill />}
                 <span className="relative">{t(option === 'turn' ? 'changes.view.turn' : 'changes.view.repo')}</span>
               </button>
             ))}

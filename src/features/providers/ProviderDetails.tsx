@@ -9,6 +9,7 @@ import ExternalRuntimePanel from './ExternalRuntimePanel'
 import ProviderConnectionSettings from './ProviderConnectionSettings'
 import { registerProviderModels } from './registerModels'
 import type { ProviderTab } from '../../stores/ui'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 type Tab = 'summary' | 'connection' | 'models' | 'usage' | 'diagnostics'
 const TABS: readonly Tab[] = ['summary', 'connection', 'models', 'usage', 'diagnostics']
@@ -81,7 +82,7 @@ export default function ProviderDetails({
         const next = (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
         setTab(tabs[next]); (event.currentTarget.parentElement?.children[next] as HTMLElement)?.focus()
       }}>
-        {tab === value && <span className="seg-tab-pill" aria-hidden="true" />}
+        {tab === value && <SegTabPill />}
         <span className="relative">{t(`providers.tab.${value}` as I18nKey)}</span>
       </button>)}
     </div>

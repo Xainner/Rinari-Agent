@@ -131,8 +131,9 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
             <Play size={11} aria-hidden="true" /> {t('turn.continue')}
           </button>
         )}
+        {/* Como «Copiar respuesta»: aparece al pasar por el turno o con el foco. */}
         {canSaveLesson && (
-          <button type="button" className="turn-meta-action" data-testid="turn-lesson" disabled={saving} title={t('turn.lessonHint')} onClick={() => void saveLesson()}>
+          <button type="button" className="turn-meta-action is-on-hover" data-testid="turn-lesson" disabled={saving} title={t('turn.lessonHint')} onClick={() => void saveLesson()}>
             <GraduationCap size={11} aria-hidden="true" /> {t('turn.lesson')}
           </button>
         )}

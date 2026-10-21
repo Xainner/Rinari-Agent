@@ -296,6 +296,8 @@ function ChatView({
       const top = anchor.getBoundingClientRect().top
       // Updates above/below the viewport must not pull the reader to this turn.
       if (!manual && (anchor.getBoundingClientRect().bottom < viewport.top || top > viewport.bottom)) return () => {}
+      // Abierta o cerrada a mano estando al final: el lector sigue ahí.
+      const atEnd = manual && followRef.current
       followRef.current = false
       jumpRef.current = false
       setAtBottom(false)
@@ -308,13 +310,27 @@ function ChatView({
         }
         // Abierta a mano (#16): si el contenido se sale por abajo, el chat baja lo
         // justo para mostrarlo, sin subir la cabecera más allá de un margen. Al
-        // cerrar, o con la tarjeta ya a la vista, no se mueve nada.
+        // cerrar, o con la tarjeta ya a la vista, no se mueve nada. Vale para una
+        // herramienta (`details`) y para un grupo o la tarjeta del turno.
+        // Desde el final, el chat vuelve al final y lo sigue (lo que hay encima
+        // del composer encoge el chat y el seguimiento lo vuelve a bajar), salvo
+        // que lo abierto no quepa: entonces baja hasta dejar la cabecera arriba.
         const reveal = () => {
-          const box = anchor.closest('details')
-          if (!manual || !box?.open || !anchor.isConnected || scrollRef.current !== scroll) return
+          const box = anchor.closest('details') ?? anchor.closest<HTMLElement>('[data-activity-disclosure]')
+          if (!manual || !box || !anchor.isConnected || scrollRef.current !== scroll) return
+          const open = box instanceof HTMLDetailsElement ? box.open : anchor.getAttribute('aria-expanded') === 'true'
           const view = scroll.getBoundingClientRect()
-          const overflow = box.getBoundingClientRect().bottom - (view.bottom - 12)
           const room = anchor.getBoundingClientRect().top - (view.top + 16)
+          const toEnd = scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop
+          if (atEnd && (!open || toEnd <= room)) {
+            followRef.current = true
+            anchorRef.current = { follow: true }
+            setAtBottom(true)
+            scroll.scrollTop = scroll.scrollHeight
+            return
+          }
+          if (!open) return
+          const overflow = atEnd ? toEnd : box.getBoundingClientRect().bottom - (view.bottom - 12)
           const by = Math.min(overflow, room)
           if (by <= 1) return
           const calm = document.documentElement.dataset.motion === 'reduced' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches

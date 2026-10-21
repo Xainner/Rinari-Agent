@@ -23,6 +23,7 @@ import { RinariAvatar } from '../rinari/RinariAvatar'
 import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
 import { configFromForm, emptyForm, formFromServer, formReady, type KeyValue, type McpFormState } from './mcpForm'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 /**
  * Ajustes > MCP: servidores locales (un programa) y remotos (una URL con su
@@ -297,7 +298,7 @@ function McpServerDialog({ target, remoteSupported, onClose, onSaved }: {
             <div className="seg-tabs w-fit" role="radiogroup" aria-label={t('mcp.authLabel')}>
               {(['bearer', 'headers', 'none'] as const).map((kind) => (
                 <button key={kind} type="button" role="radio" aria-checked={form.auth === kind} className="seg-tab" onClick={() => set({ auth: kind })}>
-                  {form.auth === kind && <span className="seg-tab-pill" aria-hidden="true" />}
+                  {form.auth === kind && <SegTabPill />}
                   <span className="relative">{t(`mcp.auth.${kind}`)}</span>
                 </button>
               ))}

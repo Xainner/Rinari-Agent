@@ -13,6 +13,7 @@ import PendingSkills from './PendingSkills'
 import SkillDuplicates from './SkillDuplicates'
 import { useUIStore } from '../../stores/ui'
 import { SearchField } from '../../components/ui/SearchField'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 import { art } from '../rinari/art'
 
 /**
@@ -131,7 +132,7 @@ export default function SkillsView() {
 
       {/* La búsqueda a todo el ancho y debajo los filtros: en una fila no caben y la búsqueda quedaba suelta (#92). */}
       <div className="flex flex-col gap-2">
-        <SearchField label={t('skills.search')} value={query} onChange={(event) => setQuery(event.target.value)} className="w-full" />
+        <SearchField label={t('skills.search')} value={query} onChange={(event) => setQuery(event.target.value)} onClear={() => setQuery('')} className="w-full" />
         <div role="tablist" aria-label={t('skills.filter')} className="seg-tabs w-fit max-w-full flex-wrap">
           {SKILL_FILTERS.map((option) => (
             <button
@@ -142,7 +143,7 @@ export default function SkillsView() {
               onClick={() => setFilter(option)}
               className="seg-tab"
             >
-              {filter === option && <span className="seg-tab-pill" aria-hidden="true" />}
+              {filter === option && <SegTabPill />}
               <span className="relative">{t(`skills.filter.${option}`)} · {counts[option]}</span>
             </button>
           ))}

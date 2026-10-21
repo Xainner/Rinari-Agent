@@ -7,7 +7,7 @@
 // 3. Ajustes › Skills lista el par como posible duplicado; «Fusionar» deja
 //    `/merge-skills a b` escrito en una conversación nueva, sin enviarlo.
 const assert = require('node:assert/strict')
-const { click, clickText, command, input, menuShortcut, reload, report, scenario, screenshot, until, useLocalModel, wait } = require('../harness.cjs')
+const { center, click, clickText, command, input, menuShortcut, reload, report, scenario, screenshot, ui, until, useLocalModel, wait } = require('../harness.cjs')
 
 const text = (value) => `document.body.innerText.includes(${JSON.stringify(value)})`
 const SEND = '.composer-surface button[aria-label="Enviar mensaje"]'
@@ -35,6 +35,13 @@ scenario(async () => {
   await send('Revisa la carpeta de notas')
   await wait(text('LISTO UNO'))
   await wait(`Boolean(document.querySelector('[data-testid="turn-lesson"]'))`)
+  // Like «Copiar respuesta», it only shows while the pointer is over the turn.
+  const lessonOpacity = `getComputedStyle(document.querySelector('[data-testid="turn-lesson"]')).opacity`
+  ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 5 })
+  await wait(`${lessonOpacity} === '0'`)
+  const turn = await center('[data-testid="turn-meta"]')
+  ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: turn.x, y: turn.y })
+  await wait(`${lessonOpacity} === '1'`)
   await click('[data-testid="turn-lesson"]')
   await wait(`Boolean(document.querySelector('[data-testid="skill-proposal"][data-status="active"]'))`)
   await wait(text('LECCION GUARDADA'))

@@ -2,7 +2,6 @@
 import { installMockPlatform } from '../test/mockPlatform'
 installMockPlatform()
 import { cleanup, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it } from 'vitest'
 
 
@@ -42,17 +41,15 @@ it('marks a user forward with its quoted source and keeps the user alignment', (
   expect(screen.getByText('¿Qué archivos cambiaste hoy?')).toBeTruthy()
 })
 
-it('«Exportar desde aquí» also on a message of the turn still running, from its turn (#79)', async () => {
+it('an owner message offers no child session nor review export of its own', async () => {
   const { TurnSessionContext } = await import('../features/activity/turnSession')
-  const { useReviewExport } = await import('../features/review/ReviewExportDialog')
   render(
     <I18nProvider lang="es">
       <TurnSessionContext.Provider value="ses_live">
-        <MessageBubble message={{ id: 'local-123', role: 'user', content: 'Entrega ya', createdAt: 1, turnId: 'turn-live' }} />
+        <MessageBubble message={{ id: 'h12', role: 'user', content: 'Revisa el módulo de pagos entero', createdAt: 1, turnId: 'turn-live' }} />
       </TurnSessionContext.Provider>
     </I18nProvider>,
   )
-  await userEvent.click(screen.getByTestId('export-from-message'))
-  expect(useReviewExport.getState().target).toEqual({ sessionId: 'ses_live', fromSeq: undefined, fromTurnId: 'turn-live' })
-  useReviewExport.getState().close()
+  expect(screen.getByText('Revisa el módulo de pagos entero')).toBeTruthy()
+  expect(screen.queryByRole('button')).toBeNull()
 })

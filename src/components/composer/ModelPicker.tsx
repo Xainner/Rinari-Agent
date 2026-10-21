@@ -8,6 +8,7 @@ import { brandForProvider } from '../../lib/providerBrand'
 import ProviderLogo from '../ProviderLogo'
 import { cn } from '../../lib/utils'
 import { modelDisplayName, modelTechnicalId } from '../../lib/modelDisplay'
+import { SearchClearButton } from '../ui/SearchField'
 
 export interface ModelPickerProps {
   models: ModelSummary[]
@@ -152,6 +153,7 @@ export default function ModelPicker({
           <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 focus-within:border-[var(--border-strong)]">
             <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
             <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('composer.searchModels')} className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]" />
+            <SearchClearButton value={query} onClear={() => setQuery('')} />
           </label>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">

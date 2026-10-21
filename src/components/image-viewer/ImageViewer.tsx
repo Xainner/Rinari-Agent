@@ -6,6 +6,7 @@ import { platform } from '../../platform'
 import { commandMessage } from '../../services/engine'
 import { useCalmMotion } from '../../lib/motion'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog'
+import { SegTabPill } from '../ui/SegTabPill'
 
 /** Una imagen del visor: lista para pintar (`src`) o por cargar (`load`). */
 export interface ViewerImage {
@@ -309,7 +310,7 @@ export default function ImageViewer({
             <div role="tablist" aria-label={image.name} className="seg-tabs">
               {(['image', 'text'] as const).map((value) => (
                 <button key={value} type="button" role="tab" aria-selected={tab === value} className="seg-tab" onClick={() => setTab(value)}>
-                  {tab === value && <span className="seg-tab-pill" aria-hidden="true" />}
+                  {tab === value && <SegTabPill />}
                   <span className="relative">{t(value === 'image' ? 'viewer.image' : 'viewer.text')}</span>
                 </button>
               ))}

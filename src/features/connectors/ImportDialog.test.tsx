@@ -10,7 +10,7 @@ import { ImportDialog } from './ImportDialog'
 import { ProjectOffersPrompt } from './ProjectOffersPrompt'
 import { useProjectOffersCheck } from './connectorStore'
 
-afterEach(() => { cleanup(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); useProjectOffersCheck.setState({ root: null, nonce: 0 }) })
 
 const candidate = (patch: Partial<McpImportCandidate>): McpImportCandidate => ({
   key: 'claude_desktop:github', name: 'github', source: 'claude_desktop', source_label: 'Claude Desktop', transport: 'stdio',
@@ -152,4 +152,18 @@ it('shows only the latest scan of the current tab, and imports only from it', as
   await user.click(within(dialog).getByLabelText(/^new/))
   await user.click(within(dialog).getByTestId('import-apply'))
   expect(apply).toHaveBeenCalledWith({ keys: ['claude_desktop:new'], names: undefined, json: undefined })
+})
+
+it('«Más tarde» holds for the same folder written another way', async () => {
+  const list = vi.spyOn(engineApi, 'mcpProjectOffersList').mockResolvedValue({
+    project: 'C:/Repo', trusted: true, answered: 0, offers: [candidate({ key: 'db', name: 'db', source: 'project' })],
+  })
+  const { rerender } = render(<I18nProvider lang="es"><ProjectOffersPrompt root={'c:\\repo\\'} enabled /></I18nProvider>)
+  const dialog = await screen.findByTestId('project-offers')
+  await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Más tarde' }))
+  await waitFor(() => expect(screen.queryByTestId('project-offers')).toBeNull())
+  rerender(<I18nProvider lang="es"><ProjectOffersPrompt root="C:/Repo/" enabled /></I18nProvider>)
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  expect(list).toHaveBeenCalledTimes(1)
+  expect(screen.queryByTestId('project-offers')).toBeNull()
 })

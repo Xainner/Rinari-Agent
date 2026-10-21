@@ -107,6 +107,42 @@ it('cancels a pending sign-in and explains a refused one', async () => {
   expect(await within(failed).findByText(/no deja que Rinari se registre solo/)).toBeTruthy()
 })
 
+it('cancelling while the sign-in still starts cancels it in the Engine, and the first steps show', async () => {
+  let resolve: (value: Awaited<ReturnType<typeof engineApi.mcpAuthStart>>) => void = () => {}
+  vi.spyOn(engineApi, 'mcpAuthStart').mockReturnValue(new Promise((done) => { resolve = done }))
+  const cancel = vi.spyOn(engineApi, 'mcpAuthCancel').mockResolvedValue({ name: 'notion', cancelled: true })
+  mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('notion')).findByRole('button', { name: 'Iniciar sesión' }))
+  const dialog = await screen.findByTestId('connector-signin')
+  // Discovering and registering show while it starts (their flow_id comes only by event).
+  await waitFor(() => expect(dialog.querySelector('[data-state="current"]')?.textContent).toContain('Buscar'))
+  act(() => bridge.emitEngineEvent({ type: 'event', event: 'mcp.auth.progress', payload: { name: 'notion', flow_id: 'f9', stage: 'registering' } }))
+  await waitFor(() => expect(dialog.querySelector('[data-state="current"]')?.textContent).toContain('Preparar el cliente'))
+  await user.click(within(dialog).getByRole('button', { name: 'Cancelar inicio de sesión' }))
+  expect(cancel).toHaveBeenCalledWith('notion')
+  await waitFor(() => expect(screen.queryByTestId('connector-signin')).toBeNull())
+  // If the Engine still answered with a sign-in waiting for the browser, it is cancelled too.
+  await act(async () => resolve({ name: 'notion', flow_id: 'f9', authorize_url: 'https://auth.example/a', redirect_uri: 'http://127.0.0.1:5555/callback', browser_opened: true, client: 'registered' }))
+  await waitFor(() => expect(cancel).toHaveBeenCalledTimes(2))
+})
+
+it('leaving Conectores mid sign-in cancels it and does not start another on return', async () => {
+  const start = vi.spyOn(engineApi, 'mcpAuthStart').mockReturnValue(new Promise(() => {}))
+  const cancel = vi.spyOn(engineApi, 'mcpAuthCancel').mockResolvedValue({ name: 'notion', cancelled: true })
+  const view = mount()
+  const user = userEvent.setup()
+  await user.click(await within(await findCard('notion')).findByRole('button', { name: 'Iniciar sesión' }))
+  await screen.findByTestId('connector-signin')
+  view.unmount()
+  expect(cancel).toHaveBeenCalledWith('notion')
+  expect(useSignIn.getState().name).toBeNull()
+  mount()
+  await findCard('notion')
+  expect(screen.queryByTestId('connector-signin')).toBeNull()
+  expect(start).toHaveBeenCalledTimes(1)
+})
+
 it('sets Allow / Ask / Block per tool, the connector default and corrects an annotation', async () => {
   vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValue({ server: tools })
   const set = vi.spyOn(engineApi, 'mcpToolsSet').mockImplementation(async (request) => ({ server: { ...tools, tools: [{ ...tools.tools[0], setting: request.decision ?? null, decision: request.decision ?? null, decision_source: 'tool' }] }, tool: tools.tools[0] }))

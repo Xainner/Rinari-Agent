@@ -1,4 +1,5 @@
 import type { Language } from '../../types'
+import { formatWhen } from '../schedules/scheduleModel'
 import type { ToolTimelineItem } from './types'
 
 /**
@@ -101,16 +102,22 @@ export function agentInstruction(item: ToolTimelineItem): { agentId: string; tex
 
 /**
  * `schedule.propose`: lo que de verdad quedó, del resultado y no de lo que el
- * modelo diga (programada con su próxima hora local, o solo propuesta).
+ * modelo diga (programada con su próxima hora, o solo propuesta). El Engine
+ * recorta los datos largos quitando claves, así que sin `status` no se sabe
+ * qué quedó: se dice solo que lo pidió, nunca que quedó programada.
  */
 function scheduleLabel(item: ToolTimelineItem, args: Record<string, unknown>, es: boolean): string {
   const name = typeof args.name === 'string' && args.name.trim() ? args.name.trim() : ''
   const quoted = name ? (es ? ` «${name}»` : ` “${name}”`) : ''
   if (item.status === 'failed' || item.status === 'cancelled') return es ? `No pudo programar${quoted}` : `Could not schedule${quoted}`
   if (item.status !== 'completed') return es ? `Programando${quoted}…` : `Scheduling${quoted}…`
-  const data = (item.presentation?.data ?? {}) as { status?: unknown; next_run_local?: unknown }
+  const data = (item.presentation?.data ?? {}) as { status?: unknown; next_run_at?: unknown; next_run_local?: unknown }
   if (data.status === 'proposed') return es ? `Propuso programar${quoted}` : `Proposed to schedule${quoted}`
-  const next = typeof data.next_run_local === 'string' ? data.next_run_local : ''
+  if (data.status !== 'created') return es ? `Pidió programar${quoted}` : `Asked to schedule${quoted}`
+  // La próxima vez en el idioma de la app; la hora local del Engine si no llegó el instante.
+  const next = typeof data.next_run_at === 'number' && data.next_run_at > 0
+    ? formatWhen(data.next_run_at, es ? 'es' : 'en')
+    : typeof data.next_run_local === 'string' ? data.next_run_local : ''
   const when = next ? (es ? ` · próxima ${next}` : ` · next ${next}`) : ''
   return (es ? `Programó${quoted}` : `Scheduled${quoted}`) + when
 }

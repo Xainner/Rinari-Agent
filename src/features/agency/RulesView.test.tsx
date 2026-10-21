@@ -151,3 +151,60 @@ it('a new rule with something missing says what and adds nothing', async () => {
   expect((await screen.findByRole('alert')).textContent).toBe('Elige el conector y la herramienta.')
   expect(useAgencyStore.getState().proposals).toEqual([])
 })
+
+it('a new rule respects the limits Rinari checks on activation, and editing clears the error', async () => {
+  render(<I18nProvider lang="es"><RulesView sessionId="ses_1" /></I18nProvider>)
+  await userEvent.click(screen.getByTestId('agency-rule-new'))
+  fireEvent.change(await screen.findByTestId('agency-rule-name'), { target: { value: 'Límites' } })
+  const server = await screen.findByTestId('agency-rule-server')
+  await waitFor(() => expect(server.querySelectorAll('option').length).toBe(3))
+  fireEvent.change(server, { target: { value: 'gmail' } })
+  await waitFor(() => expect(screen.getByTestId('agency-rule-tool').tagName).toBe('SELECT'))
+  fireEvent.change(screen.getByTestId('agency-rule-tool'), { target: { value: 'search' } })
+
+  // Una carpeta relativa no se puede vigilar.
+  fireEvent.change(screen.getByLabelText('Solo si cambió esta carpeta (opcional)'), { target: { value: 'docs' } })
+  await userEvent.click(screen.getByTestId('agency-rule-add'))
+  expect((await screen.findByRole('alert')).textContent).toBe('La carpeta tiene que ser una ruta completa, no relativa.')
+  // Cambiar un campo quita el error.
+  fireEvent.change(screen.getByLabelText('Solo si cambió esta carpeta (opcional)'), { target: { value: '' } })
+  expect(screen.queryByRole('alert')).toBeNull()
+
+  // Se mide como Rinari: lo que no es ASCII cuenta como \uXXXX.
+  fireEvent.change(screen.getByTestId('agency-rule-args'), { target: { value: JSON.stringify({ q: 'ñ'.repeat(2000) }) } })
+  await userEvent.click(screen.getByTestId('agency-rule-add'))
+  expect((await screen.findByRole('alert')).textContent).toBe('Los argumentos no pueden pasar de 8000 caracteres.')
+  fireEvent.change(screen.getByTestId('agency-rule-args'), { target: { value: '{}' } })
+
+  fireEvent.change(screen.getByLabelText('Máximo al día (opcional)'), { target: { value: '1001' } })
+  await userEvent.click(screen.getByTestId('agency-rule-add'))
+  expect((await screen.findByRole('alert')).textContent).toBe('El máximo al día es un número entero entre 1 y 1000.')
+  expect(screen.getByLabelText('Solo si el resultado dice (texto exacto, opcional)').getAttribute('maxLength')).toBe('200')
+  expect(useAgencyStore.getState().proposals).toEqual([])
+})
+
+it('a connector rule that hands the result to the agent says what to ask; a delivery is its own group', async () => {
+  render(<I18nProvider lang="es"><RulesView sessionId="ses_1" /></I18nProvider>)
+  await userEvent.click(screen.getByTestId('agency-rule-new'))
+  fireEvent.change(await screen.findByTestId('agency-rule-name'), { target: { value: 'Resumen' } })
+  const server = await screen.findByTestId('agency-rule-server')
+  await waitFor(() => expect(server.querySelectorAll('option').length).toBe(3))
+  fireEvent.change(server, { target: { value: 'gmail' } })
+  await waitFor(() => expect(screen.getByTestId('agency-rule-tool').tagName).toBe('SELECT'))
+  fireEvent.change(screen.getByTestId('agency-rule-tool'), { target: { value: 'search' } })
+
+  fireEvent.change(screen.getByTestId('agency-rule-on-result'), { target: { value: 'deliver' } })
+  const delivery = screen.getByRole('group', { name: 'A dónde lo manda' })
+  expect(delivery.querySelector('textarea')?.value).toBe('{}')
+  expect(screen.queryByTestId('agency-rule-result-prompt')).toBeNull()
+
+  fireEvent.change(screen.getByTestId('agency-rule-on-result'), { target: { value: 'agent' } })
+  fireEvent.change(screen.getByTestId('agency-rule-result-prompt'), { target: { value: 'Resúmelos en una línea.' } })
+  await userEvent.click(screen.getByTestId('agency-rule-add'))
+  await screen.findByTestId('agency-rule-proposal')
+  expect(useAgencyStore.getState().proposals[0]).toMatchObject({
+    kind: 'tool',
+    prompt: 'Resúmelos en una línea.',
+    tool: { server: 'gmail', tool: 'search', on_result: 'agent' },
+  })
+})

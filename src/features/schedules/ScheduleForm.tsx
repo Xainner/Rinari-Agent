@@ -64,7 +64,9 @@ export default function ScheduleForm() {
       if (payload.kind === 'command') payload.command = { ...command, command: command.command.trim(), cwd: command.cwd?.trim() || null }
       else delete payload.command
       if (payload.session_id && !here) payload.target = 'new_session'
-      if (here) payload.grants = []
+      // Aquí no se ven el proyecto, el modelo, los permisos ni las skills: no
+      // se manda lo que quedó de antes en el borrador.
+      if (here) Object.assign(payload, { project_id: null, model: null, permission_profile: null, skills: [], grants: [] })
       if (open.taskId) await engineApi.scheduleUpdate(open.taskId, payload)
       else await engineApi.scheduleCreate(payload)
       toast.success(open.taskId ? t('schedules.saved') : t('schedules.created', { name: payload.name }))

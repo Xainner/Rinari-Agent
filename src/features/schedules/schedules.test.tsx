@@ -292,14 +292,15 @@ it('a command that went well and only reports failures stays quiet (#50)', async
 it('a task that runs in its conversation leaves model, permissions and grants to it, and can move to a new one', async () => {
   const here = task({ target: 'this_conversation', session_id: 'ses_chat', grants: [], project_id: null })
   wrap(<ScheduleForm />)
-  act(() => useScheduleForm.getState().openEdit(here))
+  // Lo que quedó oculto del borrador (de antes de elegir «aquí») no se manda.
+  act(() => useScheduleForm.getState().openEdit({ ...here, project_id: 'prj_1', model: 'gpt', permission_profile: 'full-access', skills: ['pdf'] }))
   expect(await screen.findByTestId('schedule-target')).toBeTruthy()
   expect(screen.getByTestId('schedule-target-this_conversation').getAttribute('aria-checked')).toBe('true')
   expect(screen.queryByTestId('schedule-permission')).toBeNull()
   expect(screen.queryByLabelText('Proyecto')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
   await waitFor(() => expect(engineApi.scheduleUpdate).toHaveBeenCalledTimes(1))
-  expect(vi.mocked(engineApi.scheduleUpdate).mock.calls[0][1]).toMatchObject({ target: 'this_conversation', session_id: 'ses_chat', grants: [] })
+  expect(vi.mocked(engineApi.scheduleUpdate).mock.calls[0][1]).toMatchObject({ target: 'this_conversation', session_id: 'ses_chat', grants: [], project_id: null, model: null, permission_profile: null, skills: [] })
 
   act(() => useScheduleForm.getState().openEdit(here))
   fireEvent.click(await screen.findByTestId('schedule-target-new_session'))
@@ -324,7 +325,7 @@ it('the detail of a task that runs in its conversation opens that conversation',
   wrap(<SchedulesView onOpenSession={onOpenSession} />)
   const where = await screen.findByTestId('schedule-runs-here')
   expect(where.textContent).toContain('En su conversación')
-  fireEvent.click(within(where).getByRole('button', { name: 'Abrir la conversación' }))
+  fireEvent.click(within(where).getByRole('button', { name: 'Abrir conversación' }))
   expect(onOpenSession).toHaveBeenCalledWith('ses_chat')
   expect(await screen.findByText('En cola')).toBeTruthy()
   expect(runTone('queued')).toBe('live')

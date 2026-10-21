@@ -226,7 +226,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                       {t('schedules.target.this_conversation')}
                       {' · '}
                       <button type="button" onClick={() => onOpenSession(selected.session_id!)} className="text-[var(--accent)] hover:underline">
-                        {t('schedules.openConversation')}
+                        {t('schedules.openSession')}
                       </button>
                     </dd>
                   </>

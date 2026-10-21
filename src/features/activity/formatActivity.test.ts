@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import { agentInstruction, formatTool, toolCategory } from './formatActivity'
 import type { ToolTimelineItem } from './types'
+import { formatWhen } from '../schedules/scheduleModel'
 
 const tool = (name: string, args: Record<string, unknown> = {}, status: ToolTimelineItem['status'] = 'completed') =>
   ({ id: name, type: 'tool', tool: name, arguments: JSON.stringify(args), status, occurredAt: 0 }) as unknown as ToolTimelineItem
@@ -27,6 +28,22 @@ it('una tarea programada dice lo que quedó según el resultado, no lo que diga 
   expect(formatTool(proposed, 'en')).toBe('Proposed to schedule “Revisar el precio”')
   expect(formatTool(tool('schedule.propose', args, 'failed'), 'es')).toBe('No pudo programar «Revisar el precio»')
   expect(formatTool(tool('schedule.propose', {}, 'running'), 'es')).toBe('Programando…')
+})
+
+it('la próxima vez de una tarea programada sale del instante, en el idioma de la app', () => {
+  const args = { name: 'Revisar el precio' }
+  const at = Date.UTC(2026, 9, 21, 18, 3) / 1000
+  const created = { ...tool('schedule.propose', args), presentation: { kind: 'tool', data: { status: 'created', next_run_at: at, next_run_local: '2026-10-21 15:03' } } } as ToolTimelineItem
+  expect(formatTool(created, 'en')).toBe(`Scheduled “Revisar el precio” · next ${formatWhen(at, 'en')}`)
+  expect(formatTool(created, 'es')).toBe(`Programó «Revisar el precio» · próxima ${formatWhen(at, 'es')}`)
+})
+
+it('sin «status» (datos recortados) no se presenta como programada ni propuesta', () => {
+  const args = { name: 'Revisar el precio' }
+  const trimmed = { ...tool('schedule.propose', args), presentation: { kind: 'tool', data: { next_run_local: '2026-10-21 15:03' } } } as ToolTimelineItem
+  expect(formatTool(trimmed, 'es')).toBe('Pidió programar «Revisar el precio»')
+  expect(formatTool(trimmed, 'en')).toBe('Asked to schedule “Revisar el precio”')
+  expect(formatTool(tool('schedule.propose', args), 'es')).toBe('Pidió programar «Revisar el precio»')
 })
 
 it('una memoria rechazada o pendiente no se presenta como guardada', () => {

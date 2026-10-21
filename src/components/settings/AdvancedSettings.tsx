@@ -25,6 +25,8 @@ import { inputClass } from './parts'
 import { useCalmMotion } from '../../lib/motion'
 import { useDiagnosticsExport } from './diagnosticsExport'
 import { checkForUpdates } from '../../services/updates'
+import { SearchClearButton } from '../ui/SearchField'
+import { SegTabPill } from '../ui/SegTabPill'
 
 const TIMEOUT_KEYS: readonly TimeoutKey[] = ['connect', 'first_byte', 'idle', 'total']
 type Preset = 'normal' | 'slow' | 'unstable' | 'custom'
@@ -141,6 +143,7 @@ export default function AdvancedSettings({ providers = [], activeSessionId = nul
       <label className="adv-search">
         <Search size={14} aria-hidden="true" />
         <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('adv.search')} aria-label={t('adv.search')} />
+        <SearchClearButton value={query} onClear={() => setQuery('')} />
       </label>
       <StatusCard status={status} changed={changed} />
       <div className="adv-grid">
@@ -257,7 +260,7 @@ function ConnectionsCard({ execution, providers, onSaved, ...card }: CardProps &
       <div role="tablist" aria-label={t('adv.connections.presets')} className="seg-tabs w-fit">
         {(['normal', 'slow', 'unstable', 'custom'] as const).map((name) => (
           <button key={name} type="button" role="tab" aria-selected={active === name} className="seg-tab" onClick={() => pick(name)}>
-            {active === name && <span className="seg-tab-pill" aria-hidden="true" />}
+            {active === name && <SegTabPill />}
             <span className="relative">{t(`adv.preset.${name}` as I18nKey)}</span>
           </button>
         ))}
@@ -403,7 +406,7 @@ function NetworkCard({ network, onSaved, ...card }: CardProps & { network: Netwo
         <div role="tablist" aria-label={t('adv.network.proxy')} className="seg-tabs w-fit">
           {(['system', 'manual', 'none'] as const).map((mode) => (
             <button key={mode} type="button" role="tab" aria-selected={proxy.mode === mode} className="seg-tab" onClick={() => saveProxy(mode)}>
-              {proxy.mode === mode && <span className="seg-tab-pill" aria-hidden="true" />}
+              {proxy.mode === mode && <SegTabPill />}
               <span className="relative">{t(`adv.network.proxy.${mode}` as I18nKey)}</span>
             </button>
           ))}
@@ -425,7 +428,7 @@ function NetworkCard({ network, onSaved, ...card }: CardProps & { network: Netwo
         <div role="tablist" aria-label={t('adv.network.certs')} className="seg-tabs w-fit">
           {(['system', 'certifi', 'file'] as const).map((mode) => (
             <button key={mode} type="button" role="tab" aria-selected={certs.mode === mode} className="seg-tab" onClick={() => saveCerts(mode)}>
-              {certs.mode === mode && <span className="seg-tab-pill" aria-hidden="true" />}
+              {certs.mode === mode && <SegTabPill />}
               <span className="relative">{t(`adv.network.certs.${mode}` as I18nKey)}</span>
             </button>
           ))}
@@ -740,7 +743,7 @@ function EngineCard({ status, ...card }: CardProps & { status: EngineStatus | nu
                   data-active={host.startupLimit === limit || undefined}
                   onClick={() => void update({ startupLimit: limit })}
                 >
-                  {host.startupLimit === limit && <span className="seg-tab-pill" aria-hidden="true" />}
+                  {host.startupLimit === limit && <SegTabPill />}
                   <span className="relative">{limit === 'auto' ? t('adv.engine.startupAuto', { s: host.startupLimit === 'auto' ? host.startupLimitS : 45 }) : t('adv.engine.startupSeconds', { s: limit })}</span>
                 </button>
               ))}

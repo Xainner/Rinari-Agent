@@ -7,6 +7,7 @@ import { engineApi, commandMessage } from '../../services/engine'
 import type { ImageConnector, ImageCreationSettings as Config } from '../../types/protocol.generated'
 import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, Section } from './parts'
+import { matchImageTools } from '../../lib/mcpImageTools'
 import { Select } from '../ui/select'
 import { ProgressBar } from '../ui/progress-bar'
 
@@ -76,28 +77,41 @@ type ToolName = { name: string; detail?: string }
  * La lista se lee solo cuando se abre un selector o se pide, nunca al montar:
  * `mcp.tools.list` no conecta, y `mcp.test` (que sí arranca el servidor) solo
  * con «Probar el servidor». Un nombre ya guardado se ve siempre, esté o no.
+ * «Asignar automáticamente» propone una por operación según su nombre, solo
+ * en las que están vacías.
  */
 function McpToolPicker({ server, tools, onChange }: { server: string; tools: Draft['tools']; onChange: (tools: Draft['tools']) => void }) {
   const { t } = useI18n()
   const [names, setNames] = useState<ToolName[] | null>(null)
   const [phase, setPhase] = useState<'idle' | 'loading' | 'ready' | 'manual'>('idle')
+  const [assigned, setAssigned] = useState<string | null>(null)
   const request = useRef(0)
   useEffect(() => {
     request.current += 1
     setNames(null)
     setPhase('idle')
+    setAssigned(null)
   }, [server])
 
-  async function read(probe: boolean) {
+  async function read(probe: boolean): Promise<ToolName[] | null> {
     const id = ++request.current
     setPhase('loading')
     const found = await (probe
       ? engineApi.mcpTest(server).then((result) => (result.test.names ?? []).map((name) => ({ name })))
       : engineApi.mcpToolsList(server).then((result) => result.server.tools.filter((tool) => tool.listed).map((tool) => ({ name: tool.name, detail: tool.title ?? (tool.description || undefined) }))))
       .catch(() => [] as ToolName[])
-    if (id !== request.current) return
+    if (id !== request.current) return null
     setNames(found)
     setPhase(found.length > 0 ? 'ready' : 'manual')
+    return found
+  }
+  async function assign() {
+    const found = phase === 'ready' && names ? names : await read(false)
+    if (!found || found.length === 0) return
+    const proposal = matchImageTools(found.map((tool) => tool.name))
+    onChange({ ...tools, ...Object.fromEntries(Object.entries(proposal).filter(([op]) => !tools[op as Operation])) })
+    const n = Object.keys(proposal).length
+    setAssigned(n > 0 ? t('images.mcpAutoAssigned', { n, total: found.length }) : t('images.mcpAutoAssignedNone', { total: found.length }))
   }
   const onOpen = (open: boolean) => { if (open && phase === 'idle') void read(false) }
   const set = (op: Operation, tool: string) => onChange({ ...tools, [op]: tool || undefined })
@@ -153,8 +167,12 @@ function McpToolPicker({ server, tools, onChange }: { server: string; tools: Dra
           </div>
         )
       })}
-      {phase === 'ready' && (
-        <button type="button" className="btn btn-quiet btn-xs justify-self-start sm:col-span-2" onClick={() => setPhase('manual')}>{t('images.mcpToolsType')}</button>
+      {phase !== 'loading' && (
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+          <button type="button" className="btn btn-secondary btn-xs" data-testid="image-mcp-auto" onClick={() => void assign()}><Zap size={12} aria-hidden="true" /> {t('images.mcpAutoAssign')}</button>
+          {phase === 'ready' && <button type="button" className="btn btn-quiet btn-xs" onClick={() => setPhase('manual')}>{t('images.mcpToolsType')}</button>}
+          {assigned && <p role="status" data-testid="image-mcp-auto-result" className="text-xs text-[var(--text-muted)]">{assigned}</p>}
+        </div>
       )}
     </>
   )

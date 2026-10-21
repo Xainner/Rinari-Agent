@@ -8,9 +8,9 @@ import { AppSidebar, type AppSidebarProps } from '../../components/app-shell/App
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import { inProfile, onProfileEvent, useProfileStore } from './profileStore'
 import { useProfileMoves } from './useProfileMoves'
-import { profilePending } from './profilePending'
+import { profilePending, profileWorking } from './profilePending'
 import { switchToProfileOf, useProfileWorkspace } from './useProfileWorkspace'
-import { useSessionPendingStore } from '../notifications/attentionIndicators'
+import { useSessionPendingStore, useSessionWorkingStore } from '../notifications/attentionIndicators'
 
 const now = '2026-10-10T00:00:00Z'
 
@@ -155,6 +155,22 @@ describe('pending in other profiles (#34)', () => {
     expect(counts.map((item) => item.textContent)).toEqual(['1'])
     expect((await screen.findByRole('menuitem', { name: /Trabajo/ })).contains(counts[0])).toBe(true)
     useSessionPendingStore.setState({ bySession: {} })
+  })
+
+  it('counts the conversations working in each profile', () => {
+    expect(profileWorking({ a: 'default', b: 'trabajo', c: 'trabajo', d: null })).toEqual({ default: 1, trabajo: 2 })
+  })
+
+  it('the menu says which profiles are working, each with its own conversations', async () => {
+    useSessionWorkingStore.setState({ bySession: { x: 'trabajo', y: 'trabajo', z: 'default' } })
+    // The header counts every running turn; a profile row only its own.
+    sidebar({ busySessionIds: new Set(['chat', 'x']) })
+    await userEvent.click(screen.getByTestId('profile-switcher'))
+    const chips = await screen.findAllByTestId('profile-working')
+    expect(chips.map((chip) => chip.textContent)).toEqual(['1', '2'])
+    expect((await screen.findByRole('menuitem', { name: /Trabajo/ })).contains(chips[1])).toBe(true)
+    expect(chips[1].getAttribute('aria-label')).toBe('2 conversaciones trabajando')
+    useSessionWorkingStore.setState({ bySession: {} })
   })
 
   it('opening a notice from another profile switches profile without leaving a new draft behind', async () => {

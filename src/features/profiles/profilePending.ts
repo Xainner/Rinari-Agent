@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useSessionPendingStore, type SessionPending } from '../notifications/attentionIndicators'
+import { useSessionPendingStore, useSessionWorkingStore, type SessionPending } from '../notifications/attentionIndicators'
 import { useProfileStore } from './profileStore'
 
 export interface ProfilePending {
@@ -37,4 +37,16 @@ export function useProfilePending() {
   const bySession = useSessionPendingStore((state) => state.bySession)
   const activeId = useProfileStore((state) => state.activeId)
   return useMemo(() => profilePending(bySession, activeId), [bySession, activeId])
+}
+
+/** Conversaciones con un turno en marcha en cada perfil, incluido el activo. */
+export function profileWorking(bySession: Record<string, string | null>): Record<string, number> {
+  const byProfile: Record<string, number> = {}
+  for (const profileId of Object.values(bySession)) if (profileId) byProfile[profileId] = (byProfile[profileId] ?? 0) + 1
+  return byProfile
+}
+
+export function useProfileWorking(): Record<string, number> {
+  const bySession = useSessionWorkingStore((state) => state.bySession)
+  return useMemo(() => profileWorking(bySession), [bySession])
 }

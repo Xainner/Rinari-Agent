@@ -173,6 +173,22 @@ function publishPending(sessions: SessionPending[]): void {
   useSessionPendingStore.setState({ bySession: next })
 }
 
+/**
+ * Las conversaciones con un turno en marcha, con su perfil: el menú de
+ * perfiles dice cuáles trabajan. Aparte de lo pendiente, que es lo que cuentan
+ * la barra de tareas y la campana.
+ */
+export const useSessionWorkingStore = create<{ bySession: Record<string, string | null> }>(() => ({ bySession: {} }))
+
+function publishWorking(sessions: SessionPending[]): void {
+  const current = useSessionWorkingStore.getState().bySession
+  const next: Record<string, string | null> = {}
+  for (const session of sessions) if (session.working) next[session.sessionId] = session.profileId ?? null
+  const keys = Object.keys(next)
+  if (keys.length === Object.keys(current).length && keys.every((id) => id in current && current[id] === next[id])) return
+  useSessionWorkingStore.setState({ bySession: next })
+}
+
 let generation = 0
 function nextGeneration(): number {
   // Creciente también entre recargas del renderer: main descarta lo más viejo.
@@ -214,6 +230,7 @@ export function useAttentionIndicators(
         .map((session) => ({ ...session, profileId: profileFor.current?.(session.sessionId) ?? null }))
       const next = summarizeAttention(sessions)
       publishPending(sessions)
+      publishWorking(sessions)
       const line = describeAttention(sessions)
       if (line !== logged.current) {
         logged.current = line

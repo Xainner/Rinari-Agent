@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronsUpDown, Plus, Settings2 } from 'lucide-react'
+import { Check, ChevronsUpDown, LoaderCircle, Plus, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, type ProfileBundle } from '../../services/engine'
 import { useUIStore } from '../../stores/ui'
 import { RinariAvatar, rinariStateLabel, type RinariState } from '../../features/rinari/RinariAvatar'
 import { useProfileStore } from '../../features/profiles/profileStore'
-import { useProfilePending } from '../../features/profiles/profilePending'
+import { useProfilePending, useProfileWorking } from '../../features/profiles/profilePending'
 import { useTitleMotionStore } from '../../stores/titleMotion'
 import { TitleSwap } from '../TitleSwap'
 import {
@@ -40,6 +40,8 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
   const nameOf = useProfileName()
   // Lo que espera en los otros perfiles (#34); el activo ya lo dicen la barra y la campana.
   const pending = useProfilePending()
+  // Cuáles trabajan, cada uno con sus conversaciones (la cabecera cuenta todas las que están en curso).
+  const working = useProfileWorking()
   const active = profiles.find((profile) => profile.id === activeId) ?? null
   const state: RinariState = waiting > 0 ? 'waiting' : busy > 0 ? 'working' : 'idle'
   const detail = waiting > 0 ? t('sidebar.identityWaiting', { n: waiting }) : busy > 0 ? t('sidebar.identityBusy', { n: busy }) : t('sidebar.identityIdle')
@@ -101,6 +103,8 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
         {profiles.map((profile) => {
           const current = profile.id === activeId
           const counts = profile.counts
+          const busyHere = working[profile.id] ?? 0
+          const busyLabel = t(busyHere === 1 ? 'profiles.workingOne' : 'profiles.working', { n: busyHere })
           return (
             <DropdownMenuItem key={profile.id} onSelect={() => void choose(profile)} aria-current={current || undefined} data-profile-id={profile.id} className="profile-menu-item">
               <span className="profile-menu-monogram" data-hue={profileHue(profile.id)} aria-hidden="true">{monogram(nameOf(profile))}</span>
@@ -108,6 +112,11 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
                 <span className="block truncate font-medium">{nameOf(profile)}</span>
                 {counts && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('profiles.counts', { projects: counts.projects, sessions: counts.sessions })}</span>}
               </span>
+              {busyHere > 0 && (
+                <span className="r-chip profile-working-count" data-tone="accent" data-testid="profile-working" title={busyLabel} aria-label={busyLabel}>
+                  <LoaderCircle size={11} className="motion-safe:animate-spin" aria-hidden="true" />{busyHere}
+                </span>
+              )}
               {!current && (pending.byProfile[profile.id]?.count ?? 0) > 0 && (
                 <span
                   className="r-chip profile-pending-count"

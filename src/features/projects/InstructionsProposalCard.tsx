@@ -7,6 +7,7 @@ import { commandMessage, engineApi } from '../../services/engine'
 import DiffView from '../workspace/DiffView'
 import Markdown from '../../components/Markdown'
 import type { InstructionsTimelineItem } from '../activity/types'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 type Status = InstructionsTimelineItem['status']
 
@@ -53,7 +54,7 @@ export function InstructionsProposalCard({ item, sessionId }: { item: Instructio
           <div className="seg-tabs proposal-card-tabs" role="tablist" aria-label={fileName}>
             {(['changes', 'preview'] as const).map((tab) => (
               <button key={tab} type="button" role="tab" aria-selected={view === tab} className="seg-tab" onClick={() => setView(tab)}>
-                {view === tab && <span className="seg-tab-pill" aria-hidden="true" />}
+                {view === tab && <SegTabPill />}
                 <span className="relative">{t(tab === 'changes' ? 'init.card.changes' : 'init.card.preview')}</span>
               </button>
             ))}

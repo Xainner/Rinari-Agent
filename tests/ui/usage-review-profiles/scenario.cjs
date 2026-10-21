@@ -1,8 +1,8 @@
 // Tandas 22–23 de 0.4.0 con el Engine real, para ver su diseño:
 // 1. `/usage` deja en el chat el informe de uso: cifras arriba, la tabla por
 //    modelo y los avisos; cambiar de ámbito lo rehace.
-// 2. «Exportar desde aquí» es un icono junto al mensaje (aparece al pasar) y abre «Exportar para
-//    revisión» desde ese mensaje.
+// 2. El mensaje no ofrece exportar ni sesión hija; «Exportar para revisión» se
+//    abre desde el menú de la conversación.
 // 3. Ajustes → Perfiles: tarjetas de la misma altura; el modelo propio de un
 //    agente resaltado y el perfil en uso encendido.
 // 4. Ajustes → Personalidad: «Así suena» cambia de texto con el nivel.
@@ -33,13 +33,18 @@ scenario(async () => {
   await clickText('Hoy', '[data-testid="usage-report"] [role="tab"]')
   await wait(`document.querySelector('[data-testid="usage-report"]').dataset.scope === 'today'`, 30_000)
 
-  // 2. «Exportar desde aquí» on the user message (saved messages only: reopen the conversation).
+  // 2. A saved message offers no export of its own; the whole conversation exports from its menu.
   await reload()
   await click('.view-switcher button[aria-label="Normal"]')
   await clickText('Uso', 'aside button', { includes: true })
-  await wait(`Boolean(document.querySelector('[data-testid="export-from-message"]'))`, 30_000)
-  assert.equal(await evaluate(`document.querySelector('[data-testid="export-from-message"]').getBoundingClientRect().width`), 24, 'an icon, not a second pill with text')
-  await evaluate(`document.querySelector('[data-testid="export-from-message"]').click()`)
+  await wait(`Boolean(document.querySelector('[data-testid="user-message-row"]'))`, 30_000)
+  assert.equal(await evaluate(`document.querySelectorAll('[data-testid="user-message-row"] button').length`), 0, 'no child session nor export on the message')
+  await evaluate(`(() => {
+    const row = [...document.querySelectorAll('aside li')].filter(li => li.innerText.includes('Uso')).pop()
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 40 }))
+  })()`)
+  await wait(`Boolean(document.querySelector('[data-testid="session-export-review"]'))`)
+  await evaluate(`document.querySelector('[data-testid="session-export-review"]').click()`)
   await wait(`Boolean(document.querySelector('[data-testid="review-export"]'))`)
   await settleAnimations()
   await screenshot('03-review-export')
@@ -73,5 +78,5 @@ scenario(async () => {
   await evaluate(`document.querySelector('[data-testid="soul-preview"]').scrollIntoView({ block: 'center' })`)
   await settleAnimations()
   await screenshot('05-soul-preview')
-  report({ passed: ['usage report in the chat', 'export from a message opens the review dialog', 'profile cards', 'soul preview follows the level'] })
+  report({ passed: ['usage report in the chat', 'no export on the message, export from the conversation menu', 'profile cards', 'soul preview follows the level'] })
 }, { width: 1400, height: 900 })

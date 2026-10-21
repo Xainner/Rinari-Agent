@@ -79,7 +79,7 @@ export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
               <DialogTitle>{t('connectors.catalog.title')}</DialogTitle>
               <DialogDescription>{t('connectors.catalog.intro')}</DialogDescription>
             </DialogHeader>
-            <SearchField label={t('connectors.catalog.search')} value={query} onChange={(event) => setQuery(event.target.value)} />
+            <SearchField label={t('connectors.catalog.search')} value={query} onChange={(event) => setQuery(event.target.value)} onClear={() => setQuery('')} />
             {entries && (
               <div className="catalog-filters" role="group" aria-label={t('connectors.catalog.category')}>
                 {shown.map((value) => (

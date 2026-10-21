@@ -67,6 +67,7 @@ import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projec
 import { TitleSwap } from '../TitleSwap'
 import { ResumeChip } from '../../features/resume/ResumeChip'
 import { SESSION_DRAG_TYPE } from '../../features/board/boardDrag'
+import { SearchClearButton } from '../ui/SearchField'
 
 
 export interface AppSidebarProps {
@@ -588,6 +589,7 @@ export function AppSidebar({
           placeholder={t('sidebar.searchWorkspace')}
           className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
         />
+        <SearchClearButton value={query} onClear={() => setQuery('')} />
       </div>
       <div className={cn('sidebar-scroll min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
         <AnimatePresence mode="wait" initial={false}>

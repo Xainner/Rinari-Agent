@@ -5,6 +5,7 @@ import { providerBrand } from '../../lib/providerBrand'
 import ProviderLogo from '../../components/ProviderLogo'
 import type { ProviderPreset } from './presets'
 import { PRODUCT_GROUPS, productDescription, productGroup } from './productInfo'
+import { SearchClearButton } from '../../components/ui/SearchField'
 
 /**
  * Paso 1 de «Agregar proveedor» (#97 C), el mismo en el asistente inicial y en
@@ -45,6 +46,7 @@ export default function ProviderTypePicker({ presets, onPick }: { presets: Provi
           autoComplete="off"
           spellCheck={false}
         />
+        <SearchClearButton value={query} onClear={() => setQuery('')} />
       </label>
       {groups.length === 0 && <p className="provider-picker-empty">{t('providers.pick.none', { query: query.trim() })}</p>}
       {groups.map(({ group, items }) => (

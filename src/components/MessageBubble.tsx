@@ -1,6 +1,5 @@
-import { seqOfMessage, useReviewExport } from '../features/review/ReviewExportDialog'
-import { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, GitBranchPlus, ClipboardList, ChevronRight, PackageOpen } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, ClipboardList, ChevronRight } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import type { I18nKey } from '../i18n/es'
@@ -15,9 +14,6 @@ import ImageViewer, { useImageViewer } from './image-viewer/ImageViewer'
 import { attachmentViewerImages, isImageAttachment } from './image-viewer/attachmentImages'
 import { RinariAvatar } from '../features/rinari/RinariAvatar'
 import { useOptionalEngineCommands, useOptionalEngineData } from '../features/engine/EngineContext'
-import { TurnSessionContext } from '../features/activity/turnSession'
-import { commandMessage } from '../services/engine'
-import { toast } from 'sonner'
 import { useChildrenStore } from '../features/children/childrenStore'
 
 /** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
@@ -167,8 +163,6 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
         {message.origin?.kind === 'schedule' && <ScheduledBadge />}
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
-        <ChildFromMessage text={text} />
-        <ExportFromMessage messageId={message.id} turnId={message.turnId} />
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
             <MessageAttachments attachments={message.attachments} />
@@ -341,46 +335,6 @@ function PlanSeparator({ kind, title, comment }: { kind: 'implement' | 'adjust';
     <div data-testid="plan-separator" data-kind={kind} className="goal-separator plan-separator" role="separator">
       <span title={text}>{kind === 'adjust' ? <PencilLine size={11} aria-hidden="true" /> : <Hammer size={11} aria-hidden="true" />}<span className="plan-separator-text">{text}</span></span>
     </div>
-  )
-}
-
-/** «Hacer en sesión hija»: the owner's message, as the task of a child (plan-sesiones-hijas 5.4). */
-/** «Exportar desde aquí» (#79): el paquete de revisión desde este mensaje. */
-function ExportFromMessage({ messageId, turnId }: { messageId: string; turnId?: string }) {
-  const { t } = useI18n()
-  const sessionId = useContext(TurnSessionContext)
-  const seq = seqOfMessage(messageId)
-  // Un mensaje del turno en curso aún no tiene número: su turno marca el inicio.
-  if (!sessionId || (seq === undefined && !turnId)) return null
-  return (
-    <button type="button" data-testid="export-from-message" className="child-from-message is-icon" title={t('review.fromHereHint')}
-      aria-label={t('review.fromHereShort')} onClick={() => useReviewExport.getState().open(sessionId, seq, turnId)}>
-      <PackageOpen size={12} aria-hidden="true" />
-    </button>
-  )
-}
-
-function ChildFromMessage({ text }: { text: string }) {
-  const { t } = useI18n()
-  const sessionId = useContext(TurnSessionContext)
-  const [busy, setBusy] = useState(false)
-  if (!sessionId || text.trim().length < 10) return null
-  const open = async () => {
-    setBusy(true)
-    try {
-      const opened = await engineApi.sessionChildStart(sessionId, text.trim())
-      toast(t('children.opened', { title: opened.title }))
-    } catch (error) {
-      toast.error(commandMessage(error))
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <button type="button" data-testid="child-from-message" disabled={busy} onClick={() => void open()} title={t('children.fromMessageHint')}
-      className="child-from-message">
-      {busy ? <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" /> : <GitBranchPlus size={12} aria-hidden="true" />} {t('children.fromMessage')}
-    </button>
   )
 }
 

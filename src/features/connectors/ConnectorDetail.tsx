@@ -176,7 +176,7 @@ function ToolsPanel({ item, actions }: { item: ConnectorItem; actions: Connector
         </div>
       ) : (
         <>
-          {data.tools.length > 6 && <SearchField label={t('connectors.tools.search')} value={query} onChange={(event) => setQuery(event.target.value)} />}
+          {data.tools.length > 6 && <SearchField label={t('connectors.tools.search')} value={query} onChange={(event) => setQuery(event.target.value)} onClear={() => setQuery('')} />}
           <ul className="connector-tools" aria-label={t('connectors.tools.list')}>
             {tools.map((tool) => (
               <ToolRow key={tool.name} tool={tool} busy={saving === tool.name} options={decisionOptions}

@@ -279,7 +279,7 @@ export default function FileTree({ sessionId }: { sessionId: string }) {
   return (
     <div className="file-tree" data-testid="file-tree">
       <div className="file-tree-head">
-        <SearchField label={t('files.tree.search')} value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1" />
+        <SearchField label={t('files.tree.search')} value={query} onChange={(event) => setQuery(event.target.value)} onClear={() => setQuery('')} className="min-w-0 flex-1" />
         <button type="button" className="btn btn-quiet btn-icon btn-xs" title={t('files.tree.reveal')} aria-label={t('files.tree.reveal')} disabled={!activePath} onClick={() => void reveal()}>
           <Crosshair size={14} aria-hidden="true" />
         </button>

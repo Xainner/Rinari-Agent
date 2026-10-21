@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 /**
  * Un segmentado `.seg-tabs` que elige un valor (radiogroup): una sola parada
@@ -45,7 +46,7 @@ export function SegChoice<V extends string>({ value, options, onChange, label, l
             onClick={() => { if (!selected) onChange(option.value) }}
             onKeyDown={(event) => move(event, index)}
           >
-            {selected && <span className="seg-tab-pill" aria-hidden="true" />}
+            {selected && <SegTabPill />}
             <span className="relative">{option.label}</span>
           </button>
         )

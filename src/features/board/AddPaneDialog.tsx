@@ -20,6 +20,7 @@ import { isDraftPane, useBoardStore } from '../../stores/board'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import { inProfile, useProfileStore } from '../profiles/profileStore'
 import { useCreateProjectStore } from '../projects/createProjectStore'
+import { SearchClearButton } from '../../components/ui/SearchField'
 
 const SEARCH_THRESHOLD = 8
 
@@ -169,6 +170,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
                 aria-label={t('board.addPane.search')}
                 className="min-w-0 flex-1 border-0 bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]"
               />
+              <SearchClearButton value={query} onClear={() => setQuery('')} />
             </label>
           )}
           <div className="max-h-[60vh] overflow-y-auto px-3 pb-4 pt-2">

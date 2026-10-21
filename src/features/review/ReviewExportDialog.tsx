@@ -9,24 +9,17 @@ import { platform } from '../../platform'
 import { commandMessage } from '../../services/engine'
 
 interface ReviewExportState {
-  target: { sessionId: string; fromSeq?: number; fromTurnId?: string } | null
-  /** Desde un mensaje guardado (`fromSeq`) o de un turno en curso (`fromTurnId`, #79). */
-  open: (sessionId: string, fromSeq?: number, fromTurnId?: string) => void
+  target: { sessionId: string } | null
+  open: (sessionId: string) => void
   close: () => void
 }
 
-/** «Exportar para revisión» (#79): desde la barra lateral o desde un mensaje. */
+/** «Exportar para revisión» (#79): la conversación entera, desde la barra lateral o Avanzado. */
 export const useReviewExport = create<ReviewExportState>((set) => ({
   target: null,
-  open: (sessionId, fromSeq, fromTurnId) => set({ target: { sessionId, fromSeq, fromTurnId } }),
+  open: (sessionId) => set({ target: { sessionId } }),
   close: () => set({ target: null }),
 }))
-
-/** El seq de un mensaje del historial (`h12`), si lo tiene. */
-export function seqOfMessage(id: string): number | undefined {
-  const match = /^h(\d+)$/.exec(id)
-  return match ? Number(match[1]) : undefined
-}
 
 /**
  * El paquete para revisar una conversación: el Engine prepara su parte sin
@@ -48,8 +41,6 @@ export default function ReviewExportDialog() {
     try {
       const { files } = await platform().command<{ files: Record<string, string> }>('session_review_export', {
         session_id: target.sessionId,
-        from_seq: target.fromSeq ?? null,
-        from_turn_id: target.fromSeq === undefined ? target.fromTurnId ?? null : null,
         include_messages: messages,
       })
       const env = JSON.parse(files['entorno.json'] ?? '{}') as { first_event_at?: string | null; last_event_at?: string | null }
@@ -78,8 +69,8 @@ export default function ReviewExportDialog() {
           <span className="review-export-icon" aria-hidden="true"><PackageOpen size={18} /></span>
           <div className="min-w-0">
             <DialogTitle>{t('review.title')}</DialogTitle>
-            <DialogDescription className="review-export-scope" data-from={target?.fromSeq !== undefined || target?.fromTurnId !== undefined || undefined}>
-              {target?.fromSeq !== undefined ? t('review.fromHere', { n: target.fromSeq }) : target?.fromTurnId ? t('review.fromThisTurn') : t('review.whole')}
+            <DialogDescription className="review-export-scope">
+              {t('review.whole')}
             </DialogDescription>
           </div>
         </div>

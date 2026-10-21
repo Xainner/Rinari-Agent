@@ -8,6 +8,7 @@ import { RinariAvatar } from '../rinari/RinariAvatar'
 import { cn } from '../../lib/utils'
 import { configFromForm, emptyForm, formFromServer, formReady, type KeyValue, type McpAuthKind, type McpFormState } from './mcpForm'
 import type { ConnectorCapabilities } from './connectorModel'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 /**
  * «Agregar servidor MCP»: el alta manual de un servidor local (un programa)
@@ -112,7 +113,7 @@ export function McpServerDialog({ target, caps, onClose, onSaved }: {
               <div className="seg-tabs w-fit" role="radiogroup" aria-labelledby="mcp-auth-label">
                 {authKinds.map((kind) => (
                   <button key={kind} type="button" role="radio" aria-checked={form.auth === kind} className="seg-tab" onClick={() => set({ auth: kind })}>
-                    {form.auth === kind && <span className="seg-tab-pill" aria-hidden="true" />}
+                    {form.auth === kind && <SegTabPill />}
                     <span className="relative">{t(`mcp.auth.${kind}` as I18nKey)}</span>
                   </button>
                 ))}

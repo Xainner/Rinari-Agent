@@ -14,6 +14,7 @@ import { clockLabel, groupByCycle, percent, useFlowReducedMotion } from './flowM
 import FlowStageCard from './FlowStageCard'
 import FlowStageDetail from './FlowStageDetail'
 import { useFlow } from './useFlow'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 /**
  * Vista Flujos: cómo avanzó la conversación activa y cómo intervino la IA,
@@ -168,7 +169,7 @@ export default function FlowView({ sessionId, embedded = false }: {
                   className="seg-tab"
                   onClick={() => { setSelectedStageId(null); setScopeKind(activeSession, kind) }}
                 >
-                  {on && <span className="seg-tab-pill" aria-hidden="true" />}
+                  {on && <SegTabPill />}
                   <span className="relative">{t(kind === 'project' ? 'flow.scopeProject' : 'flow.scopeSession')}</span>
                 </button>
               )

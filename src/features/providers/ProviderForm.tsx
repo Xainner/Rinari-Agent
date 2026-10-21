@@ -8,6 +8,7 @@ import { commandMessage } from '../../services/engine'
 import { platform } from '../../platform'
 import { PROVIDER_PRESETS, type ProviderPreset, type ProviderAuth } from './presets'
 import { keyPage, productDescription } from './productInfo'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 export interface ProviderFormData {
   preset: ProviderPreset
@@ -134,7 +135,7 @@ export default function ProviderForm({
           <div role="radiogroup" aria-label={t('providers.auth')} className="seg-tabs w-fit">
             {methods.map((mode) => (
               <button key={mode} type="button" role="radio" aria-checked={form.auth === mode} className="seg-tab" onClick={() => set({ auth: mode })}>
-                {form.auth === mode && <span className="seg-tab-pill" aria-hidden="true" />}
+                {form.auth === mode && <SegTabPill />}
                 <span className="relative">{t(AUTH_LABEL[mode])}</span>
               </button>
             ))}
@@ -197,7 +198,7 @@ export default function ProviderForm({
                     {(['literal', 'env'] as const).map((source) => (
                       <button key={source} type="button" role="radio" aria-checked={form.credentialSource === source} className="seg-tab"
                         onClick={() => set({ secret: '', secret_env: '', credentialSource: source })}>
-                        {form.credentialSource === source && <span className="seg-tab-pill" aria-hidden="true" />}
+                        {form.credentialSource === source && <SegTabPill />}
                         <span className="relative">{t(source === 'literal' ? 'providers.sourceLiteral' : 'providers.sourceEnv')}</span>
                       </button>
                     ))}

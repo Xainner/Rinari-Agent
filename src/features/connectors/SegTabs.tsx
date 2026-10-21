@@ -1,4 +1,5 @@
 import type { KeyboardEvent, ReactNode } from 'react'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 /**
  * Pestañas `.seg-tabs` (`role="tablist"`): cambian la vista de abajo. Una sola
@@ -33,7 +34,7 @@ export function SegTabs<V extends string>({ value, options, onChange, label, idP
           <button key={option.value} type="button" role="tab" id={`${idPrefix}-tab-${option.value}`} aria-controls={`${idPrefix}-panel-${option.value}`} aria-selected={selected} tabIndex={selected ? 0 : -1} className="seg-tab" data-value={option.value}
             onClick={() => { if (!selected) onChange(option.value) }}
             onKeyDown={(event) => move(event, index)}>
-            {selected && <span className="seg-tab-pill" aria-hidden="true" />}
+            {selected && <SegTabPill />}
             <span className="relative">{option.label}</span>
           </button>
         )

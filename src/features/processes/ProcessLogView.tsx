@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
 import type { ProcessOutput } from '../../types/protocol.generated'
+import { SearchClearButton } from '../../components/ui/SearchField'
 
 /** Normaliza controles para presentación de texto: sin ANSI/OSC ejecutable. */
 export function normalizeLogText(text: string): string {
@@ -148,14 +149,16 @@ export default function ProcessLogView({
   return (
     <div className="processes-log">
       <div className="processes-log-bar">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t('processes.logSearch')}
-          aria-label={t('processes.logSearch')}
-          className="processes-search"
-        />
+        <label className="processes-search">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('processes.logSearch')}
+            aria-label={t('processes.logSearch')}
+          />
+          <SearchClearButton value={query} onClear={() => setQuery('')} />
+        </label>
         {searching && (
           <span role="status" className="processes-note">
             {matchCount === 0 ? t('processes.logNoMatches') : t('processes.logMatches', { n: matchCount })}

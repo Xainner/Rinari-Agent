@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 
 /** Un id a partir del nombre, libre entre las almas que ya hay (como los perfiles, #86). */
 export function soulIdFor(name: string, taken: Set<string>): string {
@@ -277,7 +278,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
                   <div role="tablist" className="seg-tabs w-fit">
                     {[false, true].map((showing) => (
                       <button key={String(showing)} type="button" role="tab" className="seg-tab" aria-selected={preview === showing} data-active={preview === showing || undefined} onClick={() => setPreview(showing)}>
-                        {preview === showing && <span className="seg-tab-pill" aria-hidden="true" />}
+                        {preview === showing && <SegTabPill />}
                         <span className="relative">{showing ? t('soul.previewText') : t('soul.writeText')}</span>
                       </button>
                     ))}

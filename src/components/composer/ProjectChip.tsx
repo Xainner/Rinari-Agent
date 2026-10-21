@@ -9,6 +9,7 @@ import { useOptionalEngineCommands, useOptionalEngineData } from '../../features
 import { inProfile, useProfileStore } from '../../features/profiles/profileStore'
 import { branchLabel } from '../../features/projects/ProjectBranch'
 import { useCreateProjectStore } from '../../features/projects/createProjectStore'
+import { SearchClearButton } from '../ui/SearchField'
 
 /** Abre el selector de proyecto del composer enfocado (atajo de teclado, #42). */
 export const PROJECT_PICKER_EVENT = 'rinari:project-picker'
@@ -116,6 +117,7 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
           <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 focus-within:border-[var(--border-strong)]">
             <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
             <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('composer.project.search')} aria-label={t('composer.project.search')} className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]" />
+            <SearchClearButton value={query} onClear={() => setQuery('')} />
           </label>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1 pr-0.5">

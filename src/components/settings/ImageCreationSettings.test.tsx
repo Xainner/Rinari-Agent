@@ -152,3 +152,30 @@ it('reads the MCP tools only when asked, lets the owner type them when there is 
   await waitFor(() => expect(set).toHaveBeenCalledTimes(1))
   expect(set.mock.calls[0][0].connectors.at(-1)).toMatchObject({ kind: 'mcp', server: 'visual-lab', tools: { generate: { tool: 'draw' } } })
 })
+
+it('«Asignar automáticamente» proposes the MCP tool of each empty operation by its name', async () => {
+  vi.spyOn(engineApi, 'imagesSettingsGet').mockResolvedValue({ ...empty, mcp_servers: ['visual-lab'] })
+  const set = vi.spyOn(engineApi, 'imagesSettingsSet').mockImplementation(async (value) => ({ ...empty, mcp_servers: ['visual-lab'], ...value }))
+  const tool = (name: string) => ({ name, tool: `mcp.visual-lab.${name}`, title: null, description: '', listed: true, annotations: {}, kind: 'write' as const, sends_out: true, setting: null, decision: null, decision_source: 'mode', by_mode: {} })
+  const toolsList = vi.spyOn(engineApi, 'mcpToolsList').mockResolvedValue({ server: { name: 'visual-lab', scope: 'global', status: 'connected', default: null, tools: [
+    tool('generate_image'), tool('edit_image'), tool('remove_background'), tool('list_styles'),
+  ] } } as never)
+  const test = vi.spyOn(engineApi, 'mcpTest')
+  mount()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /Servidor MCP/ }))
+  const form = screen.getByTestId('image-connector-form')
+  // The owner picks «Editar» first; that choice stays.
+  await user.click(within(form).getByRole('button', { name: /^Editar/ }))
+  await user.click(await screen.findByRole('menuitem', { name: /list_styles/ }))
+  await user.click(within(form).getByRole('button', { name: 'Asignar automáticamente' }))
+  expect((await within(form).findByTestId('image-mcp-auto-result')).textContent).toContain('3 de 5 (el servidor tiene 4)')
+  expect(within(form).getByTestId('image-mcp-tool-generate').getAttribute('data-value')).toBe('generate_image')
+  expect(within(form).getByTestId('image-mcp-tool-edit').getAttribute('data-value')).toBe('list_styles')
+  expect(within(form).getByTestId('image-mcp-tool-remove_background').getAttribute('data-value')).toBe('remove_background')
+  expect(toolsList).toHaveBeenCalledTimes(1)
+  expect(test).not.toHaveBeenCalled()
+  await user.click(within(form).getByRole('button', { name: 'Agregar' }))
+  await waitFor(() => expect(set).toHaveBeenCalledTimes(1))
+  expect(set.mock.calls[0][0].connectors.at(-1)).toMatchObject({ kind: 'mcp', tools: { generate: { tool: 'generate_image' }, edit: { tool: 'list_styles' }, remove_background: { tool: 'remove_background' } } })
+})

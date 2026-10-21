@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { inputClass, Section } from '../../components/settings/parts'
 import { SearchField } from '../../components/ui/SearchField'
+import { SegTabPill } from '../../components/ui/SegTabPill'
 import { memoryApi } from '../../services/memory'
 import { MemoryCandidateCard } from './MemoryCandidateCard'
 import { MemoryPortability } from './MemoryPortability'
@@ -311,6 +312,7 @@ function RecordsSection({ onOpenSession }: { onOpenSession?: (id: string) => voi
         placeholder={t('memory.search.placeholder')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onClear={() => setQuery('')}
       />
       <div role="tablist" aria-label={t('memory.places')} className="seg-tabs w-fit" data-testid="memory-places">
         {(['all', ...MEMORY_PLACES] as const).map((value) => (
@@ -323,7 +325,7 @@ function RecordsSection({ onOpenSession }: { onOpenSession?: (id: string) => voi
             className="seg-tab"
             onClick={() => { setPlace(value); setSelected(new Set()) }}
           >
-            {place === value && <span className="seg-tab-pill" aria-hidden="true" />}
+            {place === value && <SegTabPill />}
             <span className="relative inline-flex items-center gap-1.5">
               {value !== 'all' && <PlaceIcon place={value} />}
               {t(`memory.place.${value}` as I18nKey)}

@@ -644,6 +644,25 @@ export const scenarios = {
       text: paragraphs(60, (i) => `Párrafo ${i} del turno ${n}: historial para comprobar el salto al enviar.`) + (n % 2 ? `\n\nFIN DEL HISTORIAL ${n}` : `\n\nRESPUESTA AL ENVÍO ${n}`),
     }))),
   },
+  'search-pill-working': {
+    title: 'Buscador con «X», perfiles que trabajan en el menú y la píldora de los segmentados que se desliza',
+    phases: ['exercise'],
+    // El turno queda en curso: su perfil trabaja mientras se mira desde otro.
+    model: () => heldModel([{ text: 'TRABAJO TERMINADO' }]),
+  },
+  'chat-expand-follow': {
+    title: 'Chat: abrir la actividad de un turno estando al final sigue en el final',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Bajada' }, { text: 'Bajada' }],
+      main: [
+        { text: paragraphs(40, (i) => `Párrafo ${i}: historial para que el chat tenga desplazamiento.`) + '\n\nFIN DEL HISTORIAL' },
+        { tool: 'fs.glob', args: { pattern: 'bajada-1-*.txt' }, say: 'Busco el primer grupo de archivos.' },
+        { tool: 'fs.glob', args: { pattern: 'bajada-2-*.txt' }, say: 'Busco el segundo grupo de archivos.' },
+        { text: 'LISTO CON LA BÚSQUEDA' },
+      ],
+    }, laneOf),
+  },
   'conversation-draft': {
     title: 'Conversación nueva: borrador hasta el primer mensaje',
     phases: ['exercise'],

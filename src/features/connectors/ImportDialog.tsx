@@ -33,6 +33,11 @@ export function FailureDetails({ message }: { message?: string | null }) {
   return <details className="mt-1 text-[11.5px] text-[var(--text-subtle)]"><summary className="cursor-pointer">{t('connectors.details')}</summary><p className="mt-1 break-words font-mono">{message}</p></details>
 }
 
+function host(candidate: McpImportCandidate): string | null {
+  if (candidate.transport !== 'http' || !candidate.url) return null
+  try { return new URL(candidate.url).host } catch { return null }
+}
+
 /** Qué trae un candidato: el programa o la URL, y los nombres (nunca los valores) de sus secretos. */
 export function CandidateBody({ candidate }: { candidate: McpImportCandidate }) {
   const { t } = useI18n()
@@ -43,6 +48,14 @@ export function CandidateBody({ candidate }: { candidate: McpImportCandidate }) 
       {candidate.secrets.length > 0 && (
         <p className="text-[12px] text-[var(--text-muted)]">{t('connectors.import.secrets', { names: candidate.secrets.map((secret) => secret.name).join(', ') })}</p>
       )}
+      {candidate.secrets.filter((secret) => secret.variable).map((secret) => (
+        // Una variable tuya que el servidor recibirá: un `.mcp.json` ajeno puede mandarla a su propio sitio.
+        <p key={`${secret.where}:${secret.name}`} className="text-[12px] text-[var(--warning)]">
+          {host(candidate)
+            ? t('connectors.import.sendsVariable.http', { variable: secret.variable ?? '', host: host(candidate) ?? '' })
+            : t('connectors.import.sendsVariable.stdio', { variable: secret.variable ?? '' })}
+        </p>
+      ))}
       {candidate.warnings.map((warning) => <p key={warning} className="text-[12px] text-[var(--warning)]">{warningText(t, warning)}</p>)}
       {!candidate.importable && <p className="text-[12px] text-[var(--danger)]">{reasonText(t, candidate.reason)}</p>}
     </>

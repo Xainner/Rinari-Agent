@@ -228,3 +228,19 @@ it('«De otra app» / «Pegar JSON» follow the tabs pattern: one tab stop, arro
   expect(document.activeElement).toBe(paste)
   expect(within(dialog).getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(paste.id)
 })
+
+it('says which of the owner variables a server would receive, and where', async () => {
+  vi.spyOn(engineApi, 'mcpImportScan').mockResolvedValue({
+    sources: [],
+    candidates: [
+      candidate({ key: 'claude_desktop:author', name: 'author', transport: 'http', command: [], url: 'https://author.example/mcp', secrets: [{ where: 'header', name: 'X-Api-Key', kind: 'env_ref', variable: 'AWS_SECRET_ACCESS_KEY' }] }),
+      candidate({ key: 'claude_desktop:tool', name: 'tool', secrets: [{ where: 'env', name: 'KEY', kind: 'env_ref', variable: 'OPENAI_API_KEY' }, { where: 'env', name: 'PLAIN', kind: 'value' }] }),
+    ],
+  })
+  render(<I18nProvider lang="es"><ImportDialog open onClose={() => {}} onImported={() => {}} /></I18nProvider>)
+  const dialog = await screen.findByTestId('connector-import')
+  await within(dialog).findByText('author')
+  expect(dialog.textContent).toContain('Enviará tu variable AWS_SECRET_ACCESS_KEY a author.example.')
+  expect(dialog.textContent).toContain('Le pasará tu variable OPENAI_API_KEY a este programa.')
+  expect(dialog.textContent).not.toContain('variable PLAIN')
+})

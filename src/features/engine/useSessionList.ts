@@ -638,6 +638,9 @@ export function useSessionList(options: {
   return {
     sessions,
     sessionsById,
+    // A row the Engine answered with (a model change): an Agency chat is not in
+    // session.list, so a refresh alone would leave its row as it was.
+    rememberRows,
     activeSession,
     setActiveSession,
     sessionsLoaded,

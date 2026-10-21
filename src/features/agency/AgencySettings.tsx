@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Brain, Building2, Crown, Pencil, Plug, Plus, Route, Trash2, UsersRound, Wallet } from 'lucide-react'
+import { Brain, Building2, Cpu, Crown, Pencil, Plug, Plus, RotateCcw, Route, Trash2, UsersRound, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { Select } from '../../components/ui/select'
-import { commandMessage, engineApi, onEngineEvent, type McpServer } from '../../services/engine'
+import { commandMessage, engineApi, onEngineEvent, type McpServer, type ModelSummary, type ProviderSummary } from '../../services/engine'
+import ModelPicker from '../../components/composer/ModelPicker'
+import EffortPicker from '../../components/composer/EffortPicker'
+import type { ReasoningEffort } from '../../lib/reasoning'
+import { useUIStore } from '../../stores/ui'
 import { memoryApi } from '../../services/memory'
 import type { MemoryRecord } from '../memory/types'
 import { CatalogDialog } from '../connectors/CatalogDialog'
@@ -13,7 +17,7 @@ import { SignInDialog, useSignIn } from '../connectors/SignInDialog'
 import AgentAvatar from './AgentAvatar'
 import { BudgetFields, EditorSection } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
-import type { AgencyAgent, AgencySettingsData, AgencyTeam, AgentBudget, ErrandMode } from './types'
+import type { AgencyAgent, AgencySettingsData, AgencyTeam, AgentBudget, AgentEffort, ErrandMode } from './types'
 
 interface AgencySettingsProps {
   agents: AgencyAgent[]
@@ -256,6 +260,73 @@ function BudgetEditor({ budget, onSave, testId }: { budget: AgentBudget; onSave:
   )
 }
 
+/** El modelo y el esfuerzo del agente, como en su ficha: se guardan al elegir. */
+function AgentModelSettings({ agent }: { agent: AgencyAgent }) {
+  const { t } = useI18n()
+  const [models, setModels] = useState<ModelSummary[]>([])
+  const [providers, setProviders] = useState<ProviderSummary[]>([])
+  const [activeAlias, setActiveAlias] = useState<string | null>(null)
+  const [model, setModel] = useState<string | null>(agent.model ?? null)
+  // «Predeterminado» del selector (`off`) es el esfuerzo del modelo: null en el Engine.
+  const [effort, setEffort] = useState<ReasoningEffort>(agent.reasoning_effort ?? 'off')
+
+  useEffect(() => {
+    engineApi.modelList().then((result) => setModels(result.models.filter((item) => item.saved !== false))).catch(() => {})
+    engineApi.providerList().then((result) => { setProviders(result.providers); setActiveAlias(result.active_alias) }).catch(() => {})
+  }, [])
+
+  const save = async (patch: { model?: string | null; reasoning_effort?: AgentEffort | null }) => {
+    try {
+      await engineApi.agencyUpdateAgent(agent.id, patch)
+      toast.success(t('agency.settings.saved'))
+      return true
+    } catch (error) {
+      toast.error(commandMessage(error))
+      return false
+    }
+  }
+  const chooseModel = (next: string | null) => {
+    const previous = model
+    setModel(next)
+    void save({ model: next }).then((ok) => { if (!ok) setModel(previous) })
+  }
+  const chooseEffort = (next: ReasoningEffort) => {
+    const previous = effort
+    setEffort(next)
+    void save({ reasoning_effort: next === 'off' ? null : next as AgentEffort }).then((ok) => { if (!ok) setEffort(previous) })
+  }
+
+  const chosen = model ? models.find((item) => item.id === model) ?? null : null
+  // El esfuerzo se ofrece según el modelo: el elegido, o con «El de siempre» el que usa Rinari ahora.
+  const effortModel = chosen ?? models.find((item) => item.alias === activeAlias) ?? null
+  return (
+    <EditorSection icon={Cpu} title={t('agency.form.model')} hint={t('agency.form.modelHint')} testId="agency-settings-model">
+      <div className="agency-model-row">
+        <div className="agency-model-field">
+          <ModelPicker
+            models={models}
+            providers={providers}
+            activeAlias={chosen?.alias ?? null}
+            activeModel={chosen}
+            missingLabel={model === null ? t('agency.form.modelDefault') : t('agency.form.modelMissing')}
+            onUseModel={(item) => chooseModel(item.id)}
+            onDiscoverModels={() => {}}
+            onOpenProviders={() => useUIStore.getState().goSettings('providers')}
+          />
+        </div>
+        <div className="agency-effort" data-testid="agency-settings-effort">
+          <EffortPicker value={effort} capabilities={effortModel?.capabilities} onChange={chooseEffort} />
+        </div>
+        {model !== null && (
+          <button type="button" className="btn btn-quiet btn-sm" onClick={() => chooseModel(null)}>
+            <RotateCcw size={13} aria-hidden="true" /> {t('agency.form.modelUseDefault')}
+          </button>
+        )}
+      </div>
+    </EditorSection>
+  )
+}
+
 function TeamSettings({ team, agents, memoryEnabled }: { team: AgencyTeam; agents: AgencyAgent[]; memoryEnabled: boolean }) {
   const { t } = useI18n()
   const save = async (patch: { budget?: AgentBudget; chief_agent_id?: string }) => {
@@ -431,6 +502,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
                   <p className="truncate text-[13px] text-[var(--text-muted)]">{agent.role || t('agency.settings.agentIntro')}</p>
                 </div>
               </header>
+              <AgentModelSettings key={agent.id} agent={agent} />
               <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} memoryEnabled={memoryEnabled} />
             </>
           ) : (

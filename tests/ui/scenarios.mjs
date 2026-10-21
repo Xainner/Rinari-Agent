@@ -56,7 +56,9 @@ function childLaneOf(body) {
   const messages = body.messages ?? []
   if (contentText(messages[0]?.content).includes('concise conversation title')) return 'title'
   if (messages.some((m) => m.role === 'user' && contentText(m.content).includes('[A task from the conversation'))) return 'child'
-  const owner = messages.filter((m) => m.role === 'user' && !contentText(m.content).startsWith('<turn-context>'))
+  // Lo que escribió el dueño (o la madre), no las notas del arnés que lo siguen:
+  // el estado del turno y la hora local de cada turno (CLI #77).
+  const owner = messages.filter((m) => m.role === 'user' && !/^(<turn-context>|Local time now: )/.test(contentText(m.content)))
   if (contentText(owner.at(-1)?.content).includes('reported back')) return 'report'
   return 'main'
 }

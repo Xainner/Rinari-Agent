@@ -50,11 +50,16 @@ function rehypeMentions(names: string[]) {
         }
         const parts = splitMentions(child.value, names)
         if (parts.length === 1) return [child]
-        return parts.filter(Boolean).map((part, index): HastNode => (
-          index % 2 === 1 || names.some((name) => `@${name}`.toLowerCase() === part.toLowerCase())
-            ? { type: 'element', tagName: 'span', properties: { dataMention: part.slice(1) }, children: [{ type: 'text', value: part }] }
-            : { type: 'text', value: part }
-        ))
+        // splitMentions alterna texto y mención: la paridad se decide antes de
+        // quitar los tramos vacíos, o el texto se pintaría como mención.
+        return parts
+          .map((part, index): HastNode | null => {
+            if (!part) return null
+            return index % 2 === 1
+              ? { type: 'element', tagName: 'span', properties: { dataMention: part.slice(1) }, children: [{ type: 'text', value: part }] }
+              : { type: 'text', value: part }
+          })
+          .filter((node): node is HastNode => node !== null)
       })
     }
     walk(tree)

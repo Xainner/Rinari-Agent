@@ -16,6 +16,7 @@ export const WEEKDAY_KEYS: readonly I18nKey[] = [
 ]
 
 export const RUN_STATUS_KEYS: Record<ScheduledRunStatus, I18nKey> = {
+  queued: 'schedules.status.queued',
   running: 'schedules.status.running',
   needs_you: 'schedules.status.needs_you',
   completed: 'schedules.status.completed',
@@ -30,7 +31,7 @@ export function runTone(status: ScheduledRunStatus): 'ok' | 'warn' | 'bad' | 'mu
   if (status === 'completed') return 'ok'
   if (status === 'needs_you' || status === 'blocked') return 'warn'
   if (status === 'failed') return 'bad'
-  if (status === 'running') return 'live'
+  if (status === 'running' || status === 'queued') return 'live'
   return 'muted'
 }
 
@@ -38,6 +39,9 @@ export const SKIP_REASON_KEYS: Record<string, I18nKey> = {
   missed: 'schedules.reason.missed',
   previous_run_active: 'schedules.reason.previous_run_active',
   engine_restarted: 'schedules.reason.engine_restarted',
+  conversation_deleted: 'schedules.reason.conversation_deleted',
+  cancelled_by_owner: 'schedules.reason.cancelled_by_owner',
+  task_deleted: 'schedules.reason.task_deleted',
 }
 
 export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: string): string {
@@ -108,7 +112,28 @@ export function draftFromTask(task: ScheduledTask): ScheduledTaskInput {
     skills: task.skills,
     grants: task.grants,
     ...(task.command ? { command: task.command } : {}),
+    ...(task.target === 'this_conversation' && task.session_id ? { target: task.target, session_id: task.session_id } : {}),
   }
+}
+
+/**
+ * El nombre de la tarea de un mensaje o una entrada de la cola que corre en
+ * su conversación («Repetir aquí», `schedule_target_v1`). Los tipos generados
+ * del protocolo aún no traen `task_name`: se lee sin suponerlo.
+ */
+export function scheduleTaskName(origin: { kind: string } | null | undefined): string | null {
+  const name = (origin as { task_name?: unknown } | null | undefined)?.task_name
+  return typeof name === 'string' && name.trim() ? name : null
+}
+
+/** Una ejecución de tarea que corre en la conversación donde se pidió. */
+export function runsInItsConversation(origin: { kind: string } | null | undefined): boolean {
+  return origin?.kind === 'schedule' && (origin as { target?: unknown }).target === 'this_conversation'
+}
+
+/** La tarea corre en la conversación donde se pidió («Repetir aquí»). */
+export function runsHere(draft: Pick<ScheduledTaskInput, 'target' | 'session_id'>): boolean {
+  return draft.target === 'this_conversation' && Boolean(draft.session_id)
 }
 
 /** Una tarea «Comando» nueva: avisa solo si falla (#50). */
@@ -126,7 +151,11 @@ export function draftProblem(draft: ScheduledTaskInput, t: Translate): string | 
     if (!draft.command?.command.trim()) return t('schedules.form.needCommand')
     if (draft.command.on_result === 'agent' && !draft.prompt.trim()) return t('schedules.form.needPrompt')
   } else if (!draft.prompt.trim()) return t(draft.kind === 'reminder' ? 'schedules.form.needReminder' : 'schedules.form.needPrompt')
-  const spec = draft.schedule
+  return specProblem(draft.schedule, t)
+}
+
+/** Lo que le falta a un horario (también el de una regla de la Agency). */
+export function specProblem(spec: ScheduleSpec, t: Translate): string | null {
   if (spec.kind === 'weekly' && spec.days.length === 0) return t('schedules.form.needDays')
   if (spec.kind === 'interval' && (!Number.isInteger(spec.minutes) || spec.minutes < 5)) return t('schedules.form.minInterval')
   if (spec.kind === 'once' && !spec.at) return t('schedules.form.needAt')

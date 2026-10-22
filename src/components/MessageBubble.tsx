@@ -15,6 +15,7 @@ import { attachmentViewerImages, isImageAttachment } from './image-viewer/attach
 import { RinariAvatar } from '../features/rinari/RinariAvatar'
 import { useOptionalEngineCommands, useOptionalEngineData } from '../features/engine/EngineContext'
 import { useChildrenStore } from '../features/children/childrenStore'
+import { scheduleTaskName } from '../features/schedules/scheduleModel'
 
 /** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
 function PlayableAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
@@ -161,7 +162,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return (
       <div data-testid="user-message-row" className="group/user flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
-        {message.origin?.kind === 'schedule' && <ScheduledBadge />}
+        {message.origin?.kind === 'schedule' && <ScheduledBadge name={scheduleTaskName(message.origin)} />}
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
@@ -305,12 +306,13 @@ export function withoutCommand(content: string, name: string): string {
   return rest === '' || /^\s/.test(rest) ? rest.trimStart() : content
 }
 
-function ScheduledBadge() {
+/** El mensaje lo mandó una tarea; con su nombre si corre en su conversación («Repetir aquí»). */
+function ScheduledBadge({ name }: { name: string | null }) {
   const { t } = useI18n()
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
+    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]" data-testid="scheduled-badge">
       <CalendarClock size={11} aria-hidden="true" />
-      {t('schedules.fromTask')}
+      {name ? t('schedules.fromTaskNamed', { name }) : t('schedules.fromTask')}
     </span>
   )
 }

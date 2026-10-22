@@ -7,15 +7,8 @@ import { inputClass, labelClass } from '../../lib/ui'
 import { commandMessage, engineApi, type ScheduleSpec, type ScheduledTaskInput } from '../../services/engine'
 import { useEngineData } from '../engine/EngineContext'
 import { FullAccessDialog } from '../permissions/FullAccessDialog'
-import { SCHEDULES_CHANGED_EVENT, WEEKDAY_KEYS, defaultOnceAt, draftProblem, emptyCommand, useScheduleForm } from './scheduleModel'
-
-const SPEC_DEFAULTS: Record<ScheduleSpec['kind'], () => ScheduleSpec> = {
-  once: () => ({ kind: 'once', at: defaultOnceAt() }),
-  interval: () => ({ kind: 'interval', minutes: 60 }),
-  daily: () => ({ kind: 'daily', time: '09:00' }),
-  weekly: () => ({ kind: 'weekly', days: [0, 1, 2, 3, 4], time: '09:00' }),
-  cron: () => ({ kind: 'cron', expr: '0 9 * * 1-5' }),
-}
+import { SCHEDULES_CHANGED_EVENT, draftProblem, emptyCommand, runsHere, useScheduleForm } from './scheduleModel'
+import ScheduleSpecField from './ScheduleSpecField'
 
 const KINDS = ['agent', 'command', 'reminder'] as const
 const KIND_KEYS = {
@@ -55,6 +48,8 @@ export default function ScheduleForm() {
   const grants = draft.grants ?? []
   const command = draft.command ?? emptyCommand()
   const setCommand = (patch: Partial<typeof command>) => update({ command: { ...command, ...patch } })
+  // «Repetir aquí»: la conversación pone el modelo, el modo y los permisos.
+  const here = draft.kind === 'agent' && runsHere(draft)
 
   const save = async () => {
     const problem = draftProblem(draft, t)
@@ -68,6 +63,10 @@ export default function ScheduleForm() {
       const payload: ScheduledTaskInput = { ...draft, name: draft.name.trim(), prompt: draft.prompt.trim() }
       if (payload.kind === 'command') payload.command = { ...command, command: command.command.trim(), cwd: command.cwd?.trim() || null }
       else delete payload.command
+      if (payload.session_id && !here) payload.target = 'new_session'
+      // Aquí no se ven el proyecto, el modelo, los permisos ni las skills: no
+      // se manda lo que quedó de antes en el borrador.
+      if (here) Object.assign(payload, { project_id: null, model: null, permission_profile: null, skills: [], grants: [] })
       if (open.taskId) await engineApi.scheduleUpdate(open.taskId, payload)
       else await engineApi.scheduleCreate(payload)
       toast.success(open.taskId ? t('schedules.saved') : t('schedules.created', { name: payload.name }))
@@ -163,55 +162,34 @@ export default function ScheduleForm() {
             </label>
           )}
 
-          <fieldset className="space-y-2">
-            <legend className={labelClass}>{t('schedules.form.when')}</legend>
-            <select aria-label={t('schedules.form.when')} value={spec.kind} onChange={(event) => setSpec(SPEC_DEFAULTS[event.target.value as ScheduleSpec['kind']]())} className={inputClass}>
-              <option value="once">{t('schedules.spec.once')}</option>
-              <option value="daily">{t('schedules.spec.daily')}</option>
-              <option value="weekly">{t('schedules.spec.weekly')}</option>
-              <option value="interval">{t('schedules.spec.interval')}</option>
-              <option value="cron">{t('schedules.spec.cron')}</option>
-            </select>
-            {spec.kind === 'cron' && (
-              <label className="block">
-                <input aria-label={t('schedules.spec.cron')} value={spec.expr} spellCheck={false} onChange={(event) => setSpec({ kind: 'cron', expr: event.target.value })} className={`${inputClass} font-mono`} />
-                <span className="mt-1 block text-xs text-[var(--text-subtle)]">{t('schedules.form.cronHint')}</span>
-              </label>
-            )}
-            {spec.kind === 'once' && (
-              <input type="datetime-local" aria-label={t('schedules.form.at')} value={spec.at} onChange={(event) => setSpec({ kind: 'once', at: event.target.value })} className={inputClass} />
-            )}
-            {spec.kind === 'interval' && (
-              <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                {t('schedules.form.every')}
-                <input type="number" min={5} step={5} value={spec.minutes} onChange={(event) => setSpec({ kind: 'interval', minutes: Number(event.target.value) })} className={`${inputClass} w-24`} />
-                {t('schedules.form.minutes')}
-              </label>
-            )}
-            {spec.kind === 'weekly' && (
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('schedules.form.days')}>
-                {WEEKDAY_KEYS.map((key, day) => {
-                  const on = spec.days.includes(day)
+          <ScheduleSpecField spec={spec} onChange={setSpec} />
+
+          {draft.session_id && draft.kind === 'agent' && (
+            <fieldset className="space-y-2" data-testid="schedule-target">
+              <legend className={labelClass}>{t('schedules.form.where')}</legend>
+              <div role="radiogroup" aria-label={t('schedules.form.where')} className="grid grid-cols-2 gap-2">
+                {(['this_conversation', 'new_session'] as const).map((target) => {
+                  const on = (draft.target ?? 'new_session') === target
                   return (
                     <button
-                      key={key}
+                      key={target}
                       type="button"
-                      aria-pressed={on}
-                      onClick={() => setSpec({ ...spec, days: on ? spec.days.filter((item) => item !== day) : [...spec.days, day].sort() })}
-                      className={`h-8 min-w-10 rounded-lg border px-2 text-xs ${on ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
+                      role="radio"
+                      aria-checked={on}
+                      data-testid={`schedule-target-${target}`}
+                      onClick={() => update({ target })}
+                      className={`flex flex-col justify-start rounded-xl border px-3 py-2 text-left text-sm transition-colors ${on ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
                     >
-                      {t(key)}
+                      <span className="block font-medium">{t(`schedules.target.${target}`)}</span>
+                      <span className="block text-xs text-[var(--text-subtle)]">{t(`schedules.target.${target}Hint`)}</span>
                     </button>
                   )
                 })}
               </div>
-            )}
-            {(spec.kind === 'daily' || spec.kind === 'weekly') && (
-              <input type="time" aria-label={t('schedules.form.time')} value={spec.time} onChange={(event) => setSpec({ ...spec, time: event.target.value })} className={`${inputClass} w-32`} />
-            )}
-          </fieldset>
+            </fieldset>
+          )}
 
-          {(draft.kind === 'agent' || (draft.kind === 'command' && command.on_result === 'agent')) && (
+          {(draft.kind === 'agent' || (draft.kind === 'command' && command.on_result === 'agent')) && !here && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block sm:col-span-3">

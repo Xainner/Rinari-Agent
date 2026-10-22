@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { CalendarClock } from 'lucide-react'
 import { toast } from 'sonner'
 import { commandMessage, engineApi, onEngineEvent, type QueuedPromptEntry } from '../../services/engine'
 import { useI18n } from '../../i18n'
+import { scheduleTaskName } from '../../features/schedules/scheduleModel'
 
 /**
  * Cola de prompts de la sesión: visible mientras un turno corre o hay
@@ -92,7 +94,15 @@ export default function QueueBar({
               className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs text-[var(--text-muted)]"
             >
               <span className="font-mono text-[var(--accent-2)]">{i + 1}.</span>
-              <span className="shrink-0 text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">{t('queue.entryUser')}</span>
+              {/* De quién es: tuyo, o de una tarea que corre aquí («Repetir aquí»). */}
+              {entry.origin.kind === 'schedule' ? (
+                <span className="inline-flex shrink-0 items-center gap-1 text-[10px] tracking-wide text-[var(--accent)]" data-testid="queue-entry-schedule">
+                  <CalendarClock size={11} aria-hidden="true" />
+                  {scheduleTaskName(entry.origin) ?? t('schedules.fromTask')}
+                </span>
+              ) : (
+                <span className="shrink-0 text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">{t('queue.entryUser')}</span>
+              )}
               <span className="min-w-0 flex-1 truncate" title={entry.message}>{entry.message}</span>
             </div>
           ))}

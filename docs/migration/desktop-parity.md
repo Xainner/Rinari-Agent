@@ -49,7 +49,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_team_memory_list` | engine | `agency.team.memory.list` | **ninguno** |
 | `agency_team_template` | engine | `agency.team.template` | `src/services/engine.ts` |
 | `agency_team_update` | engine | `agency.team.update` | `src/services/engine.ts` |
-| `agency_templates_list` | engine | `agency.templates.list` | `src/services/engine.ts` |
+| `agency_templates_list` | engine | `agency.templates.list` | **ninguno** |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |
 | `agent_config_set` | engine | `agent.config.set` | `src/services/engine.ts` |
 | `agent_list` | engine | `agent.list` | `src/services/engine.ts` |

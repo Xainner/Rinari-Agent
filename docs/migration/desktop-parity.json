@@ -314,9 +314,7 @@
       "kind": "engine",
       "method": "agency.templates.list",
       "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
+      "callers": []
     },
     {
       "command": "agent_config_get",
@@ -2803,6 +2801,6 @@
     "engine_backed": 327,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 104
+    "without_callers": 105
   }
 }

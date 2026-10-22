@@ -1745,11 +1745,24 @@ export const engineApi = {
   agencyUnarchiveAgent: (agentId: string) =>
     platform().command<{ agent: AgencyAgent }>('agency_agent_unarchive', { agent_id: agentId }),
   /** Equipos listos para empezar (10.4). */
-  agencyTemplates: () =>
-    platform().command<{ templates: AgencyTemplateSummary[] }>('agency_templates_list'),
+  /** Las plantillas de equipo del Engine, en el idioma de la app (el Engine cae al inglés). */
+  agencyTemplates: (language?: string) =>
+    platform()
+      .command<{ templates: Array<{ id: string; team?: { name?: string; purpose?: string }; agents?: { name: string; role?: string }[] }> }>(
+        'agency_templates_list',
+        language ? { language } : {},
+      )
+      .then((result) => ({
+        templates: result.templates.map((template): AgencyTemplateSummary => ({
+          id: template.id,
+          name: template.team?.name ?? template.id,
+          purpose: template.team?.purpose ?? '',
+          agents: (template.agents ?? []).map((agent) => ({ name: agent.name, role: agent.role ?? '' })),
+        })),
+      })),
   /** Crea el equipo de una plantilla con agentes nuevos; `model`: el de todos ellos (null: el de siempre). */
-  agencyTeamFromTemplate: (templateId: string, model: string | null) =>
-    platform().command<{ team: AgencyTeam; agents: AgencyAgent[] }>('agency_team_from_template', { template_id: templateId, model }),
+  agencyTeamFromTemplate: (templateId: string, model: string | null, language?: string) =>
+    platform().command<{ team: AgencyTeam; agents: AgencyAgent[] }>('agency_team_from_template', { template_id: templateId, model, ...(language ? { language } : {}) }),
   agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
   /** «Detener a todos»: corta los turnos de los agentes y pausa sus reglas activas. */
   agencyStopAll: () =>

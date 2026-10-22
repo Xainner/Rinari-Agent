@@ -20,7 +20,7 @@ export default function TemplatePicker({ open, onClose, onCreated }: {
   onClose: () => void
   onCreated: (team: AgencyTeam) => void
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const [templates, setTemplates] = useState<AgencyTemplateSummary[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [chosen, setChosen] = useState<string | null>(null)
@@ -32,13 +32,13 @@ export default function TemplatePicker({ open, onClose, onCreated }: {
 
   const load = useCallback(() => {
     setFailed(false)
-    engineApi.agencyTemplates()
+    engineApi.agencyTemplates(lang)
       .then((result) => {
         setTemplates(result.templates)
         setChosen((current) => current ?? result.templates[0]?.id ?? null)
       })
       .catch(() => setFailed(true))
-  }, [])
+  }, [lang])
 
   useEffect(() => {
     if (!open) return
@@ -58,7 +58,7 @@ export default function TemplatePicker({ open, onClose, onCreated }: {
     creatingRef.current = true
     setCreating(true)
     try {
-      const result = await engineApi.agencyTeamFromTemplate(chosen, model)
+      const result = await engineApi.agencyTeamFromTemplate(chosen, model, lang)
       toast.success(t('agency.templates.created', { name: result.team.name, n: result.agents.length }))
       // Made: it stays «creating» until the dialog closes, so a second click makes nothing.
       onCreated(result.team)

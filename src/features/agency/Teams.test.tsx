@@ -331,7 +331,7 @@ it('a template makes the team with the chosen one, once', async () => {
   await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'team_9' })))
   expect(api.agencyTeamFromTemplate).toHaveBeenCalledTimes(1)
   // «El de siempre» unless the owner picks a model.
-  expect(api.agencyTeamFromTemplate).toHaveBeenCalledWith('tpl_soporte', null)
+  expect(api.agencyTeamFromTemplate).toHaveBeenCalledWith('tpl_soporte', null, 'es')
 })
 
 it('settings list the archived agents and restore one', async () => {

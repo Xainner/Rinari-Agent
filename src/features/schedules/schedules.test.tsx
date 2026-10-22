@@ -100,7 +100,12 @@ it('describes schedules in the owner language and checks drafts before sending',
   expect(describeSchedule({ kind: 'weekly', days: [0, 2], time: '07:05' }, t, 'es')).toBe('Lun, Mié a las 07:05')
   expect(describeSchedule({ kind: 'interval', minutes: 120 }, t, 'es')).toBe('Cada 2 h')
   expect(draftProblem({ ...emptyDraft(), name: 'x' }, t)).toBe('Di qué debe hacer Rinari.')
-  expect(draftProblem({ ...emptyDraft(), name: 'x', prompt: 'y', schedule: { kind: 'interval', minutes: 2 } }, t)).toBe('El intervalo mínimo es de 5 minutos.')
+  // Sin mínimo de 5 minutos (22-oct): 2 minutos y 30 segundos valen; solo el piso del programador.
+  expect(draftProblem({ ...emptyDraft(), name: 'x', prompt: 'y', schedule: { kind: 'interval', minutes: 2 } }, t)).toBeNull()
+  expect(draftProblem({ ...emptyDraft(), name: 'x', prompt: 'y', schedule: { kind: 'interval', seconds: 30 } }, t)).toBeNull()
+  expect(draftProblem({ ...emptyDraft(), name: 'x', prompt: 'y', schedule: { kind: 'interval', seconds: 3 } }, t)).toBe('El intervalo mínimo es de 5 segundos.')
+  expect(describeSchedule({ kind: 'interval', seconds: 30 }, t, 'es')).toBe('Cada 30 s')
+  expect(describeSchedule({ kind: 'interval', minutes: 1 }, t, 'es')).toBe('Cada 1 min')
   expect(runTone('blocked')).toBe('warn')
 })
 

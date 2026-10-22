@@ -435,7 +435,9 @@ export interface SessionDeleteResult {
 /** Horario de una tarea programada, en la hora local de este equipo. */
 export type ScheduleSpec =
   | { kind: 'once'; at: string }
-  | { kind: 'interval'; minutes: number }
+  /** En minutos o en segundos (desde 5 s): el Engine guarda minutos cuando son enteros. */
+  | { kind: 'interval'; minutes: number; seconds?: never }
+  | { kind: 'interval'; seconds: number; minutes?: never }
   | { kind: 'daily'; time: string }
   | { kind: 'weekly'; days: number[]; time: string }
   /** Cinco campos: minuto hora día mes día-de-semana (#50). */

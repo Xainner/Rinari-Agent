@@ -1,7 +1,7 @@
 import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../lib/ui'
 import type { ScheduleSpec } from '../../services/engine'
-import { WEEKDAY_KEYS, defaultOnceAt } from './scheduleModel'
+import { MIN_INTERVAL_SECONDS, WEEKDAY_KEYS, defaultOnceAt } from './scheduleModel'
 
 const SPEC_DEFAULTS: Record<ScheduleSpec['kind'], () => ScheduleSpec> = {
   once: () => ({ kind: 'once', at: defaultOnceAt() }),
@@ -37,11 +37,33 @@ export default function ScheduleSpecField({ spec, onChange }: { spec: ScheduleSp
         <input type="datetime-local" aria-label={t('schedules.form.at')} value={spec.at} onChange={(event) => onChange({ kind: 'once', at: event.target.value })} className={inputClass} />
       )}
       {spec.kind === 'interval' && (
-        <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-          {t('schedules.form.every')}
-          <input type="number" min={5} step={5} value={spec.minutes} onChange={(event) => onChange({ kind: 'interval', minutes: Number(event.target.value) })} className={`${inputClass} w-24`} />
-          {t('schedules.form.minutes')}
-        </label>
+        // En segundos o en minutos: sin más mínimo que el del programador (22-oct).
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <span>{t('schedules.form.every')}</span>
+          <input
+            type="number"
+            aria-label={t('schedules.form.every')}
+            min={spec.seconds !== undefined ? MIN_INTERVAL_SECONDS : 1}
+            step={1}
+            value={spec.seconds ?? spec.minutes}
+            onChange={(event) => {
+              const value = Number(event.target.value)
+              onChange(spec.seconds !== undefined ? { kind: 'interval', seconds: value } : { kind: 'interval', minutes: value })
+            }}
+            className={`${inputClass} w-24`}
+          />
+          <select
+            aria-label={t('schedules.form.unit')}
+            value={spec.seconds !== undefined ? 'seconds' : 'minutes'}
+            onChange={(event) => onChange(event.target.value === 'seconds'
+              ? { kind: 'interval', seconds: Math.max(MIN_INTERVAL_SECONDS, (spec.minutes ?? 1) * 60) }
+              : { kind: 'interval', minutes: Math.max(1, Math.round((spec.seconds ?? 60) / 60)) })}
+            className={`${inputClass} w-auto`}
+          >
+            <option value="seconds">{t('schedules.form.seconds')}</option>
+            <option value="minutes">{t('schedules.form.minutes')}</option>
+          </select>
+        </div>
       )}
       {spec.kind === 'weekly' && (
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('schedules.form.days')}>

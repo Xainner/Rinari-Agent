@@ -44,6 +44,14 @@ export const SKIP_REASON_KEYS: Record<string, I18nKey> = {
   task_deleted: 'schedules.reason.task_deleted',
 }
 
+/** Lo que el programador no puede sostener: revisa lo pendiente cada 5 s (Engine). */
+export const MIN_INTERVAL_SECONDS = 5
+
+/** Cada cuántos segundos corre un intervalo, lo dé en minutos o en segundos. */
+export function intervalSeconds(spec: Extract<ScheduleSpec, { kind: 'interval' }>): number {
+  return spec.seconds ?? spec.minutes * 60
+}
+
 export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: string): string {
   switch (spec.kind) {
     case 'once': {
@@ -53,10 +61,14 @@ export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: strin
         : at.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
       return t('schedules.describe.once', { at: text })
     }
-    case 'interval':
-      return spec.minutes % 60 === 0
-        ? t('schedules.describe.everyHours', { n: spec.minutes / 60 })
-        : t('schedules.describe.everyMinutes', { n: spec.minutes })
+    case 'interval': {
+      const seconds = intervalSeconds(spec)
+      if (seconds % 60 !== 0) return t('schedules.describe.everySeconds', { n: seconds })
+      const minutes = seconds / 60
+      return minutes % 60 === 0
+        ? t('schedules.describe.everyHours', { n: minutes / 60 })
+        : t('schedules.describe.everyMinutes', { n: minutes })
+    }
     case 'daily':
       return t('schedules.describe.daily', { time: spec.time })
     case 'weekly': {
@@ -157,7 +169,10 @@ export function draftProblem(draft: ScheduledTaskInput, t: Translate): string | 
 /** Lo que le falta a un horario (también el de una regla de la Agency). */
 export function specProblem(spec: ScheduleSpec, t: Translate): string | null {
   if (spec.kind === 'weekly' && spec.days.length === 0) return t('schedules.form.needDays')
-  if (spec.kind === 'interval' && (!Number.isInteger(spec.minutes) || spec.minutes < 5)) return t('schedules.form.minInterval')
+  if (spec.kind === 'interval') {
+    const seconds = intervalSeconds(spec)
+    if (!Number.isInteger(seconds) || seconds < MIN_INTERVAL_SECONDS) return t('schedules.form.minInterval')
+  }
   if (spec.kind === 'once' && !spec.at) return t('schedules.form.needAt')
   if (spec.kind === 'cron' && spec.expr.trim().split(/\s+/).length !== 5) return t('schedules.form.needCron')
   return null

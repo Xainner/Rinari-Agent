@@ -4,6 +4,8 @@
  * presenta y nunca lo inventa (un coste desconocido es `null`, no cero).
  */
 
+import type { PresentedFile } from '../activity/types'
+
 export type AgentPermissionProfile = 'read-only' | 'workspace' | 'full-access'
 
 export interface AgentBudget {
@@ -143,6 +145,8 @@ export type OfficeNotice =
   | { kind: 'delivered'; title: string; to?: string }
   /** Una cadena cortada (`agency_audit_v1`): por qué, y cuál, para «Continuar». */
   | { kind: 'stopped'; reason: string; detail?: string; chain_id: string }
+  /** Lo que un puesto mostró con `file.present`, abierto por su URI (nunca una ruta). */
+  | { kind: 'files'; items: PresentedFile[] }
 
 /** blocked: no pudo empezar o falló; espera a que el dueño lo reintente. */
 export type ErrandStatus = 'pending' | 'in_progress' | 'delivered' | 'reviewed' | 'returned' | 'blocked' | 'cancelled'

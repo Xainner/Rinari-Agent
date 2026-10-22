@@ -28,6 +28,7 @@ const api = {
   scheduleRunNow: vi.fn(() => new Promise((resolve) => { resolveRun = () => resolve({ run: {} }) })),
   agencyTeam: vi.fn(async () => ({ team: null, errands: [], messages: officeMessages })),
   agencyOfficePost: vi.fn(() => new Promise(() => {})),
+  attachmentPreview: vi.fn(async () => ({ data_url: 'data:image/png;base64,AA==' })),
 }
 let officeMessages: OfficeMessage[] = []
 vi.mock('../../services/engine', () => ({
@@ -246,4 +247,22 @@ it('what the Agency hands an agent is not shown as the owner\'s message', () => 
   const bubble = screen.getByTestId('agency-bubble')
   expect(bubble.getAttribute('data-origin')).toBe('agency_errand')
   expect(screen.getByText('Recado de Writer')).toBeTruthy()
+})
+
+it('what a post presents shows in the office as its file cards, not as a line of names', async () => {
+  officeMessages = [
+    {
+      id: 'm1', team_id: 'team_1', author_kind: 'agent', agent_id: 'w', text: 'zorro.png, zorro.mp4', mentions: [], errand_id: null, chain_id: 'c', hop: 1, created_at: 1, system: true,
+      notice: { kind: 'files', items: [
+        { uri: 'artifact://ses_w/images/zorro.png', name: 'zorro.png', kind: 'image', mime: 'image/png', caption: 'El personaje' },
+        { uri: 'artifact://ses_w/videos/zorro.mp4', name: 'zorro.mp4', kind: 'video', mime: 'video/mp4' },
+      ] },
+    },
+  ]
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
+  const card = await screen.findByTestId('presented-files')
+  expect(card.textContent).toContain('zorro.png')
+  expect(card.textContent).toContain('El personaje')
+  expect(card.textContent).toContain('zorro.mp4')
+  expect(screen.queryByText('zorro.png, zorro.mp4')).toBeNull()
 })

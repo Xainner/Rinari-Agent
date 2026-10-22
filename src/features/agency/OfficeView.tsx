@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { commandMessage, engineApi } from '../../services/engine'
 import { ErrandCard, useTeamEvents } from './Board'
+import { PresentedFiles } from '../activity/PresentedFiles'
 import AgentAvatar from './AgentAvatar'
 import { openErrand } from './OfficePanels'
 import { useAgencyData } from './AgencyData'
@@ -270,7 +271,10 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
                           {new Date(message.created_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </time>
                       </p>
-                      {message.notice?.kind === 'errand' ? (
+                      {message.notice?.kind === 'files' ? (
+                        // Lo que presentó en su puesto, visto aquí también (estudio, 21-oct).
+                        <PresentedFiles item={{ id: message.id, type: 'present', activitySeq: 0, occurredAt: message.created_at * 1000, files: message.notice.items }} />
+                      ) : message.notice?.kind === 'errand' ? (
                         <p className="agency-office-notice">{t('agency.office.notice.errand', { title: message.notice.title })}</p>
                       ) : message.notice?.kind === 'wait' ? (
                         <p className="agency-office-notice">{t('agency.office.notice.wait', { name: message.notice.for })}</p>

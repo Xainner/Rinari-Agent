@@ -256,14 +256,15 @@ function MemoryAndAccounts({ owner, memoryEnabled = true }: { owner: Owner; memo
 }
 
 /**
- * Los conectores que usa el agente: los de todos (también los personalizados,
- * sin logo de catálogo) más sus cuentas propias. Se guardan al marcarlos.
+ * Los conectores que usa un agente o un equipo: los de todos (también los
+ * personalizados, sin logo de catálogo) más sus cuentas propias. Se guardan
+ * al marcarlos.
  */
-function AgentConnectors({ agent }: { agent: AgencyAgent }) {
+function OwnerConnectors({ owner, connectors }: { owner: Owner; connectors: string[] }) {
   const { t } = useI18n()
   const { marks } = useConnectorDirectory()
   const [servers, setServers] = useState<McpServer[]>([])
-  const [selected, setSelected] = useState<string[]>(agent.connectors)
+  const [selected, setSelected] = useState<string[]>(connectors)
 
   useEffect(() => {
     let alive = true
@@ -271,7 +272,7 @@ function AgentConnectors({ agent }: { agent: AgencyAgent }) {
     return () => { alive = false }
   }, [])
 
-  const own = `agent:${agent.id}`
+  const own = `${owner.kind}:${owner.id}`
   const names = new Set(
     servers
       .filter((server) => (server.scope ?? 'global') === 'global' && ((server.owner ?? null) === null || server.owner === '' || server.owner === own))
@@ -283,13 +284,16 @@ function AgentConnectors({ agent }: { agent: AgencyAgent }) {
     const previous = selected
     const next = previous.includes(name) ? previous.filter((value) => value !== name) : [...previous, name]
     setSelected(next)
-    engineApi.agencyUpdateAgent(agent.id, { connectors: next })
+    const saved = owner.kind === 'agent'
+      ? engineApi.agencyUpdateAgent(owner.id, { connectors: next })
+      : engineApi.agencyUpdateTeam(owner.id, { connectors: next })
+    saved
       .then(() => toast.success(t('agency.settings.saved')))
       .catch((error) => { setSelected(previous); toast.error(commandMessage(error)) })
   }
 
   return (
-    <EditorSection icon={Plug} title={t('agency.form.connectors')} hint={t('agency.form.connectorsHint')} testId="agency-settings-connectors">
+    <EditorSection icon={Plug} title={t('agency.form.connectors')} hint={t(owner.kind === 'agent' ? 'agency.form.connectorsHint' : 'agency.settings.teamConnectorsHint')} testId="agency-settings-connectors">
       <ConnectorTiles marks={available} selected={selected} onToggle={toggle} empty={t('agency.form.noConnectors')} />
     </EditorSection>
   )
@@ -418,6 +422,7 @@ function TeamSettings({ team, agents, memoryEnabled }: { team: AgencyTeam; agent
       <EditorSection icon={Wallet} title={t('agency.settings.teamBudget', { name: team.name })} hint={t('agency.team.budgetHint')}>
         <BudgetEditor key={team.id} budget={team.budget} onSave={(budget) => save({ budget })} testId="agency-team-budget" />
       </EditorSection>
+      <OwnerConnectors key={`connectors:${team.id}`} owner={{ kind: 'team', id: team.id, name: team.name }} connectors={team.connectors} />
       <MemoryAndAccounts key={team.id} owner={{ kind: 'team', id: team.id, name: team.name }} memoryEnabled={memoryEnabled} />
     </>
   )
@@ -565,7 +570,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
               </header>
               {/* Hermanas de la memoria: cada una con su clave, o React deja copias al cambiar de agente. */}
               <AgentModelSettings key={`model:${agent.id}`} agent={agent} />
-              <AgentConnectors key={`connectors:${agent.id}`} agent={agent} />
+              <OwnerConnectors key={`connectors:${agent.id}`} owner={{ kind: 'agent', id: agent.id, name: agent.name }} connectors={agent.connectors} />
               <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} memoryEnabled={memoryEnabled} />
             </>
           ) : (

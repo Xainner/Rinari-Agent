@@ -3916,7 +3916,10 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-office-author { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text); }
 .agency-office-name.is-agent { color: var(--violet-200); }
 .agency-office-time { font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--text-subtle); }
-.agency-office-text { margin: 3px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; color: var(--text); }
+/* Markdown, como el chat: los saltos los ponen sus bloques, no pre-wrap. */
+.agency-office-text { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; color: var(--text); }
+.agency-office-text .md-body > :first-child { margin-top: 0; }
+.agency-office-text .md-body > :last-child { margin-bottom: 0; }
 /* Una @mención: una pastilla con el avatar de quien se nombra; nunca más ancha que su línea. */
 .agency-mention { display: inline-flex; max-width: 100%; align-items: center; gap: 4px; vertical-align: baseline; padding: 0 7px 0 3px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 30%, transparent); font-weight: 600; color: var(--violet-200); overflow-wrap: anywhere; white-space: normal; }
 .agency-mention-avatar { border-radius: 999px; }
@@ -3930,7 +3933,8 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .office-input::placeholder { color: var(--text-subtle); }
 .office-input::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); color: transparent; }
 .office-input-backdrop { position: absolute; inset: 0; overflow: hidden; color: var(--text); pointer-events: none; }
-.office-input-mention { border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); color: var(--violet-200); font-weight: 600; }
+/* Mismo peso que el texto: la capa de atrás tiene que medir igual que el textarea o el cursor se corre. */
+.office-input-mention { border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); color: var(--violet-200); font-weight: inherit; }
 .office-composer-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
 .office-composer-hint { min-width: 0; flex: 1; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-subtle); }
 .office-send { display: grid; width: 32px; height: 32px; flex-shrink: 0; place-items: center; border-radius: 999px; background: var(--grad-brand); color: #fff; box-shadow: 0 0 0 1px rgb(196 181 253 / 0.3), 0 8px 22px -10px rgb(147 88 255 / 0.85); transition: filter var(--dur-fast), opacity var(--dur-fast); }

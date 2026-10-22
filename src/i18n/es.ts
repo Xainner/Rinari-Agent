@@ -4568,6 +4568,7 @@ export const es = {
   'agency.settings.cancel': 'Cancelar',
   'agency.settings.forget': 'Olvidar',
   'agency.settings.accounts': 'Cuentas propias de {name}',
+  'agency.settings.teamConnectorsHint': 'Los puestos de este equipo ven las herramientas de los que marques, además de los de cada agente.',
   'agency.settings.accountsHint': 'Solo este agente las ve y las usa, en su chat y en sus reglas.',
   'agency.settings.accountsEmpty': 'No tiene cuentas propias.',
   'agency.settings.connect': 'Conectar una cuenta',

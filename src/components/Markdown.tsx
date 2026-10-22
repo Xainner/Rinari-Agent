@@ -1,5 +1,6 @@
 import { Suspense, lazy, memo, useEffect, useRef, useState, type ComponentProps } from 'react'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
+import type { PluggableList } from 'unified'
 import remarkGfm from 'remark-gfm'
 import { Check, Copy, ImageOff } from 'lucide-react'
 import { useI18n } from '../i18n'
@@ -134,7 +135,13 @@ function LocalImageNotice({ src, alt }: { src: string; alt: string }) {
  * `stream`: el texto llega en vivo (#52); las palabras desde `fadeFrom`
  * entran con un fundido y las de después de `shownTo` esperan invisibles.
  */
-function Markdown({ children: raw, stream }: { children: string; stream?: { fadeFrom: number; shownTo?: number } }) {
+/** Lo que una vista agrega al Markdown del chat (las @menciones de la oficina). */
+export interface MarkdownExtension {
+  rehypePlugins?: PluggableList
+  components?: Components
+}
+
+function Markdown({ children: raw, stream, extension }: { children: string; stream?: { fadeFrom: number; shownTo?: number }; extension?: MarkdownExtension }) {
   const children = escapeCurrency(raw)
   // Una vez que el texto tiene matemáticas, se queda en el renderizador de
   // matemáticas: si cambiara de idea a mitad del streaming, todo el bloque se
@@ -144,7 +151,7 @@ function Markdown({ children: raw, stream }: { children: string; stream?: { fade
   if (math.current) {
     return (
       <div className="md-body">
-        <Suspense fallback={<BaseMarkdown>{children}</BaseMarkdown>}>
+        <Suspense fallback={<BaseMarkdown extension={extension}>{children}</BaseMarkdown>}>
           <MathMarkdown>{children}</MathMarkdown>
         </Suspense>
       </div>
@@ -152,14 +159,15 @@ function Markdown({ children: raw, stream }: { children: string; stream?: { fade
   }
   return (
     <div className="md-body" data-streaming={stream ? true : undefined}>
-      <BaseMarkdown stream={stream}>{children}</BaseMarkdown>
+      <BaseMarkdown stream={stream} extension={extension}>{children}</BaseMarkdown>
     </div>
   )
 }
 
-function BaseMarkdown({ children, stream }: { children: string; stream?: { fadeFrom: number; shownTo?: number } }) {
+function BaseMarkdown({ children, stream, extension }: { children: string; stream?: { fadeFrom: number; shownTo?: number }; extension?: MarkdownExtension }) {
+  const plugins: PluggableList = [...(stream ? [[rehypeStreamWords, stream] as PluggableList[number]] : []), ...(extension?.rehypePlugins ?? [])]
   return (
-    <ReactMarkdown urlTransform={fileUrlTransform} remarkPlugins={[remarkGfm]} rehypePlugins={stream ? [[rehypeStreamWords, stream]] : undefined} components={markdownComponents}>
+    <ReactMarkdown urlTransform={fileUrlTransform} remarkPlugins={[remarkGfm]} rehypePlugins={plugins.length ? plugins : undefined} components={extension?.components ? { ...markdownComponents, ...extension.components } : markdownComponents}>
       {children}
     </ReactMarkdown>
   )

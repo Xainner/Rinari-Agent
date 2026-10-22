@@ -4550,6 +4550,7 @@ export const en: Record<I18nKey, string> = {
   'agency.settings.cancel': 'Cancel',
   'agency.settings.forget': 'Forget',
   'agency.settings.accounts': '{name}\'s own accounts',
+  'agency.settings.teamConnectorsHint': "This team's posts see the tools of the ones you tick, on top of each agent's own.",
   'agency.settings.accountsHint': 'Only this agent sees and uses them, in its chat and its rules.',
   'agency.settings.accountsEmpty': 'It has no accounts of its own.',
   'agency.settings.connect': 'Connect an account',

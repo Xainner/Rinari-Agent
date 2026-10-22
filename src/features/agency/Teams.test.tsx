@@ -2,7 +2,7 @@
 // Rinari Agency A2: equipos en la barra lateral (D-15), su ficha, la oficina
 // con @menciones y «/recado» (D-1, D-3), las tarjetas de recado y la pizarra
 // (D-14), y lo de toda la Agency en Ajustes (Vía 2 con «Pronto», D-28).
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -245,8 +245,13 @@ it('changes members one by one and duplicates a team without its accounts', asyn
 
 it('settings show each team and the whole Agency, with subagents still to come', async () => {
   wrap(<AgencySettings agents={[writer, video]} teams={[team]} teamsEnabled initialTeamId="team_1" />)
-  await waitFor(() => expect(screen.getByText('youtube-canal')).toBeTruthy())
+  const accounts = await screen.findByTestId('agency-settings-accounts')
+  await waitFor(() => expect(within(accounts).getByText('youtube-canal')).toBeTruthy())
   expect(api.agencyTeamMemory).toHaveBeenCalledWith('team_1')
+  // The team's connectors: everyone's and its own account, never an agent's.
+  const connectors = screen.getByTestId('agency-settings-connectors')
+  await waitFor(() => expect(within(connectors).getByText('gmail')).toBeTruthy())
+  expect(within(connectors).getByText('youtube-canal')).toBeTruthy()
   expect(screen.queryByText('mio')).toBeNull()
   await userEvent.click(screen.getByTestId('agency-settings-scope-agency'))
   await waitFor(() => expect(screen.getByTestId('agency-errand-mode')).toBeTruthy())

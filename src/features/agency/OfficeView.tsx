@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ArrowUp } from 'lucide-react'
+import Markdown, { type MarkdownExtension } from '../../components/Markdown'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -29,24 +30,66 @@ export function splitMentions(text: string, names: string[]): string[] {
   return text.split(new RegExp(`(@(?:${escaped.join('|')}))(?![\\p{L}\\p{N}_])`, 'giu'))
 }
 
-/** El texto de un mensaje con sus @menciones como una mención, con el avatar de quien se nombra. */
+interface HastNode {
+  type: string
+  value?: string
+  tagName?: string
+  properties?: Record<string, unknown>
+  children?: HastNode[]
+}
+
+/** Las @menciones del texto como un elemento propio, fuera de código y enlaces. */
+function rehypeMentions(names: string[]) {
+  return () => (tree: HastNode) => {
+    const walk = (node: HastNode) => {
+      if (!node.children || node.tagName === 'code' || node.tagName === 'pre' || node.tagName === 'a') return
+      node.children = node.children.flatMap((child) => {
+        if (child.type !== 'text' || !child.value) {
+          walk(child)
+          return [child]
+        }
+        const parts = splitMentions(child.value, names)
+        if (parts.length === 1) return [child]
+        return parts.filter(Boolean).map((part, index): HastNode => (
+          index % 2 === 1 || names.some((name) => `@${name}`.toLowerCase() === part.toLowerCase())
+            ? { type: 'element', tagName: 'span', properties: { dataMention: part.slice(1) }, children: [{ type: 'text', value: part }] }
+            : { type: 'text', value: part }
+        ))
+      })
+    }
+    walk(tree)
+  }
+}
+
+/**
+ * El texto de un mensaje con el formato del chat (negritas, listas, código) y
+ * sus @menciones como una mención, con el avatar de quien se nombra.
+ */
 function MessageText({ text, members }: { text: string; members: AgencyAgent[] }) {
-  const names = useMemo(() => members.map((agent) => agent.name), [members])
-  const parts = useMemo(() => splitMentions(text, names), [text, names])
-  const byName = useMemo(() => new Map(members.map((agent) => [agent.name.toLowerCase(), agent])), [members])
+  const extension = useMemo<MarkdownExtension>(() => {
+    const names = members.map((agent) => agent.name)
+    const byName = new Map(members.map((agent) => [agent.name.toLowerCase(), agent]))
+    return {
+      rehypePlugins: [rehypeMentions(names)],
+      components: {
+        span({ node: _node, children, ...props }) {
+          const name = (props as Record<string, unknown>)['data-mention']
+          if (typeof name !== 'string') return <span {...props}>{children}</span>
+          const agent = byName.get(name.toLowerCase()) ?? null
+          return (
+            <span className="agency-mention" data-agent-id={agent?.id}>
+              {agent && <AgentAvatar agent={agent} size={14} className="agency-mention-avatar" />}
+              {children}
+            </span>
+          )
+        },
+      },
+    }
+  }, [members])
   return (
-    <p className="agency-office-text">
-      {parts.map((part, index) => {
-        if (index % 2 === 0) return part
-        const agent = byName.get(part.slice(1).toLowerCase()) ?? null
-        return (
-          <span key={index} className="agency-mention" data-agent-id={agent?.id}>
-            {agent && <AgentAvatar agent={agent} size={14} className="agency-mention-avatar" />}
-            {part}
-          </span>
-        )
-      })}
-    </p>
+    <div className="agency-office-text">
+      <Markdown extension={extension}>{text}</Markdown>
+    </div>
   )
 }
 

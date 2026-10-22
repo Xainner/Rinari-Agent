@@ -907,8 +907,8 @@ function App() {
             settingsOpen={agencyPage.kind === 'settings'}
             onStopAll={session.status?.capabilities.agency_stop_all_v1 === true ? () => void stopAllAgents() : undefined}
             halted={agency.halted}
-            onResume={() => void engineApi.agencyResume().then(() => {
-              toast.success(translate(lang, 'agency.resume.done'))
+            onResume={() => void engineApi.agencyResume().then((result) => {
+              toast.success(translate(lang, 'agency.resume.done', { rules: result.resumed_rules ?? 0, errands: result.restored_errands ?? 0 }))
               void agency.reload()
             }).catch((error) => toast.error(commandMessage(error)))}
             teams={agency.teams}

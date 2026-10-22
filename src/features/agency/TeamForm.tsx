@@ -11,7 +11,6 @@ import { useConfirm } from '../../components/ui/useConfirm'
 import type { AgencyAgent, AgencyTeam, AgencyTeamInput } from './types'
 
 /** Un equipo tiene hasta 8 agentes; para más, otro equipo (6.2). */
-export const MAX_MEMBERS = 8
 
 interface TeamFormProps {
   agents: AgencyAgent[]
@@ -72,7 +71,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
   const toggleMember = (agentId: string) =>
     setMembers((current) => {
       if (current.includes(agentId)) return current.filter((value) => value !== agentId)
-      return current.length >= MAX_MEMBERS ? current : [...current, agentId]
+      return [...current, agentId]
     })
   const toggleConnector = (serverName: string) =>
     setConnectors((current) => (current.includes(serverName) ? current.filter((value) => value !== serverName) : [...current, serverName]))
@@ -229,7 +228,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
         />
       </EditorSection>
 
-      <EditorSection icon={UsersRound} title={t('agency.team.members', { n: members.length, max: MAX_MEMBERS })} hint={t('agency.team.membersCardHint')}>
+      <EditorSection icon={UsersRound} title={t('agency.team.members', { n: members.length })} hint={t('agency.team.membersCardHint')}>
         {active.length === 0 ? (
           <p className="field-hint mt-0">{t('agency.team.noAgents')}</p>
         ) : (
@@ -244,7 +243,6 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
                       type="checkbox"
                       className="r-checkbox"
                       checked={checked}
-                      disabled={!checked && members.length >= MAX_MEMBERS}
                       onChange={() => toggleMember(agent.id)}
                     />
                     <AgentAvatar agent={agent} size={34} />

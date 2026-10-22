@@ -42,6 +42,7 @@ const settings: AgencySettingsData = {
 const api = {
   agencyTeam: vi.fn(async () => ({ team, errands, messages })),
   agencyAgents: vi.fn(async () => ({ agents: [writer, video] })),
+  agencyArchivedTeams: vi.fn(async () => ({ teams: [] })),
   agencyOfficePost: vi.fn(async (_teamId: string, _text: string) => ({ message: messages[0] })),
   agencyCreateErrand: vi.fn(async (_teamId: string, _errand: unknown) => ({ errand: errand({ status: 'pending' }) })),
   agencyReviewErrand: vi.fn(async (_id: string, _accepted: boolean, _reason?: string) => ({ errand: errand({ status: 'reviewed' }) })),

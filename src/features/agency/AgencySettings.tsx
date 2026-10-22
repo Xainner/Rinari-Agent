@@ -21,6 +21,7 @@ import { BudgetFields, ConnectorTiles, EditorSection } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
 import AgentPersonality from './AgentPersonality'
 import { useAgencyData } from './AgencyData'
+import { useConfirm } from '../../components/ui/useConfirm'
 import type { AgencyAgent, AgencySettingsData, AgencyTeam, AgentBudget, AgentEffort, ErrandMode } from './types'
 
 interface AgencySettingsProps {
@@ -37,6 +38,8 @@ interface AgencySettingsProps {
   memoryEnabled?: boolean
   /** Con `agency_audit_v1`: la personalidad de cada agente y los archivados. */
   auditEnabled?: boolean
+  /** Se abre en una sección: «Archivados» desde la barra lateral. */
+  initialScope?: 'archived'
 }
 
 type Scope = 'agent' | 'team' | 'agency' | 'archived'
@@ -69,52 +72,99 @@ function AgentPersonalitySettings({ agent }: { agent: AgencyAgent }) {
 }
 
 /**
- * Los agentes archivados (A7): se ven aquí y vuelven con «Restaurar». No
- * vuelven a los equipos de los que salieron al archivarse.
+ * Lo archivado (A7 y 22-oct): equipos y agentes. «Restaurar» los devuelve
+ * (un agente no vuelve a los equipos de los que salió; un equipo vuelve con
+ * sus reglas encendidas) y «Eliminar», tras confirmar, los borra con sus
+ * conversaciones, reglas y memoria.
  */
-function ArchivedAgents() {
+function ArchivedAgents({ teamsEnabled }: { teamsEnabled: boolean }) {
   const { t } = useI18n()
   const { reload: reloadAgency } = useAgencyData()
+  const { ask, dialog } = useConfirm()
   const [archived, setArchived] = useState<AgencyAgent[] | null>(null)
-  const [restoring, setRestoring] = useState<string | null>(null)
+  const [teams, setTeams] = useState<AgencyTeam[] | null>(teamsEnabled ? null : [])
+  const [busy, setBusy] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const result = await engineApi.agencyAgents({ includeArchived: true })
-      setArchived(result.agents.filter((agent) => agent.archived_at !== null))
+      // Un Engine sin equipos archivados no deja la lista de agentes vacía.
+      const [agents, archivedTeams] = await Promise.all([
+        engineApi.agencyAgents({ includeArchived: true }),
+        teamsEnabled ? engineApi.agencyArchivedTeams().catch(() => ({ teams: [] as AgencyTeam[] })) : Promise.resolve({ teams: [] as AgencyTeam[] }),
+      ])
+      setArchived(agents.agents.filter((agent) => agent.archived_at !== null))
+      setTeams(archivedTeams.teams)
     } catch (error) {
       setArchived((current) => current ?? [])
+      setTeams((current) => current ?? [])
       toast.error(commandMessage(error))
     }
-  }, [])
+  }, [teamsEnabled])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const restore = async (agent: AgencyAgent) => {
-    if (restoring) return
-    setRestoring(agent.id)
+  const act = async (key: string, work: () => Promise<unknown>, done: string) => {
+    if (busy) return
+    setBusy(key)
     try {
-      await engineApi.agencyUnarchiveAgent(agent.id)
-      toast.success(t('agency.archived.restored', { name: agent.name }))
+      await work()
+      toast.success(done)
       await load()
       void reloadAgency()
     } catch (error) {
       toast.error(commandMessage(error))
     } finally {
-      setRestoring(null)
+      setBusy(null)
     }
   }
 
+  const removeAgent = async (agent: AgencyAgent) => {
+    const ok = await ask({
+      title: t('agency.archived.deleteAgentTitle', { name: agent.name }),
+      body: t('agency.archived.deleteAgentBody'),
+      confirmLabel: t('agency.archived.delete'),
+      cancelLabel: t('agency.form.cancel'),
+    })
+    if (ok) void act(agent.id, () => engineApi.agencyDeleteAgent(agent.id), t('agency.archived.deleted', { name: agent.name }))
+  }
+
+  const removeTeam = async (team: AgencyTeam) => {
+    const ok = await ask({
+      title: t('agency.archived.deleteTeamTitle', { name: team.name }),
+      body: t('agency.archived.deleteTeamBody'),
+      confirmLabel: t('agency.archived.delete'),
+      cancelLabel: t('agency.form.cancel'),
+    })
+    if (ok) void act(team.id, () => engineApi.agencyDeleteTeam(team.id), t('agency.archived.deleted', { name: team.name }))
+  }
+
+  const loading = archived === null || teams === null
+  const empty = !loading && archived.length === 0 && teams.length === 0
   return (
     <EditorSection icon={Archive} title={t('agency.archived.title')} hint={t('agency.archived.hint')} testId="agency-archived">
-      {archived === null ? (
+      {loading ? (
         <p className="agency-settings-empty" aria-busy="true">{t('agency.settings.loading')}</p>
-      ) : archived.length === 0 ? (
+      ) : empty ? (
         <p className="agency-settings-empty">{t('agency.archived.empty')}</p>
       ) : (
         <ul className="agency-archived-list">
+          {teams.map((team) => (
+            <li key={team.id} className="agency-archived-row" data-testid="agency-archived-team">
+              <span className="agency-team-mark" aria-hidden="true"><UsersRound size={14} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-[var(--text)]">{team.name}</span>
+                <span className="block truncate text-[11.5px] text-[var(--text-subtle)]">{t('agency.archived.teamKind', { n: team.members.length })}</span>
+              </span>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={busy !== null} onClick={() => void act(team.id, () => engineApi.agencyUnarchiveTeam(team.id), t('agency.archived.teamRestored', { name: team.name }))} data-testid="agency-archived-team-restore">
+                <ArchiveRestore size={13} aria-hidden="true" /> {t('agency.archived.restore')}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" data-tone="danger" disabled={busy !== null} onClick={() => void removeTeam(team)} data-testid="agency-archived-team-delete">
+                <Trash2 size={13} aria-hidden="true" /> {t('agency.archived.delete')}
+              </button>
+            </li>
+          ))}
           {archived.map((agent) => (
             <li key={agent.id} className="agency-archived-row" data-testid="agency-archived-row">
               <AgentAvatar agent={agent} size={30} />
@@ -122,13 +172,17 @@ function ArchivedAgents() {
                 <span className="block truncate font-medium text-[var(--text)]">{agent.name}</span>
                 {agent.role && <span className="block truncate text-[11.5px] text-[var(--text-subtle)]">{agent.role}</span>}
               </span>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={restoring !== null} onClick={() => void restore(agent)} data-testid="agency-archived-restore">
+              <button type="button" className="btn btn-secondary btn-sm" disabled={busy !== null} onClick={() => void act(agent.id, () => engineApi.agencyUnarchiveAgent(agent.id), t('agency.archived.restored', { name: agent.name }))} data-testid="agency-archived-restore">
                 <ArchiveRestore size={13} aria-hidden="true" /> {t('agency.archived.restore')}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" data-tone="danger" disabled={busy !== null} onClick={() => void removeAgent(agent)} data-testid="agency-archived-delete">
+                <Trash2 size={13} aria-hidden="true" /> {t('agency.archived.delete')}
               </button>
             </li>
           ))}
         </ul>
       )}
+      {dialog}
     </EditorSection>
   )
 }
@@ -597,9 +651,9 @@ function GlobalSettings() {
  * su jefe, su presupuesto, su memoria y sus cuentas; y de toda la Agency, el
  * presupuesto global y cómo corre un recado.
  */
-export default function AgencySettings({ agents, teams = [], initialAgentId = null, initialTeamId = null, teamsEnabled = false, memoryEnabled = true, auditEnabled = false }: AgencySettingsProps) {
+export default function AgencySettings({ agents, teams = [], initialAgentId = null, initialTeamId = null, teamsEnabled = false, memoryEnabled = true, auditEnabled = false, initialScope }: AgencySettingsProps) {
   const { t } = useI18n()
-  const [scope, setScope] = useState<Scope>(initialTeamId && teamsEnabled ? 'team' : agents.length > 0 || !teamsEnabled ? 'agent' : 'agency')
+  const [scope, setScope] = useState<Scope>(initialScope === 'archived' && auditEnabled ? 'archived' : initialTeamId && teamsEnabled ? 'team' : agents.length > 0 || !teamsEnabled ? 'agent' : 'agency')
   const [agentId, setAgentId] = useState<string | null>(initialAgentId ?? agents[0]?.id ?? null)
   const [teamId, setTeamId] = useState<string | null>(initialTeamId ?? teams[0]?.id ?? null)
   const agent = agents.find((item) => item.id === agentId) ?? null
@@ -710,7 +764,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
             </>
           )}
 
-          {scope === 'archived' && <ArchivedAgents />}
+          {scope === 'archived' && <ArchivedAgents teamsEnabled={teamsEnabled} />}
         </div>
       </div>
       <SignInDialog />

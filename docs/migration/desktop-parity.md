@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **333**
-- Respaldados por Engine: **327**
+- Comandos: **338**
+- Respaldados por Engine: **332**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -18,6 +18,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `advanced_settings_set` | engine | `advanced.settings.set` | `src/services/engine.ts` |
 | `agency_agent_archive` | engine | `agency.agent.archive` | `src/services/engine.ts` |
 | `agency_agent_create` | engine | `agency.agent.create` | `src/services/engine.ts` |
+| `agency_agent_delete` | engine | `agency.agent.delete` | **ninguno** |
 | `agency_agent_draft` | engine | `agency.agent.draft` | **ninguno** |
 | `agency_agent_get` | engine | `agency.agent.get` | **ninguno** |
 | `agency_agent_list` | engine | `agency.agent.list` | `src/services/engine.ts` |
@@ -37,8 +38,9 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_settings_set` | engine | `agency.settings.set` | `src/services/engine.ts` |
 | `agency_status` | engine | `agency.status` | `src/services/engine.ts` |
 | `agency_stop_all` | engine | `agency.stop_all` | **ninguno** |
-| `agency_team_archive` | engine | `agency.team.archive` | `src/services/engine.ts` |
+| `agency_team_archive` | engine | `agency.team.archive` | **ninguno** |
 | `agency_team_create` | engine | `agency.team.create` | `src/services/engine.ts` |
+| `agency_team_delete` | engine | `agency.team.delete` | **ninguno** |
 | `agency_team_duplicate` | engine | `agency.team.duplicate` | `src/services/engine.ts` |
 | `agency_team_from_template` | engine | `agency.team.from_template` | **ninguno** |
 | `agency_team_get` | engine | `agency.team.get` | **ninguno** |
@@ -47,7 +49,10 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_team_list` | engine | `agency.team.list` | `src/services/engine.ts` |
 | `agency_team_memory_add` | engine | `agency.team.memory.add` | `src/services/engine.ts` |
 | `agency_team_memory_list` | engine | `agency.team.memory.list` | **ninguno** |
+| `agency_team_resume` | engine | `agency.team.resume` | **ninguno** |
+| `agency_team_stop` | engine | `agency.team.stop` | **ninguno** |
 | `agency_team_template` | engine | `agency.team.template` | `src/services/engine.ts` |
+| `agency_team_unarchive` | engine | `agency.team.unarchive` | **ninguno** |
 | `agency_team_update` | engine | `agency.team.update` | `src/services/engine.ts` |
 | `agency_templates_list` | engine | `agency.templates.list` | **ninguno** |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |

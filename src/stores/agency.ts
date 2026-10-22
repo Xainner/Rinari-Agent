@@ -16,7 +16,7 @@ export type AgencyPage =
   | { kind: 'new-agent' }
   | { kind: 'edit-agent'; agentId: string }
   /** Ajustes de la Agency (D-24), con el agente o el equipo que estaba abierto si había uno. */
-  | { kind: 'settings'; agentId: string | null; teamId?: string | null }
+  | { kind: 'settings'; agentId: string | null; teamId?: string | null; scope?: 'archived' }
   /** A2: la oficina de un equipo (su chat de grupo, no una conversación con un modelo). */
   | { kind: 'office'; teamId: string }
   /** A2: el puesto de un agente en un equipo, su conversación ahí. */
@@ -40,7 +40,7 @@ interface AgencyState {
   openAgent: (agentId: string) => void
   newAgent: () => void
   editAgent: (agentId: string) => void
-  openSettings: (agentId?: string | null, teamId?: string | null) => void
+  openSettings: (agentId?: string | null, teamId?: string | null, scope?: 'archived') => void
   openOffice: (teamId: string) => void
   openPost: (teamId: string, agentId: string) => void
   newTeam: () => void
@@ -87,7 +87,7 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   openAgent: (agentId) => set({ space: 'agency', page: { kind: 'agent', agentId } }),
   newAgent: () => set({ space: 'agency', page: { kind: 'new-agent' } }),
   editAgent: (agentId) => set({ space: 'agency', page: { kind: 'edit-agent', agentId } }),
-  openSettings: (agentId = null, teamId = null) => set({ space: 'agency', page: { kind: 'settings', agentId, teamId } }),
+  openSettings: (agentId = null, teamId = null, scope) => set({ space: 'agency', page: { kind: 'settings', agentId, teamId, ...(scope ? { scope } : {}) } }),
   openOffice: (teamId) => set({ space: 'agency', page: { kind: 'office', teamId } }),
   openPost: (teamId, agentId) => set({ space: 'agency', page: { kind: 'post', teamId, agentId } }),
   newTeam: () => set({ space: 'agency', page: { kind: 'new-team' } }),

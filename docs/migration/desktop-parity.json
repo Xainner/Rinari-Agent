@@ -45,6 +45,13 @@
       ]
     },
     {
+      "command": "agency_agent_delete",
+      "kind": "engine",
+      "method": "agency.agent.delete",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agency_agent_draft",
       "kind": "engine",
       "method": "agency.agent.draft",
@@ -212,9 +219,7 @@
       "kind": "engine",
       "method": "agency.team.archive",
       "manual": false,
-      "callers": [
-        "src/services/engine.ts"
-      ]
+      "callers": []
     },
     {
       "command": "agency_team_create",
@@ -224,6 +229,13 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "agency_team_delete",
+      "kind": "engine",
+      "method": "agency.team.delete",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "agency_team_duplicate",
@@ -292,6 +304,20 @@
       "callers": []
     },
     {
+      "command": "agency_team_resume",
+      "kind": "engine",
+      "method": "agency.team.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_stop",
+      "kind": "engine",
+      "method": "agency.team.stop",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agency_team_template",
       "kind": "engine",
       "method": "agency.team.template",
@@ -299,6 +325,13 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "agency_team_unarchive",
+      "kind": "engine",
+      "method": "agency.team.unarchive",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "agency_team_update",
@@ -2797,10 +2830,10 @@
     }
   ],
   "summary": {
-    "commands": 333,
-    "engine_backed": 327,
+    "commands": 338,
+    "engine_backed": 332,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 105
+    "without_callers": 111
   }
 }

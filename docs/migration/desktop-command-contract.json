@@ -7555,6 +7555,11 @@
           "name": "include_archived",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "archived",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -7569,6 +7574,11 @@
         {
           "key": "include_archived",
           "from": "include_archived",
+          "optional": true
+        },
+        {
+          "key": "archived",
+          "from": "archived",
           "optional": true
         }
       ],
@@ -7863,6 +7873,11 @@
           "name": "rinari_profile_id",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "archived",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -7872,6 +7887,11 @@
         {
           "key": "rinari_profile_id",
           "from": "rinari_profile_id",
+          "optional": true
+        },
+        {
+          "key": "archived",
+          "from": "archived",
           "optional": true
         }
       ],
@@ -7984,6 +8004,121 @@
         {
           "key": "team_id",
           "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_unarchive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.unarchive",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_delete",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.delete",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_stop",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.stop",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_resume",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.resume",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_delete",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.delete",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
           "optional": false
         }
       ],

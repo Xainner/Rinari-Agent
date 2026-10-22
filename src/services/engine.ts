@@ -1746,6 +1746,9 @@ export const engineApi = {
   /** Vuelve a la Agency un agente archivado (no vuelve a los equipos de los que salió). */
   agencyUnarchiveAgent: (agentId: string) =>
     platform().command<{ agent: AgencyAgent }>('agency_agent_unarchive', { agent_id: agentId }),
+  /** Solo un agente archivado: se lleva sus conversaciones, reglas y memoria. */
+  agencyDeleteAgent: (agentId: string) =>
+    platform().command<{ deleted: string; deleted_sessions: number; deleted_rules: number }>('agency_agent_delete', { agent_id: agentId }),
   /** Equipos listos para empezar (10.4). */
   /** Las plantillas de equipo del Engine, en el idioma de la app (el Engine cae al inglés). */
   agencyTemplates: (language?: string) =>
@@ -1794,8 +1797,21 @@ export const engineApi = {
       team_id: teamId,
       patch: patch as unknown as Record<string, unknown>,
     }),
+  /** Archivar detiene el equipo del todo: turnos, esperas, recados y sus reglas. */
   agencyArchiveTeam: (teamId: string) =>
-    platform().command<{ team: AgencyTeam }>('agency_team_archive', { team_id: teamId }),
+    platform().command<{ team: AgencyTeam; paused_rules?: number }>('agency_team_archive', { team_id: teamId }),
+  agencyUnarchiveTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; resumed_rules: number }>('agency_team_unarchive', { team_id: teamId }),
+  agencyArchivedTeams: () =>
+    platform().command<{ teams: AgencyTeam[] }>('agency_team_list', { rinari_profile_id: 'active', archived: true }),
+  /** «Detener equipo»: ese equipo solo, hasta que el dueño lo reanude o escriba en su oficina. */
+  agencyStopTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; blocked_errands: number; paused_rules: number }>('agency_team_stop', { team_id: teamId }),
+  agencyResumeTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; restored_errands: number; resumed_rules: number }>('agency_team_resume', { team_id: teamId }),
+  /** Solo un equipo archivado: se lleva sus conversaciones, reglas y memoria. */
+  agencyDeleteTeam: (teamId: string) =>
+    platform().command<{ deleted: string; deleted_sessions: number; deleted_rules: number }>('agency_team_delete', { team_id: teamId }),
   agencyJoinTeam: (teamId: string, agentId: string) =>
     platform().command<{ team: AgencyTeam }>('agency_team_join', { team_id: teamId, agent_id: agentId }),
   agencyLeaveTeam: (teamId: string, agentId: string) =>

@@ -177,7 +177,7 @@ function stateLabel(state: PostState, t: ReturnType<typeof useI18n>['t']): strin
  */
 export default function OfficeView({ team, agents }: OfficeViewProps) {
   const { t } = useI18n()
-  const { status, halted } = useAgencyData()
+  const { status, halted, reload: reloadAgency } = useAgencyData()
   const [messages, setMessages] = useState<OfficeMessage[]>([])
   const [errands, setErrands] = useState<Errand[]>([])
   const end = useRef<HTMLDivElement>(null)
@@ -304,10 +304,25 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
           </div>
         </div>
 
-        {halted && (
+        {halted ? (
           <div className="agency-halted-note" role="status" data-testid="agency-office-halted">
             <PauseCircle size={14} aria-hidden="true" />
             <span>{t('agency.halted.office')}</span>
+          </div>
+        ) : team.stopped && (
+          <div className="agency-halted-note" role="status" data-testid="agency-team-stopped">
+            <PauseCircle size={14} aria-hidden="true" />
+            <span className="min-w-0 flex-1">{t('agency.team.stoppedOffice')}</span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void engineApi.agencyResumeTeam(team.id)
+                .then(() => { toast.success(t('agency.team.resumed', { name: team.name })); void reloadAgency() })
+                .catch((error) => toast.error(commandMessage(error)))}
+              data-testid="agency-team-resume"
+            >
+              <Play size={13} aria-hidden="true" /> {t('agency.team.resume')}
+            </button>
           </div>
         )}
         <OfficeComposer team={team} members={members} onPosted={() => void reload()} />

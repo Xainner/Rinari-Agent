@@ -1,4 +1,4 @@
-import { CircleHelp, Copy, IdCard, LayoutTemplate, MessageSquare, Building2, MoreHorizontal, OctagonX, Pencil, Play, Plus, Settings, Settings2, UserPlus, UsersRound } from 'lucide-react'
+import { Archive, CircleHelp, Copy, IdCard, LayoutTemplate, MessageSquare, Building2, MoreHorizontal, OctagonX, PauseCircle, Pencil, Play, Plus, Settings, Settings2, UserPlus, UsersRound } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useUIStore } from '../../stores/ui'
@@ -6,6 +6,8 @@ import { dispatchAction } from '../../services/actions'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { copyText } from '../../lib/clipboard'
+import { commandMessage, engineApi } from '../../services/engine'
+import { useConfirm } from '../../components/ui/useConfirm'
 import ApplicationMenu, { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 import AgentAvatar from './AgentAvatar'
@@ -47,6 +49,13 @@ interface AgencySidebarProps {
   onOpenSettings?: (agentId: string | null, teamId: string | null) => void
   onTeamCard?: (team: AgencyTeam) => void
   onEditTeam?: (team: AgencyTeam) => void
+  /**
+   * Con un ciclo de vida (22-oct): detener, reanudar y archivar un equipo, y
+   * archivar un agente, desde su menú. Se llama tras cada cambio para releer.
+   */
+  onChanged?: () => void
+  /** «Archivados»: los equipos y agentes archivados, para restaurarlos o eliminarlos. */
+  onArchived?: () => void
 }
 
 /** Una acción del menú de una fila. */
@@ -154,8 +163,35 @@ export default function AgencySidebar({
   onTeamCard,
   onEditTeam,
   onUseTemplate,
+  onChanged,
+  onArchived,
 }: AgencySidebarProps) {
   const { t } = useI18n()
+  const { ask, dialog } = useConfirm()
+  // Detener, reanudar y archivar desde el menú: el cambio se ve al releer.
+  const run = (work: Promise<unknown>, done: string) => {
+    void work
+      .then(() => { toast.success(done); onChanged?.() })
+      .catch((error) => toast.error(commandMessage(error)))
+  }
+  const archiveTeam = async (team: AgencyTeam) => {
+    const ok = await ask({
+      title: t('agency.team.archiveTitle', { name: team.name }),
+      body: t('agency.team.archiveBody'),
+      confirmLabel: t('agency.team.archive'),
+      cancelLabel: t('agency.form.cancel'),
+    })
+    if (ok) run(engineApi.agencyArchiveTeam(team.id), t('agency.team.archived', { name: team.name }))
+  }
+  const archiveAgent = async (agent: AgencyAgent) => {
+    const ok = await ask({
+      title: t('agency.agent.archiveTitle', { name: agent.name }),
+      body: t('agency.agent.archiveBody'),
+      confirmLabel: t('agency.agent.archive'),
+      cancelLabel: t('agency.form.cancel'),
+    })
+    if (ok) run(engineApi.agencyArchiveAgent(agent.id), t('agency.agent.archived', { name: agent.name }))
+  }
   const working = new Set(status?.agent_ids.working ?? [])
   const waiting = new Set(status?.agent_ids.needs_you ?? [])
   const nameOf = new Map(agents.map((agent) => [agent.id, agent.name]))
@@ -175,12 +211,21 @@ export default function AgencySidebar({
     ...(onAgentCard ? [{ key: 'card', icon: <IdCard size={13} />, label: t('agency.menu.card'), onSelect: () => onAgentCard(agentId) }] : []),
     ...(onOpenSettings ? [{ key: 'settings', icon: <Settings2 size={13} />, label: t('agency.menu.settings'), onSelect: () => onOpenSettings(agentId, null) }] : []),
     { key: 'copy', icon: <Copy size={13} />, label: t('sidebar.copySessionId'), onSelect: () => copySession(sessionId), disabled: !sessionId, separatorBefore: true },
+    ...(onChanged && byId.get(agentId) ? [{ key: 'archive', icon: <Archive size={13} />, label: t('agency.agent.archive'), onSelect: () => void archiveAgent(byId.get(agentId)!), separatorBefore: true }] : []),
   ]
   const officeActions = (team: AgencyTeam): RowAction[] => [
     ...(onTeamCard ? [{ key: 'card', icon: <IdCard size={13} />, label: t('agency.menu.teamCard'), onSelect: () => onTeamCard(team) }] : []),
     ...(onEditTeam ? [{ key: 'edit', icon: <Pencil size={13} />, label: t('agency.team.card.edit'), onSelect: () => onEditTeam(team) }] : []),
     ...(onOpenSettings ? [{ key: 'settings', icon: <Settings2 size={13} />, label: t('agency.menu.settings'), onSelect: () => onOpenSettings(null, team.id) }] : []),
     { key: 'copy', icon: <Copy size={13} />, label: t('agency.menu.copyTeamId'), onSelect: () => copyTeam(team.id), separatorBefore: true },
+    ...(onChanged
+      ? [
+          team.stopped
+            ? { key: 'resume', icon: <Play size={13} />, label: t('agency.team.resume'), onSelect: () => run(engineApi.agencyResumeTeam(team.id), t('agency.team.resumed', { name: team.name })), separatorBefore: true }
+            : { key: 'stop', icon: <PauseCircle size={13} />, label: t('agency.team.stop'), onSelect: () => run(engineApi.agencyStopTeam(team.id), t('agency.team.stopped', { name: team.name })), separatorBefore: true },
+          { key: 'archive', icon: <Archive size={13} />, label: t('agency.team.archive'), onSelect: () => void archiveTeam(team) },
+        ]
+      : []),
   ]
   // En el cajón móvil la barra va siempre expandida, como la de Rinari.
   const mobileOpen = useUIStore((state) => state.sidebarOpen)
@@ -366,7 +411,7 @@ export default function AgencySidebar({
                     <span className="agency-team-mark" aria-hidden="true"><UsersRound size={14} /></span>
                     <span className="min-w-0 flex-1 text-left">
                       <span className="block truncate">{team.name}</span>
-                      <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('agency.sidebar.officeLabel')}</span>
+                      <span className="block truncate text-[11px] text-[var(--text-subtle)]">{team.stopped ? t('agency.team.stoppedLabel') : t('agency.sidebar.officeLabel')}</span>
                     </span>
                   </button>
                   <RowMenu open={menu === officeKey} onOpenChange={(open) => setMenu(open ? officeKey : null)} label={t('agency.menu.label', { name: team.name })} actions={officeActions(team)} />
@@ -429,6 +474,13 @@ export default function AgencySidebar({
           <span className="truncate">{t('agency.sidebar.settings')}</span>
         </button>
       )}
+      {onArchived && (
+        <button type="button" className="sidebar-link" onClick={onArchived} data-testid="agency-archived-link">
+          <Archive size={15} aria-hidden="true" />
+          <span className="truncate">{t('agency.archived.title')}</span>
+        </button>
+      )}
+      {dialog}
       <button type="button" className="sidebar-link mb-2" onClick={onTutorial}>
         <CircleHelp size={15} aria-hidden="true" />
         <span className="truncate">{t('agency.sidebar.tutorial')}</span>

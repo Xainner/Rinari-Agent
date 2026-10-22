@@ -30,7 +30,17 @@ const api = {
   agencyOfficePost: vi.fn(() => new Promise(() => {})),
   attachmentPreview: vi.fn(async () => ({ data_url: 'data:image/png;base64,AA==' })),
   artifactRead: vi.fn(async () => ({ text: '# Registro XAUUSDm\nNo se abrió operación.', truncated: false })),
+  agencyStopTeam: vi.fn(async () => ({ team: null, blocked_errands: 0, paused_rules: 1 })),
+  agencyResumeTeam: vi.fn(async () => ({ team: null, restored_errands: 0, resumed_rules: 1 })),
+  agencyArchiveTeam: vi.fn(async () => ({ team: { name: 'Canal' }, paused_rules: 1 })),
+  agencyArchivedTeams: vi.fn(async () => ({ teams: archivedTeams })),
+  agencyAgents: vi.fn(async () => ({ agents: archivedAgents })),
+  agencyUnarchiveTeam: vi.fn(async () => ({ team: null, resumed_rules: 1 })),
+  agencyDeleteTeam: vi.fn(async () => ({ deleted: 'team_old', deleted_sessions: 3, deleted_rules: 1 })),
+  agencyDeleteAgent: vi.fn(async () => ({ deleted: 'agent_old', deleted_sessions: 1, deleted_rules: 0 })),
 }
+let archivedTeams: AgencyTeam[] = []
+let archivedAgents: AgencyAgent[] = []
 let officeMessages: OfficeMessage[] = []
 vi.mock('../../services/engine', () => ({
   engineApi: new Proxy({}, { get: (_target, key: string) => (api as Record<string, unknown>)[key] }),
@@ -48,6 +58,7 @@ vi.mock('../engine/EngineContext', () => ({
 
 import RulesView from './RulesView'
 import OfficeView from './OfficeView'
+import AgencySettings from './AgencySettings'
 import AgencySidebar from './AgencySidebar'
 import MessageBubble from '../../components/MessageBubble'
 import { useAgencyStore, isAgencySession } from '../../stores/agency'
@@ -334,3 +345,75 @@ it('the office row menu copies the team id', async () => {
   await waitFor(() => expect(write).toHaveBeenCalledWith('team_1'))
   restore()
 })
+
+// -- one team's life (owner, 22-oct) ------------------------------------------------------
+
+it('a team row menu stops a team, and a stopped one offers to resume it', async () => {
+  const changed = vi.fn()
+  const view = wrap(
+    <AgencySidebar
+      agents={[agent('w', 'Writer')]} status={null} activeAgentId={null} creating={false}
+      onOpenAgent={() => {}} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}}
+      teams={[team]} onOpenOffice={() => {}} onOpenPost={() => {}} onNewTeam={() => {}} onChanged={changed}
+    />,
+  )
+  const user = userEvent.setup()
+  await user.click(within(screen.getByTestId('agency-team')).getAllByTestId('agency-row-menu')[0])
+  await user.click(await screen.findByText('Detener equipo'))
+  await waitFor(() => expect(api.agencyStopTeam).toHaveBeenCalledWith('team_1'))
+  await waitFor(() => expect(changed).toHaveBeenCalled())
+  view.unmount()
+  wrap(
+    <AgencySidebar
+      agents={[agent('w', 'Writer')]} status={null} activeAgentId={null} creating={false}
+      onOpenAgent={() => {}} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}}
+      teams={[{ ...team, stopped: true }]} onOpenOffice={() => {}} onOpenPost={() => {}} onNewTeam={() => {}} onChanged={changed}
+    />,
+  )
+  expect(screen.getByTestId('agency-team').textContent).toContain('Detenido')
+  await user.click(within(screen.getByTestId('agency-team')).getAllByTestId('agency-row-menu')[0])
+  await user.click(await screen.findByText('Reanudar equipo'))
+  await waitFor(() => expect(api.agencyResumeTeam).toHaveBeenCalledWith('team_1'))
+})
+
+it('archiving a team from its menu asks first', async () => {
+  wrap(
+    <AgencySidebar
+      agents={[agent('w', 'Writer')]} status={null} activeAgentId={null} creating={false}
+      onOpenAgent={() => {}} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}}
+      teams={[team]} onOpenOffice={() => {}} onOpenPost={() => {}} onNewTeam={() => {}} onChanged={() => {}} onArchived={() => {}}
+    />,
+  )
+  const user = userEvent.setup()
+  expect(screen.getByTestId('agency-archived-link')).toBeTruthy()
+  await user.click(within(screen.getByTestId('agency-team')).getAllByTestId('agency-row-menu')[0])
+  await user.click(await screen.findByText('Archivar equipo'))
+  expect(api.agencyArchiveTeam).not.toHaveBeenCalled()
+  await user.click(await screen.findByRole('button', { name: 'Archivar equipo' }))
+  await waitFor(() => expect(api.agencyArchiveTeam).toHaveBeenCalledWith('team_1'))
+})
+
+it('a stopped team says so in its office and resumes from there', async () => {
+  officeMessages = []
+  wrap(<OfficeView team={{ ...team, stopped: true }} agents={[agent('w', 'Writer')]} />)
+  expect(await screen.findByTestId('agency-team-stopped')).toBeTruthy()
+  await userEvent.setup().click(screen.getByTestId('agency-team-resume'))
+  await waitFor(() => expect(api.agencyResumeTeam).toHaveBeenCalledWith('team_1'))
+})
+
+it('the Archived page lists teams and agents, restores and deletes after asking', async () => {
+  archivedTeams = [{ ...team, id: 'team_old', name: 'Viejo', archived_at: 5 }]
+  archivedAgents = [{ ...agent('agent_old', 'Antiguo'), archived_at: 5 }]
+  wrap(<AgencySettings agents={[agent('w', 'Writer')]} teams={[team]} teamsEnabled auditEnabled initialScope="archived" />)
+  const user = userEvent.setup()
+  const teamRow = await screen.findByTestId('agency-archived-team')
+  expect(teamRow.textContent).toContain('Viejo')
+  expect(screen.getByTestId('agency-archived-row').textContent).toContain('Antiguo')
+  await user.click(within(teamRow).getByTestId('agency-archived-team-restore'))
+  await waitFor(() => expect(api.agencyUnarchiveTeam).toHaveBeenCalledWith('team_old'))
+  await user.click(await screen.findByTestId('agency-archived-delete'))
+  expect(api.agencyDeleteAgent).not.toHaveBeenCalled()
+  await user.click(await screen.findByRole('button', { name: 'Eliminar' }))
+  await waitFor(() => expect(api.agencyDeleteAgent).toHaveBeenCalledWith('agent_old'))
+})
+

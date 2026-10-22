@@ -925,6 +925,8 @@ function App() {
               goChat()
             }}
             onEditTeam={(team) => { useAgencyStore.getState().editTeam(team.id); goChat() }}
+            onChanged={agencyAuditEnabled ? () => void agency.reload() : undefined}
+            onArchived={agencyAuditEnabled ? () => { useAgencyStore.getState().openSettings(null, null, 'archived'); goChat() } : undefined}
           />
         ) : (
           <AppSidebar
@@ -1098,6 +1100,8 @@ function App() {
         )}
         {agencyMain && agencyPage.kind === 'settings' && (
           <AgencySettings
+            // Abrir «Archivados» con los ajustes ya abiertos cambia la sección.
+            key={agencyPage.scope ?? 'settings'}
             agents={agency.agents}
             teams={agency.teams}
             teamsEnabled={teamsEnabled}
@@ -1105,6 +1109,7 @@ function App() {
             auditEnabled={agencyAuditEnabled}
             initialAgentId={agencyPage.agentId}
             initialTeamId={agencyPage.teamId ?? null}
+            initialScope={agencyPage.scope}
           />
         )}
         {agencyMain && agencyPage.kind === 'office' && activeTeam && (

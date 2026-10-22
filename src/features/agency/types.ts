@@ -108,6 +108,8 @@ export interface AgencyTeam {
   created_at: number
   updated_at: number
   archived_at: number | null
+  /** El dueño detuvo este equipo solo («Detener equipo»); lo dice `agency.team.list`. */
+  stopped?: boolean
 }
 
 export interface AgencyTeamInput {

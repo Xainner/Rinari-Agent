@@ -12,10 +12,12 @@ import { useUIStore } from '../../stores/ui'
 import { memoryApi } from '../../services/memory'
 import type { MemoryRecord } from '../memory/types'
 import { CatalogDialog } from '../connectors/CatalogDialog'
+import { McpServerDialog } from '../connectors/McpServerDialog'
+import { connectorCapabilities } from '../connectors/connectorModel'
 import { ConnectorLogo } from '../connectors/ConnectorLogo'
 import { SignInDialog, useSignIn } from '../connectors/SignInDialog'
 import AgentAvatar from './AgentAvatar'
-import { BudgetFields, EditorSection } from './AgencyEditor'
+import { BudgetFields, ConnectorTiles, EditorSection } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
 import type { AgencyAgent, AgencySettingsData, AgencyTeam, AgentBudget, AgentEffort, ErrandMode } from './types'
 
@@ -123,6 +125,9 @@ function MemoryAndAccounts({ owner, memoryEnabled = true }: { owner: Owner; memo
   const [topic, setTopic] = useState('')
   const [text, setText] = useState('')
   const [catalogOpen, setCatalogOpen] = useState(false)
+  // «Agregar servidor MCP» del catálogo: una cuenta propia que no está en él (MetaTrader…).
+  const [manualOpen, setManualOpen] = useState(false)
+  const [caps, setCaps] = useState<Record<string, boolean> | undefined>(undefined)
   const openSignIn = useSignIn((state) => state.open)
   const { byName } = useConnectorDirectory()
   const tag = `${owner.kind}:${owner.id}`
@@ -198,7 +203,7 @@ function MemoryAndAccounts({ owner, memoryEnabled = true }: { owner: Owner; memo
         </EditorSection>
       )}
 
-      <EditorSection icon={Plug} title={t('agency.settings.accounts', { name: owner.name })} hint={t(owner.kind === 'agent' ? 'agency.settings.accountsHint' : 'agency.settings.teamAccountsHint')}>
+      <EditorSection icon={Plug} title={t('agency.settings.accounts', { name: owner.name })} hint={t(owner.kind === 'agent' ? 'agency.settings.accountsHint' : 'agency.settings.teamAccountsHint')} testId="agency-settings-accounts">
         {accounts.length === 0 ? (
           <p className="agency-settings-empty">{t('agency.settings.accountsEmpty')}</p>
         ) : (
@@ -224,13 +229,69 @@ function MemoryAndAccounts({ owner, memoryEnabled = true }: { owner: Owner; memo
         open={catalogOpen}
         owner={tag}
         onClose={() => setCatalogOpen(false)}
+        onManual={() => {
+          setCatalogOpen(false)
+          void Promise.resolve().then(() => engineApi.status()).then((status) => setCaps(status.capabilities ?? {})).catch(() => setCaps({}))
+          setManualOpen(true)
+        }}
         onAdded={(server, next, label) => {
           setCatalogOpen(false)
           void reload()
           if (next === 'sign_in') openSignIn(server.name, label)
         }}
       />
+      <McpServerDialog
+        target={manualOpen ? 'new' : null}
+        caps={connectorCapabilities(caps)}
+        owner={tag}
+        onClose={() => setManualOpen(false)}
+        onSaved={(server, { signIn }) => {
+          setManualOpen(false)
+          void reload()
+          if (signIn) openSignIn(server.name, server.name)
+        }}
+      />
     </>
+  )
+}
+
+/**
+ * Los conectores que usa el agente: los de todos (también los personalizados,
+ * sin logo de catálogo) más sus cuentas propias. Se guardan al marcarlos.
+ */
+function AgentConnectors({ agent }: { agent: AgencyAgent }) {
+  const { t } = useI18n()
+  const { marks } = useConnectorDirectory()
+  const [servers, setServers] = useState<McpServer[]>([])
+  const [selected, setSelected] = useState<string[]>(agent.connectors)
+
+  useEffect(() => {
+    let alive = true
+    engineApi.mcpList().then((result) => { if (alive) setServers(result.servers) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+
+  const own = `agent:${agent.id}`
+  const names = new Set(
+    servers
+      .filter((server) => (server.scope ?? 'global') === 'global' && ((server.owner ?? null) === null || server.owner === '' || server.owner === own))
+      .map((server) => server.name),
+  )
+  const available = marks.filter((mark) => names.has(mark.name))
+
+  const toggle = (name: string) => {
+    const previous = selected
+    const next = previous.includes(name) ? previous.filter((value) => value !== name) : [...previous, name]
+    setSelected(next)
+    engineApi.agencyUpdateAgent(agent.id, { connectors: next })
+      .then(() => toast.success(t('agency.settings.saved')))
+      .catch((error) => { setSelected(previous); toast.error(commandMessage(error)) })
+  }
+
+  return (
+    <EditorSection icon={Plug} title={t('agency.form.connectors')} hint={t('agency.form.connectorsHint')} testId="agency-settings-connectors">
+      <ConnectorTiles marks={available} selected={selected} onToggle={toggle} empty={t('agency.form.noConnectors')} />
+    </EditorSection>
   )
 }
 
@@ -504,6 +565,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
               </header>
               {/* Hermanas de la memoria: cada una con su clave, o React deja copias al cambiar de agente. */}
               <AgentModelSettings key={`model:${agent.id}`} agent={agent} />
+              <AgentConnectors key={`connectors:${agent.id}`} agent={agent} />
               <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} memoryEnabled={memoryEnabled} />
             </>
           ) : (

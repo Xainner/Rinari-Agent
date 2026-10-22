@@ -16,10 +16,12 @@ import { SegTabPill } from '../../components/ui/SegTabPill'
  * probar antes de guardar, y un fallo dice qué pasó y cómo seguir. Los
  * secretos van al llavero a través del Engine: aquí nunca vuelven.
  */
-export function McpServerDialog({ target, caps, onClose, onSaved }: {
+export function McpServerDialog({ target, caps, onClose, onSaved, owner }: {
   target: McpServer | 'new' | null
   caps: ConnectorCapabilities
   onClose: () => void
+  /** Rinari Agency (C8): un servidor nuevo queda solo de este agente o equipo. */
+  owner?: string
   /** `signIn`: el servidor usa OAuth y todavía hay que iniciar sesión. */
   onSaved: (server: McpServer, options: { result?: McpTest; signIn: boolean }) => void
 }) {
@@ -59,7 +61,7 @@ export function McpServerDialog({ target, caps, onClose, onSaved }: {
       const config = configFromForm(form, original)
       const saved = original
         ? await engineApi.mcpUpdate(original.name, config)
-        : await engineApi.mcpCreate(form.name.trim(), remoteSupported ? config : { command: config.command })
+        : await engineApi.mcpCreate(form.name.trim(), remoteSupported ? config : { command: config.command }, owner)
       const oauthNow = form.transport === 'http' && form.auth === 'oauth'
       const wasOAuth = original?.auth?.kind === 'oauth'
       onSaved(saved.server, { result: result ?? undefined, signIn: caps.oauth && oauthNow && !wasOAuth })

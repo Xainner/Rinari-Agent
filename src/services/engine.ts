@@ -1575,8 +1575,9 @@ export const engineApi = {
   /** Una carpeta de alma, o su `.toml` y su `.md`; se guarda como alma nueva. */
   soulImport: (paths: string[]) => platform().command<{ soul: SoulDetail }>("soul_import", { paths }),
   mcpList: () => platform().command<{ servers: McpServer[] }>("mcp_list"),
-  mcpCreate: (name: string, config: McpConfig) =>
-    platform().command<{ server: McpServer }>("mcp_create", { name, ...config }),
+  /** `owner` (Rinari Agency, C8): la cuenta es solo de ese agente o equipo (`agent:ID`). */
+  mcpCreate: (name: string, config: McpConfig, owner?: string) =>
+    platform().command<{ server: McpServer }>("mcp_create", { name, ...config, ...(owner ? { owner } : {}) }),
   /** Edita un servidor guardado; los secretos que no se envían se conservan. */
   mcpUpdate: (name: string, config: McpConfig) =>
     platform().command<{ server: McpServer }>("mcp_update", { name, ...config }),

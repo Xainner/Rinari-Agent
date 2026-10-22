@@ -23,7 +23,14 @@ vi.mock('../../services/engine', () => ({
       { id: 'm2', alias: 'kimi', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'kimi-k3', saved: true },
     ] })),
     providerList: vi.fn(async () => ({ providers: [], active_alias: 'glm' })),
-    mcpList: vi.fn(async () => ({ servers: [{ name: 'gmail-emails', scope: 'global', owner: 'agent:agent_1' }, { name: 'gmail', scope: 'global', owner: null }] })),
+    mcpCatalogList: vi.fn(async () => ({ entries: [] })),
+    mcpList: vi.fn(async () => ({ servers: [
+      { name: 'gmail-emails', scope: 'global', owner: 'agent:agent_1' },
+      { name: 'gmail', scope: 'global', owner: null },
+      // A custom connector: no catalog entry, no logo.
+      { name: 'metatrader-demo', scope: 'global', owner: null, transport: 'stdio' },
+      { name: 'otra-cuenta', scope: 'global', owner: 'agent:agent_2' },
+    ] })),
   },
   onEngineEvent: vi.fn(async () => () => {}),
   commandMessage: String,
@@ -66,8 +73,9 @@ it('shows, adds and forgets what an agent remembers', async () => {
 
 it('lists only the agent\'s own accounts and connects one in its name', async () => {
   render(<I18nProvider lang="es"><AgencySettings agents={[agent('agent_1', 'Emails')]} /></I18nProvider>)
-  await waitFor(() => expect(screen.getByText('gmail-emails')).toBeTruthy())
-  expect(screen.queryByText('gmail')).toBeNull()
+  const accounts = await screen.findByTestId('agency-settings-accounts')
+  await waitFor(() => expect(within(accounts).getByText('gmail-emails')).toBeTruthy())
+  expect(within(accounts).queryByText('gmail')).toBeNull()
   await userEvent.click(screen.getByTestId('agency-connect-account'))
   expect(screen.getByTestId('catalog-open')).toBeTruthy()
   expect(catalogProps.at(-1)?.owner).toBe('agent:agent_1')
@@ -99,4 +107,17 @@ it('shows one model section however many times the agent changes', async () => {
   for (let i = 0; i < 4; i++) await user.click(rows[(i + 1) % 2])
   await waitFor(() => expect(screen.getAllByTestId('agency-settings-model')).toHaveLength(1))
   expect(screen.getAllByText(/^Memoria de /)).toHaveLength(1)
+})
+
+it("lists the agent's connectors, custom ones too, and saves each choice", async () => {
+  const user = userEvent.setup()
+  render(<I18nProvider lang="es"><AgencySettings agents={[{ ...agent('agent_1', 'Operator'), connectors: ['gmail'] }]} initialAgentId="agent_1" /></I18nProvider>)
+  const section = await screen.findByTestId('agency-settings-connectors')
+  await waitFor(() => expect(within(section).getByText('metatrader-demo')).toBeTruthy())
+  // Everyone's and its own account, never another agent's.
+  expect(within(section).getByText('gmail-emails')).toBeTruthy()
+  expect(within(section).queryByText('otra-cuenta')).toBeNull()
+  expect((within(section).getByRole('checkbox', { name: /gmail$/ }) as HTMLInputElement).checked).toBe(true)
+  await user.click(within(section).getByRole('checkbox', { name: /metatrader-demo/ }))
+  expect(agencyUpdateAgent).toHaveBeenLastCalledWith('agent_1', { connectors: ['gmail', 'metatrader-demo'] })
 })

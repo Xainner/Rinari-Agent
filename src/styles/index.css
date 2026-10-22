@@ -3993,7 +3993,10 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-spend > div { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 10px; }
 .agency-spend dt { min-width: 0; color: var(--text-subtle); }
 .agency-spend dd { margin: 0; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
-.agency-spend > .is-agent dt, .agency-spend > .is-agent dd { font-size: 12px; color: var(--text-muted); }
+/* Each agent: its name on a line of its own, the figures under it (the name was cut at «Redac…»). */
+.agency-spend > .is-agent { flex-direction: column; align-items: stretch; gap: 1px; padding-top: 4px; border-top: 1px solid var(--line-1); }
+.agency-spend > .is-agent dt { font-size: 12px; color: var(--text); }
+.agency-spend > .is-agent dd { font-size: 12px; text-align: left; color: var(--text-muted); }
 
 .agency-errand { display: grid; gap: 6px; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line-1); border-left: 2px solid var(--line-3); border-radius: var(--r-sm); background: var(--bg-subtle); font-size: 12.5px; }
 .agency-errand[data-status='in_progress'] { border-left-color: var(--accent-2); }

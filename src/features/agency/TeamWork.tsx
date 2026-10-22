@@ -205,7 +205,8 @@ function RoutinesSection({ overview, members, onSaved }: { overview: TeamOvervie
           <button
             type="button"
             className="btn btn-quiet btn-xs"
-            onClick={() => setDraft({ agentId: overview.team.chief_agent_id ?? members[0]?.id ?? '', name: '', schedule: { kind: 'interval', minutes: 60 }, prompt: '' })}
+            // The chief, while it is in the team (one that left would only fail on save).
+            onClick={() => setDraft({ agentId: (byId.has(overview.team.chief_agent_id ?? '') ? overview.team.chief_agent_id : members[0]?.id) ?? '', name: '', schedule: { kind: 'interval', minutes: 60 }, prompt: '' })}
             data-testid="agency-routine-new"
           >
             <Plus size={12} aria-hidden="true" /> {t('agency.work.routine.new')}

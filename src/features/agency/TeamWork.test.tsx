@@ -175,3 +175,15 @@ it('words a flow in the office and folds what each step delivered', async () => 
   expect(done.querySelector('details')?.textContent).toContain('El zorro ártico')
   officeMessages = []
 })
+
+it('starts a new routine with the first member when the chief left the team', async () => {
+  // Nightly 1431: «Mesa de oro» kept a chief that had left; the form showed
+  // «Elige un agente» but would have sent that chief and failed on save.
+  api.agencyTeamOverview.mockImplementationOnce(async () => ({ ...overview(), team: { ...overview().team, chief_agent_id: 'agent_gone' } }))
+  wrap(<TeamWorkPanel teamId="team_1" />)
+  await userEvent.click(await screen.findByTestId('agency-routine-new'))
+  fireEvent.change(screen.getByTestId('agency-routine-name'), { target: { value: 'Resumen' } })
+  fireEvent.change(screen.getByTestId('agency-routine-prompt'), { target: { value: 'Resume' } })
+  await userEvent.click(screen.getByTestId('agency-routine-save'))
+  expect(api.agencyCreateRoutine.mock.calls[0][1]).toBe('agent_w')
+})

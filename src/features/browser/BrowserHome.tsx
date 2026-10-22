@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Globe, Pin, Search } from 'lucide-react'
+import { Eraser, Globe, Pin, Search } from 'lucide-react'
 
+import { useConfirm } from '../../components/ui/useConfirm'
 import { useI18n } from '../../i18n'
+import { platform } from '../../platform'
 import { desktopApi } from '../../services/desktop'
 import { addressToUrl, SEARCH_ENGINES, useBrowserPrefs, type BrowserPlace } from '../../stores/browserPrefs'
 import { RinariAvatar } from '../rinari/RinariAvatar'
@@ -20,6 +22,8 @@ export interface BrowserHomeProps {
   scope?: 'project' | 'chat'
   /** Hay un turno en marcha: Rinari puede abrir una página en cualquier momento. */
   busy?: boolean
+  /** Sube cuando hay que llevar el foco a la dirección (Ctrl+L). */
+  focusAddress?: number
   onOpen: (url: string) => void
 }
 
@@ -62,8 +66,10 @@ function PlaceTile({ place, onOpen, testId }: { place: BrowserPlace | RunningPag
  * previas), lo reciente y lo fijado. Es de la app, no una página web: no
  * carga nada de internet por sí sola.
  */
-export default function BrowserHome({ sessionId, projectKey, scope = 'project', busy = false, onOpen }: BrowserHomeProps) {
+export default function BrowserHome({ sessionId, projectKey, scope = 'project', busy = false, focusAddress = 0, onOpen }: BrowserHomeProps) {
   const { t } = useI18n()
+  const { ask, dialog } = useConfirm()
+  const [cleared, setCleared] = useState<'idle' | 'done' | 'failed'>('idle')
   const engine = useBrowserPrefs((state) => state.engine)
   const recent = useBrowserPrefs((state) => state.recent[projectKey]) ?? []
   const pinned = useBrowserPrefs((state) => state.pinned[projectKey]) ?? []
@@ -111,8 +117,34 @@ export default function BrowserHome({ sessionId, projectKey, scope = 'project', 
     return () => window.removeEventListener('keydown', onKey)
   }, [sessionId])
 
+  useEffect(() => {
+    if (focusAddress === 0) return
+    input.current?.focus()
+    input.current?.select()
+  }, [focusAddress])
+
   const open = (url: string) => {
     if (url) onOpen(url)
+  }
+
+  /**
+   * El perfil del navegador es uno para todas las conversaciones: borrarlo
+   * cierra las sesiones iniciadas en todos los sitios, aquí y en las demás.
+   */
+  const clearData = async () => {
+    const ok = await ask({
+      title: t('browser.clearData.title'),
+      body: t('browser.clearData.body'),
+      confirmLabel: t('browser.clearData.confirm'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (!ok) return
+    try {
+      await platform().browser.clearData()
+      setCleared('done')
+    } catch {
+      setCleared('failed')
+    }
   }
 
   return (
@@ -165,10 +197,21 @@ export default function BrowserHome({ sessionId, projectKey, scope = 'project', 
         )}
       </section>
 
-      <footer className="browser-home-status" role="status">
+      <footer className="browser-home-status">
         <RinariAvatar state={busy ? 'working' : 'idle'} size={26} />
-        <span>{busy ? t('browser.home.busy') : t('browser.ready')}</span>
+        <span role="status">{busy ? t('browser.home.busy') : t('browser.ready')}</span>
+        <span className="browser-home-profile">
+          {cleared !== 'idle' && (
+            <span role="status" data-tone={cleared === 'failed' ? 'danger' : undefined}>
+              {t(cleared === 'done' ? 'browser.clearData.done' : 'browser.clearData.failed')}
+            </span>
+          )}
+          <button type="button" className="btn btn-ghost btn-sm" data-testid="browser-clear-data" title={t('browser.clearData.hint')} onClick={() => void clearData()}>
+            <Eraser size={13} aria-hidden="true" /> {t('browser.clearData.action')}
+          </button>
+        </span>
       </footer>
+      {dialog}
     </div>
   )
 }

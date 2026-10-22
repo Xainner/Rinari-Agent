@@ -1586,8 +1586,20 @@ html[data-motion='reduced'] .dock-view-button[data-ring='agent']::before, html[d
 .browser-address-pretty { position: absolute; left: 32px; right: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-subtle); pointer-events: none; }
 .browser-address-pretty b, .browser-toolbar-url b { font-weight: 600; color: var(--text); }
 .browser-toolbar-url { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
-.browser-tabs { display: flex; padding: 0 10px 6px; }
-.browser-toolbar-select { max-width: 100%; padding: 4px 8px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--bg-elevated); color: var(--text); font-size: 12px; }
+/* Pestañas (Planka Ideas-2): una tira como la de un navegador; la activa se distingue por fondo, borde y peso, no solo por color. */
+.browser-tabs { display: flex; min-width: 0; align-items: center; gap: 4px; padding: 0 8px 6px; overflow-x: auto; scrollbar-width: none; }
+.browser-tabs::-webkit-scrollbar { display: none; }
+.browser-tab { display: flex; min-width: 72px; max-width: 200px; flex: 0 1 200px; align-items: center; height: 28px; border-radius: var(--r-sm); border: 1px solid transparent; color: var(--text-muted); transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); }
+.browser-tab:hover { background: var(--bg-hover); color: var(--text); }
+.browser-tab[data-active] { border-color: var(--line-2); background: var(--ink-3); color: var(--text); }
+.browser-tab-select { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 6px; height: 100%; padding: 0 4px 0 10px; font-size: 12px; text-align: left; }
+.browser-tab[data-active] .browser-tab-select { font-weight: 600; }
+.browser-tab-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-tab-close { display: grid; width: 20px; height: 20px; flex-shrink: 0; margin-right: 4px; place-items: center; border-radius: var(--r-xs); color: var(--text-subtle); }
+.browser-tab-close:hover { background: var(--bg-hover); color: var(--text); }
+.browser-tab-new { width: 28px; height: 28px; }
+/* Mientras carga, y solo entonces: un bucle con trabajo de verdad detrás. */
+.browser-tab-spinner { display: block; width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%; border: 2px solid rgb(167 139 250 / 0.25); border-top-color: var(--violet-300); animation: rinari-orbit 0.9s linear infinite; }
 .browser-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; }
 .browser-progress i { display: block; width: 40%; height: 100%; background: linear-gradient(90deg, transparent, var(--violet-300), var(--magenta-400)); animation: browser-load 1.4s ease-in-out infinite; }
 @keyframes browser-load { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
@@ -1629,6 +1641,8 @@ html[data-motion='reduced'] .dock-view-button[data-ring='agent']::before, html[d
 .browser-home-tile-host { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); }
 .browser-home-empty { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: var(--r-md); font-size: 12px; color: var(--text-muted); }
 .browser-home-status { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; font-size: 12px; color: var(--text-muted); }
+.browser-home-profile { display: flex; min-width: 0; align-items: center; gap: 8px; margin-left: auto; }
+.browser-home-profile [data-tone='danger'] { color: var(--danger); }
 @media (prefers-reduced-motion: reduce) { .browser-home, .browser-toolbar-state { animation: none; } }
 html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-toolbar-state { animation: none; }
 .browser-footer { padding: 7px 12px; border-top: 1px solid var(--line-1); font-size: 11px; line-height: 1.45; color: var(--text-subtle); }

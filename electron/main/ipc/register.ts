@@ -178,6 +178,9 @@ export interface HostServices {
     ): Promise<unknown>
     navigate(sessionId: string, url: string): Promise<unknown>
     history(sessionId: string, action: BrowserHistoryAction): Promise<unknown>
+    newTab(sessionId: string, url: string | undefined): Promise<unknown>
+    closeTab(sessionId: string, targetId: string): Promise<unknown>
+    clearData(): Promise<void>
     preview(sessionId: string): Promise<unknown>
     diagnostics(): { layoutSlots: number }
   }
@@ -652,6 +655,28 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, sessionId, action) =>
         services.browser.history(assertString(sessionId, 'session_id', 128), assertHistoryAction(action)),
       ),
+    ],
+    [
+      CHANNEL.browserNewTab,
+      guarded(registry, (_event, sessionId, url) =>
+        services.browser.newTab(
+          assertString(sessionId, 'session_id', 128),
+          url === undefined || url === null ? undefined : assertOpenableUrl(url),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserCloseTab,
+      guarded(registry, (_event, sessionId, targetId) =>
+        services.browser.closeTab(
+          assertString(sessionId, 'session_id', 128),
+          assertString(targetId, 'target_id', 256),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserClearData,
+      guarded(registry, () => services.browser.clearData()),
     ],
     [
       CHANNEL.browserPreview,

@@ -87,6 +87,14 @@ export interface NativeBrowserState {
   selectTarget(targetId: string): Promise<void>
   navigate(url: string): Promise<void>
   history(action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>
+  /** Pestaña nueva en blanco: enseña la página de inicio. */
+  newTab(): Promise<void>
+  closeTab(targetId: string): Promise<void>
+  /**
+   * Sube cada vez que el dueño pulsa Ctrl+L con el foco en la página: la
+   * vista nativa se queda con esas teclas y main lo avisa (`onShortcut`).
+   */
+  focusAddress: number
   /** Se le pasa al slot para que reporte su geometría. */
   slotRef: (element: HTMLElement | null) => void
 }
@@ -103,6 +111,7 @@ export function useNativeBrowser(
   const { overlayDepth = 0, presentWhen } = options
   const [context, setContext] = useState<NativeBrowserContext | null>(null)
   const [error, setError] = useState('')
+  const [focusAddress, setFocusAddress] = useState(0)
   const shown = options.shown && (presentWhen ? presentWhen(context) : true)
   const toastOcclusions = useNativeSurfaces((state) => state.toastOcclusions)
   const setSurface = useNativeSurfaces((state) => state.setSurface)
@@ -198,9 +207,20 @@ export function useNativeBrowser(
         else stop()
       })
 
+    let stopShortcuts: (() => void) | undefined
+    void platform()
+      .browser.onShortcut((event) => {
+        if (alive && event.session_id === sessionId && event.action === 'focus-address') setFocusAddress((n) => n + 1)
+      })
+      .then((stop) => {
+        if (alive) stopShortcuts = stop
+        else stop()
+      })
+
     return () => {
       alive = false
       unsubscribe?.()
+      stopShortcuts?.()
     }
   }, [sessionId])
 
@@ -290,6 +310,9 @@ export function useNativeBrowser(
     selectTarget: (targetId) => guard(() => platform().browser.selectTarget(sessionId, targetId)),
     navigate: (url) => guard(() => platform().browser.navigate(sessionId, url)),
     history: (action) => guard(() => platform().browser.history(sessionId, action)),
+    newTab: () => guard(() => platform().browser.newTab(sessionId)),
+    closeTab: (targetId) => guard(() => platform().browser.closeTab(sessionId, targetId)),
+    focusAddress,
     slotRef,
   }
 }

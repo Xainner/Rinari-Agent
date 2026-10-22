@@ -328,11 +328,21 @@ const api = {
       call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
     history: (sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop') =>
       call<{ url: string }>(CHANNEL.browserHistory, sessionId, action),
+    /** Pestaña nueva del usuario, en blanco (la página de inicio) o con una dirección. */
+    newTab: (sessionId: string, url?: string) =>
+      call<{ target_id: string }>(CHANNEL.browserNewTab, sessionId, url),
+    closeTab: (sessionId: string, targetId: string) =>
+      call<{ closed: string }>(CHANNEL.browserCloseTab, sessionId, targetId),
+    /** Borra el perfil del navegador: sesiones iniciadas, cookies y caché. */
+    clearData: () => call<void>(CHANNEL.browserClearData),
     preview: (sessionId: string) =>
       call<BrowserPreviewView | null>(CHANNEL.browserPreview, sessionId),
     /** Cambios de pestañas, control o estado, empujados por main. */
     onContextChanged: (callback: (view: BrowserContextView) => void) =>
       subscribe<BrowserContextView>(PUSH.browserContextChanged, callback),
+    /** Un atajo pulsado en la página que atiende la barra (Ctrl+L). */
+    onShortcut: (callback: (event: { session_id: string; action: 'focus-address' }) => void) =>
+      subscribe<{ session_id: string; action: 'focus-address' }>(PUSH.browserShortcut, callback),
   },
 
   /**

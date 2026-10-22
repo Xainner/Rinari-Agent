@@ -91,8 +91,12 @@ interface DesktopHostApi {
     ): Promise<NativeBrowserControl>
     navigate(sessionId: string, url: string): Promise<unknown>
     history(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): Promise<unknown>
+    newTab(sessionId: string, url?: string): Promise<unknown>
+    closeTab(sessionId: string, targetId: string): Promise<unknown>
+    clearData(): Promise<void>
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
     onContextChanged(callback: (view: NativeBrowserContext) => void): Unsubscribe
+    onShortcut(callback: (event: { session_id: string; action: 'focus-address' }) => void): Unsubscribe
   }
   dialog: {
     openFiles(options?: OpenFilesOptions): Promise<string[] | null>
@@ -344,8 +348,16 @@ export const electronBridge: DesktopBridge = {
     navigate: async (sessionId, url) => {
       await required().browser.navigate(sessionId, url)
     },
+    newTab: async (sessionId, url) => {
+      await required().browser.newTab(sessionId, url)
+    },
+    closeTab: async (sessionId, targetId) => {
+      await required().browser.closeTab(sessionId, targetId)
+    },
+    clearData: () => required().browser.clearData(),
     preview: (sessionId) => required().browser.preview(sessionId),
     onContextChanged: async (callback) => required().browser.onContextChanged(callback),
+    onShortcut: async (callback) => required().browser.onShortcut(callback),
   },
 
   dialog: {

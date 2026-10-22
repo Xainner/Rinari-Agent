@@ -119,6 +119,8 @@ export interface TestBridge extends DesktopBridge {
   readonly browserLayouts: NativeBrowserSlotLayout[]
   /** Empuja un cambio de contexto a los suscriptores. */
   emitBrowserContext(view: NativeBrowserContext): void
+  /** Empuja un atajo pulsado en la página (Ctrl+L). */
+  emitBrowserShortcut(event: { session_id: string; action: 'focus-address' }): void
   reset(): void
 }
 
@@ -145,6 +147,7 @@ export function createTestBridge(): TestBridge {
   const replyListeners = new Set<(reply: NotificationReply) => void>()
   const updateListeners = new Set<(state: UpdateState) => void>()
   const browserListeners = new Set<(view: NativeBrowserContext) => void>()
+  const shortcutListeners = new Set<(event: { session_id: string; action: 'focus-address' }) => void>()
 
 /** Un alcance sin etapas: lo honesto cuando el test no dijo otra cosa. */
 function emptyFlow(scope: FlowScopeRequest): FlowResult {
@@ -182,6 +185,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     browserLayouts: [],
     emitBrowserContext(view) {
       for (const listener of browserListeners) listener(view)
+    },
+    emitBrowserShortcut(event) {
+      for (const listener of shortcutListeners) listener(event)
     },
     engineStatus: {
       state: 'stopped',
@@ -432,12 +438,25 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async navigate(sessionId: string, url: string) {
         bridge.browserCalls.push({ kind: 'navigate', sessionId, url })
       },
+      async newTab(sessionId: string, url?: string) {
+        bridge.browserCalls.push({ kind: 'newTab', sessionId, ...(url ? { url } : {}) })
+      },
+      async closeTab(sessionId: string, targetId: string) {
+        bridge.browserCalls.push({ kind: 'closeTab', sessionId, targetId })
+      },
+      async clearData() {
+        bridge.browserCalls.push({ kind: 'clearData' })
+      },
       async preview() {
         return bridge.browserPreview
       },
       async onContextChanged(callback): Promise<Unsubscribe> {
         browserListeners.add(callback)
         return () => browserListeners.delete(callback)
+      },
+      async onShortcut(callback): Promise<Unsubscribe> {
+        shortcutListeners.add(callback)
+        return () => shortcutListeners.delete(callback)
       },
     },
 
@@ -583,6 +602,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       bridge.browserCalls.length = 0
       bridge.browserLayouts.length = 0
       browserListeners.clear()
+      shortcutListeners.clear()
       slotCounter = 0
       bridge.desktop = true
       bridge.migrationStatus = { state: 'not_started', pending: false }

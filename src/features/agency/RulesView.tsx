@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown, History, MessageSquare, Pause, Pencil, Play, Plus, Trash2, Zap } from 'lucide-react'
+import { NotifyMark } from '../schedules/NotifyField'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -241,6 +242,7 @@ function ruleInput(rule: ScheduledTask): ScheduledTaskInput {
     tool: rule.tool ?? null,
     watch: rule.watch ?? null,
     agent_id: rule.agent_id ?? null,
+    notify: rule.notify ?? 'all',
   }
 }
 
@@ -344,6 +346,7 @@ export default function RulesView({ sessionId }: RulesViewProps) {
             <header className="agency-rule-head">
               <Zap size={14} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate font-semibold">{rule.name}</span>
+              <NotifyMark notify={rule.notify} />
               <span className="r-chip" data-tone={rule.enabled ? 'success' : undefined}>
                 {rule.enabled ? t('agency.rules.active') : t('agency.rules.paused')}
               </span>

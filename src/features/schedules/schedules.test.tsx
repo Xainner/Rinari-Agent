@@ -362,3 +362,24 @@ it('the detail of a task that runs in its conversation opens that conversation',
   expect(await screen.findByText('En cola')).toBeTruthy()
   expect(runTone('queued')).toBe('live')
 })
+
+it('keeps a task quiet as its «Avisos» setting says, and «Silenciar» sets it from the toast', async () => {
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  const before = toasts.calls.length
+  const run = (notify: string, status: string, id: string) => act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { task_id: 'sch_radar', run_id: id, name: 'Radar', kind: 'agent', status, notify, summary: 'ok' } }))
+  run('problems', 'completed', 'r1')
+  run('none', 'failed', 'r2')
+  expect(toasts.calls).toHaveLength(before)
+  // Lo que falla de una tarea sin avisos queda en la campana, sin saltar.
+  await waitFor(() => expect(useNotificationCenter.getState().items.some((item) => item.id === 'run:r2')))
+  expect(useNotificationCenter.getState().items.some((item) => item.id === 'run:r1')).toBe(false)
+  run('problems', 'failed', 'r3')
+  expect(toasts.calls.at(-1)).toMatchObject({ kind: 'error' })
+  run('all', 'completed', 'r4')
+  const done = toasts.calls.at(-1) as { kind: string; options?: { cancel?: { label: string; onClick: () => void } } }
+  expect(done.kind).toBe('success')
+  expect(done.options?.cancel?.label).toBe('Silenciar')
+  act(() => done.options?.cancel?.onClick())
+  expect(engineApi.scheduleUpdate).toHaveBeenCalledWith('sch_radar', { notify: 'problems' })
+})

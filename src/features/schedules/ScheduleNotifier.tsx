@@ -9,6 +9,7 @@ import { useNotificationCenter, type CenterNotification } from '../../stores/not
 import { useUIStore } from '../../stores/ui'
 import { RUN_STATUS_KEYS, SCHEDULES_CHANGED_EVENT, SKIP_REASON_KEYS, describeSchedule, formatWhen, useScheduleForm } from './scheduleModel'
 import { scheduleProfileOf, type ScheduleOwnerHint } from './scheduleProfile'
+import { runNotifies } from './NotifyField'
 
 /** El nombre de un agente para un aviso: el que la app ya sabe, o el que diga el Engine. */
 async function agentName(agentId: string): Promise<string | null> {
@@ -85,6 +86,16 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
       const openAction = sessionId ? { label: tr('schedules.openSession'), onClick: () => open(sessionId) } : undefined
       const runTarget = sessionId ? { kind: 'session' as const, sessionId } : { kind: 'schedules' as const }
       const runHint: ScheduleOwnerHint = { sessionId, taskId: typeof payload.task_id === 'string' ? payload.task_id : undefined }
+      // Cuánto avisa esta tarea (`schedule_notify_v1`): lo que no salta queda en la campana.
+      const notifyLevel = payload.notify === 'problems' || payload.notify === 'none' ? payload.notify : 'all'
+      const taskId = typeof payload.task_id === 'string' ? payload.task_id : null
+      // «Silenciar»: desde el aviso mismo, esa tarea solo avisa si falla o te necesita.
+      const silence = taskId ? {
+        label: tr('schedules.notify.silence'),
+        onClick: () => void engineApi.scheduleUpdate(taskId, { notify: 'problems' })
+          .then(() => { window.dispatchEvent(new Event(SCHEDULES_CHANGED_EVENT)); toast(tr('schedules.notify.silenced', { name })) })
+          .catch((err) => toast.error(commandMessage(err))),
+      } : undefined
 
       if (event.event === 'schedule.proposed' && payload.proposal) {
         const proposal = payload.proposal as ScheduledTaskInput
@@ -144,9 +155,11 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
       }
       if (event.event === 'schedule.run.needs_you') {
         const wanted = String(payload.reason ?? payload.capability ?? '')
-        toast.warning(tr('schedules.needsYouToast', { name }), { description: wanted, duration: 30_000, action: openAction })
-        requestSound('attention')
-        notify(tr('schedules.needsYouToast', { name }), wanted, sessionId)
+        if (runNotifies(notifyLevel, true)) {
+          toast.warning(tr('schedules.needsYouToast', { name }), { description: wanted, duration: 30_000, action: openAction })
+          requestSound('attention')
+          notify(tr('schedules.needsYouToast', { name }), wanted, sessionId)
+        }
         record(runHint, { id: `run:${payload.run_id}`, title: tr('schedules.needsYouToast', { name }), body: wanted, tone: 'warning', target: runTarget })
         return
       }
@@ -157,19 +170,28 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
       if (status === 'skipped') return
       if (payload.kind === 'reminder') {
         const text = String(payload.summary ?? '')
-        toast(tr('schedules.reminderToast', { name }), { description: text, duration: 30_000 })
-        // Recordar es su razón de ser: suena aunque la app esté a la vista.
-        requestSound('reminder')
-        notify(name, text)
+        if (runNotifies(notifyLevel, false)) {
+          toast(tr('schedules.reminderToast', { name }), { description: text, duration: 30_000 })
+          // Recordar es su razón de ser: suena aunque la app esté a la vista.
+          requestSound('reminder')
+          notify(name, text)
+        }
         record(runHint, { id: `run:${payload.run_id}`, title: tr('schedules.reminderToast', { name }), body: text, tone: 'info', target: { kind: 'schedules' } })
         return
       }
       const reason = typeof payload.reason === 'string' ? payload.reason : ''
       const detail = reason ? (SKIP_REASON_KEYS[reason] ? tr(SKIP_REASON_KEYS[reason]) : reason) : String(payload.summary ?? '')
       const title = tr('schedules.runFinished', { name, status: RUN_STATUS_KEYS[status] ? tr(RUN_STATUS_KEYS[status]) : status })
-      if (status === 'completed') toast.success(title, { description: detail, action: openAction })
-      else toast.error(title, { description: detail, action: openAction })
-      if (windowAway()) notify(title, detail, sessionId)
+      const problem = status !== 'completed'
+      if (runNotifies(notifyLevel, problem)) {
+        // Una vuelta que salió bien ofrece «Silenciar» si la tarea avisa de todo.
+        if (!problem) toast.success(title, { description: detail, action: openAction, cancel: notifyLevel === 'all' ? silence : undefined })
+        else toast.error(title, { description: detail, action: openAction })
+        if (windowAway()) notify(title, detail, sessionId)
+      } else if (!problem) {
+        // Callada y bien: solo su historial, sin entrada en la campana.
+        return
+      }
       // Mismo id que su «te necesita»: el aviso se actualiza, no se duplica.
       record(runHint, { id: `run:${payload.run_id}`, title, body: detail, tone: TONE[status] ?? 'info', target: runTarget })
     }).then(keep)

@@ -9,6 +9,7 @@ import { useEngineData } from '../engine/EngineContext'
 import { FullAccessDialog } from '../permissions/FullAccessDialog'
 import { SCHEDULES_CHANGED_EVENT, draftProblem, emptyCommand, runsHere, useScheduleForm } from './scheduleModel'
 import ScheduleSpecField from './ScheduleSpecField'
+import NotifyField from './NotifyField'
 
 const KINDS = ['agent', 'command', 'reminder'] as const
 const KIND_KEYS = {
@@ -163,6 +164,8 @@ export default function ScheduleForm() {
           )}
 
           <ScheduleSpecField spec={spec} onChange={setSpec} />
+
+          <NotifyField value={draft.notify ?? 'all'} onChange={(notify) => update({ notify })} />
 
           {draft.session_id && draft.kind === 'agent' && (
             <fieldset className="space-y-2" data-testid="schedule-target">

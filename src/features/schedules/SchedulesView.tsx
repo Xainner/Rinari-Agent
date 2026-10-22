@@ -1,4 +1,5 @@
 import { Bell, Bot, CalendarClock, ExternalLink, Pencil, Play, Plus, SquareTerminal, Trash2 } from 'lucide-react'
+import { NotifyMark } from './NotifyField'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -164,6 +165,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                     <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--text)]">
                       {task.kind === 'reminder' ? <Bell size={13} aria-hidden="true" /> : task.kind === 'command' ? <SquareTerminal size={13} aria-hidden="true" /> : <Bot size={13} aria-hidden="true" />}
                       <span className="truncate">{task.name}</span>
+                      <NotifyMark notify={task.notify} />
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-[var(--text-subtle)]">{describeSchedule(task.schedule, t, locale)}</span>
                     <span className="mt-1 flex items-center gap-2 text-[11px] text-[var(--text-subtle)]">

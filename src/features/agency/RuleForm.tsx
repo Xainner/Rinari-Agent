@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../com
 import { Select } from '../../components/ui/select'
 import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, labelClass } from '../../lib/ui'
-import { commandMessage, engineApi, type ScheduleDeliverTo, type ScheduleSpec, type ScheduledTask, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
+import { commandMessage, engineApi, type ScheduleDeliverTo, type ScheduleNotify, type ScheduleSpec, type ScheduledTask, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
 import ScheduleSpecField from '../schedules/ScheduleSpecField'
+import NotifyField from '../schedules/NotifyField'
 import { specProblem } from '../schedules/scheduleModel'
 import AgentAvatar from './AgentAvatar'
 import { useAgencyData } from './AgencyData'
@@ -149,6 +150,7 @@ export default function RuleForm({ agentId, open, rule = null, onClose, onSaved,
   const [onlyIf, setOnlyIf] = useState('')
   const [maxPerDay, setMaxPerDay] = useState('')
   const [deliverTo, setDeliverTo] = useState(OWN_CHAT)
+  const [notify, setNotify] = useState<ScheduleNotify>('all')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)
@@ -167,7 +169,7 @@ export default function RuleForm({ agentId, open, rule = null, onClose, onSaved,
     setDeliverServer(toolSpec?.deliver?.server ?? ''); setDeliverTool(toolSpec?.deliver?.tool ?? '')
     setDeliverArgs(JSON.stringify(toolSpec?.deliver?.arguments ?? {}))
     setOnlyIf(toolSpec?.only_if_contains ?? ''); setMaxPerDay(toolSpec?.max_per_day ? String(toolSpec.max_per_day) : '')
-    setDeliverTo(deliverKey(rule?.deliver_to)); setError('')
+    setDeliverTo(deliverKey(rule?.deliver_to)); setNotify(rule?.notify ?? 'all'); setError('')
     savingRef.current = false
     setSaving(false)
     let live = true
@@ -240,6 +242,7 @@ export default function RuleForm({ agentId, open, rule = null, onClose, onSaved,
       // Una regla de conector usa el texto solo si le pasa el resultado al agente.
       prompt: kind === 'agent' || onResult === 'agent' ? prompt.trim() : '',
       agent_id: agentId,
+      notify,
       ...(watch.trim() ? { watch: { path: watch.trim() } } : {}),
       ...(kind === 'tool'
         ? {
@@ -300,6 +303,7 @@ export default function RuleForm({ agentId, open, rule = null, onClose, onSaved,
           </div>
 
           <ScheduleSpecField spec={schedule} onChange={edit(setSchedule)} />
+          <NotifyField value={notify} onChange={edit(setNotify)} />
 
           {kind === 'agent' ? (
             <label className="block">

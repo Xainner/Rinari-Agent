@@ -529,13 +529,18 @@ export interface ScheduledTaskInput {
    * resultado en la oficina de un equipo o a otro agente; null, en su chat.
    */
   deliver_to?: ScheduleDeliverTo | null
+  /** Cuánto avisa (`schedule_notify_v1`): cada vuelta, solo problemas o nada que salte. */
+  notify?: ScheduleNotify
 }
+
+export type ScheduleNotify = 'all' | 'problems' | 'none'
 
 /** A dónde entrega su resultado la regla de un agente (`agency_audit_v1`). */
 export type ScheduleDeliverTo = { kind: 'office'; team_id: string } | { kind: 'agent'; agent_id: string }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch' | 'target' | 'session_id' | 'deliver_to'>> {
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch' | 'target' | 'session_id' | 'deliver_to' | 'notify'>> {
   id: string
+  notify?: ScheduleNotify
   deliver_to?: ScheduleDeliverTo | null
   target?: ScheduledTaskInput['target']
   session_id?: string | null

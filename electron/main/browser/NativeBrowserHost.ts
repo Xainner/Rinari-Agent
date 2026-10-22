@@ -386,6 +386,15 @@ export class NativeBrowserHost {
   }
 
   /**
+   * ¿Puede ser del agente una tecla que llega ahora? Sus órdenes `Input.*`
+   * pasan por el mismo `before-input-event` que las del dueño, así que un
+   * Ctrl+W que despacha el agente no puede cerrar la pestaña como atajo.
+   */
+  agentInputActive(contextId: string): boolean {
+    return this.ownerOf(contextId).agentActive()
+  }
+
+  /**
    * Entrada en una página: si es el dueño usándola, el navegador es suyo
    * (plan 0.4.0 #46). Sin botones: lo toma con solo usarlo, y el Engine se
    * lo devuelve al agente cuando lleva un rato sin tocarlo.

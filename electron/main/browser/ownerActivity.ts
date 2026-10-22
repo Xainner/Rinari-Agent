@@ -60,6 +60,11 @@ export class OwnerActivity {
     return this.agentInputs > 0 || at < this.agentQuietUntil
   }
 
+  /** Hay una orden `Input.*` del agente en vuelo, o su eco puede llegar todavía. */
+  agentActive(): boolean {
+    return this.agentTyping(this.now())
+  }
+
   /** `true` cuando esta entrada es del dueño usando la página. */
   observe(kind: OwnerInputKind): boolean {
     const at = this.now()

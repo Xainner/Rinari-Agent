@@ -1076,7 +1076,10 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       },
     })
 
-    // ── Paso 6: segunda sesión con la misma URL. Ni almacenamiento ni targets.
+    // ── Paso 6: segunda sesión con la misma URL. El perfil es uno solo y
+    //    guardado (decisión del dueño): comparten almacenamiento, y con él las
+    //    sesiones iniciadas. Las pestañas no: un target sigue siendo de su
+    //    contexto (§5.3).
     const secondCreated = (await call('session.create', { title: 'browser vertical 2' })) as {
       session: { id: string }
     }
@@ -1099,12 +1102,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
 
     record({
       id: 'V6',
-      title: 'Una segunda sesión con la misma URL no comparte almacenamiento ni targets',
-      status: ownRead === marker && crossRead === null && crossTarget === undefined ? 'ok' : 'failed',
+      title: 'Una segunda sesión comparte el perfil del navegador, pero no sus pestañas',
+      status: ownRead === marker && crossRead === marker && crossTarget === undefined ? 'ok' : 'failed',
       detail:
-        crossRead === null && crossTarget === undefined
-          ? 'particiones distintas: la segunda sesión no ve el almacenamiento de la primera, y su target no se resuelve desde el contexto ajeno'
-          : `fuga: almacenamiento ${crossRead}, target ajeno ${crossTarget ? 'resuelto' : 'no'}`,
+        crossRead === marker && crossTarget === undefined
+          ? 'el mismo perfil: la segunda sesión ve el almacenamiento de la primera, y su target no se resuelve desde el contexto ajeno'
+          : `almacenamiento ${crossRead === marker ? 'compartido' : 'no compartido'}, target ajeno ${crossTarget ? 'resuelto' : 'no'}`,
       evidence: {
         ownRead,
         crossRead,

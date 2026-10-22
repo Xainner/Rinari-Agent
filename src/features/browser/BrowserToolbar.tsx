@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { AppWindow, ArrowLeft, ArrowRight, ExternalLink, Globe, Hand, Lock, RotateCw, Star } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { AppWindow, ArrowLeft, ArrowRight, ExternalLink, Globe, Hand, Lock, Plus, RotateCw, Star, X } from 'lucide-react'
 
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
@@ -21,8 +21,14 @@ export interface BrowserToolbarProps {
   busy?: boolean
   onSelectTarget: (targetId: string) => void
   onNavigate?: (url: string) => void
-  /** Atrás, adelante, recargar. Usarlos es tomar el navegador (#46). */
-  onHistory?: (action: 'back' | 'forward' | 'reload') => void
+  /** Atrás, adelante, recargar y detener. Usarlos es tomar el navegador (#46). */
+  onHistory?: (action: 'back' | 'forward' | 'reload' | 'stop') => void
+  /** Pestaña nueva («+»); sin él, no se ofrece (visor de capturas). */
+  onNewTab?: () => void
+  /** Cerrar una pestaña («×»); sin él, no se ofrece. */
+  onCloseTab?: (targetId: string) => void
+  /** Sube cuando hay que llevar el foco a la dirección (Ctrl+L con el foco en la página). */
+  focusAddress?: number
   /** La página está fijada en la página de inicio del proyecto (#46). */
   pinned?: boolean
   onTogglePin?: () => void
@@ -51,9 +57,16 @@ function splitUrl(url: string): { secure: boolean; host: string; rest: string } 
   }
 }
 
+/** Cómo se llama una pestaña: su título, su dominio o «Nueva pestaña». */
+function tabLabel(page: NativeBrowserTarget, blank: string): string {
+  if (page.title && page.title !== 'about:blank') return page.title
+  if (!page.url || page.url === 'about:blank') return blank
+  return splitUrl(page.url)?.host || page.url
+}
+
 /**
- * Barra del navegador, como uno de verdad: navegación y dirección arriba, y
- * debajo una línea de estado.
+ * Barra del navegador, como uno de verdad: pestañas, navegación y dirección
+ * arriba, y debajo una línea de estado.
  *
  * Sin «Tomar control» ni «Devolver al agente» (plan 0.4.0 #46): usar la
  * página o esta barra es tomar el navegador, y main espera a que el Engine lo
@@ -71,6 +84,9 @@ export default function BrowserToolbar({
   onSelectTarget,
   onNavigate,
   onHistory,
+  onNewTab,
+  onCloseTab,
+  focusAddress = 0,
   pinned = false,
   onTogglePin,
   sizeControl,
@@ -80,9 +96,17 @@ export default function BrowserToolbar({
   const [draft, setDraft] = useState(url)
   const [editing, setEditing] = useState(false)
   const [openError, setOpenError] = useState('')
+  const address = useRef<HTMLInputElement | null>(null)
 
   // La URL del contexto manda salvo mientras el usuario está escribiendo.
   useEffect(() => { if (!editing) setDraft(url) }, [url, editing])
+
+  // Ctrl+L pulsado en la página: main devuelve el foco a Rinari y lo avisa.
+  useEffect(() => {
+    if (focusAddress === 0) return
+    address.current?.focus()
+    address.current?.select()
+  }, [focusAddress])
 
   const control = context?.control_state
   const userHasControl = control === 'user'
@@ -93,6 +117,15 @@ export default function BrowserToolbar({
   const preparing = state === 'creating' || state === 'absent'
   const parts = splitUrl(url)
   const navDisabled = !native || !onHistory
+  const activePage = targets.find((page) => page.target_id === activeTargetId)
+  // Lo que dice el host de la pestaña visible; un host antiguo no lo manda y
+  // entonces los botones siguen como antes, siempre disponibles.
+  const loading = Boolean(native && activePage?.loading)
+  const canGoBack = activePage?.can_go_back ?? true
+  const canGoForward = activePage?.can_go_forward ?? true
+  // Con una sola pestaña y sin poder abrir otra (visor de capturas), la tira
+  // no dice nada.
+  const showTabs = targets.length > 1 || (Boolean(onNewTab) && targets.length > 0)
   const agentUsing = native && busy && !userHasControl && !uncertain && !waiting && !external
   // La línea de estado es un chip canónico: su tono dice de quién es la página.
   // En reposo («lista para navegar») no hay nada que decir y no se muestra:
@@ -117,9 +150,14 @@ export default function BrowserToolbar({
   return (
     <header className="browser-toolbar">
       <div className="browser-chrome">
-        <button type="button" className="browser-nav" aria-label={t('browser.back')} title={t('browser.back')} disabled={navDisabled} onClick={() => onHistory?.('back')}><ArrowLeft size={15} /></button>
-        <button type="button" className="browser-nav" aria-label={t('browser.forward')} title={t('browser.forward')} disabled={navDisabled} onClick={() => onHistory?.('forward')}><ArrowRight size={15} /></button>
-        <button type="button" className="browser-nav" aria-label={t('browser.reload')} title={t('browser.reload')} disabled={navDisabled} onClick={() => onHistory?.('reload')}><RotateCw size={14} /></button>
+        <button type="button" className="browser-nav" aria-label={t('browser.back')} title={t('browser.back')} disabled={navDisabled || !canGoBack} onClick={() => onHistory?.('back')}><ArrowLeft size={15} /></button>
+        <button type="button" className="browser-nav" aria-label={t('browser.forward')} title={t('browser.forward')} disabled={navDisabled || !canGoForward} onClick={() => onHistory?.('forward')}><ArrowRight size={15} /></button>
+        {/* Mientras carga, recargar se vuelve detener, como en cualquier navegador. */}
+        {loading ? (
+          <button type="button" className="browser-nav" data-testid="browser-stop" aria-label={t('browser.stop')} title={t('browser.stop')} disabled={navDisabled} onClick={() => onHistory?.('stop')}><X size={15} /></button>
+        ) : (
+          <button type="button" className="browser-nav" data-testid="browser-reload" aria-label={t('browser.reload')} title={t('browser.reload')} disabled={navDisabled} onClick={() => onHistory?.('reload')}><RotateCw size={14} /></button>
+        )}
 
         {native && onNavigate ? (
           <form
@@ -133,6 +171,7 @@ export default function BrowserToolbar({
           >
             {parts?.secure ? <Lock size={12} aria-hidden="true" className="text-[var(--success)]" /> : <Globe size={12} aria-hidden="true" />}
             <input
+              ref={address}
               aria-label={t('browser.url')}
               className="browser-toolbar-url-input"
               value={draft}
@@ -186,27 +225,51 @@ export default function BrowserToolbar({
         {sizeControl}
       </div>
 
-      {targets.length > 1 && (
-        <div className="browser-tabs">
-          <select
-            aria-label={t('browser.tab')}
-            className="browser-toolbar-select"
-            value={activeTargetId}
-            // Cambiar de pestaña redirige la siguiente operación del agente,
-            // que sin `target_id` va a la activa: main toma el navegador para
-            // ti antes de cambiarla (#46).
-            onChange={(event) => onSelectTarget(event.target.value)}
-          >
-            {targets.map((page) => (
-              <option key={page.target_id} value={page.target_id}>
-                {page.title || page.url}
-              </option>
-            ))}
-          </select>
+      {showTabs && (
+        <div className="browser-tabs" role="group" aria-label={t('browser.tabs')} data-testid="browser-tabs">
+          {targets.map((page) => {
+            const active = page.target_id === activeTargetId
+            const label = tabLabel(page, t('browser.newTab'))
+            return (
+              <div key={page.target_id} className="browser-tab" data-active={active || undefined} data-testid="browser-tab">
+                <button
+                  type="button"
+                  className="browser-tab-select"
+                  aria-current={active ? 'page' : undefined}
+                  title={page.url && page.url !== 'about:blank' ? `${label}\n${page.url}` : label}
+                  // Cambiar de pestaña redirige la siguiente operación del
+                  // agente, que sin `target_id` va a la activa: main toma el
+                  // navegador para ti antes de cambiarla (#46).
+                  onClick={() => { if (!active) onSelectTarget(page.target_id) }}
+                >
+                  {page.loading
+                    ? <span className="browser-tab-spinner" role="img" aria-label={t('browser.loading')} />
+                    : <Globe size={12} aria-hidden="true" className="shrink-0" />}
+                  <span className="browser-tab-title">{label}</span>
+                </button>
+                {onCloseTab && (
+                  <button
+                    type="button"
+                    className="browser-tab-close"
+                    aria-label={t('browser.closeTab', { title: label })}
+                    title={t('browser.closeTab', { title: label })}
+                    onClick={() => onCloseTab(page.target_id)}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+          {onNewTab && (
+            <button type="button" className="browser-nav browser-tab-new" data-testid="browser-new-tab" aria-label={t('browser.newTab')} title={t('browser.newTab')} onClick={onNewTab}>
+              <Plus size={14} />
+            </button>
+          )}
         </div>
       )}
 
-      {!home && (preparing || (busy && !userHasControl && connected)) && <div className="browser-progress" aria-hidden="true"><i /></div>}
+      {!home && (preparing || loading || (busy && !userHasControl && connected)) && <div className="browser-progress" aria-hidden="true"><i /></div>}
 
       {!home && status && <div
         className="browser-control"

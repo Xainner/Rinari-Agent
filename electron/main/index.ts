@@ -17,9 +17,11 @@ import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appSche
 import { APP_USER_MODEL_ID, IS_NIGHTLY, NIGHTLY_USER_DATA_DIR, PRODUCT_NAME } from './channel'
 import { listBackups, pickBackup, restoreBackup, stableExecutable } from './native/backToStable'
 import { OTHER_EXECUTABLE, isImageRunning } from './otherChannel'
-import { BrowserRegistry } from './browser/BrowserRegistry'
+import { BrowserRegistry, type ContextEntry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
 import { loadPage } from './browser/loadPage'
+import { withTargetStates } from './browser/tabs'
+import { browserShortcut, type BrowserShortcut } from '../shared/browserShortcuts'
 import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
 import { bundleFileName, createDiagnostics, logsDirFor } from './diagnostics'
@@ -385,10 +387,55 @@ function registerAppScheme(root: string | null): void {
 function publishBrowserContext(sessionId: string): void {
   void engine
     .request('browser.context.get', { session_id: sessionId })
-    .then((view) => send(PUSH.browserContextChanged, view))
+    .then((view) => send(PUSH.browserContextChanged, withHostState(sessionId, view)))
     .catch(() => {
       // Un Engine que aún no responde no puede tumbar la UI.
     })
+}
+
+/** El contexto del Engine con lo que solo sabe el host: carga e historial de cada pestaña. */
+function withHostState(sessionId: string, view: unknown): unknown {
+  const context = browserRegistry?.contextForSession(sessionId)
+  return context ? withTargetStates(view, browserRegistry!.targetStates(context)) : view
+}
+
+/** Las intenciones del navegador, para que los atajos de la página usen las mismas. */
+let browserIntents: HostServices['browser'] | null = null
+
+/**
+ * Un atajo pulsado con el foco en la página (la barra no ve esas teclas).
+ * Hace lo mismo que el botón de la barra, con el mismo arbitraje: tomar el
+ * navegador antes de cambiar la pestaña activa o navegar.
+ */
+async function runBrowserShortcut(context: ContextEntry, action: BrowserShortcut): Promise<void> {
+  const intents = browserIntents
+  if (!intents) return
+  const sessionId = context.sessionId
+  const active = context.activeTargetId
+  switch (action) {
+    case 'new-tab':
+      await intents.newTab(sessionId, undefined)
+      return
+    case 'close-tab':
+      if (active) await intents.closeTab(sessionId, active)
+      return
+    case 'next-tab':
+    case 'previous-tab': {
+      if (!active || context.order.length < 2) return
+      const index = context.order.indexOf(active)
+      const step = action === 'next-tab' ? 1 : -1
+      await intents.selectTarget(sessionId, context.order[(index + step + context.order.length) % context.order.length])
+      return
+    }
+    case 'reload':
+    case 'back':
+    case 'forward':
+      await intents.history(sessionId, action)
+      return
+    case 'focus-address':
+      mainWindow?.webContents.focus()
+      send(PUSH.browserShortcut, { session_id: sessionId, action })
+  }
 }
 
 /**
@@ -488,9 +535,10 @@ function browserServices(): HostServices['browser'] {
 
   return {
     // Consulta sin efectos: mirar el estado desde la UI no abre un navegador.
-    context: (sessionId) => engine.request('browser.context.get', { session_id: sessionId }),
+    context: async (sessionId) =>
+      withHostState(sessionId, await engine.request('browser.context.get', { session_id: sessionId })),
 
-    prepare: (sessionId) => prepareContext(sessionId),
+    prepare: async (sessionId) => withHostState(sessionId, await prepareContext(sessionId)),
 
     attachSlot: async (sessionId) => {
       if (!layoutCoordinator) throw new Error('the window is not ready')
@@ -599,6 +647,54 @@ function browserServices(): HostServices['browser'] {
       publishBrowserContext(sessionId)
       return { url: contents.getURL() }
     },
+
+    // Pestaña nueva del usuario (botón «+» o Ctrl+T). En blanco enseña la
+    // página de inicio. Cambia la pestaña activa, que es a la que va una
+    // operación del agente sin `target_id`: como elegir pestaña, requiere el
+    // control.
+    newTab: async (sessionId, url) => {
+      const fresh = !browserRegistry?.contextForSession(sessionId)
+      // Sin navegador todavía, prepararlo ya deja su primera pestaña en blanco.
+      if (fresh) await prepareContext(sessionId)
+      const context = requireContext(sessionId)
+      await takeUserControl(context, 'opening a tab')
+      let entry = fresh ? browserRegistry!.target(context.contextId, null) : undefined
+      if (!entry) {
+        entry = browserRegistry!.createTarget(context)
+        await entry.view.webContents.loadURL('about:blank')
+      }
+      try {
+        if (url) {
+          await browserRegistry!.attach(entry)
+          await loadPage(entry.view.webContents, url)
+        }
+      } finally {
+        // La pestaña existe aunque la carga falle.
+        await browserHost?.publishTargets(context.contextId)
+        publishBrowserContext(sessionId)
+      }
+      return { target_id: entry.targetId }
+    },
+
+    // Cerrar una pestaña (su «×» o Ctrl+W). La última también: entonces se ve
+    // la página de inicio, y escribir una dirección abre otra.
+    closeTab: async (sessionId, targetId) => {
+      const context = requireContext(sessionId)
+      await takeUserControl(context, 'closing a tab')
+      if (!browserRegistry!.closeTarget(context, targetId)) {
+        throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
+      }
+      await browserHost?.publishTargets(context.contextId)
+      publishBrowserContext(sessionId)
+      return { closed: targetId }
+    },
+
+    // «Borrar datos del navegador»: el perfil es uno para todas las
+    // conversaciones, así que se borra entero.
+    clearData: async () => {
+      if (!browserRegistry) throw new Error('the browser host is not ready')
+      await browserRegistry.clearProfile()
+    },
     preview: (sessionId) => browserHost?.preview(sessionId) ?? Promise.resolve(null),
     diagnostics: () => ({ layoutSlots: layoutCoordinator?.size ?? 0 }),
   }
@@ -612,7 +708,7 @@ function requireBackground(): Background {
 function buildServices(): HostServices {
   const getWindow = () => mainWindow
   return {
-    browser: browserServices(),
+    browser: (browserIntents = browserServices()),
     flow: flowServices(),
     engine: {
       status: () => engine.status(),
@@ -1026,6 +1122,21 @@ function openWindow(): void {
     onEvent: (event) =>
       browserHost?.notify(event.kind, event.contextId, event.targetId, event.detail),
     onInput: (context, entry, kind) => browserHost?.ownerInput(context, entry, kind),
+    // Una carga, un título o un enlace de la propia página: la barra y el
+    // Engine se enteran sin que nadie lo pida.
+    onTargetsChanged: (context) => void browserHost?.publishTargets(context.contextId),
+    onShortcut: (context, _entry, input) => {
+      const action = browserShortcut(input, process.platform === 'darwin')
+      // Las teclas que despacha el agente pasan por el mismo sitio: un Ctrl+W
+      // suyo es una tecla para la página, no cerrar la pestaña.
+      if (!action || browserHost?.agentInputActive(context.contextId)) return false
+      if (!input.isAutoRepeat) {
+        void runBrowserShortcut(context, action).catch((error) =>
+          console.error('[rinari-browser] shortcut failed', error),
+        )
+      }
+      return true
+    },
   })
   browserHost = new NativeBrowserHost({
     registry: browserRegistry,

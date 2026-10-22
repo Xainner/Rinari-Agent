@@ -21,6 +21,8 @@ import {
   session as electronSession,
   type BaseWindow,
   type DownloadItem,
+  type Input,
+  type WebContents,
 } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
@@ -28,7 +30,24 @@ import { isAbsolute, resolve, sep } from 'node:path'
 
 import { isNavigableUrl, safeDownloadName } from './operations'
 import type { OwnerInputKind } from './ownerActivity'
+import { windowOpenDecision, type TargetState } from './tabs'
 import type { ResolvedLayout } from './ViewLayoutCoordinator'
+
+/**
+ * El perfil del navegador: **uno solo y guardado** para todas las
+ * conversaciones (decisión del dueño, Planka Ideas-2 «Que el navegador guarde
+ * sesiones de login»). Entras una vez en un sitio y sigues dentro en otra
+ * conversación y tras reiniciar Rinari. Sigue aparte del almacenamiento del
+ * renderer de Rinari (§6.2), y se borra con «Borrar datos del navegador».
+ *
+ * Lo que no se comparte entre sesiones son las pestañas: un `target_id` sigue
+ * siendo de su contexto (§5.3).
+ */
+export const BROWSER_PARTITION = 'persist:rinari-browser'
+/** La barrera no guarda nada: es una página vacía que solo recibe clics. */
+const BARRIER_PARTITION = 'rinari-browser-barrier'
+/** Varios cambios de carga, título o dirección seguidos se avisan como uno. */
+const CHANGE_COALESCE_MS = 60
 
 /** Quién puede mutar la página ahora mismo (§7). */
 export type ControlOwner = 'agent' | 'user'
@@ -198,6 +217,8 @@ export interface TargetEntry {
    */
   console: ObservedBuffer
   network: ObservedBuffer
+  /** La página está cargando (entre `did-start-loading` y `did-stop-loading`). */
+  loading: boolean
   /** Un solo listener por vida del target, aunque el debugger se reenganche. */
   debugListenerInstalled: boolean
   debugEnabled: boolean
@@ -264,6 +285,18 @@ export interface RegistryDeps {
    * 0.4.0 #46). Quien escucha separa la suya de la que despacha el agente.
    */
   onInput?: (context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind) => void
+  /**
+   * Cambió algo que enseña la barra sin que nadie lo pidiera: la página
+   * empezó o terminó de cargar, cambió de título o de dirección (un enlace),
+   * se abrió una pestaña desde la página o una se cerró sola.
+   */
+  onTargetsChanged?: (context: ContextEntry) => void
+  /**
+   * Una tecla en la página: `true` si era un atajo del navegador y ya se
+   * atendió (entonces no llega a la página). Con el foco en la página, la
+   * barra del renderer no se entera de las teclas.
+   */
+  onShortcut?: (context: ContextEntry, entry: TargetEntry, input: Input) => boolean
 }
 
 /**
@@ -297,6 +330,7 @@ export class BrowserRegistry {
   private readonly contexts = new Map<string, ContextEntry>()
   /** Un contexto por sesión: el §6.2 no contempla dos para la misma. */
   private readonly bySession = new Map<string, string>()
+  private readonly pendingChanges = new Map<string, ReturnType<typeof setTimeout>>()
 
   constructor(private readonly deps: RegistryDeps) {}
 
@@ -309,10 +343,7 @@ export class BrowserRegistry {
     }
 
     const contextId = randomUUID()
-    // Partición propia y **no persistente**: distinta del almacenamiento del
-    // renderer de Rinari y de las demás sesiones (§6.2). Sin `persist:`, se va
-    // con el proceso; un modo persistente exige UX y limpieza propias.
-    const partition = `rinari-browser-${contextId}`
+    const partition = BROWSER_PARTITION
     const container = new View()
     // En el suelo, no a cero: ver `LAYOUT_FLOOR`. Un contexto que se usa antes
     // de que el usuario abra el panel tiene que maquetar igual.
@@ -393,9 +424,18 @@ export class BrowserRegistry {
     return true
   }
 
-  /** Crea una página en el contexto. La vista nace oculta hasta tener slot. */
-  createTarget(context: ContextEntry): TargetEntry {
+  /**
+   * Crea una página en el contexto. La vista nace oculta hasta tener slot.
+   *
+   * `webContents`: la que Electron ya creó para una ventana que pidió la
+   * página (`window.open`, `target=_blank`); se adopta para no perder
+   * `window.opener`. `background`: la pestaña nueva no pasa a ser la visible.
+   */
+  createTarget(context: ContextEntry, options: { webContents?: WebContents; background?: boolean } = {}): TargetEntry {
     const view = new WebContentsView({
+      // Una `webContents` adoptada ya trae sus preferencias: las hereda de la
+      // pestaña que la abrió, que se creó con estas mismas.
+      ...(options.webContents ? { webContents: options.webContents } : {}),
       webPreferences: {
         partition: context.partition,
         // §9: cada vista remota va con sandbox, aislamiento, sin Node y sin
@@ -417,16 +457,54 @@ export class BrowserRegistry {
       dispose: [],
       console: { items: [], bytes: 0 },
       network: { items: [], bytes: 0 },
+      loading: false,
       debugListenerInstalled: false,
       debugEnabled: false,
       debugReady: null,
     }
     const contents = view.webContents
 
-    // Nada de ventanas nuevas decididas por la página: un popup heredaría el
-    // contexto, no privilegios (§6.3), y mientras no exista esa gestión se
-    // deniega en vez de abrirse por ahí.
-    contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    // Una ventana que pide la página es una pestaña más de este contexto,
+    // nunca una ventana suelta (`tabs.ts`). Hereda el contexto, no
+    // privilegios (§6.3): la crea `createTarget` con las mismas preferencias.
+    contents.setWindowOpenHandler((details) => {
+      const decision = windowOpenDecision(details)
+      if (decision === 'deny') return { action: 'deny' }
+      return {
+        action: 'allow',
+        createWindow: (created) => {
+          const opened = this.createTarget(context, {
+            webContents: (created as { webContents?: WebContents }).webContents,
+            background: decision === 'background',
+          })
+          this.changed(context)
+          return opened.view.webContents
+        },
+      }
+    })
+
+    // Lo que enseña la barra sin que nadie lo pida: si carga, su título y su
+    // dirección cuando la cambia un enlace de la propia página.
+    const onStartLoading = () => {
+      entry.loading = true
+      this.changed(context)
+    }
+    const onStopLoading = () => {
+      entry.loading = false
+      this.changed(context)
+    }
+    const onPageChanged = () => this.changed(context)
+    contents.on('did-start-loading', onStartLoading)
+    contents.on('did-stop-loading', onStopLoading)
+    contents.on('page-title-updated', onPageChanged)
+    contents.on('did-navigate', onPageChanged)
+    contents.on('did-navigate-in-page', onPageChanged)
+    // Una ventana emergente que se cierra sola (`window.close()` al terminar
+    // un inicio de sesión) deja de existir sin pasar por `closeTarget`.
+    const onDestroyed = () => {
+      if (this.closeTarget(context, targetId)) this.changed(context)
+    }
+    contents.once('destroyed', onDestroyed)
 
     // El esquema interno de Rinari y el renderer de confianza no son destinos
     // navegables para contenido remoto (§9).
@@ -457,8 +535,9 @@ export class BrowserRegistry {
     // El dueño toma el navegador con solo usarlo (#46): se escucha sin
     // interceptar nada. Cortar aquí la entrada cortaría también la del agente,
     // que la sonda midió que pasa por el mismo camino.
-    const onKey = (_event: unknown, input: { type: string }) => {
+    const onKey = (event: { preventDefault(): void }, input: Input) => {
       this.deps.onInput?.(context, entry, input.type === 'keyDown' || input.type === 'rawKeyDown' ? 'keyDown' : 'other')
+      if (this.deps.onShortcut?.(context, entry, input)) event.preventDefault()
     }
     const onMouse = (_event: unknown, mouse: { type: OwnerInputKind }) => {
       this.deps.onInput?.(context, entry, mouse.type)
@@ -477,17 +556,27 @@ export class BrowserRegistry {
       contents.off('render-process-gone', onCrash)
       contents.off('will-navigate', guardNavigation)
       contents.off('will-redirect', guardNavigation)
+      contents.off('did-start-loading', onStartLoading)
+      contents.off('did-stop-loading', onStopLoading)
+      contents.off('page-title-updated', onPageChanged)
+      contents.off('did-navigate', onPageChanged)
+      contents.off('did-navigate-in-page', onPageChanged)
+      contents.off('destroyed', onDestroyed)
     })
 
     context.targets.set(targetId, entry)
-    context.order.push(targetId)
+    // Junto a la que la abrió, como en un navegador; las demás, al final.
+    const opener = context.activeTargetId ? context.order.indexOf(context.activeTargetId) : -1
+    if (options.webContents && opener >= 0) context.order.splice(opener + 1, 0, targetId)
+    else context.order.push(targetId)
     context.container.addChildView(view)
     // El tamaño se lo da `applyGeometry`, que ahora también atiende al contexto
     // sin slot. Darlo aquí no bastaba: la vista tenía bounds, pero el
     // contenedor estaba a 0×0 y la recortaba a nada, así que no se componía y
     // la página se quedaba sin viewport igual.
-    // Una pestaña nueva pasa a ser la visible, como en cualquier navegador.
-    context.activeTargetId = targetId
+    // Una pestaña nueva pasa a ser la visible, como en cualquier navegador,
+    // salvo la que se pidió en segundo plano (Ctrl+clic).
+    if (!options.background || !context.activeTargetId) context.activeTargetId = targetId
     // La barrera vuelve arriba: el orden de hijos decide quién recibe el
     // click, así que una página creada después se pondría delante de ella.
     this.raiseBarrier(context)
@@ -557,9 +646,10 @@ export class BrowserRegistry {
    * Cookies de **esta** partición (§6.3).
    *
    * Por la API de `session` y no por CDP: las cookies pertenecen a la
-   * partición del contexto, no a una página, y `Network.getCookies` sobre un
-   * debugger page-level no es la misma pregunta. Así dos sesiones con el mismo
-   * origen no comparten nada.
+   * partición, no a una página, y `Network.getCookies` sobre un debugger
+   * page-level no es la misma pregunta. La partición es el perfil único del
+   * navegador (`BROWSER_PARTITION`), así que son las de todas las sesiones:
+   * las sesiones iniciadas se comparten por decisión del dueño.
    *
    * El valor **no sale de aquí**. El contrato de la herramienta ya lo redacta,
    * pero mandarlo por el broker sería pasear una credencial sin necesidad.
@@ -615,7 +705,11 @@ export class BrowserRegistry {
     context.downloads?.dispose()
     const partition = electronSession.fromPartition(context.partition)
 
-    const onWillDownload = (_event: unknown, item: DownloadItem) => {
+    const onWillDownload = (_event: unknown, item: DownloadItem, contents: WebContents) => {
+      // La partición es la misma para todas las sesiones: cada contexto
+      // atiende solo las descargas de sus pestañas, o una descarga de la
+      // sesión A acabaría en el directorio que pidió la B.
+      if (!this.owns(context, contents)) return
       if (directory === null) {
         item.cancel()
         this.deps.onEvent({
@@ -827,7 +921,7 @@ export class BrowserRegistry {
       if (!context.barrier) {
         const barrier = new WebContentsView({
           webPreferences: {
-            partition: `${context.partition}-barrier`,
+            partition: BARRIER_PARTITION,
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
@@ -879,8 +973,67 @@ export class BrowserRegistry {
     // tocar su contentView lanza «Object has been destroyed» (salir desde la
     // bandeja lo mostraba como error del proceso principal).
     if (!this.deps.window.isDestroyed()) this.deps.window.contentView.removeChildView(context.container)
+    const pending = this.pendingChanges.get(contextId)
+    if (pending) clearTimeout(pending)
+    this.pendingChanges.delete(contextId)
     this.contexts.delete(contextId)
     this.bySession.delete(context.sessionId)
+  }
+
+  /**
+   * Borra el perfil del navegador: sesiones iniciadas, cookies,
+   * almacenamiento y caché de todas las conversaciones. Las pestañas abiertas
+   * siguen ahí; se recargan para que enseñen la página ya sin sesión.
+   */
+  async clearProfile(): Promise<void> {
+    const profile = electronSession.fromPartition(BROWSER_PARTITION)
+    await profile.clearStorageData()
+    await profile.clearCache()
+    await profile.clearAuthCache()
+    for (const context of this.contexts.values()) {
+      for (const entry of context.targets.values()) {
+        const contents = entry.view.webContents
+        if (contents.isDestroyed()) continue
+        const url = contents.getURL()
+        if (url && url !== 'about:blank' && isNavigableUrl(url)) contents.reload()
+      }
+    }
+  }
+
+  /** Estado de cada pestaña que solo conoce el host (carga e historial), para la barra. */
+  targetStates(context: ContextEntry): Map<string, TargetState> {
+    const states = new Map<string, TargetState>()
+    for (const [targetId, entry] of context.targets) {
+      const contents = entry.view.webContents
+      if (contents.isDestroyed()) continue
+      states.set(targetId, {
+        loading: entry.loading,
+        can_go_back: contents.navigationHistory.canGoBack(),
+        can_go_forward: contents.navigationHistory.canGoForward(),
+      })
+    }
+    return states
+  }
+
+  /** ¿Es esta `webContents` una pestaña de este contexto? */
+  private owns(context: ContextEntry, contents: WebContents | undefined): boolean {
+    if (!contents) return false
+    for (const entry of context.targets.values()) {
+      if (entry.view.webContents === contents) return true
+    }
+    return false
+  }
+
+  /** Avisa de un cambio de las pestañas, agrupando los que llegan seguidos. */
+  private changed(context: ContextEntry): void {
+    if (!this.deps.onTargetsChanged || this.pendingChanges.has(context.contextId)) return
+    this.pendingChanges.set(
+      context.contextId,
+      setTimeout(() => {
+        this.pendingChanges.delete(context.contextId)
+        if (this.contexts.get(context.contextId) === context) this.deps.onTargetsChanged?.(context)
+      }, CHANGE_COALESCE_MS),
+    )
   }
 
   disposeAll(): void {

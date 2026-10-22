@@ -1,9 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Maximize2, Monitor, Smartphone, Tablet, TriangleAlert, Tv } from 'lucide-react'
 
 import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
-import type { NativeBrowserContext, NativeBrowserTarget } from '../../platform/contract'
+import { browserShortcut, type NativeBrowserContext, type NativeBrowserTarget } from '../../platform/contract'
 import { CHAT_KEY, rememberable, useBrowserPrefs } from '../../stores/browserPrefs'
 
 import BrowserHome from './BrowserHome'
@@ -54,6 +54,9 @@ export interface BrowserSurfaceProps {
  *
  * Ocultar la superficie no cierra nada: retira la presentación y ya.
  */
+/** Cmd en vez de Ctrl para los atajos del navegador. */
+const MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
+
 /**
  * ¿Se ve la página de inicio? Sin navegador todavía, mientras se prepara, o
  * con la pestaña activa en blanco (plan 0.4.0 #46).
@@ -114,6 +117,43 @@ export default function BrowserSurface({
 
   const problem = error || native.error
   const home = useNative && showsHome(context)
+  // Ctrl+L: desde la página lo avisa main; desde la barra, este panel.
+  const [focusHere, setFocusHere] = useState(0)
+  const focusAddress = native.focusAddress + focusHere
+
+  /**
+   * Los atajos del navegador con el foco en la barra o en la página de
+   * inicio. Con el foco en la página los atiende main (la vista nativa se
+   * queda con las teclas). Solo dentro de este panel: no chocan con el
+   * composer ni con un editor.
+   */
+  const onShortcutKey = (event: KeyboardEvent<HTMLElement>) => {
+    const action = browserShortcut({ key: event.key, control: event.ctrlKey, alt: event.altKey, shift: event.shiftKey, meta: event.metaKey }, MAC)
+    if (!action) return
+    event.preventDefault()
+    if (event.repeat) return
+    const order = nativeTargets.map((page) => page.target_id)
+    const index = order.indexOf(activeTargetId)
+    switch (action) {
+      case 'new-tab':
+        void native.newTab()
+        return
+      case 'close-tab':
+        if (activeTargetId) void native.closeTab(activeTargetId)
+        return
+      case 'next-tab':
+      case 'previous-tab':
+        if (order.length > 1 && index >= 0) {
+          void native.selectTarget(order[(index + (action === 'next-tab' ? 1 : -1) + order.length) % order.length])
+        }
+        return
+      case 'focus-address':
+        setFocusHere((n) => n + 1)
+        return
+      default:
+        if (!home) void native.history(action)
+    }
+  }
 
   // Tamaño de la página (#44b). Lo que pida el agente manda: el selector lo
   // enseña; el dueño puede cambiarlo después.
@@ -161,6 +201,7 @@ export default function BrowserSurface({
       data-state={useNative ? (context?.context_state ?? 'idle') : (frame?.state ?? 'idle')}
       data-backend={useNative ? 'electron-native' : 'screenshot'}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
+      onKeyDown={useNative ? onShortcutKey : undefined}
     >
       <BrowserToolbar
         context={useNative ? context : null}
@@ -172,6 +213,9 @@ export default function BrowserSurface({
         onSelectTarget={useNative ? (id) => void native.selectTarget(id) : onTargetChange}
         onNavigate={useNative ? (next) => void native.navigate(next) : undefined}
         onHistory={useNative ? (action) => void native.history(action) : undefined}
+        onNewTab={useNative && context?.context_state === 'ready' ? () => void native.newTab() : undefined}
+        onCloseTab={useNative ? (id) => void native.closeTab(id) : undefined}
+        focusAddress={home ? 0 : focusAddress}
         busy={busy}
         pinned={Boolean(url && (pinnedUrls ?? []).some((place) => place.url === url))}
         onTogglePin={useNative && rememberable(url) ? () => togglePin(projectKey, { url, title: activeTitle }) : undefined}
@@ -194,6 +238,7 @@ export default function BrowserSurface({
               projectKey={projectKey}
               scope={projectId ? 'project' : 'chat'}
               busy={busy}
+              focusAddress={focusAddress}
               onOpen={(next) => void openFromHome(next)}
             />
           ) : undefined}

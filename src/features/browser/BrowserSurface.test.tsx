@@ -220,7 +220,7 @@ describe('el control sin botones (#46)', () => {
     paint({ busy: true })
     const url = await screen.findByLabelText('Dirección')
     expect((url as HTMLInputElement).disabled).toBe(false)
-    expect((screen.getByLabelText('Pestaña del navegador') as HTMLSelectElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'B' }) as HTMLButtonElement).disabled).toBe(false)
     await userEvent.clear(url)
     await userEvent.type(url, 'https://example.org{Enter}')
     await waitFor(() =>
@@ -256,6 +256,105 @@ describe('el control sin botones (#46)', () => {
   })
 })
 
+// Planka Ideas-2: pestañas que se abren y cierran, la carga a la vista y
+// los atajos de cualquier navegador.
+describe('pestañas como en un navegador', () => {
+  const twoTabs = (overrides: Partial<NativeBrowserContext> = {}) =>
+    nativeContext({
+      targets: [
+        { target_id: 't1', url: 'https://example.com/a', title: 'A', active: true },
+        { target_id: 't2', url: 'https://example.com/b', title: 'B', active: false },
+      ],
+      ...overrides,
+    })
+
+  it('cada pestaña se ve, se elige y se cierra; «+» abre otra', async () => {
+    bridge.browserContext = twoTabs()
+    paint()
+    const tabs = await screen.findByTestId('browser-tabs')
+    expect(screen.getAllByTestId('browser-tab')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'A' }).getAttribute('aria-current')).toBe('page')
+    await userEvent.click(screen.getByRole('button', { name: 'B' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar B' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Nueva pestaña' }))
+    expect(tabs).toBeTruthy()
+    expect(bridge.browserCalls.filter((call) => ['selectTarget', 'closeTab', 'newTab'].includes(String(call.kind)))).toEqual([
+      { kind: 'selectTarget', sessionId: 'ses-1', targetId: 't2' },
+      { kind: 'closeTab', sessionId: 'ses-1', targetId: 't2' },
+      { kind: 'newTab', sessionId: 'ses-1' },
+    ])
+  })
+
+  it('una pestaña en blanco se llama «Nueva pestaña» y una sin título, por su dominio', async () => {
+    bridge.browserContext = nativeContext({
+      targets: [
+        { target_id: 't1', url: 'https://example.com/a', title: '', active: true },
+        { target_id: 't2', url: 'about:blank', title: '', active: false },
+      ],
+    })
+    paint()
+    expect(await screen.findByRole('button', { name: 'example.com' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Nueva pestaña' })).toHaveLength(2)
+  })
+
+  it('mientras carga: barra de progreso, la pestaña lo dice y recargar pasa a detener', async () => {
+    bridge.browserContext = nativeContext({
+      targets: [{ target_id: 't1', url: 'https://example.com/a', title: 'A', active: true, loading: true }],
+    })
+    const view = paint()
+    await userEvent.click(await screen.findByTestId('browser-stop'))
+    expect(bridge.browserCalls.find((call) => call.kind === 'history')).toMatchObject({ action: 'stop' })
+    expect(screen.getByRole('img', { name: 'Cargando' })).toBeTruthy()
+    expect(view.container.querySelector('.browser-progress')).not.toBeNull()
+
+    bridge.emitBrowserContext(nativeContext())
+    expect(await screen.findByTestId('browser-reload')).toBeTruthy()
+    expect(screen.queryByRole('img', { name: 'Cargando' })).toBeNull()
+  })
+
+  it('sin historial, atrás y adelante no se ofrecen', async () => {
+    bridge.browserContext = nativeContext({
+      targets: [{ target_id: 't1', url: 'https://example.com/a', title: 'A', active: true, can_go_back: false, can_go_forward: true }],
+    })
+    paint()
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Atrás' }) as HTMLButtonElement).disabled).toBe(true))
+    expect((screen.getByRole('button', { name: 'Adelante' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('Ctrl+T, Ctrl+Tab y Ctrl+W con el foco en la barra', async () => {
+    bridge.browserContext = twoTabs()
+    paint()
+    const address = await screen.findByLabelText('Dirección')
+    address.focus()
+    await userEvent.keyboard('{Control>}t{/Control}')
+    await userEvent.keyboard('{Control>}{Tab}{/Control}')
+    await userEvent.keyboard('{Control>}w{/Control}')
+    expect(bridge.browserCalls.filter((call) => ['selectTarget', 'closeTab', 'newTab'].includes(String(call.kind)))).toEqual([
+      { kind: 'newTab', sessionId: 'ses-1' },
+      { kind: 'selectTarget', sessionId: 'ses-1', targetId: 't2' },
+      { kind: 'closeTab', sessionId: 'ses-1', targetId: 't1' },
+    ])
+  })
+
+  it('Ctrl+L pulsado en la página lleva a la dirección', async () => {
+    bridge.browserContext = nativeContext()
+    paint()
+    const address = await screen.findByLabelText('Dirección')
+    expect(document.activeElement).not.toBe(address)
+    bridge.emitBrowserShortcut({ session_id: 'otra', action: 'focus-address' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(document.activeElement).not.toBe(address)
+    bridge.emitBrowserShortcut({ session_id: 'ses-1', action: 'focus-address' })
+    await waitFor(() => expect(document.activeElement).toBe(address))
+  })
+
+  it('el visor de capturas con una sola página no enseña pestañas', async () => {
+    paint({ frame: { state: 'connected', session_id: 'ses-1', url: 'https://example.com', pages: [{ target_id: 'p1', url: 'https://example.com', title: 'E' }] } as never })
+    await screen.findByTestId('browser-view-slot')
+    expect(screen.queryByTestId('browser-tabs')).toBeNull()
+  })
+})
+
 describe('página de inicio (#46)', () => {
   it('sin navegador todavía, la página de inicio abre lo que escribes', async () => {
     bridge.browserContext = nativeContext({ context_state: 'absent', available: false, targets: [], active_target_id: null })
@@ -274,6 +373,16 @@ describe('página de inicio (#46)', () => {
     paint()
     expect(await screen.findByTestId('browser-home')).toBeTruthy()
     await waitFor(() => expect(bridge.browserLayouts.at(-1)?.shown).toBe(false))
+  })
+
+  it('«Borrar datos del navegador» pregunta antes y dice que se borró', async () => {
+    bridge.browserContext = nativeContext({ targets: [{ target_id: 't1', url: 'about:blank', title: '', active: true }] })
+    paint()
+    await userEvent.click(await screen.findByTestId('browser-clear-data'))
+    expect(bridge.browserCalls.some((call) => call.kind === 'clearData')).toBe(false)
+    await userEvent.click(await screen.findByRole('button', { name: 'Borrar datos' }))
+    await waitFor(() => expect(bridge.browserCalls.some((call) => call.kind === 'clearData')).toBe(true))
+    expect(await screen.findByText('Datos del navegador borrados.')).toBeTruthy()
   })
 
   it('con una página abierta no hay página de inicio', async () => {

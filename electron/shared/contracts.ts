@@ -88,6 +88,9 @@ export const CHANNEL = {
   browserSetControl: 'rinari:browser.setControl',
   browserNavigate: 'rinari:browser.navigate',
   browserHistory: 'rinari:browser.history',
+  browserNewTab: 'rinari:browser.newTab',
+  browserCloseTab: 'rinari:browser.closeTab',
+  browserClearData: 'rinari:browser.clearData',
   browserPreview: 'rinari:browser.preview',
 } as const
 
@@ -109,6 +112,12 @@ export const PUSH = {
    * al visor de capturas, y el nativo no lo necesita—.
    */
   browserContextChanged: 'rinari:push.browserContext',
+  /**
+   * Un atajo del navegador pulsado con el foco en la página que tiene que
+   * atender la barra (Ctrl+L: ir a la dirección). La vista nativa se queda
+   * con las teclas y el renderer no las ve.
+   */
+  browserShortcut: 'rinari:push.browserShortcut',
   /** Progreso y estados del updater Electron; nunca contiene rutas ni tokens. */
   updateState: 'rinari:push.updateState',
 } as const

@@ -295,11 +295,21 @@ export interface DesktopBridge {
     navigate(sessionId: string, url: string): Promise<void>
     /** Atrás, adelante, recargar o detener la pestaña visible (requiere el control). */
     history(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>
+    /** Pestaña nueva del usuario: en blanco (la página de inicio) o con una dirección. */
+    newTab(sessionId: string, url?: string): Promise<void>
+    /** Cerrar una pestaña. La última también: se ve la página de inicio. */
+    closeTab(sessionId: string, targetId: string): Promise<void>
+    /** Borra el perfil del navegador (uno para todo): sesiones iniciadas, cookies y caché. */
+    clearData(): Promise<void>
     /** Captura del mismo target mientras la superficie física está retirada. */
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
     /** Cambios de pestañas, control o estado. Sin sondeo. */
     onContextChanged(
       callback: (view: NativeBrowserContext) => void,
+    ): Promise<Unsubscribe>
+    /** Un atajo pulsado con el foco en la página que atiende la barra (Ctrl+L). */
+    onShortcut(
+      callback: (event: { session_id: string; action: 'focus-address' }) => void,
     ): Promise<Unsubscribe>
   }
 
@@ -382,6 +392,10 @@ export interface NativeBrowserTarget {
   url: string
   title: string
   active: boolean
+  /** Lo añade el host (el Engine no lo guarda): la página está cargando. */
+  loading?: boolean
+  can_go_back?: boolean
+  can_go_forward?: boolean
 }
 
 /**
@@ -449,3 +463,4 @@ export interface NativeBrowserSlotLayout {
 }
 
 export type { AttentionCategory, AttentionIndicators } from '../../electron/shared/indicators'
+export { browserShortcut, type BrowserShortcut } from '../../electron/shared/browserShortcuts'

@@ -222,13 +222,19 @@ sin control cuando llegue.
 
 ## 5. Aislamiento entre sesiones
 
-**Decisión.** Una partición por contexto de sesión, distinta de la del renderer
-de Rinari y de las demás sesiones (§6.2).
+**Decisión (vigente desde 2026-10-22).** Un solo perfil guardado para todas
+las sesiones, `persist:rinari-browser`, distinto de la partición del renderer
+de Rinari. Lo decidió el dueño (Planka Ideas-2, «Que el navegador guarde
+sesiones de login»): se entra una vez en un sitio y se sigue dentro en otra
+conversación y tras reiniciar. «Borrar datos del navegador», en la página de
+inicio del navegador, lo borra entero. Lo que sigue aislado entre sesiones
+son las pestañas: un `target_id` de otra sesión no se resuelve (§5.3), y
+cada contexto atiende solo las descargas de sus pestañas.
 
-**Medido** (`ISO-01`): con la misma URL en dos particiones, la segunda no vio
-el `localStorage` escrito por la primera. La comprobación incluye que la
-primera **sí** relea su marca, para que un fallo de escritura no pase por
-aislamiento.
+**Antes** era una partición no persistente por contexto (§6.2). La medición
+`ISO-01` de la sonda comprobó ese aislamiento con dos particiones; la prueba
+vertical V6 comprueba ahora lo contrario: la segunda sesión ve el
+almacenamiento de la primera y no su pestaña.
 
 ## 6. Los ocho pasos del §3
 
@@ -312,7 +318,7 @@ Dos cosas que no eran obvias al portarlas.
 **Sin manejador de `will-download`, Electron abre el diálogo de guardado del
 sistema.** O sea: la primera página con una descarga automática le planta al
 usuario un cuadro modal que no pidió, sobre una ruta que nadie acotó. Por eso
-la partición de un contexto nace cancelando descargas y sólo las acepta cuando
+cada contexto nace cancelando descargas y sólo las acepta cuando
 alguien pide un destino, que además siempre es el directorio de artefactos de
 la sesión.
 

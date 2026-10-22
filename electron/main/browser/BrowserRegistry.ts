@@ -30,7 +30,7 @@ import { isAbsolute, resolve, sep } from 'node:path'
 
 import { isNavigableUrl, safeDownloadName } from './operations'
 import type { OwnerInputKind } from './ownerActivity'
-import { windowOpenDecision, type TargetState } from './tabs'
+import { openedTabPlacement, windowOpenDecision, type TargetState } from './tabs'
 import type { ResolvedLayout } from './ViewLayoutCoordinator'
 
 /**
@@ -219,6 +219,8 @@ export interface TargetEntry {
   network: ObservedBuffer
   /** La página está cargando (entre `did-start-loading` y `did-stop-loading`). */
   loading: boolean
+  /** Cuándo la usó el dueño por última vez (no el agente); 0 si nunca. */
+  ownerUsedAt: number
   /** Un solo listener por vida del target, aunque el debugger se reenganche. */
   debugListenerInstalled: boolean
   debugEnabled: boolean
@@ -262,7 +264,7 @@ export interface ContextEntry {
    * reposo: se cancelan, para que ninguna página abra el diálogo de guardado
    * del sistema por su cuenta.
    */
-  downloads: { directory: string | null; dispose: () => void } | null
+  downloads: { directory: string | null; handle: (item: DownloadItem) => void; dispose: () => void } | null
   geometry: ResolvedLayout | null
   /** Qué target se presentó a tamaño real la última vez (`null`: ninguno). */
   presentedTarget?: string | null
@@ -284,7 +286,7 @@ export interface RegistryDeps {
    * Entrada que llega a una página: el dueño puede estar usándola (plan
    * 0.4.0 #46). Quien escucha separa la suya de la que despacha el agente.
    */
-  onInput?: (context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind) => void
+  onInput?: (context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind) => boolean | void
   /**
    * Cambió algo que enseña la barra sin que nadie lo pidiera: la página
    * empezó o terminó de cargar, cambió de título o de dirección (un enlace),
@@ -331,6 +333,8 @@ export class BrowserRegistry {
   /** Un contexto por sesión: el §6.2 no contempla dos para la misma. */
   private readonly bySession = new Map<string, string>()
   private readonly pendingChanges = new Map<string, ReturnType<typeof setTimeout>>()
+  /** Quita el único oyente de descargas del perfil (`routeDownloads`). */
+  private stopDownloadRouting: (() => void) | null = null
 
   constructor(private readonly deps: RegistryDeps) {}
 
@@ -458,6 +462,7 @@ export class BrowserRegistry {
       console: { items: [], bytes: 0 },
       network: { items: [], bytes: 0 },
       loading: false,
+      ownerUsedAt: 0,
       debugListenerInstalled: false,
       debugEnabled: false,
       debugReady: null,
@@ -468,7 +473,14 @@ export class BrowserRegistry {
     // nunca una ventana suelta (`tabs.ts`). Hereda el contexto, no
     // privilegios (§6.3): la crea `createTarget` con las mismas preferencias.
     contents.setWindowOpenHandler((details) => {
-      const decision = windowOpenDecision(details)
+      // Al frente solo si fue el dueño; con tope de pestañas (`tabs.ts`).
+      const decision = openedTabPlacement({
+        decision: windowOpenDecision(details),
+        ownerControls: context.control === 'user',
+        ownerUsedAt: entry.ownerUsedAt,
+        now: Date.now(),
+        openTabs: context.targets.size,
+      })
       if (decision === 'deny') return { action: 'deny' }
       return {
         action: 'allow',
@@ -536,11 +548,13 @@ export class BrowserRegistry {
     // interceptar nada. Cortar aquí la entrada cortaría también la del agente,
     // que la sonda midió que pasa por el mismo camino.
     const onKey = (event: { preventDefault(): void }, input: Input) => {
-      this.deps.onInput?.(context, entry, input.type === 'keyDown' || input.type === 'rawKeyDown' ? 'keyDown' : 'other')
+      if (this.deps.onInput?.(context, entry, input.type === 'keyDown' || input.type === 'rawKeyDown' ? 'keyDown' : 'other') === true) {
+        entry.ownerUsedAt = Date.now()
+      }
       if (this.deps.onShortcut?.(context, entry, input)) event.preventDefault()
     }
     const onMouse = (_event: unknown, mouse: { type: OwnerInputKind }) => {
-      this.deps.onInput?.(context, entry, mouse.type)
+      if (this.deps.onInput?.(context, entry, mouse.type) === true) entry.ownerUsedAt = Date.now()
     }
     // Al irse el foco de la página puede soltarse un campo a medio rellenar.
     const onBlur = () => this.deps.onInput?.(context, entry, 'blur')
@@ -701,15 +715,12 @@ export class BrowserRegistry {
    * por defecto y aquí eso además evita una UI sorpresa.
    */
   private installDownloadHandler(context: ContextEntry, directory: string | null): void {
-    // Un solo oyente: reenganchar sustituye, porque dos guardarían dos veces.
+    // Un solo manejador por contexto: reenganchar sustituye, porque dos
+    // guardarían dos veces. Quien lo llama es `routeDownloads`.
     context.downloads?.dispose()
-    const partition = electronSession.fromPartition(context.partition)
+    this.routeDownloads()
 
-    const onWillDownload = (_event: unknown, item: DownloadItem, contents: WebContents) => {
-      // La partición es la misma para todas las sesiones: cada contexto
-      // atiende solo las descargas de sus pestañas, o una descarga de la
-      // sesión A acabaría en el directorio que pidió la B.
-      if (!this.owns(context, contents)) return
+    const handle = (item: DownloadItem) => {
       if (directory === null) {
         item.cancel()
         this.deps.onEvent({
@@ -750,13 +761,41 @@ export class BrowserRegistry {
       })
     }
 
-    partition.on('will-download', onWillDownload)
     context.downloads = {
       directory,
+      handle,
       dispose: () => {
-        partition.off('will-download', onWillDownload)
         context.downloads = null
       },
+    }
+  }
+
+  /**
+   * Un solo oyente de descargas para el perfil, que es uno para todas las
+   * sesiones: cada descarga va al contexto de la pestaña que la pidió, o una
+   * de la sesión A acabaría en el directorio que pidió la B. La que no es de
+   * ninguna pestaña viva (se cerró al empezar, la pidió un service worker) se
+   * cancela: sin nadie que la atienda, Electron abriría el diálogo de
+   * guardado del sistema (revisión del #120).
+   */
+  private routeDownloads(): void {
+    if (this.stopDownloadRouting) return
+    const profile = electronSession.fromPartition(BROWSER_PARTITION)
+    const onWillDownload = (_event: unknown, item: DownloadItem, contents: WebContents) => {
+      const owner = [...this.contexts.values()].find((context) => this.owns(context, contents))
+      if (owner?.downloads) {
+        owner.downloads.handle(item)
+        return
+      }
+      item.cancel()
+      if (owner) {
+        this.deps.onEvent({ kind: 'download-blocked', contextId: owner.contextId, detail: { suggested: item.getFilename() } })
+      }
+    }
+    profile.on('will-download', onWillDownload)
+    this.stopDownloadRouting = () => {
+      profile.off('will-download', onWillDownload)
+      this.stopDownloadRouting = null
     }
   }
 
@@ -1038,6 +1077,7 @@ export class BrowserRegistry {
 
   disposeAll(): void {
     for (const contextId of [...this.contexts.keys()]) this.disposeContext(contextId)
+    this.stopDownloadRouting?.()
   }
 
   diagnostics(): {

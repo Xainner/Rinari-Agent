@@ -24,6 +24,35 @@ export function windowOpenDecision(details: { url: string; disposition?: string 
   return details.disposition === 'background-tab' ? 'background' : 'foreground'
 }
 
+/**
+ * Pestañas que puede tener un contexto. Electron no trae el bloqueador de
+ * ventanas emergentes de Chrome: sin tope, una página podía abrir pestañas sin
+ * fin con `window.open` en bucle.
+ */
+export const MAX_TABS = 24
+/** Un clic o una tecla del dueño en la página así de reciente cuenta como suyo. */
+export const OWNER_GESTURE_MS = 10_000
+
+/**
+ * Dónde queda la pestaña que abrió una página. Pasa al frente solo si fue el
+ * dueño: tiene el navegador o acaba de usar la página que la abrió. Si no,
+ * se abre detrás. La pestaña activa es a la que va la siguiente orden del
+ * agente sin `target_id`, así que una página que la cambiara por su cuenta
+ * se la quitaría al agente (revisión del #120).
+ */
+export function openedTabPlacement(request: {
+  decision: WindowOpenDecision
+  ownerControls: boolean
+  ownerUsedAt: number
+  now: number
+  openTabs: number
+}): WindowOpenDecision {
+  if (request.decision === 'deny' || request.openTabs >= MAX_TABS) return 'deny'
+  if (request.decision === 'background') return 'background'
+  const ownerGesture = request.ownerUsedAt > 0 && request.now - request.ownerUsedAt <= OWNER_GESTURE_MS
+  return request.ownerControls || ownerGesture ? 'foreground' : 'background'
+}
+
 /** Lo que la barra necesita de una pestaña y el Engine no guarda (`BrowserRegistry.targetStates`). */
 export interface TargetState {
   loading: boolean

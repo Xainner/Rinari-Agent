@@ -399,16 +399,16 @@ export class NativeBrowserHost {
    * (plan 0.4.0 #46). Sin botones: lo toma con solo usarlo, y el Engine se
    * lo devuelve al agente cuando lleva un rato sin tocarlo.
    */
-  ownerInput(context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind): void {
+  ownerInput(context: ContextEntry, entry: TargetEntry, kind: OwnerInputKind): boolean {
     if (kind === 'blur') {
       // No es uso: solo puede soltar un campo a medio rellenar, y solo si el
       // foco se fue a otra parte de Rinari. Cambiar de aplicación también
       // quita el foco a la página, pero el campo sigue a medias.
-      if (this.deps.windowFocused && !this.deps.windowFocused()) return
+      if (this.deps.windowFocused && !this.deps.windowFocused()) return false
       this.reportOwner(context, entry, false)
-      return
+      return false
     }
-    if (!this.ownerOf(context.contextId).observe(kind)) return
+    if (!this.ownerOf(context.contextId).observe(kind)) return false
     const sessionId = context.sessionId
     if (context.control !== 'user' && !this.claiming.has(sessionId) && this.binding) {
       this.claiming.add(sessionId)
@@ -417,6 +417,7 @@ export class NativeBrowserHost {
         .finally(() => this.claiming.delete(sessionId))
     }
     this.reportOwner(context, entry, true)
+    return true
   }
 
   /**

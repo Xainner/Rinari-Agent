@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ClipboardList, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import Markdown from '../../components/Markdown'
+import { FileFromContext } from '../files/FileWorkspace'
 import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent } from '../../services/engine'
 import { useAgencyStore } from '../../stores/agency'
@@ -73,7 +74,10 @@ export function ErrandCard({ errand, names, compact = false, onChanged }: Errand
       )}
       {errand.result?.summary && (errand.status === 'delivered' || errand.status === 'reviewed') && (
         <div className={cn('agency-errand-result', compact && 'is-compact')} data-testid="agency-errand-result">
-          <Markdown>{errand.result.summary}</Markdown>
+          {/* Sus enlaces son de la carpeta del puesto que lo hizo. */}
+          <FileFromContext.Provider value={errand.session_id ?? undefined}>
+            <Markdown>{errand.result.summary}</Markdown>
+          </FileFromContext.Provider>
         </div>
       )}
       {errand.return_reason && (errand.status === 'returned' || errand.status === 'blocked' || errand.status === 'pending') && (

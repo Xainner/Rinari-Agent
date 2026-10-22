@@ -75,8 +75,19 @@ function rehypeMentions(names: string[]) {
  */
 function MessageText({ text, members }: { text: string; members: AgencyAgent[] }) {
   const extension = useMemo<MarkdownExtension>(() => {
-    const names = members.map((agent) => agent.name)
+    // Como el Engine: el nombre completo o el comienzo, en palabras enteras, del
+    // nombre de un solo compañero («@Operator» es «Operator de MetaTrader»).
     const byName = new Map(members.map((agent) => [agent.name.toLowerCase(), agent]))
+    const starts = new Map<string, AgencyAgent[]>()
+    for (const agent of members) {
+      const words = agent.name.split(/\s+/)
+      for (let n = 1; n < words.length; n++) {
+        const key = words.slice(0, n).join(' ').toLowerCase()
+        starts.set(key, [...(starts.get(key) ?? []), agent])
+      }
+    }
+    for (const [key, owners] of starts) if (owners.length === 1 && !byName.has(key)) byName.set(key, owners[0])
+    const names = [...byName.keys()]
     return {
       rehypePlugins: [rehypeMentions(names)],
       components: {

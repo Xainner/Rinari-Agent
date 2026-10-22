@@ -19,6 +19,7 @@ import type { AttachmentRef, Language } from '../types'
 import type {
   AgencyAgent,
   AgencyAgentInput,
+  AgencyAgentSession,
   AgencySettingsData,
   AgencyStatus,
   AgencyTeam,
@@ -28,6 +29,7 @@ import type {
   ErrandInput,
   ErrandMode,
   OfficeMessage,
+  AgencyTemplateSummary,
   TeamTemplate,
 } from '../features/agency/types'
 import type { MemoryRecord } from '../features/memory/types'
@@ -515,10 +517,19 @@ export interface ScheduledTaskInput {
    */
   target?: 'new_session' | 'this_conversation'
   session_id?: string | null
+  /**
+   * Rinari Agency (`agency_audit_v1`): la regla de un agente entrega su
+   * resultado en la oficina de un equipo o a otro agente; null, en su chat.
+   */
+  deliver_to?: ScheduleDeliverTo | null
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch' | 'target' | 'session_id'>> {
+/** A dónde entrega su resultado la regla de un agente (`agency_audit_v1`). */
+export type ScheduleDeliverTo = { kind: 'office'; team_id: string } | { kind: 'agent'; agent_id: string }
+
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch' | 'target' | 'session_id' | 'deliver_to'>> {
   id: string
+  deliver_to?: ScheduleDeliverTo | null
   target?: ScheduledTaskInput['target']
   session_id?: string | null
   command?: ScheduledCommand | null
@@ -1716,7 +1727,7 @@ export const engineApi = {
       include_archived: options?.includeArchived ?? null,
     }),
   agencyAgent: (agentId: string) =>
-    platform().command<{ agent: AgencyAgent; sessions: SessionSummary[] }>('agency_agent_get', { agent_id: agentId }),
+    platform().command<{ agent: AgencyAgent; sessions: Array<SessionSummary & AgencyAgentSession> }>('agency_agent_get', { agent_id: agentId }),
   agencyCreateAgent: (agent: AgencyAgentInput) =>
     platform().command<{ agent: AgencyAgent }>('agency_agent_create', {
       agent: agent as unknown as Record<string, unknown>,
@@ -1729,6 +1740,16 @@ export const engineApi = {
     }),
   agencyArchiveAgent: (agentId: string) =>
     platform().command<{ agent: AgencyAgent }>('agency_agent_archive', { agent_id: agentId }),
+  // -- agency_audit_v1 (auditoría del 21-oct): en un solo sitio, por si el Engine cambia un nombre.
+  /** Vuelve a la Agency un agente archivado (no vuelve a los equipos de los que salió). */
+  agencyUnarchiveAgent: (agentId: string) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_unarchive', { agent_id: agentId }),
+  /** Equipos listos para empezar (10.4). */
+  agencyTemplates: () =>
+    platform().command<{ templates: AgencyTemplateSummary[] }>('agency_templates_list'),
+  /** Crea el equipo de una plantilla con agentes nuevos; `model`: el de todos ellos (null: el de siempre). */
+  agencyTeamFromTemplate: (templateId: string, model: string | null) =>
+    platform().command<{ team: AgencyTeam; agents: AgencyAgent[] }>('agency_team_from_template', { template_id: templateId, model }),
   agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
   /** «Detener a todos»: corta los turnos de los agentes y pausa sus reglas activas. */
   agencyStopAll: () =>
@@ -1809,6 +1830,9 @@ export const engineApi = {
   /** «Probar» una regla propuesta: responde con un job; el resultado llega como `schedule.rehearsed`. */
   scheduleRehearse: (task: ScheduledTaskInput) =>
     platform().command<{ status: 'started'; job_id: string }>('schedule_rehearse', { task: task as unknown as Record<string, unknown> }),
+  /** Las últimas ejecuciones de una tarea (o regla), la más reciente primero. */
+  scheduleRuns: (taskId: string, limit = 10) =>
+    platform().command<{ runs: ScheduledRun[] }>('schedule_runs', { task_id: taskId, limit }),
   scheduleRunNow: (taskId: string) =>
     platform().command<{ run: ScheduledRun }>('schedule_run_now', { task_id: taskId }),
   /** «Permitir para esta tarea»: por tarea o por la sesión de la ejecución. */

@@ -36,6 +36,11 @@ export interface AgencyAgent {
   reasoning_effort?: AgentEffort | null
   /** El avatar que eligió el dueño (un id de `AGENT_AVATARS`); null: uno fijo por su id. */
   icon?: string | null
+  /**
+   * D-34: un Soul guardado que usa como personalidad; null: solo sus
+   * instrucciones (nunca la personalidad de Rinari). `agency_audit_v1`.
+   */
+  soul_id?: string | null
   /** Su chat directo: una conversación CHAT marcada con su id. */
   session_id: string | null
   created_at: number
@@ -56,6 +61,7 @@ export interface AgencyAgentInput {
   ask_new_destinations?: boolean | null
   reasoning_effort?: AgentEffort | null
   icon?: string | null
+  soul_id?: string | null
 }
 
 /** Los esfuerzos que guarda el Engine para un agente (los de una vuelta). */
@@ -67,6 +73,13 @@ export interface AgencyStatus {
   working: number
   needs_you: number
   agent_ids: { working: string[]; needs_you: string[] }
+  /**
+   * `agency_audit_v1`: las conversaciones que trabajan o esperan (chats
+   * directos y puestos), si la Agency está detenida y lo que espera al dueño.
+   */
+  session_ids?: { working: string[]; needs_you: string[] }
+  stopped?: boolean
+  waiting_for_owner?: { errands: number; chains: number }
 }
 
 /**
@@ -128,6 +141,8 @@ export type OfficeNotice =
   | { kind: 'errand'; title: string }
   | { kind: 'wait'; for: string }
   | { kind: 'delivered'; title: string; to?: string }
+  /** Una cadena cortada (`agency_audit_v1`): por qué, y cuál, para «Continuar». */
+  | { kind: 'stopped'; reason: string; detail?: string; chain_id: string }
 
 /** blocked: no pudo empezar o falló; espera a que el dueño lo reintente. */
 export type ErrandStatus = 'pending' | 'in_progress' | 'delivered' | 'reviewed' | 'returned' | 'blocked' | 'cancelled'
@@ -183,4 +198,22 @@ export interface TeamTemplate {
   budget: AgentBudget
   agents: Partial<AgencyAgentInput>[]
   chief_index: number | null
+}
+
+/** `agency.templates.list` (`agency_audit_v1`): un equipo listo para empezar. */
+export interface AgencyTemplateSummary {
+  id: string
+  name: string
+  purpose: string
+  agents: { name: string; role: string }[]
+}
+
+/** Una conversación de un agente según `agency.agent.get`: su chat, un puesto o una ejecución de una regla. */
+export interface AgencyAgentSession {
+  id: string
+  title?: string | null
+  kind?: 'direct' | 'post' | 'rule_run'
+  team_id?: string | null
+  task_id?: string | null
+  updated_at?: number | string | null
 }

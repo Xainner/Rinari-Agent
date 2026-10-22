@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **330**
-- Respaldados por Engine: **324**
+- Comandos: **333**
+- Respaldados por Engine: **327**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -23,6 +23,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_agent_list` | engine | `agency.agent.list` | `src/services/engine.ts` |
 | `agency_agent_memory_add` | engine | `agency.agent.memory.add` | `src/services/engine.ts` |
 | `agency_agent_memory_list` | engine | `agency.agent.memory.list` | **ninguno** |
+| `agency_agent_unarchive` | engine | `agency.agent.unarchive` | `src/services/engine.ts` |
 | `agency_agent_update` | engine | `agency.agent.update` | `src/services/engine.ts` |
 | `agency_errand_cancel` | engine | `agency.errand.cancel` | `src/services/engine.ts` |
 | `agency_errand_create` | engine | `agency.errand.create` | `src/services/engine.ts` |
@@ -39,6 +40,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_team_archive` | engine | `agency.team.archive` | `src/services/engine.ts` |
 | `agency_team_create` | engine | `agency.team.create` | `src/services/engine.ts` |
 | `agency_team_duplicate` | engine | `agency.team.duplicate` | `src/services/engine.ts` |
+| `agency_team_from_template` | engine | `agency.team.from_template` | **ninguno** |
 | `agency_team_get` | engine | `agency.team.get` | **ninguno** |
 | `agency_team_join` | engine | `agency.team.join` | `src/services/engine.ts` |
 | `agency_team_leave` | engine | `agency.team.leave` | `src/services/engine.ts` |
@@ -47,6 +49,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_team_memory_list` | engine | `agency.team.memory.list` | **ninguno** |
 | `agency_team_template` | engine | `agency.team.template` | `src/services/engine.ts` |
 | `agency_team_update` | engine | `agency.team.update` | `src/services/engine.ts` |
+| `agency_templates_list` | engine | `agency.templates.list` | `src/services/engine.ts` |
 | `agent_config_get` | engine | `agent.config.get` | `src/services/engine.ts` |
 | `agent_config_set` | engine | `agent.config.set` | `src/services/engine.ts` |
 | `agent_list` | engine | `agent.list` | `src/services/engine.ts` |
@@ -226,7 +229,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `schedule_list` | engine | `schedule.list` | **ninguno** |
 | `schedule_rehearse` | engine | `schedule.rehearse` | **ninguno** |
 | `schedule_run_now` | engine | `schedule.run_now` | `src/services/engine.ts` |
-| `schedule_runs` | engine | `schedule.runs` | **ninguno** |
+| `schedule_runs` | engine | `schedule.runs` | `src/services/engine.ts` |
 | `schedule_update` | engine | `schedule.update` | `src/services/engine.ts` |
 | `session_archive` | engine | `session.archive` | `src/services/engine.ts` |
 | `session_checklist_clear` | engine | `session.checklist.clear` | `src/services/engine.ts` |

@@ -8444,6 +8444,73 @@
       "host_effects": []
     },
     {
+      "command": "agency_agent_unarchive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.unarchive",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_templates_list",
+      "module": "agency",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.templates.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_from_template",
+      "module": "agency",
+      "args": [
+        {
+          "name": "template_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "model",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.from_template",
+      "engine_params": [
+        {
+          "key": "template_id",
+          "from": "template_id",
+          "optional": false
+        },
+        {
+          "key": "model",
+          "from": "model",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "documents_capabilities_get",
       "module": "desktop",
       "args": [

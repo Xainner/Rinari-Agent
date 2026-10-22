@@ -84,6 +84,15 @@
       "callers": []
     },
     {
+      "command": "agency_agent_unarchive",
+      "kind": "engine",
+      "method": "agency.agent.unarchive",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "agency_agent_update",
       "kind": "engine",
       "method": "agency.agent.update",
@@ -226,6 +235,13 @@
       ]
     },
     {
+      "command": "agency_team_from_template",
+      "kind": "engine",
+      "method": "agency.team.from_template",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agency_team_get",
       "kind": "engine",
       "method": "agency.team.get",
@@ -288,6 +304,15 @@
       "command": "agency_team_update",
       "kind": "engine",
       "method": "agency.team.update",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_templates_list",
+      "kind": "engine",
+      "method": "agency.templates.list",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -1795,7 +1820,9 @@
       "kind": "engine",
       "method": "schedule.runs",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "schedule_update",
@@ -2772,8 +2799,8 @@
     }
   ],
   "summary": {
-    "commands": 330,
-    "engine_backed": 324,
+    "commands": 333,
+    "engine_backed": 327,
     "host_only": 6,
     "manual_adapters": 8,
     "without_callers": 104

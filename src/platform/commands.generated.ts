@@ -11,6 +11,7 @@ export type DesktopCommand =
   | "agency_agent_list"
   | "agency_agent_memory_add"
   | "agency_agent_memory_list"
+  | "agency_agent_unarchive"
   | "agency_agent_update"
   | "agency_errand_cancel"
   | "agency_errand_create"
@@ -27,6 +28,7 @@ export type DesktopCommand =
   | "agency_team_archive"
   | "agency_team_create"
   | "agency_team_duplicate"
+  | "agency_team_from_template"
   | "agency_team_get"
   | "agency_team_join"
   | "agency_team_leave"
@@ -35,6 +37,7 @@ export type DesktopCommand =
   | "agency_team_memory_list"
   | "agency_team_template"
   | "agency_team_update"
+  | "agency_templates_list"
   | "agent_config_get"
   | "agent_config_set"
   | "agent_list"
@@ -343,6 +346,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_agent_list",
   "agency_agent_memory_add",
   "agency_agent_memory_list",
+  "agency_agent_unarchive",
   "agency_agent_update",
   "agency_errand_cancel",
   "agency_errand_create",
@@ -359,6 +363,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_team_archive",
   "agency_team_create",
   "agency_team_duplicate",
+  "agency_team_from_template",
   "agency_team_get",
   "agency_team_join",
   "agency_team_leave",
@@ -367,6 +372,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_team_memory_list",
   "agency_team_template",
   "agency_team_update",
+  "agency_templates_list",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -695,6 +701,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_agent_list",
   "agency_agent_memory_add",
   "agency_agent_memory_list",
+  "agency_agent_unarchive",
   "agency_agent_update",
   "agency_errand_cancel",
   "agency_errand_create",
@@ -711,6 +718,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_team_archive",
   "agency_team_create",
   "agency_team_duplicate",
+  "agency_team_from_template",
   "agency_team_get",
   "agency_team_join",
   "agency_team_leave",
@@ -719,6 +727,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_team_memory_list",
   "agency_team_template",
   "agency_team_update",
+  "agency_templates_list",
   "agent_config_get",
   "agent_config_set",
   "agent_list",

@@ -256,6 +256,9 @@ export const en: Record<I18nKey, string> = {
 
   'sidebar.newChat': 'New conversation',
   'sidebar.copySessionId': 'Copy session ID',
+  'agency.menu.copyTeamId': 'Copy team ID',
+  'agency.menu.teamIdCopied': 'Team ID copied',
+  'agency.menu.teamIdCopyFailed': 'Could not copy the team ID',
   'sidebar.sessionIdCopied': 'Session ID copied',
   'sidebar.sessionIdCopyFailed': 'Could not copy the session ID',
   'sidebar.copySessionReference': 'Copy reference',

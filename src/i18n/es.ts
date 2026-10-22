@@ -259,6 +259,9 @@ export const es = {
   /* Sidebar */
   'sidebar.newChat': 'Nueva conversación',
   'sidebar.copySessionId': 'Copiar ID de sesión',
+  'agency.menu.copyTeamId': 'Copiar ID del equipo',
+  'agency.menu.teamIdCopied': 'ID del equipo copiado',
+  'agency.menu.teamIdCopyFailed': 'No se pudo copiar el ID del equipo',
   'sidebar.sessionIdCopied': 'ID de sesión copiado',
   'sidebar.sessionIdCopyFailed': 'No se pudo copiar el ID de sesión',
   'sidebar.copySessionReference': 'Copiar referencia',

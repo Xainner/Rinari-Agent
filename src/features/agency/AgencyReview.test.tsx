@@ -5,7 +5,7 @@
 // lo que la Agency le pasa a un agente. Y de la auditoría del 21-oct: la
 // cadena cortada con «Continuar», la Agency detenida, el estado de cada
 // puesto y ningún id crudo a la vista.
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -311,5 +311,26 @@ it('a file link an agent wrote in the office opens with that agent post conversa
   await userEvent.setup().click(link)
   await waitFor(() => expect(sessions.length).toBeGreaterThan(0))
   expect(new Set(sessions)).toEqual(new Set(['post_w']))
+  restore()
+})
+
+it('the office row menu copies the team id', async () => {
+  // Pedir algo sobre un equipo exigía buscar su id a mano (22-oct).
+  const { setPlatformForTests, platform } = await import('../../platform')
+  const { createTestBridge } = await import('../../platform/testBridge')
+  const restore = setPlatformForTests(createTestBridge())
+  const write = vi.spyOn(platform().clipboard, 'writeText').mockResolvedValue(undefined)
+  wrap(
+    <AgencySidebar
+      agents={[agent('w', 'Writer')]} status={null} activeAgentId={null} creating={false}
+      onOpenAgent={() => {}} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}}
+      teams={[team]} onOpenOffice={() => {}} onOpenPost={() => {}} onNewTeam={() => {}}
+    />,
+  )
+  const user = userEvent.setup()
+  const office = screen.getByTestId('agency-team')
+  await user.click(within(office).getAllByTestId('agency-row-menu')[0])
+  await user.click(await screen.findByText('Copiar ID del equipo'))
+  await waitFor(() => expect(write).toHaveBeenCalledWith('team_1'))
   restore()
 })

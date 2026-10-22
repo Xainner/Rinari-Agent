@@ -167,6 +167,10 @@ export default function AgencySidebar({
     if (!sessionId) return
     void copyText(sessionId).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
   }
+  // El id del equipo, para pedir algo sobre él sin buscarlo (22-oct).
+  const copyTeam = (teamId: string) => {
+    void copyText(teamId).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'agency.menu.teamIdCopied' : 'agency.menu.teamIdCopyFailed')))
+  }
   const agentActions = (agentId: string, sessionId: string | null | undefined): RowAction[] => [
     ...(onAgentCard ? [{ key: 'card', icon: <IdCard size={13} />, label: t('agency.menu.card'), onSelect: () => onAgentCard(agentId) }] : []),
     ...(onOpenSettings ? [{ key: 'settings', icon: <Settings2 size={13} />, label: t('agency.menu.settings'), onSelect: () => onOpenSettings(agentId, null) }] : []),
@@ -176,6 +180,7 @@ export default function AgencySidebar({
     ...(onTeamCard ? [{ key: 'card', icon: <IdCard size={13} />, label: t('agency.menu.teamCard'), onSelect: () => onTeamCard(team) }] : []),
     ...(onEditTeam ? [{ key: 'edit', icon: <Pencil size={13} />, label: t('agency.team.card.edit'), onSelect: () => onEditTeam(team) }] : []),
     ...(onOpenSettings ? [{ key: 'settings', icon: <Settings2 size={13} />, label: t('agency.menu.settings'), onSelect: () => onOpenSettings(null, team.id) }] : []),
+    { key: 'copy', icon: <Copy size={13} />, label: t('agency.menu.copyTeamId'), onSelect: () => copyTeam(team.id), separatorBefore: true },
   ]
   // En el cajón móvil la barra va siempre expandida, como la de Rinari.
   const mobileOpen = useUIStore((state) => state.sidebarOpen)

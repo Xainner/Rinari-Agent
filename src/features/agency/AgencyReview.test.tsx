@@ -29,6 +29,7 @@ const api = {
   agencyTeam: vi.fn(async () => ({ team: null, errands: [], messages: officeMessages })),
   agencyOfficePost: vi.fn(() => new Promise(() => {})),
   attachmentPreview: vi.fn(async () => ({ data_url: 'data:image/png;base64,AA==' })),
+  artifactRead: vi.fn(async () => ({ text: '# Registro XAUUSDm\nNo se abrió operación.', truncated: false })),
 }
 let officeMessages: OfficeMessage[] = []
 vi.mock('../../services/engine', () => ({
@@ -38,6 +39,7 @@ vi.mock('../../services/engine', () => ({
     return () => listeners.delete(listener)
   }),
   commandMessage: String,
+  isCommandError: (error: unknown) => Boolean(error && typeof error === 'object' && 'code' in error),
 }))
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }) }))
 vi.mock('../engine/EngineContext', () => ({
@@ -265,4 +267,49 @@ it('what a post presents shows in the office as its file cards, not as a line of
   expect(card.textContent).toContain('El personaje')
   expect(card.textContent).toContain('zorro.mp4')
   expect(screen.queryByText('zorro.png, zorro.mp4')).toBeNull()
+})
+
+it('a text file presented in the office shows its first lines from the store, by its URI', async () => {
+  // The registro's card stayed blank: its preview read through the office,
+  // which is no conversation.
+  officeMessages = [
+    {
+      id: 'm1', team_id: 'team_1', author_kind: 'agent', agent_id: 'w', text: 'registro.md', mentions: [], errand_id: null, chain_id: 'c', hop: 1, created_at: 1, system: true,
+      notice: { kind: 'files', items: [{ uri: 'artifact://ses_w/media/registro.md', name: 'registro.md', kind: 'markdown' }] },
+    },
+  ]
+  const observers: IntersectionObserverCallback[] = []
+  ;(window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = class {
+    constructor(callback: IntersectionObserverCallback) { observers.push(callback) }
+    observe(target: Element) { for (const callback of observers) callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this as unknown as IntersectionObserver) }
+    unobserve() {}
+    disconnect() {}
+  }
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
+  await waitFor(() => expect(api.artifactRead).toHaveBeenCalledWith('artifact://ses_w/media/registro.md', 16 * 1024))
+  expect(await screen.findByText(/No se abrió operación/)).toBeTruthy()
+})
+
+it('a file link an agent wrote in the office opens with that agent post conversation', async () => {
+  // «Registro de revisión» enlazaba registro.md, relativo a la carpeta del
+  // Operator: la app lo buscaba en la oficina y decía «Session not found».
+  const { FileWorkspaceProvider } = await import('../files/FileWorkspace')
+  const { setPlatformForTests, platform } = await import('../../platform')
+  const { createTestBridge } = await import('../../platform/testBridge')
+  const restore = setPlatformForTests(createTestBridge())
+  const { desktopApi } = await import('../../services/desktop')
+  const sessions: string[] = []
+  const preview = { path: 'registro.md', name: 'registro.md', language: 'md', content: '# Registro', size: 10 }
+  vi.spyOn(platform().files, 'media').mockImplementation(async (request) => { sessions.push(request.session_id); return { kind: 'text', path: 'registro.md', name: 'registro.md', size: 10 } as never })
+  vi.spyOn(desktopApi, 'watchFile').mockImplementation(async (session: string) => { sessions.push(session); return { watch_id: 'w1', preview } as never })
+  vi.spyOn(desktopApi, 'readFile').mockImplementation(async (session: string) => { sessions.push(session); return preview as never })
+  officeMessages = [
+    { id: 'm1', team_id: 'team_1', author_kind: 'agent', agent_id: 'w', text: 'Ver [Registro](registro.md)', mentions: [], errand_id: null, chain_id: 'c', hop: 1, created_at: 1 },
+  ]
+  wrap(<FileWorkspaceProvider sessionId="office:team_1"><OfficeView team={team} agents={[agent('w', 'Writer')]} /></FileWorkspaceProvider>)
+  const link = await screen.findByRole('link', { name: 'Registro' })
+  await userEvent.setup().click(link)
+  await waitFor(() => expect(sessions.length).toBeGreaterThan(0))
+  expect(new Set(sessions)).toEqual(new Set(['post_w']))
+  restore()
 })

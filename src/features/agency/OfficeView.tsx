@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils'
 import { commandMessage, engineApi } from '../../services/engine'
 import { ErrandCard, useTeamEvents } from './Board'
 import { PresentedFiles } from '../activity/PresentedFiles'
+import { FileFromContext } from '../files/FileWorkspace'
 import AgentAvatar from './AgentAvatar'
 import { openErrand } from './OfficePanels'
 import { useAgencyData } from './AgencyData'
@@ -287,7 +288,10 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
                                 : t('agency.office.notice.delivered', { title: message.notice.title })}
                             </p>
                           )}
-                          <MessageText text={message.text} members={members} />
+                          {/* Sus enlaces a archivos son de su puesto: se abren con esa conversación. */}
+                          <FileFromContext.Provider value={team.posts.find((post) => post.agent_id === message.agent_id)?.session_id}>
+                            <MessageText text={message.text} members={members} />
+                          </FileFromContext.Provider>
                         </>
                       )}
                       {errand && <ErrandCard errand={errand} names={names} onChanged={() => void reload()} />}

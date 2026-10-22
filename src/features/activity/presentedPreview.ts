@@ -1,5 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react'
 import { desktopApi } from '../../services/desktop'
+import { engineApi } from '../../services/engine'
 import { platform } from '../../platform'
 import { ACTIVE_JOB, documentsApi, type DocumentJob } from '../documents/documentsApi'
 
@@ -54,8 +55,14 @@ const heads = new Map<string, Promise<string>>()
 
 /** The first lines of a text file the Engine can read (CSV, Markdown, code). */
 export function useTextHead(sessionId: string | null, path: string | undefined, turnId: string | undefined, enabled: boolean): Loaded<string> {
-  const key = enabled && sessionId && path ? `${sessionId}|${turnId ?? ''}|${path}` : null
-  return useLoaded(key, () => remembered(heads, key!, () => desktopApi.readFile(sessionId!, path!, turnId).then((file) => file.content.slice(0, 4000))))
+  // Un archivo guardado se lee del almacén por su URI, sin pasar por una
+  // conversación (en la oficina de un equipo no hay ninguna).
+  const stored = Boolean(path?.startsWith('artifact://'))
+  const key = enabled && path && (stored || sessionId) ? (stored ? path : `${sessionId}|${turnId ?? ''}|${path}`) : null
+  const read = stored
+    ? () => engineApi.artifactRead(path!, 16 * 1024).then((result) => result.text.slice(0, 4000))
+    : () => desktopApi.readFile(sessionId!, path!, turnId).then((file) => file.content.slice(0, 4000))
+  return useLoaded(key, () => remembered(heads, key!, read))
 }
 
 /** The first rows of a CSV or TSV, quotes included; at most `rows` × `cols`. */

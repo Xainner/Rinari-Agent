@@ -242,7 +242,7 @@ function PageThumb(context: TileContext) {
 function SheetThumb(context: TileContext) {
   const { file, near, files, turnId, open } = context
   const { t } = useI18n()
-  const head = useTextHead(files?.sessionId ?? null, file.path, turnId, near)
+  const head = useTextHead(files?.sessionId ?? null, file.path ?? file.uri, turnId, near)
   if (head.failed) return <IconThumb {...context} />
   const rows = head.value !== undefined ? parseDelimited(head.value, /\.tsv$/i.test(file.name) ? '\t' : ',') : null
   const width = rows ? Math.max(0, ...rows.map((row) => row.length)) : 0
@@ -264,7 +264,7 @@ function SheetThumb(context: TileContext) {
 function TextThumb(context: TileContext) {
   const { file, near, files, turnId, open } = context
   const { t } = useI18n()
-  const head = useTextHead(files?.sessionId ?? null, file.path, turnId, near)
+  const head = useTextHead(files?.sessionId ?? null, file.path ?? file.uri, turnId, near)
   if (head.failed) return <IconThumb {...context} />
   const lines = head.value !== undefined ? head.value.split(/\r?\n/).slice(0, 8).join('\n') : null
   return (

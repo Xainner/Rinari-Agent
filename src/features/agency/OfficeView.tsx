@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowUp, OctagonPause, Play, PauseCircle } from 'lucide-react'
+import { ArrowUp, OctagonPause, Play, PauseCircle, Workflow } from 'lucide-react'
 import Markdown, { type MarkdownExtension } from '../../components/Markdown'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -110,6 +110,38 @@ function MessageText({ text, members }: { text: string; members: AgencyAgent[] }
   return (
     <div className="agency-office-text">
       <Markdown extension={extension}>{text}</Markdown>
+    </div>
+  )
+}
+
+/**
+ * Un flujo del equipo en la oficina (replanteo, fase 3): empezó, pasa a un
+ * paso o terminó. Al terminar, lo que entregó cada paso va plegado debajo: el
+ * primer párrafo del texto es el aviso para quien lo reporta (en inglés, para
+ * el modelo) y la app lo dice en su idioma.
+ */
+function FlowNotice({ message, members }: { message: OfficeMessage; members: AgencyAgent[] }) {
+  const { t } = useI18n()
+  const notice = message.notice?.kind === 'flow' ? message.notice : null
+  if (!notice) return null
+  const title = notice.state === 'started'
+    ? t('agency.office.flow.started', { flow: notice.flow })
+    : notice.state === 'step'
+      ? t('agency.office.flow.step', { flow: notice.flow, step: notice.step ?? '' })
+      : t('agency.office.flow.done', { flow: notice.flow })
+  const outputs = notice.state === 'done' ? message.text.split('\n\n').slice(1).join('\n\n').trim() : ''
+  return (
+    <div className="agency-office-flow" role="note" data-testid="agency-flow-notice" data-state={notice.state}>
+      <span className="agency-office-flow-icon" aria-hidden="true"><Workflow size={14} /></span>
+      <div className="min-w-0 flex-1">
+        <p className="agency-office-flow-title">{title}</p>
+        {outputs && (
+          <details className="agency-office-flow-outputs">
+            <summary>{t('agency.office.flow.outputs')}</summary>
+            <MessageText text={outputs} members={members} />
+          </details>
+        )}
+      </div>
     </div>
   )
 }
@@ -254,6 +286,7 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
             ) : (
               messages.map((message) => {
                 if (message.notice?.kind === 'stopped') return <ChainStopped key={message.id} message={message} messages={messages} team={team} />
+                if (message.notice?.kind === 'flow') return <FlowNotice key={message.id} message={message} members={members} />
                 const agent = message.author_kind === 'agent' ? byId.get(message.agent_id ?? '') ?? null : null
                 // A name, never a raw id: an agent that left says so.
                 const author = message.author_kind === 'owner' ? t('agency.office.you') : agent?.name ?? t('agency.agent.gone')

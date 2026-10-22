@@ -39,6 +39,7 @@ import { DOCK_VIEW_ICONS, DOCK_VIEW_LABELS } from './dockViews'
 import RulesView from '../agency/RulesView'
 import { BoardPanel, PostBoard } from '../agency/Board'
 import { ErrandPanel, TeamPanel } from '../agency/OfficePanels'
+import { TeamWorkPanel } from '../agency/TeamWork'
 import { teamIdOfDockKey } from '../agency/AgencyData'
 
 export interface SessionDockProps {
@@ -547,6 +548,10 @@ function DockViewBody({ view, sessionId, session, sharedRoot, browser, busy, ter
     case 'errand': {
       const office = teamIdOfDockKey(sessionId)
       return office ? <ErrandPanel teamId={office} /> : null
+    }
+    case 'work': {
+      const office = teamIdOfDockKey(sessionId)
+      return office ? <TeamWorkPanel teamId={office} /> : null
     }
     case 'team': {
       const office = teamIdOfDockKey(sessionId)

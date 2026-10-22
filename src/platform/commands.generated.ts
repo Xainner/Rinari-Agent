@@ -19,9 +19,16 @@ export type DesktopCommand =
   | "agency_errand_list"
   | "agency_errand_retry"
   | "agency_errand_review"
+  | "agency_flow_delete"
+  | "agency_flow_list"
+  | "agency_flow_run_cancel"
+  | "agency_flow_save"
+  | "agency_flow_start"
   | "agency_office_list"
   | "agency_office_post"
   | "agency_resume"
+  | "agency_routine_create"
+  | "agency_routine_list"
   | "agency_settings_get"
   | "agency_settings_set"
   | "agency_status"
@@ -37,6 +44,7 @@ export type DesktopCommand =
   | "agency_team_list"
   | "agency_team_memory_add"
   | "agency_team_memory_list"
+  | "agency_team_overview"
   | "agency_team_resume"
   | "agency_team_stop"
   | "agency_team_template"
@@ -359,9 +367,16 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_errand_list",
   "agency_errand_retry",
   "agency_errand_review",
+  "agency_flow_delete",
+  "agency_flow_list",
+  "agency_flow_run_cancel",
+  "agency_flow_save",
+  "agency_flow_start",
   "agency_office_list",
   "agency_office_post",
   "agency_resume",
+  "agency_routine_create",
+  "agency_routine_list",
   "agency_settings_get",
   "agency_settings_set",
   "agency_status",
@@ -377,6 +392,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "agency_team_list",
   "agency_team_memory_add",
   "agency_team_memory_list",
+  "agency_team_overview",
   "agency_team_resume",
   "agency_team_stop",
   "agency_team_template",
@@ -719,9 +735,16 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_errand_list",
   "agency_errand_retry",
   "agency_errand_review",
+  "agency_flow_delete",
+  "agency_flow_list",
+  "agency_flow_run_cancel",
+  "agency_flow_save",
+  "agency_flow_start",
   "agency_office_list",
   "agency_office_post",
   "agency_resume",
+  "agency_routine_create",
+  "agency_routine_list",
   "agency_settings_get",
   "agency_settings_set",
   "agency_status",
@@ -737,6 +760,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "agency_team_list",
   "agency_team_memory_add",
   "agency_team_memory_list",
+  "agency_team_overview",
   "agency_team_resume",
   "agency_team_stop",
   "agency_team_template",

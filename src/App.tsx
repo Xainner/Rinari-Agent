@@ -1065,7 +1065,7 @@ function App() {
             sidebarCollapsed={sidebarCollapsed}
             dockViews={agencyMain && agencyPage.kind === 'office' && activeTeam ? (
               // La oficina usa el panel lateral de una conversación, con solo sus vistas.
-              <DockViewButtons key={officeDockKey(activeTeam.id)} sessionId={officeDockKey(activeTeam.id)} terminalEnabled={false} onlyViews={['errand', 'board', 'team']} />
+              <DockViewButtons key={officeDockKey(activeTeam.id)} sessionId={officeDockKey(activeTeam.id)} terminalEnabled={false} onlyViews={['errand', 'board', 'work', 'team']} />
             ) : dockButtonsSessionId && !agencyMain ? (
               <DockViewButtons
                 key={dockButtonsSessionId}

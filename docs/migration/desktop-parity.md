@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **338**
-- Respaldados por Engine: **332**
+- Comandos: **346**
+- Respaldados por Engine: **340**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -31,9 +31,16 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_errand_list` | engine | `agency.errand.list` | `src/services/engine.ts` |
 | `agency_errand_retry` | engine | `agency.errand.retry` | `src/services/engine.ts` |
 | `agency_errand_review` | engine | `agency.errand.review` | `src/services/engine.ts` |
+| `agency_flow_delete` | engine | `agency.flow.delete` | `src/services/engine.ts` |
+| `agency_flow_list` | engine | `agency.flow.list` | **ninguno** |
+| `agency_flow_run_cancel` | engine | `agency.flow.run.cancel` | `src/services/engine.ts` |
+| `agency_flow_save` | engine | `agency.flow.save` | `src/services/engine.ts` |
+| `agency_flow_start` | engine | `agency.flow.start` | `src/services/engine.ts` |
 | `agency_office_list` | engine | `agency.office.list` | `src/services/engine.ts` |
 | `agency_office_post` | engine | `agency.office.post` | `src/services/engine.ts` |
-| `agency_resume` | engine | `agency.resume` | `src/services/engine.ts` |
+| `agency_resume` | engine | `agency.resume` | **ninguno** |
+| `agency_routine_create` | engine | `agency.routine.create` | `src/services/engine.ts` |
+| `agency_routine_list` | engine | `agency.routine.list` | `src/services/engine.ts` |
 | `agency_settings_get` | engine | `agency.settings.get` | `src/services/engine.ts` |
 | `agency_settings_set` | engine | `agency.settings.set` | `src/services/engine.ts` |
 | `agency_status` | engine | `agency.status` | `src/services/engine.ts` |
@@ -49,6 +56,7 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_team_list` | engine | `agency.team.list` | `src/services/engine.ts` |
 | `agency_team_memory_add` | engine | `agency.team.memory.add` | `src/services/engine.ts` |
 | `agency_team_memory_list` | engine | `agency.team.memory.list` | **ninguno** |
+| `agency_team_overview` | engine | `agency.team.overview` | `src/services/engine.ts` |
 | `agency_team_resume` | engine | `agency.team.resume` | **ninguno** |
 | `agency_team_stop` | engine | `agency.team.stop` | **ninguno** |
 | `agency_team_template` | engine | `agency.team.template` | `src/services/engine.ts` |

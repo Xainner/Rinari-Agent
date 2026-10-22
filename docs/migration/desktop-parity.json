@@ -154,6 +154,49 @@
       ]
     },
     {
+      "command": "agency_flow_delete",
+      "kind": "engine",
+      "method": "agency.flow.delete",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_list",
+      "kind": "engine",
+      "method": "agency.flow.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_flow_run_cancel",
+      "kind": "engine",
+      "method": "agency.flow.run.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_save",
+      "kind": "engine",
+      "method": "agency.flow.save",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_start",
+      "kind": "engine",
+      "method": "agency.flow.start",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "agency_office_list",
       "kind": "engine",
       "method": "agency.office.list",
@@ -175,6 +218,22 @@
       "command": "agency_resume",
       "kind": "engine",
       "method": "agency.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_routine_create",
+      "kind": "engine",
+      "method": "agency.routine.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_routine_list",
+      "kind": "engine",
+      "method": "agency.routine.list",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -302,6 +361,15 @@
       "method": "agency.team.memory.list",
       "manual": false,
       "callers": []
+    },
+    {
+      "command": "agency_team_overview",
+      "kind": "engine",
+      "method": "agency.team.overview",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "agency_team_resume",
@@ -2830,10 +2898,10 @@
     }
   ],
   "summary": {
-    "commands": 338,
-    "engine_backed": 332,
+    "commands": 346,
+    "engine_backed": 340,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 111
+    "without_callers": 113
   }
 }

@@ -31,6 +31,11 @@ import type {
   OfficeMessage,
   AgencyTemplateSummary,
   TeamTemplate,
+  AgencyFlow,
+  FlowInput,
+  FlowRun,
+  TeamOverview,
+  TeamRoutine,
 } from '../features/agency/types'
 import type { MemoryRecord } from '../features/memory/types'
 
@@ -1812,6 +1817,30 @@ export const engineApi = {
   /** Solo un equipo archivado: se lleva sus conversaciones, reglas y memoria. */
   agencyDeleteTeam: (teamId: string) =>
     platform().command<{ deleted: string; deleted_sessions: number; deleted_rules: number }>('agency_team_delete', { team_id: teamId }),
+  /** El equipo en una llamada (fase 4): miembros, rutinas, flujos, pizarra, actividad y gasto. */
+  agencyTeamOverview: (teamId: string) =>
+    platform().command<TeamOverview>('agency_team_overview', { team_id: teamId }),
+  agencyRoutines: (teamId: string) =>
+    platform().command<{ routines: TeamRoutine[] }>('agency_routine_list', { team_id: teamId }),
+  /** Una rutina de un agente en su puesto; el mismo nombre otra vez la actualiza. */
+  agencyCreateRoutine: (teamId: string, agentId: string, name: string, schedule: ScheduleSpec, prompt: string) =>
+    platform().command<{ routine: TeamRoutine }>('agency_routine_create', {
+      team_id: teamId,
+      agent_id: agentId,
+      name,
+      schedule: schedule as unknown as Record<string, unknown>,
+      prompt,
+    }),
+  agencyFlows: (teamId: string) =>
+    platform().command<{ flows: AgencyFlow[]; runs: FlowRun[] }>('agency_flow_list', { team_id: teamId }),
+  agencySaveFlow: (teamId: string, flow: FlowInput) =>
+    platform().command<{ flow: AgencyFlow }>('agency_flow_save', { team_id: teamId, flow: flow as unknown as Record<string, unknown> }),
+  agencyDeleteFlow: (flowId: string) =>
+    platform().command<{ deleted: string }>('agency_flow_delete', { flow_id: flowId }),
+  agencyStartFlow: (teamId: string, flowId: string, input: string) =>
+    platform().command<{ run: FlowRun }>('agency_flow_start', { team_id: teamId, flow_id: flowId, input: input || null }),
+  agencyCancelFlowRun: (runId: string) =>
+    platform().command<{ run: FlowRun }>('agency_flow_run_cancel', { run_id: runId }),
   agencyJoinTeam: (teamId: string, agentId: string) =>
     platform().command<{ team: AgencyTeam }>('agency_team_join', { team_id: teamId, agent_id: agentId }),
   agencyLeaveTeam: (teamId: string, agentId: string) =>

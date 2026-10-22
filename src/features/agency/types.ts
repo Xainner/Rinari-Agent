@@ -5,6 +5,7 @@
  */
 
 import type { PresentedFile } from '../activity/types'
+import type { ScheduleSpec, ScheduledRunStatus } from '../../services/engine'
 
 export type AgentPermissionProfile = 'read-only' | 'workspace' | 'full-access'
 
@@ -110,6 +111,8 @@ export interface AgencyTeam {
   archived_at: number | null
   /** El dueño detuvo este equipo solo («Detener equipo»); lo dice `agency.team.list`. */
   stopped?: boolean
+  /** Cómo trabaja el equipo, escrito por el dueño: cada puesto lo lee (`agency_team_work_v1`). */
+  manual?: string
 }
 
 export interface AgencyTeamInput {
@@ -120,12 +123,14 @@ export interface AgencyTeamInput {
   budget?: AgentBudget
   /** Solo al crear; después se entra y se sale con join y leave. */
   members?: string[]
+  manual?: string
 }
 
 export interface OfficeMessage {
   id: string
   team_id: string
-  author_kind: 'owner' | 'agent'
+  /** system: lo publica el Engine (un flujo que avanza o termina), nunca el dueño. */
+  author_kind: 'owner' | 'agent' | 'system'
   agent_id: string | null
   text: string
   mentions: string[]
@@ -149,6 +154,8 @@ export type OfficeNotice =
   | { kind: 'stopped'; reason: string; detail?: string; chain_id: string }
   /** Lo que un puesto mostró con `file.present`, abierto por su URI (nunca una ruta). */
   | { kind: 'files'; items: PresentedFile[] }
+  /** Un flujo del equipo: empezó, pasa a un paso o terminó (con lo que entregó cada paso). */
+  | { kind: 'flow'; state: 'started' | 'step' | 'done'; flow: string; step?: string; run_id: string }
 
 /** blocked: no pudo empezar o falló; espera a que el dueño lo reintente. */
 export type ErrandStatus = 'pending' | 'in_progress' | 'delivered' | 'reviewed' | 'returned' | 'blocked' | 'cancelled'
@@ -222,4 +229,82 @@ export interface AgencyAgentSession {
   team_id?: string | null
   task_id?: string | null
   updated_at?: number | string | null
+}
+
+// -- Cómo trabaja un equipo solo (replanteo 22-oct, fases 2 a 4; `agency_team_work_v1`) --
+
+/** Una rutina: una regla de un agente que corre en su puesto de este equipo. */
+export interface TeamRoutine {
+  id: string
+  name: string
+  agent_id: string | null
+  agent: string | null
+  schedule: ScheduleSpec
+  prompt: string
+  enabled: boolean
+  paused_by: string | null
+  next_run_at: number | null
+  last: { status: ScheduledRunStatus; finished_at: number | null; summary: string; session_id: string | null } | null
+}
+
+/** Quién acepta lo que entrega un paso antes de que empiece el siguiente. */
+export type FlowApproval = 'auto' | 'chief' | 'owner'
+
+export interface FlowStep {
+  name: string
+  agents: string[]
+  /** Los nombres de `agents`, en el mismo orden (los da el Engine). */
+  agent_names?: string[]
+  instructions: string
+  approval: FlowApproval
+}
+
+export interface AgencyFlow {
+  id: string
+  team_id: string
+  name: string
+  description: string
+  steps: FlowStep[]
+  created_at: number
+  updated_at: number
+}
+
+export interface FlowInput {
+  id?: string
+  name: string
+  description?: string
+  steps: Array<Pick<FlowStep, 'name' | 'agents' | 'instructions' | 'approval'>>
+}
+
+export interface FlowRun {
+  id: string
+  flow_id: string
+  team_id: string
+  status: 'running' | 'done' | 'cancelled'
+  step: number
+  input: string
+  outputs: Array<{ step: number; agent_id: string | null; errand_id: string; summary: string }>
+  started_by: string | null
+  created_at: number
+  updated_at: number
+  finished_at: number | null
+  /** Nombre del flujo, cuántos pasos tiene y el paso en el que va. */
+  flow: string | null
+  steps: number
+  step_name: string | null
+}
+
+export interface TeamOverview {
+  team: AgencyTeam & { stopped: boolean }
+  routines: TeamRoutine[]
+  flows: AgencyFlow[]
+  runs: FlowRun[]
+  /** Recados de la pizarra por estado. */
+  errands: Partial<Record<ErrandStatus, number>>
+  activity: Array<{ id: string; at: number; kind: string; line: string; errand_id: string | null }>
+  spend: {
+    today: AgentSpend
+    week: AgentSpend
+    agents: Array<{ agent_id: string; name: string; today: AgentSpend; week: AgentSpend }>
+  }
 }

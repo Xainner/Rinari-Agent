@@ -11,8 +11,9 @@ import { ConnectorLogo } from '../connectors/ConnectorLogo'
 import AgentAvatar from './AgentAvatar'
 import { officeDockKey, useAgencyData } from './AgencyData'
 import { useConnectorDirectory } from './useConnectorDirectory'
+import { useTeamOverview } from './TeamWork'
 import { postState } from './postState'
-import type { AgencyAgent } from './types'
+import type { AgencyAgent, AgentSpend } from './types'
 
 const NOBODY = '__chief__'
 
@@ -146,7 +147,15 @@ export function TeamPanel({ teamId }: { teamId: string }) {
   const count = new Intl.NumberFormat(locale)
   const { team, members, status } = useTeamMembers(teamId)
   const { byName } = useConnectorDirectory()
+  // Gasto de hoy y de 7 días, y la pizarra en cifras (replanteo, fase 4).
+  const { overview } = useTeamOverview(teamId)
   if (!team) return null
+  const spent = (spend: AgentSpend) => [
+    spend.cost_usd !== null ? usd.format(spend.cost_usd) : null,
+    t('agency.team.card.tokensUsed', { value: count.format(spend.tokens) }),
+  ].filter(Boolean).join(' · ')
+  const board = overview?.errands ?? {}
+  const open = (board.pending ?? 0) + (board.in_progress ?? 0) + (board.returned ?? 0)
   const budget = [
     team.budget.daily_usd ? t('agency.team.card.usd', { value: usd.format(team.budget.daily_usd) }) : null,
     team.budget.daily_tokens ? t('agency.team.card.tokens', { value: count.format(team.budget.daily_tokens) }) : null,
@@ -200,10 +209,36 @@ export function TeamPanel({ teamId }: { teamId: string }) {
             </ul>
           )}
         </section>
-        <section className="office-panel-section">
+        <section className="office-panel-section" data-testid="agency-team-spend">
           <h3>{t('agency.team.card.budget')}</h3>
           <p className="office-panel-line"><Wallet size={13} aria-hidden="true" />{budget || t('agency.team.card.noBudget')}</p>
+          {overview && (
+            <dl className="agency-spend">
+              <div>
+                <dt>{t('agency.team.card.today')}</dt>
+                <dd>
+                  {spent(overview.spend.today)}
+                  {overview.spend.today.over_budget && <span className="r-chip ml-2" data-tone="warning">{t('agency.team.card.over')}</span>}
+                </dd>
+              </div>
+              <div><dt>{t('agency.team.card.week')}</dt><dd>{spent(overview.spend.week)}</dd></div>
+              {overview.spend.agents.filter((row) => row.week.tokens > 0).map((row) => (
+                <div key={row.agent_id} className="is-agent">
+                  <dt className="truncate">{row.name}</dt>
+                  <dd>{t('agency.team.card.agentSpend', { today: spent(row.today), week: spent(row.week) })}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </section>
+        {overview && (
+          <section className="office-panel-section" data-testid="agency-team-board-counts">
+            <h3>{t('dock.view.board')}</h3>
+            <p className="office-panel-line">
+              {t('agency.team.card.board', { open, delivered: board.delivered ?? 0, blocked: board.blocked ?? 0 })}
+            </p>
+          </section>
+        )}
       </div>
       <footer className="office-panel-foot">
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => useAgencyStore.getState().editTeam(team.id)} data-testid="agency-team-card-edit">

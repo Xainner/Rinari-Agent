@@ -3975,6 +3975,25 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .office-member-list, .office-connector-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .office-member { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; }
 .office-connector { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 6px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; color: var(--text); }
+/* «Trabajo» del equipo: manual, rutinas, flujos y corridas (replanteo, fases 2 a 4). */
+.agency-work-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.agency-work-head h3 { margin: 0; }
+.agency-work-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.agency-work-item { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; }
+.agency-work-item-head { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.agency-work-item-line { margin: 0; font-size: 12px; color: var(--text-subtle); overflow-wrap: anywhere; }
+.agency-work-form { display: grid; gap: 10px; margin-bottom: 10px; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-inset); }
+.agency-flow-steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.agency-flow-step { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-subtle); }
+.agency-flow-step-n { display: grid; width: 22px; height: 22px; flex-shrink: 0; place-items: center; border-radius: 999px; background: var(--bg-active); font-family: var(--font-mono); font-size: 11px; color: var(--accent-2); }
+.agency-flow-agents { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.agency-flow-agent { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); cursor: pointer; }
+.agency-flow-summary { display: grid; gap: 2px; margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-muted); }
+.agency-spend { display: grid; gap: 4px; margin: 8px 0 0; font-size: 12.5px; }
+.agency-spend > div { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 10px; }
+.agency-spend dt { min-width: 0; color: var(--text-subtle); }
+.agency-spend dd { margin: 0; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.agency-spend > .is-agent dt, .agency-spend > .is-agent dd { font-size: 12px; color: var(--text-muted); }
 
 .agency-errand { display: grid; gap: 6px; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line-1); border-left: 2px solid var(--line-3); border-radius: var(--r-sm); background: var(--bg-subtle); font-size: 12.5px; }
 .agency-errand[data-status='in_progress'] { border-left-color: var(--accent-2); }
@@ -4023,6 +4042,12 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-rule-run { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 4px 2px; }
 
 /* Una cadena cortada: una línea fija en el hilo, ámbar y tranquila, con su salida. */
+/* Un flujo que empieza, avanza o termina: una línea del Engine, en violeta tenue. */
+.agency-office-flow { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--accent) 6%, var(--bg-subtle)); }
+.agency-office-flow-icon { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-2); }
+.agency-office-flow-title { margin: 4px 0 0; font-size: 13px; color: var(--text); }
+.agency-office-flow-outputs { margin-top: 6px; font-size: 12.5px; }
+.agency-office-flow-outputs summary { cursor: pointer; color: var(--accent-2); }
 .agency-office-stop { display: flex; align-items: center; gap: 10px; margin: 4px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--warning) 7%, var(--bg-subtle)); }
 .agency-office-stop-icon { display: grid; width: 28px; height: 28px; flex-shrink: 0; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
 .agency-office-stop-title { margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }

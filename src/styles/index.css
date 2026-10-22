@@ -3724,7 +3724,8 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-tour-choice.is-primary .agency-tour-icon { background: var(--grad-brand); color: #fff; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .agency-working-dot { animation: none; } }
 :root[data-motion='reduced'] .agency-working-dot { animation: none; }
-.agency-rules { display: grid; gap: 10px; padding: 12px; }
+/* Arriba: con el panel alto y pocas reglas, la grilla estiraba sus filas (y «Nueva regla» con ellas). */
+.agency-rules { display: grid; align-content: start; gap: 10px; padding: 12px; }
 .agency-rule { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); }
 .agency-rule.is-proposal { border-color: var(--warning); }
 .agency-rule-head { display: flex; min-width: 0; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }

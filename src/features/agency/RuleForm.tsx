@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { MessageSquare, UsersRound } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog'
+import { Select } from '../../components/ui/select'
 import { useI18n, type I18nKey } from '../../i18n'
 import { inputClass, labelClass } from '../../lib/ui'
-import { engineApi, type ScheduleSpec, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
+import { commandMessage, engineApi, type ScheduleDeliverTo, type ScheduleSpec, type ScheduledTask, type ScheduledTaskInput, type ScheduledToolSpec } from '../../services/engine'
 import ScheduleSpecField from '../schedules/ScheduleSpecField'
 import { specProblem } from '../schedules/scheduleModel'
+import AgentAvatar from './AgentAvatar'
+import { useAgencyData } from './AgencyData'
 
 const ON_RESULT: ScheduledToolSpec['on_result'][] = ['notify', 'nothing', 'agent', 'deliver']
 // Los límites con que el Engine valida una regla (`_tool`, `_watch`): lo que
@@ -94,21 +98,41 @@ function ConnectorToolFields({ connectors, server, tool, onServer, onTool, idPre
   )
 }
 
+/** «En su chat» en el selector de entrega: sin destino propio. */
+const OWN_CHAT = 'own'
+
+/** El valor del selector de entrega a partir del destino guardado, y al revés. */
+export function deliverKey(target: ScheduleDeliverTo | null | undefined): string {
+  if (!target) return OWN_CHAT
+  return target.kind === 'office' ? `office:${target.team_id}` : `agent:${target.agent_id}`
+}
+export function deliverTarget(key: string): ScheduleDeliverTo | null {
+  if (key.startsWith('office:')) return { kind: 'office', team_id: key.slice('office:'.length) }
+  if (key.startsWith('agent:')) return { kind: 'agent', agent_id: key.slice('agent:'.length) }
+  return null
+}
+
 interface RuleFormProps {
   agentId: string
   open: boolean
+  /** Con una regla, se edita esa (`schedule.update`); sin ella, «Nueva regla». */
+  rule?: ScheduledTask | null
   onClose: () => void
-  /** La regla queda como propuesta: se prueba y se activa como las del agente. */
-  onAdd: (proposal: ScheduledTaskInput) => boolean
+  /** Guardada en el Engine: creada o cambiada. */
+  onSaved: (task: ScheduledTask, created: boolean) => void
+  /** `agency_audit_v1`: la regla puede entregar en la oficina de un equipo o a otro agente. */
+  deliverEnabled?: boolean
 }
 
 /**
- * «Nueva regla» (Agency): el dueño escribe una regla permanente sin esperar a
- * que el agente la proponga. No se crea aquí: queda en «Reglas» como una
- * propuesta más, con «Probar» y «Activar regla», y la valida el Engine.
+ * «Nueva regla» y «Editar» (Agency): el dueño escribe o cambia una regla
+ * permanente del agente. Se guarda al momento, como las que crea el agente
+ * según su autonomía: no hay una capa de aprobación encima. La valida el
+ * Engine; aquí se avisan antes los límites que comprobaría.
  */
-export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProps) {
+export default function RuleForm({ agentId, open, rule = null, onClose, onSaved, deliverEnabled = false }: RuleFormProps) {
   const { t } = useI18n()
+  const { agents, teams } = useAgencyData()
   const [name, setName] = useState('')
   const [kind, setKind] = useState<'agent' | 'tool'>('tool')
   const [schedule, setSchedule] = useState<ScheduleSpec>({ kind: 'interval', minutes: 60 })
@@ -124,19 +148,34 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
   const [deliverArgs, setDeliverArgs] = useState('{}')
   const [onlyIf, setOnlyIf] = useState('')
   const [maxPerDay, setMaxPerDay] = useState('')
+  const [deliverTo, setDeliverTo] = useState(OWN_CHAT)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   useEffect(() => {
     if (!open) return
-    setName(''); setKind('tool'); setSchedule({ kind: 'interval', minutes: 60 }); setPrompt(''); setWatch('')
-    setServer(''); setTool(''); setArgs('{}'); setOnResult('notify')
-    setDeliverServer(''); setDeliverTool(''); setDeliverArgs('{}'); setOnlyIf(''); setMaxPerDay(''); setError('')
+    // Editing fills the form with the rule as it is; a new one starts empty.
+    const toolSpec = rule?.tool ?? null
+    setName(rule?.name ?? '')
+    setKind(rule?.kind === 'agent' ? 'agent' : 'tool')
+    setSchedule(rule?.schedule ?? { kind: 'interval', minutes: 60 })
+    setPrompt(rule?.prompt ?? '')
+    setWatch(rule?.watch?.path ?? '')
+    setServer(toolSpec?.server ?? ''); setTool(toolSpec?.tool ?? ''); setArgs(JSON.stringify(toolSpec?.arguments ?? {}))
+    setOnResult(toolSpec?.on_result ?? 'notify')
+    setDeliverServer(toolSpec?.deliver?.server ?? ''); setDeliverTool(toolSpec?.deliver?.tool ?? '')
+    setDeliverArgs(JSON.stringify(toolSpec?.deliver?.arguments ?? {}))
+    setOnlyIf(toolSpec?.only_if_contains ?? ''); setMaxPerDay(toolSpec?.max_per_day ? String(toolSpec.max_per_day) : '')
+    setDeliverTo(deliverKey(rule?.deliver_to)); setError('')
+    savingRef.current = false
+    setSaving(false)
     let live = true
     engineApi.agencyAgent(agentId)
       .then((result) => { if (live) setConnectors(result.agent.connectors) })
       .catch(() => { if (live) setConnectors([]) })
     return () => { live = false }
-  }, [open, agentId])
+  }, [open, agentId, rule])
 
   // Cambiar cualquier campo quita el error del intento anterior.
   const edit = <T,>(set: (value: T) => void) => (value: T) => {
@@ -169,13 +208,32 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
     return null
   }
 
-  const add = () => {
+  // Where the result can go: its own chat, the office of a team it works in,
+  // or another agent of the profile. Only where something hands it a result.
+  const handsResult = kind === 'agent' || onResult === 'agent'
+  const deliverOptions = [
+    { value: OWN_CHAT, label: t('agency.rules.deliverTo.own'), icon: <MessageSquare size={14} aria-hidden="true" /> },
+    ...teams.filter((team) => team.members.includes(agentId)).map((team) => ({
+      value: `office:${team.id}`,
+      label: t('agency.rules.deliverTo.office', { name: team.name }),
+      icon: <UsersRound size={14} aria-hidden="true" />,
+    })),
+    ...agents.filter((agent) => agent.id !== agentId && agent.archived_at === null).map((agent) => ({
+      value: `agent:${agent.id}`,
+      label: agent.name,
+      detail: agent.role || undefined,
+      icon: <AgentAvatar agent={agent} size={18} />,
+    })),
+  ]
+
+  const save = async () => {
+    if (savingRef.current) return
     const found = problem()
     if (found) {
       setError(found)
       return
     }
-    const proposal: ScheduledTaskInput = {
+    const input: ScheduledTaskInput = {
       name: name.trim(),
       kind,
       schedule,
@@ -196,19 +254,28 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
             },
           }
         : {}),
+      ...(deliverEnabled ? { deliver_to: handsResult ? deliverTarget(deliverTo) : null } : {}),
     }
-    if (!onAdd(proposal)) {
-      setError(t('agency.rules.alreadyWaiting'))
-      return
+    // A double click created the rule twice (and it then ran twice).
+    savingRef.current = true
+    setSaving(true)
+    try {
+      const result = rule ? await engineApi.scheduleUpdate(rule.id, input) : await engineApi.scheduleCreate(input)
+      // Saved: it stays busy until the dialog closes, so a second click saves nothing.
+      onSaved(result.task, !rule)
+      onClose()
+    } catch (failure) {
+      setError(commandMessage(failure))
+      savingRef.current = false
+      setSaving(false)
     }
-    onClose()
   }
 
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose() }}>
       <DialogContent className="max-w-xl" data-testid="agency-rule-form">
-        <DialogTitle>{t('agency.rules.new')}</DialogTitle>
-        <DialogDescription>{t('agency.rules.newHint')}</DialogDescription>
+        <DialogTitle>{rule ? t('agency.rules.editTitle', { name: rule.name }) : t('agency.rules.new')}</DialogTitle>
+        <DialogDescription>{t(rule ? 'agency.rules.editHint' : 'agency.rules.newHint')}</DialogDescription>
         <div className="mt-4 max-h-[65vh] space-y-4 overflow-y-auto pr-1">
           <label className="block">
             <span className={labelClass}>{t('schedules.form.name')}</span>
@@ -224,7 +291,7 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
                 aria-checked={kind === value}
                 data-testid={`agency-rule-kind-${value}`}
                 onClick={() => edit(setKind)(value)}
-                className={`flex flex-col justify-start rounded-xl border px-3 py-2 text-left text-sm transition-colors ${kind === value ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)]'}`}
+                className={`flex flex-col justify-start rounded-xl border px-3 py-2 text-left text-sm transition-colors ${kind === value ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text)]' : 'border-[var(--line-2)] text-[var(--text-muted)]'}`}
               >
                 <span className="block font-medium">{t(`agency.rules.kind.${value}` as I18nKey)}</span>
                 <span className="block text-xs text-[var(--text-subtle)]">{t(`agency.rules.kind.${value}Hint` as I18nKey)}</span>
@@ -262,7 +329,7 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
               )}
               {onResult === 'deliver' && (
                 // Un grupo con nombre: su conector, herramienta y argumentos no se confunden con los de arriba.
-                <fieldset className="rounded-xl border border-[var(--border)] p-3" data-testid="agency-rule-deliver">
+                <fieldset className="rounded-xl border border-[var(--line-2)] p-3" data-testid="agency-rule-deliver">
                   <legend className={`${labelClass} float-left w-full`}>{t('agency.rules.deliverLegend')}</legend>
                   <div className="clear-both space-y-3">
                     <ConnectorToolFields connectors={connectors} server={deliverServer} tool={deliverTool} onServer={edit(setDeliverServer)} onTool={edit(setDeliverTool)} idPrefix="agency-rule-deliver" />
@@ -287,6 +354,14 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
             </section>
           )}
 
+          {deliverEnabled && handsResult && (
+            <div className="block" data-testid="agency-rule-deliver-to">
+              <span className={labelClass} id="agency-rule-deliver-to-label">{t('agency.rules.deliverTo')}</span>
+              <Select value={deliverTo} label={t('agency.rules.deliverTo')} options={deliverOptions} onChange={edit(setDeliverTo)} testId="agency-rule-deliver-to-select" />
+              <span className="mt-1 block text-xs text-[var(--text-subtle)]">{t('agency.rules.deliverToHint')}</span>
+            </div>
+          )}
+
           <label className="block">
             <span className={labelClass}>{t('agency.rules.watchLabel')}</span>
             <input value={watch} maxLength={MAX_PATH} spellCheck={false} onChange={(event) => edit(setWatch)(event.target.value)} className={`${inputClass} font-mono`} />
@@ -296,7 +371,7 @@ export default function RuleForm({ agentId, open, onClose, onAdd }: RuleFormProp
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="btn btn-ghost">{t('common.cancel')}</button>
-          <button type="button" onClick={add} className="btn btn-primary" data-testid="agency-rule-add">{t('agency.rules.add')}</button>
+          <button type="button" onClick={() => void save()} disabled={saving} className="btn btn-primary" data-testid="agency-rule-add">{rule ? t('agency.rules.save') : t('agency.rules.add')}</button>
         </div>
       </DialogContent>
     </Dialog>

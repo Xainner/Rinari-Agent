@@ -1,28 +1,31 @@
 // @vitest-environment jsdom
 // Rinari Agency: lo que encontró la revisión de Rinari-Agent#114, cada cosa con
 // su prueba: el ensayo que llega antes de responder, los dobles clics, los
-// avisos de la oficina como datos, «Reanudar», volver a entrar a la Agency,
-// propuestas sin duplicar y lo que la Agency le pasa a un agente.
+// avisos de la oficina como datos, «Reanudar», volver a entrar a la Agency y
+// lo que la Agency le pasa a un agente. Y de la auditoría del 21-oct: la
+// cadena cortada con «Continuar», la Agency detenida, el estado de cada
+// puesto y ningún id crudo a la vista.
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
-import type { ScheduledTaskInput } from '../../services/engine'
+import type { ScheduledTask } from '../../services/engine'
 import type { AgencyAgent, AgencyTeam, OfficeMessage } from './types'
 
 type Listener = (event: { event: string; payload: unknown }) => void
 const listeners = new Set<Listener>()
 const emit = (event: string, payload: unknown) => { for (const listener of [...listeners]) listener({ event, payload }) }
 
-let resolveCreate: (() => void) | null = null
+let resolveRun: (() => void) | null = null
+let storedTasks: ScheduledTask[] = []
 const api = {
-  scheduleList: vi.fn(async () => ({ tasks: [], now: 0 })),
+  scheduleList: vi.fn(async () => ({ tasks: storedTasks, now: 0 })),
   // The Engine answers «not rehearsable» before the command itself returns.
   scheduleRehearse: vi.fn(async () => {
     emit('schedule.rehearsed', { job_id: 'reh_1', outcome: 'not_rehearsable', reason: 'no es de lectura' })
     return { status: 'started', job_id: 'reh_1' }
   }),
-  scheduleCreate: vi.fn(() => new Promise((resolve) => { resolveCreate = () => resolve({ task: {} }) })),
+  scheduleRunNow: vi.fn(() => new Promise((resolve) => { resolveRun = () => resolve({ run: {} }) })),
   agencyTeam: vi.fn(async () => ({ team: null, errands: [], messages: officeMessages })),
   agencyOfficePost: vi.fn(() => new Promise(() => {})),
 }
@@ -44,15 +47,16 @@ import RulesView from './RulesView'
 import OfficeView from './OfficeView'
 import AgencySidebar from './AgencySidebar'
 import MessageBubble from '../../components/MessageBubble'
-import { useAgencyStore, isAgencySession, proposalKey, proposalWaiting } from '../../stores/agency'
+import { useAgencyStore, isAgencySession } from '../../stores/agency'
 import { enterAgencySession } from './openAgencySession'
+import { AgencyDataContext } from './AgencyData'
 
 const wrap = (node: React.ReactNode) => render(<I18nProvider lang="es">{node}</I18nProvider>)
-const proposal = (over: Partial<ScheduledTaskInput> = {}): ScheduledTaskInput => ({
-  name: 'Correos', kind: 'tool', schedule: { kind: 'interval', minutes: 15 }, prompt: '', agent_id: 'agent_1',
+const storedRule = (): ScheduledTask => ({
+  id: 'sch_1', name: 'Correos', kind: 'tool', schedule: { kind: 'interval', minutes: 15 }, prompt: '', agent_id: 'agent_1',
   tool: { server: 'gmail', tool: 'search', arguments: {}, on_result: 'deliver', deliver: null, max_per_day: 20 } as never,
-  ...over,
-})
+  enabled: true, last_run: null,
+} as unknown as ScheduledTask)
 const agent = (id: string, name: string): AgencyAgent => ({
   id, rinari_profile_id: 'default', name, role: '', instructions: '', model: null, permission_profile: 'workspace',
   connectors: [], budget: {}, ask_new_destinations: null, session_id: `ses_${id}`, created_at: 1, updated_at: 1, archived_at: null,
@@ -65,37 +69,29 @@ const team: AgencyTeam = {
 
 beforeEach(() => {
   useAgencyStore.setState({
-    space: 'rinari', page: { kind: 'home' }, proposals: [], returnTo: null,
+    space: 'rinari', page: { kind: 'home' }, returnTo: null,
     agentSessions: { ses_1: 'agent_1' }, postSessions: { post_w: { teamId: 'team_1', agentId: 'w' } }, sessionLabels: {},
   })
   officeMessages = []
+  storedTasks = []
 })
 afterEach(() => { cleanup(); listeners.clear(); for (const fn of Object.values(api)) fn.mockClear() })
 
 it('a rehearsal answered before the command returns is not lost', async () => {
-  useAgencyStore.getState().addProposal(proposal())
+  storedTasks = [storedRule()]
   wrap(<RulesView sessionId="ses_1" />)
   await userEvent.click(await screen.findByTestId('agency-rule-rehearse'))
   await waitFor(() => expect(screen.getByTestId('agency-rule-rehearsal').getAttribute('data-outcome')).toBe('not_rehearsable'))
   expect((screen.getByTestId('agency-rule-rehearse') as HTMLButtonElement).disabled).toBe(false)
 })
 
-it('a double click on «Activar» creates the rule once', async () => {
-  useAgencyStore.getState().addProposal(proposal())
+it('a double click on «Ejecutar ahora» runs the rule once', async () => {
+  storedTasks = [storedRule()]
   wrap(<RulesView sessionId="ses_1" />)
-  const button = await screen.findByTestId('agency-rule-activate')
+  const button = await screen.findByRole('button', { name: 'Ejecutar ahora' })
   await userEvent.dblClick(button)
-  expect(api.scheduleCreate).toHaveBeenCalledTimes(1)
-  await act(async () => { resolveCreate?.() })
-})
-
-it('the same proposal twice is one card, and switching profile clears them', () => {
-  useAgencyStore.getState().addProposal(proposal())
-  useAgencyStore.getState().addProposal(proposal())
-  useAgencyStore.getState().addProposal(proposal({ name: 'Otra' }))
-  expect(useAgencyStore.getState().proposals).toHaveLength(2)
-  useAgencyStore.getState().clearProposals()
-  expect(useAgencyStore.getState().proposals).toHaveLength(0)
+  expect(api.scheduleRunNow).toHaveBeenCalledTimes(1)
+  await act(async () => { resolveRun?.() })
 })
 
 it('a double Enter in the office posts once', async () => {
@@ -106,13 +102,68 @@ it('a double Enter in the office posts once', async () => {
   expect((input as HTMLTextAreaElement).value).toBe('')
 })
 
-it('a bell entry checks its own proposal, not another one of the same agent', () => {
-  const x = proposal({ name: 'X' })
-  const y = proposal({ name: 'Y' })
-  expect(proposalWaiting({ agentId: 'agent_1', proposal: proposalKey(x) }, [y])).toBe(false)
-  expect(proposalWaiting({ agentId: 'agent_1', proposal: proposalKey(x) }, [x, y])).toBe(true)
-  // An entry from before the key: by its agent.
-  expect(proposalWaiting({ agentId: 'agent_1' }, [y])).toBe(true)
+it('a cut chain stays as a line in the office, in plain words, and «Continuar» posts its last message again as the owner', async () => {
+  officeMessages = [
+    { id: 'm1', team_id: 'team_1', author_kind: 'owner', agent_id: null, text: '@Writer escribe el guion', mentions: ['w'], errand_id: null, chain_id: 'c1', hop: 0, created_at: 1 },
+    { id: 'm2', team_id: 'team_1', author_kind: 'agent', agent_id: 'w', text: 'Listo, @Writer revísalo', mentions: ['w'], errand_id: null, chain_id: 'c1', hop: 8, created_at: 2 },
+    { id: 'm3', team_id: 'team_1', author_kind: 'agent', agent_id: null, text: '', mentions: [], errand_id: null, chain_id: 'c1', hop: 8, created_at: 3, system: true, notice: { kind: 'stopped', reason: 'too_many_hops', chain_id: 'c1' } },
+    { id: 'm4', team_id: 'team_1', author_kind: 'owner', agent_id: null, text: 'otra cosa', mentions: [], errand_id: null, chain_id: 'c2', hop: 0, created_at: 4 },
+  ]
+  api.agencyOfficePost.mockImplementation(async () => ({ message: {} }))
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
+  const line = await screen.findByTestId('agency-chain-stopped')
+  expect(line.textContent).toContain('Llegó a 8 saltos entre agentes')
+  expect(line.textContent).not.toMatch(/Engine/)
+  await userEvent.click(screen.getByTestId('agency-chain-continue'))
+  // The last message of that chain, not the newest of the office.
+  expect(api.agencyOfficePost).toHaveBeenCalledWith('team_1', 'Listo, @Writer revísalo')
+  expect((screen.getByTestId('agency-chain-continue') as HTMLButtonElement).disabled).toBe(true)
+  api.agencyOfficePost.mockImplementation(() => new Promise(() => {}))
+})
+
+it('a stop reason this version does not know is still said in words', async () => {
+  officeMessages = [
+    { id: 'm1', team_id: 'team_1', author_kind: 'agent', agent_id: null, text: '', mentions: [], errand_id: null, chain_id: 'c1', hop: 2, created_at: 1, system: true, notice: { kind: 'stopped', reason: 'brand_new_limit', chain_id: 'c1' } },
+  ]
+  wrap(<OfficeView team={team} agents={[agent('w', 'Writer')]} />)
+  expect((await screen.findByTestId('agency-chain-stopped')).textContent).toContain('Llegó a uno de los límites de la oficina.')
+  // Nothing in the chain to post again: no «Continuar».
+  expect(screen.queryByTestId('agency-chain-continue')).toBeNull()
+})
+
+it('with the Agency stopped the office says so, and each post says if it works or waits', async () => {
+  const status = {
+    agents: 1, working: 1, needs_you: 0, agent_ids: { working: ['w'], needs_you: [] },
+    session_ids: { working: ['post_w'], needs_you: [] }, stopped: true, waiting_for_owner: { errands: 0, chains: 0 },
+  }
+  render(
+    <AgencyDataContext.Provider value={{ agents: [agent('w', 'Writer')], teams: [team], status, halted: true, reload: () => undefined }}>
+      <I18nProvider lang="es"><OfficeView team={team} agents={[agent('w', 'Writer')]} /></I18nProvider>
+    </AgencyDataContext.Provider>,
+  )
+  expect(screen.getByTestId('agency-office-halted').textContent).toContain('La Agency está detenida')
+  expect(screen.getByTestId('agency-office-face').getAttribute('aria-label')).toBe('Writer · Trabajando')
+})
+
+it('the sidebar marks a working post by its own conversation and never shows a raw id', () => {
+  const status = {
+    agents: 1, working: 1, needs_you: 0, agent_ids: { working: ['w'], needs_you: [] },
+    session_ids: { working: ['post_w'], needs_you: [] },
+  }
+  const withGone: AgencyTeam = { ...team, members: ['w', 'agent_zz9'], posts: [...team.posts, { team_id: 'team_1', agent_id: 'agent_zz9', session_id: 'post_zz', created_at: 1 }] }
+  wrap(
+    <AgencySidebar
+      agents={[agent('w', 'Writer')]} status={status} activeAgentId={null} creating={false}
+      onOpenAgent={() => {}} onNewAgent={() => {}} onTutorial={() => {}} onLeave={() => {}}
+      teams={[withGone]} onOpenOffice={() => {}} onOpenPost={() => {}} onNewTeam={() => {}}
+    />,
+  )
+  const posts = screen.getAllByTestId('agency-post-row')
+  expect(posts[0].getAttribute('data-state')).toBe('working')
+  expect(posts[0].getAttribute('aria-label')).toContain('Trabajando')
+  expect(posts[1].getAttribute('data-state')).toBe('idle')
+  expect(screen.getByTestId('agency-sidebar').textContent).not.toContain('agent_zz9')
+  expect(posts[1].textContent).toContain('Un agente que ya no está')
 })
 
 it('an agent conversation stops counting once deleted or on a profile switch', () => {

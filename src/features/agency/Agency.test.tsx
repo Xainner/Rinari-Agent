@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Rinari Agency A1: la tarjeta (D-17), la barra lateral con «Agencia»
 // deshabilitada y «Pronto» (D-21), el tutorial (D-20) y la ficha (D-16).
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
@@ -9,13 +9,23 @@ import type { AgencyAgent, AgencyStatus } from './types'
 
 const agencyCreateAgent = vi.fn(async (agent: unknown) => ({ agent: { ...(agent as object), id: 'agent_1', session_id: 'ses_1' } }))
 const agencyDraft = vi.fn(async (_description: string) => ({ status: 'started', job_id: 'draft_1' }))
+const agencyUpdateAgent = vi.fn(async (id: string, patch: unknown) => ({ agent: { id, ...(patch as object) } }))
+const agencyArchiveAgent = vi.fn(async (id: string) => ({ agent: { id, name: 'Emails' } }))
+const soulCreate = vi.fn(async (input: { id: string; name: string }) => ({ soul: { ...input, version: '1', description: '', source: 'custom', identity: 'x' } }))
 let engineListener: ((event: { event: string; payload: unknown }) => void) | null = null
 vi.mock('../../services/engine', () => ({
   engineApi: {
     agencyCreateAgent: (agent: unknown) => agencyCreateAgent(agent),
     agencyDraft: (description: string) => agencyDraft(description),
-    agencyUpdateAgent: vi.fn(),
-    agencyArchiveAgent: vi.fn(),
+    agencyUpdateAgent: (id: string, patch: unknown) => agencyUpdateAgent(id, patch),
+    agencyArchiveAgent: (id: string) => agencyArchiveAgent(id),
+    soulList: vi.fn(async () => ({ souls: [
+      { id: 'calma', name: 'Calma', version: '1', description: 'Serena', source: 'bundled' },
+      { id: 'mia', name: 'Mía', version: '1', description: '', source: 'custom' },
+    ], active_id: null })),
+    soulGet: vi.fn(async (id: string) => ({ soul: { id, name: id === 'calma' ? 'Calma' : 'Mía', version: '1', description: '', source: id === 'calma' ? 'bundled' : 'custom', identity: 'Habla en calma.' } })),
+    soulCreate: (input: { id: string; name: string }) => soulCreate(input),
+    soulUpdate: vi.fn(async () => ({})),
     modelList: vi.fn(async () => ({ models: [{ id: 'mdl_1', alias: 'rapido', provider: 'local', saved: true }] })),
     providerList: vi.fn(async () => ({ providers: [], active_alias: null })),
     mcpCatalogList: vi.fn(async () => ({ entries: [] })),
@@ -70,7 +80,7 @@ const agent = (over: Partial<AgencyAgent> = {}): AgencyAgent => ({
 })
 
 beforeEach(() => window.localStorage.clear())
-afterEach(() => { cleanup(); agencyCreateAgent.mockClear() })
+afterEach(() => { cleanup(); agencyCreateAgent.mockClear(); agencyUpdateAgent.mockClear(); agencyArchiveAgent.mockClear(); soulCreate.mockClear() })
 
 it('the card says what happens now, or how many agents there are', () => {
   expect(agencyStatusLine(status(), t)).toBe('Crea tu primer agente')
@@ -201,4 +211,51 @@ it('«Créalo con Rinari» fills the form from the draft and creates nothing', a
 it('without the capability, «Créalo con Rinari» is not offered', () => {
   render(<I18nProvider lang="es"><AgentForm onSaved={() => {}} onCancel={() => {}} /></I18nProvider>)
   expect(screen.queryByTestId('agency-draft')).toBeNull()
+})
+
+it('the agent talks with its instructions or a saved Soul; editing a built-in Soul saves a copy it then uses', async () => {
+  render(<I18nProvider lang="es"><AgentForm agent={agent({ soul_id: 'calma' })} onSaved={() => {}} onCancel={() => {}} soulEnabled /></I18nProvider>)
+  const section = await screen.findByTestId('agency-form-personality')
+  expect(section.querySelector('[data-value="soul"]')?.getAttribute('aria-checked')).toBe('true')
+  await waitFor(() => expect(screen.getByTestId('agency-form-personality-soul').textContent).toContain('Calma'))
+  await userEvent.click(screen.getByTestId('agency-form-personality-edit'))
+  // A built-in Soul is never changed in place: the editor makes a copy for this agent.
+  expect(await screen.findByText('Duplicar alma')).toBeTruthy()
+  expect((within(screen.getByTestId('soul-form')).getByLabelText('Nombre') as HTMLInputElement).value).toBe('Calma para Emails')
+  await userEvent.click(screen.getByTestId('soul-save'))
+  await waitFor(() => expect(soulCreate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Calma para Emails', identity: 'Habla en calma.' })))
+  await userEvent.click(screen.getByTestId('agency-form-submit'))
+  await waitFor(() => expect(agencyUpdateAgent).toHaveBeenCalled())
+  expect(agencyUpdateAgent.mock.calls.at(-1)![1]).toMatchObject({ soul_id: soulCreate.mock.calls[0][0].id })
+})
+
+it('going back to its instructions saves no Soul; without the capability nothing is sent about it', async () => {
+  const { unmount } = render(<I18nProvider lang="es"><AgentForm agent={agent({ soul_id: 'mia' })} onSaved={() => {}} onCancel={() => {}} soulEnabled /></I18nProvider>)
+  const section = await screen.findByTestId('agency-form-personality')
+  await userEvent.click(section.querySelector('[data-value="instructions"]') as HTMLElement)
+  await userEvent.click(screen.getByTestId('agency-form-submit'))
+  await waitFor(() => expect(agencyUpdateAgent).toHaveBeenCalled())
+  expect(agencyUpdateAgent.mock.calls.at(-1)![1]).toMatchObject({ soul_id: null })
+  unmount()
+  agencyUpdateAgent.mockClear()
+  render(<I18nProvider lang="es"><AgentForm agent={agent()} onSaved={() => {}} onCancel={() => {}} /></I18nProvider>)
+  expect(screen.queryByTestId('agency-form-personality')).toBeNull()
+  await userEvent.click(screen.getByTestId('agency-form-submit'))
+  await waitFor(() => expect(agencyUpdateAgent).toHaveBeenCalled())
+  expect(agencyUpdateAgent.mock.calls.at(-1)![1]).not.toHaveProperty('soul_id')
+})
+
+it('archiving an agent asks first, saying it leaves its teams', async () => {
+  const onArchived = vi.fn()
+  render(<I18nProvider lang="es"><AgentForm agent={agent()} onSaved={() => {}} onCancel={() => {}} onArchived={onArchived} /></I18nProvider>)
+  await userEvent.click(screen.getByRole('button', { name: 'Archivar agente' }))
+  expect(await screen.findByText('¿Archivar a Emails?')).toBeTruthy()
+  expect(screen.getByText(/Sale de sus equipos/)).toBeTruthy()
+  await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+  expect(agencyArchiveAgent).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Archivar agente' }))
+  const dialog = await screen.findByRole('alertdialog')
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Archivar agente' }))
+  await waitFor(() => expect(onArchived).toHaveBeenCalled())
+  expect(agencyArchiveAgent).toHaveBeenCalledWith('agent_1')
 })

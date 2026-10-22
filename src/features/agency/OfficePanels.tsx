@@ -11,6 +11,7 @@ import { ConnectorLogo } from '../connectors/ConnectorLogo'
 import AgentAvatar from './AgentAvatar'
 import { officeDockKey, useAgencyData } from './AgencyData'
 import { useConnectorDirectory } from './useConnectorDirectory'
+import { postState } from './postState'
 import type { AgencyAgent } from './types'
 
 const NOBODY = '__chief__'
@@ -38,12 +39,12 @@ export function openErrand(teamId: string, title = '') {
 }
 
 function useTeamMembers(teamId: string) {
-  const { agents, teams } = useAgencyData()
+  const { agents, teams, status } = useAgencyData()
   const team = teams.find((item) => item.id === teamId) ?? null
   const members = team
     ? team.members.map((id) => agents.find((agent) => agent.id === id)).filter((agent): agent is AgencyAgent => Boolean(agent))
     : []
-  return { team, members, agents }
+  return { team, members, agents, status }
 }
 
 /**
@@ -136,13 +137,14 @@ export function ErrandPanel({ teamId }: { teamId: string }) {
   )
 }
 
-const usd = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
-const count = new Intl.NumberFormat()
-
 /** «Ficha» en el panel lateral de la oficina: quién está, quién es el jefe, sus conectores y su presupuesto. */
 export function TeamPanel({ teamId }: { teamId: string }) {
-  const { t } = useI18n()
-  const { team, members } = useTeamMembers(teamId)
+  const { t, lang } = useI18n()
+  // Figures in the app's language, not the system's.
+  const locale = lang === 'es' ? 'es' : 'en'
+  const usd = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+  const count = new Intl.NumberFormat(locale)
+  const { team, members, status } = useTeamMembers(teamId)
   const { byName } = useConnectorDirectory()
   if (!team) return null
   const budget = [
@@ -163,6 +165,17 @@ export function TeamPanel({ teamId }: { teamId: string }) {
                   <span className="block truncate font-medium text-[var(--text)]">{agent.name}</span>
                   {agent.role && <span className="block truncate text-[11.5px] text-[var(--text-subtle)]">{agent.role}</span>}
                 </span>
+                {(() => {
+                  // What its post does now (agency_audit_v1), in words as well as color.
+                  const state = postState(team, agent.id, status)
+                  if (state === 'idle') return null
+                  return (
+                    <span className="r-chip" data-tone={state === 'needs_you' ? 'warning' : 'accent'} data-testid="agency-member-state">
+                      {state === 'working' && <span className="agency-working-dot" aria-hidden="true" />}
+                      {t(state === 'needs_you' ? 'agency.agent.needsYou' : 'agency.agent.working')}
+                    </span>
+                  )
+                })()}
                 {team.chief_agent_id === agent.id && <span className="r-chip" data-tone="accent"><Crown size={11} aria-hidden="true" />{t('agency.team.chiefShort')}</span>}
               </li>
             ))}
@@ -170,6 +183,7 @@ export function TeamPanel({ teamId }: { teamId: string }) {
         </section>
         <section className="office-panel-section">
           <h3>{t('agency.team.card.connectors')}</h3>
+          <p className="field-hint mt-0">{t('agency.team.card.connectorsHint')}</p>
           {team.connectors.length === 0 ? (
             <p className="field-hint mt-0">{t('agency.team.card.noConnectors')}</p>
           ) : (

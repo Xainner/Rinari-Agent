@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ClipboardList, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
+import Markdown from '../../components/Markdown'
 import { useI18n, type I18nKey } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent } from '../../services/engine'
 import { useAgencyStore } from '../../stores/agency'
+import { cn } from '../../lib/utils'
 import type { Errand, ErrandStatus } from './types'
 
 const TONE: Record<ErrandStatus, string> = {
@@ -33,15 +35,17 @@ interface ErrandCardProps {
 
 /**
  * Un recado (D-3, D-26): qué es, para quién, cómo se sabe que está hecho y en
- * qué va. El dueño revisa lo que él pidió, reintenta uno trabado o lo cancela.
+ * qué va. El dueño revisa cualquier recado entregado (lo pidiera él o un
+ * agente: si nadie lo cierra, queda abierto), reintenta uno trabado o lo
+ * cancela. El resultado se lee con el formato del chat.
  */
 export function ErrandCard({ errand, names, compact = false, onChanged }: ErrandCardProps) {
   const { t } = useI18n()
   const [returning, setReturning] = useState(false)
   const [reason, setReason] = useState('')
-  const to = errand.to_agent_id ? names.get(errand.to_agent_id) ?? errand.to_agent_id : t('agency.errand.nobody')
-  const from = errand.from_agent_id ? names.get(errand.from_agent_id) ?? errand.from_agent_id : t('agency.office.you')
-  const ownerAsked = errand.from_agent_id === null
+  // Names, never raw ids: an agent that is gone says so.
+  const to = errand.to_agent_id ? names.get(errand.to_agent_id) ?? t('agency.agent.gone') : t('agency.errand.nobody')
+  const from = errand.from_agent_id ? names.get(errand.from_agent_id) ?? t('agency.agent.gone') : null
   const open = errand.status === 'pending' || errand.status === 'in_progress' || errand.status === 'returned' || errand.status === 'blocked'
 
   const act = async (work: () => Promise<unknown>) => {
@@ -60,7 +64,7 @@ export function ErrandCard({ errand, names, compact = false, onChanged }: Errand
         <span className="min-w-0 flex-1 truncate font-semibold">{errand.title}</span>
         <span className="r-chip" data-tone={TONE[errand.status]}>{t(`agency.errand.status.${errand.status}` as I18nKey)}</span>
       </header>
-      <p className="agency-errand-who">{t('agency.errand.who', { from, to })}</p>
+      <p className="agency-errand-who">{from ? t('agency.errand.who', { from, to }) : t('agency.errand.whoOwner', { to })}</p>
       {!compact && errand.body && <p className="agency-errand-body">{errand.body}</p>}
       {!compact && errand.done_when.length > 0 && (
         <ul className="agency-errand-checks" aria-label={t('agency.errand.doneWhen')}>
@@ -68,7 +72,9 @@ export function ErrandCard({ errand, names, compact = false, onChanged }: Errand
         </ul>
       )}
       {errand.result?.summary && (errand.status === 'delivered' || errand.status === 'reviewed') && (
-        <p className="agency-errand-result">{errand.result.summary}</p>
+        <div className={cn('agency-errand-result', compact && 'is-compact')} data-testid="agency-errand-result">
+          <Markdown>{errand.result.summary}</Markdown>
+        </div>
       )}
       {errand.return_reason && (errand.status === 'returned' || errand.status === 'blocked' || errand.status === 'pending') && (
         <p className="agency-errand-reason">{t(errand.status === 'blocked' ? 'agency.errand.blockedWhy' : 'agency.errand.returnedWhy', { reason: reasonText(errand.return_reason, t) })}</p>
@@ -92,7 +98,7 @@ export function ErrandCard({ errand, names, compact = false, onChanged }: Errand
         </div>
       ) : (
         <div className="agency-errand-actions">
-          {errand.status === 'delivered' && ownerAsked && (
+          {errand.status === 'delivered' && (
             <>
               <button type="button" className="btn btn-secondary btn-xs" onClick={() => void act(() => engineApi.agencyReviewErrand(errand.id, true))} data-testid="agency-errand-accept">
                 <Check size={12} aria-hidden="true" /> {t('agency.errand.accept')}

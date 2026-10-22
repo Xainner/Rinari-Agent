@@ -4,8 +4,8 @@ import { isAgencySession, useAgencyStore } from '../../stores/agency'
 import { useProfileStore } from '../profiles/profileStore'
 import type { AgencyAgent, AgencyStatus, AgencyTeam } from './types'
 
-/** Eventos de la Agency que cambian lo que dice: sus agentes, sus equipos y si está detenida. */
-const AGENCY_EVENTS = new Set(['agency.agent.changed', 'agency.team.changed', 'agency.stopped', 'profile_bundle.activated'])
+/** Eventos de la Agency que cambian lo que dice: sus agentes, sus equipos, si está detenida y lo que espera al dueño. */
+const AGENCY_EVENTS = new Set(['agency.agent.changed', 'agency.team.changed', 'agency.stopped', 'agency.chain.stopped', 'agency.office.message', 'profile_bundle.activated'])
 /** Eventos de una conversación: cuentan solo si es de la Agency (un chat directo o un puesto). */
 const SESSION_EVENTS = new Set([
   'turn.started',
@@ -64,7 +64,8 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
       if (mine < applied.current || (asked !== null && now !== null && now !== asked)) return
       const profile = now ?? asked ?? 'default'
       applied.current = mine
-      setHalted(Boolean(settings?.stopped_profiles?.includes(profile)))
+      // `agency_audit_v1` says it in the status too; either one is enough.
+      setHalted(Boolean(settings?.stopped_profiles?.includes(profile)) || current?.stopped === true)
       setAgents(list.agents)
       setStatus(current)
       setTeams(teamList.teams)
@@ -73,7 +74,8 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
       const names = new Map(list.agents.map((agent) => [agent.id, agent.name]))
       useAgencyStore.getState().setSessionLabels(Object.fromEntries([
         ...list.agents.filter((agent) => agent.session_id).map((agent) => [agent.session_id as string, agent.name]),
-        ...teamList.teams.flatMap((team) => team.posts.map((post) => [post.session_id, `${names.get(post.agent_id) ?? post.agent_id} · ${team.name}`])),
+        // Never a raw id: a post whose agent is unknown is named by its team.
+        ...teamList.teams.flatMap((team) => team.posts.map((post) => [post.session_id, names.has(post.agent_id) ? `${names.get(post.agent_id)} · ${team.name}` : team.name])),
       ]))
     } catch {
       // El Engine puede estar reiniciando: se conserva lo último que se supo.

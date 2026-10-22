@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Copy, Download, Pencil, Trash2, TriangleAlert, Upload } from 'lucide-react'
+import { Check, Copy, Download, Pencil, Trash2, Upload } from 'lucide-react'
 import { art } from '../rinari/art'
 import { toast } from 'sonner'
 import CharacterIntensity from './CharacterIntensity'
@@ -12,7 +12,6 @@ import {
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
 import Markdown from '../../components/Markdown'
-import { inputClass, labelClass } from '../../components/settings/parts'
 import {
   Dialog,
   DialogContent,
@@ -30,32 +29,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
-import { SegTabPill } from '../../components/ui/SegTabPill'
+import SoulEditorDialog, { type SoulDraft } from './SoulEditorDialog'
 
-/** Un id a partir del nombre, libre entre las almas que ya hay (como los perfiles, #86). */
-export function soulIdFor(name: string, taken: Set<string>): string {
-  const base = name
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
-    .replace(/-+$/, '') || 'alma'
-  let candidate = base
-  for (let number = 2; taken.has(candidate); number += 1) candidate = `${base}-${number}`
-  return candidate
-}
-
-interface FormState {
-  /** Editando una propia; `null` al crear o duplicar. */
-  id: string | null
-  /** Copia de otra alma: el título dice «Duplicar alma», no «Crear» (#68). */
-  duplicate?: boolean
-  name: string
-  description: string
-  identity: string
-}
+export { soulIdFor } from './SoulEditorDialog'
 
 /**
  * Ajustes → Personalidad (plan 0.4.0 #87). Arriba, «Cómo habla Rinari»: el
@@ -71,9 +47,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
   const [souls, setSouls] = useState<SoulSummary[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [detail, setDetail] = useState<SoulDetail | null>(null)
-  const [form, setForm] = useState<FormState | null>(null)
-  const [preview, setPreview] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<SoulDraft | null>(null)
   const [deleting, setDeleting] = useState<SoulSummary | null>(null)
 
   const reload = useCallback(async () => {
@@ -118,7 +92,6 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
       description: soul.description,
       identity: soul.identity,
     })
-    setPreview(false)
     setDetail(null)
   }
 
@@ -146,30 +119,11 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
     }
   }
 
-  async function save() {
-    if (!form || form.name.trim() === '') return
-    setSaving(true)
-    try {
-      if (form.id === null) {
-        const { soul } = await engineApi.soulCreate({
-          id: soulIdFor(form.name, new Set(souls.map((item) => item.id))),
-          name: form.name.trim(),
-          identity: form.identity,
-          description: form.description.trim() === '' ? undefined : form.description.trim(),
-        })
-        setDetail(soul)
-      } else {
-        await engineApi.soulUpdate({ id: form.id, name: form.name.trim(), identity: form.identity, description: form.description })
-        setDetail((await engineApi.soulGet(form.id)).soul)
-      }
-      setForm(null)
-      await reload()
-      onChanged()
-    } catch (err) {
-      toast.error(commandMessage(err))
-    } finally {
-      setSaving(false)
-    }
+  async function saved(soul: SoulDetail) {
+    setForm(null)
+    setDetail(soul)
+    await reload()
+    onChanged()
   }
 
   async function removeSoul() {
@@ -193,7 +147,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
           <button type="button" onClick={() => void importSoul()} className="btn btn-secondary btn-sm" data-testid="soul-import">
             <Upload size={13} aria-hidden="true" /> {t('soul.import')}
           </button>
-          <button type="button" onClick={() => { setForm({ id: null, name: '', description: '', identity: '' }); setPreview(false) }} className="btn btn-primary btn-sm">
+          <button type="button" onClick={() => setForm({ id: null, name: '', description: '', identity: '' })} className="btn btn-primary btn-sm">
             {t('soul.create')}
           </button>
         </div>
@@ -257,46 +211,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={form !== null} onOpenChange={(next) => !next && setForm(null)}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="soul-form">
-          <DialogHeader>
-            <DialogTitle>{form?.id ? t('soul.edit') : form?.duplicate ? t('soul.duplicateTitle') : t('soul.create')}</DialogTitle>
-          </DialogHeader>
-          {form && (
-            <div className="space-y-4">
-              <div>
-                <label className={labelClass} htmlFor="soul-name">{t('soul.nameLabel')}</label>
-                <input id="soul-name" value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} autoComplete="off" />
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="soul-description">{t('soul.descriptionLabel')}</label>
-                <input id="soul-description" value={form.description} maxLength={500} onChange={(e) => setForm({ ...form, description: e.target.value })} className={inputClass} autoComplete="off" />
-              </div>
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className={labelClass} htmlFor="soul-identity">{t('soul.identityLabel')}</label>
-                  <div role="tablist" className="seg-tabs w-fit">
-                    {[false, true].map((showing) => (
-                      <button key={String(showing)} type="button" role="tab" className="seg-tab" aria-selected={preview === showing} data-active={preview === showing || undefined} onClick={() => setPreview(showing)}>
-                        {preview === showing && <SegTabPill />}
-                        <span className="relative">{showing ? t('soul.previewText') : t('soul.writeText')}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {preview
-                  ? <div className="soul-editor soul-editor-preview" data-testid="soul-form-preview">{form.identity.trim() ? <Markdown>{form.identity}</Markdown> : <p>{t('soul.emptyText')}</p>}</div>
-                  : <textarea id="soul-identity" value={form.identity} onChange={(e) => setForm({ ...form, identity: e.target.value })} rows={14} spellCheck={false} className={`${inputClass} soul-editor font-mono text-[13px] leading-relaxed`} />}
-                {form.identity.trim() === '' && <p className="soul-empty-warning" data-testid="soul-empty-warning"><TriangleAlert size={13} aria-hidden="true" />{t('soul.emptyWarning')}</p>}
-              </div>
-            </div>
-          )}
-          <div className="mt-4 flex justify-end gap-2">
-            <button type="button" onClick={() => setForm(null)} className="btn btn-ghost btn-sm">{t('providers.cancel')}</button>
-            <button type="button" onClick={() => void save()} disabled={saving || !form?.name.trim()} className="btn btn-primary btn-sm" data-testid="soul-save">{t('providers.save')}</button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SoulEditorDialog draft={form} takenIds={souls.map((item) => item.id)} onClose={() => setForm(null)} onSaved={(soul) => void saved(soul)} />
 
       <AlertDialog open={deleting !== null} onOpenChange={(next) => !next && setDeleting(null)}>
         <AlertDialogContent>

@@ -13,6 +13,7 @@ vi.mock('../../services/engine', () => ({
     scheduleDelete: vi.fn(async () => ({ deleted: true })),
     scheduleRunNow: vi.fn(async () => ({})),
     scheduleGrant: vi.fn(async () => ({})),
+    sessionGet: vi.fn(async () => { throw new Error('unknown') }),
   },
   onEngineEvent: vi.fn(async (listener: (event: EngineEventMsg) => void) => {
     emit = listener
@@ -209,28 +210,55 @@ it('a task the owner asked for is created at once, with undo, and lands in the b
   const created = toasts.calls.find((call) => call.title === 'Tarea programada: Sacar la basura')
   expect(created?.kind).toBe('success')
   expect(useScheduleForm.getState().open).toBeNull()
-  expect(useNotificationCenter.getState().items[0]).toMatchObject({ module: 'schedules', title: 'Tarea programada: Sacar la basura' })
+  await waitFor(() => expect(useNotificationCenter.getState().items[0]).toMatchObject({ module: 'schedules', title: 'Tarea programada: Sacar la basura' }))
   act(() => created?.options?.action?.onClick())
   await waitFor(() => expect(engineApi.scheduleDelete).toHaveBeenCalledWith('sch_9'))
   await waitFor(() => expect(useNotificationCenter.getState().items).toHaveLength(0))
 })
 
-it('an agent proposing the same rule twice makes one toast and one bell entry', async () => {
+it('a rule an agent created is said as created, by whom, with undo, and is one Agency entry in the bell', async () => {
   const { useAgencyStore } = await import('../../stores/agency')
-  useAgencyStore.setState({ proposals: [] })
+  useAgencyStore.setState({ agentNames: { agent_1: 'Emails' } })
   wrap(<ScheduleNotifier onOpenSession={() => {}} />)
   await waitFor(() => expect(emit).toBeTypeOf('function'))
-  const proposed = { type: 'event', event: 'schedule.proposed', payload: {
-    session_id: 'ses_agent', proposal: { ...emptyDraft(), name: 'Correos', prompt: 'p', agent_id: 'agent_1' },
+  const created = { type: 'event', event: 'schedule.proposed', payload: {
+    created: true, session_id: 'ses_agent',
+    proposal: { ...emptyDraft(), name: 'Correos', prompt: 'p', agent_id: 'agent_1' },
+    task: task({ id: 'sch_9', name: 'Correos', agent_id: 'agent_1', project_id: null }),
   } } as const
-  act(() => emit(proposed))
-  act(() => emit(proposed))
-  expect(toasts.calls.filter((call) => call.title.includes('Correos'))).toHaveLength(1)
-  const items = useNotificationCenter.getState().items
-  expect(items).toHaveLength(1)
-  expect(items[0].id).toMatch(/^agency-proposal-/)
-  expect(useAgencyStore.getState().proposals).toHaveLength(1)
-  useAgencyStore.setState({ proposals: [] })
+  act(() => emit(created))
+  await waitFor(() => expect(toasts.calls.find((call) => call.title === 'Emails creó la regla «Correos»')).toBeTruthy())
+  // Nothing to approve: no proposal card, no «propone».
+  expect(useScheduleForm.getState().open).toBeNull()
+  expect(toasts.calls.some((call) => call.title.includes('propone'))).toBe(false)
+  await waitFor(() => expect(useNotificationCenter.getState().items).toHaveLength(1))
+  expect(useNotificationCenter.getState().items[0]).toMatchObject({ id: 'created:sch_9', module: 'agency', target: { kind: 'agency-rules', agentId: 'agent_1' } })
+  act(() => toasts.calls.find((call) => call.title === 'Emails creó la regla «Correos»')?.options?.action?.onClick())
+  await waitFor(() => expect(engineApi.scheduleDelete).toHaveBeenCalledWith('sch_9'))
+  await waitFor(() => expect(useNotificationCenter.getState().items).toHaveLength(0))
+  useAgencyStore.setState({ agentNames: {} })
+})
+
+it('an agent rule from an Engine that only proposed it leaves no card to approve', async () => {
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  act(() => emit({ type: 'event', event: 'schedule.proposed', payload: {
+    session_id: 'ses_agent', proposal: { ...emptyDraft(), name: 'Correos', prompt: 'p', agent_id: 'agent_1' },
+  } }))
+  expect(toasts.calls).toHaveLength(0)
+  expect(useScheduleForm.getState().open).toBeNull()
+})
+
+it('each bell entry belongs to the profile of its run, so the bell is per profile', async () => {
+  const { resetSessionDirectoryForTests } = await import('../notifications/sessionDirectory')
+  resetSessionDirectoryForTests()
+  vi.mocked(engineApi.sessionGet).mockResolvedValue({ session: { id: 'ses_work', rinari_profile_id: 'work', state: 'idle' } } as never)
+  wrap(<ScheduleNotifier onOpenSession={() => {}} />)
+  await waitFor(() => expect(emit).toBeTypeOf('function'))
+  act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { name: 'Backup', kind: 'agent', run_id: 'run_8', status: 'failed', session_id: 'ses_work', reason: 'x' } }))
+  await waitFor(() => expect(useNotificationCenter.getState().items[0]).toMatchObject({ id: 'run:run_8', profileId: 'work' }))
+  resetSessionDirectoryForTests()
+  vi.mocked(engineApi.sessionGet).mockRejectedValue(new Error('unknown'))
 })
 
 it('a run that needs you and then finishes is one entry in the bell, updated', async () => {
@@ -238,9 +266,8 @@ it('a run that needs you and then finishes is one entry in the bell, updated', a
   await waitFor(() => expect(emit).toBeTypeOf('function'))
   act(() => emit({ type: 'event', event: 'schedule.run.needs_you', payload: { name: 'Backup', run_id: 'run_7', session_id: 'ses_run', reason: 'shell.exec' } }))
   act(() => emit({ type: 'event', event: 'schedule.run.completed', payload: { name: 'Backup', kind: 'agent', run_id: 'run_7', status: 'completed', session_id: 'ses_run', summary: 'Hecho' } }))
-  const items = useNotificationCenter.getState().items
-  expect(items).toHaveLength(1)
-  expect(items[0]).toMatchObject({ tone: 'success', body: 'Hecho', target: { kind: 'session', sessionId: 'ses_run' } })
+  await waitFor(() => expect(useNotificationCenter.getState().items[0]).toMatchObject({ tone: 'success', body: 'Hecho', target: { kind: 'session', sessionId: 'ses_run' } }))
+  expect(useNotificationCenter.getState().items).toHaveLength(1)
 })
 
 it('a command task runs a command with a cron schedule, and its runs show the output (#50)', async () => {

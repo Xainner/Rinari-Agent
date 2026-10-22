@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Brain, Building2, Cpu, Crown, Pencil, Plug, Plus, RotateCcw, Route, Trash2, UsersRound, Wallet } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Archive, ArchiveRestore, Brain, Building2, Cpu, Crown, Pencil, Plug, Plus, RotateCcw, Route, Trash2, UsersRound, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
@@ -19,6 +19,8 @@ import { SignInDialog, useSignIn } from '../connectors/SignInDialog'
 import AgentAvatar from './AgentAvatar'
 import { BudgetFields, ConnectorTiles, EditorSection } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
+import AgentPersonality from './AgentPersonality'
+import { useAgencyData } from './AgencyData'
 import type { AgencyAgent, AgencySettingsData, AgencyTeam, AgentBudget, AgentEffort, ErrandMode } from './types'
 
 interface AgencySettingsProps {
@@ -33,12 +35,103 @@ interface AgencySettingsProps {
   teamsEnabled?: boolean
   /** Con `agency_agent_memory_v1`: la memoria de cada agente y de cada equipo. */
   memoryEnabled?: boolean
+  /** Con `agency_audit_v1`: la personalidad de cada agente y los archivados. */
+  auditEnabled?: boolean
 }
 
-type Scope = 'agent' | 'team' | 'agency'
+type Scope = 'agent' | 'team' | 'agency' | 'archived'
 
-const usdFormat = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
-const countFormat = new Intl.NumberFormat()
+/** Cifras en el idioma de la app, no en el del sistema. */
+function useFormats() {
+  const { lang } = useI18n()
+  return useMemo(() => {
+    const locale = lang === 'es' ? 'es' : 'en'
+    return {
+      usd: new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }),
+      count: new Intl.NumberFormat(locale),
+    }
+  }, [lang])
+}
+
+/** La personalidad del agente (D-34): se guarda al elegir, como su modelo. */
+function AgentPersonalitySettings({ agent }: { agent: AgencyAgent }) {
+  const { t } = useI18n()
+  const { reload } = useAgencyData()
+  const [soulId, setSoulId] = useState<string | null>(agent.soul_id ?? null)
+  const choose = (next: string | null) => {
+    const previous = soulId
+    setSoulId(next)
+    engineApi.agencyUpdateAgent(agent.id, { soul_id: next })
+      .then(() => { toast.success(t('agency.settings.saved')); void reload() })
+      .catch((error) => { setSoulId(previous); toast.error(commandMessage(error)) })
+  }
+  return <AgentPersonality soulId={soulId} agentName={agent.name} onChange={choose} testId="agency-settings-personality" />
+}
+
+/**
+ * Los agentes archivados (A7): se ven aquí y vuelven con «Restaurar». No
+ * vuelven a los equipos de los que salieron al archivarse.
+ */
+function ArchivedAgents() {
+  const { t } = useI18n()
+  const { reload: reloadAgency } = useAgencyData()
+  const [archived, setArchived] = useState<AgencyAgent[] | null>(null)
+  const [restoring, setRestoring] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const result = await engineApi.agencyAgents({ includeArchived: true })
+      setArchived(result.agents.filter((agent) => agent.archived_at !== null))
+    } catch (error) {
+      setArchived((current) => current ?? [])
+      toast.error(commandMessage(error))
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const restore = async (agent: AgencyAgent) => {
+    if (restoring) return
+    setRestoring(agent.id)
+    try {
+      await engineApi.agencyUnarchiveAgent(agent.id)
+      toast.success(t('agency.archived.restored', { name: agent.name }))
+      await load()
+      void reloadAgency()
+    } catch (error) {
+      toast.error(commandMessage(error))
+    } finally {
+      setRestoring(null)
+    }
+  }
+
+  return (
+    <EditorSection icon={Archive} title={t('agency.archived.title')} hint={t('agency.archived.hint')} testId="agency-archived">
+      {archived === null ? (
+        <p className="agency-settings-empty" aria-busy="true">{t('agency.settings.loading')}</p>
+      ) : archived.length === 0 ? (
+        <p className="agency-settings-empty">{t('agency.archived.empty')}</p>
+      ) : (
+        <ul className="agency-archived-list">
+          {archived.map((agent) => (
+            <li key={agent.id} className="agency-archived-row" data-testid="agency-archived-row">
+              <AgentAvatar agent={agent} size={30} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-[var(--text)]">{agent.name}</span>
+                {agent.role && <span className="block truncate text-[11.5px] text-[var(--text-subtle)]">{agent.role}</span>}
+              </span>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={restoring !== null} onClick={() => void restore(agent)} data-testid="agency-archived-restore">
+                <ArchiveRestore size={13} aria-hidden="true" /> {t('agency.archived.restore')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </EditorSection>
+  )
+}
 
 function numberOrUndefined(text: string): number | undefined {
   const value = Number(text.replace(',', '.'))
@@ -412,7 +505,9 @@ function TeamSettings({ team, agents, memoryEnabled }: { team: AgencyTeam; agent
             disabled={team.members.length === 0}
             options={team.members.map((id) => {
               const agent = agents.find((item) => item.id === id)
-              return { value: id, label: agent?.name ?? id, detail: agent?.role || undefined, icon: <AgentAvatar agent={agent ?? { id, name: id }} size={18} /> }
+              // A name, never a raw id: an agent that is gone says so.
+              const name = agent?.name ?? t('agency.agent.gone')
+              return { value: id, label: name, detail: agent?.role || undefined, icon: <AgentAvatar agent={agent ?? { id, name }} size={18} /> }
             })}
             onChange={(chief) => void save({ chief_agent_id: chief })}
             testId="agency-settings-chief"
@@ -431,6 +526,7 @@ function TeamSettings({ team, agents, memoryEnabled }: { team: AgencyTeam; agent
 /** Lo de toda la Agency: el presupuesto global y cómo corre un recado (D-28). */
 function GlobalSettings() {
   const { t } = useI18n()
+  const { usd: usdFormat, count: countFormat } = useFormats()
   const [settings, setSettings] = useState<AgencySettingsData | null>(null)
 
   useEffect(() => {
@@ -501,7 +597,7 @@ function GlobalSettings() {
  * su jefe, su presupuesto, su memoria y sus cuentas; y de toda la Agency, el
  * presupuesto global y cómo corre un recado.
  */
-export default function AgencySettings({ agents, teams = [], initialAgentId = null, initialTeamId = null, teamsEnabled = false, memoryEnabled = true }: AgencySettingsProps) {
+export default function AgencySettings({ agents, teams = [], initialAgentId = null, initialTeamId = null, teamsEnabled = false, memoryEnabled = true, auditEnabled = false }: AgencySettingsProps) {
   const { t } = useI18n()
   const [scope, setScope] = useState<Scope>(initialTeamId && teamsEnabled ? 'team' : agents.length > 0 || !teamsEnabled ? 'agent' : 'agency')
   const [agentId, setAgentId] = useState<string | null>(initialAgentId ?? agents[0]?.id ?? null)
@@ -556,6 +652,12 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
               </button>
             </>
           )}
+          {auditEnabled && (
+            <button type="button" className={cn('agency-settings-nav-row', scope === 'archived' && 'is-active')} aria-current={scope === 'archived' ? 'page' : undefined} onClick={() => setScope('archived')} data-testid="agency-settings-scope-archived">
+              <span className="agency-team-mark" aria-hidden="true"><Archive size={13} /></span>
+              <span className="min-w-0 flex-1 truncate">{t('agency.archived.title')}</span>
+            </button>
+          )}
         </nav>
 
         <div className="agency-settings-main">
@@ -570,6 +672,7 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
               </header>
               {/* Hermanas de la memoria: cada una con su clave, o React deja copias al cambiar de agente. */}
               <AgentModelSettings key={`model:${agent.id}`} agent={agent} />
+              {auditEnabled && <AgentPersonalitySettings key={`soul:${agent.id}`} agent={agent} />}
               <OwnerConnectors key={`connectors:${agent.id}`} owner={{ kind: 'agent', id: agent.id, name: agent.name }} connectors={agent.connectors} />
               <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} memoryEnabled={memoryEnabled} />
             </>
@@ -606,6 +709,8 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
               <GlobalSettings />
             </>
           )}
+
+          {scope === 'archived' && <ArchivedAgents />}
         </div>
       </div>
       <SignInDialog />

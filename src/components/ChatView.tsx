@@ -61,6 +61,8 @@ interface ChatViewProps {
   onQueue?: (text: string) => Promise<boolean>
   /** Mensajes que esperan al final del turno, sobre el compositor. */
   queue?: ReactNode
+  /** Quién responde en esta conversación, si no es Rinari (un agente de la Agency). */
+  assistantName?: string
   onImplementPlan?: () => Promise<boolean>
   onOpenProviders: () => void
   models: ModelSummary[]
@@ -127,6 +129,7 @@ function ChatView({
   onSteer,
   onQueue,
   queue,
+  assistantName,
   onImplementPlan,
   onOpenProviders,
   models,
@@ -603,6 +606,7 @@ function ChatView({
       permissionProfilesV2={permissionProfilesV2}
       onPermissionChange={onPermissionChange}
       onSearchFiles={onSearchFiles}
+      assistantName={assistantName}
     />
   )
 

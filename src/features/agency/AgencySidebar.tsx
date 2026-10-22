@@ -1,12 +1,16 @@
-import { CircleHelp, MessageSquare, Building2, OctagonX, Play, Plus, Settings, Settings2, UserPlus, UsersRound } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { CircleHelp, Copy, IdCard, LayoutTemplate, MessageSquare, Building2, MoreHorizontal, OctagonX, Pencil, Play, Plus, Settings, Settings2, UserPlus, UsersRound } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { useUIStore } from '../../stores/ui'
 import { dispatchAction } from '../../services/actions'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
+import { copyText } from '../../lib/clipboard'
 import ApplicationMenu, { SidebarFooter } from '../../components/app-shell/ApplicationMenu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../../components/ui/dropdown-menu'
 import AgentAvatar from './AgentAvatar'
 import AgencyCard from './AgencyCard'
+import { postState, teamState, type PostState } from './postState'
 import type { AgencyAgent, AgencyStatus, AgencyTeam } from './types'
 
 interface AgencySidebarProps {
@@ -34,8 +38,64 @@ interface AgencySidebarProps {
   onOpenOffice?: (team: AgencyTeam) => void
   onOpenPost?: (team: AgencyTeam, agentId: string) => void
   onNewTeam?: () => void
+  /** «Usar una plantilla» (`agency_audit_v1`): el «+» de Equipos ofrece las dos cosas. */
+  onUseTemplate?: () => void
   /** La barra colapsada: un riel de iconos, como el de Rinari. */
   collapsed?: boolean
+  /** Menú contextual: la ficha de un agente, los ajustes y la ficha de un equipo. */
+  onAgentCard?: (agentId: string) => void
+  onOpenSettings?: (agentId: string | null, teamId: string | null) => void
+  onTeamCard?: (team: AgencyTeam) => void
+  onEditTeam?: (team: AgencyTeam) => void
+}
+
+/** Una acción del menú de una fila. */
+interface RowAction {
+  key: string
+  icon: ReactNode
+  label: string
+  onSelect: () => void
+  disabled?: boolean
+  separatorBefore?: boolean
+}
+
+/**
+ * El menú de una fila de la Agency (clic derecho o «…»), como el de las
+ * conversaciones de Rinari: con teclado se abre desde el botón «…».
+ */
+function RowMenu({ open, onOpenChange, label, actions }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  label: string
+  actions: RowAction[]
+}) {
+  return (
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="agency-row-more" aria-label={label} title={label} onClick={(event) => event.stopPropagation()} data-testid="agency-row-menu">
+          <MoreHorizontal size={14} aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-max max-w-[calc(100vw-16px)]">
+        {actions.map((action) => (
+          <span key={action.key} className="contents">
+            {action.separatorBefore && <DropdownMenuSeparator />}
+            <DropdownMenuItem disabled={action.disabled} onSelect={action.onSelect} data-testid={`agency-menu-${action.key}`}>
+              {action.icon} {action.label}
+            </DropdownMenuItem>
+          </span>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** El punto de estado de una fila: trabajando (cian) o te necesita (ámbar), con su nombre para el lector. */
+function StateMark({ state, label }: { state: PostState; label: string }) {
+  if (state === 'idle') return null
+  return state === 'needs_you'
+    ? <span className="r-chip agency-row-trail" data-tone="warning" role="img" aria-label={label} title={label}>!</span>
+    : <span className="agency-working-dot agency-row-trail" role="img" aria-label={label} title={label} />
 }
 
 /** Un botón del riel: solo su icono, con su nombre como etiqueta y tooltip. */
@@ -89,11 +149,34 @@ export default function AgencySidebar({
   onOpenPost,
   onNewTeam,
   collapsed = false,
+  onAgentCard,
+  onOpenSettings,
+  onTeamCard,
+  onEditTeam,
+  onUseTemplate,
 }: AgencySidebarProps) {
   const { t } = useI18n()
   const working = new Set(status?.agent_ids.working ?? [])
   const waiting = new Set(status?.agent_ids.needs_you ?? [])
   const nameOf = new Map(agents.map((agent) => [agent.id, agent.name]))
+  const byId = new Map(agents.map((agent) => [agent.id, agent]))
+  // Which row's menu is open: `agent:<id>`, `post:<team>:<agent>` or `office:<team>`.
+  const [menu, setMenu] = useState<string | null>(null)
+  const stateText = (state: PostState) => (state === 'needs_you' ? t('agency.agent.needsYou') : state === 'working' ? t('agency.agent.working') : '')
+  const copySession = (sessionId: string | null | undefined) => {
+    if (!sessionId) return
+    void copyText(sessionId).then((ok) => toast[ok ? 'success' : 'error'](t(ok ? 'sidebar.sessionIdCopied' : 'sidebar.sessionIdCopyFailed')))
+  }
+  const agentActions = (agentId: string, sessionId: string | null | undefined): RowAction[] => [
+    ...(onAgentCard ? [{ key: 'card', icon: <IdCard size={13} />, label: t('agency.menu.card'), onSelect: () => onAgentCard(agentId) }] : []),
+    ...(onOpenSettings ? [{ key: 'settings', icon: <Settings2 size={13} />, label: t('agency.menu.settings'), onSelect: () => onOpenSettings(agentId, null) }] : []),
+    { key: 'copy', icon: <Copy size={13} />, label: t('sidebar.copySessionId'), onSelect: () => copySession(sessionId), disabled: !sessionId, separatorBefore: true },
+  ]
+  const officeActions = (team: AgencyTeam): RowAction[] => [
+    ...(onTeamCard ? [{ key: 'card', icon: <IdCard size={13} />, label: t('agency.menu.teamCard'), onSelect: () => onTeamCard(team) }] : []),
+    ...(onEditTeam ? [{ key: 'edit', icon: <Pencil size={13} />, label: t('agency.team.card.edit'), onSelect: () => onEditTeam(team) }] : []),
+    ...(onOpenSettings ? [{ key: 'settings', icon: <Settings2 size={13} />, label: t('agency.menu.settings'), onSelect: () => onOpenSettings(null, team.id) }] : []),
+  ]
   // En el cajón móvil la barra va siempre expandida, como la de Rinari.
   const mobileOpen = useUIStore((state) => state.sidebarOpen)
 
@@ -125,9 +208,12 @@ export default function AgencySidebar({
           {teams.length > 0 && <span className="agency-rail-sep" aria-hidden="true" />}
           {teams.map((team) => {
             const active = activeTeam?.teamId === team.id
+            const state = teamState(team, status)
+            const office = t('agency.sidebar.office', { name: team.name })
             return (
-              <RailButton key={team.id} label={t('agency.sidebar.office', { name: team.name })} onClick={() => onOpenOffice?.(team)} active={active} testId="agency-team-office">
+              <RailButton key={team.id} label={state === 'idle' ? office : `${office} · ${stateText(state)}`} onClick={() => onOpenOffice?.(team)} active={active} testId="agency-team-office">
                 <span className="agency-team-mark" aria-hidden="true"><UsersRound size={14} /></span>
+                {state !== 'idle' && <span className="agency-rail-dot" data-tone={state === 'needs_you' ? 'warning' : undefined} aria-hidden="true" />}
               </RailButton>
             )
           })}
@@ -203,8 +289,9 @@ export default function AgencySidebar({
                   : agent.spend_today?.over_budget
                     ? t('agency.agent.overBudget')
                     : ''
+              const key = `agent:${agent.id}`
               return (
-                <li key={agent.id}>
+                <li key={agent.id} className="agency-row-item" onContextMenu={(event) => { event.preventDefault(); setMenu(key) }}>
                   <button
                     type="button"
                     className={cn('agency-agent-row', agent.id === activeAgentId && 'is-active')}
@@ -219,11 +306,12 @@ export default function AgencySidebar({
                       {agent.role && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{agent.role}</span>}
                     </span>
                     {waiting.has(agent.id) ? (
-                      <span className="r-chip" data-tone="warning" aria-hidden="true">!</span>
+                      <span className="r-chip agency-row-trail" data-tone="warning" aria-hidden="true">!</span>
                     ) : working.has(agent.id) ? (
-                      <span className="agency-working-dot" aria-hidden="true" />
+                      <span className="agency-working-dot agency-row-trail" aria-hidden="true" />
                     ) : null}
                   </button>
+                  <RowMenu open={menu === key} onOpenChange={(open) => setMenu(open ? key : null)} label={t('agency.menu.label', { name: agent.name })} actions={agentActions(agent.id, agent.session_id)} />
                 </li>
               )
             })}
@@ -232,7 +320,19 @@ export default function AgencySidebar({
 
         <div className="mb-1 mt-5 flex items-center justify-between gap-2 px-2">
           <p className="sidebar-heading">{t('agency.sidebar.teams')}</p>
-          {onNewTeam && (
+          {onNewTeam && onUseTemplate ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="icon-btn agency-new-team" aria-label={t('agency.sidebar.newTeam')} title={t('agency.sidebar.newTeam')} data-testid="agency-new-team">
+                  <Plus size={14} aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-max">
+                <DropdownMenuItem onSelect={onNewTeam} data-testid="agency-new-team-blank"><UsersRound size={13} /> {t('agency.sidebar.newTeamBlank')}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={onUseTemplate} data-testid="agency-new-team-template"><LayoutTemplate size={13} /> {t('agency.tutorial.template')}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : onNewTeam && (
             <button type="button" className="icon-btn agency-new-team" onClick={onNewTeam} aria-label={t('agency.sidebar.newTeam')} title={t('agency.sidebar.newTeam')} data-testid="agency-new-team">
               <Plus size={14} aria-hidden="true" />
             </button>
@@ -246,8 +346,10 @@ export default function AgencySidebar({
           <ul className="grid gap-2" aria-label={t('agency.sidebar.teams')}>
             {teams.map((team) => {
               const officeActive = activeTeam?.teamId === team.id && activeTeam.agentId === null
+              const officeKey = `office:${team.id}`
               return (
                 <li key={team.id} data-testid="agency-team">
+                  <div className="agency-row-item" onContextMenu={(event) => { if (event.defaultPrevented) return; event.preventDefault(); setMenu(officeKey) }}>
                   <button
                     type="button"
                     className={cn('agency-agent-row', officeActive && 'is-active')}
@@ -262,25 +364,36 @@ export default function AgencySidebar({
                       <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('agency.sidebar.officeLabel')}</span>
                     </span>
                   </button>
+                  <RowMenu open={menu === officeKey} onOpenChange={(open) => setMenu(open ? officeKey : null)} label={t('agency.menu.label', { name: team.name })} actions={officeActions(team)} />
+                  </div>
                   {team.posts.length > 0 && (
                     <ul className="agency-posts" aria-label={t('agency.sidebar.posts', { name: team.name })}>
                       {team.posts.map((post) => {
                         const active = activeTeam?.teamId === team.id && activeTeam.agentId === post.agent_id
-                        const name = nameOf.get(post.agent_id) ?? post.agent_id
+                        // A name, never a raw id: an agent that is gone says so.
+                        const name = nameOf.get(post.agent_id) ?? t('agency.agent.gone')
+                        const state = postState(team, post.agent_id, status)
+                        const label = t('agency.sidebar.post', { name, team: team.name })
+                        const key = `post:${team.id}:${post.agent_id}`
                         return (
-                          <li key={post.agent_id}>
+                          <li key={post.agent_id} className="agency-row-item" onContextMenu={(event) => { event.preventDefault(); setMenu(key) }}>
                             <button
                               type="button"
                               className={cn('agency-post-row', active && 'is-active')}
                               onClick={() => onOpenPost?.(team, post.agent_id)}
                               aria-current={active ? 'page' : undefined}
-                              aria-label={t('agency.sidebar.post', { name, team: team.name })}
+                              aria-label={state === 'idle' ? label : `${label} · ${stateText(state)}`}
                               data-testid="agency-post-row"
+                              data-state={state}
                             >
-                              <AgentAvatar agent={{ id: post.agent_id, name }} size={20} />
+                              <AgentAvatar agent={byId.get(post.agent_id) ?? { id: post.agent_id, name }} size={20} />
                               <span className="min-w-0 flex-1 truncate text-left">{name}</span>
-                              {team.chief_agent_id === post.agent_id && <span className="agency-chief" title={t('agency.team.chief')}>{t('agency.team.chiefShort')}</span>}
+                              {team.chief_agent_id === post.agent_id && <span className="agency-chief agency-row-trail" title={t('agency.team.chief')}>{t('agency.team.chiefShort')}</span>}
+                              <StateMark state={state} label={stateText(state)} />
                             </button>
+                            {byId.has(post.agent_id) && (
+                              <RowMenu open={menu === key} onOpenChange={(open) => setMenu(open ? key : null)} label={t('agency.menu.label', { name })} actions={agentActions(post.agent_id, post.session_id)} />
+                            )}
                           </li>
                         )
                       })}

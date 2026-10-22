@@ -1,13 +1,14 @@
-import { BellRing, CalendarClock, CheckCheck, Library, TriangleAlert, X } from 'lucide-react'
-import { useState } from 'react'
+import { BellRing, Building2, CalendarClock, CheckCheck, Library, TriangleAlert, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { useI18n, type I18nKey } from '../../i18n'
 import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
 import {
   NOTIFICATION_MODULES,
-  selectUnreadCount,
+  selectUnreadCountIn,
   useNotificationCenter,
+  visibleIn,
   type CenterNotification,
   type NotificationModule,
   type NotificationTarget,
@@ -16,13 +17,15 @@ import BoardAttentionSection from '../board/BoardAttentionSection'
 import ConversationAttentionSection, { useConversationAttentionTotal } from './ConversationAttentionSection'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { markEverythingRead } from './attentionCommands'
+import { useProfileStore } from '../profiles/profileStore'
 
 const MODULE_TITLE: Record<NotificationModule, I18nKey> = {
   schedules: 'notifications.module.schedules',
+  agency: 'notifications.module.agency',
   skills: 'notifications.module.skills',
   system: 'notifications.module.system',
 }
-const MODULE_ICON = { schedules: CalendarClock, skills: Library, system: TriangleAlert } as const
+const MODULE_ICON = { schedules: CalendarClock, agency: Building2, skills: Library, system: TriangleAlert } as const
 const TONE_DOT: Record<NonNullable<CenterNotification['tone']>, string> = {
   info: 'bg-[var(--accent)]',
   success: 'bg-[var(--success)]',
@@ -56,8 +59,11 @@ function ago(at: number, lang: string): string {
 export default function NotificationCenter({ labelFor, projectFor, goBoard, onOpenTarget, disabled = false }: NotificationCenterProps) {
   const { t, lang } = useI18n()
   const [open, setOpen] = useState(false)
-  const items = useNotificationCenter((state) => state.items)
-  const unread = useNotificationCenter(selectUnreadCount)
+  // Cada perfil ve sus avisos y los de toda la app (#13 de la auditoría de la Agency).
+  const activeProfile = useProfileStore((state) => state.activeId)
+  const allItems = useNotificationCenter((state) => state.items)
+  const items = useMemo(() => allItems.filter((item) => visibleIn(item, activeProfile)), [allItems, activeProfile])
+  const unread = useNotificationCenter(selectUnreadCountIn(activeProfile))
   const markRead = useNotificationCenter((state) => state.markRead)
   const dismiss = useNotificationCenter((state) => state.dismiss)
   // Conversaciones que piden algo (todas, también las de Boards) + avisos sin leer.
@@ -68,7 +74,7 @@ export default function NotificationCenter({ labelFor, projectFor, goBoard, onOp
   // Abrir la campana es verlas: al cerrarla, por la vía que sea, quedan leídas.
   const close = () => {
     setOpen(false)
-    if (useNotificationCenter.getState().items.some((item) => !item.read)) markRead()
+    if (useNotificationCenter.getState().items.some((item) => !item.read && visibleIn(item, activeProfile))) markRead(undefined, activeProfile)
   }
   const go = (item: CenterNotification) => {
     close()
@@ -102,7 +108,7 @@ export default function NotificationCenter({ labelFor, projectFor, goBoard, onOp
             </button>
           )}
           {items.length > 0 && (
-            <button type="button" className="btn btn-quiet btn-xs" onClick={() => useNotificationCenter.getState().clear()}>
+            <button type="button" className="btn btn-quiet btn-xs" onClick={() => useNotificationCenter.getState().clear(undefined, activeProfile)}>
               {t('notifications.clearAll')}
             </button>
           )}

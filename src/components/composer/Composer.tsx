@@ -106,6 +106,8 @@ interface ComposerProps {
    * Solo en un borrador; sin él no hay chip.
    */
   draftProject?: { projectId: string | null; onChange: (projectId: string | null) => void }
+  /** Quién responde, si no es Rinari (un agente de la Agency): los textos lo nombran. */
+  assistantName?: string
 }
 
 const MODES = ['plan', 'build', 'review'] as const
@@ -175,6 +177,7 @@ export default function Composer({
   onPermissionChange,
   onSearchFiles,
   draftProject,
+  assistantName,
 }: ComposerProps) {
   const { t } = useI18n()
   const draftKey = explicitDraftKey ?? (sessionId || 'draft')
@@ -874,7 +877,11 @@ export default function Composer({
           value={text}
           rows={placement === 'centered' ? 2 : 1}
           aria-label={t('composer.message')}
-          placeholder={canSteer ? t('composer.placeholderSteer') : isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
+          placeholder={canSteer
+            ? (assistantName ? t('composer.placeholderSteerNamed', { name: assistantName }) : t('composer.placeholderSteer'))
+            : isStreaming
+              ? (assistantName ? t('composer.placeholderStreamingNamed', { name: assistantName }) : t('composer.placeholderStreaming'))
+              : t('composer.placeholder')}
           onChange={(e) => {
             setText(e.target.value)
           }}

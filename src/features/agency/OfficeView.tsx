@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, OctagonPause, Play, PauseCircle } from 'lucide-react'
 import Markdown, { type MarkdownExtension } from '../../components/Markdown'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
@@ -8,6 +8,9 @@ import { commandMessage, engineApi } from '../../services/engine'
 import { ErrandCard, useTeamEvents } from './Board'
 import AgentAvatar from './AgentAvatar'
 import { openErrand } from './OfficePanels'
+import { useAgencyData } from './AgencyData'
+import { CHAIN_MAX_HOPS, chainReasonKey, chainResumeText } from './chainStop'
+import { postState, type PostState } from './postState'
 import type { AgencyAgent, AgencyTeam, Errand, OfficeMessage } from './types'
 
 interface OfficeViewProps {
@@ -99,6 +102,59 @@ function MessageText({ text, members }: { text: string; members: AgencyAgent[] }
 }
 
 /**
+ * Una cadena que la oficina cortó (D-31): una línea fija, en palabras llanas,
+ * con qué límite saltó y «Continuar», que vuelve a publicar como tuyo el
+ * último mensaje de esa cadena (una cadena nueva, con sus saltos a cero).
+ */
+function ChainStopped({ message, messages, team }: { message: OfficeMessage; messages: OfficeMessage[]; team: AgencyTeam }) {
+  const { t } = useI18n()
+  const notice = message.notice?.kind === 'stopped' ? message.notice : null
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle')
+  if (!notice) return null
+  const text = chainResumeText(messages, notice.chain_id, message.id)
+  const resume = async () => {
+    if (!text || state !== 'idle') return
+    setState('sending')
+    try {
+      await engineApi.agencyOfficePost(team.id, text)
+      setState('sent')
+    } catch (error) {
+      setState('idle')
+      toast.error(commandMessage(error))
+    }
+  }
+  return (
+    <div className="agency-office-stop" role="note" data-testid="agency-chain-stopped" data-reason={notice.reason}>
+      <span className="agency-office-stop-icon" aria-hidden="true"><OctagonPause size={15} /></span>
+      <div className="min-w-0 flex-1">
+        <p className="agency-office-stop-title">{t('agency.chain.stoppedLine')}</p>
+        <p className="agency-office-stop-why">
+          {t(chainReasonKey(notice.reason), { max: CHAIN_MAX_HOPS })}
+          {notice.detail ? <span className="agency-office-stop-detail"> · {notice.detail}</span> : null}
+        </p>
+      </div>
+      {text && (
+        <button
+          type="button"
+          className="btn btn-secondary btn-xs"
+          disabled={state !== 'idle'}
+          onClick={() => void resume()}
+          title={t('agency.chain.continueHint')}
+          data-testid="agency-chain-continue"
+        >
+          <Play size={12} aria-hidden="true" /> {state === 'sent' ? t('agency.chain.continued') : t('agency.chain.continue')}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** El estado de un agente en su puesto, dicho con palabras además del punto. */
+function stateLabel(state: PostState, t: ReturnType<typeof useI18n>['t']): string {
+  return state === 'needs_you' ? t('agency.agent.needsYou') : state === 'working' ? t('agency.agent.working') : ''
+}
+
+/**
  * La oficina de un equipo (A2): un chat de grupo del dueño y sus agentes, no
  * una conversación con un modelo. Solo una @mención despierta a alguien
  * (D-1); su respuesta vuelve aquí. Recado, Pizarra y la ficha del equipo
@@ -108,6 +164,7 @@ function MessageText({ text, members }: { text: string; members: AgencyAgent[] }
  */
 export default function OfficeView({ team, agents }: OfficeViewProps) {
   const { t } = useI18n()
+  const { status, halted } = useAgencyData()
   const [messages, setMessages] = useState<OfficeMessage[]>([])
   const [errands, setErrands] = useState<Errand[]>([])
   const end = useRef<HTMLDivElement>(null)
@@ -150,9 +207,18 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
   return (
     <div className="agency-office" data-testid="agency-office">
         <header className="agency-office-head">
-          <div className="agency-office-faces" aria-hidden="true">
-            {members.slice(0, 5).map((agent) => <AgentAvatar key={agent.id} agent={agent} size={30} />)}
-          </div>
+          <ul className="agency-office-faces" aria-label={t('agency.office.members', { n: members.length })}>
+            {members.slice(0, 5).map((agent) => {
+              const state = postState(team, agent.id, status)
+              const label = stateLabel(state, t)
+              return (
+                <li key={agent.id} className="agency-office-face" data-state={state} title={label ? `${agent.name} · ${label}` : agent.name} aria-label={label ? `${agent.name} · ${label}` : agent.name} data-testid="agency-office-face">
+                  <AgentAvatar agent={agent} size={30} />
+                  {state !== 'idle' && <span className="agency-face-dot" data-tone={state === 'needs_you' ? 'warning' : undefined} aria-hidden="true" />}
+                </li>
+              )
+            })}
+          </ul>
           <div className="min-w-0 flex-1">
             <h1 className="truncate font-display text-[19px] font-semibold text-[var(--text)]">{team.name}</h1>
             <p className="truncate text-[12.5px] text-[var(--text-muted)]">
@@ -174,8 +240,10 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
               </div>
             ) : (
               messages.map((message) => {
+                if (message.notice?.kind === 'stopped') return <ChainStopped key={message.id} message={message} messages={messages} team={team} />
                 const agent = message.author_kind === 'agent' ? byId.get(message.agent_id ?? '') ?? null : null
-                const author = message.author_kind === 'owner' ? t('agency.office.you') : agent?.name ?? message.agent_id
+                // A name, never a raw id: an agent that left says so.
+                const author = message.author_kind === 'owner' ? t('agency.office.you') : agent?.name ?? t('agency.agent.gone')
                 const errand = message.errand_id && cardAt.has(message.id) ? errandsById.get(message.errand_id) : undefined
                 return (
                   <div key={message.id} className={cn('agency-office-message', message.author_kind === 'owner' && 'is-owner')} data-testid="agency-office-message">
@@ -217,6 +285,12 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
           </div>
         </div>
 
+        {halted && (
+          <div className="agency-halted-note" role="status" data-testid="agency-office-halted">
+            <PauseCircle size={14} aria-hidden="true" />
+            <span>{t('agency.halted.office')}</span>
+          </div>
+        )}
         <OfficeComposer team={team} members={members} onPosted={() => void reload()} />
     </div>
   )
@@ -381,7 +455,7 @@ function OfficeComposer({ team, members, onPosted }: { team: AgencyTeam; members
           />
         </div>
         <div className="office-composer-row">
-          <p className="office-composer-hint">{t('agency.office.hint')}</p>
+          <p className="office-composer-hint">{t('agency.office.hint', { max: CHAIN_MAX_HOPS })}</p>
           <button type="button" className="office-send" disabled={sending || !text.trim()} onClick={() => void send()} aria-label={t('agency.office.send')} title={t('agency.office.send')} data-testid="agency-office-send">
             <ArrowUp size={16} aria-hidden="true" />
           </button>

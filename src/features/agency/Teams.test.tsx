@@ -60,6 +60,14 @@ const api = {
   agencyTeamRemember: vi.fn(async () => ({ record: {} })),
   mcpList: vi.fn(async () => ({ servers: [{ name: 'youtube-canal', scope: 'global', owner: 'team:team_1' }, { name: 'gmail', scope: 'global', owner: null }, { name: 'mio', scope: 'global', owner: 'agent:agent_w' }] })),
   mcpCatalogList: vi.fn(async () => ({ entries: [] })),
+  agencyTemplates: vi.fn(async () => ({ templates: [
+    { id: 'tpl_canal', name: 'Canal de videos', purpose: 'Guiones y edición', agents: [{ name: 'Guionista', role: 'Escribe' }, { name: 'Editor', role: 'Monta' }] },
+    { id: 'tpl_soporte', name: 'Soporte', purpose: 'Responde tickets', agents: [{ name: 'Triage', role: 'Clasifica' }] },
+  ] })),
+  agencyTeamFromTemplate: vi.fn(async (_id: string, _model: string | null) => ({ team: { ...team, id: 'team_9', name: 'Soporte' }, agents: [writer] })),
+  agencyUnarchiveAgent: vi.fn(async (id: string) => ({ agent: { ...agent(id, 'Vieja'), archived_at: null } })),
+  modelList: vi.fn(async () => ({ models: [] })),
+  providerList: vi.fn(async () => ({ providers: [], active_alias: null })),
 }
 vi.mock('../../services/engine', () => ({
   engineApi: new Proxy({}, { get: (_target, key: string) => (api as Record<string, unknown>)[key] }),
@@ -81,6 +89,8 @@ import { useSessionDockStore } from '../../stores/sessionDock'
 import TeamForm from './TeamForm'
 import { BoardPanel } from './Board'
 import AgencySettings from './AgencySettings'
+import AgencyHome, { chainWaiting } from './AgencyHome'
+import TemplatePicker from './TemplatePicker'
 
 const wrap = (node: React.ReactNode) => render(<I18nProvider lang="es">{node}</I18nProvider>)
 
@@ -261,4 +271,78 @@ it('settings show each team and the whole Agency, with subagents still to come',
   await userEvent.click(later)
   expect(api.agencySetSettings).not.toHaveBeenCalled()
   expect(screen.getByTestId('agency-errand-mode-turn').getAttribute('aria-pressed')).toBe('true')
+})
+
+it('the owner reviews any delivered errand, also one an agent asked for, and reads its result formatted', async () => {
+  errands = [errand({ from_agent_id: 'agent_v', result: { summary: '**Listo**: un gato astronauta' } })]
+  wrap(<OfficeView team={team} agents={[writer, video]} />)
+  const card = await screen.findByTestId('agency-errand')
+  expect(card.textContent).toContain('De Video para Writer')
+  // Markdown, not raw asterisks.
+  expect(within(screen.getByTestId('agency-errand-result')).getByText('Listo').tagName).toBe('STRONG')
+  await userEvent.click(screen.getByTestId('agency-errand-accept'))
+  expect(api.agencyReviewErrand).toHaveBeenCalledWith('err_1', true)
+})
+
+it('an errand the owner left says it is his in plain words, not «De Tú»', async () => {
+  wrap(<OfficeView team={team} agents={[writer, video]} />)
+  const card = await screen.findByTestId('agency-errand')
+  expect(card.textContent).toContain('Tuyo, para Writer')
+  expect(card.textContent).not.toContain('De Tú')
+})
+
+it('a cut chain waits for the owner until he writes again in that office', () => {
+  const base = { team_id: 'team_1', agent_id: null, mentions: [], errand_id: null, hop: 0, created_at: 1 }
+  const owner = (id: string) => ({ ...base, id, author_kind: 'owner' as const, text: 'hola', chain_id: id })
+  const stop = (id: string) => ({ ...base, id, author_kind: 'agent' as const, text: '', chain_id: 'c', system: true, notice: { kind: 'stopped' as const, reason: 'too_many_hops', chain_id: 'c' } })
+  expect(chainWaiting([owner('a'), stop('b')])).toBe(true)
+  expect(chainWaiting([stop('b'), owner('c')])).toBe(false)
+  expect(chainWaiting([owner('a')])).toBe(false)
+})
+
+it('the home says what waits for the owner and shows the teams with who works', async () => {
+  errands = [errand(), errand({ id: 'err_2', title: 'Ya revisado', status: 'reviewed' })]
+  const status = {
+    agents: 2, working: 1, needs_you: 1, agent_ids: { working: ['agent_w'], needs_you: ['agent_v'] },
+    session_ids: { working: ['post_w'], needs_you: ['ses_agent_v'] }, waiting_for_owner: { errands: 1, chains: 0 },
+  }
+  const onOpenOffice = vi.fn()
+  const onOpenAgent = vi.fn()
+  wrap(<AgencyHome agents={[writer, video]} teams={[team]} status={status} loaded onOpenAgent={onOpenAgent} onEditAgent={() => {}} onNewAgent={() => {}} onOpenOffice={onOpenOffice} />)
+  const waiting = await screen.findByTestId('agency-home-waiting')
+  expect(within(waiting).getByText('Video te necesita')).toBeTruthy()
+  await waitFor(() => expect(within(waiting).getByText('Revisa «Guion del lunes» · Canal infantil')).toBeTruthy())
+  expect(within(waiting).queryByText(/Ya revisado/)).toBeNull()
+  await userEvent.click(screen.getByTestId('agency-waiting-errand'))
+  expect(onOpenOffice).toHaveBeenCalledWith(team)
+  const tile = screen.getByTestId('agency-team-tile')
+  expect(tile.textContent).toContain('Canal infantil')
+  expect(within(tile).getByText('Trabajando')).toBeTruthy()
+})
+
+it('a template makes the team with the chosen one, once', async () => {
+  const onCreated = vi.fn()
+  wrap(<TemplatePicker open onClose={() => {}} onCreated={onCreated} />)
+  const options = await screen.findAllByTestId('agency-template')
+  expect(options[0].getAttribute('aria-checked')).toBe('true')
+  expect(options[0].textContent).toContain('Guionista')
+  await userEvent.click(options[1])
+  await userEvent.dblClick(screen.getByTestId('agency-template-create'))
+  await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'team_9' })))
+  expect(api.agencyTeamFromTemplate).toHaveBeenCalledTimes(1)
+  // «El de siempre» unless the owner picks a model.
+  expect(api.agencyTeamFromTemplate).toHaveBeenCalledWith('tpl_soporte', null)
+})
+
+it('settings list the archived agents and restore one', async () => {
+  const old = { ...agent('agent_old', 'Vieja'), archived_at: 5 }
+  api.agencyAgents.mockImplementation(async () => ({ agents: [writer, video, old] }))
+  wrap(<AgencySettings agents={[writer, video]} teams={[team]} teamsEnabled auditEnabled />)
+  await userEvent.click(screen.getByTestId('agency-settings-scope-archived'))
+  const rows = await screen.findAllByTestId('agency-archived-row')
+  expect(rows).toHaveLength(1)
+  expect(rows[0].textContent).toContain('Vieja')
+  await userEvent.click(within(rows[0]).getByTestId('agency-archived-restore'))
+  expect(api.agencyUnarchiveAgent).toHaveBeenCalledWith('agent_old')
+  api.agencyAgents.mockImplementation(async () => ({ agents: [writer, video] }))
 })

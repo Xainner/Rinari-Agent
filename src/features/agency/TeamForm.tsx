@@ -7,6 +7,7 @@ import { commandMessage, engineApi, type McpServer } from '../../services/engine
 import AgentAvatar from './AgentAvatar'
 import { BudgetFields, ConnectorTiles, EditorHero, EditorPage, EditorSection } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
+import { useConfirm } from '../../components/ui/useConfirm'
 import type { AgencyAgent, AgencyTeam, AgencyTeamInput } from './types'
 
 /** Un equipo tiene hasta 8 agentes; para más, otro equipo (6.2). */
@@ -34,6 +35,7 @@ function numberOrUndefined(text: string): number | undefined {
  */
 export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }: TeamFormProps) {
   const { t } = useI18n()
+  const { ask: confirm, dialog: confirmDialog } = useConfirm()
   const editing = Boolean(team)
   const [name, setName] = useState(team?.name ?? '')
   const [purpose, setPurpose] = useState(team?.purpose ?? '')
@@ -118,6 +120,13 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
 
   const archive = async () => {
     if (!team || saving) return
+    const ok = await confirm({
+      title: t('agency.team.archiveTitle', { name: team.name }),
+      body: t('agency.team.archiveBody'),
+      confirmLabel: t('agency.team.archive'),
+      cancelLabel: t('agency.form.cancel'),
+    })
+    if (!ok) return
     try {
       const result = await engineApi.agencyArchiveTeam(team.id)
       toast.success(t('agency.team.archived', { name: result.team.name }))
@@ -154,7 +163,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
           {editing && (
             <>
               <button type="button" className="btn btn-quiet btn-sm" onClick={() => void archive()}>
-                <Archive size={13} aria-hidden="true" /> {t('agency.form.archive')}
+                <Archive size={13} aria-hidden="true" /> {t('agency.team.archive')}
               </button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCopyName(copyName === null ? t('agency.team.copyDefault', { name: team!.name }) : null)} data-testid="agency-team-duplicate-open">
                 <Copy size={13} aria-hidden="true" /> {t('agency.team.duplicate')}
@@ -273,6 +282,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
       <EditorSection icon={Wallet} title={t('agency.team.budget')} hint={t('agency.team.budgetHint')}>
         <BudgetFields usd={usd} tokens={tokens} onUsd={setUsd} onTokens={setTokens} />
       </EditorSection>
+      {confirmDialog}
     </EditorPage>
   )
 }

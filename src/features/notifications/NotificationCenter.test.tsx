@@ -52,3 +52,24 @@ it('says so when there is nothing to show', async () => {
   expect(screen.getByText('Sin notificaciones.')).toBeTruthy()
   expect(screen.queryByText(/No hay pendientes en el board/)).toBeNull()
 })
+
+it('shows only the active profile and what belongs to the whole app; clearing leaves the other profile alone', async () => {
+  const { useProfileStore } = await import('../profiles/profileStore')
+  useProfileStore.setState({ activeId: 'work' })
+  const push = useNotificationCenter.getState().push
+  push({ module: 'schedules', title: 'Backup del trabajo', profileId: 'work' })
+  push({ module: 'agency', title: 'Regla de casa', profileId: 'home' })
+  push({ module: 'system', title: 'Hay una versión nueva' })
+  center()
+  const trigger = screen.getByTestId('notification-center-trigger')
+  expect(trigger.textContent).toBe('2')
+  await userEvent.click(trigger)
+  expect(screen.getByText('Backup del trabajo')).toBeTruthy()
+  expect(screen.getByText('Hay una versión nueva')).toBeTruthy()
+  expect(screen.queryByText('Regla de casa')).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Limpiar' }))
+  expect(useNotificationCenter.getState().items.map((item) => item.title)).toEqual(['Regla de casa'])
+  // Still unread in its own profile.
+  expect(useNotificationCenter.getState().items[0].read).toBe(false)
+  useProfileStore.setState({ activeId: null })
+})

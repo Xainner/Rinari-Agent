@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { AgencyAgent, AgencyTeam } from './types'
+import type { AgencyAgent, AgencyStatus, AgencyTeam } from './types'
 
 /**
  * Los agentes y equipos de la Agency que `useAgency` ya tiene en `App`, para
@@ -9,10 +9,14 @@ import type { AgencyAgent, AgencyTeam } from './types'
 export interface AgencyData {
   agents: AgencyAgent[]
   teams: AgencyTeam[]
+  /** Quién trabaja y quién espera (por conversación con `agency_audit_v1`). */
+  status?: AgencyStatus | null
+  /** «Detener a todos» paró la Agency de este perfil (D-32). */
+  halted?: boolean
   reload: () => void | Promise<void>
 }
 
-const EMPTY: AgencyData = { agents: [], teams: [], reload: () => undefined }
+const EMPTY: AgencyData = { agents: [], teams: [], status: null, halted: false, reload: () => undefined }
 
 export const AgencyDataContext = createContext<AgencyData>(EMPTY)
 

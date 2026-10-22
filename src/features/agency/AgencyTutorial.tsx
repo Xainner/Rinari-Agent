@@ -38,7 +38,7 @@ const POINTS: Partial<Record<Step, Array<{ icon: Icon; key: string }>>> = {
   rules: [
     { icon: Clock, key: 'time' },
     { icon: Plug, key: 'connector' },
-    { icon: ShieldCheck, key: 'approve' },
+    { icon: ShieldCheck, key: 'autonomy' },
     { icon: ScrollText, key: 'log' },
   ],
 }
@@ -49,7 +49,7 @@ export type AgencyTutorialNext = 'create' | 'template' | 'later'
 interface AgencyTutorialProps {
   open: boolean
   onClose: (next: AgencyTutorialNext) => void
-  /** Hay plantillas que ofrecer; sin ellas, «Usar una plantilla» dice «Pronto». */
+  /** Esta versión de Rinari trae plantillas (`agency_audit_v1`); sin ellas, «Usar una plantilla» dice «Pronto». */
   templatesAvailable?: boolean
   /** «Créalo con Rinari» (`agency_draft_v1`); sin él, la primera opción es crear a mano. */
   draftAvailable?: boolean

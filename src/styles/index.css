@@ -3727,7 +3727,6 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 /* Arriba: con el panel alto y pocas reglas, la grilla estiraba sus filas (y «Nueva regla» con ellas). */
 .agency-rules { display: grid; align-content: start; gap: 10px; padding: 12px; }
 .agency-rule { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); }
-.agency-rule.is-proposal { border-color: var(--warning); }
 .agency-rule-head { display: flex; min-width: 0; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
 .agency-rule-head svg { flex-shrink: 0; color: var(--accent-2); }
 .agency-rule-parts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 12.5px; }
@@ -3966,7 +3965,11 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-errand-who { margin: 0; font-size: 11.5px; color: var(--text-subtle); }
 .agency-errand-body { margin: 0; white-space: pre-wrap; color: var(--text-muted); }
 .agency-errand-checks { display: grid; gap: 2px; margin: 0; padding-left: 18px; color: var(--text-muted); }
-.agency-errand-result { margin: 0; padding: 6px 8px; border-radius: var(--r-sm); background: var(--bg-inset); white-space: pre-wrap; color: var(--text); }
+.agency-errand-result { min-width: 0; margin: 0; padding: 6px 10px; border-radius: var(--r-sm); background: var(--bg-inset); overflow-wrap: anywhere; font-size: 12.5px; line-height: 1.55; color: var(--text); }
+.agency-errand-result .md-body > :first-child { margin-top: 0; }
+.agency-errand-result .md-body > :last-child { margin-bottom: 0; }
+/* En la pizarra, un resultado largo se desplaza en su tarjeta en vez de estirar la columna. */
+.agency-errand-result.is-compact { max-height: 168px; overflow-y: auto; }
 .agency-errand-reason { margin: 0; color: var(--warning); }
 .agency-errand[data-status='blocked'] .agency-errand-reason { color: var(--danger); }
 .agency-errand-actions { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3989,3 +3992,76 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-bubble-body { margin-top: 6px; }
 .agency-bubble-body > summary { cursor: pointer; font-size: 12px; color: var(--text-subtle); }
 .agency-bubble-body[open] > summary { margin-bottom: 6px; }
+
+/* -- Rinari Agency: auditoría del 21-oct ------------------------------------------
+   Reglas con historial, la cadena cortada, estados por puesto, la Agency
+   detenida, menús de fila, personalidad, archivados, plantillas y «Te espera». */
+.agency-rule-history-toggle .agency-rule-chevron { transition: transform var(--dur-fast) var(--ease-out); }
+.agency-rule-history-toggle.is-open .agency-rule-chevron { transform: rotate(180deg); }
+.agency-rule-runs { display: grid; gap: 2px; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--line-1); list-style: none; }
+.agency-rule-run { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 4px 2px; }
+
+/* Una cadena cortada: una línea fija en el hilo, ámbar y tranquila, con su salida. */
+.agency-office-stop { display: flex; align-items: center; gap: 10px; margin: 4px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--warning) 7%, var(--bg-subtle)); }
+.agency-office-stop-icon { display: grid; width: 28px; height: 28px; flex-shrink: 0; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
+.agency-office-stop-title { margin: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+.agency-office-stop-why { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); }
+.agency-office-stop-detail { color: var(--text-subtle); }
+
+/* Las caras de la cabecera de la oficina (y de una tarjeta de equipo) dicen quién trabaja. */
+.agency-office-faces { margin: 0; list-style: none; }
+.agency-office-face { position: relative; margin-left: -8px; list-style: none; }
+.agency-office-faces .agency-office-face .agent-avatar { margin-left: 0; }
+.agency-office-faces.is-tile { display: flex; padding-left: 8px; }
+.agency-office-faces.is-tile .agent-avatar { box-shadow: 0 0 0 2px var(--bg-subtle), inset 0 0 0 1px hsl(var(--agent-hue) 80% 72% / 0.45); }
+.agency-face-dot { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 999px; background: var(--agent); box-shadow: 0 0 0 2px var(--bg-app); }
+.agency-face-dot[data-tone='warning'] { background: var(--warning); }
+
+/* La Agency detenida (D-32): un aviso calmo sobre el composer, sin acento fuerte. */
+.agency-halted-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 28px 8px; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.agency-halted-note svg { flex-shrink: 0; margin-top: 2px; color: var(--warning); }
+.agency-halted-note.is-chat { width: min(100% - 32px, 48rem); margin: 0 auto 8px; }
+
+/* El menú de una fila de la barra lateral: «…» al pasar o con el foco, y clic derecho. */
+.agency-row-item { position: relative; list-style: none; }
+.agency-row-more { position: absolute; top: 50%; right: 6px; display: grid; width: 22px; height: 22px; place-items: center; border-radius: var(--r-xs); color: var(--text-subtle); opacity: 0; transform: translateY(-50%); transition: opacity var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast); }
+.agency-row-more:hover { background: var(--bg-active); color: var(--text); }
+.agency-row-item:hover .agency-row-more, .agency-row-more:focus-visible, .agency-row-more[data-state='open'] { opacity: 1; }
+.agency-row-trail { transition: opacity var(--dur-fast); }
+.agency-row-item:hover .agency-row-trail, .agency-row-item:has(.agency-row-more[data-state='open']) .agency-row-trail { opacity: 0; }
+.agency-post-row .agency-row-trail.r-chip { padding: 0 6px; }
+
+/* Ficha del agente en la barra de título de su chat. */
+.agency-chat-head { display: inline-flex; min-width: 0; align-items: center; gap: 8px; }
+.agency-chat-card { flex-shrink: 0; }
+
+.agency-personality-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.agency-archived-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.agency-archived-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-1); border-radius: var(--r-sm); background: var(--bg-subtle); }
+
+/* Plantillas: tarjetas elegibles, como las opciones de la ficha. */
+.agency-template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.agency-template-card { position: relative; display: grid; align-content: start; gap: 8px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.agency-template-card:hover { border-color: var(--line-3); }
+.agency-template-card.is-checked { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-subtle)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.agency-template-head { display: flex; min-width: 0; align-items: center; gap: 10px; font-size: 13.5px; }
+.agency-template-head .agency-option-check { position: static; }
+.agency-template-purpose { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.agency-template-roles { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* La portada: «Te espera», equipos y agentes, cada sección con su título. */
+.agency-home-section { max-width: 1100px; margin-top: 26px; }
+.agency-home-section .agency-grid { margin-top: 10px; }
+.agency-home-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.agency-home-heading { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--text); }
+.agency-home-count { display: grid; min-width: 20px; height: 20px; padding: 0 6px; place-items: center; border-radius: 999px; background: color-mix(in srgb, var(--warning) 18%, transparent); font-family: var(--font-sans); font-size: 11.5px; color: var(--warning); }
+.agency-waiting-list { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.agency-waiting-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 13px; color: var(--text); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.agency-waiting-row:hover { border-color: var(--line-2); background: var(--bg-hover); }
+.agency-waiting-row > svg { flex-shrink: 0; color: var(--accent-2); }
+.agency-waiting-row[data-tone='warning'] > svg { color: var(--warning); }
+.agency-waiting-go { flex-shrink: 0; font-size: 12px; color: var(--text-subtle); }
+.agency-team-mark.is-large { width: 44px; height: 44px; border-radius: var(--r-sm); }
+.agency-tile[data-state='accent'] { border-color: color-mix(in srgb, var(--agent) 35%, transparent); }
+@media (prefers-reduced-motion: reduce) { .agency-rule-history-toggle .agency-rule-chevron, .agency-row-more, .agency-row-trail { transition: none; } }
+:root[data-motion='reduced'] .agency-rule-history-toggle .agency-rule-chevron, :root[data-motion='reduced'] .agency-row-more, :root[data-motion='reduced'] .agency-row-trail { transition: none; }

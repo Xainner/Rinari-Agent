@@ -13,6 +13,8 @@ import AgentAvatar, { AGENT_AVATARS, agentAvatarSrc } from './AgentAvatar'
 import { BudgetFields, ConnectorTiles, EditorHero, EditorPage, EditorSection, OptionCards } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
 import { JobCancelledError, JobTimeoutError, runJob, useJobSignal } from './jobEvents'
+import AgentPersonality from './AgentPersonality'
+import { useConfirm } from '../../components/ui/useConfirm'
 import type { AgencyAgent, AgencyAgentInput, AgentEffort, AgentPermissionProfile } from './types'
 
 const PROFILES: AgentPermissionProfile[] = ['read-only', 'workspace', 'full-access']
@@ -28,6 +30,8 @@ interface AgentFormProps {
   onArchived?: (agent: AgencyAgent) => void
   /** «Créalo con Rinari» (`agency_draft_v1`): sin la capacidad no se ofrece. */
   draftEnabled?: boolean
+  /** `agency_audit_v1`: su personalidad puede ser un Soul guardado (D-34). */
+  soulEnabled?: boolean
 }
 
 function numberOrUndefined(text: string): number | undefined {
@@ -41,8 +45,10 @@ function numberOrUndefined(text: string): number | undefined {
  * «Créalo con Rinari» pide un borrador (`agency.agent.draft`) que llena el
  * formulario; el dueño lo revisa y nada se crea hasta «Crear agente».
  */
-export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftEnabled = false }: AgentFormProps) {
+export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftEnabled = false, soulEnabled = false }: AgentFormProps) {
   const { t } = useI18n()
+  const { ask: confirm, dialog: confirmDialog } = useConfirm()
+  const [soulId, setSoulId] = useState<string | null>(agent?.soul_id ?? null)
   const editing = Boolean(agent)
   const [name, setName] = useState(agent?.name ?? '')
   const [role, setRole] = useState(agent?.role ?? '')
@@ -140,6 +146,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
       // Solo si hay algo que guardar o cambiar: un Engine sin estos campos no los recibe de más.
       ...((effort !== 'off' || (agent?.reasoning_effort ?? null) !== null) ? { reasoning_effort: effort === 'off' ? null : effort as AgentEffort } : {}),
       ...((icon !== null || (agent?.icon ?? null) !== null) ? { icon } : {}),
+      ...(soulEnabled ? { soul_id: soulId } : {}),
       budget: {
         ...(numberOrUndefined(usd) !== undefined ? { daily_usd: numberOrUndefined(usd) } : {}),
         ...(numberOrUndefined(tokens) !== undefined ? { daily_tokens: Math.round(numberOrUndefined(tokens)!) } : {}),
@@ -159,6 +166,14 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
 
   const archive = async () => {
     if (!agent) return
+    // Archiving takes it out of its teams (a chief is replaced): asked first.
+    const ok = await confirm({
+      title: t('agency.archive.title', { name: agent.name }),
+      body: t('agency.archive.body'),
+      confirmLabel: t('agency.form.archive'),
+      cancelLabel: t('agency.form.cancel'),
+    })
+    if (!ok) return
     try {
       const result = await engineApi.agencyArchiveAgent(agent.id)
       toast.success(t('agency.form.archived', { name: result.agent.name }))
@@ -291,6 +306,8 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
         <p className="agency-count">{t('agency.form.count', { n: instructions.length, max: 8000 })}</p>
       </EditorSection>
 
+      {soulEnabled && <AgentPersonality soulId={soulId} agentName={name.trim()} onChange={setSoulId} testId="agency-form-personality" />}
+
       <EditorSection icon={Cpu} title={t('agency.form.model')} hint={t('agency.form.modelHint')} testId="agency-form-model">
         <div className="agency-model-row">
           <div className="agency-model-field">
@@ -352,6 +369,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
       <EditorSection icon={Wallet} title={t('agency.form.budget')} hint={t('agency.form.budgetHint')}>
         <BudgetFields usd={usd} tokens={tokens} onUsd={setUsd} onTokens={setTokens} />
       </EditorSection>
+      {confirmDialog}
     </EditorPage>
   )
 }

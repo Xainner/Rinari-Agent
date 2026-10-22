@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import type { ScheduledTaskInput } from '../services/engine'
 
 /**
  * Rinari Agency: en qué espacio está la app y qué página de la Agency se ve.
@@ -47,20 +46,11 @@ interface AgencyState {
   newTeam: () => void
   editTeam: (teamId: string) => void
   goHome: () => void
-  /**
-   * Reglas que un agente propuso en su chat y esperan al dueño (D-18): una
-   * regla nunca se crea sola. En memoria; el Engine no guarda nada hasta
-   * que el dueño la activa.
-   */
-  proposals: ScheduledTaskInput[]
-  /** false si esa misma regla ya esperaba: ni otra tarjeta ni otro aviso. */
-  addProposal: (proposal: ScheduledTaskInput) => boolean
-  dropProposal: (proposal: ScheduledTaskInput) => void
-  /** Al cambiar de perfil: las propuestas eran de los agentes del otro. */
-  clearProposals: () => void
+  /** Cómo se llama cada agente (id → nombre), para los avisos que llegan con su id. */
+  agentNames: Record<string, string>
   /** De quién es cada chat directo: sesión → agente (para «Reglas» en el panel lateral). */
   agentSessions: Record<string, string>
-  setAgentSessions: (agents: { id: string; session_id: string | null }[]) => void
+  setAgentSessions: (agents: { id: string; session_id: string | null; name?: string }[]) => void
   /** De quién es cada puesto: sesión → equipo y agente (para «Pizarra» en el panel lateral). */
   postSessions: Record<string, { teamId: string; agentId: string }>
   setPostSessions: (teams: { id: string; posts: { agent_id: string; session_id: string }[] }[]) => void
@@ -84,7 +74,7 @@ interface AgencyState {
   clearAgentRows: (keep?: string[]) => void
 }
 
-export const useAgencyStore = create<AgencyState>((set, get) => ({
+export const useAgencyStore = create<AgencyState>((set) => ({
   space: 'rinari',
   page: { kind: 'home' },
   enter: () => set((state) => ({
@@ -103,20 +93,13 @@ export const useAgencyStore = create<AgencyState>((set, get) => ({
   newTeam: () => set({ space: 'agency', page: { kind: 'new-team' } }),
   editTeam: (teamId) => set({ space: 'agency', page: { kind: 'edit-team', teamId } }),
   goHome: () => set({ page: { kind: 'home' } }),
-  proposals: [],
-  // La misma regla propuesta dos veces es una sola tarjeta.
-  addProposal: (proposal) => {
-    if (get().proposals.some((item) => proposalKey(item) === proposalKey(proposal))) return false
-    set((state) => ({ proposals: [...state.proposals, proposal] }))
-    return true
-  },
-  clearProposals: () => set({ proposals: [] }),
-  dropProposal: (proposal) => set((state) => ({ proposals: state.proposals.filter((item) => item !== proposal) })),
   agentSessions: {},
+  agentNames: {},
   setAgentSessions: (agents) => set({
     agentSessions: Object.fromEntries(
       agents.filter((agent) => agent.session_id).map((agent) => [agent.session_id as string, agent.id]),
     ),
+    agentNames: Object.fromEntries(agents.filter((agent) => agent.name).map((agent) => [agent.id, agent.name as string])),
   }),
   postSessions: {},
   sessionLabels: {},
@@ -142,22 +125,6 @@ export const useAgencyStore = create<AgencyState>((set, get) => ({
     ),
   }),
 }))
-
-/**
- * Si la propuesta de una entrada de la campana sigue esperando: la suya, no
- * otra del mismo agente (las entradas viejas no tienen la clave).
- */
-export function proposalWaiting(
-  target: { agentId: string; proposal?: string },
-  proposals: ScheduledTaskInput[],
-): boolean {
-  return proposals.some((item) => (target.proposal ? proposalKey(item) === target.proposal : item.agent_id === target.agentId))
-}
-
-/** Lo que identifica una regla propuesta (el Engine no le da id). */
-export function proposalKey(proposal: ScheduledTaskInput): string {
-  return JSON.stringify([proposal.agent_id ?? null, proposal.name, proposal.kind, proposal.schedule, proposal.tool ?? null, proposal.prompt ?? '', proposal.watch ?? null])
-}
 
 /**
  * Una conversación de la Agency (chat directo o puesto): no está en la lista

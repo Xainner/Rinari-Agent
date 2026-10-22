@@ -146,6 +146,12 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return <ChildReportSeparator names={message.content} childIds={origin.children} reports={origin.reports} />
   }
 
+  // Una corrida de una tarea programada tampoco: una línea con su nombre y la
+  // instrucción plegada, no una burbuja del dueño por cada corrida (22-oct).
+  if (message.role === 'user' && message.origin?.kind === 'schedule') {
+    return <ScheduledRun message={message} />
+  }
+
   // A turn the goal started is not something the owner wrote: a separator.
   if (message.role === 'user' && message.origin?.source === 'goal') {
     return <GoalSeparator iteration={message.origin.iteration ?? null} />
@@ -162,7 +168,6 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return (
       <div data-testid="user-message-row" className="group/user flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
-        {message.origin?.kind === 'schedule' && <ScheduledBadge name={scheduleTaskName(message.origin)} />}
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
@@ -307,13 +312,16 @@ export function withoutCommand(content: string, name: string): string {
 }
 
 /** El mensaje lo mandó una tarea; con su nombre si corre en su conversación («Repetir aquí»). */
-function ScheduledBadge({ name }: { name: string | null }) {
+function ScheduledRun({ message }: { message: ChatMessage }) {
   const { t } = useI18n()
+  const name = scheduleTaskName(message.origin)
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]" data-testid="scheduled-badge">
-      <CalendarClock size={11} aria-hidden="true" />
-      {name ? t('schedules.fromTaskNamed', { name }) : t('schedules.fromTask')}
-    </span>
+    <details data-testid="scheduled-run" className="scheduled-run">
+      <summary className="goal-separator">
+        <span><CalendarClock size={11} aria-hidden="true" />{name ? t('schedules.fromTaskNamed', { name }) : t('schedules.fromTask')}</span>
+      </summary>
+      <div className="scheduled-run-prompt">{message.content}</div>
+    </details>
   )
 }
 

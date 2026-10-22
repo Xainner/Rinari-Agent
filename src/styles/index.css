@@ -987,6 +987,13 @@ html[data-motion='reduced'] .goal-mark-orbit { display: none; }
 .goal-separator::before, .goal-separator::after { content: ''; flex: 1 1 auto; height: 1px; background: linear-gradient(90deg, transparent, rgb(167 139 250 / 0.32)); }
 .goal-separator::after { background: linear-gradient(90deg, rgb(167 139 250 / 0.32), transparent); }
 .goal-separator > span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: rgb(147 88 255 / 0.08); box-shadow: inset 0 0 0 1px rgb(167 139 250 / 0.22); font-variant-numeric: tabular-nums; }
+/* Corrida de una tarea programada: el separador, y su instrucción al pulsarlo. */
+.scheduled-run > summary { cursor: pointer; list-style: none; }
+.scheduled-run > summary::-webkit-details-marker { display: none; }
+.scheduled-run > summary:hover > span, .scheduled-run[open] > summary > span { background: rgb(147 88 255 / 0.14); }
+.scheduled-run > summary:focus-visible { outline: none; }
+.scheduled-run > summary:focus-visible > span { box-shadow: inset 0 0 0 1px rgb(167 139 250 / 0.22), 0 0 0 2px var(--focus-ring, rgb(167 139 250 / 0.6)); }
+.scheduled-run-prompt { max-width: 85%; margin: 0 auto 12px; padding: 8px 12px; border-radius: 10px; background: var(--bg-subtle); box-shadow: inset 0 0 0 1px var(--border); font-size: 12.5px; line-height: 1.5; color: var(--text-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Motivos de la verificación: el punto lleva el tono del resultado. */
 .verification-reasons { display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--text-subtle); }
 .verification-reasons li { display: flex; min-width: 0; gap: 8px; overflow-wrap: anywhere; }

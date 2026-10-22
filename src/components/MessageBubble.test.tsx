@@ -69,5 +69,10 @@ it('a message from a task that runs in its conversation names the task', () => {
       />
     </I18nProvider>,
   )
-  expect(screen.getByTestId('scheduled-badge').textContent).toBe('Tarea programada · Revisar el precio')
+  // A separator with its name, never the owner's bubble; the prompt stays folded (22-oct).
+  const run = screen.getByTestId('scheduled-run')
+  expect(run.querySelector('summary')?.textContent).toBe('Tarea programada · Revisar el precio')
+  expect(run.hasAttribute('open')).toBe(false)
+  expect(run.textContent).toContain('Revisa otra vez el precio.')
+  expect(screen.queryByTestId('user-message-bubble')).toBeNull()
 })

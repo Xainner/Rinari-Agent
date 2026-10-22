@@ -463,7 +463,7 @@ function DockTile({ sessionId, view, box, amplified, dropTarget, lifted, onHeade
         <Icon size={14} aria-hidden="true" className="dock-tile-icon" />
         <h2 className="dock-tile-title">{label}</h2>
         <span className="flex-1" />
-        {view === 'files' && box && box.width >= FILES_SIDE_MIN_WIDTH && <FilesTreeToggle sessionId={sessionId} />}
+        {view === 'files' && box && box.width >= FILES_SIDE_MIN_WIDTH && !teamIdOfDockKey(sessionId) && <FilesTreeToggle sessionId={sessionId} />}
         <button
           type="button"
           className="pane-header-icon"
@@ -580,6 +580,11 @@ function FilesView({ sessionId, width }: { sessionId: string; width: number | nu
   if (seenOpen !== tree.open) {
     setSeenOpen(tree.open)
     setOpening(tree.open)
+  }
+  if (teamIdOfDockKey(sessionId)) {
+    // La oficina no tiene carpeta ni salidas propias: solo el visor de lo que
+    // presentaron sus puestos (el árbol pedía la de «office:…» y fallaba).
+    return <div className="dock-stack"><FileViewer className="dock-stack-main" /></div>
   }
   const artifacts = (
     <DockSection sessionId={sessionId} view="files" section="artifacts" title={t('workspace.tab.artifacts')}>

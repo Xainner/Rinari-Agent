@@ -25,6 +25,7 @@ import ImageViewer, { useImageViewer, type ViewerImage } from '../../components/
 import { platform, type ContextMenuItem, type WorkspaceMedia } from '../../platform'
 import { translate, useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
+import { teamIdOfDockKey } from '../agency/AgencyData'
 
 type OpenFile = (path: string, turnId?: string) => void
 /**
@@ -318,6 +319,16 @@ export function useFileWorkspace(): FileWorkspaceController | null {
  * (`SessionWorkspace`, compartido por Normal y Boards); `onOpen` revela esa
  * superficie. Las lecturas siguen pasando por el Engine.
  */
+/**
+ * La conversación con la que se lee un archivo. La oficina de un equipo no es
+ * una conversación: lo que un puesto presentó ahí se lee con la del puesto,
+ * que va en su URI (abrir un PDF desde la oficina decía «Session not found»).
+ */
+function artifactOwner(sessionId: string, target: string): string {
+  if (!teamIdOfDockKey(sessionId) || !target.startsWith('artifact://')) return sessionId
+  return target.slice('artifact://'.length).split('/')[0] || sessionId
+}
+
 export function FileWorkspaceProvider({
   sessionId,
   children,
@@ -433,7 +444,7 @@ export function FileWorkspaceProvider({
         // Un PPTX, DOCX, XLSX o PDF no se lee como texto: se ve su render.
         if (!isCurrent()) return
         document = target.startsWith('artifact://') || target.startsWith('rev_')
-          ? { sessionId, ref: target, turnId }
+          ? { sessionId: artifactOwner(sessionId, target), ref: target, turnId }
           : { sessionId, path: target, turnId }
         file = { path: target, name: target.split(/[\\/]/).at(-1) || target, content: '', language: kind, size: 0 } as FilePreview
       } else if (isArtifactImage(target)) {

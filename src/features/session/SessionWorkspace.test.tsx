@@ -354,3 +354,21 @@ it('la vista Terminal aparece solo si el Engine anuncia la terminal', () => {
   expect(screen.getByTestId('session-dock').dataset.views).toBe('terminal')
   expect(screen.getByTestId('terminal-ses_t')).toBeTruthy()
 })
+
+it('a file opened in a team office shows only the viewer: the office has no folder to list', async () => {
+  // Abrir lo que presentó un puesto desde la oficina decía «Session not found:
+  // office:team_…»: el árbol y los artefactos pedían la carpeta de la oficina.
+  render(
+    <I18nProvider lang="es">
+      <SessionWorkspace sessionId="office:team_x" record={null} density="normal" focused browserEnabled={false}>
+        <FileLink href="artifact://ses_post/media/registro.md">Abrir registro</FileLink>
+      </SessionWorkspace>
+    </I18nProvider>,
+  )
+  await userEvent.setup().click(screen.getByText('Abrir registro'))
+  const dock = await screen.findByTestId('session-dock')
+  expect(dock.dataset.views).toBe('files')
+  expect(within(dock).queryByText('Artefactos')).toBeNull()
+  expect(within(dock).queryByTestId('files-tree-toggle')).toBeNull()
+  expect(within(dock).queryByTestId('artifacts')).toBeNull()
+})

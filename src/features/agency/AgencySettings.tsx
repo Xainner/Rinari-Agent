@@ -502,7 +502,8 @@ export default function AgencySettings({ agents, teams = [], initialAgentId = nu
                   <p className="truncate text-[13px] text-[var(--text-muted)]">{agent.role || t('agency.settings.agentIntro')}</p>
                 </div>
               </header>
-              <AgentModelSettings key={agent.id} agent={agent} />
+              {/* Hermanas de la memoria: cada una con su clave, o React deja copias al cambiar de agente. */}
+              <AgentModelSettings key={`model:${agent.id}`} agent={agent} />
               <MemoryAndAccounts key={agent.id} owner={{ kind: 'agent', id: agent.id, name: agent.name }} memoryEnabled={memoryEnabled} />
             </>
           ) : (

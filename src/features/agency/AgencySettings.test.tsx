@@ -90,3 +90,13 @@ it("changes the agent's model and goes back to the default, saving each choice",
   await user.click(within(section).getByRole('button', { name: /Usar el de siempre/ }))
   expect(agencyUpdateAgent).toHaveBeenLastCalledWith('agent_1', { model: null })
 })
+
+it('shows one model section however many times the agent changes', async () => {
+  const user = userEvent.setup()
+  render(<I18nProvider lang="es"><AgencySettings agents={[agent('agent_1', 'Writer'), agent('agent_2', 'Historico')]} initialAgentId="agent_1" /></I18nProvider>)
+  await screen.findByTestId('agency-settings-model')
+  const rows = screen.getAllByTestId('agency-settings-agent-row')
+  for (let i = 0; i < 4; i++) await user.click(rows[(i + 1) % 2])
+  await waitFor(() => expect(screen.getAllByTestId('agency-settings-model')).toHaveLength(1))
+  expect(screen.getAllByText(/^Memoria de /)).toHaveLength(1)
+})

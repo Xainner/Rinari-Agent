@@ -191,7 +191,22 @@ it('adds from the catalog and goes straight to sign in when nothing else is need
   expect(await screen.findByTestId('connector-signin')).toBeTruthy()
 })
 
-it('guides Google step by step, warns about the Developer Preview first and asks only for the own client', async () => {
+// Planka Ideas-2: los MCP de Google Workspace piden el Developer Preview de
+// Google, así que mientras el catálogo los marque `preview` no se ofrecen.
+it('does not offer a connector in preview, nor a category left empty by it', async () => {
+  mount()
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Agregar conector' }))
+  const catalog = await screen.findByTestId('connector-catalog')
+  expect(await within(catalog).findByRole('button', { name: /Notion/ })).toBeTruthy()
+  expect(within(catalog).queryByRole('button', { name: /Gmail/ })).toBeNull()
+  expect(catalog.querySelector('[data-category="google"]')).toBeNull()
+  await user.type(within(catalog).getByLabelText('Buscar conectores'), 'gmail')
+  expect(await within(catalog).findByText('Nada coincide con la búsqueda.')).toBeTruthy()
+})
+
+it('guides Google step by step once it is out of preview, and asks only for the own client', async () => {
+  vi.mocked(engineApi.mcpCatalogList).mockResolvedValue({ version: 1, entries: [notionEntry, { ...gmailEntry, preview: false }] })
   const add = vi.spyOn(engineApi, 'mcpCatalogAdd').mockResolvedValue({ server: { ...notion, name: 'google-gmail' }, entry_id: 'google-gmail', next: 'sign_in' })
   vi.spyOn(engineApi, 'mcpAuthStart').mockReturnValue(new Promise(() => {}))
   mount()
@@ -199,9 +214,7 @@ it('guides Google step by step, warns about the Developer Preview first and asks
   await user.click(await screen.findByRole('button', { name: 'Agregar conector' }))
   const catalog = await screen.findByTestId('connector-catalog')
   await user.click(await within(catalog).findByRole('button', { name: /Gmail/ }))
-  const notice = within(catalog).getByTestId('catalog-preview-notice')
   const guide = within(catalog).getByTestId('google-guide')
-  expect(notice.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(guide.querySelectorAll('li')).toHaveLength(6)
   const submit = within(catalog).getByRole('button', { name: 'Agregar e iniciar sesión' })
   expect(submit).toHaveProperty('disabled', true)

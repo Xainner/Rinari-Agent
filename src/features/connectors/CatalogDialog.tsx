@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ExternalLink, LoaderCircle, Plus, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ExternalLink, LoaderCircle, Plus } from 'lucide-react'
 import {
   commandMessage,
   engineApi,
@@ -57,7 +57,14 @@ export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
 
   const matching = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return (entries ?? []).filter((entry) => !q || `${entry.name} ${entry.description[lang]} ${entry.id}`.toLowerCase().includes(q))
+    return (entries ?? []).filter((entry) =>
+      // Lo que está en vista previa no se ofrece (Planka Ideas-2): hoy son los
+      // MCP de Google Workspace, que piden inscribirse en el Developer Preview
+      // de Google y que te acepten, así que no funcionan para casi nadie. La
+      // marca la pone el catálogo del Engine: cuando Google los publique, sin
+      // ella vuelven a salir. Un conector ya agregado sigue en «Conectores».
+      !entry.preview
+      && (!q || `${entry.name} ${entry.description[lang]} ${entry.id}`.toLowerCase().includes(q)))
   }, [entries, query, lang])
   const visible = useMemo(() => matching.filter((entry) => category === 'all' || entry.category === category), [matching, category])
   // Las categorías como chips con cuántas hay (lo que busca el texto); solo las que tienen alguna.
@@ -102,7 +109,6 @@ export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-1.5">
                         <b>{entry.name}</b>
-                        {entry.preview && <span className="r-chip" data-tone="warning">{t('connectors.catalog.preview')}</span>}
                         {entry.added && <span className="r-chip" data-tone="success">{t('connectors.catalog.added')}</span>}
                       </span>
                       <small>{entry.description[lang] ?? entry.description.es}</small>
@@ -211,16 +217,7 @@ function SetupStep({ entry, onBack, onAdded, owner }: {
         </div>
       </DialogHeader>
 
-      {entry.preview && (
-        <div className="connector-notice" data-tone="warning" role="note" data-testid="catalog-preview-notice">
-          <TriangleAlert size={15} aria-hidden="true" />
-          <div>
-            <p className="font-semibold">{t('connectors.catalog.previewTitle')}</p>
-            <p>{entry.notes?.[lang] ?? t('connectors.catalog.previewBody')}</p>
-          </div>
-        </div>
-      )}
-      {!entry.preview && entry.notes && <p className="connector-notice" role="note">{entry.notes[lang] ?? entry.notes.es}</p>}
+      {entry.notes && <p className="connector-notice" role="note">{entry.notes[lang] ?? entry.notes.es}</p>}
       {entry.added && <p className="text-[12.5px] text-[var(--text-muted)]">{t('connectors.catalog.alreadyAdded', { names: entry.servers.map((server) => server.name).join(', ') })}</p>}
 
       {alternatives.length > 0 && (

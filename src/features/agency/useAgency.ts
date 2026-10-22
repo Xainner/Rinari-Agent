@@ -38,6 +38,10 @@ export interface AgencyData {
 export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = false): AgencyData {
   const [agents, setAgents] = useState<AgencyAgent[]>([])
   const [teams, setTeams] = useState<AgencyTeam[]>([])
+  // The posts of the loaded teams: their turns count even if the owner never
+  // opened them (the store only learns a post's session when it is opened).
+  const postSessions = useRef(new Set<string>())
+  postSessions.current = new Set(teams.flatMap((team) => team.posts.map((post) => post.session_id)))
   const [status, setStatus] = useState<AgencyStatus | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [halted, setHalted] = useState(false)
@@ -108,7 +112,7 @@ export function useAgency(enabled: boolean, teamsEnabled = false, haltEnabled = 
       else if (SESSION_EVENTS.has(event.event)) {
         const sessionId = (event.payload as { session_id?: unknown } | undefined)?.session_id
         // Any turn of Rinari's own conversations is not the Agency's business.
-        if (typeof sessionId === 'string' && isAgencySession(sessionId)) later()
+        if (typeof sessionId === 'string' && (isAgencySession(sessionId) || postSessions.current.has(sessionId))) later()
       }
     }).then((unlisten) => {
       if (disposed) unlisten()

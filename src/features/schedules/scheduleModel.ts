@@ -125,6 +125,8 @@ export function draftFromTask(task: ScheduledTask): ScheduledTaskInput {
     grants: task.grants,
     ...(task.command ? { command: task.command } : {}),
     ...(task.target === 'this_conversation' && task.session_id ? { target: task.target, session_id: task.session_id } : {}),
+    // Without it, editing showed «Cada vuelta» for a muted task (22-oct).
+    ...(task.notify ? { notify: task.notify } : {}),
   }
 }
 

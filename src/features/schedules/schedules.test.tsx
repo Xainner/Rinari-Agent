@@ -383,3 +383,14 @@ it('keeps a task quiet as its «Avisos» setting says, and «Silenciar» sets it
   act(() => done.options?.cancel?.onClick())
   expect(engineApi.scheduleUpdate).toHaveBeenCalledWith('sch_radar', { notify: 'problems' })
 })
+
+it('editing a muted task shows its «Avisos» as it is and keeps it', async () => {
+  // 22-oct: the form always showed «Cada vuelta», so a muted task looked unmuted.
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openEdit(task({ notify: 'none' })))
+  const field = await screen.findByTestId('schedule-notify-select')
+  expect(field.textContent).toContain('Ninguno')
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+  await waitFor(() => expect(engineApi.scheduleUpdate).toHaveBeenCalled())
+  expect(vi.mocked(engineApi.scheduleUpdate).mock.calls.at(-1)?.[1]).toMatchObject({ notify: 'none' })
+})

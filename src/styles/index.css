@@ -2954,6 +2954,12 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 /* La «x» va dentro del toast: medio fuera, sobre el navegador nativo, su esquina quedaría tapada. */
 [data-sonner-toaster] .rinari-toast [data-close-button] { left: auto !important; right: 10px !important; top: 10px !important; transform: none !important; background: var(--ink-4) !important; border-color: var(--line-2) !important; color: var(--text-muted) !important; }
 [data-sonner-toaster] .rinari-toast [data-button] { background: var(--grad-brand) !important; color: #fff !important; border-radius: var(--r-xs) !important; }
+/* Two buttons («Silenciar» y «Abrir conversación») squeezed the text to one word per
+   line (22-oct): with both, they go on a line of their own under a summary of a few lines. */
+[data-sonner-toaster] .rinari-toast:has([data-cancel]) { flex-wrap: wrap !important; row-gap: 10px !important; }
+[data-sonner-toaster] .rinari-toast:has([data-cancel]) [data-content] { flex: 1 1 calc(100% - 32px) !important; min-width: 0; }
+[data-sonner-toaster] .rinari-toast:has([data-cancel]) [data-cancel] { margin-left: auto !important; }
+[data-sonner-toaster] .rinari-toast:has([data-cancel]) [data-description] { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .notify-item { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
 .notify-item[data-unread] { background: rgb(147 88 255 / 0.06); }
 .notify-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 8px 18px; text-align: center; font-size: 12.5px; color: var(--text-muted); }

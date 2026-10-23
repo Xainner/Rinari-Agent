@@ -58,7 +58,7 @@ Decisión del dueño (2026-10-14): la versión que se planeaba como 0.3.2 pasa a
 
 | Documento | Qué es | Estado |
 |---|---|---|
-| [plan-gateway.md](plan-gateway.md) | Gateway reescrito desde cero (R0–R6; dueño, 2026-10-22) | Borrador, preguntas abiertas |
+| [plan-gateway.md](plan-gateway.md) | Gateway reescrito desde cero (R0–R6; dueño, 2026-10-22) | Listo para R0, preguntas respondidas |
 | [idea-rinari-agency.md](idea-rinari-agency.md) | Rinari Agency (A1–A4; depurado con el dueño el 2026-10-16: lo del servidor pasó a plan-gateway, y permisos v4 va antes) | Aparcado, decisiones D-1…D-12 tomadas |
 | [idea-extension-navegador.md](idea-extension-navegador.md) | Extensión de Chrome/Edge | Aparcado, preguntas respondidas |
 | [idea-app-movil.md](idea-app-movil.md) | App iOS y Android | Aparcado, preguntas respondidas |

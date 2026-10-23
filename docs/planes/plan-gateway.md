@@ -1,6 +1,6 @@
 # Rinari Gateway: reescritura desde cero
 
-Estado: **borrador de la reescritura** (dueño, 2026-10-22). Sustituye al plan anterior (G0–G4, borrador del 2026-10-12, fuera de la 0.4.0 desde el 2026-10-15), que sigue en el historial de git de este archivo. Repo: `Xainner/Rinari-Gateway` (clon local en `Documents/DEV/Apps/Rinari-Gateway`).
+Estado: **listo para R0** (dueño, 2026-10-22). Sustituye al plan anterior (G0–G4, borrador del 2026-10-12, fuera de la 0.4.0 desde el 2026-10-15), que sigue en el historial de git de este archivo. Repo: `Xainner/Rinari-Gateway` (clon local en `Documents/DEV/Apps/Rinari-Gateway`).
 
 ## Decisiones del dueño (2026-10-22)
 
@@ -12,6 +12,11 @@ Estado: **borrador de la reescritura** (dueño, 2026-10-22). Sustituye al plan a
 6. **La excepción es la Agency:** corre 24/7 en el servidor y **sí se ve en la web** (sus chats, su pizarra y su registro).
 7. **La app de escritorio (y mañana la móvil) puede conectarse al Engine del servidor**, y ahí sí ve sus chats. La web no.
 8. Se mantienen las respuestas del 2026-10-15: la app trabaja con **un Engine a la vez**, con un cambio rápido entre ellos, y **el pin del Engine del Gateway sube junto con el del Agent**.
+9. **UI compartida por pin del Agent.** El build del panel toma `Rinari-Agent` en un commit fijado, igual que el pin del Engine, e importa de ahí los tokens de Obsidiana neón y los componentes de la Agency. Ese pin sube junto con el del Engine.
+10. **El panel es solo de red privada** (LAN o Tailscale) y además pide una contraseña simple del dueño. Nunca se publica.
+11. **Versión:** el Gateway nuevo arranca en `0.2.0`, con pre-releases `0.2.0aN`.
+12. **Dominio:** `rinari.xainner.com` se reutiliza en el cambio (R6) y solo expone **los webhooks** (cada uno con su secreto) y **el punto de conexión remota** de la app de escritorio y la móvil (TLS, emparejamiento y token revocable). El panel nunca responde ahí.
+13. **`LUSAMINE_MCP_TOKEN` no se rota.** En el Gateway nuevo pasa al almacén del Engine y sale del drop-in de systemd (`mcp-env.conf`), donde hoy está en texto plano.
 
 ## Por qué no se sube el pin del Gateway viejo (revisado 2026-10-22)
 
@@ -24,7 +29,7 @@ Un servicio de un solo dueño que hace cinco cosas, y nada más:
 1. **Hospeda el Engine fijado.** Lo instala desde un bundle construido en el commit que fija el Agent, lo supervisa (arranque, reinicio, apagado ordenado) y le habla por stdio con el protocolo v1. Las credenciales van en el almacén del Engine, que guarda referencias y no valores. En Linux hay que confirmar con qué respaldo se resuelven, porque el Administrador de credenciales de Windows no existe allí.
 2. **Bots** (Telegram, Discord, WhatsApp): cada uno es un cliente del Engine con `channel_tools_v1`. Recibe mensajes, los pasa a una sesión del Engine y entrega la respuesta con el formato de su canal. Las preguntas y aprobaciones del Engine se responden desde el propio canal.
 3. **Vault de Obsidian como MCP** registrado en el Engine, con las garantías de hoy: IDs estables, revisión, SHA-256, escritura atómica y tombstones. Se rechazan rutas absolutas, `..`, symlinks y `.obsidian`. El texto de una nota nunca da permisos. Incluye el plugin de Obsidian para sincronizar.
-4. **Conexión remota segura** para la app de escritorio y la móvil: TLS, emparejamiento con código o QR, y token revocable. Habla con el Engine del servidor con el mismo protocolo que el Engine local. En la app aparece como «Conectar a mi servidor».
+4. **Conexión remota segura** para la app de escritorio y la móvil, por el dominio público: TLS, emparejamiento con código o QR, y token revocable. Habla con el Engine del servidor con el mismo protocolo que el Engine local. En la app aparece como «Conectar a mi servidor».
 5. **Panel web de configuración** (sección siguiente).
 
 **La Agency 24/7** corre en ese Engine. Los canales del Gateway (Telegram, correo, webhooks) son sus disparadores y sus salidas:
@@ -49,9 +54,9 @@ Su tema es configurar y vigilar, no conversar:
 - **La Agency (excepción):** su vista Normal (chats, pizarra, registro), sus agentes, sus disparadores, sus credenciales y «Detener a todos». La vista de 8 bits llega cuando la Agency la tenga.
 - **Emparejar dispositivos:** crear y revocar los tokens de la conexión remota.
 
-El acceso al panel exige sesión del dueño. Todo endpoint protegido responde 401 sin ella.
+El panel solo escucha en la red privada (LAN o Tailscale) y además pide la contraseña del dueño. Todo endpoint protegido responde 401 sin sesión.
 
-Diseño: sistema Obsidiana neón ([docs/design/obsidiana-neon.md](../design/obsidiana-neon.md)). Los tokens y, si encaja, los componentes de la Agency se reutilizan del Agent en lugar de copiarse. Cómo se comparten entre los dos repos es la pregunta abierta 1.
+Diseño: sistema Obsidiana neón ([docs/design/obsidiana-neon.md](../design/obsidiana-neon.md)). Los tokens y los componentes de la Agency vienen del Agent por su pin (decisión 9), no se copian. La vista de la Agency habla con el Engine del servidor por un puente web que implementa los comandos `agency_*` de `platform()`.
 
 ## Qué desaparece respecto al viejo
 
@@ -78,8 +83,4 @@ Lo que el viejo resolvió bien se lee antes de rehacerlo: formato por canal, arc
 
 ## Preguntas abiertas
 
-1. **Compartir la UI con el Agent:** ¿el build del Gateway toma el repo del Agent en un commit fijado (como el pin del Engine), o se extrae un paquete compartido (tokens y componentes de la Agency)?
-2. **Acceso al panel:** ¿contraseña y TOTP como el viejo, passkeys, o solo desde la red local o por túnel?
-3. **Versionado:** ¿el Gateway nuevo arranca en `0.2.0` o en `1.0.0a1`?
-4. **Dominio:** ¿se reutiliza `rinari.xainner.com` en el cambio (R6)?
-5. **Secretos en saturno:** el servicio viejo tiene un token de MCP en texto plano en un drop-in de systemd (`mcp-env.conf`). En el nuevo va al almacén del Engine. ¿Se rota el token actual?
+Ninguna: las cinco del borrador se respondieron el 2026-10-22 (decisiones 9–13).

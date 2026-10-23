@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarClock } from 'lucide-react'
+import { CalendarClock, ListOrdered } from 'lucide-react'
 import { toast } from 'sonner'
 import { commandMessage, engineApi, onEngineEvent, type QueuedPromptEntry } from '../../services/engine'
 import { useI18n } from '../../i18n'
@@ -84,41 +84,39 @@ export default function QueueBar({
   if (!sessionId || ((!refreshKey || !showInput) && entries.length === 0)) return null
 
   return (
-    <div className="queue-bar px-4 pb-1" data-testid="queue-bar">
+    // A dock of the composer column, as wide as the step card and the composer
+    // (22-oct: it floated narrower and indented, with «Vaciar cola» loose below).
+    <div className="queue-bar" data-testid="queue-bar">
       {entries.length > 0 && (
-        <div className="mx-auto mb-1 w-full max-w-2xl space-y-1">
-          {entries.map((entry, i) => (
-            <div
-              key={entry.message_id ?? `manual-${i}`}
-              data-state={entry.state}
-              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs text-[var(--text-muted)]"
-            >
-              <span className="font-mono text-[var(--accent-2)]">{i + 1}.</span>
-              {/* De quién es: tuyo, o de una tarea que corre aquí («Repetir aquí»). */}
-              {entry.origin.kind === 'schedule' ? (
-                <span className="inline-flex shrink-0 items-center gap-1 text-[10px] tracking-wide text-[var(--accent)]" data-testid="queue-entry-schedule">
-                  <CalendarClock size={11} aria-hidden="true" />
-                  {scheduleTaskName(entry.origin) ?? t('schedules.fromTask')}
-                </span>
-              ) : (
-                <span className="shrink-0 text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">{t('queue.entryUser')}</span>
-              )}
-              <span className="min-w-0 flex-1 truncate" title={entry.message}>{entry.message}</span>
-            </div>
-          ))}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void clear()}
-              className="text-[11px] text-[var(--text-subtle)] hover:text-[var(--text)]"
-            >
+        <div className="queue-dock">
+          <div className="queue-dock-head">
+            <ListOrdered size={13} aria-hidden="true" />
+            <span className="queue-dock-title">{t('queue.title', { n: entries.length })}</span>
+            <button type="button" className="btn btn-quiet btn-xs" onClick={() => void clear()} data-testid="queue-clear">
               {t('queue.clear')}
             </button>
           </div>
+          <ol className="queue-dock-list">
+            {entries.map((entry, i) => (
+              <li key={entry.message_id ?? `manual-${i}`} data-state={entry.state} className="queue-dock-item">
+                <span className="queue-dock-n">{i + 1}</span>
+                {/* De quién es: tuyo, o de una tarea que corre aquí («Repetir aquí»). */}
+                {entry.origin.kind === 'schedule' ? (
+                  <span className="queue-dock-who is-task" data-testid="queue-entry-schedule">
+                    <CalendarClock size={11} aria-hidden="true" />
+                    {scheduleTaskName(entry.origin) ?? t('schedules.fromTask')}
+                  </span>
+                ) : (
+                  <span className="queue-dock-who">{t('queue.entryUser')}</span>
+                )}
+                <span className="min-w-0 flex-1 truncate" title={entry.message}>{entry.message}</span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
       {refreshKey && showInput && (
-        <div className="mx-auto flex w-full max-w-2xl gap-2">
+        <div className="flex w-full gap-2">
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

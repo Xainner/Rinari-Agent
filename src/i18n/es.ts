@@ -1227,6 +1227,7 @@ export const es = {
   'queue.placeholder': 'Encolar siguiente…',
   'queue.enqueue': 'Encolar',
   'queue.clear': 'Vaciar cola',
+  'queue.title': 'En cola ({n})',
 
   /* Profiles (Fase 11) */
   'rbundles.title': 'Perfiles Rinari',
@@ -4496,6 +4497,10 @@ export const es = {
   'agency.work.routine.prompt': 'Qué hace en cada vuelta',
   'agency.work.routine.save': 'Guardar rutina',
   'agency.work.routine.edit': 'Editar rutina',
+  'agency.work.routine.pause': 'Pausar rutina',
+  'agency.work.routine.resume': 'Reanudar rutina',
+  'agency.work.routine.delete': 'Eliminar rutina',
+  'agency.work.routine.deleteConfirm': '¿Eliminar?',
   'agency.work.routine.paused': 'En pausa',
   'agency.work.routine.next': 'Próxima: {when}',
   'agency.work.flows': 'Flujos ({n})',

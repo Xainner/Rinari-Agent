@@ -62,6 +62,8 @@ const api = {
   agencyStartFlow: vi.fn(async (_teamId: string, _flowId: string, _input: string) => ({ run })),
   agencyCancelFlowRun: vi.fn(async (_runId: string) => ({ run: { ...run, status: 'cancelled' } })),
   agencyDeleteFlow: vi.fn(async (_flowId: string) => ({ deleted: 'flow_1' })),
+  scheduleUpdate: vi.fn(async (_id: string, _patch: unknown) => ({ task: {} })),
+  scheduleDelete: vi.fn(async (_id: string) => ({ deleted: true })),
   mcpList: vi.fn(async () => ({ servers: [] })),
   mcpCatalogList: vi.fn(async () => ({ entries: [] })),
 }
@@ -186,4 +188,16 @@ it('starts a new routine with the first member when the chief left the team', as
   fireEvent.change(screen.getByTestId('agency-routine-prompt'), { target: { value: 'Resume' } })
   await userEvent.click(screen.getByTestId('agency-routine-save'))
   expect(api.agencyCreateRoutine.mock.calls[0][1]).toBe('agent_w')
+})
+
+
+it('pauses, resumes and deletes a routine from the panel without asking the agents', async () => {
+  // MetaTeam, 22-oct: one agent was stuck and nobody else could stop its routines.
+  wrap(<TeamWorkPanel teamId="team_1" />)
+  await userEvent.click(await screen.findByTestId('agency-routine-toggle'))
+  expect(api.scheduleUpdate).toHaveBeenCalledWith('sch_1', { enabled: false })
+  await userEvent.click(screen.getByTestId('agency-routine-delete'))
+  expect(api.scheduleDelete).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByTestId('agency-routine-delete-confirm'))
+  expect(api.scheduleDelete).toHaveBeenCalledWith('sch_1')
 })

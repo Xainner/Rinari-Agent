@@ -1209,6 +1209,7 @@ export const en: Record<I18nKey, string> = {
   'queue.placeholder': 'Queue next…',
   'queue.enqueue': 'Queue',
   'queue.clear': 'Clear queue',
+  'queue.title': 'Queued ({n})',
 
   /* Profiles (Phase 11) */
   'rbundles.title': 'Rinari Profiles',
@@ -4478,6 +4479,10 @@ export const en: Record<I18nKey, string> = {
   'agency.work.routine.prompt': 'What it does on each run',
   'agency.work.routine.save': 'Save routine',
   'agency.work.routine.edit': 'Edit routine',
+  'agency.work.routine.pause': 'Pause routine',
+  'agency.work.routine.resume': 'Resume routine',
+  'agency.work.routine.delete': 'Delete routine',
+  'agency.work.routine.deleteConfirm': 'Delete?',
   'agency.work.routine.paused': 'Paused',
   'agency.work.routine.next': 'Next: {when}',
   'agency.work.flows': 'Flows ({n})',

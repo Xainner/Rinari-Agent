@@ -869,6 +869,18 @@ button.child-report-title:hover { color: var(--text); text-decoration-color: var
 .sticky-note-chip:hover { transform: rotate(0deg) translateY(-1px); }
 .sticky-note-chip.is-arriving { animation: sticky-note-fall 0.62s var(--ease-out) both; }
 .sticky-note-pop { position: absolute; right: 0; bottom: calc(100% + 16px); width: 252px; animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+/* La cola de mensajes, un dock más de la columna del compositor, como el de pasos. */
+.queue-bar { flex-shrink: 0; margin-bottom: 8px; }
+.queue-dock { border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); box-shadow: var(--inset-hi); }
+.queue-dock-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; font-size: 12.5px; color: var(--text-muted); }
+.queue-dock-head > svg { flex-shrink: 0; color: var(--accent-2); }
+.queue-dock-title { min-width: 0; flex: 1 1 auto; color: var(--text); }
+.queue-dock-list { display: grid; gap: 2px; margin: 0; padding: 0 6px 6px; list-style: none; }
+.queue-dock-item { display: flex; min-width: 0; align-items: center; gap: 8px; border-radius: var(--r-sm); padding: 4px 6px; font-size: 12px; color: var(--text-muted); }
+.queue-dock-item:hover { background: var(--bg-hover); }
+.queue-dock-n { flex-shrink: 0; min-width: 14px; font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-subtle); text-align: right; }
+.queue-dock-who { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-subtle); }
+.queue-dock-who.is-task { text-transform: none; letter-spacing: 0; color: var(--accent-2); }
 .checklist-dock { container-type: inline-size; display: flex; flex-direction: column; min-height: 0; flex-shrink: 0; margin-bottom: 8px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: linear-gradient(180deg, rgb(147 88 255 / 0.05), transparent 70%), var(--bg-subtle); box-shadow: var(--inset-hi); }
 .checklist-dock.is-live { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
 .checklist-dock[data-state='interrupted'] { border-color: color-mix(in srgb, var(--warning) 38%, transparent); }
@@ -1310,7 +1322,7 @@ html[data-motion='reduced'] .sidebar-signal[data-signal="needs_you"] { animation
 /* Un panel comparte la altura con su transcripción: el composer crece menos
    que en Normal y después hace scroll. useComposerHeight lee este tope. */
 .session-pane .composer-textarea { max-height: min(160px, 20vh); }
-.session-pane-chat > .queue-bar { flex: 0 0 auto; }
+.session-pane-chat > .queue-bar { flex: 0 0 auto; padding-inline: 16px; }
 .pane-header-status { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); white-space: nowrap; }
 .pane-header-status[data-kind="needs_you"] { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
 .pane-header-status[data-kind="done"] { color: var(--success, #3fbf7f); }

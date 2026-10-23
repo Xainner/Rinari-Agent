@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, BookOpen, Pencil, Play, Plus, Repeat, Square, Trash2, Workflow, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, BookOpen, Pause, Pencil, Play, Plus, Repeat, Square, Trash2, Workflow, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { Select } from '../../components/ui/select'
@@ -236,6 +236,7 @@ function RoutinesSection({ overview, members, onSaved }: { overview: TeamOvervie
                   >
                     <Pencil size={12} aria-hidden="true" />
                   </button>
+                  <RoutineActions routine={routine} onChanged={onSaved} />
                 </div>
                 <p className="agency-work-item-line">
                   {[agent?.name ?? routine.agent, describeSchedule(routine.schedule, t, locale)].filter(Boolean).join(' · ')}
@@ -249,6 +250,68 @@ function RoutinesSection({ overview, members, onSaved }: { overview: TeamOvervie
         </ul>
       )}
     </section>
+  )
+}
+
+/**
+ * Pausar o reanudar una rutina y eliminarla, sin pedírselo a los agentes (MetaTeam,
+ * 22-oct: uno estaba trabado y nadie más podía quitar sus rutinas). Eliminar pide un
+ * segundo clic sobre un botón que dice lo que hace.
+ */
+function RoutineActions({ routine, onChanged }: { routine: TeamRoutine; onChanged: () => void }) {
+  const { t } = useI18n()
+  const [confirm, setConfirm] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const act = async (work: () => Promise<unknown>) => {
+    setBusy(true)
+    try {
+      await work()
+      onChanged()
+    } catch (error) {
+      toast.error(commandMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const label = t(routine.enabled ? 'agency.work.routine.pause' : 'agency.work.routine.resume')
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-quiet btn-icon btn-xs"
+        disabled={busy}
+        aria-label={label}
+        title={label}
+        onClick={() => void act(() => engineApi.scheduleUpdate(routine.id, { enabled: !routine.enabled }))}
+        data-testid="agency-routine-toggle"
+      >
+        {routine.enabled ? <Pause size={12} aria-hidden="true" /> : <Play size={12} aria-hidden="true" />}
+      </button>
+      {confirm ? (
+        <button
+          type="button"
+          className="btn btn-danger btn-xs"
+          autoFocus
+          disabled={busy}
+          onClick={() => void act(() => engineApi.scheduleDelete(routine.id))}
+          onBlur={() => setConfirm(false)}
+          data-testid="agency-routine-delete-confirm"
+        >
+          {t('agency.work.routine.deleteConfirm')}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-quiet btn-icon btn-xs"
+          aria-label={t('agency.work.routine.delete')}
+          title={t('agency.work.routine.delete')}
+          onClick={() => setConfirm(true)}
+          data-testid="agency-routine-delete"
+        >
+          <Trash2 size={12} aria-hidden="true" />
+        </button>
+      )}
+    </>
   )
 }
 

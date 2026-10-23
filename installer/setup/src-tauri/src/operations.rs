@@ -1190,12 +1190,14 @@ fn schedule_self_cleanup(target: &Path, current: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Every number counts: a Nightly is `0.4.0-nightly.<date>.<hour>`, and with only
+/// the first four two builds of the same day were the same version and the newer
+/// one could neither update nor repair (23-oct).
 fn version_cmp(left: &str, right: &str) -> std::cmp::Ordering {
     fn parts(value: &str) -> Vec<u64> {
         value
             .split(|ch: char| !ch.is_ascii_digit())
             .filter(|part| !part.is_empty())
-            .take(4)
             .map(|part| part.parse().unwrap_or(0))
             .collect()
     }
@@ -1998,6 +2000,8 @@ mod tests {
         assert!(version_cmp("0.2.1", "0.2.0").is_gt());
         assert!(version_cmp("0.10.0", "0.2.9").is_gt());
         assert!(version_cmp("0.2", "0.2.0").is_eq());
+        assert!(version_cmp("0.4.0-nightly.20261023.1401", "0.4.0-nightly.20261023.1145").is_gt());
+        assert!(version_cmp("0.4.0-nightly.20261024.0900", "0.4.0-nightly.20261023.2359").is_gt());
     }
 
     #[test]

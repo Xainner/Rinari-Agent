@@ -15,7 +15,6 @@ import { commandMessage, engineApi, onEngineEvent, type TrustState } from './ser
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
-import { version as appVersion } from '../package.json'
 import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
@@ -82,6 +81,7 @@ import OfficeView from './features/agency/OfficeView'
 import type { AgencyAgent, AgencyTeam } from './features/agency/types'
 import { enterAgencySession } from './features/agency/openAgencySession'
 import { AgencyDataContext, officeDockKey } from './features/agency/AgencyData'
+import { APP_VERSION } from './lib/channel'
 import TemplatePicker from './features/agency/TemplatePicker'
 import { AGENCY_OPEN_RUN_EVENT, type AgencyOpenRunDetail } from './features/agency/RulesView'
 import { CHAIN_MAX_HOPS, chainReasonKey } from './features/agency/chainStop'
@@ -96,7 +96,6 @@ const SettingsView = lazy(() => import('./features/settings/SettingsView'))
 
 // De package.json al compilar: fija en el código se quedó en 0.2.0 tras publicar
 // la 0.2.1. `npm run release:bump` solo toca package.json y sus copias.
-const APP_VERSION = appVersion
 
 function App() {
   const view = useUIStore((s) => s.view)

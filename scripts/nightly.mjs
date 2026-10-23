@@ -118,6 +118,7 @@ function main() {
     RINARI_BUILD_CHANNEL: 'nightly',
     VITE_RINARI_CHANNEL: 'nightly',
     VITE_RINARI_ENGINE_SHA: cliSha,
+    VITE_RINARI_VERSION: version,
     VITE_RINARI_SETUP_NIGHTLY: '1',
     RINARI_SETUP_NIGHTLY: '1',
     RINARI_SETUP_VERSION: version,

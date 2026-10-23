@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { version as APP_VERSION } from '../../../package.json'
+import { APP_VERSION } from '../../lib/channel'
 import { platform } from '../../platform'
 import type { ProviderUsageSnapshot } from '../../types/protocol.generated'
 

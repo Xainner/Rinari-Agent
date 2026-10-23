@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../com
 import { Switch } from '../../components/ui/switch'
 import { platform } from '../../platform'
 import { commandMessage } from '../../services/engine'
-import { version as APP_VERSION } from '../../../package.json'
+import { APP_VERSION } from '../../lib/channel'
 
 interface ReviewExportState {
   target: { sessionId: string } | null

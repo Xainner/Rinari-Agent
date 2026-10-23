@@ -19,6 +19,7 @@ import { useBrowserFrame } from '../browser/useBrowserFrame'
 import { FileWorkspaceProvider } from '../files/FileWorkspace'
 import { useOptionalEngineData, useOptionalRuntimeStore } from '../engine/EngineContext'
 import { useFlow } from '../flow/useFlow'
+import { teamIdOfDockKey } from '../agency/AgencyData'
 import type { RuntimeStore } from '../engine/runtimeStore'
 import { useSessionTimelines } from '../engine/sessionSelectors'
 import { sessionAgents } from '../agents/AgentsPanel'
@@ -292,8 +293,8 @@ export default function SessionWorkspace({ sessionId, record, children, density,
   return (
     <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
       {runtime && <TimelineSignals store={runtime} sessionId={sessionId} focused={focused} />}
-      {/* Solo la sesión destino de la barra de título pide su flujo. */}
-      {focused && flowSupported && <FlowSignals sessionId={sessionId} />}
+      {/* Solo la sesión destino de la barra de título pide su flujo; la oficina de un equipo no es una sesión del Engine. */}
+      {focused && flowSupported && !teamIdOfDockKey(sessionId) && <FlowSignals sessionId={sessionId} />}
       <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
         <div ref={chatRef} className="session-workspace-chat">
           {children}

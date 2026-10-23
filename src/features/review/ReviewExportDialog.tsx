@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../com
 import { Switch } from '../../components/ui/switch'
 import { platform } from '../../platform'
 import { commandMessage } from '../../services/engine'
+import { version as APP_VERSION } from '../../../package.json'
 
 interface ReviewExportState {
   target: { sessionId: string } | null
@@ -44,8 +45,11 @@ export default function ReviewExportDialog() {
         include_messages: messages,
       })
       const env = JSON.parse(files['entorno.json'] ?? '{}') as { first_event_at?: string | null; last_event_at?: string | null }
+      // La versión de la app (la Nightly exacta): sin ella, un paquete de otra
+      // máquina no decía qué arreglos tenía (SOIN, 23-oct).
+      const withApp = { ...files, 'entorno.json': JSON.stringify({ app_version: APP_VERSION, ...env }) }
       const result = await platform().diagnostics.exportReview({
-        files,
+        files: withApp,
         from: env.first_event_at ?? null,
         to: env.last_event_at ?? null,
         includeLogs: logs,

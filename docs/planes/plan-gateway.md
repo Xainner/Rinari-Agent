@@ -1,45 +1,85 @@
-# Rinari Gateway: al día con el Engine, conexión remota y web nueva
+# Rinari Gateway: reescritura desde cero
 
-Estado: **Fuera de la 0.4.0** (dueño, 2026-10-15): se retoma cuando el dueño lo tenga listo. Las preguntas quedaron respondidas abajo. Antes: **borrador** (2026-10-12). Lo pidió el dueño al diseñar [Rinari Agency](idea-rinari-agency.md): la Agency necesita poder correr 24/7, y la web del Gateway también hay que cambiarla. Repo: `Documents/DEV/Apps/Rinari-Gateway`.
+Estado: **borrador de la reescritura** (dueño, 2026-10-22). Sustituye al plan anterior (G0–G4, borrador del 2026-10-12, fuera de la 0.4.0 desde el 2026-10-15), que sigue en el historial de git de este archivo. Repo: `Xainner/Rinari-Gateway` (clon local en `Documents/DEV/Apps/Rinari-Gateway`).
 
-**Decisión del dueño (2026-10-16):** todo lo de la Agency que necesita el servidor vive en este plan, no en el de la Agency (D-9 de [idea-rinari-agency.md](idea-rinari-agency.md)): la Agency 24/7, los disparadores de correo, Telegram y webhooks, «Detener a todos» desde Telegram y la conexión remota de la app. En la PC, la Agency solo usa el reloj, los archivos, el CI, y el reloj con un MCP. Ver el punto 4 y G3.
+## Decisiones del dueño (2026-10-22)
 
-## Qué hay hoy (verificado)
+1. **El Gateway se rehace desde cero, en el mismo repo.** Una rama nueva parte vacía; el código viejo queda en `main` y en el historial como referencia. Se rehacen la funcionalidad y la interfaz.
+2. **Lo bueno se conserva como idea y como referencia, no como código copiado:** el MCP del vault de Obsidian y los bots de WhatsApp, Telegram y Discord.
+3. **Se empieza limpio.** No se migran conversaciones, memoria, automatizaciones ni vínculos de saturno. El Gateway viejo sigue corriendo hasta el cambio y sus datos quedan como respaldo.
+4. **Toda la lógica es del Engine.** Rutinas, planificador, trabajos, memoria, skills y la Agency viven en el Engine (Rinari-CLI). El Gateway nuevo no tiene planificador, memoria ni trabajos propios, y no mete adaptadores dentro del proceso del Engine.
+5. **No es un «Rinari en la nube».** La web es un **panel de configuración**: no muestra sesiones ni chats de Rinari.
+6. **La excepción es la Agency:** corre 24/7 en el servidor y **sí se ve en la web** (sus chats, su pizarra y su registro).
+7. **La app de escritorio (y mañana la móvil) puede conectarse al Engine del servidor**, y ahí sí ve sus chats. La web no.
+8. Se mantienen las respuestas del 2026-10-15: la app trabaja con **un Engine a la vez**, con un cambio rápido entre ellos, y **el pin del Engine del Gateway sube junto con el del Agent**.
 
-- **El Gateway ya corre el mismo Engine que la CLI y el Agent.** Lo fija en `config/engine-pin.json` (repositorio `Rinari-CLI`, commit, protocolo y capacidades requeridas) y le habla por stdio: `src/rinari_gateway/engine.py` es «un cliente stdio; solo transporte, nunca lógica del harness». El Engine se instala como un paquete (bundle) construido desde el commit fijado (`docs/engine-distribution.md`).
-- **El atraso es el pin:** `ad78f3a` (CLI #54, 2026-10-08). El CLI va en `178d75c` (#73) y el Agent fija `2a94168` (#71). Saturno corre `0.1.0a40`.
-- **Encima del Engine, el Gateway tiene lo suyo:** canales (Telegram, Discord, WhatsApp), la web (panel, chat, Obsidian, automatizaciones), el vault de Obsidian como MCP (`rinari-vault-mcp`), y además **sus propias automatizaciones, planificador, trabajos y memoria** (`automations.py`, `scheduler.py`, `jobs.py`, `memory.py`), que en parte duplican lo que el Engine ya tiene (tareas programadas, memoria).
+## Por qué no se sube el pin del Gateway viejo (revisado 2026-10-22)
 
-## Propuesta
+El Gateway viejo fija el Engine `ad78f3a`. La punta de `origin/0.4.0` de la CLI (`bf66b9c`) va 297 commits por delante. Las 18 capacidades que el viejo exige siguen ahí (solo se retiró `session_peer_messaging_v1`, que no usa), pero su adaptador `engine_bootstrap.py` parchea `agent_runtime._build_tools` y comprueba hashes de fuentes del Engine. Tres de esos cinco archivos cambiaron, y además el Engine ahora registra `schedule.list`, `schedule.update` y `schedule.cancel` sobre su propio planificador. Para adaptarlo habría que reescribir una pieza que la reescritura elimina, así que no se hace. La rama `feat/g0-engine-pin` del repo del Gateway se creó y quedó sin cambios.
 
-1. **Pin al día, como rutina.** Cada vez que se fusiona un cambio del Engine que el Agent adopta, el Gateway sube su pin al mismo commit (con su bundle y sus pruebas). Una lista de comprobación en el repo del Gateway para que no se vuelva a atrasar.
-2. **Qué vive dónde.** Regla: **la lógica del agente y del trabajo vive en el Engine**; el Gateway se queda con **canales, web, Obsidian y la operación del servidor**.
-   - Revisar una por una sus automatizaciones, planificador, trabajos y memoria: lo que el Engine ya hace (tareas programadas, memoria) se usa del Engine; lo que solo existe en el Gateway y sirve a todos (por ejemplo, horarios tipo cron, trabajos durables) se sube al Engine, para que el escritorio y la Agency también lo tengan.
-3. **Conexión remota al Engine.** El Gateway ofrece un punto de conexión **seguro** (TLS, emparejamiento con código o QR, token revocable) por el que la app de escritorio, y mañana la móvil, hablan con **el Engine del Gateway** con el mismo protocolo que usan con el Engine local. En la app: «Conectar a mi servidor».
-4. **La Agency en el servidor.** Con 1–3, la Agency corre 24/7 en el Engine del Gateway; los canales del Gateway (Telegram, correo, webhooks) son sus disparadores y sus salidas. Lo que trae la depuración de la Agency (2026-10-16):
-   - **Disparadores que solo existen aquí:** correo, Telegram y webhooks. Un webhook necesita la dirección pública que tiene el servidor, y un mismo bot de Telegram admite un solo programa que reciba sus mensajes: el que escucha es el del Gateway, nunca la PC a la vez.
-   - **Agentes con disparador externo:** nacen con el interruptor «Preguntar antes de enviar datos a destinos nuevos» encendido (D-6 de la Agency). La pregunta debe poder responderse desde Telegram, no solo desde la app.
-   - **«Detener a todos» desde Telegram**, además de desde la app.
-   - **Credenciales con dueño** (D-11 de la Agency): se usa el almacén del Engine, que guarda referencias y nunca valores (`application/credentials.py` del repo de la CLI). En el servidor Linux hay que comprobar con qué respaldo se resuelven: el Administrador de credenciales de Windows no existe allí.
-   - **La vista Normal de la Agency** (chats, pizarra, registro) es lo primero que se ve desde la app conectada y desde la web (punto 5). La vista de 8 bits llega cuando la Agency la tenga (fase A4, sin fecha).
-   - **Conectores** ([plan-conectores.md](plan-conectores.md); dueño, 2026-10-18): primero se depuran en el escritorio y después se traen aquí. En el servidor hay que resolver:
-     - el mismo catálogo y las mismas cuentas conectadas, sin pedir al usuario que vuelva a conectar todo;
-     - OAuth sin navegador en el servidor: la autorización se hace desde la app conectada o desde la web, y el token queda en el almacén del Engine del servidor;
-     - la renovación de tokens 24/7 y el aviso «Hay que reconectar» por Telegram, además de en la app;
-     - los MCP locales (stdio) corren en el servidor, no en la PC: qué entradas del catálogo sirven allí.
-5. **Web nueva.** La web del Gateway se rediseña con el sistema Obsidiana neón del Agent y suma lo que hoy solo está en el escritorio que tenga sentido en el servidor (la Agency, sus recados, sus registros). Alcance a definir con el dueño.
+## Qué es el Gateway nuevo
+
+Un servicio de un solo dueño que hace cinco cosas, y nada más:
+
+1. **Hospeda el Engine fijado.** Lo instala desde un bundle construido en el commit que fija el Agent, lo supervisa (arranque, reinicio, apagado ordenado) y le habla por stdio con el protocolo v1. Las credenciales van en el almacén del Engine, que guarda referencias y no valores. En Linux hay que confirmar con qué respaldo se resuelven, porque el Administrador de credenciales de Windows no existe allí.
+2. **Bots** (Telegram, Discord, WhatsApp): cada uno es un cliente del Engine con `channel_tools_v1`. Recibe mensajes, los pasa a una sesión del Engine y entrega la respuesta con el formato de su canal. Las preguntas y aprobaciones del Engine se responden desde el propio canal.
+3. **Vault de Obsidian como MCP** registrado en el Engine, con las garantías de hoy: IDs estables, revisión, SHA-256, escritura atómica y tombstones. Se rechazan rutas absolutas, `..`, symlinks y `.obsidian`. El texto de una nota nunca da permisos. Incluye el plugin de Obsidian para sincronizar.
+4. **Conexión remota segura** para la app de escritorio y la móvil: TLS, emparejamiento con código o QR, y token revocable. Habla con el Engine del servidor con el mismo protocolo que el Engine local. En la app aparece como «Conectar a mi servidor».
+5. **Panel web de configuración** (sección siguiente).
+
+**La Agency 24/7** corre en ese Engine. Los canales del Gateway (Telegram, correo, webhooks) son sus disparadores y sus salidas:
+
+- Un webhook necesita la dirección pública del servidor. Un bot de Telegram admite un solo programa escuchando: es el del Gateway, nunca la PC a la vez.
+- Los agentes con disparador externo nacen con «Preguntar antes de enviar datos a destinos nuevos» encendido (D-6 de la Agency), y esa pregunta se responde también desde Telegram.
+- «Detener a todos» funciona desde Telegram, además de desde la app y la web.
+- Conectores ([plan-conectores.md](plan-conectores.md)): primero se depuran en el escritorio. En el servidor se resuelven así:
+  - el mismo catálogo;
+  - OAuth sin navegador en el servidor: se autoriza desde la app conectada o desde la web;
+  - renovación de tokens 24/7, con el aviso «Hay que reconectar» también por Telegram;
+  - qué MCP locales (stdio) sirven en el servidor.
+
+## Panel web
+
+Su tema es configurar y vigilar, no conversar:
+
+- **Bots y canales:** conectar Telegram, Discord y WhatsApp (QR), quién puede hablarle a cada bot y sus comandos.
+- **Modelos y proveedores:** qué proveedor y qué modelo usan los bots. Las claves van al almacén del Engine.
+- **Vault de Obsidian:** estado del vault y de su MCP, y la sincronización. No edita notas.
+- **Estado y registros:** salud del Engine y de los bots, versión y pin, actualizaciones, respaldos y registro de errores.
+- **La Agency (excepción):** su vista Normal (chats, pizarra, registro), sus agentes, sus disparadores, sus credenciales y «Detener a todos». La vista de 8 bits llega cuando la Agency la tenga.
+- **Emparejar dispositivos:** crear y revocar los tokens de la conexión remota.
+
+El acceso al panel exige sesión del dueño. Todo endpoint protegido responde 401 sin ella.
+
+Diseño: sistema Obsidiana neón ([docs/design/obsidiana-neon.md](../design/obsidiana-neon.md)). Los tokens y, si encaja, los componentes de la Agency se reutilizan del Agent en lugar de copiarse. Cómo se comparten entre los dos repos es la pregunta abierta 1.
+
+## Qué desaparece respecto al viejo
+
+Son unas 22 000 líneas de Python y 21 000 de TypeScript. Desaparecen:
+
+- el planificador, las automatizaciones, los trabajos durables, la memoria y las skills propias (`scheduler.py`, `automations*.py`, `jobs.py`, `memory.py`, `skills.py`…);
+- el adaptador en proceso del Engine (`engine_bootstrap.py` y `engine_adapter_hashes.json`);
+- la conversación web con Rinari (`web_chat.py` y el chat del panel);
+- los modelos por conversación, la presentación del dueño y el resto de lógica que ya da el Engine.
+
+Lo que el viejo resolvió bien se lee antes de rehacerlo: formato por canal, archivos y medios, steering desde el canal, privacidad al borrar, recuperación de turnos y despliegue con releases inmutables. Las notas de despliegue en saturno (proxy en casa3090, regla UFW de NPM, releases y symlink `current`) están en el `CLAUDE.md` del repo del Gateway.
 
 ## Orden
 
 | Paso | Qué |
 |---|---|
-| G0 | Pin al día y la lista de comprobación |
-| G1 | «Qué vive dónde»: inventario de automatizaciones, planificador, trabajos y memoria del Gateway frente al Engine |
-| G2 | Conexión remota segura al Engine |
-| G3 | La Agency 24/7 en el servidor, con sus disparadores de correo, Telegram y webhooks y «Detener a todos» desde Telegram (punto 4). Necesita al menos la fase A1 de la Agency y los conectores ya depurados en el escritorio |
-| G4 | Web nueva |
+| R0 | Rama nueva vacía en el repo del Gateway. Esqueleto: servicio, configuración, Engine fijado al mismo commit que el Agent y supervisado, salud, CI y reglas del repo (`CLAUDE.md` nuevo) |
+| R1 | Panel web mínimo: sesión del dueño, estado y registros, modelos y proveedores |
+| R2 | Bots: Telegram primero, después Discord y WhatsApp, cada uno con su sección del panel |
+| R3 | Vault de Obsidian como MCP y su plugin, con su sección del panel |
+| R4 | Conexión remota segura y emparejamiento. En el Agent: «Conectar a mi servidor» y el cambio rápido entre Engines |
+| R5 | La Agency 24/7: disparadores de correo, Telegram y webhooks, «Detener a todos» desde Telegram, conectores en el servidor y su vista en la web. Necesita la Agency y los conectores ya depurados en el escritorio |
+| R6 | Instalación en saturno junto al viejo, cambio, respaldo de los datos viejos y apagado del servicio anterior |
 
-## Preguntas para el dueño (respondidas, 2026-10-15)
-1. ¿Qué cambios quieres en la web del Gateway: solo el estilo, o también lo que muestra (la Agency, los recados)? → **Las dos cosas**: estilo nuevo, y además la Agency y los recados.
-2. ¿La app de escritorio debe poder trabajar con **los dos** Engines a la vez (el local y el del servidor), o con uno a la vez? → **Uno a la vez**, con un cambio rápido entre ellos.
-3. ¿El pin del Gateway se sube junto con el del Agent en cada versión, o con su propio ritmo? → **Junto con el del Agent**, como el pin del Engine.
+## Preguntas abiertas
+
+1. **Compartir la UI con el Agent:** ¿el build del Gateway toma el repo del Agent en un commit fijado (como el pin del Engine), o se extrae un paquete compartido (tokens y componentes de la Agency)?
+2. **Acceso al panel:** ¿contraseña y TOTP como el viejo, passkeys, o solo desde la red local o por túnel?
+3. **Versionado:** ¿el Gateway nuevo arranca en `0.2.0` o en `1.0.0a1`?
+4. **Dominio:** ¿se reutiliza `rinari.xainner.com` en el cambio (R6)?
+5. **Secretos en saturno:** el servicio viejo tiene un token de MCP en texto plano en un drop-in de systemd (`mcp-env.conf`). En el nuevo va al almacén del Engine. ¿Se rota el token actual?

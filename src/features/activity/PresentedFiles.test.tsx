@@ -18,6 +18,7 @@ import { I18nProvider } from '../../i18n'
 import { setPlatformForTests } from '../../platform'
 import { createTestBridge, type TestBridge } from '../../platform/testBridge'
 import { resetSessionDockForTests, useSessionDockStore } from '../../stores/sessionDock'
+import { officeDockKey } from '../agency/AgencyData'
 import { FileWorkspaceProvider } from '../files/FileWorkspace'
 import { PresentedFiles } from './PresentedFiles'
 import { parseDelimited, resetPresentedPreviewsForTests } from './presentedPreview'
@@ -108,4 +109,26 @@ it('pulsar una imagen entregada abre el visor grande, no Archivos', async () => 
   expect(bridge.openedFiles).toEqual([])
   // Archivos sigue a un clic, desde el visor.
   expect(within(viewer).getByRole('button', { name: 'Abrir en Archivos' })).toBeTruthy()
+})
+
+it('en la oficina, la copia de lo que presentó un puesto se abre y se muestra en su carpeta con la conversación del puesto', async () => {
+  const user = userEvent.setup()
+  const uri = 'artifact://ses_puesto/files/10.mp3'
+  const { container } = render(
+    <I18nProvider lang="es">
+      <FileWorkspaceProvider sessionId={officeDockKey('team_1')}>
+        <PresentedFiles item={item([{ uri, name: '10.mp3', kind: 'audio', mime: 'audio/mpeg' }])} />
+      </FileWorkspaceProvider>
+    </I18nProvider>,
+  )
+  const actions = within(container.querySelector<HTMLElement>('.present-actions')!)
+  await user.click(actions.getByRole('button', { name: 'Abrir en el Explorador de archivos' }))
+  await user.click(actions.getByRole('button', { name: 'Abrir externamente' }))
+  expect(bridge.revealedFiles).toEqual([{ session_id: 'ses_puesto', path: uri, turn_id: undefined }])
+  expect(bridge.openedFiles).toEqual([{ session_id: 'ses_puesto', path: uri, turn_id: undefined }])
+})
+
+it('en una conversación, un artefacto sin ruta propia no ofrece la carpeta', () => {
+  mount([{ uri: 'artifact://ses_a/files/x.mp3', name: 'x.mp3', kind: 'audio', mime: 'audio/mpeg' }])
+  expect(screen.queryByRole('button', { name: 'Abrir en el Explorador de archivos' })).toBeNull()
 })

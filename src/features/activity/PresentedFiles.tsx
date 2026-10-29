@@ -10,6 +10,7 @@ import { MediaPlayer } from '../files/MediaPlayer'
 import { durationFromText } from '../files/AudioPlayer'
 import { useArtifactImage } from '../files/artifactImage'
 import { attachmentImageUrl } from '../../components/image-viewer/attachmentImages'
+import { teamIdOfDockKey } from '../agency/AgencyData'
 import { useImageInspector } from './ImageActivity'
 import { parseDelimited, useFirstPage, useNearView, useTextHead } from './presentedPreview'
 import type { PresentTimelineItem, PresentedFile } from './types'
@@ -103,7 +104,9 @@ function PresentedTile({ file, index, single }: { file: PresentedFile; index: nu
   const meta = detail ?? (file.kind === 'folder' || file.kind === 'archive'
     ? t('present.entries', { n: file.entry_count ?? 0 })
     : size(file.size_bytes))
-  const local = Boolean(file.path) && !file.uri
+  // En la oficina llega la copia (su URI): abrirla o mostrarla lleva al archivo
+  // que hizo el puesto mientras no cambie (28-oct).
+  const actionable = file.path && !file.uri ? file.path : file.uri && files && teamIdOfDockKey(files.sessionId) ? file.uri : null
   return (
     <li
       ref={ref}
@@ -122,13 +125,13 @@ function PresentedTile({ file, index, single }: { file: PresentedFile; index: nu
           {file.caption && <span className="present-caption">{file.caption}</span>}
         </span>
         {meta && <span className="present-size">{meta}</span>}
-        {local && files && file.path && (
+        {actionable && files && (
           <span className="present-actions">
-            <button type="button" className="btn btn-quiet btn-icon btn-xs" aria-label={t('files.revealInFolder')} title={t('files.revealInFolder')} onClick={() => files.reveal(file.path!, turnId)}>
+            <button type="button" className="btn btn-quiet btn-icon btn-xs" aria-label={t('files.revealInFolder')} title={t('files.revealInFolder')} onClick={() => files.reveal(actionable, turnId)}>
               <FolderOpen size={12} aria-hidden="true" />
             </button>
             {file.kind !== 'folder' && (
-              <button type="button" className="btn btn-quiet btn-icon btn-xs" aria-label={t('files.openExternally')} title={t('files.openExternally')} onClick={() => files.openExternal(file.path!, turnId)}>
+              <button type="button" className="btn btn-quiet btn-icon btn-xs" aria-label={t('files.openExternally')} title={t('files.openExternally')} onClick={() => files.openExternal(actionable, turnId)}>
                 <ExternalLink size={12} aria-hidden="true" />
               </button>
             )}

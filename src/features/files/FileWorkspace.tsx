@@ -621,12 +621,12 @@ export function FileWorkspaceProvider({
     media: (path, turnId, from) => platform().files.media({ session_id: from ?? sessionId, path, turn_id: turnId }),
     reveal: (path, turnId, from) => {
       if (!pointsAtFile(path)) return
-      void platform().files.revealInFolder({ session_id: from ?? sessionId, path, turn_id: turnId })
+      void platform().files.revealInFolder({ session_id: from ?? artifactOwner(sessionId, path), path, turn_id: turnId })
         .catch((error) => toast.error(commandMessage(error)))
     },
     openExternal: (path, turnId, from) => {
       if (!pointsAtFile(path)) return
-      void platform().files.openExternal({ session_id: from ?? sessionId, path, turn_id: turnId })
+      void platform().files.openExternal({ session_id: from ?? artifactOwner(sessionId, path), path, turn_id: turnId })
         .catch((error) => toast.error(commandMessage(error)))
     },
     source,

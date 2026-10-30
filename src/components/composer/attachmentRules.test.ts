@@ -8,6 +8,9 @@ describe('attachmentRules (#57)', () => {
     expect(attachmentCategory('x', 'video/mp4')).toBe('video')
     expect(attachmentCategory('informe.pptx')).toBe('document')
     expect(attachmentCategory('Dockerfile')).toBe('text')
+    expect(attachmentCategory('rinari-revision-ses_x.ZIP')).toBe('archive')
+    expect(attachmentCategory('fotos.tar.gz')).toBe('archive')
+    expect(attachmentCategory('copia.gz')).toBeNull()
     expect(attachmentCategory('setup.exe')).toBeNull()
     expect(attachmentCategory('anim.gif', 'image/gif')).toBeNull()
   })
@@ -16,6 +19,7 @@ describe('attachmentRules (#57)', () => {
     expect(maxBytes('video')).toBe(1024 * 1024 * 1024)
     expect(maxBytes('image')).toBe(10 * 1024 * 1024)
     expect(maxBytes('document')).toBe(25 * 1024 * 1024)
+    expect(maxBytes('archive')).toBe(1024 * 1024 * 1024)
   })
 
   it('content keys tell equal data apart from different data', () => {

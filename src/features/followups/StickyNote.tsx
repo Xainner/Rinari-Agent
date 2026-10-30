@@ -60,7 +60,8 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
 
   useLayoutEffect(() => {
     const parent = host.current?.parentElement
-    if (!parent || compact) return
+    // With no note there is nothing to place: the content is not watched.
+    if (!parent || compact || !notes?.length) return
     // 0 = not laid out yet (hidden, or a test DOM): assume there is room.
     const measure = () => {
       const width = parent.getBoundingClientRect().width
@@ -68,9 +69,19 @@ export function StickyNote({ sessionId, compact = false }: { sessionId: string; 
     }
     measure()
     if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(measure)
+    // Next frame, not inside the observer: showing or hiding the note there
+    // resizes what other observers watch in the same pass, and the browser
+    // reported «ResizeObserver loop completed with undelivered notifications».
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(measure)
+    })
     observer.observe(parent)
-    return () => observer.disconnect()
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
   }, [compact, notes?.length])
 
   const at = Math.max(0, notes?.findIndex((item) => item.id === currentId) ?? 0)

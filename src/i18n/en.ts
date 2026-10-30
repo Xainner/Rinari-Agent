@@ -2965,6 +2965,8 @@ export const en: Record<I18nKey, string> = {
   'children.reportSeparator': "Report from {names}",
   'followups.planStep': "Plan step",
   'followups.more': "{n} more notes",
+  'followups.previous': "Previous note",
+  'followups.next': "Next note",
   'followups.readAll': "Read all",
   'followups.less': "Show less",
   'followups.external': "Came up after reading internet content: review it first",

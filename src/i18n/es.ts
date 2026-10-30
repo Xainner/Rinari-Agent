@@ -2983,6 +2983,8 @@ export const es = {
   'children.reportSeparator': "Informe de {names}",
   'followups.planStep': "Paso del plan",
   'followups.more': "Hay {n} notas más",
+  'followups.previous': "Nota anterior",
+  'followups.next': "Nota siguiente",
   'followups.readAll': "Leer todo",
   'followups.less': "Ver menos",
   'followups.external': "Surgió tras leer contenido de internet: revísala antes",

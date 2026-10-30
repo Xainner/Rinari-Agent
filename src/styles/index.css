@@ -759,7 +759,10 @@ input[type='password']::-ms-clear {
 .sticky-note-stack { position: absolute; inset: 5px -6px -6px 6px; z-index: -1; border-radius: inherit; background: linear-gradient(172deg, var(--note-paper-2), var(--note-paper)); filter: brightness(0.92); opacity: 0.9; transform: rotate(5deg); box-shadow: 0 12px 22px -14px rgb(0 0 0 / 0.7); }
 .sticky-note-head { display: flex; align-items: center; gap: 6px; min-height: 24px; padding-left: 50px; }
 .sticky-note-from { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--note-ink-muted); }
-.sticky-note-more { flex-shrink: 0; border-radius: 999px; padding: 0 7px; font-size: 10.5px; font-weight: 700; line-height: 18px; color: var(--note-paper); background: var(--note-ink-muted); }
+.sticky-note-pager { display: inline-flex; flex-shrink: 0; align-items: center; gap: 1px; border-radius: 999px; padding: 0 2px; font-size: 10.5px; font-weight: 700; line-height: 18px; color: var(--note-paper); background: var(--note-ink-muted); font-variant-numeric: tabular-nums; }
+.sticky-note-pager > button { display: inline-grid; place-items: center; width: 16px; height: 18px; border-radius: 999px; color: inherit; }
+.sticky-note-pager > button:hover { background: rgb(255 255 255 / 0.16); }
+.sticky-note-pager > button:focus-visible { outline: 2px solid var(--note-paper); outline-offset: -2px; }
 .sticky-note-dismiss { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; margin-right: -6px; border-radius: 999px; color: var(--note-ink-muted); transition: background-color var(--dur-fast), color var(--dur-fast), transform var(--dur-fast); }
 .sticky-note-dismiss:hover:not(:disabled) { background: rgb(0 0 0 / 0.08); color: var(--note-ink); transform: rotate(90deg); }
 .sticky-note-title { font-family: var(--font-display); font-size: 16px; font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; color: var(--note-ink); text-wrap: balance; }

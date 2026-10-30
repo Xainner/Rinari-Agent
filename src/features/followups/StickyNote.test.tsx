@@ -57,7 +57,7 @@ describe('StickyNote', () => {
     const card = await screen.findByTestId('followup-note')
     expect(card.classList.contains('is-arriving')).toBe(true)
     expect(card.textContent).toContain('Idea b')
-    expect(card.textContent).toContain('+1')
+    expect(card.textContent).toContain('1/2')
     expect(card.textContent).toContain('contenido de internet')
     expect(accept).not.toHaveBeenCalled()
   })
@@ -86,6 +86,30 @@ describe('StickyNote', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Descartar la nota' }))
     expect(dismiss).toHaveBeenCalledWith('a')
     await waitFor(() => expect(screen.queryByTestId('followup-note')).toBeNull())
+  })
+
+  it('the next note never inherits the peel when the Engine resolves first, and the owner pages through them', async () => {
+    // 28-oct: two notes arrived together; dismissing the first left the second
+    // invisible (peeled) on the card and in the chip.
+    useFollowupStore.getState().setPending('s1', [note('b'), note('a'), note('c')])
+    vi.spyOn(engineApi, 'followupDismiss').mockImplementation(async (id: string) => {
+      applyFollowupEvent('followup.resolved', { suggestion: note(id, { status: 'dismissed' }) })
+      return { suggestion: note(id, { status: 'dismissed' }) }
+    })
+    mount()
+    const user = userEvent.setup()
+    expect((await screen.findByTestId('followup-note')).textContent).toContain('Idea b')
+    await user.click(screen.getByRole('button', { name: 'Nota siguiente' }))
+    expect(screen.getByTestId('followup-note').textContent).toContain('Idea a')
+    expect(screen.getByTestId('followup-note').textContent).toContain('2/3')
+    await user.click(screen.getByRole('button', { name: 'Nota anterior' }))
+    await user.click(screen.getByRole('button', { name: 'Nota anterior' }))
+    expect(screen.getByTestId('followup-note').textContent).toContain('Idea c')
+    await user.click(screen.getByRole('button', { name: 'Descartar la nota' }))
+    await waitFor(() => expect(screen.getByTestId('followup-note').textContent).not.toContain('Idea c'))
+    const next = screen.getByTestId('followup-note')
+    expect(next.className).not.toMatch(/is-leaving/)
+    expect(screen.getByRole('button', { name: 'Descartar la nota' })).toHaveProperty('disabled', false)
   })
 
   it('in a Boards pane it waits as a chip and opens on demand', async () => {

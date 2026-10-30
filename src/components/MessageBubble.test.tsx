@@ -76,3 +76,16 @@ it('a message from a task that runs in its conversation names the task', () => {
   expect(run.textContent).toContain('Revisa otra vez el precio.')
   expect(screen.queryByTestId('user-message-bubble')).toBeNull()
 })
+
+it('work that ended after its turn shows as a separator, not as words of the owner', () => {
+  const woke = (source: string) => ({
+    ...peerMessage,
+    content: '[Rinari] Background work you asked to be woken for ended: render (exit code 0).',
+    origin: { kind: 'automation' as const, source, source_label: 'render' },
+  })
+  const { rerender } = render(<I18nProvider lang="es"><MessageBubble message={woke('process_exit')} /></I18nProvider>)
+  expect(screen.getByTestId('wake-separator').textContent).toBe('Terminó «render»: Rinari sigue')
+  expect(screen.queryByTestId('user-message-bubble')).toBeNull()
+  rerender(<I18nProvider lang="es"><MessageBubble message={woke('job_timeout')} /></I18nProvider>)
+  expect(screen.getByTestId('wake-separator').textContent).toBe('«render» no terminó a tiempo: Rinari lo revisa')
+})

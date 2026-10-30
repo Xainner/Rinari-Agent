@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, ClipboardList, ChevronRight } from 'lucide-react'
+import { BellRing, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, ClipboardList, ChevronRight } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
 import type { I18nKey } from '../i18n/es'
@@ -150,6 +150,13 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
   // instrucción plegada, no una burbuja del dueño por cada corrida (22-oct).
   if (message.role === 'user' && message.origin?.kind === 'schedule') {
     return <ScheduledRun message={message} />
+  }
+
+  // Work that finished after its turn woke the conversation (Ideas-2): not the
+  // owner's words either, a separator that says what ended.
+  const woke = message.role === 'user' ? wakeKey(message.origin?.source) : null
+  if (woke) {
+    return <WakeSeparator labelKey={woke} name={message.origin?.source_label ?? ''} />
   }
 
   // A turn the goal started is not something the owner wrote: a separator.
@@ -444,6 +451,26 @@ function ReceivedLine({ label, sessionId, fallbackTitle, fallback, text }: { lab
           <div><div className="child-report-body"><Markdown>{text}</Markdown></div></div>
         </div>
       )}
+    </div>
+  )
+}
+
+const WAKE_KEYS: Record<string, I18nKey> = {
+  process_exit: 'wake.process',
+  job_done: 'wake.jobDone',
+  job_timeout: 'wake.jobTimeout',
+  job_failed: 'wake.jobFailed',
+}
+
+function wakeKey(source: string | null | undefined): I18nKey | null {
+  return source ? WAKE_KEYS[source] ?? null : null
+}
+
+function WakeSeparator({ labelKey, name }: { labelKey: I18nKey; name: string }) {
+  const { t } = useI18n()
+  return (
+    <div data-testid="wake-separator" className="goal-separator" role="separator">
+      <span><BellRing size={11} aria-hidden="true" />{t(labelKey, { name })}</span>
     </div>
   )
 }

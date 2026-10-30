@@ -405,14 +405,22 @@ function OfficeComposer({ team, members, onPosted }: { team: AgencyTeam; members
     if (!mention) return
     const next = `${text.slice(0, mention.start)}@${agent.name} ${text.slice(caret)}`
     const position = mention.start + agent.name.length + 2
+    pendingCaret.current = position
     setText(next)
     setCaret(position)
     setPicked(0)
-    requestAnimationFrame(() => {
-      input.current?.focus()
-      input.current?.setSelectionRange(position, position)
-    })
   }
+  // The caret goes after the name as soon as the text is written: a frame
+  // later, a key typed in between had already gone in and the caret jumped
+  // back before it («Hola @Video nímaloa»).
+  const pendingCaret = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    const position = pendingCaret.current
+    if (position === null) return
+    pendingCaret.current = null
+    input.current?.focus()
+    input.current?.setSelectionRange(position, position)
+  }, [text])
 
   const send = async () => {
     const message = text.trim()

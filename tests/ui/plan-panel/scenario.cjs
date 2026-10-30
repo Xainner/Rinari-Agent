@@ -60,7 +60,8 @@ scenario(async () => {
   const bubbles = await evaluate(`document.querySelectorAll('[data-testid="user-message-bubble"]').length`)
   await clickText('Implementar plan', '[data-testid="plan-card"] button', { includes: true })
   await wait(`[...document.querySelectorAll('[data-testid="plan-separator"][data-kind="implement"]')].length > 0`)
-  await wait(`document.body.innerText.includes('IMPLEMENTADO')`)
+  // IMPLEMENTADO leaves the checklist pending, so the Engine asks once more (EXTRA): either shows the BUILD turn ran.
+  await wait(`document.body.innerText.includes('IMPLEMENTADO') || document.body.innerText.includes('EXTRA')`)
   assert.equal(await evaluate(`document.querySelectorAll('[data-testid="user-message-bubble"]').length`), bubbles, 'implementing adds no user bubble')
   await settleAnimations()
   await screenshot('implementing')

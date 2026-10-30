@@ -3,14 +3,14 @@ name: release
 permissions:
   contents: write
 
-# Electron 0.2.x y 0.3.x usan latest.yml + SHA-512. Empujar el tag `v0.x.y`
+# Electron 0.2.x, 0.3.x y 0.4.x usan latest.yml + SHA-512. Empujar el tag `v0.x.y`
 # (solo con autorización del dueño) **publica** el release: es de donde la app
 # y `rinari update` se actualizan. Un borrador no lo ve nadie, así que nunca
 # hubo nada que actualizar. No acepta tags de la línea Tauri 0.1.x.
 # Las notas salen de docs/releases/<tag>.md cuando existe.
 on:
   push:
-    tags: ['v0.2.*', 'v0.3.*']
+    tags: ['v0.2.*', 'v0.3.*', 'v0.4.*']
 
 jobs:
   electron-release-unsigned:

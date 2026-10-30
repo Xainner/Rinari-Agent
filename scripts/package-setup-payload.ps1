@@ -2,7 +2,7 @@
 param(
   [string] $SourceDir,
   [string] $OutputDir = (Join-Path $PSScriptRoot '..\installer\setup\src-tauri\resources\payload'),
-  [string] $Version = '0.3.1',
+  [string] $Version = '0.4.0',
   # Rinari Agent Nightly: sale de su propia carpeta y con su propia identidad.
   [switch] $Nightly
 )

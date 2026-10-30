@@ -82,6 +82,8 @@ scenario(async () => {
   assert.ok(look.text.includes('Enviar ahora'), 'the note offers «Enviar ahora»')
   await settleAnimations()
   await screenshot('steer-pending')
+  // «N conversaciones terminaron» (the children above) may still sit over the note.
+  await wait(`(() => { const l = document.querySelector('${LINK}'); const r = l.getBoundingClientRect(); const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return Boolean(at && (at === l || l.contains(at))) })()`, 15_000)
   await click(LINK)
   await wait(`document.querySelector('[data-testid="steer-message"]')?.dataset.interrupted === 'true'`)
   assert.ok(await evaluate(text('Cortando el paso para leerlo ya')) || await evaluate(text('Interrumpió el paso')), 'the note says the step is cut')

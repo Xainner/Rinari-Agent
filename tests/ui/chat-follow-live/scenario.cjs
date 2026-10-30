@@ -12,7 +12,11 @@ const arrow = 'button[aria-label="Ir al final"]'
 async function sample() {
   await evaluate(`(() => {
     const state = window.__follow = { frames: 0, arrow: 0, maxGap: 0, errors: 0, messages: [], done: false }
-    window.addEventListener('error', (event) => { state.errors += 1; if (state.messages.length < 5) state.messages.push(String(event.message)) })
+    // The browser's «ResizeObserver loop completed with undelivered notifications» is not
+    // an error: those notifications arrive next frame. The timeline rail observes inside
+    // the virtual list's rows, which makes it common while streaming. Following is
+    // guarded by the arrow and the gap to the end below.
+    window.addEventListener('error', (event) => { if (String(event.message).startsWith('ResizeObserver loop')) return; state.errors += 1; if (state.messages.length < 5) state.messages.push(String(event.message)) })
     const tick = () => {
       const el = document.querySelector(${JSON.stringify(scroller)})
       if (el) {

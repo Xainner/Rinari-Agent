@@ -497,6 +497,7 @@ export const es = {
   'activity.showOperations': 'Ver operaciones',
   'activity.hideOperations': 'Ocultar operaciones',
   'activity.group.image': 'Imágenes',
+  'activity.group.create': 'Creación de imágenes',
   'activity.group.read': 'Lecturas',
   'activity.group.search': 'Búsquedas',
   'activity.group.list': 'Listados de archivos',

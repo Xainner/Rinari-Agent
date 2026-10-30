@@ -494,6 +494,7 @@ export const en: Record<I18nKey, string> = {
   'activity.showOperations': 'Show operations',
   'activity.hideOperations': 'Hide operations',
   'activity.group.image': 'Images',
+  'activity.group.create': 'Image creation',
   'activity.group.read': 'Reads',
   'activity.group.search': 'Searches',
   'activity.group.list': 'File listings',

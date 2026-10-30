@@ -2,6 +2,9 @@ import { expect, it } from 'vitest'
 import { agentInstruction, formatTool, toolCategory } from './formatActivity'
 import type { ToolTimelineItem } from './types'
 import { formatWhen } from '../schedules/scheduleModel'
+import { en } from '../../i18n/en'
+import { es } from '../../i18n/es'
+import source from './formatActivity.ts?raw'
 
 const tool = (name: string, args: Record<string, unknown> = {}, status: ToolTimelineItem['status'] = 'completed') =>
   ({ id: name, type: 'tool', tool: name, arguments: JSON.stringify(args), status, occurredAt: 0 }) as unknown as ToolTimelineItem
@@ -87,4 +90,15 @@ it('las herramientas de imágenes dicen qué hicieron, no su nombre técnico (pl
   expect(formatTool(tool('image.upscale', {}, 'failed'), 'es')).toBe('No pudo ampliar la imagen')
   // Leer una imagen sigue siendo leer.
   expect(toolCategory('fs.read_image')).toBe('image')
+})
+
+it('cada categoría de herramienta tiene el nombre de su grupo en los dos idiomas', () => {
+  // El grupo plegado de image.generate se veía como «activity.group.create».
+  const union = source.slice(source.indexOf('export type ToolCategory ='), source.indexOf('const EXACT'))
+  const categories = [...union.matchAll(/'([a-z]+)'/g)].map((match) => match[1])
+  expect(categories).toContain('create')
+  for (const category of categories) {
+    expect(es).toHaveProperty([`activity.group.${category}`])
+    expect(en).toHaveProperty([`activity.group.${category}`])
+  }
 })

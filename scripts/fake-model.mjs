@@ -20,13 +20,15 @@ import { createServer } from 'node:http'
  * La petición de herramienta lleva una frase para el usuario (`say`), como un
  * modelo bien portado: el Engine no ejecuta un primer lote mudo y pide antes
  * la apertura. `say: ''` guioniza ese lote mudo.
+ * `args` puede ser una función de la petición recibida: el paso usa lo que
+ * devolvió una herramienta anterior (una ruta con fecha, un id).
  */
 export function scriptedModel(initial = []) {
   let script = [...initial]
   let step = 0
   const served = []
 
-  const nextMessage = () => {
+  const nextMessage = (request = {}) => {
     const entry = script[step] ?? { text: 'listo' }
     step += 1
     served.push(entry)
@@ -40,7 +42,7 @@ export function scriptedModel(initial = []) {
         {
           id: `call_${step}`,
           type: 'function',
-          function: { name: entry.tool, arguments: JSON.stringify(entry.args ?? {}) },
+          function: { name: entry.tool, arguments: JSON.stringify((typeof entry.args === 'function' ? entry.args(request) : entry.args) ?? {}) },
         },
       ],
     }
@@ -144,12 +146,13 @@ export function scriptedModel(initial = []) {
     let body = ''
     request.on('data', (chunk) => (body += chunk))
     request.on('end', () => {
-      let wantsStream = false
+      let parsed = {}
       try {
-        wantsStream = Boolean(JSON.parse(body || '{}').stream)
+        parsed = JSON.parse(body || '{}')
       } catch {
-        wantsStream = false
+        parsed = {}
       }
+      const wantsStream = Boolean(parsed.stream)
       // `{ httpError: { status, body, headers } }`: the provider refuses the
       // request (quota, rate limit…) so the error path is the real one.
       const failing = script[step]?.httpError
@@ -160,7 +163,7 @@ export function scriptedModel(initial = []) {
         response.end(JSON.stringify(failing.body ?? { error: { message: 'fake failure' } }))
         return
       }
-      const message = nextMessage()
+      const message = nextMessage(parsed)
       const entry = served[served.length - 1] ?? {}
       if (wantsStream) {
         response.writeHead(200, {

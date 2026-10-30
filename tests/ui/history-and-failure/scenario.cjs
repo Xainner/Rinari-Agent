@@ -30,7 +30,17 @@ scenario(async () => {
   const created = await command('session_create', { chat: true, title: 'Larga' })
   const id = created.session?.id ?? created.id
   for (let n = 1; n <= TURNS; n++) {
-    await command('turn_start', { session_id: id, message: `Pregunta ${n}` })
+    // The last turn may still be closing after its answer is stored (its
+    // turn-state note, its usage): start the next one once it has.
+    await until(async () => {
+      try {
+        await command('turn_start', { session_id: id, message: `Pregunta ${n}` })
+        return true
+      } catch (error) {
+        if (error?.code === 'TURN_RUNNING' || String(error?.message ?? error).includes('already has a running turn')) return false
+        throw error
+      }
+    }, `turn ${n} started`, 30_000)
     await until(async () => (await historyTotal(id)) >= n * 2, `turn ${n} finished`, 30_000)
   }
   await reload()

@@ -53,7 +53,7 @@ scenario(async () => {
   }
   const choices = await evaluate(`[...document.querySelectorAll('${TUTORIAL} .agency-tour-choice')].map((b) => ({ text: b.innerText, disabled: b.disabled }))`)
   assert.equal(choices.length, 3, 'create, template or later')
-  assert(choices[1].disabled && choices[1].text.includes('Pronto'), `no templates yet: it says so (${JSON.stringify(choices[1])})`)
+  assert(!choices[1].disabled && choices[1].text.includes('plantilla'), `the Engine ships templates: the choice is open (${JSON.stringify(choices[1])})`)
   await click('[data-testid="agency-tutorial-create"]')
   await wait(`!document.querySelector('${TUTORIAL}')`)
 
@@ -173,7 +173,9 @@ scenario(async () => {
   // A2: «Nuevo equipo» con dos agentes; el primero es el jefe (D-8).
   await command('agency_agent_create', { agent: { name: 'Video' } })
   await wait(`document.querySelectorAll('[data-testid="agency-agent-row"]').length === 2`)
+  // «+» ofrece un equipo en blanco o una plantilla.
   await click('[data-testid="agency-new-team"]')
+  await click('[data-testid="agency-new-team-blank"]')
   await wait(`Boolean(document.querySelector('[data-testid="agency-team-form"]'))`)
   await input('[data-testid="agency-team-name"]', 'Canal infantil')
   await evaluate(`[...document.querySelectorAll('[data-testid="agency-team-members"] input[type="checkbox"]')].forEach((box) => box.click())`)
@@ -190,9 +192,9 @@ scenario(async () => {
   const posts = (await command('session_list', {})).sessions.map((s) => s.id)
   assert(team.posts.every((post) => !posts.includes(post.session_id)), "posts stay out of Rinari's list")
 
-  // La oficina usa el panel lateral de una conversación: Recado, Pizarra y Ficha en la barra de título (punto 5).
+  // La oficina usa el panel lateral de una conversación: Recado, Pizarra, Trabajo y Ficha en la barra de título (punto 5).
   const officeViews = await evaluate(`[...document.querySelectorAll('.dock-view-bar .dock-view-button')].map((b) => b.dataset.view)`)
-  assert.deepEqual(officeViews, ['errand', 'board', 'team'], `office side panel views (${officeViews})`)
+  assert.deepEqual(officeViews, ['errand', 'board', 'work', 'team'], `office side panel views (${officeViews})`)
   // La lista de @ sale pegada al composer y con su ancho, sin salirse (punto 3).
   await input('[data-testid="agency-office-input"]', 'Hola @Em')
   await wait(`Boolean(document.querySelector('[data-testid="agency-mention-list"]'))`)

@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict')
-const { ui, scenario, command, useLocalModel, seedBoard, panesFor, click, clickText, input, key, evaluate, wait, until, delay, size, screenshot, report } = require('../harness.cjs')
+const { ui, scenario, command, useLocalModel, seedBoard, panesFor, click, clickText, input, key, evaluate, wait, until, delay, size, screenshot, report, settleAnimations } = require('../harness.cjs')
 const pending = () => fetch(new URL('/__pending?lane=main', ui.model)).then(r=>r.json())
 async function release() {
   await until(async()=>await pending()>0,'scripted model waiting')
@@ -12,13 +12,16 @@ async function send(text) {
   await click('.composer-surface textarea')
   await key('Enter')
 }
-const state = (selector='.activity-text-shimmer') => evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}),s=getComputedStyle(e),r=e.getBoundingClientRect();return {animation:s.animationName,position:s.backgroundPosition,fill:s.webkitTextFillColor,width:r.width,height:r.height,text:e.textContent}})()`)
+// The text's own box: the title stretches with its row, whose token counter changes as the turn runs.
+const state = (selector='.activity-text-shimmer') => evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}),s=getComputedStyle(e),range=document.createRange();range.selectNodeContents(e);const r=range.getBoundingClientRect();return {animation:s.animationName,position:s.backgroundPosition,fill:s.webkitTextFillColor,width:r.width,height:r.height,text:e.textContent}})()`)
 const still = async (selector) => { let s; await until(async()=>{s=await state(selector);return s.animation==='none'&&s.fill!=='rgba(0, 0, 0, 0)'},'reduced motion applied to the sheen'); return s }
 async function moving(selector) {
+  // The status card enters with a small scale: measure once it has landed.
+  await settleAnimations()
   const before=await state(selector); await delay(350); const after=await state(selector)
   assert.equal(before.animation,'activity-text-sheen')
   assert.notEqual(before.position,after.position)
-  assert.equal(before.width,after.width); assert.equal(before.height,after.height)
+  assert.equal(before.width,after.width,`the sheen does not move the text (${before.text} → ${after.text})`); assert.equal(before.height,after.height)
 }
 async function seamlessCycle(selector, name) {
   const select=JSON.stringify(selector)

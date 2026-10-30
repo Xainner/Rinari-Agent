@@ -159,6 +159,7 @@ scenario(async () => {
   // The neighbour has its own execution and disclosure state.
   await send(b, 'Prueba del fallo recuperable')
   await release()
+  await release() // the same request with the system message folded
   await wait(`${q(b)}.innerText.includes('El turno falló')`, 60000)
   assert(await evaluate(`Boolean(${q(b + ' [role="alert"]')})`))
   await screenshot('boards-failure-outside')

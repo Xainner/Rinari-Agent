@@ -1,5 +1,6 @@
 // Notas de Rinari con el Engine real y un modelo guionado:
-// 1. Un turno deja dos notas: aparece una (con «+1»), sin empezar nada nuevo.
+// 1. Un turno deja dos notas: aparece una (con «1/2»), sin empezar nada nuevo;
+//    el paginador pasa a la segunda y vuelve.
 // 2. «Hacer en otra conversación» crea una conversación nueva con el título
 //    de la nota y su turno se ejecuta; la conversación de origen sigue igual.
 // 3. La conversación nueva cuelga de «Origen» en la barra lateral, sin
@@ -31,7 +32,16 @@ scenario(async () => {
   await wait(text('PARSER ARREGLADO'))
   await wait(`Boolean(document.querySelector(${JSON.stringify(NOTE)}))`)
   await settleAnimations()
-  assert(await evaluate(`document.querySelector(${JSON.stringify(NOTE)}).innerText.includes('+1')`), 'one more note waits')
+  const PAGER = `${NOTE} .sticky-note-pager`
+  const TITLE = `document.querySelector(${JSON.stringify(NOTE + ' .sticky-note-title')}).innerText`
+  assert.equal(await evaluate(`document.querySelector(${JSON.stringify(PAGER)})?.innerText.trim()`), '1/2', 'one more note waits')
+  const firstTitle = await evaluate(TITLE)
+  await click(`${PAGER} button[aria-label="Nota siguiente"]`)
+  await wait(`document.querySelector(${JSON.stringify(PAGER)}).innerText.trim() === '2/2'`)
+  assert.notEqual(await evaluate(TITLE), firstTitle, 'the second note can be read')
+  await click(`${PAGER} button[aria-label="Nota anterior"]`)
+  await wait(`document.querySelector(${JSON.stringify(PAGER)}).innerText.trim() === '1/2'`)
+  assert.equal(await evaluate(TITLE), firstTitle, 'and the first one comes back')
   assert.equal((await command('session_list', { include_closed: true })).sessions.length, before, 'showing a note starts nothing')
   await screenshot('note')
 

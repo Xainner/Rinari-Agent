@@ -68,6 +68,7 @@ scenario(async () => {
     await clickText('Permitir una vez', `${CARD} button`)
 
     // 3. The image is delivered with the card, and the service got the key.
+    await release() // file.present with the image's uri
     await wait(`document.querySelector('${PRESENTED} [data-thumb="image"]')?.dataset.state === 'ready'`, 30_000)
     await release() // LUNA LISTA
     await wait(`document.body.innerText.includes('LUNA LISTA')`)

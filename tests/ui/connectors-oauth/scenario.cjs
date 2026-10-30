@@ -125,8 +125,9 @@ scenario(async () => {
     await settleAnimations()
     await screenshot('02-catalog')
     // Every catalog entry has its official logo (none falls back to initials), and only the list scrolls.
+    // Entries still in preview are not offered (7dd2a2f8), so the count follows the catalog.
     const logos = await evaluate(`[...document.querySelectorAll('[data-testid="connector-catalog"] [data-entry] .connector-logo')].map((logo) => Boolean(logo.querySelector('img')))`)
-    assert.ok(logos.length >= 29 && logos.every(Boolean), `every entry shows a logo (${logos.filter(Boolean).length}/${logos.length})`)
+    assert.ok(logos.length > 10 && logos.every(Boolean), `every entry shows a logo (${logos.filter(Boolean).length}/${logos.length})`)
     await evaluate(`(() => { const list = document.querySelector('[data-testid="connector-catalog"] .catalog-scroll'); list.scrollTop = list.scrollHeight; return true })()`)
     await wait(`document.querySelector('[data-testid="connector-catalog"] .catalog-scroll').scrollTop > 0`)
     assert.ok(await evaluate(`document.querySelector('[data-testid="connector-catalog"] .catalog-filters').getBoundingClientRect().top > 0`), 'the filters stay in view while the list scrolls')

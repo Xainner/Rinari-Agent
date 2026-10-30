@@ -17,6 +17,12 @@ import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 
+/** The artifact uri of the last image an image.generate result named in the request. */
+const lastImageUri = (request) => {
+  const found = [...JSON.stringify(request.messages ?? []).matchAll(/artifact:\/\/[\w./-]+?\.png/g)]
+  return found.at(-1)?.[0] ?? ''
+}
+
 /**
  * «Navegador» de `connectors-oauth`: abre la URL de autorización (solo
  * loopback), sigue la redirección al callback de Rinari y termina, como quien
@@ -307,8 +313,10 @@ export const scenarios = {
     model: () => startRoutedModel({
       title: Array.from({ length: 3 }, () => ({ text: 'Luna' })),
       main: [
-        { tool: 'capability.search', args: { query: '+image.generate', limit: 2, load: true }, say: 'Busco cómo crear imágenes.' },
+        { tool: 'capability.search', args: { query: '+image.generate', limit: 2 }, say: 'Busco cómo crear imágenes.' },
         { tool: 'image.generate', args: { prompt: 'Una luna morada sobre fondo oscuro', quality: 'low', name: 'luna' }, say: 'La creo.' },
+        // image.generate leaves the showing to the model, after it looked at the image.
+        { tool: 'file.present', args: (request) => ({ items: [{ path: lastImageUri(request), caption: 'Luna morada' }] }), say: 'Está bien; te la entrego.' },
         { text: 'LUNA LISTA' },
       ],
     }, laneOf, { held: ['main'] }),
@@ -513,6 +521,8 @@ export const scenarios = {
       main: [
         ...Array.from({ length: 24 }, (_, i) => ({ tool: 'fs.glob', args: { pattern: `actividad-${i}-*.txt` }, say: `PROGRESO ${i + 1}.\n\n` + paragraphs(10, n => `Detalle ${n} del paso ${i + 1}: revisión local de la actividad y conservación de lectura.`) })),
         { text: 'RESULTADO COMPLETO\n\n' + paragraphs(35, n => `Párrafo final ${n}: la respuesta sigue completa y fuera del bloque de actividad.`) },
+        { httpError: { status: 400, body: { error: { message: 'Fallo controlado del proveedor local', type: 'invalid_request_error' } } } },
+        // A plain 400 is tried once more with the system message folded (templates without a system role).
         { httpError: { status: 400, body: { error: { message: 'Fallo controlado del proveedor local', type: 'invalid_request_error' } } } },
         { text: 'RESPUESTA PARA EL PANEL VECINO' },
         { text: 'ESTA RESPUESTA CANCELADA NO DEBE APARECER' },
